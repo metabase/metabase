@@ -68,7 +68,7 @@ export const EventListWidget = ({
             onChange([...value, { type: "saved", id: nextEvent.id }])
           }
         >
-          {t`Add event`}
+          {t`Add step`}
         </Button>
       )}
     </Stack>

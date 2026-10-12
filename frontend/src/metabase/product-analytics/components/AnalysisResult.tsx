@@ -1,7 +1,18 @@
+import { useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { Alert, Box, Loader, Paper, Stack, Text, Title } from "metabase/ui";
+import { Warnings } from "metabase/common/components/Warnings";
+import {
+  Alert,
+  Box,
+  Group,
+  Loader,
+  Paper,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   CardDisplayType,
@@ -34,6 +45,7 @@ export const AnalysisResult = ({
   error,
   warnings,
 }: AnalysisResultProps) => {
+  const [vizWarnings, setVizWarnings] = useState<string[]>([]);
   const rawSeries: RawSeries | null =
     dataset?.data !== undefined && datasetQuery !== undefined
       ? [
@@ -49,16 +61,18 @@ export const AnalysisResult = ({
           },
         ]
       : null;
+  const isShowingVisualization = !isLoading && !error && rawSeries !== null;
+  const allWarnings = isShowingVisualization
+    ? [...warnings, ...vizWarnings]
+    : warnings;
 
   return (
     <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }} mih={420}>
-      <Title order={4}>{title}</Title>
+      <Group justify="space-between" wrap="nowrap">
+        <Title order={4}>{title}</Title>
+        <Warnings warnings={allWarnings} size={18} />
+      </Group>
       <Stack gap="sm" mt="md">
-        {warnings.map((warning) => (
-          <Alert key={warning} color="warning">
-            {warning}
-          </Alert>
-        ))}
         {error && <Alert color="error">{error}</Alert>}
         {isLoading && (
           <Box ta="center" py="xl">
@@ -68,11 +82,12 @@ export const AnalysisResult = ({
         {!isLoading && !error && rawSeries === null && (
           <Text c="text-secondary">{t`Results will appear here.`}</Text>
         )}
-        {!isLoading && !error && rawSeries !== null && (
+        {isShowingVisualization && (
           <Box h={420}>
             <Visualization
               rawSeries={rawSeries}
               isQueryBuilder={false}
+              onUpdateWarnings={setVizWarnings}
               onChangeCardAndRun={noop}
             />
           </Box>

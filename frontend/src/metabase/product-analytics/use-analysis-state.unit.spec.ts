@@ -72,4 +72,19 @@ describe("useAnalysisState", () => {
       counting: "event",
     });
   });
+
+  it("tracks unsaved changes against the settings it last saved", () => {
+    const { result } = setup({ savedSettings: SAVED_SETTINGS });
+    expect(result.current.hasUnsavedChanges).toBe(false);
+
+    act(() => result.current.onChangeSettings({ counting: "event" }));
+    expect(result.current.hasUnsavedChanges).toBe(true);
+
+    act(() => result.current.onSaved());
+    expect(result.current.hasUnsavedChanges).toBe(false);
+
+    act(() => result.current.onChangeSettings({ counting: undefined }));
+    expect(result.current.stored).toEqual(SAVED_SETTINGS);
+    expect(result.current.hasUnsavedChanges).toBe(true);
+  });
 });

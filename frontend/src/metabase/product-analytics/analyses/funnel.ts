@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
+import { SegmentedControl } from "metabase/ui";
+
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventListWidget } from "../components/settings/EventListWidget";
+import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
@@ -45,7 +48,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     readDependencies: ["funnel.view"],
   },
   "funnel.steps": {
-    getTitle: () => t`Steps`,
+    getTitle: () => t`The journey you want people to complete`,
     getSection: () => "setup",
     widget: EventListWidget,
     getDefault: () => [
@@ -59,51 +62,51 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
       minCount: MIN_STEPS,
     }),
   },
-  "funnel.view": {
-    getTitle: () => t`Show`,
+  "funnel.view": withWidgetProps({
+    getTitle: () => t`How to display the funnel`,
     getSection: () => "setup",
-    widget: "segmentedControl",
+    widget: SegmentedControl,
     getDefault: () => "steps",
     isValid: (value) => isOneOf(VIEWS, value),
     getProps: () => ({
-      options: [
-        { name: t`Steps`, value: "steps" },
-        { name: t`Over time`, value: "overTime" },
-        { name: t`Time to convert`, value: "timeToConvert" },
+      data: [
+        { label: t`Step by step`, value: "steps" as const },
+        { label: t`Over time`, value: "overTime" as const },
+        { label: t`How long it took`, value: "timeToConvert" as const },
       ],
+      w: "100%",
     }),
-  },
+  }),
   "funnel.window": {
-    getTitle: () => t`Conversion window`,
+    getTitle: () => t`How long does someone get to finish the steps?`,
     getSection: () => "advanced",
     widget: DurationWidget,
-    getDefault: () => ({ value: 30, unit: "day" }),
+    getDefault: () => ({ value: 7, unit: "day" }),
     isValid: (value) => isPositiveDuration(value),
   },
-  "funnel.ordering": {
-    getTitle: () => t`Step order`,
-    getSection: () => "advanced",
-    widget: "select",
-    getDefault: () => "loose",
-    isValid: (value) => isOneOf(ORDERINGS, value),
-    getProps: () => ({
-      options: [
-        { name: t`Strict: nothing in between`, value: "strict" },
-        { name: t`Loose: in order`, value: "loose" },
-        { name: t`Any order`, value: "any" },
-      ],
-    }),
-  },
   "funnel.anchor": {
-    getTitle: () => t`Count conversions from`,
     getSection: () => "advanced",
     widget: "segmentedControl",
     getDefault: () => "first",
     isValid: (value) => isOneOf(ANCHORS, value),
     getProps: () => ({
       options: [
-        { name: t`First time`, value: "first" },
-        { name: t`Each time`, value: "each" },
+        { name: t`Counted from their first step`, value: "first" },
+        { name: t`Counted from the last step they completed`, value: "each" },
+      ],
+    }),
+  },
+  "funnel.ordering": {
+    getTitle: () => t`How strictly in order do they need to do each step?`,
+    getSection: () => "advanced",
+    widget: "select",
+    getDefault: () => "loose",
+    isValid: (value) => isOneOf(ORDERINGS, value),
+    getProps: () => ({
+      options: [
+        { name: t`In order, no other actions in between`, value: "strict" },
+        { name: t`In order, other actions allowed in between`, value: "loose" },
+        { name: t`In any order`, value: "any" },
       ],
     }),
   },

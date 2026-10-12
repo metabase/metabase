@@ -15,7 +15,7 @@ All seven chunks are implemented. Where things live, under [`frontend/src/metaba
 - `settings/`: the typed definition types and the wrappers over viz-core.
 - `analyses/`: one file per analysis (definitions, `toSpec`, display, viz settings), plus `common-settings.ts`, `column-roles.ts` and `setting-helpers.ts`.
 - `events/`: the saved-event catalog and flag allocation.
-- `use-analysis.ts`: settings to results. `use-analysis-state.ts`: stored settings and URL sync. `use-save-analysis.ts`: create and update.
+- `use-analysis.ts`: settings to results. `use-analysis-state.ts`: stored settings and URL sync. `use-save-analysis.ts`: create and update, plus `use-add-to-dashboard-toast.ts` for what happens after a create.
 - `components/AnalysisWorkspace.tsx`: shared by `/event-analysis/new/:kind` and `/event-analysis/:cardId`.
 - The card marker and its guard live in `metabase-types` (`api/product-analytics.ts`, `guards/product-analytics.ts`), because the dashboard and query builder can't import from another feature.
 
@@ -30,7 +30,12 @@ Where the code differs from the plan below:
 - A flag is named by the event's position in the catalog (`ev_<n>`), not numbered in order of use. Picking or dropping one event doesn't rename the others' columns.
 - `funnel.exclusions` isn't implemented, and the spec gets `[]`.
 - The old `defaultSpec()` moved to [`specs.ts`](../specs.ts), for [`check.ts`](../check.ts). A test confirmed the computed defaults reproduced it exactly before the move.
-- Saving uses `SaveQuestionModal`, which can already save straight into a dashboard. `AddToDashSelectDashModal` isn't wired up.
+- Saving follows the query builder:
+  - A new analysis saves through `SaveQuestionModal`. If it was saved into a dashboard, the builder goes to that dashboard in edit mode, scrolled to the new card. Otherwise it goes to the saved analysis, which shows the "Saved" toast with "Add this to a dashboard" (`AddToDashSelectDashModal`). The toast is sent from the saved page, because the new page unmounts. Router state on that navigation tells the saved page to send it (`use-add-to-dashboard-toast.ts`).
+  - A saved analysis updates in place with no modal, and only when there are unsaved changes.
+  - Save is hidden when the card is archived or not writable, or for a new analysis when the user can't write to any collection.
+  - Unsaved changes get the "Discard your changes?" prompt when leaving the page, except on the navigation right after a save.
+  - Not yet: "Save as new" for a saved analysis, and renaming. Both wait on a design for naming.
 
 ## Summary
 

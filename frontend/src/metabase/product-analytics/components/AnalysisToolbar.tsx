@@ -2,13 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { ActionIcon, Button, Group, Icon, SegmentedControl } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
-import S from "./AnalysisToolbar.module.css";
 import { SqlModal } from "./SqlModal";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
@@ -19,11 +18,12 @@ const findSetting = (
 
 type AnalysisToolbarProps = {
   widgets: SettingWidget[];
-  panel: AnalysisPanel;
+  panel: AnalysisPanel | null;
   setupLabel: string;
   sql: string | null;
   canSave: boolean;
-  onPanelChange: (panel: AnalysisPanel) => void;
+  isSaveDisabled: boolean;
+  onPanelChange: (panel: AnalysisPanel | null) => void;
   onSave: () => void;
 };
 
@@ -37,31 +37,36 @@ export const AnalysisToolbar = ({
   setupLabel,
   sql,
   canSave,
+  isSaveDisabled,
   onPanelChange,
   onSave,
 }: AnalysisToolbarProps) => {
   const [sendToast] = useToast();
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
 
+  const togglePanel = (target: AnalysisPanel) =>
+    onPanelChange(panel === target ? null : target);
+
   return (
     <>
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Group gap="sm">
-          <SegmentedControl<AnalysisPanel>
-            classNames={{
-              label: S.segmentedControlLabel,
-            }}
-            value={panel}
-            onChange={onPanelChange}
-            data={[
-              { value: "setup", label: setupLabel },
-              {
-                value: "advanced",
-                icon: "sliders",
-                ariaLabel: t`Advanced settings`,
-              },
-            ]}
-          />
+          <Button.Group>
+            <Button
+              variant="default"
+              aria-pressed={panel === "setup"}
+              onClick={() => togglePanel("setup")}
+            >
+              {setupLabel}
+            </Button>
+            <Button
+              variant="default"
+              aria-label={t`Advanced settings`}
+              aria-pressed={panel === "advanced"}
+              leftSection={<Icon name="sliders" />}
+              onClick={() => togglePanel("advanced")}
+            />
+          </Button.Group>
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
             <Button
@@ -87,9 +92,11 @@ export const AnalysisToolbar = ({
           >
             <Icon name="sql" />
           </ActionIcon>
-          <Button variant="subtle" disabled={!canSave} onClick={onSave}>
-            {t`Save`}
-          </Button>
+          {canSave && (
+            <Button variant="subtle" disabled={isSaveDisabled} onClick={onSave}>
+              {t`Save`}
+            </Button>
+          )}
         </Group>
       </Group>
       <SqlModal sql={sql} opened={sqlOpened} onClose={closeSql} />

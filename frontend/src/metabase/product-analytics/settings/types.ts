@@ -24,12 +24,22 @@ export type SettingWidgetProps<V> = {
   onChange: (value: V) => void;
 };
 
-export type SettingDefinition<TContext, S, K extends SettingKey<S>> = {
+/**
+ * `P` is what `getProps` returns. The widget receives it alongside
+ * `SettingWidgetProps`, so a component may require it; such definitions go
+ * through `withWidgetProps` to fit in `SettingDefinitions`.
+ */
+export type SettingDefinition<
+  TContext,
+  S,
+  K extends SettingKey<S>,
+  P extends object = object,
+> = {
   getTitle?: () => string;
   group?: SettingGroup;
   getSection: () => SettingSection;
   /** A widget registry name (see `registerSettingWidgets`) or a component. */
-  widget?: string | ComponentType<SettingWidgetProps<S[K]>>;
+  widget?: string | ComponentType<SettingWidgetProps<S[K]> & P>;
   /** May only read the keys in `readDependencies`, which are computed first. */
   getDefault: (context: TContext, settings: Partial<S>) => S[K];
   /**
@@ -43,7 +53,7 @@ export type SettingDefinition<TContext, S, K extends SettingKey<S>> = {
     context: TContext,
     settings: S,
     onChange: (value: S[K]) => void,
-  ) => Record<string, unknown>;
+  ) => P;
   readDependencies?: SettingKey<S>[];
   writeDependencies?: SettingKey<S>[];
   eraseDependencies?: SettingKey<S>[];

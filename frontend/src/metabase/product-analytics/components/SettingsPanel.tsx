@@ -6,13 +6,16 @@ import ChartSettingsWidget from "metabase/visualizations/components/ChartSetting
 import type { SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
+// ChartSettingsWidget insets itself for the chart settings sidebar; the Paper
+// already provides padding here.
+const WIDGET_STYLE = { marginInline: 0 };
+
 type SettingsPanelProps = {
   panel: AnalysisPanel;
   widgets: SettingWidget[];
 };
 
 export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
-  const title = panel === "setup" ? t`Setup` : t`Advanced settings`;
   const visible = widgets.filter(
     (widget) => widget.section === panel && !widget.hidden,
   );
@@ -20,12 +23,9 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
   const columns = visible.filter((widget) => widget.group === "columns");
 
   return (
-    <Paper withBorder p="lg" miw={280} maw={360} w="100%">
-      <Title order={4} mb="lg">
-        {title}
-      </Title>
+    <Paper withBorder pt="xl" px="xl" miw={280} maw={360} w="100%">
       {ungrouped.map((widget) => (
-        <ChartSettingsWidget key={widget.id} {...widget} />
+        <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
       ))}
       {columns.length > 0 && (
         <Box mt="md">
@@ -34,7 +34,11 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
             {t`Which columns hold the event time, the person, and so on.`}
           </Text>
           {columns.map((widget) => (
-            <ChartSettingsWidget key={widget.id} {...widget} />
+            <ChartSettingsWidget
+              key={widget.id}
+              {...widget}
+              style={WIDGET_STYLE}
+            />
           ))}
         </Box>
       )}
