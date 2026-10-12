@@ -903,7 +903,7 @@ describe("issue 76056", () => {
 
     cy.findByTestId("dashboardcard-actions-panel")
       .should("be.visible")
-      .then(($panel) => {
+      .should(($panel) => {
         const panelRect = $panel[0].getBoundingClientRect();
         const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
           (button) => button.getBoundingClientRect(),

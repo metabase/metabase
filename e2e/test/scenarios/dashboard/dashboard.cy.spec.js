@@ -1219,6 +1219,8 @@ describe("scenarios > dashboard", () => {
     // confirm it saves the state after saving and refreshing
     H.saveDashboard();
     cy.reload();
+    H.getDashboardCard(0).findByText("Top: Example Input").should("be.visible");
+    H.getDashboardCard(1).findByText("Bottom").should("be.visible");
     H.assertDashboardFullWidth();
 
     // toggle back to fixed
@@ -1495,10 +1497,8 @@ const IFRAME_SANDBOX =
   "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts";
 
 function validateIFrame(src, index = 0) {
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  H.getDashboardCards()
-    .get("iframe")
-    .eq(index)
+  H.getDashboardCard(index)
+    .find("iframe")
     .should("have.attr", "src", src)
     .and("have.attr", "sandbox", IFRAME_SANDBOX)
     .and("not.have.attr", "onload");

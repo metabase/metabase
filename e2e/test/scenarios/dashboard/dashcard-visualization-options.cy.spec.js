@@ -292,6 +292,8 @@ describe("issue 64138", () => {
 
     cy.log("clicking marker icons should not navigate to the question");
     getMarkerIcon(0).click({ force: true });
+    cy.findByTestId("edit-bar").should("be.visible");
+    getMarkerIcon(0).should("exist");
     cy.location("pathname").should("match", /^\/dashboard\/[0-9]+$/);
     H.modal().should("not.exist");
 
