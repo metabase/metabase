@@ -1,27 +1,15 @@
 import type { ComponentType, ReactNode } from "react";
 
 import { definePluginSlot } from "../slot";
-import type { PluginRoute } from "../types";
 
 type MonitorPlugin = {
-  isContentDiagnosticsEnabled: boolean;
-  getContentDiagnosticsRoutes: () => ReactNode;
-  isDependencyDiagnosticsEnabled: boolean;
-  getDependencyDiagnosticsRoutes: () => ReactNode;
-  sessionsPage?: PluginRoute;
-  sessionsCatchAllPage?: PluginRoute;
-  isApiKeyUsageEnabled: boolean;
-  getApiKeyUsageRoutes: () => ReactNode;
+  getContentDiagnosticsRoutes?: () => ReactNode;
+  getDependencyDiagnosticsRoutes?: () => ReactNode;
+  getSessionsRoutes?: () => ReactNode;
+  getApiKeyUsageRoutes?: () => ReactNode;
 };
 
-const getDefaultPluginMonitor = (): MonitorPlugin => ({
-  isContentDiagnosticsEnabled: false,
-  getContentDiagnosticsRoutes: () => null,
-  isDependencyDiagnosticsEnabled: false,
-  getDependencyDiagnosticsRoutes: () => null,
-  isApiKeyUsageEnabled: false,
-  getApiKeyUsageRoutes: () => null,
-});
+const getDefaultPluginMonitor = (): MonitorPlugin => ({});
 
 export const PLUGIN_MONITOR = definePluginSlot(getDefaultPluginMonitor);
 
