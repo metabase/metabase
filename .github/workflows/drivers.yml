@@ -1274,7 +1274,7 @@ jobs:
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       - be-tests-vertica-ee
-      # - be-tests-starburst-ee
+      - be-tests-starburst-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
