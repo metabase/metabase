@@ -300,15 +300,12 @@ function extractColumnAndCheck({
   // With many columns, the "Add column" button can cover the last header,
   // so the visible value cell shows that the table scrolled to the new column.
   if (!value) {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByRole("columnheader").last().should("be.visible");
+    cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
   }
 
   if (value === "") {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.tableInteractiveBody()
-      .findAllByTestId("body-cell-container")
-      .last()
+      .find(`[data-column-id="${newColumn}"]`)
       .should("have.text", "");
   } else if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
