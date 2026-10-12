@@ -32,10 +32,12 @@ const createDetailWriter = (directory) => {
 const collect = () => {
   const totals = { files: 0, passed: 0, failed: 0, skipped: 0 };
   const failedFiles = [];
+  const failures = [];
   const slowest = [];
   return {
     totals,
     failedFiles,
+    failures,
     slowest,
     add({ file, ms, result }) {
       totals.files += 1;
@@ -43,6 +45,7 @@ const collect = () => {
       totals.failed += result.failed;
       totals.skipped += result.skipped;
       if (result.failed > 0) failedFiles.push(file);
+      for (const failure of result.failures) failures.push({ file, test: failure.test });
       slowest.push({ file, ms });
     },
   };
@@ -131,7 +134,13 @@ const createHumanReporter = ({ root, stream, workers, estimate, detailDirectory,
       if (done.result.failed > 0) printFailures(done.file, done.result);
       status();
     },
-    finish() {
+    failures: () => state.results.failures,
+    confirming(count) {
+      clearInterval(timer);
+      clearStatus();
+      stream.write(`\nRunning ${plural(count, "failed file")} again, each alone in a new worker...\n`);
+    },
+    finish(confirmation) {
       clearInterval(timer);
       clearStatus();
       const { totals, failedFiles, slowest } = state.results;
@@ -143,6 +152,14 @@ const createHumanReporter = ({ root, stream, workers, estimate, detailDirectory,
       if (totals.files > 20) {
         const top = slowest.sort((a, b) => b.ms - a.ms).slice(0, 3).map(({ file, ms }) => `${path.basename(file).replace(/\.unit\.spec\.\w+$/, "")} ${Math.round(ms / 1000)} s`);
         stream.write(color.dim(`Slowest: ${top.join(", ")}\n`));
+      }
+      if (confirmation) {
+        const { passedAlone, failedAgain } = confirmation;
+        if (failedAgain > 0) stream.write(`${color.red(`${plural(failedAgain, "failing test")} failed again alone.`)}\n`);
+        if (passedAlone.length > 0) {
+          stream.write(color.yellow(`${plural(passedAlone.length, "failing test")} passed alone. Something that ran earlier in the same worker made ${passedAlone.length === 1 ? "it" : "them"} fail, or the test is not stable:\n`));
+          for (const { file, test } of passedAlone) stream.write(`  ${relative(file)} > ${test}\n`);
+        }
       }
       if (failedFiles.length > 0) stream.write(`Rerun failed: ${rerunCommand(failedFiles.map(relative))}\n`);
       return failedFiles;
@@ -186,10 +203,18 @@ const createAgentReporter = ({ root, stream, detailDirectory, rerunCommand }) =>
         stream.write(`  detail: ${detail}\n`);
       }
     },
-    finish() {
+    failures: () => state.results.failures,
+    confirming() {},
+    // ALONE says what a failing test did when its file ran again, alone in a
+    // new worker. "pass" means the failure needs something that ran before it.
+    finish(confirmation) {
       const { totals, failedFiles } = state.results;
       const seconds = Math.round((Date.now() - state.started) / 1000);
-      stream.write(`SUMMARY files=${totals.files} passed=${totals.passed} failed=${totals.failed} skipped=${totals.skipped} seconds=${seconds}\n`);
+      if (confirmation) {
+        for (const { file, test } of confirmation.passedAlone) stream.write(`ALONE pass ${relative(file)} > ${test}\n`);
+      }
+      const alone = confirmation ? ` failed_alone=${confirmation.failedAgain} passed_alone=${confirmation.passedAlone.length}` : "";
+      stream.write(`SUMMARY files=${totals.files} passed=${totals.passed} failed=${totals.failed}${alone} skipped=${totals.skipped} seconds=${seconds}\n`);
       if (failedFiles.length > 0) stream.write(`RERUN ${rerunCommand(failedFiles.map(relative))}\n`);
       return failedFiles;
     },
@@ -214,8 +239,11 @@ const createJsonReporter = ({ root, stream }) => {
         failures: done.result.failures.map((failure) => ({ ...failure, message: plain(failure.message), stack: plain(failure.stack) })),
       });
     },
-    finish() {
-      stream.write(`${JSON.stringify({ ...state.results.totals, seconds: (Date.now() - state.started) / 1000, files })}\n`);
+    failures: () => state.results.failures,
+    confirming() {},
+    finish(confirmation) {
+      const alone = confirmation ? { failedAlone: confirmation.failedAgain, passedAlone: confirmation.passedAlone.map(({ file, test }) => ({ file: path.relative(root, file), test })) } : {};
+      stream.write(`${JSON.stringify({ ...state.results.totals, ...alone, seconds: (Date.now() - state.started) / 1000, files })}\n`);
       return state.results.failedFiles;
     },
   };

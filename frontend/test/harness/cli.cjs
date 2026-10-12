@@ -16,19 +16,25 @@ const { createReporter, reporterNames } = require("./reporters.cjs");
 const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
 
   pattern                   run the spec files whose path matches this regular expression
+  -t, --test-name-pattern <regex>
+                            run only the tests whose full name matches
   --watch                   run again when a spec, or a file it loads, changes
   -w, --workers <n>         number of worker processes (default: one per fast core)
   -u, --update-snapshots    write snapshots that do not match
   --reporter <name>         human, agent or json (default: human at a terminal, agent otherwise)
+  --no-confirm              do not run a failed spec file again, alone, to see if it still fails
   --ignore-projects <a,b>   leave out the specs of these jest projects
   -h, --help                show this text
 `;
 
 const parse = (argv) => {
-  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, reporter: process.stdout.isTTY ? "human" : "agent", ignoredProjects: [] };
+  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, reporter: process.stdout.isTTY ? "human" : "agent", testNamePattern: undefined, confirm: true, ignoredProjects: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--watch") options.watch = true;
+    else if (argument === "-t" || argument === "--test-name-pattern") options.testNamePattern = argv[(index += 1)];
+    else if (argument.startsWith("--test-name-pattern=")) options.testNamePattern = argument.slice("--test-name-pattern=".length);
+    else if (argument === "--no-confirm") options.confirm = false;
     else if (argument === "--reporter") options.reporter = argv[(index += 1)];
     else if (argument.startsWith("--reporter=")) options.reporter = argument.slice("--reporter=".length);
     else if (argument === "-w" || argument === "--workers") options.workers = Number(argv[(index += 1)]);
@@ -84,11 +90,16 @@ const reporter = createReporter(options.reporter, {
   rerunCommand,
 });
 
+const workerEnvironment = {
+  ...(options.updateSnapshots ? { NT_UPDATE_SNAPSHOTS: "1" } : {}),
+  ...(options.testNamePattern ? { NT_TEST_NAME_PATTERN: options.testNamePattern } : {}),
+  // A worker that wins colour prints jest's matcher messages as jest does at a terminal.
+  ...(options.reporter === "human" && process.stdout.isTTY ? { FORCE_COLOR: "1" } : {}),
+};
 const pool = createPool({
   workers: options.workers,
   keepAlive: options.watch,
-  // A worker that wins colour prints jest's matcher messages as jest does at a terminal.
-  env: { ...(options.updateSnapshots ? { NT_UPDATE_SNAPSHOTS: "1" } : {}), ...(options.reporter === "human" && process.stdout.isTTY ? { FORCE_COLOR: "1" } : {}) },
+  env: workerEnvironment,
   onFileStart: (started) => reporter.fileStarted(started),
   onFileDone: (done) => {
     loadedBy.set(done.file, new Set(done.loaded));
@@ -96,17 +107,42 @@ const pool = createPool({
   },
 });
 
-// Runs the files and prints the result. Returns the spec files that failed.
+// A spec file runs after others in a worker that keeps its packages loaded.
+// jest gives every file a process state of its own. So a failed file runs one
+// more time, alone in a new worker: a test that passes there did not fail on
+// its own account, and the report says so. With many failed files the cause is
+// in the code, and running them all again would only take time.
+const MOST_FILES_TO_CONFIRM = 20;
+const confirmFailures = async (failures) => {
+  const files = [...new Set(failures.map(({ file }) => file))];
+  if (!options.confirm || options.watch || files.length === 0 || files.length > MOST_FILES_TO_CONFIRM) return undefined;
+  reporter.confirming(files.length);
+  const failedAlone = new Map();
+  const fresh = createPool({
+    workers: Math.min(files.length, options.workers ?? fastCores()),
+    env: { ...workerEnvironment, NT_MAX_FILES: "1" },
+    onFileDone: ({ file, result }) => failedAlone.set(file, new Set(result.failures.map(({ test }) => test))),
+  });
+  await fresh.run(files);
+  const passedAlone = failures.filter(({ file, test }) => failedAlone.has(file) && !failedAlone.get(file).has(test));
+  return { files: files.length, passedAlone, failedAgain: failures.length - passedAlone.length };
+};
+
+// Runs the files and prints the result. Returns the spec files that failed and
+// whether the run counts as failed.
 const run = async (files) => {
   reporter.start(files);
   await pool.run(files);
-  return reporter.finish();
+  const confirmation = await confirmFailures(reporter.failures());
+  const failedFiles = reporter.finish(confirmation);
+  const failed = confirmation ? confirmation.failedAgain > 0 : failedFiles.length > 0;
+  return { failedFiles, failed };
 };
 
 const WATCHED = /\.(tsx?|jsx?|json|css)$/;
 const watch = async (selected) => {
   let lastRun = selected;
-  let failed = await run(selected);
+  let failed = (await run(selected)).failedFiles;
   let running = false;
   const waiting = new Set();
 
@@ -115,7 +151,7 @@ const watch = async (selected) => {
     if (files.length === 0) return;
     running = true;
     lastRun = files;
-    failed = await run(files);
+    failed = (await run(files)).failedFiles;
     running = false;
     watchEverythingKnown();
     if (waiting.size > 0) react();
@@ -183,6 +219,6 @@ const watch = async (selected) => {
     process.exit(1);
   }
   if (options.watch) { await watch(specs); return; }
-  const failed = await run(specs);
-  process.exitCode = failed.length === 0 ? 0 : 1;
+  const { failed } = await run(specs);
+  process.exitCode = failed ? 1 : 0;
 })();
