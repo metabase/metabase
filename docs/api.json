@@ -30293,7 +30293,7 @@
       "post" : {
         "operationId" : "post-api-analytics-internal",
         "summary" : "POST /api/analytics/internal",
-        "description" : "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics.",
+        "description" : "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics. Only the\n  counters in [[frontend-metrics]] can be incremented; other events are ignored.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -30337,7 +30337,8 @@
                             "oneOf" : [ {
                               "type" : "object",
                               "additionalProperties" : {
-                                "type" : "string"
+                                "type" : "string",
+                                "maxLength" : 200
                               }
                             }, {
                               "description" : "Value must be a map."
@@ -30350,13 +30351,13 @@
                           "type" : "string"
                         },
                         "op" : {
-                          "type" : "string",
-                          "enum" : [ "inc", "dec", "set", "observe", "clear" ]
+                          "const" : "inc"
                         }
                       },
                       "required" : [ "op", "metric" ],
                       "additionalProperties" : false
-                    }
+                    },
+                    "maxItems" : 1001
                   }
                 },
                 "required" : [ "events" ],
