@@ -498,8 +498,10 @@
         capabilities (get context :capabilities #{})
         ;; Where other people can read the conversation, run_query would refuse every call, so it is not offered
         ;; and the prompt does not promise results. The tool checks again, for someone who joins mid-turn.
-        base-tools   (cond-> (profiles/profile->tools profile capabilities)
-                       (and conversation-id
+        offered      (profiles/profile->tools profile capabilities)
+        base-tools   (cond-> offered
+                       (and (contains? offered "run_query")
+                            conversation-id
                             api/*current-user-id*
                             (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))
                        (dissoc "run_query"))
