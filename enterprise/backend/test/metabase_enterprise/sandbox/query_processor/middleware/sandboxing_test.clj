@@ -1380,8 +1380,13 @@
                                                                            (:id model)))}]
                   (let [run-card         #(mt/user-http-request % :post 202 (format "card/%d/query" (:id card)))
                         regular-result   (run-card :crowberto)
-                        sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
-                                           (run-card :rasta))]
+                        [sandboxed-result
+                         sandboxed-sql]  (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                                           ;; results don't include `:native_form` for a sandboxed user, so compile
+                                           ;; the Card's query separately to see which table it uses
+                                           [(run-card :rasta)
+                                            (mt/with-test-user :rasta
+                                              (:query (qp.compile/compile (:dataset_query card))))])]
                     (testing "Unsandboxed"
                       (testing "Sees full result set"
                         (is (= 200 (-> regular-result mt/rows ffirst))))
@@ -1394,8 +1399,7 @@
                         (is (= 51 (-> sandboxed-result mt/rows ffirst))
                             "Sandboxed user got whole results instead of filtered"))
                       (testing "Does not use the cache table"
-                        (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
-                                                (:table_name persisted-info)))
+                        (is (not (str/includes? sandboxed-sql (:table_name persisted-info)))
                             "Erroneously used the persisted model cache")))))))))))))
 
 (deftest persistence-disabled-when-sandboxed-via-implicit-join-test
