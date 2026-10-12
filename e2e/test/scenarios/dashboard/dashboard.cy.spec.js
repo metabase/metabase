@@ -20,7 +20,7 @@ import {
 
 const { H } = cy;
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -48,16 +48,28 @@ describe("scenarios > dashboard", () => {
       cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
-      cy.log("Create a new dashboard");
       H.modal().within(() => {
         // Without waiting for this, the test was constantly flaking locally.
         cy.findByText("Our analytics");
 
-        cy.findByPlaceholderText(/name of your dashboard/i).type(dashboardName);
+        cy.log("A blank name shows an error (metabase#63176)");
+        cy.findByPlaceholderText(/name of your dashboard/i).type(" ");
+        cy.button("Create").click();
+        cy.findByText("value must be a non-blank string.").should("be.visible");
+        cy.findByPlaceholderText(/name of your dashboard/i).should(
+          "have.attr",
+          "aria-invalid",
+          "true",
+        );
+        cy.button("Failed").should("be.visible");
+
+        cy.log("Create a new dashboard");
         cy.findByLabelText("Description").type(dashboardDescription, {
           delay: 0,
         });
-        cy.button("Create").click();
+        cy.findByPlaceholderText(/name of your dashboard/i)
+          .clear()
+          .type(`${dashboardName}{enter}`);
       });
 
       cy.log("Router should immediately navigate to it");
@@ -888,7 +900,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-describe("scenarios > dashboard", () => {
+describe("scenarios > dashboard > tracking", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -1331,6 +1343,48 @@ describe("scenarios > dashboard > permissions", () => {
       .findByText("Sorry, you don’t have permission to see that.")
       .should("be.visible");
   });
+
+  it("should offer loading notifications only for cards the user can see (metabase#28756)", () => {
+    const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + 1000;
+    const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
+
+    // The toast is only offered while the browser has not been asked for notification permission yet
+    cy.on("window:before:load", (win) => {
+      Object.defineProperty(win.Notification, "permission", {
+        get: () => "default",
+      });
+    });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(60_000);
+      });
+    });
+    cy.clock();
+
+    cy.log("Cards that are still loading show the toast");
+    cy.visit(`/dashboard/${dashboardId}`);
+    H.getDashboardCard(0).findByTestId("loading-indicator").should("exist");
+    cy.tick(TOAST_TIMEOUT);
+    H.undoToast().should("contain.text", TOAST_MESSAGE);
+
+    cy.log(
+      "A card the user has no permission to see does not count as loading",
+    );
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      // req.continue() skips the intercepts that were added before this one
+      req.continue();
+    });
+    cy.signInAsNormalUser();
+    cy.visit(`/dashboard/${dashboardId}`);
+    H.getDashboardCards()
+      .should("contain", "Sorry, you don't have permission to see this card.")
+      .and("contain", "bar");
+    cy.tick(TOAST_TIMEOUT);
+    // The menu renders after any toast that the tick could trigger
+    H.openDashboardMenu();
+    H.popover().should("be.visible");
+    H.undoToast().should("not.exist");
+  });
 });
 
 describe("scenarios > dashboard > entity id support", () => {
@@ -1651,98 +1705,6 @@ describe("issue 16559", () => {
         .findByText("You moved this Dashboard to First collection.")
         .should("be.visible");
     });
-  });
-});
-
-describe("issue 28756", () => {
-  const UNRESTRICTED_COLLECTION_NAME = "Unrestricted collection";
-  const RESTRICTED_COLLECTION_NAME = "Restricted collection";
-
-  const ADMIN_GROUP_ID = "2";
-
-  const TOAST_TIMEOUT_SAFETY_MARGIN = 1000;
-  const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + TOAST_TIMEOUT_SAFETY_MARGIN;
-  const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
-
-  function restrictCollectionForNonAdmins(collectionId) {
-    cy.request("GET", "/api/collection/graph").then(
-      ({ body: { revision, groups } }) => {
-        cy.request("PUT", "/api/collection/graph", {
-          revision,
-          groups: _.mapObject(groups, (groupPermissions, groupId) => {
-            const permission = groupId === ADMIN_GROUP_ID ? "write" : "none";
-            return assoc(groupPermissions, collectionId, permission);
-          }),
-        });
-      },
-    );
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
-      ({ body: restrictedCollection }) => {
-        restrictCollectionForNonAdmins(restrictedCollection.id);
-
-        H.createCollection({ name: UNRESTRICTED_COLLECTION_NAME }).then(
-          ({ body: unrestrictedCollection }) => {
-            H.createQuestionAndDashboard({
-              dashboardDetails: {
-                collection_id: unrestrictedCollection.id,
-              },
-              questionDetails: {
-                name: "28756 Question",
-                query: {
-                  "source-table": PRODUCTS_ID,
-                },
-                collection_id: restrictedCollection.id,
-              },
-            }).then(({ body: { dashboard_id } }) => {
-              cy.wrap(dashboard_id).as("dashboardId");
-            });
-          },
-        );
-      },
-    );
-  });
-
-  it("should not show a toast to enable notifications to user with no permissions to see the card (metabase#28756)", () => {
-    // The toast is only offered while the browser has not been asked for notification permission yet
-    cy.on("window:before:load", (win) => {
-      Object.defineProperty(win.Notification, "permission", {
-        get: () => "default",
-      });
-    });
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(60_000);
-      });
-    });
-    cy.clock();
-
-    cy.log("A card that is still loading shows the toast");
-    cy.get("@dashboardId").then((dashboardId) => {
-      cy.visit(`/dashboard/${dashboardId}`);
-    });
-    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
-    cy.tick(TOAST_TIMEOUT);
-    H.undoToast().should("contain.text", TOAST_MESSAGE);
-
-    cy.log(
-      "A card the user has no permission to see does not count as loading",
-    );
-    cy.signInAsNormalUser();
-    cy.get("@dashboardId").then((dashboardId) => {
-      cy.visit(`/dashboard/${dashboardId}`);
-    });
-    H.getDashboardCard().should(
-      "contain.text",
-      "Sorry, you don't have permission to see this card.",
-    );
-    cy.tick(TOAST_TIMEOUT);
-    H.undoToast().should("not.exist");
   });
 });
 
@@ -2141,31 +2103,6 @@ describe("issue 44937", () => {
   });
 });
 
-describe("issue 63176", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not be possible to save a dashboard with an empty name and the correct error should be displayed (metabase#63176)", () => {
-    cy.visit("/");
-    H.newButton().click();
-    H.popover().findByText("Dashboard").click();
-    H.modal().within(() => {
-      cy.findByPlaceholderText("What is the name of your dashboard?").type(" ");
-      cy.button("Create").click();
-
-      cy.findByText("value must be a non-blank string.").should("be.visible");
-      cy.findByPlaceholderText("What is the name of your dashboard?").should(
-        "have.attr",
-        "aria-invalid",
-        "true",
-      );
-      cy.button("Failed").should("be.visible");
-    });
-  });
-});
-
 describe("issue 65908", () => {
   const dateParameters = {
     default: "2030-01-01~",
@@ -2305,30 +2242,28 @@ describe("issue 12926", () => {
     cy.signInAsAdmin();
   });
 
-  describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
-    it("should load the card with correct parameters after save", () => {
-      H.createNativeQuestion(questionDetails);
+  it("should load a card with correct parameters after a save retriggers a non saved query with a negative id (metabase#12926)", () => {
+    H.createNativeQuestion(questionDetails);
 
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.editDashboard();
-
-      H.openQuestionsSidebar();
-      H.sidebar().findByText(questionDetails.name).click();
-
-      H.setFilter("Number", "Equal to");
-      H.sidebar().findByText("No default").click();
-      H.popover().findByPlaceholderText("Enter a number").type(parameterValue);
-      H.popover().findByText("Add filter").click();
-
-      H.getDashboardCard().findByText("Select…").click();
-      H.popover().contains(filterDisplayName).eq(0).click();
-
-      H.saveDashboard();
-
-      H.getDashboardCard().findByText(queryResult + parameterValue);
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
     });
+
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.sidebar().findByText(questionDetails.name).click();
+
+    H.setFilter("Number", "Equal to");
+    H.sidebar().findByText("No default").click();
+    H.popover().findByPlaceholderText("Enter a number").type(parameterValue);
+    H.popover().findByText("Add filter").click();
+
+    H.getDashboardCard().findByText("Select…").click();
+    H.popover().contains(filterDisplayName).eq(0).click();
+
+    H.saveDashboard();
+
+    H.getDashboardCard().findByText(queryResult + parameterValue);
   });
 });

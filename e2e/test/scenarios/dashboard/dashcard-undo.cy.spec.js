@@ -109,48 +109,30 @@ describe("scenarios > dashboard cards > undo", () => {
       }
     },
   );
-});
 
-describe("issue 12926", () => {
-  const filterDisplayName = "F";
-  const queryResult = 42;
-  const questionDetails = {
-    name: "Question 1",
-    native: {
-      query: `SELECT ${queryResult} [[+{{F}}]] as ANSWER`,
-      "template-tags": {
-        F: {
-          type: "number",
-          name: "F",
-          id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-          "display-name": filterDisplayName,
+  it("should stop the ongoing query when removing a card, re-fetch it on undo, and undo a virtual card removal (metabase#12926, metabase#35545)", () => {
+    const filterDisplayName = "F";
+    const queryResult = 42;
+    const questionDetails = {
+      name: "Question 1",
+      native: {
+        query: `SELECT ${queryResult} [[+{{F}}]] as ANSWER`,
+        "template-tags": {
+          F: {
+            type: "number",
+            name: "F",
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            "display-name": filterDisplayName,
+          },
         },
       },
-    },
-  };
+    };
 
-  function slowDownDashcardQuery() {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
       req.on("response", (res) => {
         res.setDelay(5000);
       });
     });
-  }
-
-  function restoreDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
-      // calling req.continue() will make cypress skip all previously added intercepts
-      req.continue();
-    }).as("dashcardQueryRestored");
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should stop the ongoing query when removing a card, re-fetch it on undo, and undo a virtual card removal (metabase#35545)", () => {
-    slowDownDashcardQuery();
 
     H.createNativeQuestionAndDashboard({
       questionDetails,
@@ -173,7 +155,10 @@ describe("issue 12926", () => {
       .click();
     cy.get("@queryAbort").should("have.been.called");
 
-    restoreDashcardQuery();
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      // calling req.continue() will make cypress skip all previously added intercepts
+      req.continue();
+    }).as("dashcardQueryRestored");
     H.undo();
     cy.wait("@dashcardQueryRestored");
     H.getDashboardCard().findByText(queryResult);

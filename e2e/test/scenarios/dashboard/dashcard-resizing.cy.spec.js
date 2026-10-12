@@ -366,7 +366,6 @@ describe("issue 31701", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
     H.createQuestion({
       name: TEST_QUESTION_NAME,
@@ -376,7 +375,7 @@ describe("issue 31701", () => {
     });
   });
 
-  it("should prevent link dashboard card overflows and keep the dashcard actions panel tight (metabase#31701, metabase#31274, metabase#76056)", () => {
+  it("should prevent link dashboard card overflows (metabase#31701)", () => {
     H.createDashboard({
       name: TEST_DASHBOARD_NAME,
     }).then(({ body: { id: dashId } }) => {
@@ -384,44 +383,6 @@ describe("issue 31701", () => {
     });
 
     H.editDashboard();
-
-    cy.log(
-      "The actions panel should not have redundant horizontal space (metabase#76056)",
-    );
-    cy.button("Add action").click();
-    cy.button("Close").click();
-
-    H.showDashboardCardActions();
-
-    cy.findByTestId("dashboardcard-actions-panel")
-      .should("be.visible")
-      .should(($panel) => {
-        const panelRect = $panel[0].getBoundingClientRect();
-        const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
-          (button) => button.getBoundingClientRect(),
-        );
-        const maxRight = Math.max(...buttonRects.map((rect) => rect.right));
-        const minLeft = Math.min(...buttonRects.map((rect) => rect.left));
-        const contentWidth = maxRight - minLeft;
-
-        expect(panelRect.width).to.be.closeTo(contentWidth, 10);
-      });
-
-    H.removeDashboardCard(0);
-    cy.findByTestId("dashcard").should("not.exist");
-
-    cy.log("Remove an empty link card through its cross icon (metabase#31274)");
-    cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-    cy.findByPlaceholderText("https://example.com").realHover();
-    H.getDashboardCards().should("have.length", 1);
-    cy.log(
-      "Make sure cypress can click the element, which means it is not covered by another",
-    );
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").closest("a").click({ position: "bottom" });
-    });
-    cy.findByTestId("dashcard").should("not.exist");
 
     cy.log("Add first link card (connected to an entity");
     cy.findByLabelText("Add a link or iframe").click();
@@ -907,13 +868,14 @@ describe("issue 31628", () => {
   });
 });
 
-describe("issue 31274", () => {
+describe("dashcard actions panel", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
   });
 
-  it("should not clip dashcard actions (metabase#31274)", () => {
+  it("should not clip dashcard actions and should not have redundant horizontal space (metabase#31274, metabase#76056)", () => {
     H.createDashboard().then(({ body: { id: dashboard_id } }) => {
       // The top card is created last, so it would come last in the DOM and
       // cover the actions of the card below if dashcards render in creation order
@@ -946,5 +908,45 @@ describe("issue 31274", () => {
       .click({ position: "top", scrollBehavior: false });
 
     H.getDashboardCards().should("have.length", 1);
+    H.removeDashboardCard(0);
+    cy.findByTestId("dashcard").should("not.exist");
+
+    cy.log(
+      "The actions panel should not have redundant horizontal space (metabase#76056)",
+    );
+    cy.button("Add action").click();
+    cy.button("Close").click();
+
+    H.showDashboardCardActions();
+
+    cy.findByTestId("dashboardcard-actions-panel")
+      .should("be.visible")
+      .should(($panel) => {
+        const panelRect = $panel[0].getBoundingClientRect();
+        const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
+          (button) => button.getBoundingClientRect(),
+        );
+        const maxRight = Math.max(...buttonRects.map((rect) => rect.right));
+        const minLeft = Math.min(...buttonRects.map((rect) => rect.left));
+        const contentWidth = maxRight - minLeft;
+
+        expect(panelRect.width).to.be.closeTo(contentWidth, 10);
+      });
+
+    H.removeDashboardCard(0);
+    cy.findByTestId("dashcard").should("not.exist");
+
+    cy.log("Remove an empty link card through its cross icon (metabase#31274)");
+    cy.findByLabelText("Add a link or iframe").click();
+    H.popover().findByText("Link").click();
+    cy.findByPlaceholderText("https://example.com").realHover();
+    H.getDashboardCards().should("have.length", 1);
+    cy.log(
+      "Make sure cypress can click the element, which means it is not covered by another",
+    );
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("close").closest("a").click({ position: "bottom" });
+    });
+    cy.findByTestId("dashcard").should("not.exist");
   });
 });
