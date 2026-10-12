@@ -44,7 +44,7 @@ const FACTORIES: [string, ReactNode, number][] = [
   ["transforms inspector", getInspectorRoutes(), 2],
   ["application permissions", getApplicationPermissionsRoutes(), 1],
   ["table editing", getTableEditingRoutes(), 1],
-  ["python transforms", getPythonTransformsRoutes(), 2],
+  ["python transforms", getPythonTransformsRoutes(), 3],
   ["model replacement", getTransformToolsRoutes(), 1],
   ["data studio dependencies", getDataStudioDependencyRoutes(), 1],
   ["data apps", getDataAppRoutes(), 3],

@@ -26,7 +26,10 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { outletRoute } from "metabase/plugins/components/PluginPlaceholder";
+import {
+  outletRoute,
+  pluginPlaceholderRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -226,6 +229,27 @@ export function initializePlugin() {
     </>
   );
 
+  PLUGIN_TENANTS.tenantCollectionList = featureGatedRoute(
+    "tenants",
+    tenantCollectionList,
+    pluginPlaceholderRoute,
+  );
+  PLUGIN_TENANTS.canAccessTenantSpecificRoute = featureGatedRoute(
+    "tenants",
+    canAccessTenantSpecificRoute,
+    pluginPlaceholderRoute,
+  );
+  PLUGIN_TENANTS.tenantUsersList = featureGatedRoute(
+    "tenants",
+    tenantUsersList,
+    pluginPlaceholderRoute,
+  );
+  PLUGIN_TENANTS.tenantUsersPersonalCollectionList = featureGatedRoute(
+    "tenants",
+    tenantUsersPersonalCollectionList,
+    pluginPlaceholderRoute,
+  );
+
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
@@ -268,11 +292,6 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
     PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
       TenantSpecificCollectionsItemList;
-    PLUGIN_TENANTS.tenantCollectionList = tenantCollectionList;
-    PLUGIN_TENANTS.canAccessTenantSpecificRoute = canAccessTenantSpecificRoute;
-    PLUGIN_TENANTS.tenantUsersList = tenantUsersList;
-    PLUGIN_TENANTS.tenantUsersPersonalCollectionList =
-      tenantUsersPersonalCollectionList;
     PLUGIN_TENANTS.canPlaceEntityInCollection = canPlaceEntityInCollection;
 
     // Category 1: UI Components

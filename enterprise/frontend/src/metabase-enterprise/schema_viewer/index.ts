@@ -7,10 +7,11 @@ import {
 } from "./routes";
 
 export function initializePlugin() {
+  PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes =
+    getDataStudioSchemaViewerRoutes;
+
   if (hasPremiumFeature("schema-viewer")) {
     PLUGIN_SCHEMA_VIEWER.isEnabled = true;
-    PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes =
-      getDataStudioSchemaViewerRoutes;
     registerSchemaViewerPagePrefetch();
   }
 }
