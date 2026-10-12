@@ -11,6 +11,16 @@ export const loadDependencyGraphPage = () =>
     /* webpackChunkName: "dependency-graph" */ "./pages/DependencyGraphPage"
   );
 
+/**
+ * The same page as a route-level `lazy`. The chunk name sits in this loader
+ * rather than one call away, so the preload manifest can read which chunk the
+ * route needs.
+ */
+export const loadDependencyGraphRoute = () =>
+  import(
+    /* webpackChunkName: "dependency-graph" */ "./pages/DependencyGraphPage"
+  ).then(({ DependencyGraphPage }) => ({ Component: DependencyGraphPage }));
+
 const DependencyGraphPage = lazy(() =>
   loadDependencyGraphPage().then(({ DependencyGraphPage }) => ({
     default: DependencyGraphPage,

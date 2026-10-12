@@ -4,10 +4,12 @@ import {
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
+import { pluginPlaceholderRoute } from "metabase/plugins/components/PluginPlaceholder";
 import type { AuthProvider } from "metabase/plugins/types";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/redux/auth";
 import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 import type { OidcAuthProvider, User } from "metabase-types/api";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
@@ -53,17 +55,23 @@ PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
  * Initialize auth plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
-  if (hasPremiumFeature("sso_saml")) {
-    PLUGIN_AUTH_PROVIDERS.settingsSAMLForm = settingsSAMLForm;
-  }
+  PLUGIN_AUTH_PROVIDERS.settingsSAMLForm = featureGatedRoute(
+    "sso_saml",
+    settingsSAMLForm,
+    pluginPlaceholderRoute,
+  );
 
-  if (hasPremiumFeature("sso_jwt")) {
-    PLUGIN_AUTH_PROVIDERS.settingsJWTForm = settingsJWTForm;
-  }
+  PLUGIN_AUTH_PROVIDERS.settingsJWTForm = featureGatedRoute(
+    "sso_jwt",
+    settingsJWTForm,
+    pluginPlaceholderRoute,
+  );
 
-  if (hasPremiumFeature("sso_oidc")) {
-    PLUGIN_AUTH_PROVIDERS.settingsOIDCForm = settingsOIDCForm;
-  }
+  PLUGIN_AUTH_PROVIDERS.settingsOIDCForm = featureGatedRoute(
+    "sso_oidc",
+    settingsOIDCForm,
+    pluginPlaceholderRoute,
+  );
 
   // Add provider function that handles SSO and password login
   const enhancedProviderFunction = (providers: AuthProvider[]) => {

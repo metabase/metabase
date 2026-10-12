@@ -1,12 +1,9 @@
+import { schemaViewerUpsellPage } from "metabase/data-studio/routes";
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { loadSchemaViewerPage } from "./lazy";
-
-const schemaViewerPage = () =>
-  loadSchemaViewerPage().then(({ SchemaViewerPage }) => ({
-    Component: SchemaViewerPage,
-  }));
 
 /**
  * Called from the licensed branch of `initializePlugin`, so only a page this
@@ -14,9 +11,18 @@ const schemaViewerPage = () =>
  * and fetching a page nobody can reach would spend a download on nothing.
  */
 export function registerSchemaViewerPagePrefetch(): void {
-  registerPagePrefetch(Urls.dataStudioSchemaViewer(), schemaViewerPage);
+  registerPagePrefetch(Urls.dataStudioSchemaViewer(), loadSchemaViewerPage);
 }
 
 export function getDataStudioSchemaViewerRoutes() {
-  return <Route index lazy={schemaViewerPage} />;
+  return (
+    <Route
+      index
+      lazy={featureGatedRoute(
+        "schema-viewer",
+        loadSchemaViewerPage,
+        schemaViewerUpsellPage,
+      )}
+    />
+  );
 }
