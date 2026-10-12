@@ -24,7 +24,7 @@ docs/exploration-and-organization/keyboard-shortcuts.md
 
 ## Check links
 
-Checks every link in the markdown under `docs/`, every `url` in `data/nav.yml`, and every `https://www.metabase.com/docs/latest/...` link written out in the source code (TSDoc, error messages, emails, docstrings in the frontend, backend and `resources/`). A nav url or source link has to point at a page under `docs/`, and if it has an `#anchor`, that heading has to exist in the page. A link to an old path that only survives as a `redirect_from` fails too. CI runs the same checks in `.github/workflows/docs-links.yml`. Links built with `useDocsUrl` and `getDocsUrl` are checked by `bun run lint-docs-links` instead.
+Checks every link in the markdown under `docs/`, every `url` in `data/nav.yml`, and every `https://www.metabase.com/docs/latest/...` link written out in the source code (TSDoc, error messages, emails, docstrings in the frontend, backend and `resources/`). A nav url or source link has to point at a page under `docs/`, and if it has an `#anchor`, that heading has to exist in the page. A link to an old path that only survives as a `redirect_from` fails too. CI runs the same checks in `.github/workflows/docs-links.yml`. Links built with `useDocsUrl` and `getDocsUrl` are checked by `bun run lint-docs-links` instead, which the same workflow runs whenever a PR changes the docs or the frontend.
 
 Install [lychee](https://lychee.cli.rs) and jq (`brew install lychee jq`), then run from the repo root:
 

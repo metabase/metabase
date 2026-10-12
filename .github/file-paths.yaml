@@ -301,6 +301,14 @@ documentation:
 docs:
   - "docs/**"
 
+# The calls to useDocsUrl/getDocsUrl, the pages they link to, and bin/verify-doc-links, which checks
+# one against the other in .github/workflows/docs-links.yml.
+in_product_docs_links:
+  - *frontend_sources
+  - "docs/**/*.md"
+  - "bin/verify-doc-links/**"
+  - ".github/workflows/docs-links.yml"
+
 embedding_documentation: &embedding_documentation
   - ".typedoc/**"
   - "docs/embedding/**"
