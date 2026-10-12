@@ -43,7 +43,19 @@
                     "/etc/x.db?mode=memory"
                     ;; the prefixes are case-sensitive, so these are paths relative to the working directory
                     "FILE:/../allowed-dir/x.db"
-                    ":RESOURCE:file:/../allowed-dir/x.db"]]
+                    ":RESOURCE:file:/../allowed-dir/x.db"
+                    ;; `java.net.URL` ignores whitespace and a `url:` prefix, so the resource is still the file
+                    ":resource: file:/etc/x.db"
+                    ":resource:url:file:/etc/x.db"
+                    ":resource:jar: file:/etc/x.jar!/x.db"
+                    ":resource:jar:url:file:/etc/x.jar!/x.db"
+                    ;; SQLite takes the last `mode`, matches it case-sensitively and percent-decodes it, so only a
+                    ;; final, exact `mode=memory` keeps the file from being opened
+                    "file:/etc/x.db?mode=memory&mode=ro"
+                    "file:/etc/x.db?mode=ro&mode=memory&mode=rw"
+                    "file:/etc/x.db?mode=MEMORY"
+                    "file:/etc/x.db?MODE=memory"
+                    "file:/etc/x.db?mode=ro&mode=%6Demory&mode=rwc"]]
           (testing db
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
                                   (driver/validate-db-details! :sqlite {:db db}))))))
@@ -54,12 +66,41 @@
                     ":memory:"
                     "file::memory:?cache=shared"
                     "file:shared?mode=memory"
-                    ":resource:http://example.com/x.db"]]
+                    ":resource:http://example.com/x.db"
+                    ":resource: http://example.com/x.db"
+                    "file:/etc/x.db?mode=ro&mode=memory"
+                    "file:/etc/x.db?mode=%6Demory"
+                    "file:/etc/x.db?cache=shared&mode=memory&vfs=unix"]]
           (testing db
             (is (nil? (driver/validate-db-details! :sqlite {:db db}))))))
       (testing "Metabase's own flows, such as the bundled Sample Database, are not subject to it"
         (binding [driver.settings/*allow-testing-sqlite-connections* true]
           (is (nil? (driver/validate-db-details! :sqlite {:db "/etc/x.db"}))))))))
+
+(deftest db-file-must-be-in-writable-paths-test
+  ;; a connection that is not read-only can write the file (and its journal), so `writable-paths` applies as well
+  (mt/with-premium-features #{}
+    (mt/with-temp-env-var-value! [mb-writable-paths "/allowed-dir"]
+      (testing "a writable connection to a file outside the writable paths is refused"
+        (doseq [details [{:db "/etc/x.db"}
+                         {:db "file:/etc/x.db?mode=ro&mode=rw"}
+                         {:db ":resource:file:/etc/x.db" :read-only? false}]]
+          (testing (pr-str details)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Writing to path is disallowed"
+                                  (driver/validate-db-details! :sqlite details))))))
+      (testing "a read-only connection, a file inside the writable paths, and in-memory databases are allowed"
+        (doseq [details [{:db "/etc/x.db" :read-only? true}
+                         {:db "file:/etc/x.db?mode=ro"}
+                         {:db "/allowed-dir/x.db"}
+                         {:db ":memory:"}
+                         {:db "file:/etc/x.db?mode=memory"}]]
+          (testing (pr-str details)
+            (is (nil? (driver/validate-db-details! :sqlite details))))))
+      (testing "the readable paths still apply to a read-only connection"
+        (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (driver/validate-db-details! :sqlite {:db "/etc/x.db" :read-only? true}))))))))
+
 (deftest default-schema-test
   (mt/test-driver :sqlite
     (is (nil? (driver.sql/default-schema :sqlite (mt/db))))))
