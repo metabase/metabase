@@ -233,8 +233,28 @@
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
 
+(def cannot-validate-error-type
+  "`:type` on the `ex-info` [[is-single-stmt-of-type?]] throws when it cannot vouch that the string that
+  will execute is a single statement of the requested type. Connection impersonation relies on that
+  guarantee, so a caller that catches this MUST refuse the query — it may translate the error into a
+  friendlier message, but it may never fall back to running a string it did not validate.
+
+  Only the `\"read\"` and `\"write\"` types throw; `\"read-only\"` reports the same conditions as a
+  `:reason` in its verdict."
+  sql-parsing/cannot-validate-error-type)
+
 (defn is-single-stmt-of-type?
-  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+  "Validates that `sql` is a single statement of `stmt-type` for `driver`'s dialect: `\"read\"` = SELECT,
+  `\"write\"` = INSERT, UPDATE, or DELETE, `\"read-only\"` = a read statement that also holds nothing
+  that writes or locks anywhere in its tree (see [[read-only-select?]]). Returns
+  `{:is-single-stmt? bool, :allowed-stmt-type? bool, :sql <reconstructed>}`, or `{:error ...}` when the
+  SQL cannot be parsed. The `:sql` is the query reconstructed from the parsed AST, so a caller that
+  executes it is guaranteed to run exactly what was validated.
+
+  `\"read\"` and `\"write\"` throw an `ex-info` tagged [[cannot-validate-error-type]] when they cannot
+  produce a trustworthy verdict — the driver has no known dialect, or a literal list is too large to parse
+  safely. Callers MUST refuse the query in that case (see [[cannot-validate-error-type]]). `\"read-only\"`
+  never throws, reporting such SQL as `:allowed-stmt-type? false` with a `:reason` instead."
   [driver sql stmt-type]
   (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
 

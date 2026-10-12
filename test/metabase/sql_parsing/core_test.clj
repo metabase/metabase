@@ -175,6 +175,18 @@
       (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
       (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
              (sort (sql-parsing/referenced-fields "postgres" sql))))))
-  (testing "and is one statement still"
-    (let [sql (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
-      (is (=? {:is-single-stmt? true} (sql-parsing/is-single-stmt-of-type? "postgres" sql "read"))))))
+  (testing "but the impersonation validator never answers about a stripped rewrite"
+    ;; Analysis can read a stripped query because it only needs the shape. The impersonation validator's
+    ;; answer has to hold for the string that will *execute*, so `is-single-stmt-of-type?` parses the
+    ;; original and refuses outright above its own, much higher ceiling rather than answering about a
+    ;; rewrite.
+    (let [under (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)) ")")
+          over  (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
+      (testing "a list the analysis threshold would strip still validates as one statement"
+        (is (=? {:is-single-stmt? true} (sql-parsing/is-single-stmt-of-type? "postgres" under "read"))))
+      (testing "a list past the validator's own ceiling is refused, not stripped and vouched for"
+        (is (= :too-large
+               (-> (try (sql-parsing/is-single-stmt-of-type? "postgres" over "read")
+                        (catch clojure.lang.ExceptionInfo e e))
+                   ex-data
+                   :reason)))))))

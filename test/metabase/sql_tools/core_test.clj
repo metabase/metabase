@@ -272,27 +272,41 @@
     (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
             (sql-tools/is-single-stmt-of-type? :databricks "SELECT x?::date FROM t" "read")))))
 
-(deftest ^:parallel is-single-stmt-of-type-not-stripped-test
-  (testing "we don't remove value clauses when validating impersonated queries (#74284)"
-    (let [values-query (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")]
-      (are [sql is-single-stmt? allowed-stmt-type?]
-           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
-              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
-        values-query true true
-        (str "SELECT 1; " values-query) false false
-        (str "SET ROLE none; " values-query) false false
-        (str values-query "; SELECT 1") false false
-        (str values-query "; SET ROLE none") false false)))
-  (testing "we don't remove large IN lists, tuple lists, or arrays when validating impersonated queries"
-    (doseq [query [(str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
-                   (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
-                   (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")]]
-      (are [sql is-single-stmt? allowed-stmt-type?]
-           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
-              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
-        query true true
-        (str "SELECT 1; " query) false false
-        (str query "; SELECT 1") false false))))
+(deftest ^:parallel is-single-stmt-of-type-large-literal-lists-test
+  ;; `is-single-stmt-of-type?` validates the ORIGINAL SQL, never a collapsed rewrite of it. A large but
+  ;; ordinary literal list — the values a Number variable inlines for `IN ({{ids}})` — validates normally,
+  ;; and a second statement nested in such a list is counted as a second statement however it is written,
+  ;; because the parser sees the real input. Collapsing only guards, at a much higher threshold, against a
+  ;; list so huge it would OOM GraalPy — those are refused outright rather than substituted.
+  (testing "a large-but-under-ceiling literal list validates normally (the IN ({{ids}}) idiom)"
+    (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?}
+                   (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+      (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")
+      (str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
+      (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
+      (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")))
+  (testing "a second statement alongside such a list is counted as a second statement"
+    (let [base (str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")]
+      (are [sql] (=? {:is-single-stmt? false}
+                     (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+        (str "SELECT 1; " base)
+        (str "SET ROLE none; " base)
+        (str base "; SELECT 1")
+        (str base "; SET ROLE none"))))
+  (testing "a statement separator nested in a comment inside an oversized VALUES list is still counted"
+    ;; a `--` comment can unbalance the JVM-side paren scan that decides whether to collapse a list; parsing
+    ;; the original rather than the collapsed form, sqlglot counts two statements either way
+    (let [sql (str "SELECT * FROM (VALUES " (str/join "," (repeat 101 "(1)"))
+                   ",( -- ((\n 1 )) t ; SELECT 2 --)) t")]
+      (is (=? {:is-single-stmt? false}
+              (sql-tools/is-single-stmt-of-type? :postgres sql "read")))))
+  (testing "a literal list beyond the impersonation ceiling is refused (memory guard), not parsed"
+    (let [huge   (str "SELECT x FROM t WHERE x IN (" (str/join "," (range 2500)) ")")
+          thrown (try (sql-tools/is-single-stmt-of-type? :postgres huge "read")
+                      (catch clojure.lang.ExceptionInfo e e))]
+      (is (instance? clojure.lang.ExceptionInfo thrown))
+      (is (= sql-tools/cannot-validate-error-type (:type (ex-data thrown))))
+      (is (= :too-large (:reason (ex-data thrown)))))))
 
 (deftest ^:parallel read-only-select?-test
   (doseq [driver [:postgres :mysql :h2]]
