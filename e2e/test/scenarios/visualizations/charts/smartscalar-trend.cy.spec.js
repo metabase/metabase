@@ -359,6 +359,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("Sum of Total").should("not.exist");
       cy.findByText("Previous month").should("exist").click();
     });
+    H.menu().findByText("Previous value").should("be.visible");
     H.menu().findByText("Value from another column…").should("not.exist");
   });
 
@@ -565,8 +566,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // check that we can switch visualizations and no longer have the error show
     H.openVizTypeSidebar();
     cy.findByTestId("Line-button").click();
-    cy.icon("warning").should("not.exist");
     H.cartesianChartCircle().should("have.length", 3);
+    cy.icon("warning").should("not.exist");
   });
 
   it("should keep full date granularity for native questions and let users pick a coarser granularity (metabase#69525)", () => {
