@@ -14,9 +14,10 @@ import { getRoutes, registerDataAppsPagePrefetch } from "./routes";
  * token feature.
  */
 export function initializePlugin() {
+  PLUGIN_DATA_APPS.getRoutes = getRoutes;
+
   if (hasPremiumFeature("data-apps")) {
     PLUGIN_DATA_APPS.isEnabled = true;
-    PLUGIN_DATA_APPS.getRoutes = getRoutes;
     PLUGIN_DATA_APPS.ManageDataAppsPage = ManageDataAppsPage;
     PLUGIN_DATA_APPS.ManageDataAppGroupsPage = ManageDataAppGroupsPage;
     PLUGIN_DATA_APPS.MainNavbarSection = DataAppsNavbarSection;
