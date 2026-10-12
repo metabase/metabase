@@ -366,6 +366,7 @@ describe(
     describe("preview panel", () => {
       it("shows enable embedding prompt when embedding is not enabled", () => {
         H.updateSetting("enable-embedding-modular", false);
+        H.updateSetting("show-modular-embed-terms", false);
 
         createThemeViaApi("Preview test").then((theme) => {
           visitThemeEditor(theme.id);
@@ -381,6 +382,30 @@ describe(
         H.main()
           .findByRole("button", { name: /Enable modular embedding/ })
           .should("be.visible");
+      });
+
+      it("asks to accept the usage conditions before enabling embedding for the first time", () => {
+        H.updateSetting("enable-embedding-modular", false);
+        H.updateSetting("show-modular-embed-terms", true);
+
+        createThemeViaApi("Preview test").then((theme) => {
+          visitThemeEditor(theme.id);
+        });
+
+        H.main()
+          .findByText(/enable modular embedding and agree to the/)
+          .should("be.visible");
+
+        H.main()
+          .findByRole("button", { name: /Enable modular embedding/ })
+          .click();
+
+        H.modal()
+          .findByText("Each end user needs their own Metabase account")
+          .should("be.visible");
+        cy.findByRole("button", { name: "Agree" }).click();
+
+        H.main().findByText("Theme preview").should("be.visible");
       });
 
       it("shows theme preview when embedding is enabled", () => {
