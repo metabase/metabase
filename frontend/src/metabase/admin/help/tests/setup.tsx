@@ -93,8 +93,8 @@ export function setup({
   }
 
   return renderRoutes(
-    (store) => {
-      const adminRoutes = toRouteObjects(getRoutes(store, Guard, Guard));
+    () => {
+      const adminRoutes = toRouteObjects(getRoutes(Guard, Guard));
       const helpRoute = findRoute(adminRoutes, "help");
       if (!helpRoute) {
         throw new Error("The admin route table has no help route");

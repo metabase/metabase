@@ -1,4 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
 import { type ComponentProps, Fragment, createElement } from "react";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -19,7 +18,6 @@ import {
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 
 import type { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
@@ -164,7 +162,6 @@ const help = () =>
   );
 
 export const getRoutes = (
-  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -344,7 +341,7 @@ export const getRoutes = (
           path="settings"
           element={createElement(createAdminRouteGuard("settings"))}
         >
-          {getSettingsRoutes(store)}
+          {getSettingsRoutes()}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
