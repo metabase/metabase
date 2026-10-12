@@ -43,7 +43,14 @@ describe("scenarios > question > trendline", () => {
       cy.findByText("Show trend line for this series").click();
     });
     H.trendLine().should("have.length", 2);
+    // The popover closes on Escape only when the key event starts inside it
+    H.popover()
+      .findByRole("switch", { name: "Show trend line for this series" })
+      .focus();
     cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
 
     H.leftSidebar().within(() => {
       cy.findByTestId("remove-sum").click();
