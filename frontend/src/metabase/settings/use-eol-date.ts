@@ -1,18 +1,30 @@
+import { useMemo } from "react";
+
 import { getMajorVersion } from "metabase/utils/version";
 import type { VersionInfo } from "metabase-types/api";
 
 import { useGetVersionInfoQuery } from "./api";
 import { useSetting } from "./use-setting";
 
-export function useEolDate(): Date | null {
+interface UseEolDateResult {
+  eolDate: Date | null;
+  isEol: boolean;
+}
+
+export function useEolDate(): UseEolDateResult {
   const { data: versionInfo } = useGetVersionInfoQuery();
   const version = useSetting("version");
 
-  if (!versionInfo || !version.tag) {
-    return null;
-  }
-
-  return getEolDate(versionInfo, version.tag);
+  return useMemo(() => {
+    if (!versionInfo || !version.tag) {
+      return { eolDate: null, isEol: false };
+    }
+    const eolDate = getEolDate(versionInfo, version.tag);
+    return {
+      eolDate,
+      isEol: eolDate != null && new Date() > eolDate,
+    };
+  }, [versionInfo, version.tag]);
 }
 
 function getEolDate(versionInfo: VersionInfo, version: string): Date | null {

@@ -13,6 +13,7 @@ import { useGetVersionInfoQuery } from "./api";
 import { useEolDate } from "./use-eol-date";
 
 const VERSION = "v1.56.3";
+const NO_EOL = { eolDate: null, isEol: false };
 
 async function setup({
   versionTag = VERSION,
@@ -28,7 +29,7 @@ async function setup({
 
   const { result } = renderHookWithProviders(
     () => ({
-      eolDate: useEolDate(),
+      eol: useEolDate(),
       isLoaded: useGetVersionInfoQuery().isSuccess,
     }),
     {
@@ -45,12 +46,14 @@ async function setup({
   // Wait for version-info so a null result can't come from loading state
   await waitFor(() => expect(result.current.isLoaded).toBe(true));
 
-  return result.current.eolDate;
+  return result.current.eol;
 }
 
 describe("useEolDate", () => {
   it("returns null when major_version_support is missing", async () => {
-    expect(await setup({ versionInfo: createMockVersionInfo() })).toBeNull();
+    expect(await setup({ versionInfo: createMockVersionInfo() })).toEqual(
+      NO_EOL,
+    );
   });
 
   it("returns null when major_version_support is empty", async () => {
@@ -58,7 +61,7 @@ describe("useEolDate", () => {
       await setup({
         versionInfo: createMockVersionInfo({ major_version_support: [] }),
       }),
-    ).toBeNull();
+    ).toEqual(NO_EOL);
   });
 
   it("returns null when there is no row for the current major", async () => {
@@ -70,7 +73,7 @@ describe("useEolDate", () => {
           ],
         }),
       }),
-    ).toBeNull();
+    ).toEqual(NO_EOL);
   });
 
   it("returns null when eol is not a valid date", async () => {
@@ -82,7 +85,7 @@ describe("useEolDate", () => {
           ],
         }),
       }),
-    ).toBeNull();
+    ).toEqual(NO_EOL);
   });
 
   it.each(["", "notaversion", "vLOCAL_DEV"])(
@@ -97,12 +100,12 @@ describe("useEolDate", () => {
             ],
           }),
         }),
-      ).toBeNull();
+      ).toEqual(NO_EOL);
     },
   );
 
   it("returns UTC midnight of the matching eol date", async () => {
-    const eolDate = await setup({
+    const { eolDate } = await setup({
       versionInfo: createMockVersionInfo({
         major_version_support: [
           createMockMajorVersionSupport({ major: 56, eol: "2027-06-01" }),
@@ -114,7 +117,7 @@ describe("useEolDate", () => {
   });
 
   it("uses the latest eol when the same major appears more than once", async () => {
-    const eolDate = await setup({
+    const { eolDate } = await setup({
       versionInfo: createMockVersionInfo({
         major_version_support: [
           createMockMajorVersionSupport({ major: 56, eol: "2027-06-01" }),
@@ -125,5 +128,29 @@ describe("useEolDate", () => {
     });
 
     expect(eolDate?.toISOString()).toBe("2027-12-01T00:00:00.000Z");
+  });
+
+  it("returns isEol false when the eol date is in the future", async () => {
+    const { isEol } = await setup({
+      versionInfo: createMockVersionInfo({
+        major_version_support: [
+          createMockMajorVersionSupport({ major: 56, eol: "2999-01-01" }),
+        ],
+      }),
+    });
+
+    expect(isEol).toBe(false);
+  });
+
+  it("returns isEol true when the eol date has passed", async () => {
+    const { isEol } = await setup({
+      versionInfo: createMockVersionInfo({
+        major_version_support: [
+          createMockMajorVersionSupport({ major: 56, eol: "2020-01-01" }),
+        ],
+      }),
+    });
+
+    expect(isEol).toBe(true);
   });
 });

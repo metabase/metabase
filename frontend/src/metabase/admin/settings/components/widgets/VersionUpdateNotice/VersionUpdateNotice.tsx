@@ -27,13 +27,14 @@ export function VersionUpdateNotice() {
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = versionInfo?.latest?.version;
-  const eolDate = useEolDate();
+  const { eolDate, isEol } = useEolDate();
 
   return (
     <VersionMessage
       currentVersion={currentVersion}
       latestVersion={latestVersion}
       eolDate={eolDate}
+      isEol={isEol}
     />
   );
 }
@@ -42,17 +43,18 @@ interface VersionMessageProps {
   currentVersion: string;
   latestVersion?: string;
   eolDate?: Date | null;
+  isEol: boolean;
 }
 
 function VersionMessage({
   currentVersion,
   latestVersion,
   eolDate,
+  isEol,
 }: VersionMessageProps) {
   const isNewVersionAvailable =
     latestVersion != null &&
     newVersionAvailable({ currentVersion, latestVersion });
-  const isEol = eolDate != null && new Date() > eolDate;
   const message = getVersionMessage(currentVersion, latestVersion, isEol);
   const textColor = isEol ? "text-primary" : "text-primary-inverse";
   return (

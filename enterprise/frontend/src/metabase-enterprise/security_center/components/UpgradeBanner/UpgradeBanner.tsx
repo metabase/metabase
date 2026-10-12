@@ -18,8 +18,7 @@ interface UpgradeBannerProps {
 
 export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
   const isSmallScreen = useIsSmallScreen();
-  const eolDate = useEolDate();
-  const isEol = eolDate != null && new Date() > eolDate;
+  const { isEol } = useEolDate();
 
   const message = targetVersion
     ? c("{0} is a version number like v0.59.4")
