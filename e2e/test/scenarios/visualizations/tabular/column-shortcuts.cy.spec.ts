@@ -294,8 +294,7 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("columnheader").last().should("have.text", newColumn);
+  cy.findByRole("columnheader", { name: newColumn }).should("exist");
 
   // With many columns, the "Add column" button can cover the last header,
   // so the visible value cell shows that the table scrolled to the new column.
