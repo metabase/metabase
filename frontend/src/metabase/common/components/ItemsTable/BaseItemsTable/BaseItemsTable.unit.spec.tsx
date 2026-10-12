@@ -2,7 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { createMockAppState, createMockState } from "__support__/state";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
@@ -59,8 +65,12 @@ describe("BaseItemsTable", () => {
 
   function setup({
     items = [ITEM],
+    isDndAvailable = false,
     ...props
-  }: { items?: CollectionItem[] } & Partial<BaseItemsTableProps> = {}) {
+  }: {
+    items?: CollectionItem[];
+    isDndAvailable?: boolean;
+  } & Partial<BaseItemsTableProps> = {}) {
     return renderWithProviders(
       <Route
         path="/"
@@ -77,7 +87,13 @@ describe("BaseItemsTable", () => {
           />
         }
       />,
-      { withDND: true, withRouter: true },
+      {
+        withDND: true,
+        withRouter: true,
+        storeInitialState: createMockState({
+          app: createMockAppState({ isDndAvailable }),
+        }),
+      },
     );
   }
 
@@ -160,6 +176,35 @@ describe("BaseItemsTable", () => {
       expect(
         screen.queryByLabelText("Select all items"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("read-only", () => {
+    const writableProps = {
+      isDndAvailable: true,
+      hasUnselected: true,
+      onSelectAll: jest.fn(),
+      onToggleSelected: jest.fn(),
+      collection: createMockCollection({ can_write: true }),
+    };
+
+    it("lets items be dragged when not read-only", () => {
+      setup(writableProps);
+
+      expect(screen.getByRole("row", { name: /My Item/ })).toHaveAttribute(
+        "draggable",
+        "true",
+      );
+    });
+
+    it("offers no selection, item actions, or dragging", () => {
+      setup({ ...writableProps, readOnly: true });
+
+      expect(screen.getByRole("row", { name: /My Item/ })).not.toHaveAttribute(
+        "draggable",
+      );
+      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
     });
   });
 

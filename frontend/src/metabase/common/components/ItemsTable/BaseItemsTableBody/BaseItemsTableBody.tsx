@@ -27,6 +27,7 @@ export const BaseItemsTableBody = ({
   onToggleSelected,
   onClick,
   visibleColumnsMap,
+  readOnly,
 }: Pick<
   BaseItemsTableProps,
   | "onClick"
@@ -45,10 +46,12 @@ export const BaseItemsTableBody = ({
   | "onMove"
   | "onToggleSelected"
   | "visibleColumnsMap"
+  | "readOnly"
 >) => {
   const isDndAvailable = useSelector(getIsDndAvailable);
 
-  const TableRowComponent = isDndAvailable ? ItemDragSourceTableRow : TableRow;
+  const TableRowComponent =
+    isDndAvailable && !readOnly ? ItemDragSourceTableRow : TableRow;
   return (
     <TBody>
       {items.map((item: CollectionItem) => {

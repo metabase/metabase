@@ -22,15 +22,19 @@ import S from "./CollectionCaption.module.css";
 
 interface CollectionCaptionProps {
   collection: Collection;
+  /** Shows the name and description without letting them be edited. */
+  readOnly?: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
 export const CollectionCaption = ({
   collection,
+  readOnly = false,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
   const currentUser = useSelector(getUser);
-  const isEditable = isEditableCollection(collection, { currentUser });
+  const isEditable =
+    !readOnly && isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(

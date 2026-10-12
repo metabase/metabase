@@ -484,6 +484,7 @@
    _query-params
    {card-type :type, collection-id :collection_id, source-card-id :source_card_id, :as card} :- CardCreateSchema]
   (let [source-card (some->> source-card-id (api/read-check :model/Card))
+        _           (some-> source-card queries/check-allowed-to-copy-card!)
         card        (cond-> (dissoc card :source_card_id)
                       (some? collection-id)
                       (update :collection_id #(eid-translation/->id-or-404 :collection %)))
@@ -515,6 +516,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [orig-card (api/read-check :model/Card id)
+        _         (queries/check-allowed-to-copy-card! orig-card)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (api/create-check :model/Card new-card)

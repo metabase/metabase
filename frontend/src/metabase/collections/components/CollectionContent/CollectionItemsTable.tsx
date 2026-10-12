@@ -106,6 +106,7 @@ export type CollectionItemsTableProps = {
   toggleItem: (item: CollectionItem) => void;
   visibleColumns?: CollectionContentTableColumn[];
   onClick: (item: CollectionItem) => void;
+  readOnly: boolean;
 }>;
 
 const DefaultEmptyContentComponent = ({
@@ -155,6 +156,7 @@ export const CollectionItemsTable = ({
   toggleItem,
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
+  readOnly,
 }: CollectionItemsTableProps) => {
   const [search, setSearch] = useState({ collectionId, value: "" });
   const searchText = search.collectionId === collectionId ? search.value : "";
@@ -284,6 +286,7 @@ export const CollectionItemsTable = ({
       availableModels={availableModels}
       visibleColumns={visibleColumns}
       onClick={onClick}
+      readOnly={readOnly}
       onNextPage={handleNextPage}
       onPreviousPage={handlePreviousPage}
       onSearchTextChange={handleSearchTextChange}
@@ -335,6 +338,7 @@ const CollectionItemsTableContent = ({
   itemsQuery,
   visibleColumns,
   onClick,
+  readOnly,
   onNextPage,
   onPreviousPage,
   onSearchTextChange,
@@ -412,6 +416,7 @@ const CollectionItemsTableContent = ({
             onSelectNone={clear}
             onClick={onClick}
             visibleColumnsMap={visibleColumnsMap}
+            readOnly={readOnly}
           />
           <div
             className={cx(

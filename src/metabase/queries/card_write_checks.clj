@@ -8,6 +8,7 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
@@ -119,6 +120,14 @@
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (check-no-save-cycle! ::no-id query)))
+
+(defn check-allowed-to-copy-card!
+  "Throw a 400 when `card`, the card a copy is made from, is in a data app's collection."
+  [{:keys [collection_id]}]
+  (when (and (some? collection_id)
+             (perms/data-app-collection? collection_id))
+    (throw (ex-info (tru "A card in a data app''s collection can''t be duplicated.")
+                    {:status-code 400}))))
 
 (defn check-allowed-to-delete-card!
   "Throw a 400 when `card` is in a data app's collection and another card there reads it. For `DELETE /api/card/:id`

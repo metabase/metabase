@@ -41,6 +41,7 @@ type SaveQuestionContextType = {
   values: FormValues;
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
+  canSaveAsNew: boolean;
   multiStep: boolean;
   targetCollection?: CollectionId;
   saveToDashboard?: DashboardId;
@@ -75,6 +76,7 @@ export const SaveQuestionProvider = ({
   multiStep = false,
   targetCollection: userTargetCollection,
   initialCollectionId: userInitialCollectionId,
+  canSaveAsNew = true,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -216,6 +218,7 @@ export const SaveQuestionProvider = ({
               values,
               setValues,
               showSaveType,
+              canSaveAsNew,
               multiStep,
               targetCollection,
               saveToDashboard,

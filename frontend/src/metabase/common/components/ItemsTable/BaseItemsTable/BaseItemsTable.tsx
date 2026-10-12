@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
+import _ from "underscore";
 
 import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";
 import type {
@@ -126,6 +127,8 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
+  /** Lists the items without selection, item actions, or dragging. */
+  readOnly?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -143,15 +146,20 @@ export const BaseItemsTable = ({
   onDrop,
   sortingOptions,
   onSortingOptionsChange,
-  onToggleSelected,
+  onToggleSelected: onToggleSelectedProp,
   onSelectAll,
   onSelectNone,
   getIsSelected = () => false,
   ItemComponent = DefaultItemRenderer,
-  visibleColumnsMap,
+  visibleColumnsMap: visibleColumnsMapProp,
   onClick,
+  readOnly = false,
   ...props
 }: BaseItemsTableProps) => {
+  const onToggleSelected = readOnly ? undefined : onToggleSelectedProp;
+  const visibleColumnsMap: CollectionContentTableColumnsMap = readOnly
+    ? _.omit(visibleColumnsMapProp, "actionMenu")
+    : visibleColumnsMapProp;
   const canSelect = canSelectItems(collection, onToggleSelected);
   const isTrashed = !!collection && isTrashedCollection(collection);
 
@@ -234,6 +242,7 @@ export const BaseItemsTable = ({
         onToggleSelected={onToggleSelected}
         onClick={onClick}
         visibleColumnsMap={visibleColumnsMap}
+        readOnly={readOnly}
       />
     </Table>
   );

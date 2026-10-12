@@ -28,6 +28,8 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   onSaveFile: (file: File) => void;
+  /** Offers only the bookmark and the info sidebar, and no edits to the collection. */
+  readOnly?: boolean;
 }
 
 export const CollectionHeader = ({
@@ -39,6 +41,7 @@ export const CollectionHeader = ({
   onSaveFile,
   canUpload,
   uploadsEnabled,
+  readOnly = false,
 }: CollectionHeaderProps): JSX.Element => {
   const [updateCollection] = useUpdateCollectionMutation();
 
@@ -58,12 +61,14 @@ export const CollectionHeader = ({
   const isSemanticLayer = isLibraryCollection(collection);
   const hasCuratePermissions = !!collection?.can_write;
 
-  const showNewButton = hasCuratePermissions && !isInstanceAnalytics;
+  const showNewButton =
+    hasCuratePermissions && !isInstanceAnalytics && !readOnly;
   const showUploadButton =
-    collection.can_write && (canUpload || !uploadsEnabled);
+    collection.can_write && (canUpload || !uploadsEnabled) && !readOnly;
   const showExportButton = isInstanceAnalytics && isAdmin && showUploadButton;
-  const showTimelinesButton = !isInstanceAnalytics;
-  const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
+  const showTimelinesButton = !isInstanceAnalytics && !readOnly;
+  const showCollectionMenu =
+    !isInstanceAnalytics && !isSemanticLayer && !readOnly;
 
   return (
     <Flex
@@ -75,6 +80,7 @@ export const CollectionHeader = ({
     >
       <CollectionCaption
         collection={collection}
+        readOnly={readOnly}
         onUpdateCollection={handleUpdateCollection}
       />
       {!isTrash && !isSemanticLayer && (
@@ -108,6 +114,7 @@ export const CollectionHeader = ({
           />
           <CollectionInfoSidebarToggle
             collection={collection}
+            readOnly={readOnly}
             onUpdateCollection={handleUpdateCollection}
           />
           {showCollectionMenu && (

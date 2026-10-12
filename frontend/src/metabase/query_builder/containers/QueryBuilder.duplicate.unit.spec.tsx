@@ -5,7 +5,8 @@ import { setupListNotificationEndpoints } from "__support__/server-mocks/notific
 import { screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { CreateCardRequest } from "metabase-types/api";
+import type { Card, CreateCardRequest } from "metabase-types/api";
+import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 
 import {
   TEST_STRUCTURED_CARD,
@@ -68,5 +69,42 @@ describe("QueryBuilder > saving a question based on another one", () => {
     await saveAsNewQuestion();
 
     expect(getCreatedCard().source_card_id).toBe(TEST_STRUCTURED_CARD.id);
+  });
+});
+
+describe("QueryBuilder > saving changes to a question in a data app's collection", () => {
+  const appCard = createMockCard({
+    ...TEST_STRUCTURED_CARD,
+    collection: createMockCollection({ namespace: "data-apps" }),
+  });
+
+  const setupAppQuestion = async (card: Card) => {
+    setupListNotificationEndpoints({ card_id: card.id }, []);
+    await setup({ card });
+  };
+
+  it("can only replace the original question", async () => {
+    await setupAppQuestion(appCard);
+
+    await triggerVisualizationQueryChange();
+    await waitForSaveToBeEnabled();
+    await userEvent.click(screen.getByText("Save"));
+
+    const modal = await screen.findByTestId("save-question-modal");
+    expect(
+      within(modal).getByText(`Replace original question, "${appCard.name}"`),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).queryByText("Save as new question"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("can't be saved by someone who can't replace it", async () => {
+    await setupAppQuestion({ ...appCard, can_write: false });
+
+    await triggerVisualizationQueryChange();
+
+    expect(await screen.findByTestId("filter-pill")).toBeInTheDocument();
+    expect(screen.queryByText("Save")).not.toBeInTheDocument();
   });
 });

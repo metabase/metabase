@@ -433,9 +433,8 @@
             (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
               (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:archived true}))))))))
 
-(deftest a-card-another-app-card-reads-stays-in-the-apps-collection-test
-  (testing "a card that another card of the app reads can't leave the collection or be deleted: the export would write
-            the reader into a file every pull refuses"
+(deftest a-card-cant-leave-an-apps-collection-test
+  (testing "a card in an app's collection can't be moved out of it, though nothing reads it"
     (with-data-apps-sync
       (let [mock     (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
             mp       (mt/metadata-provider)
@@ -443,34 +442,104 @@
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
               collection-id (shop-collection-id)
-              reads-card    (fn [id] (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp id))))
-              reader-id     (:id (mt/user-http-request :crowberto :post 200 "card"
-                                                       {:name                   "Reads VenuesList"
-                                                        :display                "table"
-                                                        :visualization_settings {}
-                                                        :collection_id          collection-id
-                                                        :dataset_query          (reads-card card-id)}))]
-          (testing "the card it reads can't be moved out"
-            (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id nil})
-            (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id card-id))))
-          (testing "nor as a dashboard question, which a card other cards read can't become"
-            (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
+              in-the-app?   (fn [id] (= collection-id (t2/select-one-fn :collection_id :model/Card :id id)))]
+          (mt/with-temp [:model/Collection {elsewhere-id :id} {:name "Elsewhere"}
+                         :model/Dashboard  {dashboard-id :id} {:name "Elsewhere"}]
+            (testing "to the root or another collection"
+              (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id nil})
+              (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id elsewhere-id})
+              (is (in-the-app? card-id)))
+            (testing "as a question of a dashboard elsewhere"
               (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dashboard_id dashboard-id})
-              (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
-          (testing "or deleted"
-            (mt/user-http-request :crowberto :delete 400 (str "card/" card-id))
-            (is (t2/exists? :model/Card :id card-id)))
+              (is (in-the-app? card-id))))
+          (testing "a card can still be moved in"
+            (mt/with-temp [:model/Card {mover-id :id} {:name "Mover" :dataset_query venues-q}]
+              (mt/user-http-request :crowberto :put 200 (str "card/" mover-id) {:collection_id collection-id})
+              (is (in-the-app? mover-id)))))))))
+
+(deftest a-pull-moves-cards-out-of-an-apps-collection-test
+  (testing "a pull whose commit moves a card and the card that reads it out of an app's collection succeeds: the load
+            moves the card read first, while its reader is still in the collection"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp   (mt/metadata-provider)]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id    (t2/select-one-pk :model/Card :entity_id question-eid)
+              reader     (mt/user-http-request :crowberto :post 200 "card"
+                                               {:name                   "Reads VenuesList"
+                                                :display                "table"
+                                                :visualization_settings {}
+                                                :collection_id          (shop-collection-id)
+                                                :dataset_query          (lib/->legacy-MBQL
+                                                                         (lib/query mp (lib.metadata/card mp card-id)))})
+              _          (is (= :success (:status (export! mock))))
+              synced-eid "shopCardsMovedOutColl"
+              synced-dir (str "collections/" synced-eid "_moved_out/")
+              moved-eids #{question-eid (:entity_id reader)}
+              ;; the commit an author pushes: both cards' files in an ordinary synced collection
+              moved-out  (reduce-kv (fn [tree path content]
+                                      (let [entity (yaml/parse-string content)]
+                                        (if (contains? moved-eids (:entity_id entity))
+                                          (assoc tree
+                                                 (str synced-dir "cards/" (last (str/split path #"/")))
+                                                 (yaml/generate-string (assoc entity :collection_id synced-eid)))
+                                          (assoc tree path content))))
+                                    {(str synced-dir synced-eid "_moved_out.yaml")
+                                     (test-helpers/generate-collection-yaml synced-eid "Moved out" :is-remote-synced true)}
+                                    (get @(:files-atom mock) "main"))
+              src        (test-helpers/versioned-source :trees {"v1" moved-out} :current "v1")]
+          (is (= 2 (count (filter #(str/starts-with? % (str synced-dir "cards/")) (keys moved-out)))))
+          (let [result (import-at! src "v1" :force? true)]
+            (is (= :success (:status result)) (:message result)))
+          (is (= #{(t2/select-one-pk :model/Collection :entity_id synced-eid)}
+                 (t2/select-fn-set :collection_id :model/Card :entity_id [:in moved-eids]))))))))
+
+(deftest a-card-in-an-apps-collection-cant-be-duplicated-test
+  (testing "a card in an app's collection can't be copied, by either endpoint that copies a card"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card    (t2/select-one :model/Card :entity_id question-eid)
+              copy-of (fn [status {:keys [id dataset_query]}]
+                        (mt/user-http-request :crowberto :post status "card"
+                                              {:name                   "Copy"
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :dataset_query          dataset_query
+                                               :source_card_id         id}))]
+          (mt/user-http-request :crowberto :post 400 (str "card/" (:id card) "/copy"))
+          (copy-of 400 card)
+          (is (not (t2/exists? :model/Card :name [:in ["Copy of VenuesList" "Copy"]])))
+          (testing "a card anywhere else still can be"
+            (mt/with-temp [:model/Card other {:name "Elsewhere" :dataset_query (:dataset_query card)}]
+              (mt/user-http-request :crowberto :post 200 (str "card/" (:id other) "/copy"))
+              (copy-of 200 other))))))))
+
+(deftest a-card-another-app-card-reads-cant-be-deleted-test
+  (testing "a card that another card of the app reads can't be deleted: the export would write the reader into a file
+            every pull refuses"
+    (with-data-apps-sync
+      (let [mock     (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp       (mt/metadata-provider)
+            venues-q (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
+              collection-id (shop-collection-id)
+              reads-card    (fn [id] (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp id))))]
+          (mt/user-http-request :crowberto :post 200 "card"
+                                {:name                   "Reads VenuesList"
+                                 :display                "table"
+                                 :visualization_settings {}
+                                 :collection_id          collection-id
+                                 :dataset_query          (reads-card card-id)})
+          (mt/user-http-request :crowberto :delete 400 (str "card/" card-id))
+          (is (t2/exists? :model/Card :id card-id))
           (testing "one request that moves a card in and changes its query from a card outside to a table is fine"
             (mt/with-temp [:model/Card {outside-id :id} {:name "Outside" :dataset_query venues-q}
                            :model/Card {mover-id :id}   {:name "Mover" :dataset_query (reads-card outside-id)}]
               (mt/user-http-request :crowberto :put 200 (str "card/" mover-id)
                                     {:collection_id collection-id :dataset_query venues-q})
-              (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id mover-id)))))
-          (testing "once the reader has left, the card can leave too"
-            (mt/user-http-request :crowberto :put 200 (str "card/" reader-id) {:collection_id nil})
-            (is (nil? (t2/select-one-fn :collection_id :model/Card :id reader-id)))
-            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:collection_id nil})
-            (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id)))))))))
+              (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id mover-id))))))))))
 
 (deftest deleting-an-app-deletes-cards-that-read-each-other-test
   (testing "the refusal to delete a card another app card reads is the endpoint's: deleting the app deletes its
@@ -496,7 +565,8 @@
     (with-data-apps-sync
       (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
         (is (= :success (:status (import-at! src "v0" :force? true))))
-        (t2/update! :model/Card :entity_id question-eid {:collection_id nil})
+        ;; by the table, since the card's hooks no longer let an edit take it out of the app's collection
+        (t2/update! :report_card :entity_id question-eid {:collection_id nil})
         (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v0")))
         (testing "a pull that would load is still refused"
           (is (= :error (:status (import-at! src "v0" :force? true)))))))))
@@ -977,7 +1047,7 @@
         (is (= "v0" (remote-sync.task/last-version)))))))
 
 (deftest the-bulk-move-endpoint-moves-app-cards-through-the-model-test
-  (testing "POST /api/card/collections runs the checks a PUT runs, and the export sees the move"
+  (testing "POST /api/card/collections runs the checks a PUT runs"
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
             mp   (mt/metadata-provider)
@@ -989,12 +1059,9 @@
             (mt/with-temp [:model/Card {model-id :id} {:name "A model" :type :model :dataset_query q}]
               (mt/user-http-request :crowberto :post 400 "card/collections" {:card_ids [model-id] :collection_id collection-id})
               (is (nil? (t2/select-one-fn :collection_id :model/Card :id model-id)))))
-          (testing "the app's card moved out is gone from the app's files on the next export"
-            (mt/user-http-request :crowberto :post 200 "card/collections" {:card_ids [card-id] :collection_id nil})
-            (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id)))
-            (is (= :success (:status (export! mock))))
-            (is (not (file-named mock "venueslist")))
-            (is (= :success (:status (import-at! mock "main" :force? true))))))))))
+          (testing "the app's card can't be moved out"
+            (mt/user-http-request :crowberto :post 400 "card/collections" {:card_ids [card-id] :collection_id nil})
+            (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))))))
 
 (deftest a-refused-pull-names-the-file-whatever-its-name-test
   (testing "a validator failure is reported as what it is when a path has \"branch\" in it, not as a branch error"

@@ -61,6 +61,7 @@ interface SetupOpts {
   hasDataPermissions?: boolean;
   hasAcknowledgedModelModal?: boolean;
   cardsBasedOnUploadTable?: Card[];
+  readOnly?: boolean;
 }
 
 function setup({
@@ -68,6 +69,7 @@ function setup({
   hasDataPermissions = true,
   hasAcknowledgedModelModal = false,
   cardsBasedOnUploadTable = [card],
+  readOnly,
 }: SetupOpts) {
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
@@ -107,6 +109,7 @@ function setup({
       onToggleBookmark={jest.fn()}
       onSetQueryBuilderMode={onSetQueryBuilderMode}
       onInfoClick={jest.fn()}
+      readOnly={readOnly}
     />,
     { storeInitialState: state },
   );
@@ -379,6 +382,18 @@ describe("QuestionActions", () => {
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+  });
+
+  it("should offer only the info sidebar when read-only", async () => {
+    setup({ card: createMockCard(), readOnly: true });
+
+    expect(
+      await screen.findByRole("button", { name: "More info" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Bookmark" }),
+    ).not.toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("should not render the menu when there are no menu items", () => {
