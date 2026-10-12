@@ -1,5 +1,6 @@
 (ns metabase.metabot.query-execution-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -9,6 +10,7 @@
    ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
    ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
    [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]))
 
 (defn- venues-query
@@ -55,3 +57,31 @@
       (testing "any other failure does not"
         (mt/with-dynamic-fn-redefs [qp/process-query (constantly {:status :failed, :error "Column FOO not found"})]
           (is (=? {:error :query-failed, :permissions-error? false} (failure))))))))
+
+(deftest execute-page-request-cancellation-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [request-chan (a/promise-chan)
+          seen!        (fn [request-canceled-chan during-query]
+                         (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query]
+                                                                        (let [query-chan qp.pipeline/*canceled-chan*
+                                                                              seen       (during-query query-chan)]
+                                                                          ;; As the QP does when a query ends.
+                                                                          (some-> query-chan a/close!)
+                                                                          {:status :completed
+                                                                           :data   {:cols [] :rows [[seen]]}}))]
+                           (-> (query-execution/execute-page! (venues-query 3) 3 :agent request-canceled-chan)
+                               :rows
+                               ffirst)))
+          canceled     (fn [query-chan]
+                         (first (a/alts!! [query-chan (a/timeout 5000)])))]
+      (testing "without a request to follow, the QP is left to make its own channel"
+        (is (false? (seen! nil some?))))
+      (testing "a query runs on a channel of its own, and the QP closing that one leaves the request's open"
+        (is (true? (seen! request-chan #(and (some? %) (not= request-chan %)))))
+        (is (nil? (a/poll! request-chan))))
+      (testing "a canceled request cancels the query that is running"
+        (is (some? (seen! request-chan (fn [query-chan]
+                                         (a/>!! request-chan :canceled)
+                                         (canceled query-chan))))))
+      (testing "and every query after it"
+        (is (some? (seen! request-chan canceled)))))))

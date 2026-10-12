@@ -43,6 +43,12 @@
   []
   (:conversation-id (current-memory)))
 
+(defn request-canceled-chan
+  "A channel that receives a value when the request the current agent turn serves is canceled, or nil when the
+  turn has none."
+  []
+  (:request-canceled-chan (current-memory)))
+
 (defn current-queries-state
   "Returns the current queries state map from agent memory."
   []

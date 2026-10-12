@@ -445,7 +445,7 @@
    `checked-sql` was compiled from it."
   [query-id {:keys [query checked-sql sql-card?]} row-limit allow-non-sql?]
   (if-not checked-sql
-    (query-execution/execute-page! query row-limit :metabot)
+    (query-execution/execute-page! query row-limit :metabot (shared/request-canceled-chan))
     (let [execute qp.pipeline/*execute*
           ;; The driver and SQL the driver step refused, if it refused any.
           refused (atom nil)]
@@ -458,7 +458,7 @@
                                               (reset! refused [driver sql])
                                               (throw (ex-info "Not a read-only SELECT." {}))))
                                           (execute driver native-query respond))]
-          (query-execution/execute-page! query row-limit :metabot))
+          (query-execution/execute-page! query row-limit :metabot (shared/request-canceled-chan)))
         (catch Exception e
           ;; The QP reports an exception from the driver step as a failed run, which would reach the model as
           ;; quoted database error text instead of as this tool's refusal.
