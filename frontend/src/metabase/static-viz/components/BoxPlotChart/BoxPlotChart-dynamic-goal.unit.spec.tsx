@@ -44,18 +44,21 @@ describe("static box plot with a dynamic goal", () => {
     expect(svg).toContain(">250<");
   });
 
-  it.each([
-    ["has not answered", undefined],
-    ["reports as failed", createMockFailedReferencedEntitiesResults()],
-  ])(
-    "draws the goal line at 0 for a reference the dataset %s",
-    (_name, referencedEntities) => {
-      const svg = toSvg(createSeries(referencedEntities));
+  it("draws the goal line at 0 for a reference the dataset has not answered", () => {
+    const svg = toSvg(createSeries());
 
-      expect(svg).toContain(GOAL_LABEL);
-      expect(svg).not.toContain(">250<");
-    },
-  );
+    expect(svg).toContain(GOAL_LABEL);
+    expect(svg).not.toContain(">250<");
+  });
+
+  it("draws the goal line at 0 for a reference the dataset reports as failed", () => {
+    const svg = toSvg(
+      createSeries(createMockFailedReferencedEntitiesResults()),
+    );
+
+    expect(svg).toContain(GOAL_LABEL);
+    expect(svg).not.toContain(">250<");
+  });
 });
 
 function createSeries(

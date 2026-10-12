@@ -106,7 +106,6 @@ describe("box plot dynamic goal", () => {
 
     expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
     expect(screen.getByText("Gadget")).toBeInTheDocument();
-    // the answered goal would stretch the y-axis up to it
     expect(screen.queryByText("250")).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });

@@ -421,7 +421,7 @@ export const GoalValueInput = ({
 
       {resolved.error != null && (
         <Text c="error" fz="sm" mt="xs">
-          {getGoalErrorMessage(resolved.error)}
+          {getGoalErrorMessage(resolved.error, sourceInfo.kind)}
         </Text>
       )}
     </Box>
