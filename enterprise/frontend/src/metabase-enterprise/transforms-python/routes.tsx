@@ -1,5 +1,7 @@
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import { lazyModalComponent } from "metabase/common/components/ModalRoute";
+import { outletRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellModal";
 
@@ -32,25 +34,42 @@ const transformListPage = () =>
     /* webpackChunkName: "transforms-python" */ "metabase/transforms/pages/TransformListPage"
   ).then(({ TransformListPage }) => ({ Component: TransformListPage }));
 
+/**
+ * Without the feature, the transform list renders with the upsell modal over
+ * it, so the pathless parent is the list page and each python page gives way
+ * to the modal.
+ */
+const upsellModal = () =>
+  lazyModalComponent(async () => PythonTransformsUpsellModal, {
+    noWrap: true,
+  });
+
 export function getPythonTransformsRoutes() {
   return (
-    <>
-      <Route path="library/:path" lazy={pythonLibraryEditorPage} />
-      <Route path="new/python" lazy={newPythonTransformPage} />
-    </>
-  );
-}
-
-export function getPythonUpsellRoutes() {
-  return (
-    // Render upsell modal on python transforms routes if feature is not enabled
-    <Route path="" lazy={transformListPage}>
-      {modalRoute("library/:path", PythonTransformsUpsellModal, {
-        noWrap: true,
-      })}
-      {modalRoute("new/python", PythonTransformsUpsellModal, {
-        noWrap: true,
-      })}
+    <Route
+      path=""
+      lazy={featureGatedRoute(
+        "transforms-python",
+        outletRoute,
+        transformListPage,
+      )}
+    >
+      <Route
+        path="library/:path"
+        lazy={featureGatedRoute(
+          "transforms-python",
+          pythonLibraryEditorPage,
+          upsellModal(),
+        )}
+      />
+      <Route
+        path="new/python"
+        lazy={featureGatedRoute(
+          "transforms-python",
+          newPythonTransformPage,
+          upsellModal(),
+        )}
+      />
     </Route>
   );
 }

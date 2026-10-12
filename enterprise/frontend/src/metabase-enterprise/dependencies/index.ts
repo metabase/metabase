@@ -1,7 +1,12 @@
+import {
+  dependenciesSectionLayout,
+  dependenciesUpsellPage,
+} from "metabase/data-studio/routes";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { LazyDependencyGraphPage, loadDependencyGraphPage } from "./lazy";
@@ -11,10 +16,16 @@ import { getDataStudioDependencyRoutes } from "./routes";
  * Initialize dependencies plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
+    getDataStudioDependencyRoutes;
+  PLUGIN_DEPENDENCIES.dependenciesSectionPage = featureGatedRoute(
+    "dependencies",
+    dependenciesSectionLayout,
+    dependenciesUpsellPage,
+  );
+
   if (hasPremiumFeature("dependencies")) {
     PLUGIN_DEPENDENCIES.isEnabled = true;
-    PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
-      getDataStudioDependencyRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = LazyDependencyGraphPage;
     PLUGIN_DEPENDENCIES.useGetDependenciesCount = useGetDependenciesCount;
 

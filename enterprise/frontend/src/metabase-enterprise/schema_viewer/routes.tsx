@@ -1,5 +1,7 @@
+import { schemaViewerUpsellPage } from "metabase/data-studio/routes";
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { loadSchemaViewerPage } from "./lazy";
 
@@ -13,5 +15,14 @@ export function registerSchemaViewerPagePrefetch(): void {
 }
 
 export function getDataStudioSchemaViewerRoutes() {
-  return <Route index lazy={loadSchemaViewerPage} />;
+  return (
+    <Route
+      index
+      lazy={featureGatedRoute(
+        "schema-viewer",
+        loadSchemaViewerPage,
+        schemaViewerUpsellPage,
+      )}
+    />
+  );
 }
