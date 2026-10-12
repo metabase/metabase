@@ -179,6 +179,12 @@ Examples of queries Metabase will reject:
 - Statements that create or change tables, including temporary tables (`CREATE`, `ALTER`, `DROP`)
 - Role-switching statements like `SET ROLE` or `USE ROLE`
 
+### Very large hand-written value lists are rejected
+
+To validate a native query safely, Metabase must parse the whole statement first. A query with a very large literal list written directly in the SQL—a `VALUES` clause, `IN` list, or `ARRAY` literal with more than 2,000 rows or items—can't be validated, so Metabase rejects it rather than run something it can't check. You'll see a message asking you to reduce the size of the list.
+
+This limit only applies to values you type into the SQL itself. [Filter widgets and field filters](../questions/native-editor/sql-parameters.md) pass their values to the database separately, so dashboard and question filters with long lists of values keep working. If you need to match against a large set of hand-written values, load them into a table and join to it instead of listing them inline.
+
 ## Metabase gives people the most permissive access to data across all of their groups
 
 So if a person is in two groups with different permissions for the same database:
