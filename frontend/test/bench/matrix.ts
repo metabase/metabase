@@ -94,7 +94,29 @@ const CPUS = { fast: 2, slow: 4 };
 const WARM_PROFILES = 3;
 const WARM_LOADS = 3;
 
-function measure({
+/**
+ * A series takes a minute or two. A Chrome that stops answering leaves
+ * `measure.ts` waiting on its debugging socket without a bound, so past this
+ * the series is stopped and measured again.
+ */
+const SERIES_TIMEOUT_MS = 5 * 60 * 1000;
+const RETRY_PORT_OFFSET = 1000;
+
+async function measure(conditions: Conditions): Promise<Series> {
+  try {
+    return await measureOnce(conditions);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`${reason}, measuring the series again`);
+    // A new port, because the Chrome that hung may still hold the old one.
+    return measureOnce({
+      ...conditions,
+      offset: conditions.offset + RETRY_PORT_OFFSET,
+    });
+  }
+}
+
+function measureOnce({
   mbps,
   latency,
   throttle,
@@ -112,6 +134,8 @@ function measure({
       ],
       {
         stdio: ["ignore", "pipe", "inherit"],
+        // Its own process group, so stopping it also stops its Chrome.
+        detached: true,
         env: {
           ...process.env,
           NETWORK_MBPS: String(mbps),
@@ -125,13 +149,22 @@ function measure({
       },
     );
 
+    const timeout = setTimeout(() => {
+      if (child.pid) {
+        process.kill(-child.pid, "SIGKILL");
+      }
+    }, SERIES_TIMEOUT_MS);
+
     let output = "";
     child.stdout.on("data", (chunk) => (output += chunk));
-    child.on("exit", (code) =>
-      code === 0
-        ? resolve(JSON.parse(output))
-        : reject(new Error(`measure.ts exited with ${code}`)),
-    );
+    child.on("exit", (code, signal) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve(JSON.parse(output));
+      } else {
+        reject(new Error(`measure.ts exited with ${code ?? signal}`));
+      }
+    });
   });
 }
 
