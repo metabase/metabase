@@ -6,10 +6,13 @@
   requests."
   (:require
    [clj-http.fake :as fake]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analytics.api.proxy :as analytics.api.proxy]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,6 +43,23 @@
          (fake/with-fake-routes
            {(collector-url) (constantly ~response)}
            ~@body)))))
+
+(def ^:private throttled-response
+  {:status  429
+   :headers {"Retry-After" string?}
+   :body    {:error #(str/starts-with? % "Too many attempts!")}})
+
+(defn- request-options
+  "Request options that make `ip` the server-derived source address for the request."
+  [ip]
+  {:request-options {:headers {"x-forwarded-for" ip}}})
+
+(defmacro ^:private with-one-request-budget
+  "Pin the proxy throttler to a single request per source address, so one request exhausts a caller's budget."
+  [& body]
+  `(with-redefs [analytics.api.proxy/throttler
+                 (throttle/make-throttler :analytics-proxy :attempts-threshold 1)]
+     ~@body))
 
 (deftest anonymous-public-route-test
   (testing "an anonymous POST reaches the handler (no auth required) and gets a 2xx back"
@@ -81,3 +101,44 @@
       (with-collector captured {:status 200 :headers {} :body "{}"}
         (client/client :post 200 "analytics-proxy" sample-payload))
       (is (nil? (get-in @captured [:headers "x-forwarded-for"]))))))
+
+(deftest throttles-anonymous-caller-test
+  (testing "an anonymous caller is let through under the per-IP rate and rejected with a 429 above it"
+    (with-one-request-budget
+      (with-collector {:status 200 :headers {} :body "{}"}
+        (let [opts (request-options "10.1.2.3")]
+          (testing "permitted path"
+            (is (= {} (client/client :post 200 "analytics-proxy" opts sample-payload))))
+          (testing "throttled path"
+            (is (=? throttled-response
+                    (client/client-full-response :post 429 "analytics-proxy" opts sample-payload)))))))))
+
+(deftest throttle-is-keyed-per-source-address-test
+  (testing "one caller exhausting its budget does not throttle a different source address"
+    (with-one-request-budget
+      (with-collector {:status 200 :headers {} :body "{}"}
+        (is (= {} (client/client :post 200 "analytics-proxy" (request-options "10.1.2.3") sample-payload)))
+        (is (=? throttled-response
+                (client/client-full-response :post 429 "analytics-proxy" (request-options "10.1.2.3")
+                                             sample-payload)))
+        (is (= {} (client/client :post 200 "analytics-proxy" (request-options "10.9.9.9") sample-payload)))))))
+
+(deftest throttled-request-never-reaches-the-collector-test
+  (testing "a throttled request is rejected before the handler forwards anything, so it holds no outbound connection"
+    (let [captured (atom nil)]
+      (with-collector captured {:status 200 :headers {} :body "{}"}
+        (with-one-request-budget
+          (let [opts (request-options "10.1.2.3")]
+            (client/client :post 200 "analytics-proxy" opts sample-payload)
+            (reset! captured nil)
+            (client/client-full-response :post 429 "analytics-proxy" opts sample-payload)
+            (is (nil? @captured))))))))
+
+(deftest throttle-runs-before-body-validation-test
+  (testing "a rejected payload still spends the caller's budget, so malformed floods cannot evade the throttle"
+    (with-one-request-budget
+      (with-collector {:status 200 :headers {} :body "{}"}
+        (let [opts (request-options "10.1.2.3")]
+          (client/client :post 400 "analytics-proxy" opts {:schema "" :data []})
+          (is (=? throttled-response
+                  (client/client-full-response :post 429 "analytics-proxy" opts sample-payload))))))))

@@ -12,11 +12,36 @@
    [clj-http.client :as http]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.macros :as api.macros]
+   [metabase.request.core :as request]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.throttle :as u.throttle]
+   [throttle.core :as throttle])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (def ^:private forward-timeout-ms 5000)
+
+;; This endpoint is unauthenticated and makes its outbound call inline on the request thread, so an anonymous caller
+;; can hold a request thread per call for as long as the forward takes.
+(def ^:private throttler
+  (throttle/make-throttler :analytics-proxy
+                           :attempts-threshold 100
+                           :attempt-ttl-ms     (* 60 1000)))
+
+(defn- +throttle
+  "Middleware that answers 429 for a source address over the rate limit, before request validation and the forward."
+  [handler]
+  (fn [request respond raise]
+    (try
+      ;; the source address is derived server-side, so it is not something the caller can rotate to get a fresh bucket
+      (throttle/check throttler (request/ip-address request))
+      (handler request respond raise)
+      (catch ExceptionInfo e
+        (if (u.throttle/throttle-exception? e)
+          (respond (u.throttle/throttle-response e {:error (ex-message e)}))
+          (raise e))))))
 
 (def ^:private Tp2Payload
   "Schema for the Snowplow `tp2` request envelope, mirroring the collector's own `payload_data` JSON schema: the iglu
@@ -51,3 +76,7 @@
         ;; 502 is retryable by the tracker; a fake 2xx would silently drop the event.
         (log/errorf "analytics-proxy failed forwarding to %s: %s" collector-url (ex-message e))
         {:status 502 :body nil}))))
+
+(def ^{:arglists '([request respond raise])} routes
+  "Routes for the public Snowplow telemetry relay."
+  (api.macros/ns-handler *ns* +throttle))
