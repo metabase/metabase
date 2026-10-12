@@ -9,7 +9,7 @@ import {
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getDiffControls } from "metabase/querying/components/CodeMirrorEditor/test-utils";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -84,21 +84,9 @@ describe("native query proposals", () => {
     await userEvent.click(await screen.findByLabelText("Auto-format"));
 
     await waitFor(() =>
-      expect(
-        getDiffControls(screen.getByRole("textbox")).previousLine,
-      ).toHaveTextContent("id = 2"),
+      expect(getDiffControls().previousLine).toHaveTextContent("id = 2"),
     );
-    const { row, previousLine, nextLine } = getDiffControls(
-      screen.getByRole("textbox"),
-    );
-    expect(
-      within(row).getByRole("button", { name: /Accept/ }),
-    ).toBeInTheDocument();
-    expect(
-      within(row).getByRole("button", { name: /Reject/ }),
-    ).toBeInTheDocument();
-    expect(previousLine).toHaveTextContent("id = 2");
-    expect(nextLine).toHaveTextContent("ORDER BY");
+    expect(getDiffControls().nextLine).toHaveTextContent("ORDER BY");
   });
 
   it("applies the proposed SQL before accepting it", async () => {

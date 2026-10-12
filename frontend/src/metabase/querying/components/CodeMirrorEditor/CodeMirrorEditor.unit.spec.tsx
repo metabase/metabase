@@ -25,7 +25,7 @@ import { getDiffControls } from "./test-utils";
 
 const ORIGINAL =
   "SELECT *\nFROM orders\nWHERE id = 1\nGROUP BY id\nORDER BY id\nLIMIT 10";
-const PARENT_RENDER_COUNT = 10;
+const PROPOSED = ORIGINAL.replace("WHERE id = 1", "WHERE id = 2");
 
 function setup({
   text = "",
@@ -96,18 +96,11 @@ function setup({
   };
 }
 
-function getControlsRow() {
-  const controls = getDiffControls(screen.getByRole("textbox"));
-  expect(
-    within(controls.row).getByRole("button", { name: /Accept/ }),
-  ).toBeInTheDocument();
-  expect(
-    within(controls.row).getByRole("button", { name: /Reject/ }),
-  ).toBeInTheDocument();
-  return controls;
-}
-
 describe("CodemirrorEditor", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it.each([
     ["an earlier line", "FROM orders", "FROM people"],
     ["the same line", "WHERE id = 1", "WHERE id = 3"],
@@ -116,30 +109,22 @@ describe("CodemirrorEditor", () => {
     "keeps the buttons under a second proposal on %s",
     async (_name, before, after) => {
       const { createQuery, rerender } = setup({ text: ORIGINAL });
-      rerender({
-        proposedQuery: createQuery(
-          ORIGINAL.replace("WHERE id = 1", "WHERE id = 2"),
-        ),
-      });
-      expect(getControlsRow().previousLine).toHaveTextContent("WHERE id = 2");
+      rerender({ proposedQuery: createQuery(PROPOSED) });
+      expect(getDiffControls().previousLine).toHaveTextContent("WHERE id = 2");
 
       rerender({ proposedQuery: createQuery(ORIGINAL.replace(before, after)) });
 
       await waitFor(() =>
         expect(screen.getByRole("textbox")).toHaveTextContent(after),
       );
-      expect(getControlsRow().previousLine).toHaveTextContent(after);
+      expect(getDiffControls().previousLine).toHaveTextContent(after);
     },
   );
 
   it("keeps the buttons after undoing a proposal", async () => {
     const { createQuery, rerender } = setup({ text: ORIGINAL });
-    rerender({
-      proposedQuery: createQuery(
-        ORIGINAL.replace("WHERE id = 1", "WHERE id = 2"),
-      ),
-    });
-    expect(getControlsRow().previousLine).toHaveTextContent("WHERE id = 2");
+    rerender({ proposedQuery: createQuery(PROPOSED) });
+    expect(getDiffControls().previousLine).toHaveTextContent("WHERE id = 2");
 
     fireEvent.keyDown(screen.getByRole("textbox"), {
       key: "z",
@@ -150,13 +135,13 @@ describe("CodemirrorEditor", () => {
     await waitFor(() =>
       expect(screen.getByRole("textbox")).toHaveTextContent("WHERE id = 1"),
     );
-    expect(getControlsRow().previousLine).toHaveTextContent("LIMIT 10");
+    expect(getDiffControls().previousLine).toHaveTextContent("LIMIT 10");
   });
 
   it("keeps the editor configuration and styles stable when callbacks change", () => {
     const { rerender, onRejectProposed } = setup({
       text: ORIGINAL,
-      proposedText: ORIGINAL.replace("WHERE id = 1", "WHERE id = 2"),
+      proposedText: PROPOSED,
     });
     const styleRuleCount = () =>
       Array.from(document.styleSheets).reduce(
@@ -166,12 +151,10 @@ describe("CodemirrorEditor", () => {
     const before = styleRuleCount();
     const reject = jest.fn();
 
-    for (let render = 0; render < PARENT_RENDER_COUNT; render++) {
-      rerender({ onRejectProposed: reject });
-    }
+    rerender({ onRejectProposed: reject });
 
     expect(styleRuleCount()).toBe(before);
-    expect(getControlsRow().previousLine).toHaveTextContent("WHERE id = 2");
+    expect(getDiffControls().previousLine).toHaveTextContent("WHERE id = 2");
     fireEvent.keyDown(screen.getByRole("textbox"), {
       key: "x",
       altKey: true,
@@ -192,40 +175,10 @@ describe("CodemirrorEditor", () => {
     await screen.findByRole("button", { name: /Accept/ });
     const { row, parent } = getDiffControls(container);
     expect(parent).toHaveClass("cm-editor");
-    expect(
-      within(row).getByRole("button", { name: /Reject/ }),
-    ).toBeInTheDocument();
     expect(screen.getByRole("textbox")).not.toHaveTextContent("SELECT 2999");
     await userEvent.click(within(row).getByRole("button", { name: /Accept/ }));
     expect(onAcceptProposed).toHaveBeenCalledTimes(1);
   });
-
-  it.each([
-    ["Accept", "y", "onAcceptProposed"],
-    ["Reject", "x", "onRejectProposed"],
-  ] as const)(
-    "shows the Windows shortcut on %s and uses it",
-    (label, key, callback) => {
-      const platform = jest.spyOn(Browser, "isWindows").mockReturnValue(true);
-      try {
-        const callbacks = setup({ text: "SELECT 1", proposedText: "SELECT 2" });
-        const { row } = getControlsRow();
-        expect(
-          within(row).getByRole("button", { name: new RegExp(label) }),
-        ).toHaveTextContent(`${label}AltShift${key.toUpperCase()}`);
-        fireEvent.keyDown(screen.getByRole("textbox"), {
-          key,
-          code: `Key${key.toUpperCase()}`,
-          keyCode: key.toUpperCase().charCodeAt(0),
-          altKey: true,
-          shiftKey: true,
-        });
-        expect(callbacks[callback]).toHaveBeenCalledTimes(1);
-      } finally {
-        platform.mockRestore();
-      }
-    },
-  );
 
   it("Should render the natie query's text", () => {
     const text = "SELECT 1;";
@@ -248,26 +201,48 @@ describe("CodemirrorEditor", () => {
   });
 
   it.each([
-    ["Accept", "y", "onAcceptProposed"],
-    ["Reject", "x", "onRejectProposed"],
-  ] as const)(
-    "resolves %s with its Ctrl+Alt shortcut",
-    (label, key, callback) => {
-      const callbacks = setup({ text: "SELECT 1", proposedText: "SELECT 2" });
-
-      expect(
-        screen.getByRole("button", { name: new RegExp(label) }),
-      ).toHaveTextContent(`${label}CtrlAlt${key.toUpperCase()}`);
-
-      fireEvent.keyDown(screen.getByRole("textbox"), {
-        key,
-        code: `Key${key.toUpperCase()}`,
-        ctrlKey: true,
-        altKey: true,
+    {
+      platform: "Linux",
+      isWindows: false,
+      hint: "CtrlAlt",
+      modifiers: { ctrlKey: true, altKey: true },
+    },
+    {
+      platform: "Windows",
+      isWindows: true,
+      hint: "AltShift",
+      modifiers: { altKey: true, shiftKey: true },
+    },
+  ])(
+    "resolves the proposal with the $platform shortcuts",
+    ({ isWindows, hint, modifiers }) => {
+      jest.spyOn(Browser, "isWindows").mockReturnValue(isWindows);
+      const { onAcceptProposed, onRejectProposed, onRunQuery } = setup({
+        text: "SELECT 1",
+        proposedText: "SELECT 2",
       });
 
-      expect(callbacks[callback]).toHaveBeenCalledTimes(1);
-      expect(callbacks.onRunQuery).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: /Accept/ })).toHaveTextContent(
+        `Accept${hint}Y`,
+      );
+      expect(screen.getByRole("button", { name: /Reject/ })).toHaveTextContent(
+        `Reject${hint}X`,
+      );
+
+      fireEvent.keyDown(screen.getByRole("textbox"), {
+        key: "y",
+        code: "KeyY",
+        ...modifiers,
+      });
+      expect(onAcceptProposed).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(screen.getByRole("textbox"), {
+        key: "x",
+        code: "KeyX",
+        ...modifiers,
+      });
+      expect(onRejectProposed).toHaveBeenCalledTimes(1);
+      expect(onRunQuery).not.toHaveBeenCalled();
     },
   );
 

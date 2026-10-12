@@ -30,7 +30,7 @@ function setup({ original = ORIGINAL, proposed = PROPOSED } = {}) {
     container.remove();
   };
 
-  return { view, getControls: () => controls };
+  return { view, controls };
 }
 
 describe("diff controls widget", () => {
@@ -40,8 +40,7 @@ describe("diff controls widget", () => {
   });
 
   it("gives the controls their own row between the change and following code", () => {
-    const { view, getControls } = setup();
-    const controls = getControls();
+    const { view, controls } = setup();
 
     expect(controls.parentElement).toBe(view.contentDOM);
     expect(controls.previousElementSibling).toHaveTextContent("WHERE id = 2");
@@ -51,9 +50,9 @@ describe("diff controls widget", () => {
   });
 
   it("reserves the current review row height when scrolling the cursor into view", () => {
-    const { view, getControls } = setup();
+    const { view, controls } = setup();
     const height = jest
-      .spyOn(getControls(), "offsetHeight", "get")
+      .spyOn(controls, "offsetHeight", "get")
       .mockReturnValue(40);
     const margins = () =>
       view.state.facet(EditorView.scrollMargins).map((margin) => margin(view));
@@ -66,21 +65,18 @@ describe("diff controls widget", () => {
   });
 
   it("places controls after the last of several changes", () => {
-    const { getControls } = setup({
+    const { controls } = setup({
       proposed: PROPOSED.replace("-- end", "-- changed"),
     });
 
-    expect(getControls().previousElementSibling).toHaveTextContent(
-      "-- changed",
-    );
-    expect(getControls().nextElementSibling).toBeNull();
+    expect(controls.previousElementSibling).toHaveTextContent("-- changed");
+    expect(controls.nextElementSibling).toBeNull();
   });
 
   it("places controls after deleted lines and before following code", () => {
-    const { getControls } = setup({
+    const { controls } = setup({
       proposed: ORIGINAL.replace("WHERE id = 1\n", ""),
     });
-    const controls = getControls();
 
     expect(controls.previousElementSibling).toHaveClass("cm-deletedChunk");
     expect(controls.previousElementSibling).toHaveTextContent("WHERE id = 1");
@@ -92,10 +88,10 @@ describe("diff controls widget", () => {
     ["a proposal replacing the whole query", "SELECT 1", PROPOSED],
     ["an empty original query", "", PROPOSED],
   ])("places controls after %s", (_name, original, proposed) => {
-    const { getControls } = setup({ original, proposed });
+    const { controls } = setup({ original, proposed });
 
-    expect(getControls().previousElementSibling).toHaveTextContent("-- end");
-    expect(getControls().nextElementSibling).toBeNull();
+    expect(controls.previousElementSibling).toHaveTextContent("-- end");
+    expect(controls.nextElementSibling).toBeNull();
   });
 });
 
