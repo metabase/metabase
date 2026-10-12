@@ -35744,7 +35744,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "positive" ],
+                "required" : [ "message_id", "positive" ],
                 "type" : "object"
               }
             }
@@ -36500,7 +36500,7 @@
                     "type" : "string"
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ],
+                "required" : [ "message_id", "source_id", "source_type", "positive" ],
                 "type" : "object"
               }
             }
