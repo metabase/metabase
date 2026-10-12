@@ -18,7 +18,11 @@ const MAX_STARTUP_FAILURES = 5;
 // workers on those only add timeouts.
 const fastCores = () => {
   if (process.platform === "darwin") {
-    try { return Number(execFileSync("sysctl", ["-n", "hw.perflevel0.physicalcpu"], { encoding: "utf8" })); } catch {}
+    try {
+      return Number(execFileSync("sysctl", ["-n", "hw.perflevel0.physicalcpu"], { encoding: "utf8" }));
+    } catch {
+      // An Intel Mac has no such value. The count that Node reports is right there.
+    }
   }
   return require("node:os").availableParallelism();
 };
@@ -32,7 +36,11 @@ const durationsFile = path.join(cacheDir, "durations.json");
 const seedDurationsFile = path.join(__dirname, "durations.json");
 const readDurations = () => {
   for (const file of [durationsFile, seedDurationsFile]) {
-    try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch {}
+    try {
+      return JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch {
+      // No file yet, or one that a stopped run left half written: try the next.
+    }
   }
   return {};
 };
@@ -60,7 +68,9 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
     try {
       fs.mkdirSync(cacheDir, { recursive: true });
       fs.writeFileSync(durationsFile, JSON.stringify(durations));
-    } catch {}
+    } catch {
+      // The times only order the next run, so a run does not fail over them.
+    }
   };
   const finished = () => {
     pending -= 1;

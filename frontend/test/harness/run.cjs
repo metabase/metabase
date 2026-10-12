@@ -1,4 +1,3 @@
-/* eslint-disable */
 // Entry point: node --require ./hooks.cjs run.cjs <files...|@list-file>
 // Every spec file runs in this one process, one after the other. Files that
 // mock modules run last, each with a fresh registry of project modules.
