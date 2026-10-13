@@ -169,23 +169,30 @@
     :user-recency        0.4
     :data-layer          33
     :data-layer/final    1     ; ≈ 33
+    ;; New tables use the internal layer by default, so an ordinary table gets this score even if nobody has vetted it.
+    ;; That score ranks it above dashboards, questions, and models.
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
     ;; Favor semantic-layer content over saved questions, and saved questions over models.
     ;; :data-layer does most of the ranking for tables; the small type boost only keeps a table above a model.
     ;; The semantic layer edges out a final-layer table (33 + 1), so a metric beats every table on an equal match.
-    ;; List every model Metabot searches; otherwise [[models-search-order]] supplies its fallback boost.
-    :model               10
-    :model/metric        3.5   ; = 35
-    :model/measure       3.5   ; = 35
-    :model/segment       3.5   ; = 35
-    :model/dashboard     0.3   ; = 3
-    :model/card          0.3   ; = 3
-    :model/table         0.1   ; = 1
-    :model/dataset       0
-    :model/document      0
-    :model/transform     0
-    :model/database      0}})
+    ;; List every search model; otherwise [[models-search-order]] supplies its fallback boost.
+    ;; The Agent API and MCP search use this context too, and they also return collections and actions.
+    :model                10
+    :model/metric         3.5   ; = 35
+    :model/measure        3.5   ; = 35
+    :model/segment        3.5   ; = 35
+    :model/dashboard      0.3   ; = 3
+    :model/card           0.3   ; = 3
+    :model/table          0.1   ; = 1
+    :model/collection     0.1   ; = 1
+    :model/dataset        0
+    :model/document       0
+    :model/transform      0
+    :model/database       0
+    :model/action         0
+    :model/exploration    0
+    :model/indexed-entity 0}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every

@@ -512,7 +512,13 @@
        {:model "segment" :id 4 :name "foo segment"}]
       (let [[semantic-layer others] (split-at 2 (map second (search-results* "foo" :context :metabot)))]
         (is (= [#{3 4} [2 1]]
-               [(set semantic-layer) others]))))))
+               [(set semantic-layer) others])))))
+  (testing "with Metabot weights, collections and actions stay below questions"
+    (with-index-contents
+      [{:model "collection" :id 1 :name "foo collection"}
+       {:model "action"     :id 2 :name "foo action"}
+       {:model "card"       :id 3 :name "foo question"}]
+      (is (= 3 (second (first (search-results* "foo" :context :metabot))))))))
 
 (deftest metabot-library-weight-test
   (testing "with Metabot weights, library membership outranks type weights"
