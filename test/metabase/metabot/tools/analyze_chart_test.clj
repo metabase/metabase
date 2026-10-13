@@ -54,12 +54,20 @@
                                                         :y_values     []
                                                         :display_name "Count"}}}})))))
 
-(deftest ^:parallel analyze-chart-tool-all-nil-values-test
-  (testing "a series whose x-values or y-values are all nil is rejected like an empty one"
-    (doseq [k [:x_values :y_values]]
-      (testing (str k)
+(deftest ^:parallel analyze-chart-tool-no-complete-points-test
+  (testing "a series with no point that has both an x and a y value is rejected like an empty one"
+    (doseq [[x-values y-values] [[[nil nil] [3.0 4.0]]
+                                 [["2024-01-01T00:00:00Z" "2024-02-01T00:00:00Z"] [nil nil]]
+                                 [[nil "2024-01-01T00:00:00Z"] [3.0 nil]]]]
+      (testing (pr-str x-values y-values)
         (is (= {:output "Series \"Count\" has no data points to analyze."}
-               (analyze "c1" (assoc-in (numeric-series-config) ["c1" :series "Count" k] [nil nil nil nil]))))))))
+               (analyze "c1" {"c1" {:display_type "line"
+                                    :title        "Orders over time"
+                                    :series       {"Count" {:x            {:name "created_at" :type "datetime"}
+                                                            :y            {:name "count" :type "number"}
+                                                            :x_values     x-values
+                                                            :y_values     y-values
+                                                            :display_name "Count"}}}})))))))
 
 (deftest ^:parallel analyze-chart-tool-non-numeric-y-values-test
   (testing "a series with non-numeric y-values is rejected"
