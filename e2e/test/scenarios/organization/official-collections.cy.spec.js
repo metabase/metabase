@@ -166,7 +166,7 @@ function testOfficialBadgePresence(expectBadge = true) {
     }
     cy.visit(`/collection/${collectionId}`);
     // the app bar only shows collection breadcrumbs while the navbar is closed
-    H.collapseNavigationSidebar();
+    H.closeNavigationSidebar();
   });
 
   // Dashboard Page

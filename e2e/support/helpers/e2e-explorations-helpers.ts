@@ -5,7 +5,7 @@ import type { GetExplorationDataResponse } from "metabase-types/api";
 import { updateSetting } from "./api";
 import { setupAnthropicLlmProvider } from "./e2e-metabot-helpers";
 import { activateToken } from "./e2e-token-helpers";
-import { collapseNavigationSidebar } from "./e2e-ui-elements-helpers";
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
 
 const MOCK_LLM_PORT = 6125;
 const MOCK_LLM_RESPONSE = "Hello from Explorations!";
@@ -32,7 +32,7 @@ export function explorationsMetabotPromptInput(): Cypress.Chainable<
 
 export function visitNewExploration(): void {
   cy.visit("/question/research");
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
   cy.findByRole("button", { name: /Manual setup/i }).should("be.visible");
 }
 
@@ -281,6 +281,6 @@ export function createExplorationViaApi({
 
 export function visitExploration(id: number): void {
   cy.visit(`/question/research/${id}`);
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
   cy.findAllByRole("treeitem").first().should("be.visible");
 }

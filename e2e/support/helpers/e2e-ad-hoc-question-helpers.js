@@ -2,7 +2,7 @@ import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 
 import { runNativeQuery } from "./e2e-misc-helpers";
 import { NativeEditor } from "./e2e-native-editor-helpers";
-import { collapseNavigationSidebar } from "./e2e-ui-elements-helpers";
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -45,7 +45,7 @@ function newCardHash(type) {
 export function startNewQuestion() {
   const hash = newCardHash("question");
   cy.visit(`/question/notebook#${hash}`);
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
 }
 
 /**
@@ -54,7 +54,6 @@ export function startNewQuestion() {
 export function startNewModel() {
   const hash = newCardHash("model");
   cy.visit(`/model/query#${hash}`);
-  collapseNavigationSidebar();
 }
 
 /**
@@ -112,7 +111,7 @@ function newNativeCardHash(
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);
   cy.visit("/question#" + hash);
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
 }
 
 /**
@@ -122,7 +121,6 @@ export function startNewNativeModel(config) {
   const hash = newNativeCardHash("model", config);
 
   cy.visit("/model/query#" + hash);
-  collapseNavigationSidebar();
 
   return NativeEditor.get();
 }
@@ -146,7 +144,7 @@ export function visitQuestionAdhoc(
   cy.intercept(url).as(alias);
 
   cy.visit(`/question${questionMode}#` + adhocQuestionHash(question));
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
 
   runQueryIfNeeded(question, autorun);
 

@@ -353,7 +353,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         },
       }).then(({ body: { id } }) => {
         cy.visit(`/reference/segments/${id}`);
-        H.collapseNavigationSidebar();
+        H.closeNavigationSidebar();
         cy.findAllByRole("listitem")
           .filter(":contains(X-ray this segment)")
           .click();

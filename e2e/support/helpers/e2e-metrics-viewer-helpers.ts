@@ -1,9 +1,9 @@
-import { collapseNavigationSidebar } from "./e2e-ui-elements-helpers";
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
 
 export const MetricsViewer = {
   goToViewer: () => {
     cy.visit("/explore");
-    collapseNavigationSidebar();
+    closeNavigationSidebar();
   },
   formulaInput: () => cy.findByTestId("metrics-formula-input"),
   searchInput: () => {

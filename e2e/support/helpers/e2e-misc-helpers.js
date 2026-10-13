@@ -1,6 +1,6 @@
 import { pickEntity } from "./e2e-collection-helpers";
 import {
-  collapseNavigationSidebar,
+  closeNavigationSidebar,
   modal,
   undoToast,
 } from "./e2e-ui-elements-helpers";
@@ -134,7 +134,7 @@ function visitQuestionById(id, { onBeforeLoad } = {}) {
     url: `/question/${id}`,
     onBeforeLoad,
   });
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
@@ -157,7 +157,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
   }
 
   cy.visit(`/model/${id}`);
-  collapseNavigationSidebar();
+  closeNavigationSidebar();
 
   cy.wait("@" + alias);
 }
@@ -246,7 +246,7 @@ function visitDashboardById(dashboard_id, config) {
         url: `/dashboard/${dashboard_id}`,
         qs: config.params,
       });
-      collapseNavigationSidebar();
+      closeNavigationSidebar();
 
       // dashcardTimeout lets callers widen the per-query wait window for dashboards with
       // many cards, whose tail queries stagger past cy.wait's 5s default under CPU load
@@ -260,7 +260,7 @@ function visitDashboardById(dashboard_id, config) {
       //  - the one which user doesn't have access to
       // the last request will always be `GET /api/dashboard/:dashboard_id`
       cy.visit(`/dashboard/${dashboard_id}`);
-      collapseNavigationSidebar();
+      closeNavigationSidebar();
 
       cy.wait(`@${dashboardAlias}`);
     }

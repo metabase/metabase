@@ -131,7 +131,7 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     H.activateToken("pro-self-hosted");
     cy.get<DashboardId>("@dashboardId").then((id) => {
       H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}`, qs: {} });
-      H.collapseNavigationSidebar();
+      H.closeNavigationSidebar();
     });
 
     expectReadOnlyDashboardEvents();
