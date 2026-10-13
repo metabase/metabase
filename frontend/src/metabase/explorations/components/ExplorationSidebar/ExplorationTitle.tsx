@@ -28,8 +28,7 @@ export function ExplorationTitle({
       if (error) {
         sendToast({
           message: t`Failed to update name`,
-          icon: "warning_triangle_filled",
-          iconColor: "feedback-warning",
+          variant: "negative",
         });
       }
     },

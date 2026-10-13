@@ -209,7 +209,7 @@ const SourceFeedbackButtons = ({
       }).unwrap();
     } catch {
       setFeedback(previousFeedback);
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      sendToast({ variant: "negative", message: t`Failed to submit feedback` });
     }
   };
 
