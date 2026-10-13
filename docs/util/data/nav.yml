@@ -132,6 +132,8 @@ categories:
             url: "ai/overview"
           - name: "Metabot"
             url: "ai/metabot"
+          - name: "Research"
+            url: "ai/research"
           - name: "Metabot in Slack"
             url: "ai/metabot-slack"
           - name: "Settings"

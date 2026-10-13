@@ -13,6 +13,8 @@ Before you use Research, an admin must configure an AI provider in [AI settings]
 
 Without a connected provider, you can still use Research to build a data set manually, but you can't use AI to rank charts.
 
+If an admin turns on [**Disable all AI features**](./settings.md#disable-all-ai-features), Research isn't available.
+
 ## Create and run a Research plan
 
 To create a Research plan, you can use a prompt or manually build the plan.
