@@ -66,7 +66,7 @@ const TimelineDetailsModal = ({
     setInputText(e.target.value);
 
   return (
-    <Flex direction="column" mih={MODAL_MIN_HEIGHT} mah="90vh">
+    <Flex direction="column" mih={MODAL_MIN_HEIGHT}>
       <ModalHeader
         title={title}
         onClose={onClose}
