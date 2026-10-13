@@ -170,6 +170,40 @@
                   :error_message string?}
                  (t2/select-one :model/CustomVizPlugin :identifier "broken-viz"))))))))
 
+(deftest enabled-is-instance-owned-test
+  (testing "enabled is exported only when false, for older importers that copy it"
+    (let [bundle (cv.tu/valid-bundle-bytes "toggle-viz")]
+      (mt/with-temp [:model/CustomVizPlugin on  {:identifier   "toggle-on"
+                                                 :display_name "toggle-on"
+                                                 :status       :active
+                                                 :enabled      true
+                                                 :bundle       bundle
+                                                 :bundle_hash  (sha256-hex bundle)}
+                     :model/CustomVizPlugin off {:identifier   "toggle-off"
+                                                 :display_name "toggle-off"
+                                                 :status       :active
+                                                 :enabled      false
+                                                 :bundle       bundle
+                                                 :bundle_hash  (sha256-hex bundle)}]
+        (is (not (contains? (serdes/extract-one "CustomVizPlugin" {} on) :enabled)))
+        (is (false? (:enabled (serdes/extract-one "CustomVizPlugin" {} off)))))))
+  (testing "an exported enabled=false is ignored on import: a new plugin gets the column default"
+    (do-with-plugin-cleanup!
+     (fn []
+       (let [bundle   (cv.tu/valid-bundle-bytes "toggle-viz")
+             ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "toggle-viz" :label "toggle-viz"}]
+                       :identifier   "toggle-viz"
+                       :display_name "toggle-viz"
+                       :enabled      false
+                       :manifest     {:name "toggle-viz"}
+                       :bundle_hash  (sha256-hex bundle)
+                       :bundle       (codecs/bytes->b64-str bundle)
+                       :created_at   "2026-01-01T00:00:00Z"}]
+         (serdes/load-one! ingested nil)
+         (is (=? {:status  :active
+                  :enabled true}
+                 (t2/select-one :model/CustomVizPlugin :identifier "toggle-viz"))))))))
+
 (deftest load-update-validates-bundle-test
   (testing "re-importing over an existing plugin re-validates the new bundle and keeps the admin's enabled toggle"
     (let [old-bundle (cv.tu/valid-bundle-bytes "updated-viz")
