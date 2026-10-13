@@ -1262,10 +1262,7 @@ describe("scenarios > visualizations > line chart", () => {
       });
 
       // Brush
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 180, 200)
-        .trigger("mousemove", 180, 200)
-        .trigger("mouseup", 400, 200);
+      H.applyBrushToPoints(6, 10);
 
       cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel").should(
