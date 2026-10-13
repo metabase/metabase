@@ -164,6 +164,20 @@ The consent page may also list `agent:resource:read` (shown as **Read MCP resour
 
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
 
+### Headless access with JWT
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), if you sign people in with [JWT authentication](../people-and-groups/authenticating-with-jwt.md), your backend can get an MCP token for each person without a browser. Sign a JWT for the person as you would for SSO, and post it to the token endpoint:
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt}
+```
+
+Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server. Your agent sends it as `Authorization: Bearer {access_token}`. The token lasts an hour and comes without a refresh token, so sign a fresh JWT to get a new one.
+
+The token gets all the [permission scopes](#permission-scopes) unless you ask for fewer with a space-separated `scope` parameter.
+
 ## Authorization logs
 
 To review which clients have connected, go to **Admin > AI > MCP** and open the **Authorizations** tab. The authorization logs are an audit log of MCP and Agent API client registrations and the authorization decisions people have approved or denied.
