@@ -302,9 +302,9 @@
   `max_tokens` exceeds the window (https://docs.mistral.ai/api/endpoint/chat). But a probe on mistral-medium-3-5
   with a 240,000-token prompt and this cap got no 400: it got a 504 after about 5 minutes (probed 2026-10-09,
   https://github.com/metabase/metabase/pull/83989). Moonshot documents the error for `max_completion_tokens`
-  (https://platform.kimi.ai/docs/api/chat). Metabot sends the deprecated `max_tokens`, and kimi-k2.6 accepted the
-  same request (probed 2026-10-09, https://github.com/metabase/metabase/pull/83989: HTTP 200). The agent loop
-  resends the full history and does not compact it, so a long enough conversation reaches the window."
+  (https://platform.kimi.ai/docs/api/chat), which Metabot sends (https://github.com/metabase/metabase/pull/83984).
+  The agent loop resends the full history and does not compact it, so a long enough conversation reaches the
+  window."
   32000)
 
 (defn mkid
