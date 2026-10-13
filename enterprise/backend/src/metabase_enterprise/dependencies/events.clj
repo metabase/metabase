@@ -9,7 +9,6 @@
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -201,24 +200,16 @@
     (dependencies.db/delete-dependency-status! :measure (:id object))))
 
 ;; ### Serialization loads
-(defn- loaded-entities
-  "The `[entity-type id]` of each dependency-tracked entity at the serdes `paths` that exists locally."
-  [paths]
-  (for [path  paths
-        :let  [entity-type (deps.dependency-types/model->dependency-type (keyword "model" (:model (last path))))]
-        :when (contains? deps.dependency-types/backfillable-dependency-types entity-type)
-        :let  [entity (serdes/load-find-local path)]
-        :when entity]
-    [entity-type (:id entity)]))
-
 (events/derive! ::serdes-load :metabase/event)
 (events/derive! :event/serdes-load ::serdes-load)
 
 (methodical/defmethod events/publish-event! ::serdes-load
-  [_ {:keys [seen]}]
+  [_ {:keys [loaded]}]
   (when (premium-features/has-feature? :dependencies)
     (try
-      (doseq [[entity-type ids] (models.dependency/group-nodes (loaded-entities seen))]
+      (doseq [[model ids] loaded
+              :let  [entity-type (deps.dependency-types/model->dependency-type model)]
+              :when (contains? deps.dependency-types/backfillable-dependency-types entity-type)]
         (deps.dependency-status/mark-stale! entity-type ids))
       (task.backfill/trigger-backfill-job!)
       (catch Throwable e
