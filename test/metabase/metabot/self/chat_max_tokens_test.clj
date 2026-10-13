@@ -159,7 +159,7 @@
                        "gpt-5.4-nano"                omitted
                        "gpt-5.4"                     omitted
                        "GPT-5.5"                     omitted}
-   ;; Vertex: partner ids, dated with `@`
+   ;; Vertex: partner ids; Haiku 4.5 also in the retired `@`-dated spelling a saved selection may still hold
    :vertex-claude     {"claude-fable-5-1"             32000
                        "claude-fable-5"               32000
                        "claude-opus-5-5"              32000
@@ -168,6 +168,7 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-4-5"             32000
                        "claude-haiku-4-5@20251001"    32000}
    :gemini            {"google/gemini-3.5-flash"      32000
                        "google/gemini-3.6-flash"      32000

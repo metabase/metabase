@@ -86,6 +86,7 @@
       "anthropic/claude-sonnet-5-5"         1000000
       "anthropic/claude-sonnet-5"           1000000
       "anthropic/claude-sonnet-4-6"         1000000
+      "anthropic/claude-haiku-4-5"           200000
       "anthropic/claude-haiku-4-5@20251001"  200000
       "anthropic/claude-unknown"            nil)))
 
@@ -413,6 +414,7 @@
                                   http/request                        (fn [req] {:body req})]
         (doseq [model ["anthropic/claude-sonnet-4-6"
                        "anthropic/claude-fable-5"
+                       "anthropic/claude-haiku-4-5"
                        "anthropic/claude-haiku-4-5@20251001"]]
           (testing model
             (is (= 32000
