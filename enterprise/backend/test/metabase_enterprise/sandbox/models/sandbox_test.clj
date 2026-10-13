@@ -2,6 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.models.sandbox :as sandboxes]
+   [metabase-enterprise.sandbox.test-util :as sbx.tu]
+   [metabase-enterprise.test :as met]
+   [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
@@ -142,6 +146,11 @@
                  {(mt/id)
                   {:view-data :unrestricted}}}))))))))
 
+(defn- venues-cols
+  "The result metadata of a query on VENUES returning only the columns named by `col-names`."
+  [& col-names]
+  (filterv (comp (set col-names) :name) (qp.preprocess/query->expected-cols (mt/mbql-query venues))))
+
 (deftest only-admins-can-change-a-card-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
     (mt/with-temp [:model/Card    {source-id :id} {:dataset_query (mt/mbql-query venues)}
@@ -161,6 +170,11 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to modify a question that is used for row and column level security"
                (t2/update! :model/Card source-id {:dataset_query (mt/mbql-query checkins)}))))
+        (testing "nor change its result metadata, which is the sandbox's column allow-list"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to modify a question that is used for row and column level security"
+               (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")}))))
         (testing "nor archive it, which would leave the sandbox filtering nothing"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -176,3 +190,67 @@
       (testing "an admin may do it"
         (mt/with-test-user :crowberto
           (is (pos? (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query venues {:fields [$id]})}))))))))
+
+(defn- api-venues-col
+  "The VENUES Field named `col-name`, as a client would send it in a Card's `:result_metadata`."
+  [col-name]
+  (let [{:keys [id base_type]} (t2/select-one [:model/Field :id :base_type] :table_id (mt/id :venues) :name col-name)]
+    {:id             id
+     :name           col-name
+     :display_name   col-name
+     :base_type      base_type
+     :effective_type base_type
+     :field_ref      [:field id nil]
+     :table_id       (mt/id :venues)
+     :source         :fields}))
+
+(defn- sandboxed-venues-field-names []
+  (mapv :name (:fields (mt/user-http-request :rasta :get 200 (str "table/" (mt/id :venues) "/query_metadata")))))
+
+(deftest non-admin-cannot-widen-a-policy-card-column-allow-list-through-the-api-test
+  (testing "a non-admin who curates the policy Card cannot widen the sandbox's column allow-list via :result_metadata"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (let [card-id  (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              original (t2/select-one-fn :result_metadata :model/Card :id card-id)
+              latitude (api-venues-col "LATITUDE")]
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
+          (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                 (:message (mt/user-http-request :rasta :put 403 (str "card/" card-id)
+                                                 {:result_metadata (conj (vec original) latitude)}))))
+          (is (= original (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
+(deftest non-admin-may-still-make-cosmetic-edits-to-a-policy-card-test
+  (testing "a non-admin may rename a policy Card while sending back the result metadata it was served"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              served  (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
+          (is (= "Renamed"
+                 (:name (mt/user-http-request :rasta :put 200 (str "card/" card-id)
+                                              {:name            "Renamed"
+                                               :result_metadata (:result_metadata served)}))))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
+(deftest running-a-policy-card-with-drifted-metadata-as-a-non-admin-test
+  (testing "a non-admin running a policy Card whose stored metadata has drifted gets results, but the QP's metadata
+           write-back is refused so the Card's column allow-list is unchanged"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-read-permissions! (:id &group) collection/root-collection)
+        (let [card-id      (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              stored-names #(mapv :name (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              run-card     (fn [user]
+                             (mt/rows (mt/user-http-request user :post 202 (format "card/%d/query" card-id))))]
+          (mt/with-test-user :crowberto
+            (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME")}))
+          (testing "the non-admin's query succeeds"
+            (is (seq (run-card :rasta))))
+          (testing "the drifted metadata is not overwritten by the non-admin's run"
+            (is (= ["ID" "NAME"] (stored-names))))
+          (testing "an admin's run does write it back"
+            (is (seq (run-card :crowberto)))
+            (is (= ["ID" "NAME" "CATEGORY_ID"] (stored-names)))))))))
