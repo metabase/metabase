@@ -762,12 +762,6 @@ describe("scenarios > dashboard", () => {
         cy.visit(`/dashboard/${dashboard.id}`);
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
-        cy.log("should scroll into view w/ scrollTo hash param");
-        cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        // wait for scroll to complete (hash cleared) then verify visibility
-        cy.location("hash").should("not.include", "scrollTo");
-        cy.findByText(TARGET_TEXT).should("be.visible");
-
         cy.log("closing a modal should unlock scrolling (metabase#15596)");
         H.openLegacyStaticEmbeddingModal({
           resource: "dashboard",
@@ -781,6 +775,12 @@ describe("scenarios > dashboard", () => {
         H.modal().should("not.exist");
         cy.get("body").should("not.have.attr", "data-scroll-locked");
         cy.get("body").should("not.have.css", "overflow", "hidden");
+
+        cy.log("should scroll into view w/ scrollTo hash param");
+        cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
+        // wait for scroll to complete (hash cleared) then verify visibility
+        cy.location("hash").should("not.include", "scrollTo");
+        cy.findByText(TARGET_TEXT).should("be.visible");
       },
     );
   });
