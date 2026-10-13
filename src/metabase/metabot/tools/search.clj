@@ -365,6 +365,8 @@
         ;; replace it. Unconfined, the caller's collection-id applies.
         confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
                           (:collection_id metabot))
+        ;; Measures and segments belong to a table, not a collection, so a search scoped to a collection
+        ;; never returns them, even though the search tools list them as entity types.
         collection-id   (or confined-id collection-id)
         limit           (or limit 50)
         ranked-fn       (fn [search-string search-engine]
