@@ -197,9 +197,20 @@
 
 (defn- cell-text
   [value]
-  (if (nil? value)
+  (cond
     ;; An empty cell is an empty string, so a missing value needs a form of its own.
+    (nil? value)
     "(null)"
+
+    ;; Binary data has no text to show, and its `str` is an object reference that differs on every run.
+    (bytes? value)
+    (str "(binary, " (alength ^bytes value) " bytes)")
+
+    ;; A Blob's length is read from the database, and its connection may already be closed.
+    (instance? java.sql.Blob value)
+    "(binary)"
+
+    :else
     (-> (llm-shape/truncate (if (number? value) (number-text value) (str value)) max-cell-chars)
         (str/replace #"(?U)\s+" " ")
         llm-shape/escape-xml-content
