@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -52,7 +53,9 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (net.snowflake.client.internal.jdbc SnowflakeConnectString)))
 
 (set! *warn-on-reflection* true)
 
@@ -151,6 +154,17 @@
   (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
   (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
 
+(defn- put-get-as-the-client-reads-it
+  "The `enablePutGet` value the Snowflake client resolves `spec` to, asking its own parser. `clojure.java.jdbc` hands
+  it the URL built from `:subname` and every other spec key as a connection property."
+  [spec]
+  (let [url   (str "jdbc:" (:subprotocol spec) ":" (:subname spec))
+        props (java.util.Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)
+            :when (some? v)]
+      (.setProperty props (name k) (str v)))
+    (get (.getParameters (SnowflakeConnectString/parse url props)) "ENABLEPUTGET")))
+
 (deftest ^:parallel connection-details->spec-test
   (let [details {:role nil
                  :warehouse "COMPUTE_WH"
@@ -195,6 +209,11 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "...including through a detail key in another casing, which the client would read in place of ours"
+      (doseq [k ["Enableputget" "eNableputget" "ENablePutGet" "enableputget" "ENABLEPUTGET" " enablePutGet "]]
+        (testing (pr-str k)
+          (is (= "false" (put-get-as-the-client-reads-it
+                          (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true"))))))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
@@ -1843,3 +1862,57 @@
                                          (lib/relative-datetime -30 :day))))]
         (mt/with-native-query-testing-context query
           (is (some? (mt/rows (qp/process-query query)))))))))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client connects to these instead of (or as well as) the account host, so a value naming an internal host has
+  ;; to be refused like the account host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [check! #(driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                   :additional-options %})
+          refusal #(try (check! %) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (testing "an internal host is refused whichever parameter names it"
+        (doseq [opts ["authenticator=OAUTH_CLIENT_CREDENTIALS&oauthTokenRequestUrl=http://localhost:18078/steal"
+                      "oauthAuthorizationUrl=http://localhost/authorize"
+                      "serverURL=https://localhost/"
+                      "authenticator=https://localhost/"
+                      "AUTHENTICATOR=http://localhost:8080/okta"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "the client percent-decodes names and values, so an encoded one is refused like the plain one"
+        (doseq [opts ["serverURL=https%3A%2F%2Flocalhost%2F"
+                      "useProxy=true&proxy%48ost=localhost"
+                      "useProxy=true&proxyHost=%6Cocalhost"
+                      "authenticator=https%3A%2F%2Flocalhost%2F"
+                      "authenticat%6Fr=https://localhost/"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "every `authenticator` is checked when one is given more than once"
+        (doseq [opts ["authenticator=SNOWFLAKE_JWT&authenticator=https://localhost/"
+                      "authenticator=https://localhost/&authenticator=SNOWFLAKE_JWT"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "an `authenticator` naming a flow rather than a URL is not treated as a host"
+        (doseq [opts [nil
+                      "authenticator=SNOWFLAKE_JWT"
+                      "authenticator=OAUTH_CLIENT_CREDENTIALS"
+                      "authenticator=externalbrowser"
+                      "authenticator=SNOWFLAKE%5FJWT"]]
+          (is (nil? (check! opts))
+              (str "should be allowed: " opts))))
+      (testing "an `authenticator` detail key reaches the client as a connection property too, in any case"
+        (doseq [k [:authenticator :AUTHENTICATOR :Authenticator]]
+          (is (=? {:status-code 400}
+                  (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                        k "https://localhost/"
+                                                                        :additional-options "authenticator=SNOWFLAKE_JWT"})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              (str "should be refused: " k)))))))
+
+(deftest authenticator-values-read-connection-uri-test
+  ;; private-key auth moves the connection string from `:subname` into `:connection-uri`
+  (testing "an `authenticator` in `:connection-uri` is found as well as one in `:subname`"
+    (doseq [k [:subname :connection-uri]]
+      (is (= ["https://localhost/"]
+             (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
+          (str "should be found in " k)))))
