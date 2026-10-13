@@ -137,6 +137,31 @@ async function setup({
 }
 
 describe("ErrorOverview", () => {
+  it("keeps rows under the internal loader while paging erroring questions", async () => {
+    const loaded = setup({ total: 51, deferRefetch: true });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    const { resolveRefetch } = await loaded;
+    await screen.findByRole("treegrid");
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("erroring-question")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("51");
+      await act(async () => resolveRefetch());
+      await waitFor(() =>
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument(),
+      );
+    } finally {
+      resolveRefetch();
+    }
+  });
+
   it("fetches the audit bad-table query with default sorting and renders the results", async () => {
     await setup({
       cards: [

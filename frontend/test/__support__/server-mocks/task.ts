@@ -24,7 +24,7 @@ export function setupTasksEndpoints(
   response: ListTasksResponse,
   options?: UserRouteConfig,
 ) {
-  fetchMock.get("path:/api/task", response, options);
+  fetchMock.get("path:/api/task", response, { name: "task-list", ...options });
   response.data.forEach((task) => setupTaskEndpoint(task));
 }
 
@@ -50,7 +50,10 @@ export function setupTaskRunsEndpoints(
   response: ListTaskRunsResponse,
   options?: UserRouteConfig,
 ) {
-  fetchMock.get("path:/api/task/runs", response, options);
+  fetchMock.get("path:/api/task/runs", response, {
+    name: "task-runs-list",
+    ...options,
+  });
   fetchMock.get("path:/api/task/runs/entities", []);
 }
 

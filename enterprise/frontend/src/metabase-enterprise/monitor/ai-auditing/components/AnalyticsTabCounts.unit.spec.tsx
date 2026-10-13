@@ -154,6 +154,7 @@ interface SetupOpts {
   metadataError?: boolean;
   initialRoute?: string;
   tableTotal?: number;
+  getEventsResponse?: () => Dataset | Promise<Dataset>;
 }
 
 function setup({
@@ -164,6 +165,7 @@ function setup({
   metadataError = false,
   initialRoute = `${section.eventsPath}?date=past7days~&user=1&group=2&api_key=9&page=2`,
   tableTotal = 3,
+  getEventsResponse,
 }: SetupOpts) {
   setupEnterprisePlugins();
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -225,18 +227,27 @@ function setup({
     name: "audit-row-count",
     matcherFunction: isCounterQuery,
   });
-  setupAdhocQueryEndpoint(
-    createMockDataset({
-      database_id: AUDIT_DB_ID,
-      row_count: 1,
-      data: createMockDatasetData({
-        rows: [[tableTotal, "Visible event"]],
-        cols: [
-          createMockColumn({ name: "count", source: "aggregation" }),
-          createMockColumn({ name: section.displayColumn, source: "fields" }),
-        ],
-      }),
+  const filteredDataset = createMockDataset({
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+    data: createMockDatasetData({
+      rows: [[tableTotal, "Visible event"]],
+      cols: [
+        createMockColumn({ name: "count", source: "aggregation" }),
+        createMockColumn({ name: section.displayColumn, source: "fields" }),
+      ],
     }),
+  });
+  setupAdhocQueryEndpoint(
+    (call) => {
+      const stage = requestStage(call);
+      return getEventsResponse &&
+        stage !== null &&
+        typeof stage === "object" &&
+        "page" in stage
+        ? getEventsResponse()
+        : filteredDataset;
+    },
     { name: "filtered-dataset" },
   );
 
@@ -261,6 +272,53 @@ function setup({
 }
 
 describe.each(SECTIONS)("$label tab count", (section) => {
+  it("uses a skeleton only initially and retains rows under the internal loader while paging", async () => {
+    const initial = defer<Dataset>();
+    const pending = defer<Dataset>();
+    const firstPage = createMockDataset({
+      data: createMockDatasetData({
+        rows: [["First event"]],
+        cols: [createMockColumn({ name: section.displayColumn })],
+      }),
+    });
+    const nextPage = createMockDataset({
+      data: createMockDatasetData({
+        rows: [["Next event"]],
+        cols: [createMockColumn({ name: section.displayColumn })],
+      }),
+    });
+    let requests = 0;
+    setup({
+      section,
+      initialRoute: section.eventsPath,
+      tableTotal: 26,
+      getEventsResponse: () =>
+        ++requests === 1 ? initial.promise : pending.promise,
+    });
+    try {
+      expect(await screen.findByTestId("tree-table-skeleton")).toBeVisible();
+      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+      await act(async () => initial.resolve(firstPage));
+      await screen.findByText("First event");
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() => expect(requests).toBe(2));
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByText("First event")).toBeVisible();
+      expect(screen.getByTestId("loading-overlay")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(nextPage));
+      expect(await screen.findByText("Next event")).toBeVisible();
+      expect(screen.queryByText("First event")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    } finally {
+      initial.resolve(firstPage);
+      pending.resolve(nextPage);
+    }
+  });
+
   it.each([137, 0])(
     "shows the default 30-day row total %i, not the optionally filtered page total",
     async (count) => {

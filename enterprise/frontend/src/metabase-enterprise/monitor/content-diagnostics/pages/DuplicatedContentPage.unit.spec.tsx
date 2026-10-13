@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -19,6 +20,7 @@ import { MonitorContent } from "metabase/monitor/components/MonitorLayout/Monito
 import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { defer } from "metabase/utils/promise";
 import type {
   ContentDiagnosticsDuplicatedFinding,
   ContentDiagnosticsDuplicatedUserParams,
@@ -58,7 +60,9 @@ type SetupOpts = {
   urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsDuplicatedUserParams;
   error?: boolean;
-  getResponse?: (url: string) => ListDuplicatedFindingsResponse;
+  getResponse?: (
+    url: string,
+  ) => ListDuplicatedFindingsResponse | Promise<ListDuplicatedFindingsResponse>;
 };
 
 function setup({
@@ -76,9 +80,7 @@ function setup({
       body: { message: "Duplicated scan failed" },
     });
   } else if (getResponse) {
-    fetchMock.get("path:/api/ee/content-diagnostics/duplicated", ({ url }) =>
-      getResponse(url),
-    );
+    setupListDuplicatedFindingsEndpoint(({ url }) => getResponse(url));
   } else {
     setupListDuplicatedFindingsEndpoint(
       createMockListDuplicatedFindingsResponse({
@@ -139,6 +141,54 @@ async function waitForListToLoad() {
 }
 
 describe("DuplicatedContentPage", () => {
+  it("keeps rows under the internal loader while paging content", async () => {
+    const pending = defer<ListDuplicatedFindingsResponse>();
+    const firstPage = createMockListDuplicatedFindingsResponse({
+      data: [
+        createMockContentDiagnosticsDuplicatedFinding({
+          id: 1,
+          entity_display_name: "First page finding",
+        }),
+      ],
+      total: 26,
+    });
+    const nextPage = createMockListDuplicatedFindingsResponse({
+      data: [
+        createMockContentDiagnosticsDuplicatedFinding({
+          id: 26,
+          entity_display_name: "Next page finding",
+        }),
+      ],
+      total: 26,
+    });
+    setup({
+      getResponse: (url) =>
+        new URL(url).searchParams.get("offset") === "25"
+          ? pending.promise
+          : firstPage,
+    });
+    try {
+      expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+      await screen.findByText("First page finding");
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByText("First page finding")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(nextPage));
+      expect(await screen.findByText("Next page finding")).toBeVisible();
+      expect(screen.queryByText("First page finding")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    } finally {
+      pending.resolve(nextPage);
+    }
+  });
+
   it("renders duplicated findings with their duplicate counts in the table", async () => {
     setup({ findings: FINDINGS });
 

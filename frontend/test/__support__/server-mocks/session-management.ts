@@ -30,7 +30,9 @@ export const setupListSessionsEndpoint = (
     offset: null,
     ...overrides,
   };
-  fetchMock.get("path:/api/ee/session-management", response);
+  fetchMock.get("path:/api/ee/session-management", response, {
+    name: "sessions-list",
+  });
 };
 
 export const setupListSessionsErrorEndpoint = () => {

@@ -20,10 +20,12 @@ import { MonitorContent } from "metabase/monitor/components/MonitorLayout/Monito
 import { Route } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { defer } from "metabase/utils/promise";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
   DependencyDiagnosticsUserParams,
   DependencyNode,
+  ListBreakingGraphNodesResponse,
 } from "metabase-types/api";
 import {
   createMockCardDependencyNode,
@@ -60,6 +62,9 @@ type SetupOpts = {
   lastUsedParams?: DependencyDiagnosticsUserParams;
   countsDelay?: number;
   countsError?: boolean;
+  getResponse?: (
+    url: string,
+  ) => ListBreakingGraphNodesResponse | Promise<ListBreakingGraphNodesResponse>;
 };
 
 function setup({
@@ -70,6 +75,7 @@ function setup({
   lastUsedParams = {},
   countsDelay,
   countsError = false,
+  getResponse,
 }: SetupOpts) {
   if (countsError) {
     setupDependencyCountsErrorEndpoint();
@@ -81,17 +87,21 @@ function setup({
   }
   if (mode === "broken") {
     setupListBreakingGraphNodesEndpoint(
-      createMockListBrokenGraphNodesResponse({
-        data: nodes,
-        total: total ?? nodes.length,
-      }),
+      getResponse
+        ? ({ url }) => getResponse(url)
+        : createMockListBrokenGraphNodesResponse({
+            data: nodes,
+            total: total ?? nodes.length,
+          }),
     );
   } else {
     setupListUnreferencedGraphNodesEndpoint(
-      createMockListUnreferencedGraphNodesResponse({
-        data: nodes,
-        total: total ?? nodes.length,
-      }),
+      getResponse
+        ? ({ url }) => getResponse(url)
+        : createMockListUnreferencedGraphNodesResponse({
+            data: nodes,
+            total: total ?? nodes.length,
+          }),
     );
   }
 
@@ -148,6 +158,55 @@ async function waitForListToLoad() {
 }
 
 describe("DependencyDiagnosticsPage", () => {
+  it.each(["broken", "unreferenced"] as const)(
+    "keeps rows under the internal loader while paging %s dependencies",
+    async (mode) => {
+      const pending = defer<ListBreakingGraphNodesResponse>();
+      const firstPage = createMockListBrokenGraphNodesResponse({
+        data: CARD_NODES,
+        total: 26,
+      });
+      const nextPage = createMockListBrokenGraphNodesResponse({
+        data: [
+          createMockCardDependencyNode({
+            id: 26,
+            data: createMockCardDependencyNodeData({
+              name: "Next page question",
+            }),
+          }),
+        ],
+        total: 26,
+      });
+      setup({
+        mode,
+        getResponse: (url) =>
+          new URL(url).searchParams.get("offset") === "25"
+            ? pending.promise
+            : firstPage,
+      });
+      try {
+        expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+        await screen.findByText("Question 1");
+        await userEvent.click(screen.getByLabelText("Next page"));
+        await waitFor(() =>
+          expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+        );
+        expect(screen.getByRole("treegrid")).toBeInTheDocument();
+        expect(screen.getByText("Question 1")).toBeVisible();
+        expect(
+          screen.queryByTestId("tree-table-skeleton"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+        await act(async () => pending.resolve(nextPage));
+        expect(await screen.findByText("Next page question")).toBeVisible();
+        expect(screen.queryByText("Question 1")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+      } finally {
+        pending.resolve(nextPage);
+      }
+    },
+  );
+
   describe("list", () => {
     it("renders the filtered, paginated table while default-population counters are pending", async () => {
       setup({

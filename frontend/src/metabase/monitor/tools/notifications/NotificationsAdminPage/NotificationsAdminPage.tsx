@@ -64,16 +64,10 @@ export const NotificationsAdminPage = () => {
 
   const { modalContent: confirmContent, show: showConfirm } = useConfirmation();
 
-  const {
-    currentData: data,
-    isLoading: isInitialLoading,
-    isFetching,
-    error,
-  } = useAbortableQuery(
+  const { data, isLoading, isFetching, error } = useAbortableQuery(
     useLazyAdminListNotificationsQuery,
     buildListParams(urlState, PAGE_SIZE),
   );
-  const isLoading = isInitialLoading || (isFetching && data === undefined);
   const notifications = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
   const selectedNotifications = useMemo(

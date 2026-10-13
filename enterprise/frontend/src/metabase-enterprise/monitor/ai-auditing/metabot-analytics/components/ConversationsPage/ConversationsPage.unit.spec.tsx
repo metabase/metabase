@@ -21,6 +21,7 @@ import {
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { defer } from "metabase/utils/promise";
 import {
   ALL_USERS_GROUP,
   BOBBY,
@@ -30,7 +31,10 @@ import {
   ROBERT_TENANT,
   selectFilterOption,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
-import type { ConversationSummary } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
+import type {
+  ConversationSummary,
+  ConversationsResponse,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -160,6 +164,41 @@ function findTable() {
 }
 
 describe("ConversationsPage", () => {
+  it("keeps rows under the internal loader while paging conversations", async () => {
+    const pending = defer<ConversationsResponse>();
+    const nextPage: ConversationsResponse = {
+      data: [ROBERT_CONVERSATION],
+      total: 26,
+      offset: 25,
+      limit: 25,
+    };
+    setup({ conversations: [BOBBY_CONVERSATION], total: 26 });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await findTable();
+    fetchMock.modifyRoute("conversations-list", {
+      response: () => pending.promise,
+    });
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByText("How many orders?")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(nextPage));
+      await waitFor(() =>
+        expect(screen.queryByText("How many orders?")).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    } finally {
+      pending.resolve(nextPage);
+    }
+  });
+
   describe("table", () => {
     it("renders the title, user, profile label and IP address of each conversation", async () => {
       setup();

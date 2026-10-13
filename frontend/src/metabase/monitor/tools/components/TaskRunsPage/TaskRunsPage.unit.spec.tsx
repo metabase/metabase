@@ -16,6 +16,7 @@ import {
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import type { ListTaskRunsResponse } from "metabase-types/api";
 import { createMockTaskRun } from "metabase-types/api/mocks";
 
@@ -77,6 +78,41 @@ const selectRange = async (label: string) => {
 };
 
 describe("TaskRunsPage", () => {
+  it("keeps rows under the internal loader while paging", async () => {
+    const pending = defer<ListTaskRunsResponse>();
+    const response = createMockTaskRunsResponse({
+      data: [createMockTaskRun()],
+      total: 26,
+      offset: 25,
+      limit: 25,
+    });
+    const loaded = setup({ taskRunsResponse: { ...response, offset: 0 } });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await loaded;
+    await screen.findByTestId("task-run");
+    fetchMock.modifyRoute("task-runs-list", {
+      response: () => pending.promise,
+    });
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("task-run")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(response));
+      await waitFor(() =>
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument(),
+      );
+    } finally {
+      pending.resolve(response);
+    }
+  });
+
   it("should display formatted datetime for started_at and ended_at", async () => {
     await setup({
       taskRunsResponse: createMockTaskRunsResponse({

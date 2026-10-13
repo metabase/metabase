@@ -257,6 +257,49 @@ const getBulkPosts = async () =>
 const waitForTableToLoad = () => screen.findByRole("treegrid");
 
 describe("NotificationsAdminPage", () => {
+  it.each(["all", "failing", "ownerless"] as const)(
+    "keeps rows under the internal loader while paging %s alerts",
+    async (tab) => {
+      const pending = defer<AdminNotificationListResponse>();
+      const nextPage: AdminNotificationListResponse = {
+        data: [notification2],
+        total: 26,
+        offset: 25,
+        limit: 25,
+      };
+      setup({
+        initialRoute: `${PATHNAME}?tab=${tab}`,
+        getListResponse: ({ url }) =>
+          new URL(url).searchParams.get("offset") === "25"
+            ? pending.promise
+            : { ...nextPage, data: [notification1], offset: 0 },
+      });
+      try {
+        expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+        await waitForTableToLoad();
+        await userEvent.click(screen.getByLabelText("Next page"));
+        await waitFor(() => expect(getListCalls()).toHaveLength(2));
+        expect(screen.getByRole("treegrid")).toBeInTheDocument();
+        expect(screen.getByTestId("notification-row-1")).toBeVisible();
+        expect(screen.getByTestId("loading-overlay")).toBeVisible();
+        expect(
+          screen.queryByTestId("tree-table-skeleton"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+        await act(async () => pending.resolve(nextPage));
+        expect(
+          await screen.findByTestId("notification-row-2"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("notification-row-1"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+      } finally {
+        pending.resolve(nextPage);
+      }
+    },
+  );
+
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
     mockGetBoundingClientRect({ height: 800, width: 1000 });
@@ -302,7 +345,7 @@ describe("NotificationsAdminPage", () => {
     });
 
     it.each(["Failing", "Ownerless"])(
-      "shows a skeleton instead of stale rows while the uncached %s tab loads",
+      "keeps rows under the internal loader while the uncached %s tab loads",
       async (tab) => {
         const pending = defer<AdminNotificationListResponse>();
         const nextNotification = createMockAdminNotification({
@@ -341,16 +384,12 @@ describe("NotificationsAdminPage", () => {
           expect(
             screen.getByTestId("notifications-admin-table"),
           ).toHaveAttribute("aria-busy", "true");
-          expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
-          expect(
-            screen.queryByTestId("notification-row-1"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByTestId("pagination-total"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByTestId("loading-overlay"),
-          ).not.toBeInTheDocument();
+          expect(screen.getByRole("treegrid")).toBeInTheDocument();
+          expect(screen.getByTestId("notification-row-1")).toBeVisible();
+          expect(screen.getByTestId("pagination-total")).toHaveTextContent(
+            "120",
+          );
+          expect(screen.getByTestId("loading-overlay")).toBeVisible();
           act(() => pending.resolve(nextPage));
           expect(
             await screen.findByTestId("notification-row-2"),
@@ -885,7 +924,7 @@ describe("NotificationsAdminPage", () => {
       });
     });
 
-    it("shows a skeleton while uncached sorting results are in flight", async () => {
+    it("keeps rows under the internal loader while uncached sorting results are in flight", async () => {
       setup({
         notifications: [notification1, notification2],
         refetchDelay: 10_000,
@@ -900,14 +939,10 @@ describe("NotificationsAdminPage", () => {
       await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
 
       await waitFor(() => expect(getListCalls()).toHaveLength(2));
-      expect(
-        within(table).queryByTestId("loading-overlay"),
-      ).not.toBeInTheDocument();
+      expect(within(table).getByTestId("loading-overlay")).toBeVisible();
       expect(table).toHaveAttribute("aria-busy", "true");
-      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId("notification-row-1"),
-      ).not.toBeInTheDocument();
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("notification-row-1")).toBeVisible();
 
       act(() => {
         jest.advanceTimersByTime(10_000);
@@ -934,11 +969,9 @@ describe("NotificationsAdminPage", () => {
 
       const table = screen.getByTestId("notifications-admin-table");
       await waitFor(() => expect(getListCalls()).toHaveLength(2));
-      expect(
-        within(table).queryByTestId("loading-overlay"),
-      ).not.toBeInTheDocument();
+      expect(within(table).getByTestId("loading-overlay")).toBeVisible();
       expect(table).toHaveAttribute("aria-busy", "true");
-      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
       await waitFor(() => {

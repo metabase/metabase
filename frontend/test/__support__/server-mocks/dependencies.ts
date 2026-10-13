@@ -1,4 +1,4 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock, { type CallLog, type UserRouteConfig } from "fetch-mock";
 
 import type {
   DependencyCountsResponse,
@@ -7,6 +7,8 @@ import type {
   ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
+
+type MockResponse<T> = T | ((call: CallLog) => T | Promise<T>);
 
 export function setupDependencyCountsEndpoint(
   response: DependencyCountsResponse = { breaking: 0, unreferenced: 0 },
@@ -24,7 +26,7 @@ export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
 }
 
 export function setupListBreakingGraphNodesEndpoint(
-  response: ListBreakingGraphNodesResponse,
+  response: MockResponse<ListBreakingGraphNodesResponse>,
 ) {
   fetchMock.get("path:/api/ee/dependencies/graph/breaking", response);
 }
@@ -34,7 +36,7 @@ export function setupListBrokenGraphNodesEndpoint(nodes: DependencyNode[]) {
 }
 
 export function setupListUnreferencedGraphNodesEndpoint(
-  response: ListUnreferencedGraphNodesResponse,
+  response: MockResponse<ListUnreferencedGraphNodesResponse>,
 ) {
   fetchMock.get("path:/api/ee/dependencies/graph/unreferenced", response);
 }

@@ -21,6 +21,7 @@ import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -74,6 +75,38 @@ const getLastTaskCallUrl = () => {
 };
 
 describe("TaskListPage", () => {
+  it("keeps rows under the internal loader while paging", async () => {
+    const pending = defer<ListTasksResponse>();
+    const response = createMockTasksResponse({
+      data: [createMockTask()],
+      total: 26,
+      offset: 25,
+      limit: 25,
+    });
+    setup({ tasksResponse: { ...response, offset: 0 } });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await screen.findByText("A task");
+    fetchMock.modifyRoute("task-list", { response: () => pending.promise });
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("task")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(response));
+      await waitFor(() =>
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument(),
+      );
+    } finally {
+      pending.resolve(response);
+    }
+  });
+
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
   });

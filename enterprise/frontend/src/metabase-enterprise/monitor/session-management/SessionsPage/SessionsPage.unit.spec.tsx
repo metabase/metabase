@@ -157,6 +157,50 @@ const getRevokeBodies = () =>
     .map((call) => JSON.parse(String(call.options.body)));
 
 describe("SessionsPage", () => {
+  it.each(["active", "ended"] as const)(
+    "keeps rows under the internal loader while paging %s sessions",
+    async (tab) => {
+      const pending = defer<SessionListResponse>();
+      const nextPage: SessionListResponse = {
+        data: [BOB_SESSION],
+        total: 26,
+        limit: 25,
+        offset: 25,
+      };
+      setup({
+        sessions: [ANN_SESSION],
+        total: 26,
+        initialRoute: `${PATHNAME}?tab=${tab}`,
+      });
+      expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+      await screen.findByRole("treegrid");
+      fetchMock.modifyRoute("sessions-list", {
+        response: () => pending.promise,
+      });
+      try {
+        await userEvent.click(screen.getByLabelText("Next page"));
+        await waitFor(() =>
+          expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+        );
+        expect(screen.getByRole("treegrid")).toBeInTheDocument();
+        expect(screen.getByTestId("session-row-ann-session")).toBeVisible();
+        expect(
+          screen.queryByTestId("tree-table-skeleton"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+        await act(async () => pending.resolve(nextPage));
+        expect(
+          await screen.findByTestId("session-row-bob-session"),
+        ).toBeVisible();
+        expect(
+          screen.queryByTestId("session-row-ann-session"),
+        ).not.toBeInTheDocument();
+      } finally {
+        pending.resolve(nextPage);
+      }
+    },
+  );
+
   beforeEach(() => {
     mockGetBoundingClientRect({ height: 800, width: 1000 });
   });
