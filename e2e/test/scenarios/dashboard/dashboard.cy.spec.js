@@ -9,7 +9,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
   createMockDashboardCard,
@@ -1344,28 +1343,16 @@ describe("scenarios > dashboard > permissions", () => {
       .should("be.visible");
   });
 
-  it("should offer loading notifications only for cards the user can see (metabase#28756)", () => {
-    const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + 1000;
-    const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
-
-    // The toast is only offered while the browser has not been asked for notification permission yet
-    cy.on("window:before:load", (win) => {
-      Object.defineProperty(win.Notification, "permission", {
-        get: () => "default",
-      });
-    });
+  it("should not count cards the user cannot see as loading (metabase#28756)", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
       req.on("response", (res) => {
         res.setDelay(60_000);
       });
     });
-    cy.clock();
 
-    cy.log("Cards that are still loading show the toast");
+    cy.log("The tab title shows the loading progress");
     cy.visit(`/dashboard/${dashboardId}`);
-    H.getDashboardCard(0).findByTestId("loading-indicator").should("exist");
-    cy.tick(TOAST_TIMEOUT);
-    H.undoToast().should("contain.text", TOAST_MESSAGE);
+    cy.title().should("contain", "0/2 loaded");
 
     cy.log(
       "A card the user has no permission to see does not count as loading",
@@ -1379,11 +1366,7 @@ describe("scenarios > dashboard > permissions", () => {
     H.getDashboardCards()
       .should("contain", "Sorry, you don't have permission to see this card.")
       .and("contain", "bar");
-    cy.tick(TOAST_TIMEOUT);
-    // The menu renders after any toast that the tick could trigger
-    H.openDashboardMenu();
-    H.popover().should("be.visible");
-    H.undoToast().should("not.exist");
+    cy.title().should("match", /^Test Dashboard · /);
   });
 });
 
