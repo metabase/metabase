@@ -72,12 +72,8 @@
   (when (changed? instance columns)
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(def ^:private entity-models
-  "The models whose rows are tracked entities rather than parts of one."
-  [:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Sandbox :model/Segment
-   :model/Transform])
-
-(doseq [model entity-models]
+(doseq [model [:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Sandbox
+               :model/Segment :model/Transform]]
   (defmethod dependencies.hooks/before-insert model
     [_model _instance]
     (mark-created!))
