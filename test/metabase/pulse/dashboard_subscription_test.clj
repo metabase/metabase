@@ -1786,6 +1786,47 @@
                     (first (:channel/email pulse-results))
                     #"Aviary KPIs")))))))))
 
+(defn- send-email-dashsub-with-details!
+  "Send a one-card dashboard subscription named \"Aviary KPIs\" to rasta over an email channel with `details`, and
+  return the captured email."
+  [details]
+  (mt/with-temp [:model/Card                  {card-id :id}      {:name          pulse.test-util/card-name
+                                                                  :dataset_query (mt/mbql-query orders {:limit 1})}
+                 :model/Dashboard             {dashboard-id :id} {:name "Aviary KPIs"}
+                 :model/DashboardCard         _                  {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}
+                 :model/Pulse                 {pulse-id :id}     {:name         "Pulse Name"
+                                                                  :dashboard_id dashboard-id}
+                 :model/PulseCard             _                  {:pulse_id pulse-id
+                                                                  :card_id  card-id
+                                                                  :position 0}
+                 :model/PulseChannel          {pc-id :id}        {:pulse_id     pulse-id
+                                                                  :channel_type "email"
+                                                                  :details      details}
+                 :model/PulseChannelRecipient _                  {:user_id          (pulse.test-util/rasta-id)
+                                                                  :pulse_channel_id pc-id}]
+    (-> (pulse.test-util/with-captured-channel-send-messages!
+          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+        :channel/email
+        first)))
+
+(deftest dashboard-sub-custom-subject-test
+  (testing "An email channel with :subject sends it as the subject and keeps the dashboard name in the body (#63305)"
+    (is (= (rasta-dashsub-message {:subject "Aviary KPIs, Account A"})
+           (mt/summarize-multipart-single-email
+            (send-email-dashsub-with-details! {:subject "Aviary KPIs, Account A"})
+            #"Aviary KPIs")))))
+
+(deftest dashboard-sub-custom-subject-is-literal-test
+  (testing "Template syntax in a custom subject is sent as typed, not resolved against the payload"
+    (is (= "{{payload.dashboard.id}} report"
+           (:subject (send-email-dashsub-with-details! {:subject "{{payload.dashboard.id}} report"}))))))
+
+(deftest dashboard-sub-without-subject-uses-dashboard-name-test
+  (testing "An email channel without :subject keeps the dashboard name as the subject"
+    (is (= "Aviary KPIs"
+           (:subject (send-email-dashsub-with-details! {}))))))
+
 (deftest dashboard-sub-slack-include-pdf-test
   (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
     (notification.tu/with-channel-fixtures [:channel/slack]

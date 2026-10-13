@@ -13,13 +13,13 @@ describe("scenarios > visualizations > waterfall", () => {
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
     H.chartPathWithFillColor("#88BF4D").should("be.visible"); // A bar
     H.chartPathWithFillColor("#303D46").should("be.visible"); // Total bar
-    H.echartsContainer().get("text").contains("Total");
+    H.echartsContainer().find("text").contains("Total");
 
     if (xLabel) {
-      H.echartsContainer().get("text").contains(xLabel);
+      H.echartsContainer().find("text").contains(xLabel);
     }
     if (yLabel) {
-      H.echartsContainer().get("text").contains(yLabel);
+      H.echartsContainer().find("text").contains(yLabel);
     }
   }
 
@@ -36,7 +36,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
-  it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
+  it("should work with quantitative and ordinal series and numeric X-axis (metabase#15550)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select 1 as X, 20 as Y union select 2 as X, -10 as Y");
 
@@ -52,29 +52,14 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Y").click();
 
+    verifyWaterfallRendering("X", "Y");
+
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
     H.sidebar().findAllByDisplayValue("Linear").first().click();
     H.popover().findByText("Ordinal").click();
-
-    verifyWaterfallRendering("X", "Y");
-  });
-
-  it("should work with quantitative series", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select 1 as X, 10 as Y union select 2 as X, -2 as Y");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
-    switchToWaterfallDisplay();
-
-    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
-    H.popover().findByText("X").click();
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
-    H.popover().findByText("Y").click();
+    H.sidebar().findByDisplayValue("Ordinal").should("exist");
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -122,7 +107,8 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    H.echartsContainer().get("text").contains("Total").should("not.exist");
+    H.chartPathWithFillColor("#303D46").should("exist");
+    H.echartsContainer().find("text").contains("Total").should("not.exist");
   });
 
   describe("multi-series (metabase#15152)", () => {
@@ -143,10 +129,11 @@ describe("scenarios > visualizations > waterfall", () => {
       H.echartsContainer().within(() => {
         cy.findByText("Created At: Year").should("exist"); // x-axis
         cy.findByText("Count").should("exist"); // y-axis
+        cy.findByText("Total").should("exist");
         cy.findByText("Sum of Total").should("not.exist");
 
         // x-axis labels (some)
-        ["2025", "2026", "2029", "Total"].forEach((label) => {
+        ["2025", "2026", "2029"].forEach((label) => {
           cy.findByText(label).should("exist");
         });
 
@@ -170,8 +157,8 @@ describe("scenarios > visualizations > waterfall", () => {
       });
 
       H.echartsContainer().within(() => {
-        cy.findByText("Sum of Total").should("exist"); // x-axis
-        cy.findByText("Created At: Year").should("exist"); // y-axis
+        cy.findByText("Sum of Total").should("exist"); // y-axis
+        cy.findByText("Created At: Year").should("exist"); // x-axis
         cy.findByText("Count").should("not.exist");
 
         // x-axis labels (some)
@@ -191,7 +178,7 @@ describe("scenarios > visualizations > waterfall", () => {
       testSwitchingToWaterfall();
     });
 
-    it("should correctly switch into single-series mode for ad-hoc queries", () => {
+    it("should correctly switch into single-series mode for saved questions", () => {
       H.createQuestion(
         { name: "Q1", query: DATASET_QUERY.query, display: "line" },
         { visitQuestion: true },
@@ -228,10 +215,13 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Count").click();
 
-    H.echartsContainer().should("exist"); // Chart renders after adding a metric
+    H.echartsContainer().findByText("Total").should("exist");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Add another/).should("not.exist");
+    H.leftSidebar().within(() => {
+      cy.findByDisplayValue("Created At: Year").should("exist");
+      cy.findByText("Add series breakout").should("not.exist");
+      cy.findByText(/Add another/).should("not.exist");
+    });
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {
@@ -352,8 +342,9 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
-  it("should allow adding non-series columns to the tooltip", () => {
+  it("should show the total bar tooltip, allow adding non-series columns to the tooltip, and display a goal line (metabase#48118)", () => {
     const INCREASE_COLOR = "#00FF00";
+    const TOTAL_BAR_COLOR = "#303D46";
 
     function getFirstWaterfallSegment() {
       return H.echartsContainer()
@@ -375,6 +366,12 @@ describe("scenarios > visualizations > waterfall", () => {
       visualization_settings: {
         "waterfall.increase_color": INCREASE_COLOR,
       },
+    });
+
+    H.chartPathWithFillColor(TOTAL_BAR_COLOR).realHover();
+    H.assertEChartsTooltip({
+      header: "Total",
+      rows: [{ name: "Count", value: "18,760", color: TOTAL_BAR_COLOR }],
     });
 
     getFirstWaterfallSegment().realHover();
@@ -400,49 +397,6 @@ describe("scenarios > visualizations > waterfall", () => {
         { name: "Sum of Total", value: "42,156.87" },
       ],
     });
-  });
-
-  it("should show tooltip when hovering the total bar (metabase#48118)", () => {
-    H.visitQuestionAdhoc({
-      display: "waterfall",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-      },
-    });
-
-    const totalBarColor = "#303D46";
-
-    H.chartPathWithFillColor(totalBarColor).realHover();
-
-    H.assertEChartsTooltip({
-      header: "Total",
-      rows: [{ name: "Count", value: "18,760", color: totalBarColor }],
-    });
-  });
-
-  it("should display goal line when configured", () => {
-    H.visitQuestionAdhoc({
-      display: "waterfall",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-      },
-    });
-
-    H.openVizSettingsSidebar();
-
-    H.leftSidebar().contains("Display").click();
 
     H.leftSidebar().within(() => {
       cy.findByText("Goal line").click();
@@ -456,9 +410,6 @@ describe("scenarios > visualizations > waterfall", () => {
 
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsNormalUser();
-
       H.startNewNativeQuestion();
       H.NativeEditor.type("select 'A' as X, -4.56 as Y");
       cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -467,43 +418,37 @@ describe("scenarios > visualizations > waterfall", () => {
       switchToWaterfallDisplay();
     });
 
-    it("should have increase, decrease, and total color options", () => {
+    it("should allow toggling of the total bar and value labels, and have color options", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
+
+      H.echartsContainer().find("text").contains("Total").should("exist");
+
+      cy.get('[data-field-title="Show total"]').within(() => {
+        cy.findByRole("switch").click({ force: true });
+      });
+
+      H.echartsContainer().find("text").contains("Total").should("not.exist");
+
+      cy.get('[data-field-title="Show total"]').within(() => {
+        cy.findByRole("switch").click({ force: true });
+      });
+      H.echartsContainer().find("text").contains("Total").should("exist");
+
+      H.chartPathWithFillColor("#303D46").should("exist");
+      H.echartsContainer().find("text").contains("(4.56)").should("not.exist");
+
+      cy.get('[data-field-title="Show values on data points"]')
+        .findByRole("switch")
+        .click({ force: true });
+      H.echartsContainer().find("text").contains("(4.56)").should("be.visible");
+
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Increase color").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Decrease color").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total color").click();
-    });
-
-    it("should allow toggling of the total bar", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Display").click();
-
-      cy.get('[data-field-title="Show total"]').within(() => {
-        cy.findByRole("switch").click({ force: true });
-      });
-
-      H.echartsContainer().get("text").contains("Total").should("not.exist");
-
-      cy.get('[data-field-title="Show total"]').within(() => {
-        cy.findByRole("switch").click({ force: true });
-      });
-      H.echartsContainer().get("text").contains("Total").should("exist");
-    });
-
-    it("should allow toggling of value labels", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Display").click();
-
-      H.echartsContainer().get("text").contains("(4.56)").should("not.exist");
-
-      cy.get('[data-field-title="Show values on data points"]')
-        .findByRole("switch")
-        .click({ force: true });
-      H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });
 });
@@ -526,5 +471,5 @@ const switchToWaterfallDisplay = () => {
 
 function getWaterfallDataLabels() {
   // paint-order='stroke' targets the waterfall labels only
-  return H.echartsContainer().get("text[paint-order='stroke']");
+  return H.echartsContainer().find("text[paint-order='stroke']");
 }

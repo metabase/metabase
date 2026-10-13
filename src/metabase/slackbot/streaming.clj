@@ -246,7 +246,7 @@
       "You do not have permission to use the AI assistant."
 
       (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
-         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
+         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth" "ai_provider_unavailable"} code)
       (:message error)
 
       (provider-config-error-codes code)
@@ -278,7 +278,8 @@
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
-  (let [message         (metabot.envelope/user-message prompt)
+  (let [metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+        message         (metabot.envelope/user-message prompt)
         model-ref       (metabot.settings/llm-metabot-provider)
         ai-proxy?       (llm.provider/managed-model-ref? model-ref)
         ;; Read with `ai-proxy?`, before the loop, so the row's verdict uses the model the turn ran on.
@@ -314,7 +315,7 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id
+                         {:metabot metabot
                           :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
@@ -360,6 +361,7 @@
                  (agent/run-agent-loop
                   {:messages        messages
                    :state           baseline-state
+                   :metabot         metabot
                    :profile-id      :slackbot
                    :conversation-id conversation-id
                    :context         context

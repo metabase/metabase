@@ -174,8 +174,7 @@ export const Comments = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     }

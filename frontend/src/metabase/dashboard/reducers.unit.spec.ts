@@ -474,17 +474,23 @@ describe("dashboard reducers", () => {
 
     const overriddenState = () =>
       reducer(
-        selectedState(),
-        setDashCardTimelineEventsVisibility({
-          1: { "timeline.selected_timeline_ids": [10] },
-        }),
+        reducer(
+          selectedState(),
+          setDashCardTimelineEventsVisibility({
+            1: { "timeline.selected_timeline_ids": [10] },
+          }),
+        ),
+        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
       );
 
-    it("resets when dashboard editing starts", () => {
-      const state = reducer(overriddenState(), {
-        type: SET_EDITING_DASHBOARD,
-        payload: TEST_DASHBOARD,
-      });
+    it.each([
+      {
+        name: "dashboard editing starts",
+        action: { type: SET_EDITING_DASHBOARD, payload: TEST_DASHBOARD },
+      },
+      { name: "another dashboard is opened", action: { type: INITIALIZE } },
+    ])("resets when $name", ({ action }) => {
+      const state = reducer(overriddenState(), action);
       expect(state.timelineEvents).toEqual({
         overrides: {},
         enabledByDashCard: {},
@@ -493,17 +499,16 @@ describe("dashboard reducers", () => {
       });
     });
 
-    it("drops the session overrides when the dashboard is refetched", () => {
-      const overridden = reducer(
-        overriddenState(),
-        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
-      );
-      const state = timelineEvents(overridden.timelineEvents, {
+    it("keeps the session overrides when the dashboard is refetched", () => {
+      const state = timelineEvents(overriddenState().timelineEvents, {
         type: fetchDashboard.fulfilled.type,
       });
-      expect(state.overrides).toEqual({});
-      expect(state.enabledByDashCard).toEqual({});
-      expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
+      expect(state).toEqual({
+        overrides: { 1: { "timeline.selected_timeline_ids": [10] } },
+        enabledByDashCard: { 1: false },
+        selection: { dashcardId: 1, eventIds: [100] },
+        hasTrackedEventsShown: false,
+      });
     });
   });
 

@@ -179,6 +179,7 @@
  sync-util/reducible-sync-tables
  system/ensure-readable-path!
  system/ensure-writable-path!
+ system/readable-path?
  system/site-uuid
  upload.db/current-database)
 

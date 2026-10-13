@@ -698,7 +698,9 @@
                     (chunk-message {:type                              "message_stop"
                                     :amazon-bedrock-invocationMetrics {:inputTokenCount 10 :outputTokenCount 2}})])))))
   (testing "an exception partway through becomes Claude's error chunk"
-    (is (= [{:type :error :errorText "Model stream error"}]
+    (is (= [{:type      :error
+             :errorText "Model stream error"
+             :error     {:type "modelStreamErrorException" :message "Model stream error"}}]
            (filter (comp #{:error} :type)
                    (runtime-chunks-for! [message-start stream-error]))))))
 

@@ -21,7 +21,7 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 
-import { FIXED_METABOT_IDS } from "../../constants";
+import { FIXED_METABOT_ENTITY_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
 import { getMetabotState, metabotReducer } from "../../state";
 import {
@@ -96,7 +96,7 @@ const setup = ({
   setupDatabaseListEndpoint([]);
   setupListMetabotConversationsEndpoint([]);
   fetchMock.get(
-    `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: [], offset: 0, limit: 3, total: 3 },
   );
 
