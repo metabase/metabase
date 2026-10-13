@@ -30,6 +30,8 @@ const QUESTION_BASED_QUESTION_BROKEN_FILTER =
 const TABLE_BASED_MODEL = "Test Table-based model";
 const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
   "Test Model-based model with broken aggregation";
+const MODEL_BASED_QUESTION_BROKEN_FILTER =
+  "Test Model-based question with broken filter";
 
 const BROKEN_TABLE_DEPENDENCIES = [TABLE_DISPLAY_NAME];
 const BROKEN_TABLE_DEPENDENTS = [
@@ -45,7 +47,10 @@ const BROKEN_TABLE_DEPENDENTS = [
 const BROKEN_QUESTION_DEPENDENCIES = [TABLE_BASED_QUESTION];
 const BROKEN_QUESTION_DEPENDENTS = [QUESTION_BASED_QUESTION_BROKEN_FILTER];
 const BROKEN_MODEL_DEPENDENCIES = [TABLE_BASED_MODEL];
-const BROKEN_MODEL_DEPENDENTS = [MODEL_BASED_MODEL_BROKEN_AGGREGATION];
+const BROKEN_MODEL_DEPENDENTS = [
+  MODEL_BASED_MODEL_BROKEN_AGGREGATION,
+  MODEL_BASED_QUESTION_BROKEN_FILTER,
+];
 
 const BROKEN_DEPENDENCIES = [
   ...BROKEN_TABLE_DEPENDENCIES,
@@ -66,15 +71,14 @@ const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
-  TABLE_DISPLAY_NAME, // 1-2 errors: SCORE; STATUS only if the join condition counts
+  TABLE_DISPLAY_NAME, // 1 error: SCORE. The analysis does not count STATUS in a `:fields` list or a join condition.
   TABLE_BASED_QUESTION, // 3 errors: PRICE, TAX, DISCOUNT
   TABLE_BASED_MODEL, // 4 errors: AMOUNT, QUANTITY, SUBTOTAL, TOTAL
 ];
 
-// Ties are broken by entity id, and the question is created before the model.
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
   TABLE_BASED_QUESTION, // 1 question
-  TABLE_BASED_MODEL, // 1 model
+  TABLE_BASED_MODEL, // 1 model, 1 question
   TABLE_DISPLAY_NAME, // 5 questions
 ];
 
@@ -99,7 +103,7 @@ describe("scenarios > dependencies > broken list", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should list broken dependencies, search them, and show the sidebar for broken dependents", () => {
+  it("should list, search, sort, and filter broken dependencies and show the sidebar for broken dependents", () => {
     H.DependencyDiagnostics.visitBrokenDependencies();
     checkList({
       visibleEntities: BROKEN_DEPENDENCIES,
@@ -155,72 +159,8 @@ describe("scenarios > dependencies > broken list", () => {
       triggered_from: "diagnostics-broken-list",
       event_detail: "card",
     });
-  });
 
-  it("should filter entities by type and location", () => {
-    H.DependencyDiagnostics.visitBrokenDependencies();
-    H.DependencyDiagnostics.filterButton().click();
-    H.popover().within(() => {
-      cy.findByText("Table").click();
-      cy.findByText("Question").click();
-      cy.findByText("Model").click();
-    });
-
-    cy.log("only tables");
-    H.popover().findByText("Table").click();
-    checkList({
-      visibleEntities: BROKEN_TABLE_DEPENDENCIES,
-      hiddenEntities: [
-        ...BROKEN_QUESTION_DEPENDENCIES,
-        ...BROKEN_MODEL_DEPENDENCIES,
-      ],
-    });
-
-    cy.log("only questions");
-    H.popover().within(() => {
-      cy.findByText("Table").click();
-      cy.findByText("Question").click();
-    });
-    checkList({
-      visibleEntities: BROKEN_QUESTION_DEPENDENCIES,
-      hiddenEntities: [
-        ...BROKEN_TABLE_DEPENDENCIES,
-        ...BROKEN_MODEL_DEPENDENCIES,
-      ],
-    });
-
-    cy.log("only models");
-    H.popover().within(() => {
-      cy.findByText("Question").click();
-      cy.findByText("Model").click();
-    });
-    checkList({
-      visibleEntities: BROKEN_MODEL_DEPENDENCIES,
-      hiddenEntities: [
-        ...BROKEN_TABLE_DEPENDENCIES,
-        ...BROKEN_QUESTION_DEPENDENCIES,
-      ],
-    });
-
-    cy.log("all types");
-    H.popover().within(() => {
-      cy.findByText("Table").click();
-      cy.findByText("Question").click();
-    });
-    checkList({ visibleEntities: BROKEN_DEPENDENCIES });
-
-    cy.log("without items in personal collections");
-    H.popover().findByText("Include items in personal collections").click();
-    checkList({
-      visibleEntities: [
-        ...BROKEN_TABLE_DEPENDENCIES,
-        ...BROKEN_MODEL_DEPENDENCIES,
-      ],
-      hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
-    });
-  });
-
-  it("should sort entities", () => {
+    cy.log("sorting");
     H.DependencyDiagnostics.visitBrokenDependencies();
     H.DependencyDiagnostics.searchInput().type("test");
     cy.wait("@breakingEntities");
@@ -289,6 +229,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     cy.log("sorted by dependents with errors ascending");
+    interceptSaveListParams();
     sortList({
       header: "Broken dependents",
       column: "dependents-with-errors",
@@ -296,6 +237,101 @@ describe("scenarios > dependencies > broken list", () => {
     });
     checkListSorting({
       visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+    });
+    cy.wait("@saveListParams");
+
+    cy.log("sorting persisted after page reload");
+    H.DependencyDiagnostics.visitBrokenDependencies();
+    H.DependencyDiagnostics.searchInput().type("test");
+    cy.wait("@breakingEntities")
+      .its("request.url")
+      .should("include", "sort-column=dependents-with-errors")
+      .and("include", "sort-direction=asc");
+    checkListSorting({
+      visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+    });
+
+    cy.log("filtering");
+    H.DependencyDiagnostics.filterButton().click();
+    H.popover().within(() => {
+      cy.findByText("Table").click();
+      cy.findByText("Question").click();
+      cy.findByText("Model").click();
+    });
+
+    cy.log("only tables");
+    H.popover().findByText("Table").click();
+    checkList({
+      visibleEntities: BROKEN_TABLE_DEPENDENCIES,
+      hiddenEntities: [
+        ...BROKEN_QUESTION_DEPENDENCIES,
+        ...BROKEN_MODEL_DEPENDENCIES,
+      ],
+    });
+
+    cy.log("only questions");
+    H.popover().within(() => {
+      cy.findByText("Table").click();
+      cy.findByText("Question").click();
+    });
+    checkList({
+      visibleEntities: BROKEN_QUESTION_DEPENDENCIES,
+      hiddenEntities: [
+        ...BROKEN_TABLE_DEPENDENCIES,
+        ...BROKEN_MODEL_DEPENDENCIES,
+      ],
+    });
+
+    cy.log("only models");
+    H.popover().within(() => {
+      cy.findByText("Question").click();
+      cy.findByText("Model").click();
+    });
+    checkList({
+      visibleEntities: BROKEN_MODEL_DEPENDENCIES,
+      hiddenEntities: [
+        ...BROKEN_TABLE_DEPENDENCIES,
+        ...BROKEN_QUESTION_DEPENDENCIES,
+      ],
+    });
+
+    cy.log("all types");
+    H.popover().within(() => {
+      cy.findByText("Table").click();
+      cy.findByText("Question").click();
+    });
+    checkList({ visibleEntities: BROKEN_DEPENDENCIES });
+
+    cy.log("without items in personal collections");
+    interceptSaveListParams();
+    H.popover().findByText("Include items in personal collections").click();
+    checkList({
+      visibleEntities: [
+        ...BROKEN_TABLE_DEPENDENCIES,
+        ...BROKEN_MODEL_DEPENDENCIES,
+      ],
+      hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
+    });
+    cy.wait("@saveListParams");
+
+    cy.log("filters persisted after page reload");
+    H.DependencyDiagnostics.visitBrokenDependencies();
+    H.DependencyDiagnostics.searchInput().type("test");
+    checkList({
+      visibleEntities: [
+        ...BROKEN_TABLE_DEPENDENCIES,
+        ...BROKEN_MODEL_DEPENDENCIES,
+      ],
+      hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
+    });
+    H.DependencyDiagnostics.filterButton().click();
+    H.popover().within(() => {
+      cy.findByRole("checkbox", { name: "Table" }).should("be.checked");
+      cy.findByRole("checkbox", { name: "Question" }).should("be.checked");
+      cy.findByRole("checkbox", { name: "Model" }).should("be.checked");
+      cy.findByRole("checkbox", {
+        name: "Include items in personal collections",
+      }).should("not.be.checked");
     });
   });
 });
@@ -495,6 +531,17 @@ function createModelContent() {
     }).then(({ body: card }) => {
       cy.wrap(card.id).as("modelId");
       H.createQuestion({
+        name: MODEL_BASED_QUESTION_BROKEN_FILTER,
+        query: {
+          "source-table": `card__${card.id}`,
+          filter: [
+            "=",
+            ["field", "AMOUNT", { "base-type": "type/Integer" }],
+            0,
+          ],
+        },
+      });
+      H.createQuestion({
         name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
         type: "model",
         query: {
@@ -585,6 +632,13 @@ function checkSidebar({
       });
     }
   });
+}
+
+function interceptSaveListParams() {
+  cy.intercept(
+    "PUT",
+    "/api/user-key-value/namespace/dependency_diagnostics/key/broken",
+  ).as("saveListParams");
 }
 
 // Each call must request a new column and direction, or the list is served from
