@@ -6,6 +6,7 @@
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
@@ -391,8 +392,8 @@
                                       :type    "clojure.lang.ExceptionInfo"
                                       :data    {:status-code 400 :api-error true :error-code :llm-not-configured}}})]
       (is (str/includes? text "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."))))
-  (testing "a provider failure the customer can fix keeps the message the agent loop wrote for it"
-    (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"]]
+  (testing "a provider failure the agent loop explained keeps the message it wrote for it"
+    (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth" "ai_provider_unavailable"]]
       (let [text (dm-error-part-appended-text!
                   {:type :error :error {:message "Ask your administrator to check the AI provider." :error-code code}})]
         (is (str/includes? text "Ask your administrator to check the AI provider.") code))))
@@ -478,6 +479,21 @@
                          :timeout-ms 5000})))
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
+
+(deftest ^:synchronized slackbot-streaming-internal-metabot-test
+  (tu/with-slackbot-setup
+    (let [event-body tu/base-dm-event]
+      (tu/with-slackbot-mocks
+        {:ai-text "Hello!"}
+        (fn [{:keys [ai-request-calls stop-stream-calls]}]
+          (mt/client :post 200 "metabot/slack/events"
+                     (tu/slack-request-options event-body)
+                     event-body)
+          (u/poll {:thunk #(pos? (count @stop-stream-calls))
+                   :done? true?
+                   :timeout-ms 5000})
+          (is (= (t2/select-one :model/Metabot :entity_id metabot.config/internal-metabot-id)
+                 (:metabot (last @ai-request-calls)))))))))
 
 (deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test
   (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"

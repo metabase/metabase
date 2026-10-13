@@ -337,7 +337,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
       return updated;
     } catch (error) {
       console.error("Failed to save theme:", error);
-      sendToast({ message: t`Failed to save theme`, icon: "warning" });
+      sendToast({ message: t`Failed to save theme`, variant: "negative" });
       return null;
     }
   }, [currentTheme, isDraft, themeId, createTheme, updateTheme, sendToast]);
