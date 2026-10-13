@@ -197,10 +197,6 @@ jobs:
           name: ${{ inputs.snapshots-artifact }}
           path: e2e
 
-      - name: Create writable_db in QA databases
-        if: ${{ steps.snapshots.outcome == 'success' }}
-        run: bun e2e/support/create-writable-dbs.ts
-
       - name: Generate database snapshots
         if: ${{ steps.snapshots.outcome == 'skipped' }}
         env:

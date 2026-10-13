@@ -8,7 +8,9 @@ const dbClients = {};
 
 function getDbClient(connectionConfig) {
   const connectionId =
-    connectionConfig.client + connectionConfig.connection.database;
+    connectionConfig.client +
+    connectionConfig.connection.database +
+    connectionConfig.connection.user;
 
   // we only need to create one client per db per run
   if (!dbClients[connectionId]) {
@@ -39,6 +41,8 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
  * For mysql, drops all user created tables from the writable_db database.
  */
 export async function resetWritableDb({ type = "postgres" }) {
+  await createWritableDb({ type });
+
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
 
   if (type === "postgres") {
