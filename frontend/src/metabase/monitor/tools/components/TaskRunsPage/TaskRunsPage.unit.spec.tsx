@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupTaskRunsEndpoints } from "__support__/server-mocks";
+import {
+  setupTaskCountsEndpoint,
+  setupTaskRunsEndpoints,
+} from "__support__/server-mocks";
 import {
   act,
   mockGetBoundingClientRect,
@@ -13,8 +16,11 @@ import {
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import type { ListTaskRunsResponse } from "metabase-types/api";
 import { createMockTaskRun } from "metabase-types/api/mocks";
+
+import { TasksSectionLayout } from "../../routes";
 
 import { TaskRunsPage } from "./TaskRunsPage";
 
@@ -31,13 +37,16 @@ const setup = async ({
   }),
   initialRoute = PATHNAME,
 }: SetupOpts = {}) => {
+  setupTaskCountsEndpoint({ tasks: 0, runs: taskRunsResponse.total });
   setupTaskRunsEndpoints(taskRunsResponse);
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const utils = renderWithProviders(
-    <Route path={PATHNAME} element={<TaskRunsPage />}>
-      <Route path=":runId" />
+    <Route element={<TasksSectionLayout />}>
+      <Route path={PATHNAME} element={<TaskRunsPage />}>
+        <Route path=":runId" />
+      </Route>
     </Route>,
     {
       initialRoute,
@@ -69,6 +78,41 @@ const selectRange = async (label: string) => {
 };
 
 describe("TaskRunsPage", () => {
+  it("keeps rows under the internal loader while paging", async () => {
+    const pending = defer<ListTaskRunsResponse>();
+    const response = createMockTaskRunsResponse({
+      data: [createMockTaskRun()],
+      total: 26,
+      offset: 25,
+      limit: 25,
+    });
+    const loaded = setup({ taskRunsResponse: { ...response, offset: 0 } });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await loaded;
+    await screen.findByTestId("task-run");
+    fetchMock.modifyRoute("task-runs-list", {
+      response: () => pending.promise,
+    });
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("task-run")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(response));
+      await waitFor(() =>
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument(),
+      );
+    } finally {
+      pending.resolve(response);
+    }
+  });
+
   it("should display formatted datetime for started_at and ended_at", async () => {
     await setup({
       taskRunsResponse: createMockTaskRunsResponse({
@@ -111,7 +155,7 @@ describe("TaskRunsPage", () => {
       taskRunsResponse: createMockTaskRunsResponse({
         data: [createMockTaskRun()],
         total: 75,
-        limit: 50,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -154,6 +198,8 @@ describe("TaskRunsPage", () => {
       });
 
       const params = getLastRunsParams();
+      expect(params.get("limit")).toBe("25");
+      expect(params.get("offset")).toBe("0");
       expect(params.get("sort-column")).toBe("started_at");
       expect(params.get("sort-direction")).toBe("desc");
     });
@@ -260,7 +306,7 @@ describe("TaskRunsPage", () => {
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
           total: 75,
-          limit: 50,
+          limit: 25,
           offset: 0,
         }),
       });
@@ -275,7 +321,7 @@ describe("TaskRunsPage", () => {
       await userEvent.click(nextPage);
 
       await waitFor(() => {
-        expect(getLastRunsParams().get("offset")).toBe("50");
+        expect(getLastRunsParams().get("offset")).toBe("25");
       });
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);

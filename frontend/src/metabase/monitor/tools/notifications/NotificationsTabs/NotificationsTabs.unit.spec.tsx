@@ -1,120 +1,111 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { TabCountState } from "metabase/common/components/PillTabNavigation";
+
+import type {
+  NotificationsTab,
+  NotificationsUrlState,
+} from "../NotificationsAdminPage/types";
+import { trackAlertsManagementTabClicked } from "../analytics";
 
 import { NotificationsTabs } from "./NotificationsTabs";
 
 jest.mock("../analytics", () => ({
-  trackAlertsManagementTabClicked: jest.fn(),
+  trackAlertsManagementTabClicked: jest.fn<void, [NotificationsTab]>(),
 }));
 
+interface SetupOpts {
+  tab?: NotificationsTab;
+  allCount?: TabCountState;
+  failingCount?: TabCountState;
+  ownerlessCount?: TabCountState;
+}
+
+function setup({
+  tab = "all",
+  allCount = { status: "loaded", value: 5 },
+  failingCount = { status: "loaded", value: 2 },
+  ownerlessCount = { status: "loaded", value: 0 },
+}: SetupOpts = {}) {
+  const onChange = jest.fn<void, [Partial<NotificationsUrlState>]>();
+  renderWithProviders(
+    <NotificationsTabs
+      tab={tab}
+      allCount={allCount}
+      failingCount={failingCount}
+      ownerlessCount={ownerlessCount}
+      onChange={onChange}
+    />,
+    { withRouter: true },
+  );
+  return { onChange };
+}
+
 describe("NotificationsTabs", () => {
-  it("defaults the Failing tab to sort by last_check so newly surfaced failures aren't buried at the bottom", async () => {
-    const onChange = jest.fn();
-    renderWithProviders(
-      <NotificationsTabs
-        tab="all"
-        allCount={{ status: "loaded", value: 3 }}
-        failingCount={{ status: "loaded", value: 3 }}
-        ownerlessCount={{ status: "loaded", value: 0 }}
-        onChange={onChange}
-      />,
-    );
-
-    await userEvent.click(screen.getByRole("tab", { name: /Failing/ }));
-
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tab: "failing",
-        sort_column: "last_check",
-        sort_direction: "desc",
-      }),
-    );
+  it("defaults Failing to last_check descending and clears the send-status filter", async () => {
+    const { onChange } = setup();
+    await userEvent.click(screen.getByRole("button", { name: "Failing" }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      tab: "failing",
+      last_send_status: null,
+      sort_column: "last_check",
+      sort_direction: "desc",
+    });
+    expect(trackAlertsManagementTabClicked).toHaveBeenCalledTimes(1);
+    expect(trackAlertsManagementTabClicked).toHaveBeenCalledWith("failing");
   });
 
-  it("always renders all three tabs, even when a tab's count is zero", () => {
-    renderWithProviders(
-      <NotificationsTabs
-        tab="all"
-        allCount={{ status: "loaded", value: 5 }}
-        failingCount={{ status: "loaded", value: 0 }}
-        ownerlessCount={{ status: "loaded", value: 0 }}
-        onChange={jest.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByTestId("notifications-admin-tab-all"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId("notifications-admin-tab-failing"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId("notifications-admin-tab-ownerless"),
-    ).toBeInTheDocument();
+  it("clears the creator-active filter when switching to Ownerless", async () => {
+    const { onChange } = setup();
+    await userEvent.click(screen.getByRole("button", { name: "Ownerless" }));
+    expect(onChange).toHaveBeenCalledWith({
+      tab: "ownerless",
+      creator_active: null,
+    });
   });
 
-  it("shows the resolved count next to each tab", () => {
-    renderWithProviders(
-      <NotificationsTabs
-        tab="all"
-        allCount={{ status: "loaded", value: 5 }}
-        failingCount={{ status: "loaded", value: 2 }}
-        ownerlessCount={{ status: "loaded", value: 0 }}
-        onChange={jest.fn()}
-      />,
+  it("marks the selected tab as the current page", () => {
+    setup({ tab: "ownerless" });
+    expect(screen.getByRole("button", { name: "Ownerless" })).toHaveAttribute(
+      "aria-current",
+      "page",
     );
-
     expect(
-      within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
-        "2",
-      ),
+      screen.getByRole("button", { name: "All alerts" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("shows resolved counts including zero without hiding tabs", () => {
+    setup();
+    expect(
+      within(screen.getByRole("button", { name: "All alerts" })).getByText("5"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByTestId("notifications-admin-tab-ownerless")).getByText(
-        "0",
-      ),
+      within(screen.getByRole("button", { name: "Failing" })).getByText("2"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("button", { name: "Ownerless" })).getByText("0"),
     ).toBeInTheDocument();
   });
 
-  it("drops the badge when a count fails to load", () => {
-    renderWithProviders(
-      <NotificationsTabs
-        tab="all"
-        allCount={{ status: "error" }}
-        failingCount={{ status: "loaded", value: 2 }}
-        ownerlessCount={{ status: "loaded", value: 0 }}
-        onChange={jest.fn()}
-      />,
-    );
-
+  it("drops a failed badge but keeps navigation available", () => {
+    setup({ allCount: { status: "error" } });
     expect(
-      within(screen.getByTestId("notifications-admin-tab-all")).queryByText(
+      within(screen.getByRole("button", { name: "All alerts" })).queryByText(
         /\d/,
       ),
     ).not.toBeInTheDocument();
     expect(
-      within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
-        "2",
-      ),
+      within(screen.getByRole("button", { name: "Failing" })).getByText("2"),
     ).toBeInTheDocument();
   });
 
-  it("shows a loading placeholder instead of a count while it resolves", () => {
-    renderWithProviders(
-      <NotificationsTabs
-        tab="all"
-        allCount={{ status: "loading" }}
-        failingCount={{ status: "loading" }}
-        ownerlessCount={{ status: "loading" }}
-        onChange={jest.fn()}
-      />,
-    );
-
-    const failingTab = screen.getByTestId("notifications-admin-tab-failing");
-    expect(
-      within(failingTab).getByTestId("tab-count-skeleton"),
-    ).toBeInTheDocument();
-    expect(within(failingTab).queryByText(/\d/)).not.toBeInTheDocument();
+  it("shows a placeholder while the count resolves", () => {
+    setup({ failingCount: { status: "loading" } });
+    const tab = screen.getByRole("button", { name: "Failing" });
+    expect(within(tab).getByTestId("tab-count-skeleton")).toBeInTheDocument();
+    expect(within(tab).queryByText(/\d/)).not.toBeInTheDocument();
   });
 });

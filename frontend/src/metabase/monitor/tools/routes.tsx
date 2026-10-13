@@ -1,4 +1,5 @@
-import { Route, redirect } from "metabase/router";
+import { useGetTaskCountsQuery } from "metabase/api/task";
+import { Outlet, Route, redirect } from "metabase/router";
 
 /**
  * The task pages, in one chunk. Moving between the task list, a task and its
@@ -27,14 +28,22 @@ const taskRunDetailsPage = () =>
     /* webpackChunkName: "monitor-tasks" */ "./components/TaskRunDetailsPage"
   ).then(({ TaskRunDetailsPage }) => ({ Component: TaskRunDetailsPage }));
 
+export function TasksSectionLayout() {
+  useGetTaskCountsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
+
+  return <Outlet />;
+}
+
 export const getTasksRoutes = () => (
-  <>
+  <Route element={<TasksSectionLayout />}>
     <Route index element={redirect("list")} />
     <Route path="list" lazy={taskListPage} />
     <Route path="list/:taskId" lazy={taskDetailsPage} />
     <Route path="runs" lazy={taskRunsPage} />
     <Route path="runs/:runId" lazy={taskRunDetailsPage} />
-  </>
+  </Route>
 );
 
 export { getRoutes as getNotificationsRoutes } from "./notifications/routes";

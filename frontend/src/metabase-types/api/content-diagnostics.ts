@@ -8,6 +8,15 @@ import type { TransformId } from "./transform";
 import type { UserId } from "./user";
 import type { VisualizationDisplay } from "./visualization";
 
+export interface ContentDiagnosticsCountsResponse {
+  stale: number;
+  duplicated: number;
+  slow: number;
+  empty: number;
+  sparse: number;
+  crowded: number;
+}
+
 export const CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES = [
   "empty",
   "sparse",

@@ -1,19 +1,27 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import type { ModelCacheRefreshStatus } from "metabase-types/api";
+import { defer } from "metabase/utils/promise";
+import type {
+  ListPersistedInfoResponse,
+  ModelCacheRefreshStatus,
+} from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
 import { ModelPersistenceLogJobs } from "./ModelPersistenceLogJobs";
 
-async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
+type SetupOpts = { logs?: ModelCacheRefreshStatus[]; total?: number };
+
+async function setup({ logs = [], total = logs.length }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 100, height: 100 });
-  setupModelPersistenceEndpoints(logs);
+  setupModelPersistenceEndpoints(logs, { total });
 
   renderWithProviders(<ModelPersistenceLogJobs />);
 
@@ -21,6 +29,40 @@ async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
 }
 
 describe("ModelPersistenceLogJobs", () => {
+  it("keeps rows under the internal loader while paging model persistence logs", async () => {
+    const pending = defer<ListPersistedInfoResponse>();
+    const firstLog = getMockModelCacheInfo({
+      state: "persisted",
+      card_name: "First model",
+    });
+    const nextPage: ListPersistedInfoResponse = {
+      data: [getMockModelCacheInfo({ id: 21, card_name: "Next model" })],
+      total: 21,
+      limit: 20,
+      offset: 20,
+    };
+    const loaded = setup({ logs: [firstLog], total: 21 });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await loaded;
+    await screen.findByText("First model");
+    fetchMock.modifyRoute("persist-list", { response: () => pending.promise });
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await screen.findByTestId("loading-overlay");
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByText("First model")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("21");
+      await act(async () => pending.resolve(nextPage));
+      expect(await screen.findByText("Next model")).toBeVisible();
+      expect(screen.queryByText("First model")).not.toBeInTheDocument();
+    } finally {
+      pending.resolve(nextPage);
+    }
+  });
+
   it("shows empty state when there are no cache logs", async () => {
     await setup({ logs: [] });
     expect(await screen.findByText("No log entries")).toBeInTheDocument();

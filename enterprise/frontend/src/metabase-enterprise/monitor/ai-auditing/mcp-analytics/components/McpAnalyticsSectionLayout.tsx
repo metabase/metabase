@@ -7,6 +7,7 @@ import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
+import { useAuditRowCount } from "metabase-enterprise/monitor/ai-auditing/hooks/useAuditRowCount";
 import {
   VIEW_GROUP_MEMBERS,
   VIEW_MCP_TOOL_CALLS,
@@ -47,6 +48,7 @@ export function McpAnalyticsSectionLayout() {
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
+  const tabCount = useAuditRowCount(toolCallsAudit);
 
   const dataSources = useMemo(
     () => ({
@@ -84,6 +86,7 @@ export function McpAnalyticsSectionLayout() {
     },
     {
       label: t`Tool calls`,
+      count: tabCount,
       to: `${eventsPath}${location.search}`,
       isSelected: (pathname) => pathname === eventsPath,
     },

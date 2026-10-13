@@ -1,5 +1,10 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { lazyLoaders } from "__support__/lazy-routes";
+import {
+  setupContentDiagnosticsCountsEndpoint,
+  setupDependencyCountsEndpoint,
+  setupTaskCountsEndpoint,
+} from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
@@ -175,6 +180,9 @@ const setup = ({
   tokenFeatures,
 }: SetupOpts) => {
   deny.forEach((guard) => mockDeniedGuards.add(guard));
+  setupContentDiagnosticsCountsEndpoint();
+  setupDependencyCountsEndpoint();
+  setupTaskCountsEndpoint();
 
   return renderWithProviders(
     <Route path="/">

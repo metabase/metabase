@@ -3,6 +3,8 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupContentDiagnosticsCountsEndpoint,
+  setupContentDiagnosticsCountsErrorEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListStaleFindingsEndpoint,
   setupUpdateCardEndpointWithError,
@@ -10,6 +12,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -23,6 +26,7 @@ import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { defer } from "metabase/utils/promise";
 import type {
+  ContentDiagnosticsCountsResponse,
   ContentDiagnosticsStaleFinding,
   ContentDiagnosticsStaleUserParams,
   InvalidateFindingsResponse,
@@ -36,6 +40,8 @@ import {
   createMockListStaleFindingsResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { ContentDiagnosticsSectionLayout } from "../routes";
 
 import { StaleContentPage } from "./StaleContentPage";
 
@@ -64,6 +70,8 @@ type SetupOpts = {
     url: string,
   ) => ListStaleFindingsResponse | Promise<ListStaleFindingsResponse>;
   withUndos?: boolean;
+  getCountsResponse?: () => Promise<ContentDiagnosticsCountsResponse>;
+  countsError?: boolean;
 };
 
 function setup({
@@ -74,7 +82,24 @@ function setup({
   error = false,
   getResponse,
   withUndos = false,
+  getCountsResponse,
+  countsError = false,
 }: SetupOpts = {}) {
+  if (countsError) {
+    setupContentDiagnosticsCountsErrorEndpoint();
+  } else {
+    setupContentDiagnosticsCountsEndpoint(
+      getCountsResponse ?? {
+        stale: 137,
+        duplicated: 0,
+        slow: 23,
+        empty: 1,
+        sparse: 6,
+        crowded: 2,
+      },
+      { name: "content-counts" },
+    );
+  }
   if (error) {
     fetchMock.get("path:/api/ee/content-diagnostics/stale", {
       status: 500,
@@ -100,14 +125,16 @@ function setup({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router, store } = renderWithProviders(
-    <Route
-      path={Urls.staleContent()}
-      element={
-        <MonitorContent>
-          <StaleContentPage />
-        </MonitorContent>
-      }
-    />,
+    <Route element={<ContentDiagnosticsSectionLayout />}>
+      <Route
+        path={Urls.staleContent()}
+        element={
+          <MonitorContent>
+            <StaleContentPage />
+          </MonitorContent>
+        }
+      />
+    </Route>,
     {
       withRouter: true,
       withUndos,
@@ -122,6 +149,54 @@ function setup({
 }
 
 describe("StaleContentPage", () => {
+  it("keeps rows under the internal loader while paging content", async () => {
+    const pending = defer<ListStaleFindingsResponse>();
+    const firstPage = createMockListStaleFindingsResponse({
+      data: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_display_name: "First page finding",
+        }),
+      ],
+      total: 26,
+    });
+    const nextPage = createMockListStaleFindingsResponse({
+      data: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 26,
+          entity_display_name: "Next page finding",
+        }),
+      ],
+      total: 26,
+    });
+    setup({
+      getResponse: (url) =>
+        new URL(url).searchParams.get("offset") === "25"
+          ? pending.promise
+          : firstPage,
+    });
+    try {
+      expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+      await screen.findByText("First page finding");
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByText("First page finding")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(nextPage));
+      expect(await screen.findByText("Next page finding")).toBeVisible();
+      expect(screen.queryByText("First page finding")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    } finally {
+      pending.resolve(nextPage);
+    }
+  });
+
   beforeEach(() => {
     trackSimpleEvent.mockClear();
   });
@@ -150,6 +225,113 @@ describe("StaleContentPage", () => {
         event_detail: "card",
       });
     });
+  });
+
+  it("keeps filtered, paginated findings visible while default counts load", async () => {
+    const pendingCounts = defer<ContentDiagnosticsCountsResponse>();
+    const counts: ContentDiagnosticsCountsResponse = {
+      stale: 137,
+      duplicated: 0,
+      slow: 23,
+      empty: 1,
+      sparse: 6,
+      crowded: 2,
+    };
+    setup({
+      findings: FINDINGS,
+      total: 60,
+      urlParams: {
+        page: "1",
+        query: "Sales",
+        "threshold-days": "90",
+        "include-personal-collections": "true",
+      },
+      getCountsResponse: () => pendingCounts.promise,
+    });
+
+    try {
+      expect(await screen.findByText("Sales overview")).toBeVisible();
+      expect(screen.getAllByTestId("tab-count-skeleton")).toHaveLength(6);
+      expect(screen.getByRole("link", { name: "Crowded" })).toHaveAttribute(
+        "href",
+        Urls.imbalancedContent("crowded"),
+      );
+      await act(async () => pendingCounts.resolve(counts));
+      expect(
+        await within(screen.getByRole("link", { name: "Stale" })).findByText(
+          "137",
+        ),
+      ).toBeInTheDocument();
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/ee/content-diagnostics/counts",
+      );
+      expect(calls).toHaveLength(1);
+      expect(new URL(calls[0].url).search).toBe("");
+      const listParams = getLastRequestUrl().searchParams;
+      expect(listParams.get("query")).toBe("Sales");
+      expect(listParams.get("offset")).toBe("25");
+      expect(listParams.get("threshold-days")).toBe("90");
+      expect(listParams.get("include-personal-collections")).toBe("true");
+    } finally {
+      pendingCounts.resolve(counts);
+    }
+  });
+
+  it("keeps the findings table usable when counts fail", async () => {
+    setup({ findings: FINDINGS, countsError: true });
+
+    expect(await screen.findByText("Sales overview")).toBeVisible();
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/counts"),
+      ).toHaveLength(1);
+      expect(
+        fetchMock.callHistory.done("path:/api/ee/content-diagnostics/counts"),
+      ).toBe(true);
+      expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0);
+    });
+    expect(
+      within(screen.getByRole("link", { name: "Stale" })).queryByText(/\d/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("treegrid")).toBeVisible();
+  });
+
+  it("refreshes counts after dismissal and retains known values while refreshing", async () => {
+    setupInvalidateFindingsEndpoint({ invalidated: [1, 2], skipped: [] });
+    setup({ findings: FINDINGS });
+    const staleTab = screen.getByRole("link", { name: "Stale" });
+    expect(await within(staleTab).findByText("137")).toBeInTheDocument();
+    await screen.findByText("Sales overview");
+
+    const pendingCounts = defer<ContentDiagnosticsCountsResponse>();
+    const refreshedCounts: ContentDiagnosticsCountsResponse = {
+      stale: 135,
+      duplicated: 0,
+      slow: 23,
+      empty: 1,
+      sparse: 6,
+      crowded: 2,
+    };
+    fetchMock.modifyRoute("content-counts", {
+      response: () => pendingCounts.promise,
+    });
+    try {
+      await userEvent.click(screen.getByLabelText("Select all"));
+      await confirmBulkAction("Dismiss findings");
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(
+            "path:/api/ee/content-diagnostics/counts",
+          ),
+        ).toHaveLength(2),
+      );
+      expect(within(staleTab).getByText("137")).toBeInTheDocument();
+      expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0);
+      await act(async () => pendingCounts.resolve(refreshedCounts));
+      expect(await within(staleTab).findByText("135")).toBeInTheDocument();
+    } finally {
+      pendingCounts.resolve(refreshedCounts);
+    }
   });
 
   it("renders stale findings in the table", async () => {

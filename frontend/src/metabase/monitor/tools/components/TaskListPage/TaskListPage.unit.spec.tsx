@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupDatabasesEndpoints,
+  setupTaskCountsEndpoint,
   setupTasksEndpoints,
   setupUniqueTasksEndpoint,
 } from "__support__/server-mocks";
@@ -20,9 +21,12 @@ import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { TasksSectionLayout } from "../../routes";
 
 import { TaskListPage } from "./TaskListPage";
 
@@ -41,6 +45,7 @@ const setup = ({
   }),
   tasksResponse = createMockTasksResponse(),
 }: SetupOpts = {}) => {
+  setupTaskCountsEndpoint({ tasks: tasksResponse.total, runs: 0 });
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -52,8 +57,10 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} element={<TaskListPage />}>
-      <Route path=":taskId" />
+    <Route element={<TasksSectionLayout />}>
+      <Route path={PATHNAME} element={<TaskListPage />}>
+        <Route path=":taskId" />
+      </Route>
     </Route>,
     {
       initialRoute: `${location.pathname}${location.search}`,
@@ -68,6 +75,38 @@ const getLastTaskCallUrl = () => {
 };
 
 describe("TaskListPage", () => {
+  it("keeps rows under the internal loader while paging", async () => {
+    const pending = defer<ListTasksResponse>();
+    const response = createMockTasksResponse({
+      data: [createMockTask()],
+      total: 26,
+      offset: 25,
+      limit: 25,
+    });
+    setup({ tasksResponse: { ...response, offset: 0 } });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await screen.findByText("A task");
+    fetchMock.modifyRoute("task-list", { response: () => pending.promise });
+    try {
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() =>
+        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+      );
+      expect(screen.getByRole("treegrid")).toBeInTheDocument();
+      expect(screen.getByTestId("task")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(response));
+      await waitFor(() =>
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument(),
+      );
+    } finally {
+      pending.resolve(response);
+    }
+  });
+
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
   });
@@ -114,8 +153,8 @@ describe("TaskListPage", () => {
   it("should have working pagination controls if there's more than 1 page", async () => {
     const { router } = setup({
       tasksResponse: createMockTasksResponse({
-        total: 75,
-        limit: 50,
+        total: 42,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -127,7 +166,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     const previousPage = await screen.findByRole("button", {
       name: "Previous page",
@@ -145,8 +184,8 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
     expect(previousPage).toBeEnabled();
@@ -158,9 +197,9 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(previousPage).toBeDisabled();
@@ -173,7 +212,7 @@ describe("TaskListPage", () => {
       tasksResponse: createMockTasksResponse({
         data: [createMockTask()],
         total: 75,
-        limit: 50,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -191,7 +230,7 @@ describe("TaskListPage", () => {
     const { router } = setup({
       tasksResponse: createMockTasksResponse({
         total: 75,
-        limit: 50,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -203,7 +242,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     const previousPage = await screen.findByRole("button", {
       name: "Previous page",
@@ -215,8 +254,8 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
     ]);
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -230,9 +269,9 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
@@ -246,7 +285,7 @@ describe("TaskListPage", () => {
     const { router } = setup({
       tasksResponse: createMockTasksResponse({
         total: 75,
-        limit: 50,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -258,7 +297,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     const previousPage = await screen.findByRole("button", {
       name: "Previous page",
@@ -270,8 +309,8 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
     ]);
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -285,9 +324,9 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success",
     ]);
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
@@ -302,7 +341,7 @@ describe("TaskListPage", () => {
       tasksResponse: createMockTasksResponse({
         data: [createMockTask()],
         total: 75,
-        limit: 50,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -314,7 +353,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     const previousPage = await screen.findByRole("button", {
       name: "Previous page",
@@ -328,8 +367,8 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
     ]);
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -341,9 +380,9 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=25&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=asc",
     ]);
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
@@ -363,7 +402,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -389,8 +428,8 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
     expect(router?.location.search).toEqual("");
@@ -415,9 +454,9 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
     expect(router?.location.search).toEqual("?task=task-b");
@@ -433,10 +472,10 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success",
     ]);
     await waitForLoaderToBeRemoved();
     act(() => {
@@ -451,11 +490,11 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(router?.location.search).toEqual("?status=success");
@@ -474,7 +513,7 @@ describe("TaskListPage", () => {
       expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
     });
     expect(getLastTaskCallUrl()).toEqual(
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     );
     const startedAtHeader = await screen.findByRole("columnheader", {
       name: /Started at/,
@@ -497,7 +536,7 @@ describe("TaskListPage", () => {
       ).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
     expect(getLastTaskCallUrl()).toEqual(
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=asc",
     );
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -513,7 +552,7 @@ describe("TaskListPage", () => {
       ).toHaveAttribute("aria-sort", "descending");
     });
     expect(getLastTaskCallUrl()).toEqual(
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc",
     );
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -545,7 +584,7 @@ describe("TaskListPage", () => {
         ),
       ).toBeInTheDocument();
       expect(getLastTaskCallUrl()).toEqual(
-        `http://localhost/api/task?limit=50&offset=0&sort_column=${column}&sort_direction=asc`,
+        `http://localhost/api/task?limit=25&offset=0&sort_column=${column}&sort_direction=asc`,
       );
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
@@ -584,7 +623,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -611,7 +650,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=started_at&sort_direction=desc&status=success",
     ]);
     await waitForLoaderToBeRemoved();
 
@@ -636,7 +675,7 @@ describe("TaskListPage", () => {
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
     ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
+      "http://localhost/api/task?limit=25&offset=0&sort_column=duration&sort_direction=asc",
     ]);
   });
 

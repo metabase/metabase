@@ -313,7 +313,10 @@ function CliEventsTableInner({
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
-            <LoadingOverlay visible={isFetching} />
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
             <TreeTable
               instance={treeTableInstance}
               hierarchical={false}

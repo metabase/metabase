@@ -7,11 +7,11 @@ import type {
 
 import type { NotificationsTab, TabFilters } from "./types";
 
-export const PAGE_SIZE = 50;
+export { PAGE_SIZE } from "metabase/monitor/constants";
 
 export const DEFAULT_TAB: NotificationsTab = "all";
 
-export const DEFAULT_ACTIVE: boolean | null = true;
+export const DEFAULT_ACTIVE = true;
 export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "last_send";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 

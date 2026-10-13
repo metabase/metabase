@@ -6,7 +6,7 @@ import type {
 
 import type { SessionsTab } from "./types";
 
-export const PAGE_SIZE = 50;
+export { PAGE_SIZE } from "metabase/monitor/constants";
 
 export const DEFAULT_TAB: SessionsTab = "active";
 
