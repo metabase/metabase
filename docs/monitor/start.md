@@ -34,6 +34,7 @@ Monitor contains three sections:
 - **[Scheduled jobs](./scheduled-jobs.md)**: View the recurring work Metabase performs on a schedule, like cache refreshes, model persistence refreshes, and health checks.
 - **[Application logs](./application-logs.md)**: View Metabase's logs, and configure how much information Metabase logs.
 - **[Model persistence log](./model-persistence-log.md)**: View the status of persisted models and refresh their cached results.
+- **[Session management](./session-management.md)**: View and revoke specific sessions or all sessions.
 
 ### AI auditing
 
