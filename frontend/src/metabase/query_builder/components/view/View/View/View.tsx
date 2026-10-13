@@ -37,6 +37,7 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { QuerySheetTabs, SummarySheet } from "../../SummarySheet";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -163,6 +164,8 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
       isShowingSummarySidebar,
+      editSummary,
+      onCloseSummary,
       isShowingTemplateTagsEditor,
       isShowingDataReference,
       isShowingSnippetSidebar,
@@ -241,17 +244,24 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
 
+    const { isEditable } = Lib.queryDisplayInfo(query);
+    const hasSheetTabs =
+      !isNative && isEditable && !isNewQuestion && queryBuilderMode === "view";
+    // the summarize button opens the "Summary" sheet tab instead of a sidebar
+    const isShowingSummarySheet = hasSheetTabs && isShowingSummarySidebar;
+
     const showLeftSidebar =
-      isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
+      !isShowingSummarySheet &&
+      (isShowingChartSettingsSidebar || isShowingChartTypeSidebar);
     const showRightSidebar =
-      isShowingTimelineSidebar ||
-      isShowingQuestionInfoSidebar ||
-      isShowingQuestionSettingsSidebar ||
-      (!isNative && isShowingSummarySidebar) ||
-      (isNative &&
-        (isShowingTemplateTagsEditor ||
-          isShowingDataReference ||
-          isShowingSnippetSidebar));
+      !isShowingSummarySheet &&
+      (isShowingTimelineSidebar ||
+        isShowingQuestionInfoSidebar ||
+        isShowingQuestionSettingsSidebar ||
+        (isNative &&
+          (isShowingTemplateTagsEditor ||
+            isShowingDataReference ||
+            isShowingSnippetSidebar)));
 
     const rightSidebarWidth = match({
       isShowingTimelineSidebar,
@@ -286,27 +296,44 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                 setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
-            <ViewSidebar side="left" isOpen={showLeftSidebar}>
-              <ViewLeftSidebarContainer
-                question={question}
-                result={result}
-                isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
-                isShowingChartTypeSidebar={isShowingChartTypeSidebar}
-              />
-            </ViewSidebar>
-            <ViewMainContainer
-              {...props}
-              showLeftSidebar={showLeftSidebar}
-              showRightSidebar={showRightSidebar}
-            />
-            <ViewSidebar
-              side="right"
-              isOpen={showRightSidebar}
-              width={rightSidebarWidth}
-            >
-              <ViewRightSidebarContainer {...props} />
-            </ViewSidebar>
+            {isShowingSummarySheet ? (
+              <SummarySheet question={question} />
+            ) : (
+              <>
+                <ViewSidebar side="left" isOpen={showLeftSidebar}>
+                  <ViewLeftSidebarContainer
+                    question={question}
+                    result={result}
+                    isShowingChartSettingsSidebar={
+                      isShowingChartSettingsSidebar
+                    }
+                    isShowingChartTypeSidebar={isShowingChartTypeSidebar}
+                  />
+                </ViewSidebar>
+                <ViewMainContainer
+                  {...props}
+                  showLeftSidebar={showLeftSidebar}
+                  showRightSidebar={showRightSidebar}
+                  isDataSheet={hasSheetTabs}
+                />
+                <ViewSidebar
+                  side="right"
+                  isOpen={showRightSidebar}
+                  width={rightSidebarWidth}
+                >
+                  <ViewRightSidebarContainer {...props} />
+                </ViewSidebar>
+              </>
+            )}
           </Flex>
+          {hasSheetTabs && (
+            <QuerySheetTabs
+              question={question}
+              isShowingSummary={isShowingSummarySheet}
+              onShowData={onCloseSummary}
+              onShowSummary={editSummary}
+            />
+          )}
         </Flex>
 
         {isShowingNewbModal && (
