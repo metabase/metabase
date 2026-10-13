@@ -203,6 +203,8 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
           queues[project.name].push(file);
           pending += 1;
         }
+        // Experiment: slowest first again, to log its garbage collection time.
+        if (process.env.NT_ORDER === "slowest") for (const queue of Object.values(queues)) queue.sort((a, b) => (durations[b] ?? Infinity) - (durations[a] ?? Infinity));
         fill();
       });
     },

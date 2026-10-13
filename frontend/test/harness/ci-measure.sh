@@ -40,7 +40,9 @@ measure() {
   tail -5 "$log"
 }
 
-measure 1 jest
-measure 1 "harness, isolated"
-measure 2 "harness, isolated"
-measure 3 "harness, isolated"
+# Experiment: garbage collection time for each file under two queue orders.
+round=0
+for order in list slowest list; do
+  round=$((round + 1))
+  NT_ORDER=$order measure "$round" "harness, $order"
+done

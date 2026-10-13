@@ -854,6 +854,31 @@ const fileCleanup = async () => {
 };
 
 let filesRunHere = 0;
+// Experiment: garbage collection time since the previous line of the file log.
+const gcLog = (() => {
+  if (!process.env.NT_FILE_LOG) return null;
+  const { PerformanceObserver, constants } = require("node:perf_hooks");
+  let all = 0;
+  let major = 0;
+  let count = 0;
+  const add = (entries) => {
+    for (const entry of entries) {
+      all += entry.duration;
+      count += 1;
+      if (entry.detail.kind === constants.NODE_PERFORMANCE_GC_MAJOR) major += entry.duration;
+    }
+  };
+  const observer = new PerformanceObserver((list) => add(list.getEntries()));
+  observer.observe({ entryTypes: ["gc"] });
+  return () => {
+    add(observer.takeRecords());
+    const line = `gc=${Math.round(all)} major=${Math.round(major)} gcs=${count} heap=${Math.round(process.memoryUsage().heapUsed / 1048576)}`;
+    all = 0;
+    major = 0;
+    count = 0;
+    return line;
+  };
+})();
 let fileStarted = 0;
 globalThis.__testHarness.runFile = async (t, file) => {
   fileStarted = Date.now();
@@ -878,7 +903,7 @@ globalThis.__testHarness.runFile = async (t, file) => {
   } finally {
     if (process.env.NT_FILE_LOG) {
       filesRunHere += 1;
-      process.stderr.write(`[file] pid=${process.pid} idx=${filesRunHere} ms=${Date.now() - fileStarted} rss=${Math.round(process.memoryUsage().rss / 1048576)} mods=${Object.keys(require.cache).length} ${currentFile}\n`);
+      process.stderr.write(`[file] pid=${process.pid} idx=${filesRunHere} ms=${Date.now() - fileStarted} rss=${Math.round(process.memoryUsage().rss / 1048576)} mods=${Object.keys(require.cache).length} ${gcLog()} ${currentFile}\n`);
     }
     await fileCleanup();
   }
