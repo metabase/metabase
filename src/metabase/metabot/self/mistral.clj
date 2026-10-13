@@ -56,9 +56,8 @@
 
   Each catalog entry has one `:id` and a list of `:aliases` (https://docs.mistral.ai/openapi.yaml, `BaseModelCard`).
   One model can have several names, and the catalog can list one entry for each name. Each of these entries gives
-  the other names of the model in `:aliases` (`GET /v1/models`, observed 2026-10-13,
-  https://github.com/metabase/metabase/pull/83864#discussion_r4257121407). Thus the whitelisted id can be the `:id`
-  or an alias, and this function checks both. Several entries can resolve to the same id, and [[list-models]]
+  the other names of the model in `:aliases` (`GET /v1/models`, probed 2026-10-13). Thus the whitelisted id can be
+  the `:id` or an alias, and this function checks both. Several entries can resolve to the same id, and [[list-models]]
   removes the duplicates."
   [{:keys [id aliases]}]
   (some #(when (contains? supported-models %) %)
