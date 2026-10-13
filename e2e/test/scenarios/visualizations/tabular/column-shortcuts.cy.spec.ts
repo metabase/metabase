@@ -383,16 +383,10 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.tableHeaderClick("Email");
     H.popover().findByText("Combine columns").click();
 
-    H.popover().within(() => {
-      cy.findByTestId("combine-example").should(
-        "contain",
-        "email@example.com12345",
-      );
-      cy.findByText("ID").click();
-    });
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().findByText("Name").click();
+    H.popover()
+      .findByTestId("combine-example")
+      .should("contain", "email@example.com12345");
+    selectColumn(1, "Name");
 
     H.popover().within(() => {
       cy.findByText("Separated by (empty)").click();
@@ -408,15 +402,20 @@ describe("scenarios > visualizations > combine shortcut", () => {
         "email@example.com__text__12345",
       );
 
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByRole("textbox").last().clear();
+      cy.findAllByLabelText("Separator")
+        .should("have.length", 2)
+        .last()
+        .clear();
       cy.findByTestId("combine-example").should(
         "have.text",
         "email@example.com__text12345",
       );
 
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByRole("textbox").last().clear().type("+");
+      cy.findAllByLabelText("Separator")
+        .should("have.length", 2)
+        .last()
+        .clear()
+        .type("+");
       cy.findByTestId("combine-example").should(
         "have.text",
         "email@example.com__text+12345",
@@ -425,8 +424,8 @@ describe("scenarios > visualizations > combine shortcut", () => {
       cy.findByText("Done").click();
     });
 
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
+      .should("have.length", 4)
       .last()
       .should("have.text", "Combined Email, Name, ID");
 
