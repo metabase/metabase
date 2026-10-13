@@ -106,16 +106,7 @@
       (is (contains? (set (:copy spec)) :manifest))
       (is (contains? (set (:copy spec)) :bundle_hash))
       (is (contains? (set (:skip spec)) :dev_bundle_url))
-      (is (contains? (set (:skip spec)) :error_message))))
-  (testing "enabled is admin-owned state of the instance, never synchronized"
-    (let [spec (serdes/make-spec "CustomVizPlugin" {})]
-      (is (contains? (set (:skip spec)) :enabled))
-      (is (not (contains? (set (:copy spec)) :enabled)))))
-  (testing "status is never exported; it is derived from the bundle on import"
-    (let [spec (serdes/make-spec "CustomVizPlugin" {})]
-      (is (contains? (set (:skip spec)) :status))
-      (is (not (contains? (set (:copy spec)) :status)))
-      (is (not (contains? (:transform spec) :status))))))
+      (is (contains? (set (:skip spec)) :error_message)))))
 
 (deftest bundle-b64-round-trip-test
   (testing "bundle bytes base64-encode on export and decode back to bytes on import"

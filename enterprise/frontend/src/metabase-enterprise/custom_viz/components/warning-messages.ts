@@ -37,9 +37,7 @@ export function getCustomVizPluginWarningMessage(
 }
 
 /**
- * The error to show for a plugin, if any. A `pending` plugin was left behind by an older
- * serdes import that never validated its bundle; nothing resolves that status, so it is
- * presented exactly like an error.
+ * Error message to show for a plugin. `pending` state is treated as an error.
  */
 export function getCustomVizPluginErrorMessage(
   plugin: Pick<CustomVizPlugin, "status" | "error_message">,

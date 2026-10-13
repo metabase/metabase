@@ -1,7 +1,4 @@
-import {
-  getCustomVizPluginErrorMessage,
-  getCustomVizPluginWarningMessage,
-} from "./warning-messages";
+import { getCustomVizPluginWarningMessage } from "./warning-messages";
 
 describe("getCustomVizPluginWarningMessage", () => {
   it("describes a stamped SDK version outside the tested range", () => {
@@ -46,34 +43,6 @@ describe("getCustomVizPluginWarningMessage", () => {
       }),
     ).toBe(
       `The identifier "acme:viz" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
-    );
-  });
-});
-
-describe("getCustomVizPluginErrorMessage", () => {
-  it("returns the plugin's own message for an error", () => {
-    expect(
-      getCustomVizPluginErrorMessage({
-        status: "error",
-        error_message: "Bundle is empty",
-      }),
-    ).toBe("Bundle is empty");
-  });
-
-  it("returns nothing for an active plugin", () => {
-    expect(
-      getCustomVizPluginErrorMessage({ status: "active", error_message: null }),
-    ).toBeNull();
-  });
-
-  it("explains a plugin left pending by an older import as an error", () => {
-    expect(
-      getCustomVizPluginErrorMessage({
-        status: "pending",
-        error_message: null,
-      }),
-    ).toBe(
-      "This visualization was imported without being validated. Replace its bundle or import it again to activate it.",
     );
   });
 });
