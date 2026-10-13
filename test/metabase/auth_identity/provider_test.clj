@@ -172,6 +172,14 @@
         (is (not (t2/exists? :model/Session :user_id (:id user))))
         (is (not (t2/exists? :model/LoginHistory :user_id (:id user))))))))
 
+(deftest login!-personal-only-test
+  (testing "a login that sets :user/personal-only? refuses a user who is not a personal account, with no session"
+    (mt/with-temp [:model/User user {:type :api-key}]
+      (is (=? {:success? false, :error :non-personal-user}
+              (provider/login! :provider/test-plain-attribution
+                               {:user-id (:id user), :user/personal-only? true})))
+      (is (not (t2/exists? :model/Session :user_id (:id user)))))))
+
 (deftest ^:parallel ^:parallel three-valued-success-state-test
   (testing "Success states work correctly"
     (testing "Success state: true"

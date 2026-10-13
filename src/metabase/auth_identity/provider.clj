@@ -221,6 +221,8 @@
        - :device-info - Device information for session tracking
        - :redirect-url - Optional redirect URL after login
        - :session/skip? - Optional; when true, the login creates no session
+       - :user/personal-only? - Optional; when true, a user who is not a personal account is refused before any
+         change is made to them
 
    Returns:
      Map with one of three result types:
@@ -315,6 +317,7 @@
    [:user-data {:optional true} [:maybe UserData]]
    [:user-id {:optional true} [:maybe :int]]
    [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:user/personal-only? {:optional true} [:maybe :boolean]]
    [:username {:optional true} [:maybe :string]]])
 
 (mu/defn- apply-inactive-check
@@ -409,6 +412,14 @@
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
                    (auth-identity.db/user-login-columns-by-email email)))))
+    (cond-> $
+      (and (:user/personal-only? $)
+           (:user $)
+           (not= :personal (get-in $ [:user :type])))
+      (-> (dissoc :user)
+          (assoc :success? false
+                 :error    :non-personal-user
+                 :message  "This login is only for personal accounts.")))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))

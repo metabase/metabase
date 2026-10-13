@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
+   [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.test-util]
    [metabase.system.core :as system]
@@ -128,6 +129,31 @@
           (is (=? {:error "invalid_grant"} (refused)))
           (is (=? {:access_token string?} (token! email)))
           (is (true? (t2/select-one-fn :is_active :model/User user-id))))))))
+
+(deftest exchange-non-personal-user-test
+  (testing "a JWT naming an API key's user or the internal user is refused, and leaves that user as it was"
+    (with-jwt-bearer-setup!
+      (mt/with-model-cleanup [:model/ApiKey]
+        (let [api-key  (mt/user-http-request :crowberto :post 200 "api-key"
+                                             {:name     (mt/random-name)
+                                              :group_id (t2/select-one-pk :model/PermissionsGroup :name "All Users")})
+              key-user (:body (client/client-full-response :get 200 "user/current"
+                                                           {:request-options {:headers {"x-api-key"
+                                                                                        (:unmasked_key api-key)}}}))
+              state    (fn [user-id]
+                         [(t2/select-one :core_user :id user-id)
+                          (t2/select :auth_identity :user_id user-id {:order-by [:id]})])]
+          (doseq [{:keys [id email]} [key-user
+                                      (t2/select-one [:model/User :id :email] :id config/internal-mb-user-id)]]
+            (testing email
+              (let [before (state id)]
+                (is (=? {:error "invalid_grant"}
+                        (:body (token-response 400 {:assertion (assertion {:email      email
+                                                                           :first_name "Mallard"
+                                                                           :last_name  "Duck"
+                                                                           :plan       "pro"})}))))
+                (is (= before (state id)))
+                (is (not (t2/exists? :model/OAuthAccessToken :user_id id)))))))))))
 
 (deftest exchange-refusal-test
   (with-jwt-bearer-setup!
