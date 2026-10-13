@@ -319,7 +319,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useListTimelinesQuery({ include: "events" });
 
   const {
-    question,
     uiControls,
     initializeQB,
     locationChanged,
