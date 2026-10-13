@@ -73,7 +73,7 @@
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
-   [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]
+   [:status      {:optional true} [:enum "started" "success" "skipped" "failed" "abandoned"]]
    [:started-at  {:optional true} ms/NonBlankString]])
 
 (def ^:private run-sort-columns
@@ -93,11 +93,13 @@
    [:entity_id   ms/PositiveInt]
    [:started_at  :any]
    [:ended_at    [:maybe :any]]
-   [:status      [:enum :started :success :failed :abandoned]]
+   [:status      [:enum :started :success :skipped :failed :abandoned]]
    [:entity_name {:optional true} [:maybe :string]]
    [:task_count  {:optional true} :int]
    [:success_count {:optional true} :int]
-   [:failed_count {:optional true} :int]])
+   [:failed_count {:optional true} :int]
+   [:skip_reason     {:optional true} [:maybe :string]]
+   [:failure_message {:optional true} [:maybe :string]]])
 
 (mr/def ::TaskRunsResponse
   [:map
@@ -167,6 +169,30 @@
                    (get counts-by-id (:id %)))
            runs))))
 
+(defn- run-outcome-reason
+  "Why a skipped or failed run ended that way, from its tasks: `:skip_reason` for a skipped run, or `:failure_message`
+  from its most recently ended failed task with a message for a failed run. The value is nil when no task recorded
+  one, and other statuses get nothing."
+  [status tasks]
+  (case status
+    :skipped {:skip_reason (some-> (some (comp :skip_reason :task_details) tasks) name)}
+    :failed  {:failure_message (->> tasks
+                                    (filter (comp #{:failed} :status))
+                                    (sort-by (juxt :ended_at :id))
+                                    (keep (comp :message :task_details))
+                                    last)}
+    nil))
+
+(defn- hydrate-outcome-reasons
+  "Add `:skip_reason` to skipped runs and `:failure_message` to failed runs (see [[run-outcome-reason]])."
+  [runs]
+  (let [run-ids-with (fn [status] (keep #(when (= status (:status %)) (:id %)) runs))
+        skipped-ids  (run-ids-with :skipped)
+        failed-ids   (run-ids-with :failed)
+        tasks        (when (or (seq skipped-ids) (seq failed-ids))
+                       (group-by :run_id (task-history.db/task-outcomes-for-runs skipped-ids failed-ids)))]
+    (map #(merge % (run-outcome-reason (:status %) (get tasks (:id %)))) runs)))
+
 (defn- timestamp-range
   [date-string]
   (let [{:keys [start end]}
@@ -200,7 +226,7 @@
     {:total  (task-history.db/task-run-count filters)
      :limit  limit
      :offset offset
-     :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
+     :data   (-> runs hydrate-entity-names hydrate-task-counts hydrate-outcome-reasons)}))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."

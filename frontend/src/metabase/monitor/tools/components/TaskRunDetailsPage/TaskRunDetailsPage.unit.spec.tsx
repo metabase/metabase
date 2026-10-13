@@ -10,7 +10,10 @@ import {
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskRunExtended } from "metabase-types/api";
-import { createMockTaskRunExtended } from "metabase-types/api/mocks";
+import {
+  createMockTask,
+  createMockTaskRunExtended,
+} from "metabase-types/api/mocks";
 
 import { TaskRunDetailsPage } from "./TaskRunDetailsPage";
 
@@ -59,6 +62,33 @@ describe("TaskRunDetailsPage", () => {
       "href",
       Urls.monitorTasksRuns(),
     );
+  });
+
+  it("should show why a skipped run sent nothing", async () => {
+    const taskRun = createMockTaskRunExtended({
+      status: "skipped",
+      tasks: [
+        createMockTask({
+          task: "notification-send",
+          task_details: { notification_id: 1, skip_reason: "empty" },
+        }),
+      ],
+    });
+    setup({ taskRun });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText("Skipped")).toBeInTheDocument();
+    expect(screen.getByText("Skip reason")).toBeInTheDocument();
+    expect(screen.getByText("No results")).toBeInTheDocument();
+  });
+
+  it("should not show a skip reason for a run that wasn't skipped", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.queryByText("Skip reason")).not.toBeInTheDocument();
   });
 
   it("should display formatted datetime for started_at and ended_at", async () => {

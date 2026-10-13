@@ -204,10 +204,25 @@
   [row :- ::task-history.schema/task-run.update]
   (t2/insert-returning-pk! :model/TaskRun row))
 
-(mu/defn task-statuses-for-run
-  "The set of statuses of the TaskHistory rows of the TaskRun with `run-id`."
+(mu/defn task-outcomes-for-runs :- [:sequential [:map
+                                                 [:id           ms/PositiveInt]
+                                                 [:run_id       ms/PositiveInt]
+                                                 [:status       :keyword]
+                                                 [:task_details [:maybe :map]]
+                                                 [:ended_at     :any]]]
+  "The id, run id, status, task_details and end time of every TaskHistory row of the TaskRuns with
+  `skipped-run-ids`, and of the failed rows of the TaskRuns with `failed-run-ids`."
+  [skipped-run-ids :- [:sequential ms/PositiveInt]
+   failed-run-ids  :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/TaskHistory :id :run_id :status :task_details :ended_at]
+             {:where [:or
+                      (when (seq skipped-run-ids) [:in :run_id skipped-run-ids])
+                      (when (seq failed-run-ids)  [:and [:in :run_id failed-run-ids] [:= :status "failed"]])]}))
+
+(mu/defn task-outcomes-for-run :- [:sequential [:map [:status :keyword] [:task_details [:maybe :map]]]]
+  "The status and task_details of each TaskHistory row of the TaskRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/select-fn-set :status :model/TaskHistory :run_id run-id))
+  (t2/select [:model/TaskHistory :status :task_details] :run_id run-id))
 
 (mu/defn finish-started-task-run!
   "Set the status and end time of the started TaskRun with `run-id`."

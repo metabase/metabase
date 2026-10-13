@@ -139,7 +139,19 @@
               (throw (Exception. "fail")))
             (catch Exception _)))
         (task-history/complete-task-run! run-id)
-        (is (= :failed (:status (t2/select-one :model/TaskRun :id run-id))))))))
+        (is (= :failed (:status (t2/select-one :model/TaskRun :id run-id))))))
+    (testing "complete-task-run! derives :skipped when all children succeed and one recorded a skip reason"
+      (let [run-id (task-run/create-task-run! {:run_type    :alert
+                                               :entity_type :card
+                                               :entity_id   1})]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
+          (task-history/with-task-history {:task         "notification-send"
+                                           :task_details {:notification_id       1
+                                                          :notification_handlers []
+                                                          :skip_reason           :empty}}
+            :ok))
+        (task-history/complete-task-run! run-id)
+        (is (= :skipped (:status (t2/select-one :model/TaskRun :id run-id))))))))
 
 (deftest complete-task-run-idempotent-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]

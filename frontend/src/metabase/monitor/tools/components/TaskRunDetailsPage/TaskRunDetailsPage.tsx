@@ -18,9 +18,11 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { Task } from "metabase-types/api";
 
 import {
+  formatSkipReason,
   formatTaskRunEntityType,
   formatTaskRunType,
   getEntityUrl,
+  getTaskSkipReason,
   renderTaskRunCounters,
 } from "../../utils";
 import { MonitorBackLink } from "../MonitorBackLink";
@@ -41,6 +43,11 @@ export const TaskRunDetailsPage = () => {
   if (!taskRun || error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
+
+  const skipReason =
+    taskRun.status === "skipped"
+      ? taskRun.tasks.map(getTaskSkipReason).find((reason) => reason !== null)
+      : undefined;
 
   return (
     <Flex h="100%" wrap="nowrap">
@@ -81,6 +88,12 @@ export const TaskRunDetailsPage = () => {
                   <Text fw="bold" w={120}>{t`Status`}</Text>
                   <TaskRunStatusBadge taskRun={taskRun} />
                 </Flex>
+                {skipReason && (
+                  <Flex gap="lg">
+                    <Text fw="bold" w={120}>{t`Skip reason`}</Text>
+                    <Text>{formatSkipReason(skipReason)}</Text>
+                  </Flex>
+                )}
                 <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`Started at`}</Text>
                   <Tooltip label={taskRun.started_at}>

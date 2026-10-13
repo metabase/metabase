@@ -17,6 +17,7 @@ export const TaskRunStatusPicker = ({
   const data: SelectData<TaskRunStatus> = [
     { label: t`Started`, value: "started" },
     { label: t`Success`, value: "success" },
+    { label: t`Skipped`, value: "skipped" },
     { label: t`Failed`, value: "failed" },
     { label: t`Abandoned`, value: "abandoned" },
   ];

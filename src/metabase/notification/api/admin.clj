@@ -45,7 +45,7 @@
 (def ^:private run-type-alert          "alert")
 (def ^:private task-notification-send  "notification-send")
 (def ^:private task-channel-send       "channel-send")
-(def ^:private terminal-statuses       ["success" "failed" "abandoned"])
+(def ^:private terminal-statuses       ["success" "skipped" "failed" "abandoned"])
 
 ;; ---------------------------------------------------------------------------
 ;; Schema definitions
@@ -134,24 +134,25 @@
 
 (defn- coerce-run-status
   "Map a task_run/task_history `:status` keyword to the public `::run-status` enum.
-    :success              → :successful
+    :success / :skipped   → :successful
     :failed / :abandoned  → :failing
   Returns nil when `status` is nil (no run exists)."
   [status]
   (when status
     (case status
-      :success             :successful
+      (:success :skipped)  :successful
       (:failed :abandoned) :failing)))
 
 (defn- run->summary
   "Build a `::run-summary` map (or nil) from a task_run row joined onto the list query.
   Inputs:
-    - status     ; :success / :failed / :abandoned, or nil if no run exists
+    - status     ; :success / :skipped / :failed / :abandoned, or nil if no run exists
     - at         ; started_at timestamp
     - error      ; string from task_history.task_details->>'message', or nil
 
   Mapping:
     - :success      → :successful
+    - :skipped      → :successful         (the alert ran fine and deliberately sent nothing)
     - :failed       → :failing
     - :abandoned    → :failing            (heartbeat-killed in-flight runs roll up to failing —
                                            the FE only cares about success/failure, not the

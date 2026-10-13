@@ -55,6 +55,26 @@ describe("TaskDetailsPage", () => {
     });
   });
 
+  it.each([
+    { skipReason: "goal-not-met", label: "Goal not met" },
+    { skipReason: "some-new-reason", label: "some-new-reason" },
+  ])(
+    "should show the skip reason $skipReason as $label",
+    async ({ skipReason, label }) => {
+      setup({
+        task: createMockTask({
+          task: "notification-send",
+          task_details: { notification_id: 1, skip_reason: skipReason },
+        }),
+      });
+
+      await waitForLoaderToBeRemoved();
+
+      expect(screen.getByText("Skip reason")).toBeInTheDocument();
+      expect(screen.getByText(label)).toBeInTheDocument();
+    },
+  );
+
   it("should display task details", async () => {
     const task = createMockTask({
       id: 42,

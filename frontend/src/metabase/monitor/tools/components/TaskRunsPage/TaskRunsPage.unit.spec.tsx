@@ -106,6 +106,36 @@ describe("TaskRunsPage", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
   });
 
+  it.each([
+    {
+      taskRun: createMockTaskRun({ status: "skipped", skip_reason: "empty" }),
+      badge: "Skipped",
+      reason: "No results",
+    },
+    {
+      taskRun: createMockTaskRun({
+        status: "failed",
+        failure_message: "Failed to deliver: channel is down\nat some.Stack",
+      }),
+      badge: "Failed",
+      reason: "Failed to deliver: channel is down",
+    },
+  ])(
+    "should explain a $badge run in a tooltip on its badge",
+    async ({ taskRun, badge, reason }) => {
+      await setup({
+        taskRunsResponse: createMockTaskRunsResponse({ data: [taskRun] }),
+      });
+
+      const row = await screen.findByTestId("task-run");
+      await userEvent.hover(within(row).getByText(badge));
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent(reason);
+      expect(tooltip).not.toHaveTextContent("some.Stack");
+    },
+  );
+
   it("should show the total results count below the table", async () => {
     await setup({
       taskRunsResponse: createMockTaskRunsResponse({

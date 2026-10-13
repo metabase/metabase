@@ -37,7 +37,7 @@
   "Valid entity types for task runs."
   #{:database :card :dashboard})
 
-(def ^:private task-run-status #{:started :success :failed :abandoned})
+(def ^:private task-run-status #{:started :success :skipped :failed :abandoned})
 
 (defn- assert-task-run-status
   [status]
@@ -107,14 +107,16 @@
     :process_uuid    config/local-process-uuid}))
 
 (mu/defn complete-task-run!
-  "Mark a task run as complete, deriving status from child tasks.
+  "Mark a task run as complete, deriving status from child tasks: `:success` when they all succeeded, `:skipped` when
+   they all succeeded and one recorded a `:skip_reason` (it ran but deliberately did nothing), otherwise `:failed`.
    Must be called manually for async flows, or automatically via [[with-task-run]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
-  (let [task-statuses (task-history.db/task-statuses-for-run run-id)
-        status        (if (= #{:success} task-statuses)
-                        :success
-                        :failed)]
+  (let [tasks  (task-history.db/task-outcomes-for-run run-id)
+        status (cond
+                 (not= #{:success} (into #{} (map :status) tasks)) :failed
+                 (some (comp :skip_reason :task_details) tasks)    :skipped
+                 :else                                             :success)]
     (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
 (defmacro with-task-run

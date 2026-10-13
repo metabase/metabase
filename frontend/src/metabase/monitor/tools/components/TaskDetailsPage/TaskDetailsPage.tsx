@@ -29,7 +29,12 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { openSaveDialog } from "metabase/utils/dom";
 import type { Database } from "metabase-types/api";
 
-import { formatTaskDetails, getFilename } from "../../utils";
+import {
+  formatSkipReason,
+  formatTaskDetails,
+  getFilename,
+  getTaskSkipReason,
+} from "../../utils";
 import { MonitorBackLink } from "../MonitorBackLink";
 import { TaskStatusBadge } from "../TaskStatusBadge";
 
@@ -52,6 +57,7 @@ export const TaskDetailsPage = () => {
   const db = task.db_id ? databaseByID[task.db_id] : null;
   const dbName = db?.name ?? t`Unknown name`;
   const dbEngine = db?.engine ?? t`Unknown engine`;
+  const skipReason = getTaskSkipReason(task);
 
   const handleDownload = () => {
     const filename = getFilename(task);
@@ -82,6 +88,12 @@ export const TaskDetailsPage = () => {
               <Text fw="bold" w={120}>{t`Status`}</Text>
               <TaskStatusBadge task={task} />
             </Flex>
+            {skipReason && (
+              <Flex gap="lg">
+                <Text fw="bold" w={120}>{t`Skip reason`}</Text>
+                <Text>{formatSkipReason(skipReason)}</Text>
+              </Flex>
+            )}
             {task.run_id !== null && (
               <Flex gap="lg" align="baseline">
                 <Text fw="bold" w={120}>{t`Task run`}</Text>

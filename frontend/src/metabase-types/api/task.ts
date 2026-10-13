@@ -73,7 +73,12 @@ export type TaskInfo = {
 
 export type TaskRunType = "subscription" | "alert" | "sync" | "fingerprint";
 export type TaskRunEntityType = "database" | "card" | "dashboard";
-export type TaskRunStatus = "started" | "success" | "failed" | "abandoned";
+export type TaskRunStatus =
+  | "started"
+  | "success"
+  | "skipped"
+  | "failed"
+  | "abandoned";
 export type TaskRunDateFilterOption =
   | "thisday"
   | "past1days"
@@ -96,6 +101,10 @@ export interface TaskRun {
   task_count: number;
   success_count: number;
   failed_count: number;
+  /** Only on skipped runs in the runs list, when a task recorded why it did nothing. */
+  skip_reason?: string | null;
+  /** Only on failed runs in the runs list: the message of the latest failed task that has one. */
+  failure_message?: string | null;
 }
 
 export interface TaskRunExtended extends TaskRun {
