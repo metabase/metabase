@@ -73,11 +73,7 @@ function CreateActionForm({
               minRows={5}
               nullable
             />
-            <FormModelPicker
-              name="model_id"
-              title={t`Model it's saved in`}
-              mb={0}
-            />
+            <FormModelPicker name="model_id" title={t`Model it's saved in`} />
           </Stack>
           <Modal.Footer>
             <FormErrorMessage flex={1} />

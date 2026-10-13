@@ -9,11 +9,10 @@ import {
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { FormField, type FormFieldProps } from "metabase/forms";
+import { FormField } from "metabase/forms";
 import { Button, Icon } from "metabase/ui";
 
 export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {
-  mb?: FormFieldProps["mb"];
   name: string;
   title?: string;
   placeholder?: string;
@@ -24,7 +23,6 @@ export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {
 export function FormModelPicker({
   className,
   style,
-  mb,
   name,
   title,
   placeholder = t`Select a model`,
@@ -45,7 +43,6 @@ export function FormModelPicker({
       <FormField
         className={className}
         style={style}
-        mb={mb}
         title={title}
         htmlFor={id}
         error={touched ? error : undefined}

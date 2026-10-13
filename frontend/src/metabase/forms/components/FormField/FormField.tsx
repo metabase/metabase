@@ -26,7 +26,6 @@ export const FormField = forwardRef(function FormField(
     infoTooltip,
     children,
     optional,
-    mb = "lg",
     ...props
   }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
@@ -36,7 +35,7 @@ export const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <Flex {...props} ref={ref} direction="column" mb={mb}>
+    <Flex {...props} ref={ref} direction="column">
       {(hasTitle || hasDescription) && (
         <Box>
           <Flex align="center" mb="xxs">

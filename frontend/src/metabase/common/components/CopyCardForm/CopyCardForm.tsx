@@ -130,7 +130,6 @@ export const CopyCardForm = ({
               title={t`Where do you want to save this?`}
               entityType={model ? getEntityTypeFromCardType(model) : undefined}
               collectionPickerModalProps={{ models }}
-              mb={0}
             />
             <FormDashboardTabSelect
               name="dashboard_tab_id"

@@ -14,7 +14,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Radio, Stack } from "metabase/ui";
+import { Box, Button, Radio, Stack } from "metabase/ui";
 
 import type { OmniPickerItem } from "../Pickers";
 
@@ -101,15 +101,17 @@ export const SaveQuestionForm = ({
 
           <div>
             {showPickerInput && (
-              <FormCollectionAndDashboardPicker
-                collectionIdFieldName="collection_id"
-                dashboardIdFieldName="dashboard_id"
-                title={t`Where do you want to save this?`}
-                entityType={getEntityTypeFromCardType(question.type())}
-                collectionPickerModalProps={{
-                  models,
-                }}
-              />
+              <Box mb="lg">
+                <FormCollectionAndDashboardPicker
+                  collectionIdFieldName="collection_id"
+                  dashboardIdFieldName="dashboard_id"
+                  title={t`Where do you want to save this?`}
+                  entityType={getEntityTypeFromCardType(question.type())}
+                  collectionPickerModalProps={{
+                    models,
+                  }}
+                />
+              </Box>
             )}
 
             <FormDashboardTabSelect

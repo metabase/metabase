@@ -31,7 +31,7 @@ import {
 } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { FormField, type FormFieldProps } from "metabase/forms";
+import { FormField } from "metabase/forms";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -74,7 +74,6 @@ function ItemName({
   );
 }
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
-  mb?: FormFieldProps["mb"];
   collectionIdFieldName: string;
   dashboardIdFieldName: string;
   dashboardTabIdFieldName?: string;
@@ -92,7 +91,6 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
 export function FormCollectionAndDashboardPicker({
   className,
   style,
-  mb,
   title,
   placeholder,
   type = "collections",
@@ -242,7 +240,6 @@ export function FormCollectionAndDashboardPicker({
       <FormField
         className={className}
         style={style}
-        mb={mb}
         title={title}
         htmlFor={id}
         error={touched ? error : undefined}

@@ -159,7 +159,7 @@ function CreateCollectionForm({
                 />
               )}
               {showAuthorityLevelPicker && !isParentTenantCollection && (
-                <FormAuthorityLevelField mb={0} />
+                <FormAuthorityLevelField />
               )}
             </Stack>
             <Modal.Footer>

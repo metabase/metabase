@@ -93,7 +93,6 @@ export const TenantForm = ({
               name="attributes"
               title={t`Default attributes`}
               description={t`Attributes to be applied to all users in this tenant.`}
-              mb={0}
             />
           </Stack>
           <Modal.Footer>
