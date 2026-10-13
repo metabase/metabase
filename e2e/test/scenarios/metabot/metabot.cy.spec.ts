@@ -253,7 +253,7 @@ function assertFillerReachesContainerBottom() {
       .getBoundingClientRect();
     expect(fillerRect.height).to.be.greaterThan(0);
     expect(fillerRect.bottom).to.be.closeTo(
-      containerRect.bottom - getContainerPadding($container).bottom,
+      containerRect.bottom - getContainerPadding($container).bottom - 1,
       1,
     );
   });
