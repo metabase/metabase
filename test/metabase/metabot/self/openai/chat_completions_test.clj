@@ -280,21 +280,21 @@
                             :id        "call-1"
                             :function  "f"
                             :arguments arguments}]}))]
-    (testing "decoded JSON replays at any depth, with keyword argument names and nested keys of either type"
+    (testing "decoded JSON replays at any depth, with keyword argument names and string keys below them"
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
-        ;; keyword keys at every depth, as Clojure builds them
-        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
         ;; string keys below the argument names, as the stream parser and replayed history decode them
-        {:a {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
-        ;; both
-        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+        {:a {"b" {"c" [{"d" [1 nil true "x" :kw]}]}}}
+        {:a {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}))
     (testing "a string argument name is rejected"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
                             (replay {"a" 1}))))
+    (testing "a keyword key below the argument names is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c 1}]}}))))
     (testing "a value JSON cannot hold is rejected, however deep"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
-                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
+                            (replay {:a {"b" [{"c" (java.time.Instant/now)}]}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests

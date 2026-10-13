@@ -116,10 +116,10 @@
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
 (mr/def ::decoded-json
-  "A value decoded from JSON.
+  "A value decoded from JSON with `json/decode`, with string object keys at every depth.
 
-  Object keys are strings or keywords. `json/decode` gives string keys, for example in replayed history.
-  [[parse-tool-arguments]] keywordizes only the top-level argument names. Maps built in Clojure can use keywords."
+  `{\"stages\" [{\"limit\" 1}]}` passes and `{:stages [{:limit 1}]}` does not. [[stringify-nested-keys]] gives this
+  shape below the argument names."
   [:or
    :string
    :keyword
@@ -127,13 +127,13 @@
    :boolean
    :nil
    [:sequential [:ref ::decoded-json]]
-   [:map-of [:or :string :keyword] [:ref ::decoded-json]]])
+   [:map-of :string [:ref ::decoded-json]]])
 
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by its argument names as keywords.
 
-  `{:query {\"stages\" []}}` passes and `{\"query\" {\"stages\" []}}` does not. Only the top-level keys must be
-  keywords: the values are `::decoded-json`, so nested keys keep the type their decoder gave them."
+  `{:query {\"stages\" []}}` passes. `{\"query\" {\"stages\" []}}` and `{:query {:stages []}}` do not: the argument
+  names are keywords, and the values are `::decoded-json`, with string keys."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
    :keyword ::decoded-json])
 
@@ -412,6 +412,22 @@
     (cond
       (contains? arguments ::raw-arguments)        {:raw-arguments (::raw-arguments arguments)}
       (contains? arguments ::non-object-arguments) {:non-object-arguments (::non-object-arguments arguments)})))
+
+(defn stringify-nested-keys
+  "Return `arguments` with every map key below the top level as a string.
+
+  `{:query {:stages [{:limit 1}]}}` becomes `{:query {\"stages\" [{\"limit\" 1}]}}`. The top-level keys do not change,
+  so the argument names and the [[parse-tool-arguments]] sentinel keys stay keywords. A namespaced keyword key
+  becomes `\"ns/name\"`, the key `json/encode` writes for it."
+  [arguments]
+  (letfn [(below [x]
+            (cond
+              (map? x)        (u/for-map [[k v] x]
+                                [(cond-> k (keyword? k) u/qualified-name) (below v)])
+              (sequential? x) (mapv below x)
+              :else           x))]
+    (cond-> arguments
+      (map? arguments) (update-vals below))))
 
 (defn- try-decode-json-string
   "If `v` is a string that looks like a JSON object or array, decode it.

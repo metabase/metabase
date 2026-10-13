@@ -587,14 +587,15 @@
 
 (defn- structured-output-in-text
   "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
-  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches."
+  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches.
+  Keys below the top level are strings, as in a tool call's arguments ([[core/stringify-nested-keys]])."
   [parts json-schema]
   (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
         schema (json-schema->malli json-schema)]
     (some (fn [candidate]
             (let [value (try (json/decode-document+kw candidate) (catch Exception _ nil))]
               (when (mr/validate schema value)
-                value)))
+                (core/stringify-nested-keys value))))
           (cons text (reverse (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text)))))))
 
 (defn- incomplete-structured-output-error

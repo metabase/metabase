@@ -568,6 +568,20 @@
              parts))
       (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))
 
+(deftest ^:parallel aisdk-xf-non-object-arguments-validate-test
+  (testing "a tool call whose arguments aren't a JSON object replays as valid LLMRequestOpts input"
+    ;; The executor rejects the call, and the agent loop replays it with that error on its next iteration.
+    (doseq [[raw decoded] [["[\"orders\"]" ["orders"]]
+                           ["false" false]
+                           ["[{\"a\":{\"b\":1}}]" [{"a" {"b" 1}}]]]]
+      (testing raw
+        (let [parts (into [] (self.core/aisdk-xf)
+                          [{:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                           {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta raw}
+                           {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])]
+          (is (= {::self.core/non-object-arguments decoded} (:arguments (first parts))))
+          (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
@@ -754,14 +768,19 @@
   (let [received (atom ::not-called)
         tools    {"open" {:fn     (fn [args] (reset! received args) {:output "ok"})
                           :doc    "accepts any object"
-                          :schema [:=> [:cat [:map]] :any]}}
-        run      (fn [raw]
-                   (reset! received ::not-called)
-                   (-> (into [] (self.core/tool-executor-xf tools)
-                             [{:type :tool-input-start :toolName "open" :toolCallId "call-n"}
-                              {:type :tool-input-delta :toolCallId "call-n" :inputTextDelta raw}
-                              {:type :tool-input-available :toolName "open" :toolCallId "call-n"}])
-                       last :error :message))]
+                          :schema [:=> [:cat [:map]] :any]}
+                  "untyped" {:fn     (fn [args] (reset! received args) {:output "ok"})
+                             :doc    "declares no argument schema"
+                             :schema nil}}
+        run      (fn run
+                   ([raw] (run "open" raw))
+                   ([tool-name raw]
+                    (reset! received ::not-called)
+                    (-> (into [] (self.core/tool-executor-xf tools)
+                              [{:type :tool-input-start :toolName tool-name :toolCallId "call-n"}
+                               {:type :tool-input-delta :toolCallId "call-n" :inputTextDelta raw}
+                               {:type :tool-input-available :toolName tool-name :toolCallId "call-n"}])
+                        last :error :message)))]
     (testing "valid JSON that isn't an object is rejected before it reaches a tool whose schema accepts any map"
       (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
              (run "[\"orders\"]")))
@@ -769,6 +788,17 @@
     (testing "a JSON string holding an object is reported as the string the model sent, not decoded into one"
       (is (= "Invalid tool arguments: expected an object of named arguments; received a string."
              (run "\"{\\\"names\\\": [\\\"orders\\\"]}\"")))
+      (is (= ::not-called @received)))
+    (testing "a JSON boolean is rejected, not run as an empty argument map"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received a boolean."
+             (run "false")))
+      (is (= ::not-called @received)))
+    (testing "JSON null still runs the tool with an empty argument map"
+      (is (nil? (run "null")))
+      (is (= {} @received)))
+    (testing "a tool with no argument schema rejects a non-object too"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (run "untyped" "[\"orders\"]")))
       (is (= ::not-called @received)))))
 
 (deftest ^:parallel tool-without-schema-is-not-validated-test
@@ -1776,6 +1806,42 @@
         (let [e (structured-call-error)]
           (is (= "structured-output-incomplete" (:error-code (ex-data e))))
           (is (= "length" (:finish-reason (ex-data e)))))))))
+
+(deftest call-llm-structured-nested-keys-test
+  (llm.tu/with-default-connections
+    (let [schema {:type       "object"
+                  :properties {"items" {:type  "array"
+                                        :items {:type       "object"
+                                                :properties {"name" {:type "string"}}
+                                                :required   ["name"]}}}
+                  :required   ["items"]}
+          answer {:items [{:name "x"}]}
+          call!  (fn [part]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            [{:type :start :id "m1"} part]))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a tool call and a text reply give the same result: keyword argument names, string keys below them"
+        (are [part] (= {:items [{"name" "x"}]} (call! part))
+          {:type :tool-input :id "c1" :function "structured_output" :arguments answer}
+          {:type :text :id "t1" :text (json/encode answer)})))))
+
+(deftest ^:parallel stringify-nested-keys-test
+  (testing "keys below the top level become strings, and the top-level keys stay keywords"
+    (is (= {:query {"stages" [{"limit" 1}]}}
+           (self.core/stringify-nested-keys {:query {:stages [{:limit 1}]}}))))
+  (testing "a nested namespaced keyword key becomes \"ns/name\", the key json/encode writes"
+    (is (= {:a {"foo/bar" 1}}
+           (self.core/stringify-nested-keys {:a {:foo/bar 1}}))))
+  (testing "the parse sentinels come back unchanged"
+    (are [arguments] (= arguments (self.core/stringify-nested-keys arguments))
+      {::self.core/raw-arguments "{oops"}
+      {::self.core/non-object-arguments [{"a" 1} "x"]}))
+  (testing "a value that is not a map comes back unchanged"
+    (are [arguments] (= arguments (self.core/stringify-nested-keys arguments))
+      nil
+      "{oops")))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections

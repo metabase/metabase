@@ -54,7 +54,14 @@
     (is (=? [{:type :tool-input :id "t1" :function "search" :arguments "{bad-json"}]
             (messages/input-message->parts
              {:role       :assistant
-              :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]})))))
+              :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]}))))
+  (testing "map tool_call arguments get keyword argument names and string keys below them"
+    (is (= {:query {"stages" [{"limit" 1}]}}
+           (-> (messages/input-message->parts
+                {:role       :assistant
+                 :tool_calls [{:id "t1" :name "search" :arguments {"query" {:stages [{:limit 1}]}}}]})
+               first
+               :arguments)))))
 
 (deftest ^:parallel input-message-tool-test
   (testing "tool result message"
