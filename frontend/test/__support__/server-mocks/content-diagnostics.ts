@@ -1,4 +1,4 @@
-import fetchMock, { type CallLog, type UserRouteConfig } from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
   ContentDiagnosticsCountsResponse,
@@ -9,7 +9,7 @@ import type {
   ListStaleFindingsResponse,
 } from "metabase-types/api";
 
-type MockResponse<T> = T | ((call: CallLog) => T | Promise<T>);
+import type { MockResponse } from "./types";
 
 export function setupContentDiagnosticsCountsEndpoint(
   response: MockResponse<ContentDiagnosticsCountsResponse> = {
