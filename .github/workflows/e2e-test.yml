@@ -193,7 +193,6 @@ jobs:
         id: snapshots
         if: ${{ inputs.snapshots-artifact != '' && inputs.edition == 'ee' }}
         uses: actions/download-artifact@v8
-        continue-on-error: true
         with:
           name: ${{ inputs.snapshots-artifact }}
           path: e2e
@@ -203,7 +202,7 @@ jobs:
         run: bun e2e/support/create-writable-dbs.ts
 
       - name: Generate database snapshots
-        if: ${{ steps.snapshots.outcome != 'success' }}
+        if: ${{ steps.snapshots.outcome == 'skipped' }}
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot

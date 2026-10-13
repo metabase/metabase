@@ -29,8 +29,8 @@ jobs:
 
   e2e-snapshots:
     name: Generate E2E snapshots
-    needs: gate
-    if: ${{ needs.gate.outputs.run == 'true' }}
+    needs: e2e-matrix-builder
+    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
@@ -63,24 +63,21 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
+      - name: Prepare JDK
+        uses: actions/setup-java@v5.2.0
+        with:
+          java-version: "25"
+          distribution: "temurin"
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Download pre-built CLJS
-        id: prebuilt-cljs
         uses: actions/download-artifact@v8
-        continue-on-error: true
         with:
           name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
           path: target/cljs_dev
-
-      - name: Compile CLJS
-        if: steps.prebuilt-cljs.outcome != 'success'
-        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
