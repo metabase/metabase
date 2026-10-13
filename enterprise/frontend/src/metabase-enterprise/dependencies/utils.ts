@@ -4,6 +4,7 @@ import { getCollectionPathAsArray } from "metabase/common/collections/utils";
 import * as Urls from "metabase/urls";
 import type { NamedUser } from "metabase/utils/user";
 import { visualizations } from "metabase/viz-core";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -16,6 +17,7 @@ import type {
   DependencyType,
   Field,
   IconName,
+  Parameter,
   SourceReplacementEntry,
   Transform,
   VisualizationDisplay,
@@ -494,6 +496,28 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
       return null;
     default:
       return null;
+  }
+}
+
+export function getNodeParameters(node: DependencyNode): Parameter[] | null {
+  return node.type === "action" ? (node.data.parameters ?? []) : null;
+}
+
+export function getParameterIcon(parameter: Parameter): IconName {
+  switch (getParameterType(parameter)) {
+    case "id":
+      return "label";
+    case "number":
+      return "int";
+    case "date":
+    case "temporal-unit":
+      return "calendar";
+    case "boolean":
+      return "io";
+    case "location":
+      return "location";
+    default:
+      return "string";
   }
 }
 

@@ -206,6 +206,7 @@ export type ActionDependencyNodeData = Pick<
   | "name"
   | "description"
   | "model_id"
+  | "parameters"
   | "created_at"
   | "creator_id"
   | "creator"

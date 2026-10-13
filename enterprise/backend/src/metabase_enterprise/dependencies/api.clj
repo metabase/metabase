@@ -51,7 +51,7 @@
    :sandbox   [:table :table_id]
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]
    :measure   [:name :description :created_at :creator :creator_id :table :table_id]
-   :action    [:name :description :type :model_id :created_at :creator :creator_id :collection :collection_id]})
+   :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -231,7 +231,7 @@
    :sandbox   [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]
-   :action    [:id :name :description :type :model_id :created_at :creator_id :collection_id]})
+   :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]})
 
 (defn- current-user-visibility
   "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`.

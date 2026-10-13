@@ -21,6 +21,7 @@ import {
   createMockDocumentDependencyNode,
   createMockDocumentDependencyNodeData,
   createMockMeasureDependencyNode,
+  createMockParameter,
   createMockSandboxDependencyNode,
   createMockSegmentDependencyNode,
   createMockSegmentDependencyNodeData,
@@ -71,6 +72,7 @@ import {
   getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
+  getParameterIcon,
   getSearchQuery,
   isSameNode,
 } from "./utils";
@@ -384,6 +386,20 @@ describe("getNodeDescription", () => {
     },
   ])("should get description for $node.type", ({ node, expected }) => {
     expect(getNodeDescription(node)).toBe(expected);
+  });
+});
+
+describe("getParameterIcon", () => {
+  it.each<{ type: string; expected: IconName }>([
+    { type: "id", expected: "label" },
+    { type: "number/=", expected: "int" },
+    { type: "date/single", expected: "calendar" },
+    { type: "boolean/=", expected: "io" },
+    { type: "string/=", expected: "string" },
+    { type: "category", expected: "string" },
+    { type: "unknown/type", expected: "string" },
+  ])("should map $type to $expected", ({ type, expected }) => {
+    expect(getParameterIcon(createMockParameter({ type }))).toBe(expected);
   });
 });
 
