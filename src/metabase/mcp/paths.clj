@@ -62,8 +62,8 @@
    "agent:resource:read"])
 
 (def v2-baseline-scopes
-  "The subset of [[v2-surface-scopes]], in its order, that the consent page always grants: reading and running
-   queries. The user cannot untick these; every other requested scope can be unticked."
+  "The subset of [[v2-surface-scopes]], in its order, that the consent page locks: when a client requests one of
+   these, the user cannot untick it. Reading and running queries. Every other requested scope can be unticked."
   ;; A user who unticks the rest (writes, raw SQL, delivery) reaches it later by stepping up on a 403
   ;; `insufficient_scope`. `agent:query:run` is here because charts must not need a step-up: Claude Desktop retries a
   ;; tool after step-up over a session that declares no MCP Apps support, so a stepped-up `visualize_query` is refused
