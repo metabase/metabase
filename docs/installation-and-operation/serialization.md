@@ -185,7 +185,7 @@ To get an item's Entity ID in Metabase:
 2. Click on the info button.
 3. In the overview tab, copy the Entity ID.
 
-You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. This ID also appears in the `serdes/meta → id` field (these IDs must match).
+You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field.
 
 Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
 
@@ -237,7 +237,7 @@ Metabase will read the imported YAML files and look for [Entity IDs](#metabase-u
 
 - If you import an item with an [`entity_id`](#metabase-uses-entity-ids-to-identify-metabase-items) that doesn't exist in your target Metabase, Metabase will create a new item.
 - If you import an item with an `entity_id` that already exists in your target Metabase, the import will overwrite the existing item. In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
-- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
+- If you import an item with a blank `entity_id`, Metabase will create a new item with a new Entity ID. Only leave one item's `entity_id` blank per import, though: if several items have a blank `entity_id`, Metabase may skip some of them. To create several new items at once, give each item its own new Entity ID instead.
 - All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import. For example, if an exported YAML has the field `collection_id: onou5H28Wvy3kWnjxxdKQ`, then the collection `onou5H28Wvy3kWnjxxdKQ` must already exist in the target instance, or there must be a YAML file with the export of a collection that has this ID.
 
 ## Export options
@@ -551,8 +551,7 @@ You'll need to keep in mind:
 
 - Importing an item with an Entity ID that already exists will overwrite the existing item. To use an existing YAML file to create a new item, you'll need to either a) create a new Entity ID or b) clear the Entity ID.
 - Two items cannot have the same Entity IDs.
-- `entity_id` and `serdes/meta → id` fields in the YAML file should match.
-- If the `entity_id` and `serdes/meta → id` fields in a YAML file for an item are blank, Metabase will create a new item with a new Entity ID.
+- If the `entity_id` field in a YAML file for an item is blank, Metabase will create a new item with a new Entity ID. Only clear the Entity ID for one item per import, though. If several items in one import have a blank `entity_id`, Metabase may skip some of them.
 - All items and data sources referenced by an item should either already exist in target Metabase or be included in the import.
 
   For example, a collection can contain a dashboard that contains a question that is built on a model that references a data source. All of those dependencies must be either included in the import or already exist in the target instance.
@@ -568,14 +567,14 @@ For example, to duplicate a collection that contains _only_ questions that are b
 4. Get the Entity ID of the target collection from its export.
 5. In the YAML files for questions in the template collection export:
 
-   - Clear the values for the fields `entity_id` and `serdes/meta → id` for questions. This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions.
+   - Replace the `entity_id` of each question with a new, unique Entity ID: a 21-character string that uses the [NanoID format](https://github.com/ai/nanoid). This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions. Don't clear the `entity_id` values instead: if several questions have a blank `entity_id`, Metabase may import only one of them.
    - Replace `collection_id` references to the template collection with the ID of the new collection
 
 6. Import the edited files.
 
 This process assumes that your duplicated questions will all use the same data source. You can combine this with [switching the data source](#using-serialization-to-swap-the-data-source-for-questions-within-one-instance) to use a different data source for every duplicated collection.
 
-If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target Entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template Entity IDs and any references to them with your created Entity IDs.
+If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target Entity IDs (they can be any 21-character string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template Entity IDs and any references to them with your created Entity IDs.
 
 If your collections contain dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
