@@ -252,7 +252,7 @@
   (llm.tu/with-default-connections
     (mt/as-admin
       (letfn [(stream! [events]
-                (mt/with-dynamic-fn-redefs [google/google-raw (constantly events)]
+                (mt/with-dynamic-fn-redefs [google/google-raw (constantly [:google events])]
                   (mt/with-log-level [metabase.metabot.self :fatal]
                     (into [] (self/call-llm "google/google/gemini-3.5-flash" nil [] {}
                                             {:tag "agent" :required-permission :permission/metabot}

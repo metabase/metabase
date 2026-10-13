@@ -1128,10 +1128,10 @@
                           (mt/with-log-level [metabase.metabot.self :fatal]
                             (try
                               (some #(when (= :error (:type %)) %)
-                                    (into [] (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
-                                                                    :state      {}
-                                                                    :profile-id :embedding_next
-                                                                    :context    {}})))
+                                    (into [] (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                              :state      {}
+                                                              :profile-id :embedding_next
+                                                              :context    {}})))
                               (finally
                                 (llm.health/record-success! "anthropic")))))))]
     (testing "an admin sees what the provider said"
@@ -1470,10 +1470,10 @@
                                                           (fn [model & _]
                                                             (swap! models-called conj model)
                                                             (mut/mock-llm-response [{:type :text :text "Hello"}]))]
-                                (into [] (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
-                                                                :state      {}
-                                                                :profile-id :embedding_next
-                                                                :context    {}}))))]
+                                (into [] (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                          :state      {}
+                                                          :profile-id :embedding_next
+                                                          :context    {}}))))]
           (testing "nothing is announced while the selected provider is serving requests"
             (is (empty? (filter #(= "model_fallback" (:data-type %)) (run!))))
             (is (= [test-provider] @models-called)))
@@ -1507,10 +1507,10 @@
                                      (reduced acc)
                                      (conj acc part)))
                                  []
-                                 (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
-                                                        :state      {}
-                                                        :profile-id :embedding_next
-                                                        :context    {}}))))))))))
+                                 (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                  :state      {}
+                                                  :profile-id :embedding_next
+                                                  :context    {}}))))))))))
 
 (deftest error-part-tags-provider-errors-test
   (testing "an exception the adapters tagged :api-error carries a code, so the client can show its message and
