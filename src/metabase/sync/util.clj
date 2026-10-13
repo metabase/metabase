@@ -245,14 +245,18 @@
              (contains? #{1044 1142 1143} (.getErrorCode e)))
         (some-> (ex-message e) (str/includes? "user mapping not found")))))  ; Postgres FDW
 
+(defn- customer-environment-exception*?
+  [e]
+  (if (instance? java.sql.SQLException e)
+    (customer-environment-sql-exception? e)
+    (some-> (ex-message e) (str/includes? "not authorized to perform:"))))  ; AWS IAM denial (Athena, Glue)
+
 (defn customer-environment-exception?
   "True if `e` (or any of its causes) is a failure the customer has to fix in their own environment -- the connecting
-  user lacks a login, a grant, or a user mapping -- rather than a Metabase bug. Like [[transient-exception?]] failures,
-  these are still logged, but not at ERROR."
+  user lacks a login, a grant, a user mapping, or an IAM permission -- rather than a Metabase bug. Like
+  [[transient-exception?]] failures, these are still logged, but not at ERROR."
   [e]
-  (boolean (some #(and (instance? java.sql.SQLException %)
-                       (customer-environment-sql-exception? %))
-                 (u/full-exception-chain e))))
+  (boolean (some customer-environment-exception*? (u/full-exception-chain e))))
 
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."

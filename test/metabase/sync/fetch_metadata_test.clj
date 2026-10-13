@@ -44,7 +44,8 @@
                           [:debug (sql-exception "permission denied for table orders" "42501")]
                           [:debug (sql-exception "SELECT command denied to user 'mb'@'localhost' for table 'orders'" "42000" 1142)]
                           [:error (sql-exception "You have an error in your SQL syntax" "42000" 1064)]
-                          [:debug (ex-info "Error executing query" {} (sql-exception "ERROR: user mapping not found for \"mb\"" "42704"))]]]
+                          [:debug (ex-info "Error executing query" {} (sql-exception "ERROR: user mapping not found for \"mb\"" "42704"))]
+                          [:debug (RuntimeException. "You are not authorized to perform: athena:ListDatabases on the resource.")]]]
       (testing (ex-message e)
         (is (= [expected]
                ;; `log-if-error` is a macro, so it logs under the namespace it's expanded in
