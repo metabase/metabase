@@ -16,9 +16,7 @@ Events and timelines are a way to capture that chronological knowledge and make 
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
 
-Metabase displays events on time series charts when viewing an individual question, and on dashboards for questions that were saved with events turned on.
-
-Dashboards shared via a public link, static embed, interactive embedding, or the embedded analytics SDK show the events each question was saved with. Public and statically embedded questions, SDK questions, and dashboard subscriptions don't show events. Public links and static embeds show a question's saved events to anyone viewing the dashboard, even people who can't access the timeline's collection. Only people who can view a timeline can add a question that uses it to a shared dashboard. In interactive embedding and the SDK, people only see events from timelines they have access to.
+Metabase displays events on time series charts when viewing an individual question, and on [dashboards](#events-on-dashboards) for questions that were saved with events turned on.
 
 ## Timelines
 
@@ -55,17 +53,26 @@ You can't add a timeline with events to the [Library](../data-modeling/semantic-
 
 ## Adding events when viewing a question
 
-If your question is a time series, you can click on the **Calendar** in the bottom right of the question, and Metabase will open the timeline sidebar. Metabase will list any timelines and their events that fall in the range of your time series. You can:
+If your question is a time series, you can click on the **Calendar** in the bottom right of the question, and Metabase will open the timeline sidebar. Metabase will list any timelines and their events that fall in the range of your time series, including timelines from other collections. You can:
 
-- Toggle timeline visibility (including timelines from other collections)
+- Toggle timeline visibility.
 - Add a new event (even if you haven't saved the question yet).
 - Edit, move, or archive an event.
 
 When you save a new question or change a question's event selection and save it, Metabase records which timelines and events are turned on, and shows those same events wherever the question appears, including on dashboards. Toggling events on a saved question counts as a change, so save the question to keep your selection.
 
+### Hide events on a question
+
+To hide events on a question:
+
+1. Click on the **calendar** icon in the bottom right.
+2. Uncheck the timeline or event.
+
+Your selections reset on reload unless you save the question. To keep events hidden on this question, save the question after unchecking them. To hide a timeline and its events everywhere, [archive the timeline](#archiving-timelines).
+
 ## Events on dashboards
 
-A time series chart on a dashboard shows the events its question was saved with. Questions saved with events turned off (or saved before Metabase started recording events) don't show any events on dashboards. Very small cards don't have room for events, so they won't show them even when a timeline is on, and their **three-dot menu** (**...**) leaves out the **Events** item.
+Line, bar, area, combo, scatter, and waterfall charts on a dashboard show the events their question was saved with. Questions saved with events turned off (or saved before Metabase started recording events) don't show any events on dashboards. Very small cards don't have room for events, so they won't show them even when a timeline is on, and their **three-dot menu** (**...**) leaves out the **Events** item.
 
 To change which events a chart shows while viewing a dashboard, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing every timeline you can view that has an event in the range of that chart, whatever collection the timeline lives in. You can:
 
@@ -79,22 +86,12 @@ These selections only last for your session; if you reload the dashboard or ente
 
 Exporting a dashboard to PDF captures the page as you're viewing it, so the PDF includes whatever events are showing at the time, session toggles and all. Results downloaded as .csv or .xlsx contain data only, and the chart images in dashboard subscriptions don't show events.
 
-## Viewing events and timelines on a chart from a different collection
+## Events in public links and embeds
 
-If you're viewing a question with a time series chart from a _different_ collection, you can temporarily apply a timeline to the chart by clicking on the **calendar** icon in the bottom right of the question and selecting the timeline and events you want to display.
+_Dashboards_ shared via a [public link](../embedding/public-links.md), static embedding, interactive embedding, or the embedded analytics SDK show the events each question was saved with. Public and statically embedded _questions_, SDK questions, and dashboard subscriptions don't show events.
 
-If you save the question, Metabase keeps the timelines and events you turned on and shows them wherever the question appears.
-
-### To hide the timeline and its events on a chart
-
-To temporarily hide the events from a chart:
-
-1. Click on the **calendar** icon in the bottom right.
-2. Uncheck the timeline or event.
-
-Your selections reset on reload unless you save the question.
-
-To keep events hidden on this question, save the question after unchecking them. To hide a timeline and its events everywhere, [archive the timeline](#archiving-timelines).
+- **Public links and static embeds** show a question's saved events to anyone viewing the dashboard, even people who can't access the timeline's collection. Only people who can view a timeline can add a question that uses it to a shared dashboard.
+- **Interactive embedding and the SDK** only show events from timelines the viewer has access to.
 
 ## Edit an event
 
