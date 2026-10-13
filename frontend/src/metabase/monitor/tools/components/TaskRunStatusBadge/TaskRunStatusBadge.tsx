@@ -1,4 +1,4 @@
-import { Badge, Text, Tooltip } from "metabase/ui";
+import { Badge, Tooltip } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
 
 import {
@@ -11,33 +11,17 @@ type TaskRunStatusBadgeProps = {
   taskRun: TaskRun;
 };
 
-const getStatusReason = ({
+const getSkipReason = ({
   status,
   skip_reason,
-  failure_message,
-}: TaskRun): string | null => {
-  if (status === "skipped" && skip_reason) {
-    return formatSkipReason(skip_reason);
-  }
-  if (status === "failed" && failure_message) {
-    // the full message, which can be a long exception, is on the run's details page
-    return failure_message.trim().split("\n")[0];
-  }
-  return null;
-};
+}: Pick<TaskRun, "status" | "skip_reason">): string | null =>
+  status === "skipped" && skip_reason ? formatSkipReason(skip_reason) : null;
 
 export const TaskRunStatusBadge = ({ taskRun }: TaskRunStatusBadgeProps) => {
-  const reason = getStatusReason(taskRun);
+  const skipReason = getSkipReason(taskRun);
 
   return (
-    <Tooltip
-      label={
-        <Text c="inherit" fz="inherit" lh="inherit" lineClamp={3}>
-          {reason}
-        </Text>
-      }
-      disabled={!reason}
-    >
+    <Tooltip label={skipReason} disabled={!skipReason}>
       <Badge
         color={getTaskRunStatusColor(taskRun.status)}
         size="sm"

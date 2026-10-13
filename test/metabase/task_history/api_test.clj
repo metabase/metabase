@@ -707,10 +707,10 @@
         (is (= 2 (:success_count run-data)))
         (is (= 1 (:failed_count run-data)))))))
 
-(deftest ^:synchronized runs-outcome-reasons-test
+(deftest ^:synchronized runs-skip-reason-test
   (t2/delete! :model/TaskRun)
   (t2/delete! :model/TaskHistory)
-  (testing "skipped runs carry their skip reason and failed runs the message of their latest failed task"
+  (testing "skipped runs carry the skip reason their task recorded"
     (let [now (t/zoned-date-time)]
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/TaskRun skipped {:run_type    :alert
@@ -726,30 +726,9 @@
                                                           :notification_handlers []
                                                           :skip_reason           :empty}
                                            :started_at   now
-                                           :ended_at     now}
-                     :model/TaskRun failed {:run_type    :alert
-                                            :entity_type :card
-                                            :entity_id   card-id
-                                            :status      :failed
-                                            :started_at  now
-                                            :ended_at    now}
-                     :model/TaskHistory _ {:task         "channel-send"
-                                           :status       :failed
-                                           :run_id       (:id failed)
-                                           :task_details {:status :failed :message "channel is down"}
-                                           :started_at   now
-                                           :ended_at     now}
-                     :model/TaskHistory _ {:task         "notification-send"
-                                           :status       :failed
-                                           :run_id       (:id failed)
-                                           :task_details {:status :failed :message "Failed to deliver: channel is down"}
-                                           :started_at   now
-                                           :ended_at     (t/plus now (t/seconds 1))}]
-        (let [runs-by-id (u/index-by :id (:data (mt/user-http-request :crowberto :get 200 "task/runs")))]
-          (is (=? {:skip_reason "empty"}
-                  (runs-by-id (:id skipped))))
-          (is (=? {:failure_message "Failed to deliver: channel is down"}
-                  (runs-by-id (:id failed)))))))))
+                                           :ended_at     now}]
+        (is (=? [{:id (:id skipped) :skip_reason "empty"}]
+                (:data (mt/user-http-request :crowberto :get 200 "task/runs"))))))))
 
 (deftest ^:synchronized runs-entities-test
   (t2/delete! :model/TaskRun)

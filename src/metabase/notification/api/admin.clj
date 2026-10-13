@@ -141,6 +141,8 @@
   (when status
     (case status
       (:success :skipped)  :successful
+      ;; heartbeat-killed in-flight runs roll up to failing: the FE only cares about success/failure, not the lifecycle
+      ;; reason
       (:failed :abandoned) :failing)))
 
 (defn- run->summary
@@ -150,15 +152,8 @@
     - at         ; started_at timestamp
     - error      ; string from task_history.task_details->>'message', or nil
 
-  Mapping:
-    - :success      → :successful
-    - :skipped      → :successful         (the alert ran fine and deliberately sent nothing)
-    - :failed       → :failing
-    - :abandoned    → :failing            (heartbeat-killed in-flight runs roll up to failing —
-                                           the FE only cares about success/failure, not the
-                                           lifecycle reason)
-    - nil / no row  → nil                 (never run / not visible to admin)
-    - :started      → not reachable here — the lc/ls subqueries exclude :started runs."
+  `status` maps to the public enum as [[coerce-run-status]] describes. `:started` runs never reach here, since the
+  lc/ls subqueries exclude them."
   [{:keys [status at error]}]
   (when (and status at)
     (let [run-status (coerce-run-status status)]

@@ -107,15 +107,18 @@
     :process_uuid    config/local-process-uuid}))
 
 (mu/defn complete-task-run!
-  "Mark a task run as complete, deriving status from child tasks: `:success` when they all succeeded, `:skipped` when
-   they all succeeded and one recorded a `:skip_reason` (it ran but deliberately did nothing), otherwise `:failed`.
+  "Mark a task run as complete, deriving status from child tasks: `:skipped` when they all succeeded and every task
+   with some name recorded a `:skip_reason` (the run deliberately did nothing), `:success` when they all succeeded
+   otherwise, and `:failed` when any did not.
    Must be called manually for async flows, or automatically via [[with-task-run]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
   (let [tasks  (task-history.db/task-outcomes-for-run run-id)
         status (cond
                  (not= #{:success} (into #{} (map :status) tasks)) :failed
-                 (some (comp :skip_reason :task_details) tasks)    :skipped
+                 ;; a run can repeat a task per channel, so one channel skipping doesn't make the run skipped
+                 (some #(every? (comp :skip_reason :task_details) %)
+                       (vals (group-by :task tasks)))              :skipped
                  :else                                             :success)]
     (task-history.db/finish-started-task-run! run-id status (t/instant))))
 

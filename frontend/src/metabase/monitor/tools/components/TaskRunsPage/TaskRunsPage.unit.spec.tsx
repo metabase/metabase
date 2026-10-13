@@ -106,35 +106,18 @@ describe("TaskRunsPage", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
   });
 
-  it.each([
-    {
-      taskRun: createMockTaskRun({ status: "skipped", skip_reason: "empty" }),
-      badge: "Skipped",
-      reason: "No results",
-    },
-    {
-      taskRun: createMockTaskRun({
-        status: "failed",
-        failure_message: "Failed to deliver: channel is down\nat some.Stack",
+  it("should explain a skipped run in a tooltip on its badge", async () => {
+    await setup({
+      taskRunsResponse: createMockTaskRunsResponse({
+        data: [createMockTaskRun({ status: "skipped", skip_reason: "empty" })],
       }),
-      badge: "Failed",
-      reason: "Failed to deliver: channel is down",
-    },
-  ])(
-    "should explain a $badge run in a tooltip on its badge",
-    async ({ taskRun, badge, reason }) => {
-      await setup({
-        taskRunsResponse: createMockTaskRunsResponse({ data: [taskRun] }),
-      });
+    });
 
-      const row = await screen.findByTestId("task-run");
-      await userEvent.hover(within(row).getByText(badge));
+    const row = await screen.findByTestId("task-run");
+    await userEvent.hover(within(row).getByText("Skipped"));
 
-      const tooltip = await screen.findByRole("tooltip");
-      expect(tooltip).toHaveTextContent(reason);
-      expect(tooltip).not.toHaveTextContent("some.Stack");
-    },
-  );
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("No results");
+  });
 
   it("should show the total results count below the table", async () => {
     await setup({
