@@ -148,19 +148,28 @@
        (testing "an action outside the app's collection isn't the app's, so it isn't checked as its resource"
          (is (= [] (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a" :model_id model-eid))))))))))
 
+(defn- names-its-file?
+  "Whether each problem of `tree` names its file in its message, which a pull lists alone."
+  [tree]
+  (every? (fn [{:keys [file message]}] (str/includes? message file))
+          (data-apps/problems (files tree))))
+
 (deftest refuses-what-this-app-does-not-own-test
   (testing "serialization would update any row carrying an entity ID a file names, so a file may only name the app's own"
     (testing "a card whose entity ID belongs to a card elsewhere"
       (mt/with-temp [:model/Card _ {:name "Someone else's" :entity_id question-eid}]
-        (is (some #(str/includes? % (str "Card " question-eid " already exists outside")) (messages (shop (question-resources)))))))
+        (is (some #(str/includes? % (str "Card " question-eid ", which already exists outside")) (messages (shop (question-resources)))))
+        (is (names-its-file? (shop (question-resources))))))
     (testing "a collection that is another app's"
       (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Theirs" :namespace :data-apps}
                      :model/DataApp    _ {:name "theirs" :display_name "Theirs" :bundle_path "index.js"
                                           :resource_collection_id collection-id}]
-        (is (some #(str/includes? % "already exists and is another data app's collection") (messages (shop (question-resources)))))))
+        (is (some #(str/includes? % "already exists and is another data app's collection") (messages (shop (question-resources)))))
+        (is (names-its-file? (shop (question-resources))))))
     (testing "a collection outside the data-apps namespace, which a load would move into it"
       (mt/with-temp [:model/Collection _ {:entity_id collection-eid :name "Finance"}]
-        (is (some #(str/includes? % "already exists outside the data-apps namespace") (messages (shop (question-resources)))))))
+        (is (some #(str/includes? % "already exists outside the data-apps namespace") (messages (shop (question-resources)))))
+        (is (names-its-file? (shop (question-resources))))))
     (testing "the app's own collection and card"
       (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
                      :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
@@ -373,6 +382,13 @@
                       (edit-file (data-apps.tu/app-files "shop2" {:name "Shop 2" :path "index.js" :bundle "B"})
                                  "data_apps/shop2/data_app.yaml" #(assoc % :slug "shop")))]
       (is (= 2 (count (filter #(str/includes? % "has the slug") (messages tree))))))))
+
+(deftest lists-a-problem-two-apps-find-once-test
+  (testing "two apps that name one collection each find the problems of its files, which are listed once"
+    (let [app   (fn [slug] (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection collection-eid}))
+          found (messages (merge (app "first") (app "second")))]
+      (is (= 1 (count (filter #(str/includes? % "is defined by more than one file") found))))
+      (is (apply distinct? found)))))
 
 (deftest refuses-other-content-in-the-apps-collection-test
   (testing "a data app's collection holds cards and actions only, and a load would refuse anything else only after it
