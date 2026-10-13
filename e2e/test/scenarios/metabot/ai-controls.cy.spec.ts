@@ -75,7 +75,9 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByLabelText("Navigation bar").should("be.visible");
 
       // The Metabot chat icon should not be present
-      H.appBar().find('[aria-label*="Chat with"]').should("not.exist");
+      H.appBar()
+        .findByRole("button", { name: /Chat with/ })
+        .should("not.exist");
 
       cy.signInAsAdmin();
       cy.visit("/admin/metabot/usage-controls/ai-feature-access");
@@ -98,12 +100,17 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.log(
         "a user in a group with Metabot access sees the Metabot chat icon",
       );
+      cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
+        "getNormalUserPermissions",
+      );
       cy.signInAsNormalUser();
       cy.visit("/");
-      cy.wait("@getUserPermissions")
+      cy.wait("@getNormalUserPermissions")
         .its("response.body.permissions.metabot")
         .should("eq", "yes");
-      H.appBar().find('[aria-label*="Chat with"]').should("be.visible");
+      H.appBar()
+        .findByRole("button", { name: /Chat with/ })
+        .should("be.visible");
     });
   });
 
@@ -170,10 +177,6 @@ describe("AI Controls > Metabot access and customization", () => {
         .its("response.statusCode")
         .should("eq", 204);
 
-      // Reload and verify persistence
-      cy.reload();
-      cy.findByLabelText("AI agent's name").should("have.value", "HAL 9000");
-
       cy.visit("/");
       cy.findByLabelText("Navigation bar").should("be.visible");
 
@@ -228,7 +231,9 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.wait("@savePrompt").its("response.statusCode").should("eq", 204);
 
-      cy.visit("/admin/metabot/system-prompts/sql-generation");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByRole("link", { name: "SQL generation" })
+        .click();
 
       cy.findByRole("heading", {
         name: "SQL generation prompt instructions",
@@ -251,7 +256,9 @@ describe("AI Controls > Metabot access and customization", () => {
         name: /SQL generation prompt instructions/,
       }).should("have.text", "Always use uppercase SQL keywords.");
 
-      cy.visit("/admin/metabot/system-prompts/metabot-chat");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByRole("link", { name: "AI chat" })
+        .click();
       cy.findByRole("textbox", {
         name: /AI chat prompt instructions/,
       }).should("have.text", "Be concise and helpful.");

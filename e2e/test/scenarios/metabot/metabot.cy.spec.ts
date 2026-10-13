@@ -88,6 +88,21 @@ describe("Metabot UI", () => {
     });
   });
 
+  it("should not submit a prompt via /metabot/new and redirect /question/ask to the notebook when metabot is disabled", () => {
+    H.updateSetting("metabot-enabled?", false);
+    cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+    cy.url().should("eq", Cypress.config().baseUrl + "/");
+    H.assertChatVisibility("not.visible");
+    cy.get("@agentReq.all").should("have.length", 0);
+
+    cy.log(
+      "visiting '/question/ask' should redirect to notebook when metabot is disabled",
+    );
+    cy.visit("/question/ask");
+    cy.url().should("include", "/question#");
+    cy.findByTestId("metabot-chat").should("not.exist");
+  });
+
   describe("metabot events", () => {
     beforeEach(() => {
       H.resetSnowplow();
@@ -162,21 +177,6 @@ describe("Metabot UI", () => {
         H.assertChatVisibility("visible");
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
-    });
-
-    it("should not submit a prompt via /metabot/new and redirect /question/ask to the notebook when metabot is disabled", () => {
-      H.updateSetting("metabot-enabled?", false);
-      cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
-      cy.url().should("eq", Cypress.config().baseUrl + "/");
-      H.assertChatVisibility("not.visible");
-      cy.get("@agentReq.all").should("have.length", 0);
-
-      cy.log(
-        "visiting '/question/ask' should redirect to notebook when metabot is disabled",
-      );
-      cy.visit("/question/ask");
-      cy.url().should("include", "/question#");
-      cy.findByTestId("metabot-chat").should("not.exist");
     });
   });
 });

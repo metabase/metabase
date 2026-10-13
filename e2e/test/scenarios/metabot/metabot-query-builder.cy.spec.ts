@@ -23,24 +23,28 @@ describe("Metabot Query Builder", () => {
     H.setupAnthropicLlmProvider();
   });
 
-  it("should render the agent's reply inline and support clicking suggested prompts", () => {
+  it("should render errors and the agent's reply inline and support clicking suggested prompts", () => {
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
+
+    H.mockMetabotResponse({ body: mockErrorResponse });
+    H.sendMetabotMessage("Tell me about my data");
+
+    // the full-page conversation uses the nlq profile
+    cy.wait("@metabotAgent").then(({ request }) => {
+      expect(request.body.profile_id).to.equal("nlq");
+    });
+    // the error renders inline in the full-page conversation...
+    H.lastChatMessage().should("contain.text", "Something went wrong");
+
+    // ...and we move to the conversation's permalink
+    cy.url().should("include", "/metabot/conversation/");
 
     H.mockMetabotResponse({
       body: mockTextOnlyResponse("Here's what I found."),
     });
     H.sendMetabotMessage("Tell me about my data");
-
-    // the reply renders inline in the full-page conversation...
-    cy.wait("@metabotAgent").then(({ request }) => {
-      // the full-page conversation uses the nlq profile
-      expect(request.body.profile_id).to.equal("nlq");
-    });
     H.lastChatMessage().should("have.text", "Here's what I found.");
-
-    // ...and we move to the conversation's permalink
-    cy.url().should("include", "/metabot/conversation/");
 
     cy.log("suggested prompts");
     // mock suggested prompts
@@ -63,11 +67,6 @@ describe("Metabot Query Builder", () => {
     cy.findByTestId("metabot-inline-chart").should("be.visible");
     cy.findByTestId("qb-header").should("not.exist");
     cy.url().should("include", "/metabot/conversation/");
-
-    cy.log("errors");
-    H.mockMetabotResponse({ body: mockErrorResponse });
-    H.sendMetabotMessage("Show me all orders");
-    H.lastChatMessage().should("contain.text", "Something went wrong");
   });
 });
 
