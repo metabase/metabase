@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Box, Ellipsified, Flex, Icon, Loader } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon, Loader, Paper, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
@@ -42,12 +42,13 @@ export const StatusLarge = ({
   onDismiss,
 }: StatusLargeProps) => {
   return (
-    <Box
-      className={cx(S.border, S.shadow, CS.overflowHidden)}
+    <Paper
+      className={cx(S.shadow, CS.overflowHidden)}
       role="status"
       w="16rem"
       mt="lg"
-      bg="background_page-primary"
+      radius="xs"
+      withBorder
     >
       <Flex align="center" py="0.625rem" px="lg" bg="core-brand">
         <Box
@@ -88,7 +89,7 @@ export const StatusLarge = ({
           />
         ))}
       </Box>
-    </Box>
+    </Paper>
   );
 };
 
@@ -142,15 +143,14 @@ const StatusCard = ({
           >
             <Ellipsified>{title}</Ellipsified>
           </Box>
-          <Box
-            c="background_page-tertiary-inverse"
-            fz="xs"
+          <Text
+            size="xs"
             fw="bold"
-            lh="0.8125rem"
             mt="xxs"
+            c="background_page-tertiary-inverse"
           >
             {description}
-          </Box>
+          </Text>
         </Box>
         {isInProgress && <Loader size="md" color="core-brand" />}
         {isCompleted && (
