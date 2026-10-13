@@ -160,7 +160,7 @@
 }
 
 .root[data-variant^="on-dark-"] {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: var(--mantine-shadow-xs_on_dark);
 
   &:disabled:not([data-loading]),
   &[data-disabled]:not([data-loading]) {

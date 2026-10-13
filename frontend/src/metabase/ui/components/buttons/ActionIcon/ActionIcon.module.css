@@ -132,7 +132,7 @@
 }
 
 .root[data-variant^="on-dark-"] {
-  box-shadow: var(--mantine-shadow-xs);
+  box-shadow: var(--mantine-shadow-xs_on_dark);
 
   &:disabled:not([data-loading]),
   &[data-disabled]:not([data-loading]) {
