@@ -67,33 +67,25 @@
   (dependencies.db/delete-dependency-status! entity-type entity-id)
   (trigger-jobs!))
 
-(defn- logging-failures
-  "Run `f`, logging a failure rather than failing the write of the `model` row that called it."
-  [model f]
-  (try
-    (f)
-    (catch Exception e
-      (log/warnf "Failed to update the dependencies of a %s: %s" (name model) (ex-message e)))))
-
 (defenterprise entity-inserted!
   "Have the jobs pick up an inserted entity, which has no status or findings yet, or mark the entity a `model` row is
   being inserted into for recalculation."
   :feature :dependencies
   [model instance opts]
-  (logging-failures model #(if (:owner-model opts)
-                             (owner-changed! (owner-type model opts) (owner-id instance opts))
-                             (owner-created!))))
+  (if (:owner-model opts)
+    (owner-changed! (owner-type model opts) (owner-id instance opts))
+    (owner-created!)))
 
 (defenterprise entity-updated!
   "Mark the entity an updated `model` row is, or is part of, for recalculation."
   :feature :dependencies
   [model instance opts]
-  (logging-failures model #(owner-changed! (owner-type model opts) (owner-id instance opts))))
+  (owner-changed! (owner-type model opts) (owner-id instance opts)))
 
 (defenterprise entity-deleted!
   "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."
   :feature :dependencies
   [model instance opts]
-  (logging-failures model #(if (:owner-model opts)
-                             (owner-changed! (owner-type model opts) (owner-id instance opts))
-                             (owner-deleted! (owner-type model opts) (owner-id instance opts)))))
+  (if (:owner-model opts)
+    (owner-changed! (owner-type model opts) (owner-id instance opts))
+    (owner-deleted! (owner-type model opts) (owner-id instance opts))))
