@@ -2,10 +2,13 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.apps :as data-apps.apps]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
@@ -27,7 +30,7 @@
   [dir & {:keys [with-collections?]}]
   (serialization/store! (if with-collections?
                           (extract/extract {:targets        (mapv (fn [id] ["DataApp" id])
-                                                                  (t2/select-pks-vec :model/DataApp :draft false))
+                                                                  (t2/select-pks-vec :model/DataApp))
                                             :no-settings    true
                                             :no-data-model  true})
                           (serdes/extract-all "DataApp" {}))
@@ -78,11 +81,6 @@
           (is (= "console.log(1)"
                  (slurp (io/file dump-dir "data_apps" "sales-ops" "dist" "index.js")))))))))
 
-(deftest drafts-are-not-exported-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (data-apps.apps/ensure-draft! "draft-app")
-    (is (empty? (into [] (serdes/extract-all "DataApp" {}))))))
-
 (deftest round-trip-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -102,14 +100,13 @@
                      :display_name  "Sales Ops"
                      :bundle_path   "dist/index.js"
                      :bundle_hash   (:bundle_hash app)
-                     :allowed_hosts ["https://api.example.com"]
-                     :draft         false}
+                     :allowed_hosts ["https://api.example.com"]}
                     imported))
             (is (= "console.log(1)" (bundle-text imported)))
-            (testing "the import links the collection the manifest names and creates the permission group"
+            (testing "the import links the collection the manifest names without importing group assignments"
               (is (=? {:entity_id collection-entity-id :namespace :data-apps}
                       (t2/select-one :model/Collection :id (:resource_collection_id imported))))
-              (is (t2/exists? :model/PermissionsGroup :id (:permission_group_id imported))))))))))
+              (is (not (t2/exists? :model/DataAppGroupAssignment :data_app_id (:id imported)))))))))))
 
 (deftest import-refuses-a-manifest-that-names-another-collection-test
   (mt/with-premium-features #{:data-apps}
@@ -137,7 +134,9 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-update-"]
-        (let [app (insert-app! :enabled false)]
+        (let [app (insert-app! :enabled false)
+              group (t2/insert-returning-instance! :model/PermissionsGroup {:name "Assigned group"})]
+          (group-access/add-groups! app [(:id group)])
           (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
                                                            :path "./dist/index.js")
                             {"dist/index.js" "console.log(2)"})
@@ -145,26 +144,12 @@
           (let [updated (t2/select-one :model/DataApp :id (:id app))]
             (is (=? {:display_name           "Renamed"
                      :enabled                false
-                     :resource_collection_id (:resource_collection_id app)
-                     :permission_group_id    (:permission_group_id app)}
+                     :resource_collection_id (:resource_collection_id app)}
                     updated))
+            (is (t2/exists? :model/DataAppGroupAssignment
+                            :data_app_id (:id app) :permission_group_id (:id group)))
             (is (= "console.log(2)" (bundle-text updated)))
             (is (not= (:bundle_hash app) (:bundle_hash updated)))))))))
-
-(deftest import-takes-over-a-draft-with-the-same-slug-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-draft-"]
-        (let [draft (data-apps.apps/ensure-draft! "draft-app")
-              id    (t2/select-one-pk :model/DataApp :name "draft-app")]
-          (write-app-files! dump-dir "draft_app" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "draft-app")
-                            {"dist/index.js" "BUNDLE"})
-          (import! dump-dir)
-          (is (=? {:id                     id
-                   :entity_id              "Ld3cXiYs9n8HP3q3FvC7R"
-                   :draft                  false
-                   :resource_collection_id (:resource_collection_id draft)}
-                  (t2/select-one :model/DataApp :name "draft-app"))))))))
 
 (deftest import-rejects-invalid-apps-test
   (mt/with-premium-features #{:data-apps}
@@ -201,13 +186,17 @@
           (import! dump-dir)
           (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app)))))))))
 
-(deftest import-does-not-take-over-an-app-that-is-not-a-draft-test
+(deftest import-does-not-take-over-an-app-made-on-the-instance-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
         (let [app (insert-app!)]
           (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
+          (let [e (try (import! dump-dir) nil (catch clojure.lang.ExceptionInfo e e))]
+            (is (re-find #"Failed to load" (ex-message e)))
+            (testing "the pull says what to do, rather than failing on the slug's unique index"
+              (is (re-find #"named \"sales-ops\" already exists on this instance"
+                           (ex-message (ex-cause e))))))
           (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app)))))))))
 
 (deftest export-includes-data-apps-test
@@ -215,3 +204,34 @@
     (let [app (insert-app!)]
       (is (some #(= [{:model "DataApp" :id (:entity_id app)}] (map (fn [m] (dissoc m :label)) (:serdes/meta %)))
                 (into [] (extract/extract {:no-collections true :no-data-model true :no-settings true})))))))
+
+(deftest round-trip-with-resources-test
+  (testing "an app travels with its collection and what that holds, written under collections/data_apps/"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
+        (ts/with-random-dump-dir [dump-dir "data-app-resources-"]
+          (let [app           (insert-app!)
+                collection-id (:resource_collection_id app)
+                mp            (mt/metadata-provider)
+                query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+            (mt/with-temp [:model/Card {question-eid :entity_id} {:name "Venues list" :type :question
+                                                                  :collection_id collection-id :dataset_query query}]
+              (let [action-id  (actions/insert! {:name          "Rename venue"
+                                                 :type          :query
+                                                 :collection_id collection-id
+                                                 :database_id   (mt/id)
+                                                 :dataset_query (lib/native-query mp "UPDATE venues SET name = 'x'")})
+                    action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+                (export! dump-dir :with-collections? true)
+                (testing "the files sit under the collection's directory of the data-apps namespace"
+                  (doseq [path ["data_app__sales_ops.yaml" "data_app__sales_ops/venues_list.yaml"
+                                "data_app__sales_ops/rename_venue.yaml"]]
+                    (is (.exists (io/file dump-dir "collections" "data_apps" path)) path)))
+                (t2/delete! :model/DataApp (:id app))
+                (is (not (t2/exists? :model/Card :entity_id question-eid)) "deleting the app deletes its collection's cards")
+                (import! dump-dir)
+                (let [imported      (t2/select-one :model/DataApp :entity_id (:entity_id app))
+                      collection-id (:resource_collection_id imported)]
+                  (is (pos-int? collection-id))
+                  (is (= collection-id (t2/select-one-fn :collection_id :model/Card :entity_id question-eid)))
+                  (is (= collection-id (t2/select-one-fn :collection_id :model/Action :entity_id action-eid))))))))))))

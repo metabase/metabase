@@ -13,27 +13,22 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type {
+  DataAppGroupPermissionWarning,
   DataAppMissingTable,
-  DataAppUserPermissionWarning,
 } from "metabase-types/api";
 
 import S from "./DataAppDataAccessWarning.module.css";
 
 interface Props {
-  warning: DataAppUserPermissionWarning;
-  userName: string;
+  warning: DataAppGroupPermissionWarning;
+  groupName: string;
 }
 
-export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
+export const DataAppDataAccessWarning = ({ warning, groupName }: Props) => {
   const label = t`Missing data access`;
 
   return (
-    <HoverCard
-      position="bottom-end"
-      openDelay={150}
-      closeDelay={100}
-      shadow="md"
-    >
+    <HoverCard position="bottom-end" shadow="md">
       <HoverCard.Target>
         <UnstyledButton
           className={S.button}
@@ -53,13 +48,13 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
       </HoverCard.Target>
 
       <HoverCard.Dropdown
-        data-testid="data-access-warning-popover"
         p="lg"
         w="30rem"
+        data-testid="data-access-warning-popover"
       >
         <Stack gap="lg">
           <Text size="sm">
-            {t`${userName} doesn’t have permission to view these tables used in this app:`}
+            {t`${groupName} doesn’t have permission to view these tables used in this app:`}
           </Text>
 
           <Stack
@@ -83,14 +78,7 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
                 >
                   {parts.map((part, index) => (
                     <Flex key={part.url} align="center" gap={4}>
-                      <Anchor
-                        component={Link}
-                        to={part.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="sm"
-                        fw={700}
-                      >
+                      <Anchor component={Link} to={part.url} size="sm" fw={700}>
                         {part.label}
                       </Anchor>
 
@@ -114,14 +102,15 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
   );
 };
 
-const getMissingTableSegments = (table: DataAppMissingTable) => [
-  {
+const getMissingTableSegments = (table: DataAppMissingTable) => {
+  const databaseSection = {
     label: table.database_name,
     url: getDatabaseFocusPermissionsUrl({
       databaseId: table.database_id,
     }),
-  },
-  ...(table.schema
+  };
+
+  const schemaSection = table.schema
     ? [
         {
           label: table.schema,
@@ -131,13 +120,16 @@ const getMissingTableSegments = (table: DataAppMissingTable) => [
           }),
         },
       ]
-    : []),
-  {
+    : [];
+
+  const tableSection = {
     label: table.name,
     url: getDatabaseFocusPermissionsUrl({
       databaseId: table.database_id,
       schemaName: table.schema ?? undefined,
       tableId: table.id,
     }),
-  },
-];
+  };
+
+  return [databaseSection, ...schemaSection, tableSection];
+};

@@ -60,6 +60,14 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
+(mu/defn card-ids-outside-collection
+  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
+  [card-ids      :- [:set ::lib.schema.id/card]
+   collection-id :- ::lib.schema.id/collection]
+  (t2/select-pks-set :model/Card {:where [:and
+                                          [:in :id card-ids]
+                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]

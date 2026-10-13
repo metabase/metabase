@@ -68,7 +68,8 @@
 
        :openrouter (get (openrouter/openrouter-request-body opts) :max_tokens omitted)
        :zai        (get (zai/zai-request-body opts) :max_tokens omitted)
-       :moonshot   (get (moonshot/moonshot-request-body opts) :max_tokens omitted)
+       ;; Moonshot sends the cap as max_completion_tokens
+       :moonshot   (get (moonshot/moonshot-request-body opts) :max_completion_tokens omitted)
        :mistral    (get (mistral/mistral-request-body opts) :max_tokens omitted)
        :vllm       (get (vllm/vllm-request-body opts) :max_tokens omitted)
        :ollama     (get (ollama/ollama-request-body opts) :max_tokens omitted)

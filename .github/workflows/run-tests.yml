@@ -43,6 +43,7 @@ jobs:
         id: compute
         uses: ./.github/actions/create-test-plan
         with:
+          diff-base: ${{ needs.gate.outputs.diff-base }}
           stats-url: ${{ secrets.ENG_STATS_URL }}
           stats-api-key: ${{ secrets.ENG_STATS_API_KEY }}
 
@@ -72,6 +73,15 @@ jobs:
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       edition: ${{ matrix.edition }}
       release: false
+
+  # Should only run when we push an image to metabase/metabase-head
+  cross-version-tests:
+    name: Cross-version migration tests
+    needs: [containerize]
+    uses: ./.github/workflows/cross-version.yml
+    secrets: inherit
+    with:
+      digest: ${{ needs.containerize.outputs.digest-ee }}
 
   bundle-size:
     needs: uberjar

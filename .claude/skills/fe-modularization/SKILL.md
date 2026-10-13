@@ -201,7 +201,7 @@ prefix; never generic `-shared` / `-feature` suffixes.
    bunx eslint --no-warn-ignored <touched files>
    bun run lint-oxlint                                            # enforce-module-public-api included
    bun run type-check-pure
-   bun run test-unit-keep-cljs <touched folders' specs>
+   bun run test-unit-keep-cljs --testPathPatterns=<touched folders' specs>
    bun run module-boundaries 2>&1 | tail -1                       # after; no violation may name the new files
    bun run build-release:static-viz                               # only if viz/static-viz/ui/dayjs touched; hard 3.5 MiB budget
    ```
