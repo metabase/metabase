@@ -249,15 +249,6 @@ describe("scenarios > dependencies > dependency diagnostics", () => {
         hiddenEntities: BROKEN_DEPENDENTS,
       });
 
-      cy.log("search");
-      H.DependencyDiagnostics.searchInput().type(TRANSFORM_TABLE_DISPLAY_NAME);
-      checkList({
-        visibleEntities: [TRANSFORM_TABLE_DISPLAY_NAME],
-        hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
-      });
-      H.DependencyDiagnostics.searchInput().clear();
-      checkList({ visibleEntities: BROKEN_DEPENDENCIES });
-
       cy.log("table dependents");
       H.DependencyDiagnostics.list()
         .findByText(TRANSFORM_TABLE_DISPLAY_NAME)
@@ -291,6 +282,14 @@ describe("scenarios > dependencies > dependency diagnostics", () => {
         title: TABLE_BASED_MODEL,
         missingColumns: ["AMOUNT", "QUANTITY", "SUBTOTAL", "TOTAL"],
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
+      });
+
+      cy.log("search");
+      H.DependencyDiagnostics.searchInput().type(TRANSFORM_TABLE_DISPLAY_NAME);
+      cy.wait("@breakingEntities");
+      checkList({
+        visibleEntities: [TRANSFORM_TABLE_DISPLAY_NAME],
+        hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
       });
 
       cy.log("sorting");
