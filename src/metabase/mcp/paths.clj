@@ -53,13 +53,12 @@
 
    Spelled as literals rather than read from `metabot.scope` because requiring that namespace here would close
    the load cycle described above; `v2-surface-scopes-match-metabot-scope-test` is what keeps them in step.
-   Scopes are never renamed — issued tokens carry literal strings — so this only ever grows."
+   Scopes are never renamed — issued tokens carry literal strings."
   ["agent:content:read"
    "agent:content:write"
    "agent:query:run"
    "agent:sql:run"
-   "agent:delivery:write"
-   "agent:resource:read"])
+   "agent:delivery:write"])
 
 (def v2-baseline-scopes
   "The subset of [[v2-surface-scopes]], in its order, that the consent page locks: when a client requests one of
@@ -69,5 +68,4 @@
   ;; tool after step-up over a session that declares no MCP Apps support, so a stepped-up `visualize_query` is refused
   ;; and never embeds.
   ["agent:content:read"
-   "agent:query:run"
-   "agent:resource:read"])
+   "agent:query:run"])

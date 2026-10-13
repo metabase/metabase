@@ -54,7 +54,7 @@
             Claude's connector settings asks for exactly this, so a baseline-only challenge left SQL, writes and
             delivery unreachable. The user can still untick each one outside the baseline on the consent page."
     (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
-             "agent:sql:run" "agent:delivery:write" "agent:resource:read"}
+             "agent:sql:run" "agent:delivery:write"}
            (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
@@ -201,7 +201,7 @@
       (testing "GHY-4543: every v2 scope survives narrowing on every alias — otherwise a first connect or a
                 step-up for a write scope is stripped at consent"
         (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
-                         "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                         "agent:sql:run" "agent:delivery:write"]]
           (doseq [path (mcp/mcp-endpoint-paths)]
             (testing path
               (is (= (set v2-scopes)

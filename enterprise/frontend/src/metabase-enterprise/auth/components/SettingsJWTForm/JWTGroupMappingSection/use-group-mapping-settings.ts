@@ -56,8 +56,7 @@ export function useGroupMappingSettings(): GroupMappingSettingsState {
         if (showErrorToast) {
           sendToast({
             message: error,
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
           });
         }
         return { ok: false, error };
