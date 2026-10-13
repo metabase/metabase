@@ -146,7 +146,7 @@ export default function Gauge({
               }}
             </Pie>
             <GaugeNeedle
-              color={getColor("background_page-tertiary-inverse")}
+              color={getColor("text-secondary-opaque")}
               outlineColor={outlineColor}
               position={gaugeNeedlePosition}
               valueAngle={gaugeNeedleAngle}
