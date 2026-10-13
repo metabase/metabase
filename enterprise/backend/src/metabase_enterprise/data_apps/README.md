@@ -123,6 +123,9 @@ Collection access alone does not grant app access.
 
 Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
 
+Only a pull changes an app's collection. Nobody can write the collection, its cards or its actions, administrators
+included, whatever the remote sync mode.
+
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
 collection and assignments, but preserves the assigned groups.

@@ -27,23 +27,21 @@
   ->ingestable])
 
 (defenterprise collection-editable?
-  "Determines if a remote-synced collection should be editable.
+  "Determines if a collection should be editable.
 
   Takes a collection to check for editability.
 
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  Returns false for a data app's collection, which only a pull changes, and for a remote-synced collection when
+  remote-sync-type is :read-only. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
-      (not (or (collections/remote-synced-collection? collection)
-               ;; a data app's collection is synced with the app; without remote sync nothing writes its files
-               (and (settings/remote-sync-enabled)
-                    (spec/data-apps-namespace-collection?
-                     {:namespace (if (and (map? collection) (contains? collection :namespace))
-                                   (:namespace collection)
-                                   ;; the root collection has no ID, and nothing in it is synced
-                                   (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
+  (and (not (spec/data-apps-namespace-collection?
+             {:namespace (if (and (map? collection) (contains? collection :namespace))
+                           (:namespace collection)
+                           ;; the root collection has no ID, and is no app's
+                           (some-> (u/id collection) remote-sync.db/collection-namespace))}))
+       (or (= (settings/remote-sync-type) :read-write)
+           (not (collections/remote-synced-collection? collection)))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.

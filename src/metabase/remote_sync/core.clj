@@ -4,7 +4,8 @@
    [metabase.remote-sync.db :as remote-sync.db]))
 
 (defenterprise collection-editable?
-  "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
+  "Returns if a collection is editable: a data app's collection never is, nor a remote-synced one on a read-only
+  instance. Takes a collection to check for eligibility.
 
   Always true on OSS."
   metabase-enterprise.remote-sync.core
