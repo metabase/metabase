@@ -7,11 +7,9 @@
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,14 +114,3 @@
   []
   (when (pos? (deps.settings/dependency-entity-check-batch-size))
     (schedule-run! (task/scheduler) 1)))
-
-;;; Mirrors the backfill job's wiring: enabling the feature has to restart the job, because
-;;; [[reschedule-after-run!]] stops the periodic chain while it is disabled and the content-change handlers that
-;;; would otherwise revive it are themselves gated on the feature.
-(events/derive! ::entity-check :metabase/event)
-(events/derive! :event/set-premium-embedding-token ::entity-check)
-
-(methodical/defmethod events/publish-event! ::entity-check
-  [_ _]
-  (when (premium-features/has-feature? :dependencies)
-    (trigger-entity-check-job!)))

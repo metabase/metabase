@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -84,6 +85,7 @@
 
 (t2/define-before-insert :model/TableUserSettings
   [settings]
+  (dependencies.hooks/entity-inserted! :model/TableUserSettings settings)
   (enforce-invariants settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
@@ -92,6 +94,7 @@
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
+  (dependencies.hooks/entity-updated! :model/TableUserSettings settings)
   (enforce-invariants settings (t2/changes settings)))
 
 (t2/define-after-update :model/TableUserSettings

@@ -611,6 +611,11 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
 
+(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
+  "The `:table_id` of the Field with `field-id`, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+
 (mu/defn table-id-by-name
   "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
   [db-id      :- ::lib.schema.id/database

@@ -2012,7 +2012,7 @@
    :uses #{analytics.interface
            analytics.internal-stats
            app-db
-           events
+           dependencies
            settings
            startup
            task
@@ -2825,6 +2825,7 @@
            app-db
            audit-app
            database-routing
+           dependencies
            driver
            events
            interestingness
@@ -3057,6 +3058,7 @@
                     :model/TransformRun}
    :uses #{app-db
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3299,6 +3301,7 @@
            api
            app-db
            audit-app
+           dependencies
            driver
            lib.schema
            models
@@ -3376,6 +3379,7 @@
            app-db
            audit-app
            collections
+           dependencies
            driver
            lib
            lib.be
@@ -3887,9 +3891,9 @@
            batch-processing
            collections
            database-routing
+           dependencies
            documents
            driver
-           events
            lib
            lib.be
            lib.metadata
@@ -3919,13 +3923,17 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
+                    :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Sandbox
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform}}
 
   enterprise/dependencies.replacement
@@ -4413,7 +4421,6 @@
            app-db
            appearance
            collections
-           events
            lib
            lib.schema
            logger

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -14,9 +14,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 ;;; ------------------------------------------------ Card --------------------------------------------------------
 

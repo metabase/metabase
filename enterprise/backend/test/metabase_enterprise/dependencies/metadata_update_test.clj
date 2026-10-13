@@ -4,13 +4,12 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.async :as async]
+   [metabase-enterprise.dependencies.db :as deps.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.events :as deps.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.metadata-update :as deps.metadata-update]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
-   [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -135,10 +134,7 @@
                                      :id [:in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
             (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
-              (events/publish-event! :event/card-update
-                                     {:object (assoc parent-card :dataset_query (lib/query mp orders))
-                                      :previous-object parent-card
-                                      :user-id api/*current-user-id*}))
+              (deps.metadata-update/card-updated! parent-id parent-card))
             (is (= #{9}
                    (t2/select-fn-set (comp count :result_metadata)
                                      (card-schema/selection [:database_id])
@@ -159,11 +155,9 @@
                                               :to_entity_type :card
                                               :to_entity_id parent-id}]
             (t2/update! :model/Card child-id {:result_metadata nil})
+            (t2/update! :model/Card parent-id {:dataset_query native-query})
             (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
-              (events/publish-event! :event/card-update
-                                     {:object (assoc parent-card :dataset_query native-query)
-                                      :previous-object parent-card
-                                      :user-id api/*current-user-id*}))
+              (deps.metadata-update/card-updated! parent-id parent-card))
             (is (= nil
                    (t2/select-one-fn :result_metadata
                                      (card-schema/selection [:database_id])
@@ -196,10 +190,7 @@
                                                 "new-name")]
               (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
               (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
-                (events/publish-event! :event/card-update
-                                       {:object (assoc parent-card :result_metadata new-result-metadata)
-                                        :previous-object parent-card
-                                        :user-id api/*current-user-id*}))
+                (deps.metadata-update/card-updated! parent-id parent-card))
               (is (= #{[child-id "new-name"] [grandchild-id "new-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
                                        (card-schema/selection [:database_id])
@@ -239,10 +230,7 @@
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata new-grandchild-metadata})
               (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
-                (events/publish-event! :event/card-update
-                                       {:object (assoc parent-card :result_metadata new-parent-metadata)
-                                        :previous-object parent-card
-                                        :user-id api/*current-user-id*}))
+                (deps.metadata-update/card-updated! parent-id parent-card))
               (is (= #{[child-id "child-name"] [grandchild-id "grandchild-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
                                        (card-schema/selection [:database_id])
@@ -281,10 +269,7 @@
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata nil})
               (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
-                (events/publish-event! :event/card-update
-                                       {:object (assoc parent-card :result_metadata new-parent-metadata)
-                                        :previous-object parent-card
-                                        :user-id api/*current-user-id*}))
+                (deps.metadata-update/card-updated! parent-id parent-card))
               (is (= nil
                      (t2/select-one-fn #(get-in % [:result_metadata 0 :display_name])
                                        (card-schema/selection [:database_id])
@@ -392,11 +377,11 @@
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)
               db-deps-checked       (atom [])
-              original-deps-check   (mt/original-fn #'deps.events/synced-db->direct-dependents-of-changed-tables)
+              original-deps-check   (mt/original-fn #'deps.db/table-ids-with-outdated-findings)
               table-before          (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
           ;; Re-sync the database, having made no changes to it.
-          (mt/with-dynamic-fn-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
+          (mt/with-dynamic-fn-redefs [deps.db/table-ids-with-outdated-findings
                                       (fn [db-id]
                                         (u/prog1 (original-deps-check db-id)
                                           (swap! db-deps-checked conj [db-id <>])))]

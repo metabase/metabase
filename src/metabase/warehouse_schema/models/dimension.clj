@@ -3,6 +3,7 @@
   Query Processor. For a more detailed explanation, refer to the documentation in
   `metabase.query-processor.middleware.add-remaps`."
   (:require
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -24,6 +25,21 @@
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
+
+(t2/define-before-insert :model/Dimension
+  [dimension]
+  (dependencies.hooks/entity-inserted! :model/Dimension dimension)
+  dimension)
+
+(t2/define-before-update :model/Dimension
+  [dimension]
+  (dependencies.hooks/entity-updated! :model/Dimension dimension)
+  dimension)
+
+(t2/define-before-delete :model/Dimension
+  [dimension]
+  (dependencies.hooks/entity-deleted! :model/Dimension dimension)
+  dimension)
 
 (defmethod serdes/generate-path "Dimension" [_ {:keys [field_id entity_id]}]
   (conj (serdes/generate-path "Field" {:id field_id})

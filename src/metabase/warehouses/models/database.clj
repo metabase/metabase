@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
@@ -163,16 +164,6 @@
   metabase-enterprise.advanced-permissions.common
   [_db-id]
   (mi/superuser?))
-
-(defenterprise mark-transforms-stale-on-database-delete!
-  "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
-   is about to be SET NULL by the FK action survive the delete (so the analyst can read the
-   SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
-   be re-run so they surface on `/monitor/dependency-diagnostics/broken`. OSS is a no-op
-   (no dependencies module)."
-  metabase-enterprise.dependencies.events
-  [_db-id]
-  nil)
 
 (defn- can-write?
   [db-id]
@@ -433,11 +424,7 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
-  ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
-  ;; the database row is deleted below) so we can still resolve the affected transforms by
-  ;; source_database_id.
-  (mark-transforms-stale-on-database-delete! id)
+  (dependencies.hooks/entity-deleted! :model/Database database)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)

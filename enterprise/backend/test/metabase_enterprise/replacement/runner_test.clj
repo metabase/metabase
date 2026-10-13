@@ -3,7 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -19,9 +19,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"

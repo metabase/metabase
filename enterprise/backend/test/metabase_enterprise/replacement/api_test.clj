@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]

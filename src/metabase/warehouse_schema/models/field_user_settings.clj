@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -52,6 +53,7 @@
 
 (t2/define-before-insert :model/FieldUserSettings
   [settings]
+  (dependencies.hooks/entity-inserted! :model/FieldUserSettings settings)
   (with-set-flags settings settings))
 
 (t2/define-after-insert :model/FieldUserSettings
@@ -60,6 +62,7 @@
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
+  (dependencies.hooks/entity-updated! :model/FieldUserSettings settings)
   (with-set-flags settings (t2/changes settings)))
 
 (t2/define-after-update :model/FieldUserSettings

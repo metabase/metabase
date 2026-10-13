@@ -7,7 +7,6 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.metadata-provider :as deps.metadata-provider]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -15,13 +14,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]))
+   [metabase.util.malli.registry :as mr]))
 
 (defn- mbql-graph
   "Returns a graph that is limited to sandboxes, segments, measures, and mbql cards.
@@ -196,14 +193,12 @@
     (doseq [[card-id new-metadata] updates]
       (dependencies.db/set-card-result-metadata! card-id new-metadata))))
 
-(events/derive! ::update-card-dependents-metadata :metabase/event)
-(events/derive! :event/card-update ::update-card-dependents-metadata)
-
-(methodical/defmethod events/publish-event! ::update-card-dependents-metadata
-  [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]
-  (when (and (premium-features/has-feature? :dependencies)
-             (seq dataset_query)
-             (not (lib/any-native-stage? dataset_query)))
-    (async/submit!
-     (fn []
-       (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))))
+(defn card-updated!
+  "Propagate the result metadata of the MBQL Card with `card-id`, changed from `previous-card`, to its dependent cards."
+  [card-id previous-card]
+  (async/submit!
+   (fn []
+     (let [{:keys [dataset_query]} (dependencies.db/card card-id)]
+       (when (and (seq dataset_query)
+                  (not (lib/any-native-stage? dataset_query)))
+         (update-dependent-mbql-cards-metadata! dataset_query :card card-id previous-card :metadata/card))))))

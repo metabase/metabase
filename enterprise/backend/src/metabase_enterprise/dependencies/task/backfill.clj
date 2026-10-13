@@ -18,13 +18,11 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import (org.quartz JobExecutionContext)))
 
@@ -226,12 +224,3 @@
    (task/scheduler)
    (deps.task-util/job-initial-delay
     (deps.settings/dependency-backfill-variance-minutes))))
-
-(events/derive! ::backfill :metabase/event)
-(events/derive! :event/serdes-load ::backfill)
-(events/derive! :event/set-premium-embedding-token ::backfill)
-
-(methodical/defmethod events/publish-event! ::backfill
-  [_ _]
-  (when (premium-features/has-feature? :dependencies)
-    (trigger-backfill-job!)))
