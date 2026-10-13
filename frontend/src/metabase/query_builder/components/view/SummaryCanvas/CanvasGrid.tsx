@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import ReactGridLayout, { type Layout } from "react-grid-layout";
 import { t } from "ttag";
 
-import { Box, Icon, Stack, Text, useElementSize } from "metabase/ui";
+import { Box, Icon, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { BLOCK_DRAG_HANDLE_CLASS, SummaryBlockCard } from "./SummaryBlockCard";
@@ -17,6 +17,7 @@ import type {
   SummaryDragItem,
   SummaryDropTarget,
 } from "./types";
+import { useContainerWidth } from "./use-container-width";
 
 const ROW_HEIGHT_PX = 40;
 const GRID_MARGIN_PX: [number, number] = [12, 12];
@@ -53,7 +54,8 @@ export function CanvasGrid({
     data: { target: { type: "canvas" } satisfies SummaryDropTarget },
   });
   const isDraggingField = draggedItem != null && draggedItem.kind !== "chip";
-  const { ref: gridContainerRef, width: gridWidth } = useElementSize();
+  const { ref: gridContainerRef, width: gridWidth } =
+    useContainerWidth<HTMLDivElement>();
 
   const layout = useMemo(
     () =>
