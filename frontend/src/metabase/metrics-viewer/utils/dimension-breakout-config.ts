@@ -84,6 +84,7 @@ export type DimensionBreakoutTypeDefinition =
 // ── Chart type presets ──
 
 const STANDARD_CHART_TYPES: ChartTypeOption[] = [
+  { type: "table", icon: "table" },
   { type: "line", icon: "line" },
   { type: "area", icon: "area" },
   { type: "bar", icon: "bar" },
@@ -131,7 +132,10 @@ export const DIMENSION_BREAKOUT_TYPE_REGISTRY: DimensionBreakoutTypeDefinition[]
       fixedId: "scalar",
       dimensionPredicate: () => false,
       defaultDisplayType: "scalar",
-      availableDisplayTypes: [{ type: "scalar", icon: "number" }],
+      availableDisplayTypes: [
+        { type: "scalar", icon: "number" },
+        { type: "table", icon: "table" },
+      ],
       index: 5,
       minDimensions: 0,
     },
@@ -306,6 +310,12 @@ export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
 > = {
+  table: {
+    dimensionRequired: false,
+    supportsMultipleSeries: false,
+    supportsStacking: false,
+    getSettings: () => ({}),
+  },
   line: {
     dimensionRequired: true,
     supportsMultipleSeries: true,

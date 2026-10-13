@@ -2,10 +2,7 @@ import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import {
-  getQuestionReturnUrl,
-  withQuestionReturnUrl,
-} from "metabase/common/metrics-viewer/question-handoff";
+import { withExplorerContext } from "metabase/common/metrics-viewer/dataset-explorer";
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -189,11 +186,10 @@ export function useViewerUrl(
     const hash = encodeState(serializedState);
     if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
-      const returnTo = getQuestionReturnUrl(location.search);
-      const viewerUrl = Urls.metricsViewer(hash);
-      const url = returnTo
-        ? withQuestionReturnUrl(viewerUrl, returnTo)
-        : viewerUrl;
+      const url = withExplorerContext(
+        Urls.metricsViewer(hash),
+        location.search,
+      );
       if (!window.location.hash) {
         navigate(url, { replace: true });
       } else {

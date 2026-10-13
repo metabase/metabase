@@ -92,17 +92,22 @@ export function QuestionSummaryPage() {
 export function QuestionSummary({
   initialQuestion,
   onChange,
+  variant = "summary",
 }: {
+  variant?: "summary" | "dataset";
   initialQuestion: Question;
   onChange: (question: Question) => void;
 }) {
   const [question, setQuestion] = useState(initialQuestion);
   const [filterOpened, setFilterOpened] = useState(false);
+  const [summaryOpened, setSummaryOpened] = useState(false);
   const query = question.query();
   const hasAggregations = Lib.stageIndexes(query).some(
     (stage) => Lib.aggregations(query, stage).length > 0,
   );
-  const canRun = hasAggregations && Lib.canRun(query, question.type());
+  const canRun =
+    (variant === "dataset" || hasAggregations) &&
+    Lib.canRun(query, question.type());
   const { result, error, isRunning, refresh, cancel } = useSummaryResult(
     question,
     canRun,
@@ -112,7 +117,11 @@ export function QuestionSummary({
     onChange(nextQuestion);
   };
   const updateQuery = (nextQuery: Lib.Query) =>
-    updateQuestion(question.setQuery(nextQuery).setDefaultDisplay());
+    updateQuestion(
+      variant === "dataset"
+        ? question.setQuery(nextQuery).setDisplay("table")
+        : question.setQuery(nextQuery).setDefaultDisplay(),
+    );
   const displayOptions: { value: CardDisplayType; label: string }[] = [
     { value: "table", label: t`Table` },
     { value: "pivot", label: t`Pivot table` },
@@ -125,7 +134,11 @@ export function QuestionSummary({
   return (
     <Stack flex={1} mih={0} gap="md" data-testid="question-summary">
       <Group justify="space-between">
-        <Text c="text-secondary">{t`Summarize this question. Changes here stay separate from the original table.`}</Text>
+        <Text c="text-secondary">
+          {variant === "dataset"
+            ? t`Dataset`
+            : t`Summarize this question. Changes here stay separate from the original table.`}
+        </Text>
         <Button
           component={Link}
           to={Urls.serializedQuestion(question.cardWithNormalizedQuery(), {
@@ -134,29 +147,60 @@ export function QuestionSummary({
           })}
         >{t`Open as question`}</Button>
       </Group>
-      <Group align="flex-start" wrap="nowrap" flex={1} mih={0}>
-        <Stack
-          w="20rem"
-          h="100%"
-          style={{ overflowY: "auto", flexShrink: 0 }}
-          p="md"
+      {variant === "dataset" && summaryOpened && (
+        <Box
+          mah="18rem"
+          style={{ overflowY: "auto" }}
           bg="background-secondary"
         >
-          <Title order={4}>{t`Summarize by`}</Title>
-          <SummarizeAggregationItemList
-            query={query}
-            stageIndex={-1}
-            onQueryChange={updateQuery}
-          />
-          <Divider />
-          <SummarizeBreakoutColumnList
-            query={query}
-            stageIndex={-1}
-            onQueryChange={updateQuery}
-          />
-        </Stack>
+          <Stack w="20rem" mah="28rem" style={{ overflowY: "auto" }} p="md">
+            <Title order={4}>{t`Summarize by`}</Title>
+            <SummarizeAggregationItemList
+              query={query}
+              stageIndex={-1}
+              onQueryChange={updateQuery}
+            />
+            <Divider />
+            <SummarizeBreakoutColumnList
+              query={query}
+              stageIndex={-1}
+              onQueryChange={updateQuery}
+            />
+            <Button onClick={() => setSummaryOpened(false)}>{t`Done`}</Button>
+          </Stack>
+        </Box>
+      )}
+      <Group align="flex-start" wrap="nowrap" flex={1} mih={0}>
+        {variant === "summary" && (
+          <Stack
+            w="20rem"
+            h="100%"
+            style={{ overflowY: "auto", flexShrink: 0 }}
+            p="md"
+            bg="background-secondary"
+          >
+            <Title order={4}>{t`Summarize by`}</Title>
+            <SummarizeAggregationItemList
+              query={query}
+              stageIndex={-1}
+              onQueryChange={updateQuery}
+            />
+            <Divider />
+            <SummarizeBreakoutColumnList
+              query={query}
+              stageIndex={-1}
+              onQueryChange={updateQuery}
+            />
+          </Stack>
+        )}
         <Stack flex={1} h="100%" mih={0} miw={0}>
           <Group>
+            {variant === "dataset" && (
+              <Button
+                onClick={() => setSummaryOpened((value) => !value)}
+                leftSection={<Icon name="sum" aria-hidden />}
+              >{t`Summarize dataset`}</Button>
+            )}
             <Popover
               opened={filterOpened}
               onDismiss={() => setFilterOpened(false)}
@@ -165,7 +209,9 @@ export function QuestionSummary({
                 <Button
                   onClick={() => setFilterOpened(!filterOpened)}
                   leftSection={<Icon name="filter" aria-hidden />}
-                >{t`Filter`}</Button>
+                >
+                  {variant === "dataset" ? t`Filter dataset` : t`Filter`}
+                </Button>
               </Popover.Target>
               <Popover.Dropdown>
                 <MultiStageFilterPicker
@@ -210,7 +256,7 @@ export function QuestionSummary({
                 }
                 isRunning={isRunning}
                 isRunnable={canRun}
-                isShowingSummarySidebar
+                isShowingSummarySidebar={variant === "summary"}
                 isResultDirty={!result && !isRunning}
                 onUpdateQuestion={updateQuestion}
                 onUpdateVisualizationSettings={(settings) =>

@@ -115,6 +115,7 @@ describe("getDimensionBreakoutConfig", () => {
         fixedId: "time",
         defaultDisplayType: "line",
         availableDisplayTypes: [
+          { type: "table", icon: "table" },
           { type: "line", icon: "line" },
           { type: "area", icon: "area" },
           { type: "bar", icon: "bar" },
@@ -133,6 +134,7 @@ describe("getDimensionBreakoutConfig", () => {
         defaultDisplayType: "map",
         availableDisplayTypes: [
           { type: "map", icon: "pinmap" },
+          { type: "table", icon: "table" },
           { type: "line", icon: "line" },
           { type: "area", icon: "area" },
           { type: "bar", icon: "bar" },
@@ -149,6 +151,7 @@ describe("getDimensionBreakoutConfig", () => {
         matchMode: "exact-column",
         defaultDisplayType: "bar",
         availableDisplayTypes: [
+          { type: "table", icon: "table" },
           { type: "line", icon: "line" },
           { type: "area", icon: "area" },
           { type: "bar", icon: "bar" },
@@ -165,6 +168,7 @@ describe("getDimensionBreakoutConfig", () => {
         matchMode: "exact-column",
         defaultDisplayType: "bar",
         availableDisplayTypes: [
+          { type: "table", icon: "table" },
           { type: "line", icon: "line" },
           { type: "area", icon: "area" },
           { type: "bar", icon: "bar" },
@@ -181,6 +185,7 @@ describe("getDimensionBreakoutConfig", () => {
         matchMode: "exact-column",
         defaultDisplayType: "bar",
         availableDisplayTypes: [
+          { type: "table", icon: "table" },
           { type: "line", icon: "line" },
           { type: "area", icon: "area" },
           { type: "bar", icon: "bar" },
@@ -541,5 +546,20 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
       expect(result["scalar.label"]).toBe("Revenue");
       expect(result["scalar.sublabel"]).toBe("Category: Gadgets");
     });
+  });
+});
+
+describe("table exploration", () => {
+  it.each(["time", "geo", "scalar", "category", "boolean", "numeric"] as const)(
+    "offers a table for %s breakouts",
+    (type) => {
+      expect(
+        getDimensionBreakoutConfig(type).availableDisplayTypes,
+      ).toContainEqual({ type: "table", icon: "table" });
+    },
+  );
+  it("keeps independently queried metric tables separate", () => {
+    expect(DISPLAY_TYPE_REGISTRY.table.supportsMultipleSeries).toBe(false);
+    expect(DISPLAY_TYPE_REGISTRY.table.dimensionRequired).toBe(false);
   });
 });

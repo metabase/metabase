@@ -18,6 +18,8 @@ export function isValidDisplayTypeForDimensionBreakout(
 
 export function getDisplayTypeLabel(type: MetricsViewerDisplayType) {
   switch (type) {
+    case "table":
+      return t`Table`;
     case "line":
       return t`Line chart`;
     case "area":

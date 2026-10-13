@@ -2,7 +2,11 @@ import type {
   MetricBreakoutValuesResponse,
   RowValues,
 } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import {
   createMockMetricDimension,
   createMockMetricDimensionGroup,
@@ -30,6 +34,7 @@ import {
 import {
   type SplitByBreakoutParams,
   buildDimensionItemsFromDefinitions,
+  buildSeries,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
   shouldShowStackSeries,
@@ -836,4 +841,30 @@ describe("shouldShowStackSeries", () => {
       shouldShowStackSeries("line", oneSeries, [metricEntity], definitions),
     ).toBe(true);
   });
+});
+
+it("keeps every breakout column and row in metric tables", () => {
+  const metadata = createMetricMetadata([REVENUE_METRIC]);
+  const definition = setupDefinitionWithBreakout(
+    metadata,
+    REVENUE_METRIC.id,
+    1,
+  );
+  const id: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+  const data = createMockDatasetData({
+    cols: [dimensionCol, breakoutCol, metricCol],
+    rows: [
+      ["2026-01-01", "Gadgets", 10],
+      ["2026-01-01", "Widgets", 20],
+    ],
+  });
+  const { series } = buildSeries({
+    formulaEntities: [{ id, type: "metric", definition }],
+    definitions: { [id]: { id, definition } },
+    resultsByEntityIndex: new Map([[0, createMockDataset({ data })]]),
+    display: "table",
+    sourceBreakoutColors: { 0: makeColorMap(["Gadgets", "Widgets"]) },
+  });
+  expect(series).toHaveLength(1);
+  expect(series[0].data).toEqual(data);
 });

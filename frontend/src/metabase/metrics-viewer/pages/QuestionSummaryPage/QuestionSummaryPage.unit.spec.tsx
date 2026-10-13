@@ -31,8 +31,13 @@ registerVisualizations();
 interface SetupOpts {
   query?: StructuredQuery;
   error?: boolean;
+  variant?: "summary" | "dataset";
 }
-function setup({ query = {}, error = false }: SetupOpts = {}) {
+function setup({
+  query = {},
+  error = false,
+  variant = "summary",
+}: SetupOpts = {}) {
   setupDatabaseEndpoints(createSampleDatabase());
   setupCardDataset({
     status: error ? 500 : 200,
@@ -40,21 +45,27 @@ function setup({ query = {}, error = false }: SetupOpts = {}) {
       data: createMockDatasetData({ rows: [[200]] }),
     }),
   });
-  const question = getSummaryQuestion(
-    new Question(
-      createMockCard({
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: { "source-table": PRODUCTS_ID, ...query },
-        },
-      }),
-      SAMPLE_METADATA,
-    ),
+  const source = new Question(
+    createMockCard({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PRODUCTS_ID, ...query },
+      },
+    }),
+    SAMPLE_METADATA,
   );
+  const question =
+    variant === "dataset"
+      ? source.setDisplay("table")
+      : getSummaryQuestion(source);
   const onChange = jest.fn<void, [Question]>();
   renderWithProviders(
-    <QuestionSummary initialQuestion={question} onChange={onChange} />,
+    <QuestionSummary
+      initialQuestion={question}
+      onChange={onChange}
+      variant={variant}
+    />,
     { withRouter: true },
   );
   return { onChange };
@@ -132,5 +143,38 @@ describe("QuestionSummary", () => {
   it("shows a query failure instead of an empty successful result", async () => {
     setup({ error: true });
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+  });
+});
+
+describe("dataset exploration", () => {
+  it("runs the original table before any calculation is chosen", async () => {
+    const { onChange } = setup({ variant: "dataset" });
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1),
+    );
+    const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+    const body: unknown = JSON.parse(call?.options.body?.toString() ?? "{}");
+    expect(body).toMatchObject({ query: { "source-table": PRODUCTS_ID } });
+    expect(body).not.toMatchObject({
+      query: { aggregation: expect.anything() },
+    });
+    expect(
+      screen.queryByRole("button", { name: "Count" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filter dataset" }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Summarize dataset" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Add aggregation" }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add aggregation" }),
+    );
+    await userEvent.click(screen.getByText("Count of rows", { exact: true }));
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Count" })).toBeInTheDocument();
   });
 });

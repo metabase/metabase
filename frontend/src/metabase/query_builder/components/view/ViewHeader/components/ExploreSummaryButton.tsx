@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import {
-  getSummaryQuestion,
-  getSummaryUrl,
-} from "metabase/common/metrics-viewer/question-summary";
+import { getDatasetExplorerUrl } from "metabase/common/metrics-viewer/dataset-explorer";
 import { Button, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
@@ -17,10 +14,10 @@ export function ExploreSummaryButton({ question }: { question: Question }) {
   return (
     <Button
       component={Link}
-      to={getSummaryUrl(getSummaryQuestion(question), returnTo)}
+      to={getDatasetExplorerUrl(question, returnTo)}
       leftSection={<Icon name="sum" aria-hidden />}
     >
-      {t`Explore summary`}
+      {t`Explore`}
     </Button>
   );
 }
