@@ -1,10 +1,13 @@
 import { act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { renderHookWithProviders } from "__support__/ui";
+import { renderHookWithProviders, renderRoutes, screen } from "__support__/ui";
+import { useNavigate } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
 import type { StoredSettings } from "./settings/types";
 import { encodeSettings } from "./url-state";
+import { JUST_CREATED_STATE } from "./use-add-to-dashboard-toast";
 import { useAnalysisState } from "./use-analysis-state";
 
 type TestSettings = {
@@ -27,6 +30,54 @@ const setup = ({ savedSettings, hash = "" }: SetupOpts = {}) => {
   const testRouter = checkNotNull(router);
   const getHash = () => testRouter.location.hash.replace(/^#/, "");
   return { result, router: testRouter, getHash };
+};
+
+const NEW_ANALYSIS_ROUTE = "/event-analysis/new/funnel";
+const SAVED_ANALYSIS_ROUTE = "/event-analysis/5";
+
+const OpenPanel = ({ savedSettings }: { savedSettings?: StoredSettings }) => {
+  const { panel } = useAnalysisState<TestSettings>(savedSettings);
+  return <div>{`Open panel: ${panel ?? "none"}`}</div>;
+};
+
+const NewAnalysisPage = () => {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button
+        onClick={() =>
+          navigate(SAVED_ANALYSIS_ROUTE, {
+            replace: true,
+            state: JUST_CREATED_STATE,
+          })
+        }
+      >
+        Create
+      </button>
+      <OpenPanel />
+    </>
+  );
+};
+
+const SavedAnalysisPage = () => (
+  <>
+    <h1>Saved analysis</h1>
+    <OpenPanel savedSettings={SAVED_SETTINGS} />
+  </>
+);
+
+type PanelSetupOpts = {
+  initialRoute: string;
+};
+
+const setupPanel = ({ initialRoute }: PanelSetupOpts) => {
+  renderRoutes(
+    [
+      { path: NEW_ANALYSIS_ROUTE, element: <NewAnalysisPage /> },
+      { path: "/event-analysis/:cardId", element: <SavedAnalysisPage /> },
+    ],
+    { initialRoute },
+  );
 };
 
 describe("useAnalysisState", () => {
@@ -130,5 +181,29 @@ describe("useAnalysisState", () => {
     expect(result.current.stored).toEqual({});
     expect(result.current.hasUnsavedChanges).toBe(true);
     expect(getHash()).toBe(encodeSettings({}));
+  });
+
+  describe("initial panel", () => {
+    it("opens the setup panel for a new analysis", () => {
+      setupPanel({ initialRoute: NEW_ANALYSIS_ROUTE });
+
+      expect(screen.getByText("Open panel: setup")).toBeInTheDocument();
+    });
+
+    it("opens a saved analysis with no panel open", () => {
+      setupPanel({ initialRoute: SAVED_ANALYSIS_ROUTE });
+
+      expect(screen.getByText("Saved analysis")).toBeInTheDocument();
+      expect(screen.getByText("Open panel: none")).toBeInTheDocument();
+    });
+
+    it("keeps the setup panel open through the first save", async () => {
+      setupPanel({ initialRoute: NEW_ANALYSIS_ROUTE });
+
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      expect(await screen.findByText("Saved analysis")).toBeInTheDocument();
+      expect(screen.getByText("Open panel: setup")).toBeInTheDocument();
+    });
   });
 });
