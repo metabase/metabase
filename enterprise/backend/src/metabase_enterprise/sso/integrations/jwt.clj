@@ -9,7 +9,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.embedding.settings :as embed.settings]
    [metabase.embedding.util :as embed.util]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response]))
@@ -40,6 +40,27 @@
   "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
   [jwt request]
   (-> (session-data jwt (assoc request :token-exchange? true)) :session :key))
+
+(defenterprise jwt-bearer-grant-enabled?
+  "Whether the token endpoint takes the JWT bearer grant (RFC 7523): true while JWT authentication is enabled and
+  configured."
+  :feature :sso-jwt
+  []
+  (sso-settings/jwt-enabled-and-configured))
+
+(defenterprise jwt-bearer-user!
+  "Log in the user that the JWT `assertion` names through [[auth-identity/login!]], without creating a session, and
+  return them. Throws `ex-info` with the RFC 6749 `:error` `invalid_grant` when the login is refused."
+  :feature :sso-jwt
+  [assertion request]
+  (let [{:keys [success? user message]}
+        (try
+          (auth-identity/login! :provider/jwt (assoc request :token assertion :session/skip? true))
+          (catch clojure.lang.ExceptionInfo e
+            {:message (ex-message e)}))]
+    (if success?
+      user
+      (throw (ex-info (str message) {:error "invalid_grant"})))))
 
 (defn- throw-react-sdk-embedding-disabled
   []

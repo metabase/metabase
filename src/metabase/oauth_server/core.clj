@@ -8,6 +8,7 @@
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
@@ -209,6 +210,19 @@
       (let [accepted (into #{} (mapcat mcp-resource-scopes) matched)]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
+(defn mcp-resource-url
+  "The RFC 8707 resource indicator of the canonical MCP endpoint under the Site URL, or nil when no Site URL is set."
+  []
+  (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
+
+(defn mcp-endpoint-resource?
+  "Whether every RFC 8707 indicator in `resources`, a string or a sequence of strings, names the MCP endpoint under the
+  Site URL at one of [[metabase.mcp.core/mcp-endpoint-paths]], compared as [[canonical-resource-uri]]. True when
+  `resources` names none."
+  [resources]
+  (let [mcp-urls (into #{} (keep #(canonical-resource-uri (str (system/site-url) %))) (mcp/mcp-endpoint-paths))]
+    (every? (comp mcp-urls canonical-resource-uri) (cond-> resources (string? resources) vector))))
+
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
   []
@@ -286,3 +300,18 @@
               (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+
+(defenterprise jwt-bearer-grant-enabled?
+  "Whether the token endpoint takes the JWT bearer grant (RFC 7523), which needs JWT authentication. Always false on
+  OSS."
+  metabase-enterprise.sso.integrations.jwt
+  []
+  false)
+
+(defenterprise jwt-bearer-user!
+  "Log in the user that the JWT `assertion` names, as JWT authentication does but without creating a session, and
+  return them. Throws `ex-info` carrying the RFC 6749 `:error`: `unsupported_grant_type` on OSS, and `invalid_grant`
+  when EE refuses the assertion or the user."
+  metabase-enterprise.sso.integrations.jwt
+  [_assertion _request]
+  (throw (ex-info "JWT authentication is not available" {:error "unsupported_grant_type"})))
