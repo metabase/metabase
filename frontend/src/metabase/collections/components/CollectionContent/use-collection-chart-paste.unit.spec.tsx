@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
@@ -14,6 +15,23 @@ const datasetQuery = createMockStructuredDatasetQuery();
 const chartText = serializeChartClipboard(
   {
     name: "Orders by month",
+    display: "bar",
+    dataset_query: datasetQuery,
+    visualization_settings: {},
+  },
+  "https://metabase.example",
+);
+
+const unsavedQuestionUrl = `https://metabase.example${Urls.card({
+  display: "bar",
+  dataset_query: datasetQuery,
+  visualization_settings: {},
+})}`;
+
+const blankChartText = serializeChartClipboard(
+  {
+    name: "",
+    description: "",
     display: "bar",
     dataset_query: datasetQuery,
     visualization_settings: {},
@@ -60,6 +78,39 @@ describe("useCollectionChartPaste", () => {
       expect(fetchMock.callHistory.called("create-card")).toBe(true);
     });
   });
+
+  it.each([
+    { source: "an unsaved question's URL", text: unsavedQuestionUrl },
+    {
+      source: "a Metabot chart with a blank title and description",
+      text: blankChartText,
+    },
+  ])(
+    "saves a chart pasted from $source as an untitled question",
+    async ({ text }) => {
+      fetchMock.post("path:/api/card", createMockCard({ id: 5 }), {
+        name: "create-card",
+      });
+
+      const { store } = setup({ canWrite: true });
+      act(() => {
+        paste(text);
+      });
+
+      await waitFor(() => {
+        expect(store.getState().undo).toContainEqual(
+          expect.objectContaining({ message: "Chart saved to My Collection" }),
+        );
+      });
+      const body: unknown = JSON.parse(
+        String(fetchMock.callHistory.lastCall("create-card")?.options.body),
+      );
+      expect(body).toMatchObject({
+        name: "Untitled question",
+        description: null,
+      });
+    },
+  );
 
   it("shows an in-progress toast and ignores repeated pastes while saving", async () => {
     fetchMock.post("path:/api/card", createMockCard({ id: 5 }), {
