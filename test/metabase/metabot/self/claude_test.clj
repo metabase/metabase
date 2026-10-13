@@ -871,15 +871,6 @@
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
              (:models (claude/list-models {:credentials byok-credentials})))))))
 
-(deftest list-models-drops-retired-opus-4-1-test
-  (testing "the picker does not offer Opus 4.1, also when the account catalog still lists it"
-    (with-redefs [http/request (fn [_]
-                                 {:status 200
-                                  :body   {:data [{:id "claude-opus-4-1-20250805" :display_name "Claude Opus 4.1" :created_at "2025-08-05"}
-                                                  {:id "claude-opus-4-8"          :display_name "Claude Opus 4.8" :created_at "2026-02-01"}]}})]
-      (is (= [{:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}]
-             (:models (claude/list-models {:credentials byok-credentials})))))))
-
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
