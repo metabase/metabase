@@ -16,15 +16,16 @@
   [series]
   (dependencies/entity-inserted! :model/DashboardCardSeries series
                                  {:owner-model :model/Dashboard
-                                  :owner-id    #(some-> (:dashboardcard_id %) dashboards.db/dashcard-dashboard-id)})
+                                  :owner-id    (dashboards.db/dashcard-dashboard-id (:dashboardcard_id series))})
   series)
 
 (t2/define-before-update :model/DashboardCardSeries
   [series]
   (when (seq (select-keys (t2/changes series) [:card_id :dashboardcard_id]))
-    (dependencies/entity-updated! :model/DashboardCardSeries series
-                                  {:owner-model :model/Dashboard
-                                   :owner-id    #(some-> (:dashboardcard_id %) dashboards.db/dashcard-dashboard-id)}))
+    (doseq [dashcard-id (distinct [(:dashboardcard_id (t2/original series)) (:dashboardcard_id series)])]
+      (dependencies/entity-updated! :model/DashboardCardSeries series
+                                    {:owner-model :model/Dashboard
+                                     :owner-id    (dashboards.db/dashcard-dashboard-id dashcard-id)})))
   series)
 
 ;; Serialization

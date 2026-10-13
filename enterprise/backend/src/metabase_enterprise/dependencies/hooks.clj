@@ -8,8 +8,7 @@
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,9 +38,11 @@
   (deps.dependency-types/model->dependency-type (or owner-model model)))
 
 (defn- owner-id
-  "The id of the entity that the row `instance` is, or with an `owner-id` function is part of, or nil."
-  [instance {:keys [owner-id] :or {owner-id :id}}]
-  (owner-id instance))
+  "The id of the entity that the row `instance` is, or the `owner-id` of the entity it is part of."
+  [instance {:keys [owner-model owner-id]}]
+  (if owner-model
+    owner-id
+    (:id instance)))
 
 (defn- owner-changed!
   "Mark the entity `entity-type` `entity-id` for recalculation, and its dependents for re-analysis when it is analyzed."
@@ -79,12 +80,10 @@
                              (trigger-jobs!))))
 
 (defenterprise entity-updated!
-  "Mark the entity an updated `model` row is, or was and is now part of, for recalculation."
+  "Mark the entity an updated `model` row is, or is part of, for recalculation."
   :feature :dependencies
   [model instance opts]
-  (logging-failures model #(doseq [id (distinct [(owner-id (t2/original instance) opts)
-                                                 (owner-id instance opts)])]
-                             (owner-changed! (owner-type model opts) id))))
+  (logging-failures model #(owner-changed! (owner-type model opts) (owner-id instance opts))))
 
 (defenterprise entity-deleted!
   "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."

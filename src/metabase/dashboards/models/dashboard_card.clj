@@ -65,7 +65,7 @@
   [dashcard]
   (dependencies/entity-inserted! :model/DashboardCard dashcard
                                  {:owner-model :model/Dashboard
-                                  :owner-id    :dashboard_id})
+                                  :owner-id    (:dashboard_id dashcard)})
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -75,16 +75,17 @@
 (t2/define-before-update :model/DashboardCard
   [dashcard]
   (when (seq (select-keys (t2/changes dashcard) [:card_id :dashboard_id :visualization_settings]))
-    (dependencies/entity-updated! :model/DashboardCard dashcard
-                                  {:owner-model :model/Dashboard
-                                   :owner-id    :dashboard_id}))
+    (doseq [dashboard-id (distinct [(:dashboard_id (t2/original dashcard)) (:dashboard_id dashcard)])]
+      (dependencies/entity-updated! :model/DashboardCard dashcard
+                                    {:owner-model :model/Dashboard
+                                     :owner-id    dashboard-id})))
   (validate-dashcard-on-write dashcard))
 
 (t2/define-before-delete :model/DashboardCard
   [dashcard]
   (dependencies/entity-deleted! :model/DashboardCard dashcard
                                 {:owner-model :model/Dashboard
-                                 :owner-id    :dashboard_id})
+                                 :owner-id    (:dashboard_id dashcard)})
   dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
