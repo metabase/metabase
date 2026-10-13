@@ -91,7 +91,10 @@ export function MetricDimensions({
     } catch {
       trackRemoved("failure");
       dispatch(
-        addUndo({ message: t`Couldn't remove the selected dimensions` }),
+        addUndo({
+          message: t`Couldn't remove the selected dimensions`,
+          variant: "negative",
+        }),
       );
     }
   };
@@ -102,7 +105,12 @@ export function MetricDimensions({
       trackMetricDimensionsReordered(metricId, "success");
     } catch {
       trackMetricDimensionsReordered(metricId, "failure");
-      dispatch(addUndo({ message: t`Couldn't reorder the dimensions` }));
+      dispatch(
+        addUndo({
+          message: t`Couldn't reorder the dimensions`,
+          variant: "negative",
+        }),
+      );
     }
   };
 

@@ -82,7 +82,7 @@ export function useUpsellFlow({
   useEffect(() => {
     if (error) {
       sendToast({
-        icon: "warning",
+        variant: "negative",
         message: error,
         timeout: NOTIFICATION_TIMEOUT,
       });
