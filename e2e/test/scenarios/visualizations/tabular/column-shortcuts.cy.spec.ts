@@ -348,7 +348,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible add a new column through the combine columns shortcut", () => {
+  it("should combine columns via the plus modal and the column header and handle duplicate column names", () => {
     H.createQuestion(
       {
         query: {
@@ -365,6 +365,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
+    // Runs first: its gridcell check needs a single combined column.
     combineColumns({
       columns: ["Email", "ID"],
       newColumn: "Combined Email, ID",
@@ -376,6 +377,78 @@ describe("scenarios > visualizations > combine shortcut", () => {
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
+    });
+
+    cy.log("Combine columns from the column header");
+    H.tableHeaderClick("Email");
+    H.popover().findByText("Combine columns").click();
+
+    H.popover().within(() => {
+      cy.findByTestId("combine-example").should(
+        "contain",
+        "email@example.com12345",
+      );
+      cy.findByText("ID").click();
+    });
+
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.popover().last().findByText("Name").click();
+
+    H.popover().within(() => {
+      cy.findByText("Separated by (empty)").click();
+      cy.findByLabelText("Separator").type("__");
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text",
+      );
+
+      cy.findByText("Add column").click();
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text__12345",
+      );
+
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.findAllByRole("textbox").last().clear();
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text12345",
+      );
+
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.findAllByRole("textbox").last().clear().type("+");
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text+12345",
+      );
+
+      cy.findByText("Done").click();
+    });
+
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findAllByTestId("header-cell")
+      .last()
+      .should("have.text", "Combined Email, Name, ID");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "column_combine_via_column_header",
+      custom_expressions_used: ["concat"],
+      database_id: SAMPLE_DB_ID,
+    });
+
+    cy.log("Duplicate column names");
+    H.tableHeaderClick("Email");
+    H.popover().findByText("Combine columns").click();
+    H.popover().findByText("Done").click();
+
+    H.tableHeaderClick("Email");
+    H.popover().findByText("Combine columns").click();
+    H.popover().findByText("Done").click();
+
+    cy.findByTestId("table-header").within(() => {
+      cy.findByText("Combined Email, ID").should("be.visible");
+      cy.findByText("Combined Email, ID_2").should("be.visible");
+      cy.findByText("Combined Email, ID_3").should("be.visible");
     });
   });
 
