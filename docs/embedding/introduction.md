@@ -16,9 +16,25 @@ There are two ways to embed Metabase.
 
 Most people go with modular embedding, so you can integrate Metabase components into your app.
 
-Whichever way you embed, you'll also pick how Metabase authenticates the people looking at it. Authentication is a setting on what you embed, not a different kind of embedding.
+Whichever way you embed, you'll also pick how Metabase authenticates the people viewing your embed. Authentication is a setting on what you embed, not a different kind of embedding.
 
 If you just want to share a chart or dashboard with anyone who has the link, and you don't need any authentication, take a look at [public links and embeds](#public-links-and-embeds).
+
+## Embedding hub
+
+![Embedding hub](./images/embedding-hub-getting-started.png)
+
+Admins set up embedding in the Embedding hub. To get there, click the **grid** icon in the upper right and select **Embedding hub**.
+
+The hub opens to **Get started**, a checklist that walks you through your first embed, then helps you fine-tune it with permissions, tenants, SSO, a custom theme, and AI chat. The sidebar has the rest of the embedding settings:
+
+- **Security**: turn on [modular embedding](./modular-embedding.md#enable-modular-embedding), [guest embeds](./guest-embedding.md#turning-on-guest-embedding-in-metabase), or [full app embedding](./full-app-embedding.md#enabling-full-app-embedding-in-metabase), and set CORS and cookie settings.
+- **Authentication**: set up [JWT or SAML SSO](./authentication.md).
+- **Permissions**: control what data people can see in your embeds. If you use tenants, see [data permissions for tenants](./tenants.md#data-permissions-for-tenants).
+- **Tenancy**: [turn on multi-tenant strategy](./tenants.md#enable-multi-tenant-strategy) and manage tenants, tenant groups, and tenant users.
+- **Appearance**: create and manage [embedding themes](./appearance.md#embedding-themes).
+- **Localization**: [add a translation dictionary](./translations.md#add-a-translation-dictionary).
+- **New embed**: open the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
 ## Modular embedding
 
@@ -43,7 +59,7 @@ All SSO options require a Pro or Enterprise plan.
 | Dashboards                                                                                | ✅  | ✅    |
 | [Filter widgets](https://www.metabase.com/glossary/filter-widget)                         | ✅  | ✅    |
 | Export results\*                                                                          | ✅  | ✅    |
-| [Basic appearance customization](../configuring-metabase/appearance.md)\*\*               | ✅  | ✅    |
+| [Basic appearance customization](../configuring-metabase/appearance.md)\_\_               | ✅  | ✅    |
 | Row-level data segregation                                                                | ✅  | ✅    |
 | [Drill-through menus](../questions/visualizations/drill-through.md)                       | ✅  | ❌    |
 | [Query builder](../questions/query-builder/editor.md)                                     | ✅  | ❌    |
@@ -55,13 +71,13 @@ All SSO options require a Pro or Enterprise plan.
 | [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*                     | ❌  | ✅    |
+| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\_\_\*                     | ❌  | ✅    |
 
 \* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
 
-\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing) plan with either authentication method.
+\_\_ Requires a [Pro and Enterprise](https://www.metabase.com/pricing) plan with either authentication method.
 
-\*\*\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
+\_\_\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
 
 ### Components with SSO authentication
 
