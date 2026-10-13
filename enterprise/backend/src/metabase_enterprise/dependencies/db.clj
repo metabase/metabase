@@ -606,11 +606,6 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
-  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
-
 (mu/defn table-id-by-name
   "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
   [db-id      :- ::lib.schema.id/database

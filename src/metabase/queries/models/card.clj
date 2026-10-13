@@ -1044,7 +1044,7 @@
 
 (t2/define-before-insert :model/Card
   [card]
-  (dependencies/entity-inserted! :model/Card card)
+  (dependencies/entity-inserted! :model/Card card {})
   (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card
@@ -1120,7 +1120,7 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (dependencies/entity-updated! :model/Card card)
+  (dependencies/entity-updated! :model/Card card {:columns #{:dataset_query :dimension_mappings :parameters}})
   (let [changes  (some-> card t2/changes normalize-card)
         ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
         ;; normalization preserving the instance's original.
@@ -1152,7 +1152,7 @@
 (t2/define-before-delete :model/Card
   [{:keys [id] :as card}]
   (pre-delete-check-sandbox-constraints card)
-  (dependencies/entity-deleted! :model/Card card)
+  (dependencies/entity-deleted! :model/Card card {})
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card

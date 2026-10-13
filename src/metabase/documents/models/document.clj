@@ -741,15 +741,15 @@
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
-  (dependencies/entity-inserted! :model/Document model)
+  (dependencies/entity-inserted! :model/Document model {})
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
 
 (t2/define-before-update :model/Document [model]
-  (dependencies/entity-updated! :model/Document model)
+  (dependencies/entity-updated! :model/Document model {:columns #{:content_type :document}})
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   (public-sharing/add-public-uuid-prefix-if-changed model))
 
 (t2/define-before-delete :model/Document [model]
-  (dependencies/entity-deleted! :model/Document model)
+  (dependencies/entity-deleted! :model/Document model {})
   model)

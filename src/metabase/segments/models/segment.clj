@@ -165,7 +165,7 @@
 
 (t2/define-before-insert :model/Segment
   [segment]
-  (dependencies/entity-inserted! :model/Segment segment)
+  (dependencies/entity-inserted! :model/Segment segment {})
   (let [definition (migrated-segment-definition segment)]
     (when (seq definition)
       (lib/check-segment-overwrite nil definition))
@@ -183,7 +183,7 @@
   [_])
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
-  (dependencies/entity-updated! :model/Segment segment)
+  (dependencies/entity-updated! :model/Segment segment {:columns #{:definition :table_id}})
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
   ;; throw an Exception if someone tries to update creator_id
@@ -202,7 +202,7 @@
   [segment]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-segment segment)
-  (dependencies/entity-deleted! :model/Segment segment)
+  (dependencies/entity-deleted! :model/Segment segment {})
   segment)
 
 (defmethod mi/perms-objects-set :model/Segment

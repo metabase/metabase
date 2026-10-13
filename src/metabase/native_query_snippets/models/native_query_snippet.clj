@@ -83,7 +83,7 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (dependencies/entity-inserted! :model/NativeQuerySnippet snippet)
+  (dependencies/entity-inserted! :model/NativeQuerySnippet snippet {})
   (u/prog1 (add-template-tags snippet)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
@@ -105,7 +105,7 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
-  (dependencies/entity-updated! :model/NativeQuerySnippet snippet)
+  (dependencies/entity-updated! :model/NativeQuerySnippet snippet {:columns #{:content :template_tags}})
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
@@ -125,7 +125,7 @@
   [snippet]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-snippet snippet)
-  (dependencies/entity-deleted! :model/NativeQuerySnippet snippet)
+  (dependencies/entity-deleted! :model/NativeQuerySnippet snippet {})
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 

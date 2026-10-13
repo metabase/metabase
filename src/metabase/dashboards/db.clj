@@ -46,6 +46,11 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/delete! :model/Pulse :dashboard_id dashboard-id))
 
+(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
+  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
+  [dashcard-id :- ::lib.schema.id/dashcard]
+  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
+
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]

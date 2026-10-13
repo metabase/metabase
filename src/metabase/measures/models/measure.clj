@@ -133,7 +133,7 @@
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (dependencies/entity-inserted! :model/Measure measure)
+  (dependencies/entity-inserted! :model/Measure measure {})
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
@@ -151,7 +151,7 @@
   [_])
 
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
-  (dependencies/entity-updated! :model/Measure measure)
+  (dependencies/entity-updated! :model/Measure measure {:columns #{:definition :table_id}})
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-measure measure (t2/changes measure))
   ;; throw an Exception if someone tries to update creator_id
@@ -171,7 +171,7 @@
   [measure]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-measure measure)
-  (dependencies/entity-deleted! :model/Measure measure)
+  (dependencies/entity-deleted! :model/Measure measure {})
   measure)
 
 (defmethod mi/perms-objects-set :model/Measure

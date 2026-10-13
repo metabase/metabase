@@ -61,9 +61,14 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
+(def ^:private dependency-owner
+  "The dashboard whose dependencies a dashboard card is part of."
+  {:owner-model :model/Dashboard
+   :owner-id    :dashboard_id})
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (dependencies/entity-inserted! :model/DashboardCard dashcard)
+  (dependencies/entity-inserted! :model/DashboardCard dashcard dependency-owner)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -72,12 +77,13 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (dependencies/entity-updated! :model/DashboardCard dashcard)
+  (dependencies/entity-updated! :model/DashboardCard dashcard
+                                (assoc dependency-owner :columns #{:card_id :dashboard_id :visualization_settings}))
   (validate-dashcard-on-write dashcard))
 
 (t2/define-before-delete :model/DashboardCard
   [dashcard]
-  (dependencies/entity-deleted! :model/DashboardCard dashcard)
+  (dependencies/entity-deleted! :model/DashboardCard dashcard dependency-owner)
   dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

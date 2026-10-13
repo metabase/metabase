@@ -33,39 +33,15 @@
           (reset! trigger-pending? false)
           (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))))
 
-(def ^:private tracked-models
-  "For each model, the `:columns` that dependencies are calculated from, and for models whose rows are parts of an
-  entity, the `:owner-type` of that entity and the `:owner-id` function finding it from a row."
-  {:model/Card                {:columns #{:dataset_query :dimension_mappings :parameters}}
-   :model/Dashboard           {:columns #{:parameters}}
-   :model/DashboardCard       {:columns    #{:card_id :dashboard_id :visualization_settings}
-                               :owner-type :dashboard
-                               :owner-id   :dashboard_id}
-   :model/DashboardCardSeries {:columns    #{:card_id :dashboardcard_id}
-                               :owner-type :dashboard
-                               :owner-id   #(some-> (:dashboardcard_id %) dependencies.db/dashcard-dashboard-id)}
-   :model/Document            {:columns #{:content_type :document}}
-   :model/Measure             {:columns #{:definition :table_id}}
-   :model/NativeQuerySnippet  {:columns #{:content :template_tags}}
-   :model/Sandbox             {:columns #{:card_id}}
-   :model/Segment             {:columns #{:definition :table_id}}
-   :model/Transform           {:columns #{:source :target}}})
-
-(defn- entity-model?
-  "Whether rows of `model` are tracked entities themselves rather than parts of one."
-  [model]
-  (not (get-in tracked-models [model :owner-type])))
-
 (defn- owner-type
-  "The dependency type of the entity that rows of `model` are, or are part of."
-  [model]
-  (or (get-in tracked-models [model :owner-type])
-      (deps.dependency-types/model->dependency-type model)))
+  "The dependency type of the entity that rows of `model` are, or with `owner-model` are part of."
+  [model {:keys [owner-model]}]
+  (deps.dependency-types/model->dependency-type (or owner-model model)))
 
 (defn- owner-id
-  "The id of the entity that the `model` row `instance` is, or is part of, or nil."
-  [model instance]
-  ((get-in tracked-models [model :owner-id] :id) instance))
+  "The id of the entity that the row `instance` is, or with an `owner-id` function is part of, or nil."
+  [instance {:keys [owner-id] :or {owner-id :id}}]
+  (owner-id instance))
 
 (defn- owner-changed!
   "Mark the entity `entity-type` `entity-id` for recalculation, and its dependents for re-analysis when it is analyzed."
@@ -97,26 +73,26 @@
   "Have the jobs pick up an inserted entity, which has no status or findings yet, or mark the entity a `model` row is
   being inserted into for recalculation."
   :feature :dependencies
-  [model instance]
-  (logging-failures model #(if (entity-model? model)
-                             (trigger-jobs!)
-                             (owner-changed! (owner-type model) (owner-id model instance)))))
+  [model instance opts]
+  (logging-failures model #(if (:owner-model opts)
+                             (owner-changed! (owner-type model opts) (owner-id instance opts))
+                             (trigger-jobs!))))
 
 (defenterprise entity-updated!
-  "Mark the entity an updated `model` row is, or was and is now part of, for recalculation when a column its
-  dependencies come from changes."
+  "Mark the entity an updated `model` row is, or was and is now part of, for recalculation when one of the `:columns` in
+  `opts` changes."
   :feature :dependencies
-  [model instance]
+  [model instance opts]
   (let [changes (t2/changes instance)]
-    (when (some #(contains? changes %) (get-in tracked-models [model :columns]))
-      (logging-failures model #(doseq [id (distinct [(owner-id model (t2/original instance))
-                                                     (owner-id model instance)])]
-                                 (owner-changed! (owner-type model) id))))))
+    (when (some #(contains? changes %) (:columns opts))
+      (logging-failures model #(doseq [id (distinct [(owner-id (t2/original instance) opts)
+                                                     (owner-id instance opts)])]
+                                 (owner-changed! (owner-type model opts) id))))))
 
 (defenterprise entity-deleted!
   "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."
   :feature :dependencies
-  [model instance]
-  (logging-failures model #(if (entity-model? model)
-                             (owner-deleted! (owner-type model) (owner-id model instance))
-                             (owner-changed! (owner-type model) (owner-id model instance)))))
+  [model instance opts]
+  (logging-failures model #(if (:owner-model opts)
+                             (owner-changed! (owner-type model opts) (owner-id instance opts))
+                             (owner-deleted! (owner-type model opts) (owner-id instance opts)))))

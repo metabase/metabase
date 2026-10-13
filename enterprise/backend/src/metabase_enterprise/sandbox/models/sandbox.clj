@@ -292,7 +292,7 @@
 
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
-  (dependencies/entity-inserted! :model/Sandbox gtap)
+  (dependencies/entity-inserted! :model/Sandbox gtap {})
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
     (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
@@ -302,7 +302,7 @@
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
-  (dependencies/entity-updated! :model/Sandbox updates)
+  (dependencies/entity-updated! :model/Sandbox updates {:columns #{:card_id}})
   (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]
@@ -315,5 +315,5 @@
 
 (t2/define-before-delete :model/Sandbox
   [sandbox]
-  (dependencies/entity-deleted! :model/Sandbox sandbox)
+  (dependencies/entity-deleted! :model/Sandbox sandbox {})
   sandbox)

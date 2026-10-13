@@ -155,7 +155,7 @@
 
 (t2/define-before-insert :model/Transform
   [{:keys [source collection_id source_database_id] :as transform}]
-  (dependencies/entity-inserted! :model/Transform transform)
+  (dependencies/entity-inserted! :model/Transform transform {})
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
@@ -192,7 +192,7 @@
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
-  (dependencies/entity-updated! :model/Transform transform)
+  (dependencies/entity-updated! :model/Transform transform {:columns #{:source :target}})
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
@@ -363,7 +363,7 @@
   nil)
 
 (t2/define-before-delete :model/Transform [transform]
-  (dependencies/entity-deleted! :model/Transform transform)
+  (dependencies/entity-deleted! :model/Transform transform {})
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (delete-transform-tests! (:id transform))
