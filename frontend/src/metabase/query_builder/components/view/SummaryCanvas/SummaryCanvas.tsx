@@ -34,6 +34,7 @@ import {
   updateSummaryCanvas,
   useSummaryCanvas,
 } from "./canvas-store";
+import { getGrownLayout } from "./layout";
 import type {
   SummaryBlock,
   SummaryCanvasState,
@@ -134,9 +135,13 @@ export function SummaryCanvas({ question, onShowData }: SummaryCanvasProps) {
   ) =>
     updateCanvas((canvas) => ({
       ...canvas,
-      blocks: canvas.blocks.map((block) =>
-        block.id === blockId ? updater(block) : block,
-      ),
+      blocks: canvas.blocks.map((block) => {
+        if (block.id !== blockId) {
+          return block;
+        }
+        const nextBlock = updater(block);
+        return { ...nextBlock, layout: getGrownLayout(block, nextBlock) };
+      }),
     }));
 
   const addBlock = (block: SummaryBlock) =>

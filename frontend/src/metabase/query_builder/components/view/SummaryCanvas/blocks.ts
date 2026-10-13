@@ -272,6 +272,7 @@ export function getDimensionLabels(
 export type TemporalUnitOption = {
   shortName: string;
   displayName: string;
+  isDefault: boolean;
 };
 
 /** Temporal units a date dimension can be grouped by; empty for other columns. */
@@ -291,7 +292,11 @@ export function getTemporalUnitOptions(
   return Lib.availableTemporalBuckets(query, stageIndex, matchingColumn).map(
     (bucket) => {
       const info = Lib.displayInfo(query, stageIndex, bucket);
-      return { shortName: info.shortName, displayName: info.displayName };
+      return {
+        shortName: info.shortName,
+        displayName: info.displayName,
+        isDefault: info.default === true,
+      };
     },
   );
 }

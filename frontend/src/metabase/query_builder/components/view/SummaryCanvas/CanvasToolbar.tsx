@@ -176,8 +176,8 @@ function SourceStrip({ base, onShowData }: SourceStripProps) {
       <Icon name="link" size={12} c="text-secondary" aria-hidden />
       <Text size="sm" c="text-secondary">
         {hasSharedChanges
-          ? t`Every summary uses the data tab's`
-          : t`Every summary uses the data tab. Filters you add there apply to all of them.`}
+          ? t`Applies to every summary:`
+          : t`Filters and formula columns you add on the data tab apply to every summary.`}
       </Text>
       {filterLabels.map((label, index) => (
         <Badge

@@ -1,4 +1,4 @@
-import { getNextBlockLayout } from "./layout";
+import { getGrownLayout, getNextBlockLayout } from "./layout";
 import type { SummaryBlockLayout } from "./types";
 
 function createBlock(layout: SummaryBlockLayout) {
@@ -39,5 +39,26 @@ describe("getNextBlockLayout", () => {
       w: 10,
       h: 5,
     });
+  });
+});
+
+describe("getGrownLayout", () => {
+  const CATEGORY = { rows: [{}], columns: [] };
+
+  it("grows a number-sized block when it gains its first grouping", () => {
+    const layout = { x: 20, y: 2, w: 4, h: 4 };
+
+    expect(getGrownLayout(NUMBER_BLOCK, { ...CATEGORY, layout })).toEqual({
+      x: 12,
+      y: 2,
+      w: 12,
+      h: 8,
+    });
+  });
+
+  it("keeps the user's size once the block is already grouped", () => {
+    const layout = { x: 0, y: 0, w: 4, h: 4 };
+
+    expect(getGrownLayout(CATEGORY, { ...CATEGORY, layout })).toEqual(layout);
   });
 });

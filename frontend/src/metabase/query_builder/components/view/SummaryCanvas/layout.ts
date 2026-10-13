@@ -7,7 +7,10 @@ export const CANVAS_COLUMNS = GRID_WIDTH;
 const NUMBER_SIZE = { w: 6, h: 4 };
 const DEFAULT_SIZE = { w: 12, h: 8 };
 
-function getDefaultSize(block: Pick<SummaryBlock, "rows" | "columns">) {
+/** Only whether a block is grouped matters for sizing, not how. */
+type BlockShape = { rows: readonly unknown[]; columns: readonly unknown[] };
+
+function getDefaultSize(block: BlockShape) {
   const isNumber = block.rows.length === 0 && block.columns.length === 0;
   return isNumber ? NUMBER_SIZE : DEFAULT_SIZE;
 }
@@ -24,7 +27,7 @@ function overlaps(a: SummaryBlockLayout, b: SummaryBlockLayout) {
  */
 export function getNextBlockLayout(
   blocks: readonly Pick<SummaryBlock, "layout">[],
-  block: Pick<SummaryBlock, "rows" | "columns" | "layout">,
+  block: BlockShape & Pick<SummaryBlock, "layout">,
 ): SummaryBlockLayout {
   const { w, h } =
     block.layout.w > 0 && block.layout.h > 0
@@ -44,4 +47,23 @@ export function getNextBlockLayout(
     }
   }
   return { x: 0, y: bottom, w, h };
+}
+
+/**
+ * A number-sized block that gains its first grouping grows to the default size,
+ * so its new table or chart has room. Other layout changes are the user's.
+ */
+export function getGrownLayout(
+  previous: BlockShape,
+  next: BlockShape & Pick<SummaryBlock, "layout">,
+): SummaryBlockLayout {
+  const hadDimensions = previous.rows.length + previous.columns.length > 0;
+  const hasDimensions = next.rows.length + next.columns.length > 0;
+  const { layout } = next;
+  if (hadDimensions || !hasDimensions) {
+    return layout;
+  }
+  const w = Math.max(layout.w, DEFAULT_SIZE.w);
+  const h = Math.max(layout.h, DEFAULT_SIZE.h);
+  return { x: Math.min(layout.x, CANVAS_COLUMNS - w), y: layout.y, w, h };
 }

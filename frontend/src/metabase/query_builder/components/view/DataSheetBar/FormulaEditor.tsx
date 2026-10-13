@@ -2,7 +2,13 @@ import { completionStatus } from "@codemirror/autocomplete";
 import { EditorState, Prec } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import cx from "classnames";
-import { type ReactNode, type RefObject, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -32,6 +38,14 @@ import { formulaTokens } from "./formula-tokens";
 import { getDefaultColumnName } from "./utils";
 
 const EXPRESSION_MODE = "expression";
+
+// CodeMirror reconfigures the editor when this changes, so it must be stable
+const BASIC_SETUP = {
+  lineNumbers: false,
+  foldGutter: false,
+  highlightActiveLine: false,
+  highlightActiveLineGutter: false,
+};
 
 // formulas live on one line, like a spreadsheet's formula bar
 const singleLine = /* #__PURE__ */ EditorState.transactionFilter.of(
@@ -176,6 +190,13 @@ export function FormulaEditor({
     extensions: [completionTooltip, formulaKeymap, singleLine, tokens],
   });
 
+  // CodeMirror reconfigures the editor whenever `onChange` changes, and the
+  // help tooltip sets state on every editor update, so this must stay stable.
+  const handleSourceChange = useCallback((value: string) => {
+    setSource(value);
+    setErrorMessage(null);
+  }, []);
+
   const defaultName = getDefaultColumnName(source);
   const hasFormula = source.trim().length > 0;
 
@@ -191,20 +212,12 @@ export function FormulaEditor({
           ref={editorRef}
           className={S.formulaEditor}
           data-testid="data-sheet-formula-editor"
-          basicSetup={{
-            lineNumbers: false,
-            foldGutter: false,
-            highlightActiveLine: false,
-            highlightActiveLineGutter: false,
-          }}
+          basicSetup={BASIC_SETUP}
           extensions={extensions}
           value={source}
           placeholder={t`Add a column to ${dataPath} with a formula, or type / to search`}
           autoCorrect="off"
-          onChange={(value) => {
-            setSource(value);
-            setErrorMessage(null);
-          }}
+          onChange={handleSourceChange}
         />
         {completionTooltipPortal}
         {hasFormula && (

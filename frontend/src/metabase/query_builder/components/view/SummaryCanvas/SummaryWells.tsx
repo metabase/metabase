@@ -160,6 +160,8 @@ function TemporalUnitMenu({
   currentUnit,
   onChange,
 }: TemporalUnitMenuProps) {
+  const selectedUnit =
+    currentUnit ?? options.find((option) => option.isDefault)?.shortName;
   return (
     <Menu position="bottom-start">
       <Menu.Target>
@@ -177,7 +179,7 @@ function TemporalUnitMenu({
           <Menu.Item
             key={option.shortName}
             rightSection={
-              option.shortName === currentUnit ? <Icon name="check" /> : null
+              option.shortName === selectedUnit ? <Icon name="check" /> : null
             }
             onClick={() => onChange(option.shortName)}
           >
