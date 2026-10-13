@@ -9,12 +9,9 @@ import { isNotNull } from "metabase/utils/types";
 import {
   type GoalData,
   type ResolvedGoalSegment,
-  type ResolvedOpenEndedGoalSegment,
-  getSegmentColor,
-  resolveGoalValue,
+  resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
-import { isGoalSegment } from "metabase-types/guards";
 
 import {
   BASE_FONT_SIZE,
@@ -173,25 +170,11 @@ export function resolveGaugeSegments(
   segments: GoalSegment[] | undefined,
   getColor: ColorGetter,
 ): ResolvedGoalSegment[] {
-  const openEndedSegments = (segments ?? [])
-    .filter(isGoalSegment)
-    .flatMap((segment): ResolvedOpenEndedGoalSegment[] => {
-      const min = resolveGoalValue(data, segment.min).value;
-      const max = resolveGoalValue(data, segment.max).value;
-
-      if (min == null && max == null) {
-        return [];
-      }
-
-      return [
-        {
-          color: getSegmentColor(segment, getColor),
-          label: segment.label,
-          min,
-          max,
-        },
-      ];
-    });
+  const openEndedSegments = resolveOpenEndedGoalSegments(
+    data,
+    segments,
+    getColor,
+  );
   const bounds = openEndedSegments
     .flatMap((segment) => [segment.min, segment.max])
     .filter(isNotNull);

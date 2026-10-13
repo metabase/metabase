@@ -136,6 +136,30 @@
                    :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
                   (notification.tu/slack-message->boolean message))))}))))
 
+(deftest line-graph-with-unresolved-dynamic-goal-test
+  (testing "a has_result alert on a chart whose dynamic goal can't resolve still sends the email (GDGT-3346)"
+    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+      (notification.tu/with-card-notification
+        [notification {:card              {:dataset_query          (mt/mbql-query orders {:aggregation [["count"]]
+                                                                                          :breakout    [!day.created_at]})
+                                           :display                :line
+                                           :visualization_settings {:graph.show_goal  true
+                                                                    :graph.goal_value {:id     goal-card-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}
+                       :notification-card {:send_condition :has_result}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [[email :as emails]]
+            (is (= 1 (count emails)))
+            (is (= {notification.tu/default-card-name true
+                    "its goal of"                     false}
+                   (-> (mt/summarize-multipart-single-email email card-name-regex #"its goal of")
+                       :message
+                       first))))})))))
+
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
     (doseq [limit [1 10]]
