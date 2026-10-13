@@ -39,7 +39,7 @@ function createBlockId() {
   return _.uniqueId("summary-block-");
 }
 
-/** The source query with the block's own filters applied, which is what its filter picker edits. */
+/** The source query with the block's own filters applied. */
 export function getBlockFilterQuery(
   base: SummaryBase,
   block: Pick<SummaryBlock, "filters">,
@@ -50,13 +50,34 @@ export function getBlockFilterQuery(
   );
 }
 
-/** The block's own filters, read back from a query its filter picker produced. */
-export function getBlockFilters(
+/**
+ * The source query without the data tab's filters, with only the block's own filters
+ * applied. The block's filter picker edits against it, so a data tab filter can never
+ * hide or merge with one of the block's.
+ */
+export function getBlockFilterEditQuery(
   base: SummaryBase,
-  filterQuery: Lib.Query,
-): Lib.FilterClause[] {
-  const sourceFilterCount = Lib.filters(base.query, base.stageIndex).length;
-  return Lib.filters(filterQuery, base.stageIndex).slice(sourceFilterCount);
+  block: Pick<SummaryBlock, "filters">,
+): Lib.Query {
+  const { stageIndex } = base;
+  const queryWithoutSourceFilters = Lib.filters(base.query, stageIndex).reduce(
+    (query, filter) => Lib.removeClause(query, stageIndex, filter),
+    base.query,
+  );
+  return block.filters.reduce(
+    (query, filter) => Lib.filter(query, stageIndex, filter),
+    queryWithoutSourceFilters,
+  );
+}
+
+/** Turns what a filter picker returns into a filter clause for a block. */
+export function toBlockFilter(
+  base: SummaryBase,
+  filter: Lib.Filterable,
+): Lib.FilterClause | undefined {
+  const { stageIndex } = base;
+  const emptyQuery = getBlockFilterEditQuery(base, { filters: [] });
+  return Lib.filters(Lib.filter(emptyQuery, stageIndex, filter), stageIndex)[0];
 }
 
 function findTemporalBucket(
@@ -104,15 +125,7 @@ export function buildBlockQuery(
   block: SummaryBlock,
 ): BlockQueryResult {
   const { stageIndex } = base;
-  let query: Lib.Query;
-  try {
-    query = getBlockFilterQuery(base, block);
-  } catch {
-    return {
-      query: null,
-      error: t`One of this summary's filters no longer applies to the data.`,
-    };
-  }
+  let query = getBlockFilterQuery(base, block);
 
   for (const dimension of [...block.rows, ...block.columns]) {
     const column = getBreakoutColumn(query, stageIndex, dimension);

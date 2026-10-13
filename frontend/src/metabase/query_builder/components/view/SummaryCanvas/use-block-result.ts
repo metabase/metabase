@@ -15,35 +15,49 @@ export type BlockSeries = { card: Card; data: Dataset["data"] };
 
 export type BlockError = { message: string; icon: IconName };
 
-type ResultState = {
+type BlockResult = {
   requestKey: string;
   series: BlockSeries | null;
   error: BlockError | null;
-  isRunning: boolean;
 };
+
+type ResultState = {
+  /** The request that is running, or last ran. */
+  requestKey: string;
+  isRunning: boolean;
+  result: BlockResult | null;
+};
+
+// Rebuilding a query mints new clause ids, which don't change the request.
+function omitClauseIds(key: string, value: unknown) {
+  return key === "lib/uuid" ? undefined : value;
+}
 
 /**
  * Identifies the request `runQuestionQuery` would send, so settings-only
- * updates (e.g. column widths a pivot table writes back on render) reuse the
- * current result instead of re-running the query.
+ * updates (e.g. moving a block, or column widths a pivot table writes back on
+ * render) reuse the current result instead of re-running the query.
  */
-function getRequestKey(question: Question | null): string {
+export function getRequestKey(question: Question | null): string {
   if (question == null) {
     return "";
   }
-  return JSON.stringify({
-    datasetQuery: question.datasetQuery(),
-    parameters: normalizeParameters(question.parameters()),
-    pivotOptions: shouldUsePivotEndpoint(question)
-      ? getPivotOptions(question)
-      : null,
-  });
+  return JSON.stringify(
+    {
+      datasetQuery: question.datasetQuery(),
+      parameters: normalizeParameters(question.parameters()),
+      pivotOptions: shouldUsePivotEndpoint(question)
+        ? getPivotOptions(question)
+        : null,
+    },
+    omitClauseIds,
+  );
 }
 
 /**
  * Runs a summary block's question whenever its query changes or `refreshKey` bumps.
- * While a new request runs, the previous result stays available as a stale series.
- * Pass `null` when the block can't run yet.
+ * While a new request runs, the previous result stays available, rendered with the
+ * card it was run for. Pass `null` when the block can't run yet.
  */
 export function useBlockResult(question: Question | null, refreshKey: number) {
   const dispatch = useDispatch();
@@ -52,9 +66,8 @@ export function useBlockResult(question: Question | null, refreshKey: number) {
   const latestQuestion = useLatest(question);
   const [state, setState] = useState<ResultState>({
     requestKey,
-    series: null,
-    error: null,
     isRunning: false,
+    result: null,
   });
   const controllerRef = useRef<AbortController>();
   const canRun = question != null;
@@ -67,31 +80,30 @@ export function useBlockResult(question: Question | null, refreshKey: number) {
     const controller = new AbortController();
     controllerRef.current = controller;
     setState((state) => ({ ...state, requestKey, isRunning: true }));
+    const finish = (result: BlockResult) => {
+      if (!controller.signal.aborted) {
+        setState({ requestKey, isRunning: false, result });
+      }
+    };
     runQuestionQuery(currentQuestion, {
       dispatch,
       signal: controller.signal,
       isDirty: true,
     })
-      .then(([result]) => {
-        if (!controller.signal.aborted) {
-          setState({
-            requestKey,
-            series: { card: currentQuestion.card(), data: result.data },
-            error: getDatasetError(result) ?? null,
-            isRunning: false,
-          });
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setState({
-            requestKey,
-            series: null,
-            error: { message: getGenericErrorMessage(), icon: "warning" },
-            isRunning: false,
-          });
-        }
-      });
+      .then(([dataset]) =>
+        finish({
+          requestKey,
+          series: { card: currentQuestion.card(), data: dataset.data },
+          error: getDatasetError(dataset) ?? null,
+        }),
+      )
+      .catch(() =>
+        finish({
+          requestKey,
+          series: null,
+          error: { message: getGenericErrorMessage(), icon: "warning" },
+        }),
+      );
     return () => controller.abort();
   }, [requestKey, dispatch, revision, refreshKey, latestQuestion]);
 
@@ -100,17 +112,19 @@ export function useBlockResult(question: Question | null, refreshKey: number) {
     setState((state) => ({ ...state, isRunning: false }));
   };
 
-  const isCurrent = state.requestKey === requestKey;
+  const { result } = state;
+  const isResultCurrent = result != null && result.requestKey === requestKey;
   const latestCard = question?.card();
+  const series =
+    result?.series != null && isResultCurrent && latestCard != null
+      ? // settings-only changes keep the result but render with the latest settings
+        { ...result.series, card: latestCard }
+      : (result?.series ?? null);
 
   return {
-    // settings-only changes keep the result but should render with the latest settings
-    series:
-      state.series != null && isCurrent && latestCard != null
-        ? { ...state.series, card: latestCard }
-        : state.series,
-    error: isCurrent ? state.error : null,
-    isRunning: canRun && (!isCurrent || state.isRunning),
+    series,
+    error: isResultCurrent ? result.error : null,
+    isRunning: canRun && (state.requestKey !== requestKey || state.isRunning),
     refresh: () => setRevision((value) => value + 1),
     cancel,
   };

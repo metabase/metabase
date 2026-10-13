@@ -54,6 +54,8 @@ export type SummaryCanvasState = {
   blocks: SummaryBlock[];
   selectedBlockId: string | null;
   dashboard: SummaryCanvasDashboard | null;
+  /** Saved cards of blocks removed since the last save, to take off the dashboard next time. */
+  removedCardIds: CardId[];
 };
 
 /** The query every block builds on: the data tab's query, minus raw-row presentation clauses. */

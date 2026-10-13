@@ -16,11 +16,12 @@ import {
   dropOnWell,
   duplicateBlock,
   getBlockDisplay,
-  getBlockFilters,
+  getBlockFilterEditQuery,
   getBlockQuestion,
   getBlockTitle,
   getTemporalUnitOptions,
   setTemporalUnit,
+  toBlockFilter,
   updateValue,
 } from "./blocks";
 import type { SummaryBase, SummaryBlock } from "./types";
@@ -59,6 +60,15 @@ function getLegacyQuery(base: SummaryBase, block: SummaryBlock) {
   const { query, error } = buildBlockQuery(base, block);
   expect(error).toBeNull();
   return query && Lib.toLegacyQuery(query);
+}
+
+function widgetFilter(base: SummaryBase) {
+  return Lib.stringFilterClause({
+    operator: "=",
+    column: findColumn(base, "CATEGORY"),
+    values: ["Widget"],
+    options: {},
+  });
 }
 
 function groupBy(base: SummaryBase, block: SummaryBlock, name: string) {
@@ -241,20 +251,13 @@ describe("summary blocks", () => {
     const { base } = setup({
       filter: [">", ["field", PRODUCTS.PRICE, null], 10],
     });
-    const filterQuery = Lib.filter(
-      base.query,
-      -1,
-      Lib.stringFilterClause({
-        operator: "=",
-        column: findColumn(base, "CATEGORY"),
-        values: ["Widget"],
-        options: {},
-      }),
-    );
-    const filters = getBlockFilters(base, filterQuery);
-    const block = { ...createBlock(base, []), filters };
+    const filter = toBlockFilter(base, widgetFilter(base));
+    const block = {
+      ...createBlock(base, []),
+      filters: filter ? [filter] : [],
+    };
 
-    expect(filters).toHaveLength(1);
+    expect(block.filters).toHaveLength(1);
     expect(getLegacyQuery(base, block)).toMatchObject({
       query: {
         filter: [
@@ -264,6 +267,23 @@ describe("summary blocks", () => {
         ],
       },
     });
+    expect(Lib.filters(getBlockFilterEditQuery(base, block), -1)).toHaveLength(
+      1,
+    );
+  });
+
+  it("keeps a block's filter when the data tab adds the same one", () => {
+    const { base } = setup();
+    const filter = toBlockFilter(base, widgetFilter(base));
+    const block = { ...createBlock(base, []), filters: filter ? [filter] : [] };
+    const { base: widgetBase } = setup({
+      filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
+    });
+
+    expect(
+      Lib.filters(getBlockFilterEditQuery(widgetBase, block), -1),
+    ).toHaveLength(1);
+    expect(buildBlockQuery(widgetBase, block).error).toBeNull();
   });
 
   it("groups dates by a chosen unit", () => {

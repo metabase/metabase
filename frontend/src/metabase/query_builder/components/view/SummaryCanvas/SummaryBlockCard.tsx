@@ -95,7 +95,7 @@ export function SummaryBlockCard({
         [S.blockDropTarget]: canDrop && isOver,
       })}
       data-testid="summary-block"
-      aria-selected={isSelected}
+      data-selected={isSelected}
       onMouseDown={onSelect}
     >
       <Flex

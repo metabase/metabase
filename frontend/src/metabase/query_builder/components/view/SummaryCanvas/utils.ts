@@ -5,10 +5,17 @@ import type Question from "metabase-lib/v1/Question";
 
 import type { SummaryBase, SummaryDragItem } from "./types";
 
-/** Summaries are scoped to the source table (or card) of the data tab, so there is one canvas per table. */
+/**
+ * The canvas a question's summaries live on: its own for a saved question, otherwise
+ * one per source table (or card), shared by unsaved questions on it.
+ */
 export function getSummaryKey(question: Question): string | null {
+  const questionId = question.id();
+  if (questionId != null) {
+    return `question:${questionId}`;
+  }
   const sourceId = Lib.sourceTableOrCardId(question.query());
-  return sourceId != null ? String(sourceId) : null;
+  return sourceId != null ? `source:${sourceId}` : null;
 }
 
 /** The saved question's name, or the source table's name for ad-hoc questions. */

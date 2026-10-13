@@ -43,7 +43,9 @@ type CanvasToolbarProps = {
   onSaved: (
     dashboard: SummaryCanvasDashboard,
     cardIds: Map<string, CardId>,
+    removedCardIds: CardId[],
   ) => void;
+  onDashboardMissing: () => void;
 };
 
 export function CanvasToolbar({
@@ -54,37 +56,56 @@ export function CanvasToolbar({
   onRefreshAll,
   onShowData,
   onSaved,
+  onDashboardMissing,
 }: CanvasToolbarProps) {
   const dispatch = useDispatch();
   const [isCreatingDashboard, setIsCreatingDashboard] = useState(false);
   const { save, isSaving } = useSaveSummaryCanvas();
   const { dashboard } = canvas;
 
+  const showToast = (message: string, isError = false) =>
+    dispatch(
+      addUndo(
+        isError
+          ? { icon: "warning", toastColor: "error", message }
+          : { message },
+      ),
+    );
+
   const handleSave = async (targetDashboard: SummaryCanvasDashboard) => {
+    const removedCardIds = canvas.removedCardIds;
     try {
-      const { cardIds, skippedCount } = await save({
+      const result = await save({
         dashboard: targetDashboard,
         dataQuestion,
         base,
         blocks: canvas.blocks,
+        removedCardIds,
       });
-      onSaved(targetDashboard, cardIds);
-      dispatch(
-        addUndo({
-          message:
-            skippedCount > 0
-              ? t`Saved to ${targetDashboard.name}. Summaries with errors were left out.`
-              : t`Saved to ${targetDashboard.name}`,
-        }),
-      );
+      if (result.status === "dashboard-missing") {
+        onDashboardMissing();
+        showToast(
+          t`${targetDashboard.name} is no longer available. Save again to create a new dashboard.`,
+          true,
+        );
+        return;
+      }
+      const { cardIds, skippedCount, failedCount, isLayoutSaved } = result;
+      onSaved(targetDashboard, cardIds, isLayoutSaved ? removedCardIds : []);
+      if (failedCount > 0 || !isLayoutSaved) {
+        showToast(
+          t`Some summaries couldn't be saved to ${targetDashboard.name}. Try again.`,
+          true,
+        );
+      } else if (skippedCount > 0) {
+        showToast(
+          t`Saved to ${targetDashboard.name}. Empty summaries and summaries with errors were left as they were.`,
+        );
+      } else {
+        showToast(t`Saved to ${targetDashboard.name}`);
+      }
     } catch {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`Couldn't save these summaries. Try again.`,
-        }),
-      );
+      showToast(t`Couldn't save these summaries. Try again.`, true);
     }
   };
 

@@ -12,7 +12,9 @@ import {
 } from "metabase-types/api/mocks";
 import { PRODUCTS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
-import { useBlockResult } from "./use-block-result";
+import { buildBlockQuery, createBlock, getBlockQuestion } from "./blocks";
+import { getRequestKey, useBlockResult } from "./use-block-result";
+import { getSummaryBase } from "./utils";
 
 function createQuestion(query: StructuredQuery = {}) {
   return new Question(
@@ -85,17 +87,33 @@ describe("useBlockResult", () => {
     expect(getQueryCalls()).toHaveLength(1);
   });
 
-  it("keeps showing the previous result while the changed query runs", async () => {
+  it("keeps showing the previous result, with its own card, while the changed query runs", async () => {
     const question = createQuestion();
     const { result, rerender } = setup({ question });
     await waitFor(() => expect(result.current.series).not.toBeNull());
 
-    rerender({ question: createQuestion({ limit: 10 }), refreshKey: 0 });
+    rerender({
+      question: createQuestion({ limit: 10 }).setDisplay("bar"),
+      refreshKey: 0,
+    });
 
     expect(result.current.isRunning).toBe(true);
-    expect(result.current.series).not.toBeNull();
+    expect(result.current.series?.card.display).toBe("table");
     await waitFor(() => expect(result.current.isRunning).toBe(false));
+    expect(result.current.series?.card.display).toBe("bar");
     expect(getQueryCalls()).toHaveLength(2);
+  });
+
+  it("treats a rebuilt block query as the same request", () => {
+    const dataQuestion = createQuestion();
+    const base = getSummaryBase(dataQuestion.query());
+    const block = createBlock(base, []);
+    const buildQuestion = () => {
+      const { query } = buildBlockQuery(base, block);
+      return query && getBlockQuestion(dataQuestion, base, block, query);
+    };
+
+    expect(getRequestKey(buildQuestion())).toBe(getRequestKey(buildQuestion()));
   });
 
   it("runs the query again when the refresh key changes", async () => {

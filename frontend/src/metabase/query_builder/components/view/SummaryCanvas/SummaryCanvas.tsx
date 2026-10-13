@@ -117,6 +117,7 @@ export function SummaryCanvas({ question, onShowData }: SummaryCanvasProps) {
         blocks: [block],
         selectedBlockId: block.id,
         dashboard: null,
+        removedCardIds: [],
       });
     }
   }, [summaryKey, base]);
@@ -168,12 +169,19 @@ export function SummaryCanvas({ question, onShowData }: SummaryCanvasProps) {
   };
 
   const handleRemoveBlock = (blockId: string) =>
-    updateCanvas((canvas) => ({
-      ...canvas,
-      blocks: canvas.blocks.filter(({ id }) => id !== blockId),
-      selectedBlockId:
-        canvas.selectedBlockId === blockId ? null : canvas.selectedBlockId,
-    }));
+    updateCanvas((canvas) => {
+      const cardId = canvas.blocks.find(({ id }) => id === blockId)?.cardId;
+      return {
+        ...canvas,
+        blocks: canvas.blocks.filter(({ id }) => id !== blockId),
+        selectedBlockId:
+          canvas.selectedBlockId === blockId ? null : canvas.selectedBlockId,
+        removedCardIds:
+          cardId != null
+            ? [...canvas.removedCardIds, cardId]
+            : canvas.removedCardIds,
+      };
+    });
 
   const selectedBlock = canvas.blocks.find(
     ({ id }) => id === canvas.selectedBlockId,
@@ -211,8 +219,12 @@ export function SummaryCanvas({ question, onShowData }: SummaryCanvasProps) {
         }
         return;
       case "block":
-        updateBlock(target.blockId, (block) => dropOnBlock(base, block, item));
-        selectBlock(target.blockId);
+        if (item.kind !== "chip") {
+          updateBlock(target.blockId, (block) =>
+            dropOnBlock(base, block, item),
+          );
+          selectBlock(target.blockId);
+        }
         return;
       case "canvas": {
         const block = createBlockFromItem(base, canvas.blocks, item);
@@ -241,13 +253,27 @@ export function SummaryCanvas({ question, onShowData }: SummaryCanvasProps) {
             onAddBlock={handleAddBlock}
             onRefreshAll={() => setRefreshKey((key) => key + 1)}
             onShowData={onShowData}
-            onSaved={(dashboard, cardIds) =>
+            onSaved={(dashboard, cardIds, savedRemovedCardIds) =>
               updateCanvas((canvas) => ({
                 ...canvas,
                 dashboard,
                 blocks: canvas.blocks.map((block) => ({
                   ...block,
                   cardId: cardIds.get(block.id) ?? block.cardId,
+                })),
+                removedCardIds: canvas.removedCardIds.filter(
+                  (cardId) => !savedRemovedCardIds.includes(cardId),
+                ),
+              }))
+            }
+            onDashboardMissing={() =>
+              updateCanvas((canvas) => ({
+                ...canvas,
+                dashboard: null,
+                removedCardIds: [],
+                blocks: canvas.blocks.map((block) => ({
+                  ...block,
+                  cardId: null,
                 })),
               }))
             }
@@ -282,9 +308,7 @@ export function SummaryCanvas({ question, onShowData }: SummaryCanvasProps) {
                 base={base}
                 block={selectedBlock}
                 draggedItem={draggedItem}
-                onChange={(nextBlock) =>
-                  updateBlock(selectedBlock.id, () => nextBlock)
-                }
+                onChange={(updater) => updateBlock(selectedBlock.id, updater)}
                 onClose={() => selectBlock(null)}
               />
             ) : (

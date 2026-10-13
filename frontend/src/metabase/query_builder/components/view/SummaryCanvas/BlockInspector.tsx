@@ -54,7 +54,8 @@ type BlockInspectorProps = {
   base: SummaryBase;
   block: SummaryBlock;
   draggedItem: SummaryDragItem | null;
-  onChange: (block: SummaryBlock) => void;
+  /** Receives an update to apply to the latest version of the block. */
+  onChange: (updater: (block: SummaryBlock) => SummaryBlock) => void;
   onClose: () => void;
 };
 
@@ -83,9 +84,11 @@ export function BlockInspector({
         dimension={dimension}
         label={dimensionLabels.get(dimension.id) ?? ""}
         onChangeTemporalUnit={(temporalUnit) =>
-          onChange(setTemporalUnit(block, dimension.id, temporalUnit))
+          onChange((block) =>
+            setTemporalUnit(block, dimension.id, temporalUnit),
+          )
         }
-        onRemove={() => onChange(removeItem(block, dimension.id))}
+        onRemove={() => onChange((block) => removeItem(block, dimension.id))}
       />
     ));
 
@@ -100,7 +103,10 @@ export function BlockInspector({
           aria-label={t`Summary title`}
           onChange={(event) => {
             const title = event.currentTarget.value;
-            onChange({ ...block, title: title.length > 0 ? title : null });
+            onChange((block) => ({
+              ...block,
+              title: title.length > 0 ? title : null,
+            }));
           }}
         />
         <Tooltip label={t`Done`}>
@@ -113,8 +119,8 @@ export function BlockInspector({
       <DisplayPicker
         value={getBlockDisplay(block)}
         isAuto={block.display == null}
-        onChange={(display) => onChange({ ...block, display })}
-        onReset={() => onChange({ ...block, display: null })}
+        onChange={(display) => onChange((block) => ({ ...block, display }))}
+        onReset={() => onChange((block) => ({ ...block, display: null }))}
       />
 
       <SummaryWell
@@ -144,9 +150,9 @@ export function BlockInspector({
             query={base.query}
             source={value.source}
             onCommit={(source) =>
-              onChange(updateValue(block, value.id, source))
+              onChange((block) => updateValue(block, value.id, source))
             }
-            onRemove={() => onChange(removeItem(block, value.id))}
+            onRemove={() => onChange((block) => removeItem(block, value.id))}
           />
         ))}
         {isAddingValue && (
@@ -156,7 +162,7 @@ export function BlockInspector({
             autoFocus
             onCommit={(source) => {
               setIsAddingValue(false);
-              onChange(addValue(block, source));
+              onChange((block) => addValue(block, source));
             }}
             onRemove={() => setIsAddingValue(false)}
           />
@@ -195,7 +201,7 @@ export function BlockInspector({
         <BlockFilters
           base={base}
           block={block}
-          onChange={(filters) => onChange({ ...block, filters })}
+          onChange={(filters) => onChange((block) => ({ ...block, filters }))}
         />
       </Box>
     </Stack>

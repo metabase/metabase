@@ -14,7 +14,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import S from "./SummaryCanvas.module.css";
-import { getBlockFilterQuery, getBlockFilters } from "./blocks";
+import { getBlockFilterEditQuery, toBlockFilter } from "./blocks";
 import type { SummaryBase, SummaryBlock } from "./types";
 
 type BlockFiltersProps = {
@@ -27,42 +27,41 @@ type BlockFiltersProps = {
 export function BlockFilters({ base, block, onChange }: BlockFiltersProps) {
   const [isAdding, setIsAdding] = useState(false);
   const { stageIndex } = base;
-  const filterQuery = getBlockFilterQuery(base, block);
-  const sourceFilterCount = Lib.filters(base.query, stageIndex).length;
-  const blockFilters = Lib.filters(filterQuery, stageIndex).slice(
-    sourceFilterCount,
-  );
+  const editQuery = getBlockFilterEditQuery(base, block);
 
-  const applyFilterQuery = (nextQuery: Lib.Query) =>
-    onChange(getBlockFilters(base, nextQuery));
-
-  const handleAdd = (filter: Lib.Filterable) => {
-    applyFilterQuery(Lib.filter(filterQuery, stageIndex, filter));
+  const handleAdd = (filterable: Lib.Filterable) => {
+    const filter = toBlockFilter(base, filterable);
+    if (filter) {
+      onChange([...block.filters, filter]);
+    }
     setIsAdding(false);
   };
 
-  const handleReplace = (
-    filter: Lib.FilterClause,
-    nextFilter: Lib.Filterable,
-  ) =>
-    applyFilterQuery(
-      Lib.replaceClause(filterQuery, stageIndex, filter, nextFilter),
-    );
+  const handleReplace = (filterIndex: number, filterable: Lib.Filterable) => {
+    const filter = toBlockFilter(base, filterable);
+    if (filter) {
+      onChange(
+        block.filters.map((current, index) =>
+          index === filterIndex ? filter : current,
+        ),
+      );
+    }
+  };
 
-  const handleRemove = (filter: Lib.FilterClause) =>
-    applyFilterQuery(Lib.removeClause(filterQuery, stageIndex, filter));
+  const handleRemove = (filterIndex: number) =>
+    onChange(block.filters.filter((_filter, index) => index !== filterIndex));
 
   return (
     <Flex wrap="wrap" gap="xs" data-testid="summary-block-filters">
-      {blockFilters.map((filter, filterIndex) => (
+      {block.filters.map((filter, filterIndex) => (
         <BlockFilterPill
           key={filterIndex}
-          query={filterQuery}
+          query={editQuery}
           stageIndex={stageIndex}
           filter={filter}
-          filterIndex={sourceFilterCount + filterIndex}
-          onChange={(nextFilter) => handleReplace(filter, nextFilter)}
-          onRemove={() => handleRemove(filter)}
+          filterIndex={filterIndex}
+          onChange={(nextFilter) => handleReplace(filterIndex, nextFilter)}
+          onRemove={() => handleRemove(filterIndex)}
         />
       ))}
       <Popover
@@ -84,7 +83,7 @@ export function BlockFilters({ base, block, onChange }: BlockFiltersProps) {
         </Popover.Target>
         <Popover.Dropdown>
           <FilterPicker
-            query={filterQuery}
+            query={editQuery}
             stageIndex={stageIndex}
             onSelect={handleAdd}
             onClose={() => setIsAdding(false)}

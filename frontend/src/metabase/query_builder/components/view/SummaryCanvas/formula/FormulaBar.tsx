@@ -3,6 +3,7 @@ import { EditorSelection, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -117,8 +118,7 @@ export function FormulaBar({
     }
   };
 
-  const handlers = useRef({ commit, revert, getDoc, setBlockClick });
-  handlers.current = { commit, revert, getDoc, setBlockClick };
+  const handlers = useLatest({ commit, revert, getDoc, setBlockClick });
 
   const [helpTooltip, helpPortal] = useCustomTooltip({
     getPosition: getTooltipPosition,
@@ -159,7 +159,7 @@ export function FormulaBar({
         "aria-label": t`Summary formula`,
       }),
     ],
-    [],
+    [handlers],
   );
 
   const extensions = useExtensions({
