@@ -772,6 +772,11 @@
                                                            (apply-pivot-viz-settings viz-settings)
                                                            maybe-add-default-pivot-clause
                                                            (assoc-in [:middleware :pivot-options] pivot-opts)
+                                                           ;; Cap `:max-results` (and `:max-results-bare-rows`, so it stays ≤ `:max-results`)
+                                                           ;; at `*pivot-max-result-rows*` — a caller-supplied smaller value is still honored.
+                                                           (update-in [:constraints :max-results] u/safe-min *pivot-max-result-rows*)
+                                                           (cond-> (get-in query [:constraints :max-results-bare-rows])
+                                                             (update-in [:constraints :max-results-bare-rows] min *pivot-max-result-rows*))
                                                            maybe-userland))]
     (qp/process-query prepared rff)))
 
