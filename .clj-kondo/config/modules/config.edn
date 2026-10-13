@@ -894,7 +894,7 @@
 
   dependencies
   {:team "Graphy"
-   :api  #{metabase.dependencies.core}
+   :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
   documents
@@ -3917,6 +3917,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/Document
                     :model/FieldUserSettings
                     :model/Measure

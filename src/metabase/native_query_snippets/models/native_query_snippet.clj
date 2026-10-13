@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -83,7 +83,7 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (dependencies/entity-inserted! :model/NativeQuerySnippet snippet {})
+  (dependencies.hooks/entity-inserted! :model/NativeQuerySnippet snippet)
   (u/prog1 (add-template-tags snippet)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
@@ -105,8 +105,7 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
-  (when (seq (select-keys (t2/changes snippet) [:content :template_tags]))
-    (dependencies/entity-updated! :model/NativeQuerySnippet snippet {}))
+  (dependencies.hooks/entity-updated! :model/NativeQuerySnippet snippet)
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
@@ -126,7 +125,7 @@
   [snippet]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-snippet snippet)
-  (dependencies/entity-deleted! :model/NativeQuerySnippet snippet {})
+  (dependencies.hooks/entity-deleted! :model/NativeQuerySnippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 

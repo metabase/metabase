@@ -12,7 +12,7 @@
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -292,7 +292,7 @@
 
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
-  (dependencies/entity-inserted! :model/Sandbox gtap {})
+  (dependencies.hooks/entity-inserted! :model/Sandbox gtap)
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
     (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
@@ -302,8 +302,7 @@
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
-  (when (seq (select-keys (t2/changes updates) [:card_id]))
-    (dependencies/entity-updated! :model/Sandbox updates {}))
+  (dependencies.hooks/entity-updated! :model/Sandbox updates)
   (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]
@@ -316,5 +315,5 @@
 
 (t2/define-before-delete :model/Sandbox
   [sandbox]
-  (dependencies/entity-deleted! :model/Sandbox sandbox {})
+  (dependencies.hooks/entity-deleted! :model/Sandbox sandbox)
   sandbox)

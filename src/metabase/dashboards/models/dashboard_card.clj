@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -63,9 +63,7 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (dependencies/entity-inserted! :model/DashboardCard dashcard
-                                 {:owner-model :model/Dashboard
-                                  :owner-id    (:dashboard_id dashcard)})
+  (dependencies.hooks/entity-inserted! :model/DashboardCard dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -74,18 +72,12 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (when (seq (select-keys (t2/changes dashcard) [:card_id :dashboard_id :visualization_settings]))
-    (doseq [dashboard-id (distinct [(:dashboard_id (t2/original dashcard)) (:dashboard_id dashcard)])]
-      (dependencies/entity-updated! :model/DashboardCard dashcard
-                                    {:owner-model :model/Dashboard
-                                     :owner-id    dashboard-id})))
+  (dependencies.hooks/entity-updated! :model/DashboardCard dashcard)
   (validate-dashcard-on-write dashcard))
 
 (t2/define-before-delete :model/DashboardCard
   [dashcard]
-  (dependencies/entity-deleted! :model/DashboardCard dashcard
-                                {:owner-model :model/Dashboard
-                                 :owner-id    (:dashboard_id dashcard)})
+  (dependencies.hooks/entity-deleted! :model/DashboardCard dashcard)
   dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

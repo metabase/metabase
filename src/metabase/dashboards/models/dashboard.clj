@@ -11,7 +11,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -77,7 +77,7 @@
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
-  (dependencies/entity-deleted! :model/Dashboard dashboard {})
+  (dependencies.hooks/entity-deleted! :model/Dashboard dashboard)
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
     (dashboards.db/delete-dashboard-revisions! dashboard-id)
@@ -86,7 +86,7 @@
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
-  (dependencies/entity-inserted! :model/Dashboard dashboard {})
+  (dependencies.hooks/entity-inserted! :model/Dashboard dashboard)
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
@@ -101,8 +101,7 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (when (seq (select-keys (t2/changes dashboard) [:parameters]))
-    (dependencies/entity-updated! :model/Dashboard dashboard {}))
+  (dependencies.hooks/entity-updated! :model/Dashboard dashboard)
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]

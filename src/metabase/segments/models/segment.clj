@@ -4,7 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -165,7 +165,7 @@
 
 (t2/define-before-insert :model/Segment
   [segment]
-  (dependencies/entity-inserted! :model/Segment segment {})
+  (dependencies.hooks/entity-inserted! :model/Segment segment)
   (let [definition (migrated-segment-definition segment)]
     (when (seq definition)
       (lib/check-segment-overwrite nil definition))
@@ -183,8 +183,7 @@
   [_])
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
-  (when (seq (select-keys (t2/changes segment) [:definition :table_id]))
-    (dependencies/entity-updated! :model/Segment segment {}))
+  (dependencies.hooks/entity-updated! :model/Segment segment)
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
   ;; throw an Exception if someone tries to update creator_id
@@ -203,7 +202,7 @@
   [segment]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-segment segment)
-  (dependencies/entity-deleted! :model/Segment segment {})
+  (dependencies.hooks/entity-deleted! :model/Segment segment)
   segment)
 
 (defmethod mi/perms-objects-set :model/Segment

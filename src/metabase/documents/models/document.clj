@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -741,16 +741,15 @@
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
-  (dependencies/entity-inserted! :model/Document model {})
+  (dependencies.hooks/entity-inserted! :model/Document model)
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
 
 (t2/define-before-update :model/Document [model]
-  (when (seq (select-keys (t2/changes model) [:content_type :document]))
-    (dependencies/entity-updated! :model/Document model {}))
+  (dependencies.hooks/entity-updated! :model/Document model)
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   (public-sharing/add-public-uuid-prefix-if-changed model))
 
 (t2/define-before-delete :model/Document [model]
-  (dependencies/entity-deleted! :model/Document model {})
+  (dependencies.hooks/entity-deleted! :model/Document model)
   model)

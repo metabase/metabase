@@ -1,8 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema]
-   [metabase.dependencies.core :as dependencies]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -14,18 +13,12 @@
 
 (t2/define-before-insert :model/DashboardCardSeries
   [series]
-  (dependencies/entity-inserted! :model/DashboardCardSeries series
-                                 {:owner-model :model/Dashboard
-                                  :owner-id    (dashboards.db/dashcard-dashboard-id (:dashboardcard_id series))})
+  (dependencies.hooks/entity-inserted! :model/DashboardCardSeries series)
   series)
 
 (t2/define-before-update :model/DashboardCardSeries
   [series]
-  (when (seq (select-keys (t2/changes series) [:card_id :dashboardcard_id]))
-    (doseq [dashcard-id (distinct [(:dashboardcard_id (t2/original series)) (:dashboardcard_id series)])]
-      (dependencies/entity-updated! :model/DashboardCardSeries series
-                                    {:owner-model :model/Dashboard
-                                     :owner-id    (dashboards.db/dashcard-dashboard-id dashcard-id)})))
+  (dependencies.hooks/entity-updated! :model/DashboardCardSeries series)
   series)
 
 ;; Serialization
