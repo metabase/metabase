@@ -953,12 +953,12 @@
                                                           :id model-id
                                                           :type "card"
                                                           :dependent-types "action")
-                                    (map (juxt :type :id (comp :name :data) (comp :name :collection :data)))
+                                    (map (juxt :type :id (comp :name :data) (comp (juxt :name :namespace) :collection :data)))
                                     set))]
-              (is (= #{["action" readable-id "Create venue" (:name readable-collection)]
-                       ["action" unreadable-id "Delete venue" (:name unreadable-collection)]}
+              (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]
+                       ["action" unreadable-id "Delete venue" [(:name unreadable-collection) "data-actions"]]}
                      (dependents :crowberto)))
-              (is (= #{["action" readable-id "Create venue" (:name readable-collection)]}
+              (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]}
                      (dependents :rasta))))))))))
 
 (deftest graph-measure-root-test
