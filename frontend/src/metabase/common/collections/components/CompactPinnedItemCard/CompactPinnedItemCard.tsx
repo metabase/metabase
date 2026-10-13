@@ -62,6 +62,7 @@ export type CompactPinnedItemCardProps = {
   isSelected?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
   showSelectAffordance?: boolean;
+  /** Shows the item without its action menu. */
   readOnly?: boolean;
 };
 

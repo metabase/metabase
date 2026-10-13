@@ -28,6 +28,7 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   onSaveFile: (file: File) => void;
+  /** Offers only the bookmark and the info sidebar, and no edits to the collection. */
   readOnly?: boolean;
 }
 

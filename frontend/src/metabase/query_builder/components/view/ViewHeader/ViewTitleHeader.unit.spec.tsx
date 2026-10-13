@@ -26,6 +26,7 @@ import type {
 } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
+  createMockCollection,
   createMockDataset,
 } from "metabase-types/api/mocks";
 import {
@@ -470,12 +471,13 @@ describe("ViewTitleHeader", () => {
   });
 });
 
-describe("ViewTitleHeader | a read-only question", () => {
+describe("ViewTitleHeader | a question in a data app's collection", () => {
   it("offers no sharing, bookmark, or actions menu", () => {
     setup({
-      card: getSavedGUIQuestionCard(),
+      card: getSavedGUIQuestionCard({
+        collection: createMockCollection({ namespace: "data-apps" }),
+      }),
       isSaved: true,
-      readOnly: true,
     });
 
     expect(screen.getByTestId("qb-header-info-button")).toBeInTheDocument();

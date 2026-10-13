@@ -215,6 +215,7 @@ export const CollectionContentView = ({
     deleteBookmark({ id: collectionId, type: "collection" });
   };
 
+  // a data app owns its collection: the app's repo, not this page, changes what it holds
   const readOnly = isDataAppNamespace(collection.namespace);
 
   const canCreateUpload =

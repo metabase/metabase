@@ -127,6 +127,7 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
+  /** Lists the items without selection, item actions, or dragging. */
   readOnly?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 

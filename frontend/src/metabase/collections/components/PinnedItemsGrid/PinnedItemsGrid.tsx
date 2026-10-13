@@ -36,6 +36,7 @@ type Props = {
   selected: CollectionItem[];
   getIsSelected: (item: CollectionItem) => boolean;
   onToggleSelected: OnToggleSelectedWithItem;
+  /** Shows the pinned items without selection, item actions, or dragging. */
   readOnly?: boolean;
 };
 

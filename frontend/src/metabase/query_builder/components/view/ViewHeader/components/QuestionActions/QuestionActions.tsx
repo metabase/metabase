@@ -41,6 +41,7 @@ interface Props {
     },
   ) => void;
   onInfoClick: () => void;
+  /** Offers only the info sidebar: no bookmark and no actions menu. */
   readOnly?: boolean;
 }
 

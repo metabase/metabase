@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { isDataAppNamespace } from "metabase/common/collections/utils";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -48,7 +49,6 @@ interface QueryModalsProps {
   onCloseModal: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   onChangeLocation: (location: string) => void;
-  readOnly?: boolean;
 }
 
 export function QueryModals({
@@ -62,7 +62,6 @@ export function QueryModals({
   setQueryBuilderMode,
   originalQuestion,
   onChangeLocation,
-  readOnly = false,
 }: QueryModalsProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -71,6 +70,10 @@ export function QueryModals({
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
   const visualizationSettings = useSelector(getVisualizationSettings);
+  // a data app's card isn't copied, so changes to one can only replace it
+  const canSaveAsNew = !isDataAppNamespace(
+    originalQuestion?.collection()?.namespace,
+  );
 
   const handleAlertCreatedOrUpdated = useCallback(() => {
     dispatch(updateUrl(question, { dirty: false }));
@@ -202,7 +205,7 @@ export function QueryModals({
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
           opened={true}
-          canSaveAsNew={!readOnly}
+          canSaveAsNew={canSaveAsNew}
         />
       );
     case MODAL_TYPES.ADD_TO_DASHBOARD:
@@ -233,7 +236,7 @@ export function QueryModals({
           onClose={onCloseModal}
           opened={true}
           multiStep
-          canSaveAsNew={!readOnly}
+          canSaveAsNew={canSaveAsNew}
         />
       );
     case MODAL_TYPES.MOVE:

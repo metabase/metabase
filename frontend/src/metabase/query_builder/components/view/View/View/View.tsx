@@ -8,7 +8,6 @@ import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { deletePermanently } from "metabase/archive/actions";
-import { isDataAppNamespace } from "metabase/common/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Toaster } from "metabase/common/components/Toaster";
@@ -182,9 +181,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
-    const isDataAppQuestion = isDataAppNamespace(
-      originalQuestion?.collection()?.namespace,
-    );
 
     if ((isModel || isMetric) && queryBuilderMode === "dataset") {
       return (
@@ -237,7 +233,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
             setQueryBuilderMode={setQueryBuilderMode}
             originalQuestion={originalQuestion}
             onChangeLocation={onChangeLocation}
-            readOnly={isDataAppQuestion}
           />
         </>
       );
@@ -273,9 +268,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
           data-testid="query-builder-root"
         >
-          {isHeaderVisible && (
-            <ViewHeaderContainer {...props} readOnly={isDataAppQuestion} />
-          )}
+          {isHeaderVisible && <ViewHeaderContainer {...props} />}
 
           <Flex className={S.QueryBuilderContentContainer}>
             {!isNative && (
@@ -335,7 +328,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           setQueryBuilderMode={setQueryBuilderMode}
           originalQuestion={originalQuestion}
           onChangeLocation={onChangeLocation}
-          readOnly={isDataAppQuestion}
         />
 
         <Toaster
