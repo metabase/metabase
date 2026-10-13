@@ -59,6 +59,11 @@ describe("scenarios > visualizations > progress chart", () => {
 
     H.getDashboardCard(1).findByTestId("gauge-arc-1").should("be.visible");
 
+    H.getDashboardCard(1)
+      .findByTestId("gauge-arc-1")
+      .trigger("mouseout", { force: true });
+    H.tooltip().should("not.exist");
+
     cy.log("progress bar: dashboard render");
     H.getDashboardCard(0).within(() => {
       cy.findByText("18,760").should("be.visible");
