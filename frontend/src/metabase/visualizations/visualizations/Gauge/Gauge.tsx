@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Box } from "metabase/ui";
+import { getFontFamilyValue } from "metabase/utils/fonts";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import {
@@ -23,6 +25,7 @@ import {
   ARC_DEGREES,
   FONT_SIZE_CENTER_LABEL_MAX,
   FONT_SIZE_CENTER_LABEL_MIN,
+  FONT_SIZE_SEGMENT_LABEL,
   INNER_RADIUS,
   LABEL_OFFSET_PERCENT,
   MAX_WIDTH,
@@ -35,10 +38,18 @@ import {
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
-import { getGaugeWarnings, getSegmentsRange, getValue, radians } from "./utils";
+import {
+  getGaugeWarnings,
+  getLabelBox,
+  getSegmentsRange,
+  getValue,
+  getWarningRadiusClearOfLabels,
+  radians,
+} from "./utils";
 
 function GaugeComponent({
   className,
+  fontFamily,
   isSettings,
   height: heightProp,
   isQueryBuilder,
@@ -135,6 +146,32 @@ function GaugeComponent({
   const arcCenterX = (viewBoxWidth * expandWidthFactor) / 2;
   const arcCenterY = 50;
   const columnSettings = column && settings.column && settings.column(column);
+  const labelRadius = OUTER_RADIUS * LABEL_OFFSET_PERCENT;
+  const warningIconSize = GOAL_WARNING_ICON_SIZE / svgScale;
+  // measured at the rendered size, then converted back to viewBox units
+  const measureLabelWidth = (text: string) =>
+    measureTextWidth(text, {
+      family: getFontFamilyValue(fontFamily),
+      size: FONT_SIZE_SEGMENT_LABEL * svgScale,
+    }) / svgScale;
+  const labelBoxes =
+    showLabels && warnings.length > 0
+      ? [
+          ...numberLabels.map((value) => ({
+            value,
+            text: String(formatValue(value, columnSettings)),
+          })),
+          ...textLabels.map(({ label, value }) => ({
+            value,
+            text: label ?? "",
+          })),
+        ].map(({ value, text }) =>
+          getLabelBox(
+            valuePosition(value, labelRadius),
+            measureLabelWidth(text),
+          ),
+        )
+      : [];
 
   const updateLabelSize = useCallback(() => {
     const label = labelRef.current;
@@ -265,8 +302,12 @@ function GaugeComponent({
         // labels grow outward from the label radius, so the icon's inner edge sits there too
         const [x, y] = valuePosition(
           value,
-          OUTER_RADIUS * LABEL_OFFSET_PERCENT +
-            GOAL_WARNING_ICON_SIZE / 2 / svgScale,
+          getWarningRadiusClearOfLabels(
+            valuePosition(value, 1),
+            labelRadius + warningIconSize / 2,
+            warningIconSize,
+            labelBoxes,
+          ),
         );
 
         return (
