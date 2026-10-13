@@ -1963,6 +1963,28 @@
                                  {:request-options {:headers {"authorization" (str "Bearer " token)}}}
                                  {:uris ["metabase://databases"]}))))))))))
 
+(deftest endpoint-without-scope-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An endpoint that declares no `:scope` must refuse every
+            scoped token, so a token holding every MCP scope is refused by GET /api/user/:id."
+    (testing "the endpoint itself works for a normal session"
+      (is (= (mt/user->id :crowberto)
+             (:id (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :crowberto)))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token    (str (random-uuid))
+                _        (t2/insert! :model/OAuthAccessToken
+                                     {:token     (oidc.util/hash-token token)
+                                      :user_id   (mt/user->id :crowberto)
+                                      :client_id client-id
+                                      :scope     (vec (mcp/v2-scopes))
+                                      :expiry    (+ (System/currentTimeMillis) 3600000)})
+                response (client/client-full-response
+                          :get (str "user/" (mt/user->id :crowberto))
+                          {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
+            (is (= 403 (:status response)))
+            (is (= "scope_not_permitted" (get-in response [:body :error])))))))))
+
 (deftest decode-and-validate-query-strips-extra-keys-test
   (testing "base64 query payloads are decoded, validated, and stripped of the query processor's internal keys"
     ;; `:qp/source-card-id` and `:qp/stage-had-source-card` are keys the QP adds to a query while it runs and that

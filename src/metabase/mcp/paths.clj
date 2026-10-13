@@ -53,10 +53,7 @@
 
    Spelled as literals rather than read from `metabot.scope` because requiring that namespace here would close
    the load cycle described above; `v2-surface-scopes-match-metabot-scope-test` is what keeps them in step.
-   Scopes are never renamed — issued tokens carry literal strings.
-
-   No REST endpoint may declare one of these as its `:scope`: an MCP client's token must not reach the REST API
-   (GHY-4939). `agent:resource:read` left this set for that reason; it is the agent API's scope."
+   Scopes are never renamed — issued tokens carry literal strings."
   ["agent:content:read"
    "agent:content:write"
    "agent:query:run"

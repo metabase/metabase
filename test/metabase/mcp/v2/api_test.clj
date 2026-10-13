@@ -542,7 +542,6 @@
     (let [mcp-scopes (set mcp.paths/v2-surface-scopes)]
       (is (= []
              (for [nmspace                (all-ns)
-                   :when                  (:api/endpoints (meta nmspace))
                    [[method route] {:keys [form]}] (api.macros/ns-routes nmspace)
                    :let                   [scope (get-in form [:metadata :scope])]
                    :when                  (contains? mcp-scopes scope)]
