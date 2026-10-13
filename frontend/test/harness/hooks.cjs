@@ -854,7 +854,8 @@ const fileCleanup = async () => {
 };
 
 let filesRunHere = 0;
-// Experiment: garbage collection time since the previous line of the file log.
+// For the file log: the time in garbage collection pauses since its previous
+// line, the part of it in major collections, and the number of collections.
 const gcLog = (() => {
   if (!process.env.NT_FILE_LOG) return null;
   const { PerformanceObserver, constants } = require("node:perf_hooks");
