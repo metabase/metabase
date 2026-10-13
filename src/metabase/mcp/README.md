@@ -62,8 +62,8 @@ Access tokens are scoped to limit what tools a client can use:
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
-These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a token issued to an
-MCP client cannot reach the REST API.
+These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
+MCP client grants nothing on the REST API.
 
 Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
 challenge both list only `agent:content:read agent:query:run`: a fresh connection can read,
