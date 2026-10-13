@@ -1,4 +1,3 @@
-import type { EventRef } from "../events/types";
 import type {
   ActorPredicate,
   AnalysisKind,
@@ -6,7 +5,12 @@ import type {
   TimeUnit,
 } from "../spec/types";
 
-import type { AnalysisContext, CommonSettings } from "./types";
+import type {
+  AnalysisContext,
+  CommonSettings,
+  MissingSetting,
+  SpecResult,
+} from "./types";
 
 export const isOneOf = <T extends string>(
   values: readonly T[],
@@ -35,30 +39,55 @@ export const isPositiveDuration = (value: unknown): boolean =>
   isPositiveInteger(value.value) &&
   isOneOf(TIME_UNITS, value.unit);
 
-export const savedEvent = (id: string): EventRef => ({ type: "saved", id });
+/**
+ * Checks shape only, without metadata. A query that passes can still fail to
+ * read; see `readEventQuery`.
+ */
+export const isEventDefinition = (value: unknown): boolean =>
+  typeof value === "object" &&
+  value !== null &&
+  "name" in value &&
+  "query" in value &&
+  typeof value.name === "string" &&
+  value.name.trim() !== "" &&
+  typeof value.query === "object" &&
+  value.query !== null &&
+  "stages" in value.query &&
+  isUnknownArray(value.query.stages) &&
+  value.query.stages.length > 0;
 
-export const isValidEvent = (context: AnalysisContext, ref: unknown): boolean =>
-  typeof ref === "object" &&
-  ref !== null &&
-  "type" in ref &&
-  "id" in ref &&
-  ref.type === "saved" &&
-  context.savedEvents.some((event) => event.id === ref.id);
+/** For a single-event setting, where `null` means no event is defined yet. */
+export const isOptionalEventDefinition = (value: unknown): boolean =>
+  value === null || isEventDefinition(value);
 
 export const isUnknownArray = (value: unknown): value is unknown[] =>
   Array.isArray(value);
 
-export const isValidEventList = (
-  context: AnalysisContext,
-  refs: unknown,
-  minCount = 0,
-): boolean =>
-  isUnknownArray(refs) &&
-  refs.length >= minCount &&
-  refs.every((ref) => isValidEvent(context, ref));
+/**
+ * A list that's too short is still kept, so the user can build it up one
+ * event at a time; `toSpec` reports it as incomplete.
+ */
+export const isEventDefinitionList = (value: unknown): boolean =>
+  isUnknownArray(value) && value.every(isEventDefinition);
 
-export const getEventPickerProps = (context: AnalysisContext) => ({
-  events: context.savedEvents,
+export const ready = (spec: AnalysisSpec): SpecResult => ({
+  status: "ready",
+  spec,
+});
+
+export const incomplete = (missing: MissingSetting[]): SpecResult => ({
+  status: "incomplete",
+  missing,
+});
+
+/** `missing` when `isMissing`, for spreading into an `incomplete` list. */
+export const missingIf = (
+  isMissing: boolean,
+  missing: MissingSetting,
+): MissingSetting[] => (isMissing ? [missing] : []);
+
+export const getEventDefinitionProps = (context: AnalysisContext) => ({
+  table: context.table,
 });
 
 const EMPTY_SCOPE: ActorPredicate = {

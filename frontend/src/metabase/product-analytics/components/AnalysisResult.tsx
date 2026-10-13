@@ -6,6 +6,7 @@ import { Warnings } from "metabase/common/components/Warnings";
 import {
   Alert,
   Box,
+  Button,
   Group,
   Loader,
   Paper,
@@ -22,6 +23,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type { MissingSetting } from "../analyses/types";
+
 const SYNTHETIC_CARD_ID = -1;
 
 type AnalysisResultProps = {
@@ -33,6 +36,11 @@ type AnalysisResultProps = {
   isLoading: boolean;
   error: string | undefined;
   warnings: string[];
+  /** Settings still to fill in. When non-empty, this replaces the result. */
+  missing: MissingSetting[];
+  setupLabel: string;
+  /** Omit when the setup panel is already open. */
+  onOpenSetup?: () => void;
 };
 
 export const AnalysisResult = ({
@@ -44,6 +52,9 @@ export const AnalysisResult = ({
   isLoading,
   error,
   warnings,
+  missing,
+  setupLabel,
+  onOpenSetup,
 }: AnalysisResultProps) => {
   const [vizWarnings, setVizWarnings] = useState<string[]>([]);
   const rawSeries: RawSeries | null =
@@ -61,7 +72,10 @@ export const AnalysisResult = ({
           },
         ]
       : null;
-  const isShowingVisualization = !isLoading && !error && rawSeries !== null;
+  // Errors and loading come first: settings can't be finished without a table.
+  const isIncomplete = missing.length > 0 && !error && !isLoading;
+  const isShowingVisualization =
+    !isIncomplete && !isLoading && !error && rawSeries !== null;
   const allWarnings = isShowingVisualization
     ? [...warnings, ...vizWarnings]
     : warnings;
@@ -74,13 +88,20 @@ export const AnalysisResult = ({
           <Warnings warnings={allWarnings} size={18} />
         </Group>
         <Stack gap="sm" flex={1}>
-          {error && <Alert color="error">{error}</Alert>}
-          {isLoading && (
+          {isIncomplete && (
+            <IncompleteSettings
+              missing={missing}
+              setupLabel={setupLabel}
+              onOpenSetup={onOpenSetup}
+            />
+          )}
+          {!isIncomplete && error && <Alert color="error">{error}</Alert>}
+          {!isIncomplete && isLoading && (
             <Box ta="center" py="xl">
               <Loader />
             </Box>
           )}
-          {!isLoading && !error && rawSeries === null && (
+          {!isIncomplete && !isLoading && !error && rawSeries === null && (
             <Text c="text-secondary">{t`Results will appear here.`}</Text>
           )}
           {isShowingVisualization && (
@@ -98,3 +119,31 @@ export const AnalysisResult = ({
     </Paper>
   );
 };
+
+type IncompleteSettingsProps = {
+  missing: MissingSetting[];
+  setupLabel: string;
+  onOpenSetup?: () => void;
+};
+
+const IncompleteSettings = ({
+  missing,
+  setupLabel,
+  onOpenSetup,
+}: IncompleteSettingsProps) => (
+  <Stack align="center" justify="center" gap="sm" flex={1} ta="center">
+    <Title order={4} c="text-secondary">
+      {t`Finish setting up this analysis`}
+    </Title>
+    {missing.map(({ key, message }) => (
+      <Text key={key} c="text-secondary">
+        {message}
+      </Text>
+    ))}
+    {onOpenSetup && (
+      <Button variant="filled" onClick={onOpenSetup}>
+        {setupLabel}
+      </Button>
+    )}
+  </Stack>
+);

@@ -7,18 +7,38 @@ import type { TableId } from "metabase-types/api";
 
 import { COLUMN_ROLES, type ColumnRoles } from "./columns";
 import { parseDateRange } from "./date-range";
-import type { AllocatedEvent } from "./events/types";
+import { readEventQuery } from "./events/read-event-query";
+import type { AllocatedEvent, EventDefinition } from "./events/types";
 import { findColumn } from "./find-column";
 
 const STAGE = -1;
 
-const asFlag = (clause: Lib.ExpressionClause): Lib.ExpressionClause =>
-  Lib.expressionClause("case", [clause, 1, 0]);
+const asFlag = (
+  clause: Lib.ExpressionClause | Lib.FilterClause,
+): Lib.ExpressionClause => Lib.expressionClause("case", [clause, 1, 0]);
+
+/** The event's filters, ANDed, as a condition on the base query. */
+const getEventFilter = (
+  metadataProvider: Lib.MetadataProvider,
+  event: EventDefinition,
+): Lib.ExpressionClause | Lib.FilterClause => {
+  const eventQuery = readEventQuery(metadataProvider, event);
+  if (eventQuery === null) {
+    throw new Error(t`The conditions for ${event.name} can't be read.`);
+  }
+  const [first, ...rest] = Lib.filters(eventQuery, STAGE);
+  if (first === undefined) {
+    throw new Error(t`${event.name} has no conditions.`);
+  }
+  return rest.length === 0
+    ? first
+    : Lib.expressionClause("and", [first, ...rest]);
+};
 
 export type BaseQueryInput = {
   dateRange: string;
   columns: ColumnRoles;
-  events: AllocatedEvent[];
+  events: readonly AllocatedEvent[];
 };
 
 export type BuiltBaseQuery = {
@@ -67,7 +87,7 @@ export const buildBaseQuery = (
       query,
       STAGE,
       flag,
-      asFlag(event.getFilter(query, columns)),
+      asFlag(getEventFilter(metadataProvider, event)),
     );
   }
 

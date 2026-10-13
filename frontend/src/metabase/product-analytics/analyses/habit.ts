@@ -1,18 +1,20 @@
 import { t } from "ttag";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
-import { EventPickerWidget } from "../components/settings/EventPickerWidget";
+import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
-  getEventPickerProps,
+  getEventDefinitionProps,
+  incomplete,
   isOneOf,
+  isOptionalEventDefinition,
   isPositiveDuration,
   isPositiveInteger,
-  isValidEvent,
-  savedEvent,
+  ready,
 } from "./setting-helpers";
 import type {
   AnalysisConfig,
@@ -32,14 +34,14 @@ const MEASURES: readonly HabitSettings["habit.measure"][] = [
 
 const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
   ...commonSettings({ granularity: null }),
-  "habit.active": {
-    getTitle: () => t`Active means`,
+  "habit.active": withWidgetProps({
+    getTitle: () => t`What event counts as showing up?`,
     getSection: () => "setup",
-    widget: EventPickerWidget,
-    getDefault: () => savedEvent("active"),
-    isValid: (value, context) => isValidEvent(context, value),
-    getProps: getEventPickerProps,
-  },
+    widget: EventDefinitionWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: getEventDefinitionProps,
+  }),
   "habit.lookback": {
     getTitle: () => t`Look back`,
     getSection: () => "setup",
@@ -101,18 +103,28 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
     return t`Setup`;
   },
   settings: SETTINGS,
-  getEventRefs: (settings) => [settings["habit.active"]],
-  toSpec: (settings, events) => ({
-    ...getCommonSpec("habit", settings),
-    habit: {
-      active: { flag: events.flagFor(settings["habit.active"]) },
-      lookback: settings["habit.lookback"],
-      subPeriod: settings["habit.sub_period"],
-      measure: settings["habit.measure"],
-      threshold: settings["habit.threshold"],
-    },
-    output: {},
-  }),
+  toSpec: (settings, events) => {
+    const active = settings["habit.active"];
+    if (active === null) {
+      return incomplete([
+        {
+          key: "habit.active",
+          message: t`Define the event that counts as showing up.`,
+        },
+      ]);
+    }
+    return ready({
+      ...getCommonSpec("habit", settings),
+      habit: {
+        active: { flag: events.flagFor(active) },
+        lookback: settings["habit.lookback"],
+        subPeriod: settings["habit.sub_period"],
+        measure: settings["habit.measure"],
+        threshold: settings["habit.threshold"],
+      },
+      output: {},
+    });
+  },
   getDisplay: (settings) => {
     switch (settings["habit.measure"]) {
       case "histogram":

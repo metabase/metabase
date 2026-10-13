@@ -18,9 +18,8 @@ export const NewAnalysisPage = () => {
   const prototype = usePrototypeTable();
   const tableId = prototype.tableId;
 
-  // Prototype: the saved events in events/catalog.ts filter on values seeded in
-  // pa_events_resolved, so other tables error or return zeros. Lift this once
-  // events can be defined per table.
+  // Prototype: event definitions don't follow a table change yet, so analyses
+  // stay on one table. Lift this once they do.
   const handleTableChange = (id: ConcreteTableId) => {
     if (id !== tableId) {
       sendToast({

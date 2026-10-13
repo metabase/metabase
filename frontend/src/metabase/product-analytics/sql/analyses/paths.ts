@@ -79,13 +79,13 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ? paths.included.map((ref) => flagSql(ref.flag)).join("\n     OR ")
     : "1";
 
-  const usesStart = paths.direction !== "to";
-  const usesEnd = paths.direction !== "from";
+  const start = paths.direction !== "to" ? paths.start : null;
+  const end = paths.direction !== "from" ? paths.end : null;
 
   const base = scopedEvents(spec, undefined, [
     { as: "is_step", sql: `(${isStep})` },
-    { as: "is_start", sql: usesStart ? flagSql(paths.start.flag) : "0" },
-    { as: "is_end", sql: usesEnd ? flagSql(paths.end.flag) : "0" },
+    { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
+    { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
     { as: "step_name", sql: STEP_NAME_SQL },
   ]);
   warnings.push(...base.warnings);

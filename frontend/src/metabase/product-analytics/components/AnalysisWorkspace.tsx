@@ -42,12 +42,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     onSaved,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
-  const { config, table, widgets, display, vizSettings, query } = useAnalysis({
-    kind,
-    tableId,
-    stored,
-    onChangeSettings,
-  });
+  const { config, table, widgets, missing, display, vizSettings, query } =
+    useAnalysis({
+      kind,
+      tableId,
+      stored,
+      onChangeSettings,
+    });
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? t`${config.name} analysis on ${tableName}`;
@@ -128,6 +129,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             (tableId === undefined ? t`Choose a table to analyze.` : undefined)
           }
           warnings={query.warnings}
+          missing={missing}
+          setupLabel={config.setupLabel}
+          onOpenSetup={panel !== "setup" ? () => setPanel("setup") : undefined}
         />
       </Group>
       {questionToCreate !== undefined && (

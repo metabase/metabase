@@ -1,33 +1,23 @@
-import type {
-  AllocatedEvent,
-  EventAllocation,
-  EventDefinition,
-  EventRef,
-} from "./types";
+import _ from "underscore";
+
+import type { AllocatedEvent, EventDefinition, FlagAllocator } from "./types";
 
 /**
- * Gives every event in use a flag column on `events_base`. A flag is named by
- * the event's position in `savedEvents`, so picking or dropping one event
- * doesn't rename the others' columns.
+ * Gives each event a flag column on `events_base` as the spec uses it,
+ * numbered in order of first use. Identical events share a flag.
  */
-export const allocateFlags = (
-  eventIds: readonly string[],
-  savedEvents: readonly EventDefinition[],
-): EventAllocation => {
-  const events: AllocatedEvent[] = savedEvents.flatMap((event, index) =>
-    eventIds.includes(event.id) ? [{ flag: `ev_${index + 1}`, event }] : [],
-  );
+export const createFlagAllocator = (): FlagAllocator => {
+  const events: AllocatedEvent[] = [];
 
-  const flagFor = (ref: EventRef): string => {
-    const allocated = events.find(({ event }) => event.id === ref.id);
-    if (allocated === undefined) {
-      throw new Error(`Event ${ref.id} has no flag column`);
+  const flagFor = (event: EventDefinition): string => {
+    const allocated = events.find((other) => _.isEqual(other.event, event));
+    if (allocated !== undefined) {
+      return allocated.flag;
     }
-    return allocated.flag;
+    const flag = `ev_${events.length + 1}`;
+    events.push({ flag, event });
+    return flag;
   };
 
-  const nameFor = (ref: EventRef): string =>
-    savedEvents.find((event) => event.id === ref.id)?.name ?? ref.id;
-
-  return { events, flagFor, nameFor };
+  return { events, flagFor };
 };

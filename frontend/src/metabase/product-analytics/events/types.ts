@@ -1,23 +1,26 @@
-import type * as Lib from "metabase-lib";
+import type { OpaqueDatasetQuery } from "metabase-types/api";
 
-import type { ColumnRoles } from "../columns";
-
-/** A setting's pointer to an event. Later variants: inline filters, saved definitions from the API. */
-export type EventRef = { type: "saved"; id: string };
-
+/**
+ * An event, defined by filters on the event table. Only the query's filters
+ * are used, ANDed together.
+ */
 export type EventDefinition = {
-  id: string;
   name: string;
-  getFilter: (query: Lib.Query, columns: ColumnRoles) => Lib.ExpressionClause;
+  query: OpaqueDatasetQuery;
 };
 
+/** An event in use, with its flag column on `events_base`. */
 export type AllocatedEvent = {
   flag: string;
   event: EventDefinition;
 };
 
-export type EventAllocation = {
-  events: AllocatedEvent[];
-  flagFor: (ref: EventRef) => string;
-  nameFor: (ref: EventRef) => string;
+/** How a spec refers to an event: by its flag column. */
+export type EventFlags = {
+  flagFor: (event: EventDefinition) => string;
+};
+
+export type FlagAllocator = EventFlags & {
+  /** The events given a flag so far. */
+  events: readonly AllocatedEvent[];
 };

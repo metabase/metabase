@@ -1,25 +1,31 @@
 import { getAnalysisConfig } from "./analyses/config";
-import type { AnalysisContext } from "./analyses/types";
 import { buildSql } from "./build-sql";
-import { allocateFlags } from "./events/allocate-flags";
-import { SAVED_EVENTS } from "./events/catalog";
+import { createFlagAllocator } from "./events/allocate-flags";
+import { createMockEventDefinition } from "./events/mocks";
 import { computeSettings } from "./settings/compute";
 
-const getDefaultFunnelSpec = () => {
+const getFunnelSpec = () => {
   const config = getAnalysisConfig("funnel");
-  const context: AnalysisContext = {
-    table: undefined,
-    savedEvents: SAVED_EVENTS,
-  };
-  const computed = computeSettings(config.settings, context, {});
-  const eventIds = config.getEventRefs(computed).map(({ id }) => id);
-  return config.toSpec(computed, allocateFlags(eventIds, SAVED_EVENTS));
+  const computed = computeSettings(
+    config.settings,
+    { table: undefined },
+    {
+      "funnel.steps": ["Viewed pricing", "Started trial", "Purchased"].map(
+        (name) => createMockEventDefinition({ name }),
+      ),
+    },
+  );
+  const result = config.toSpec(computed, createFlagAllocator());
+  if (result.status !== "ready") {
+    throw new Error("A funnel with three steps should be ready to run");
+  }
+  return result.spec;
 };
 
 describe("buildSql", () => {
   it("wraps compiled base SQL as events_base and plans a funnel", () => {
     const built = buildSql(
-      getDefaultFunnelSpec(),
+      getFunnelSpec(),
       "SELECT person_id, created_at, ev_1, ev_2, ev_3 FROM events;",
       {
         columns: {

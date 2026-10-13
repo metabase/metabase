@@ -1,16 +1,18 @@
 import { t } from "ttag";
 
-import { EventPickerWidget } from "../components/settings/EventPickerWidget";
+import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { withWidgetProps } from "../settings/with-widget-props";
 import type { LifecycleStateName } from "../spec/types";
 
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
-  getEventPickerProps,
+  getEventDefinitionProps,
+  incomplete,
   isOneOf,
+  isOptionalEventDefinition,
   isUnknownArray,
-  isValidEvent,
-  savedEvent,
+  ready,
 } from "./setting-helpers";
 import type {
   AnalysisConfig,
@@ -42,14 +44,14 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
   ...commonSettings({
     granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
   }),
-  "lifecycle.active": {
+  "lifecycle.active": withWidgetProps({
     getTitle: () => t`Active means`,
     getSection: () => "setup",
-    widget: EventPickerWidget,
-    getDefault: () => savedEvent("active"),
-    isValid: (value, context) => isValidEvent(context, value),
-    getProps: getEventPickerProps,
-  },
+    widget: EventDefinitionWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: getEventDefinitionProps,
+  }),
   "lifecycle.shown": {
     getTitle: () => t`States to show`,
     getSection: () => "advanced",
@@ -82,16 +84,26 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     return t`Setup`;
   },
   settings: SETTINGS,
-  getEventRefs: (settings) => [settings["lifecycle.active"]],
-  toSpec: (settings, events) => ({
-    ...getCommonSpec("lifecycle", settings),
-    lifecycle: {
-      active: { flag: events.flagFor(settings["lifecycle.active"]) },
-      // granularity's units exclude "hour" here; isValid enforces it.
-      period: settings.granularity === "hour" ? "day" : settings.granularity,
-    },
-    output: { lifecycleShown: settings["lifecycle.shown"] },
-  }),
+  toSpec: (settings, events) => {
+    const active = settings["lifecycle.active"];
+    if (active === null) {
+      return incomplete([
+        {
+          key: "lifecycle.active",
+          message: t`Define the event that counts as being active.`,
+        },
+      ]);
+    }
+    return ready({
+      ...getCommonSpec("lifecycle", settings),
+      lifecycle: {
+        active: { flag: events.flagFor(active) },
+        // granularity's units exclude "hour" here; isValid enforces it.
+        period: settings.granularity === "hour" ? "day" : settings.granularity,
+      },
+      output: { lifecycleShown: settings["lifecycle.shown"] },
+    });
+  },
   getDisplay: () => "bar",
   getVizSettings: () => ({
     "graph.dimensions": ["period", "state"],

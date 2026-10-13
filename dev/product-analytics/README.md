@@ -75,6 +75,54 @@ in-tree driver into `plugins/` and restart:
 clojure -X:build:drivers:build/driver :driver :clickhouse
 ```
 
+## Add event segments
+
+Segments on `pa_events_resolved` show up under "Browse actions" when defining
+an event. This creates a starter set matching the seeded data, looking up the
+table and field ids by name. Re-running it skips segments that already exist.
+
+```bash
+DB_ID=$(mb db list --json | jq '.data[] | select(.name == "Product Analytics") | .id')
+TABLE_ID=$(mb table list --db-id "$DB_ID" --json | jq '.data[] | select(.name == "pa_events_resolved") | .id')
+FIELDS=$(mb table get "$TABLE_ID" --include fields --json)
+EVENT_NAME=$(jq '.fields[] | select(.name == "event_name") | .id' <<<"$FIELDS")
+URL_PATH=$(jq '.fields[] | select(.name == "url_path") | .id' <<<"$FIELDS")
+
+# event_name is any of the arguments
+event_name_in() {
+  jq -nc --argjson f "$EVENT_NAME" '["=", {}, ["field", {}, $f]] + $ARGS.positional' --args "$@"
+}
+
+# Creates a segment from a name and one filter clause, skipping existing names
+segment() {
+  if mb segment list --json | jq -e --arg n "$1" --argjson t "$TABLE_ID" \
+      'any(.data[]; .name == $n and .table_id == $t)' >/dev/null; then
+    echo "exists: $1"; return
+  fi
+  jq -n --arg name "$1" --argjson filter "$2" --argjson db "$DB_ID" --argjson table "$TABLE_ID" '{
+    name: $name,
+    table_id: $table,
+    definition: {
+      "lib/type": "mbql/query",
+      database: $db,
+      stages: [{"lib/type": "mbql.stage/mbql", "source-table": $table, filters: [$filter]}]
+    }
+  }' | mb segment create --json | jq -c '{id, name}'
+}
+
+segment "Viewed pricing"   "[\"=\", {}, [\"field\", {}, $URL_PATH], \"/pricing\"]"
+segment "Started trial"    "$(event_name_in trial_started)"
+segment "Purchased"        "$(event_name_in checkout_completed)"
+segment "Signed up"        "$(event_name_in signup)"
+segment "Was active"       "[\"or\", {}, [\"starts-with\", {}, [\"field\", {}, $URL_PATH], \"/app\"], $(event_name_in report_created invite_sent checkout_completed)]"
+segment "Sent an invite"   "$(event_name_in invite_sent)"
+segment "Hit an error"     "$(event_name_in error)"
+segment "Created a report" "$(event_name_in report_created)"
+```
+
+To start over, archive them with `mb segment archive <id>` (ids from
+`mb segment list`).
+
 ## Check the planners
 
 ```bash

@@ -3,19 +3,20 @@ import { t } from "ttag";
 import { SegmentedControl } from "metabase/ui";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
-import { EventListWidget } from "../components/settings/EventListWidget";
+import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
-  getEventPickerProps,
+  getEventDefinitionProps,
+  incomplete,
   isBoolean,
+  isEventDefinitionList,
   isOneOf,
   isPositiveDuration,
-  isValidEventList,
-  savedEvent,
+  ready,
 } from "./setting-helpers";
 import type {
   AnalysisConfig,
@@ -47,21 +48,17 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     getHidden: (_context, settings) => settings["funnel.view"] !== "overTime",
     readDependencies: ["funnel.view"],
   },
-  "funnel.steps": {
+  "funnel.steps": withWidgetProps({
     getTitle: () => t`The journey you want people to complete`,
     getSection: () => "setup",
-    widget: EventListWidget,
-    getDefault: () => [
-      savedEvent("pricing"),
-      savedEvent("trial"),
-      savedEvent("checkout"),
-    ],
-    isValid: (value, context) => isValidEventList(context, value, MIN_STEPS),
+    widget: EventDefinitionListWidget,
+    getDefault: () => [],
+    isValid: (value) => isEventDefinitionList(value),
     getProps: (context) => ({
-      ...getEventPickerProps(context),
-      minCount: MIN_STEPS,
+      ...getEventDefinitionProps(context),
+      addLabel: t`Add a step`,
     }),
-  },
+  }),
   "funnel.view": withWidgetProps({
     getTitle: () => t`How to display the funnel`,
     getSection: () => "setup",
@@ -131,23 +128,33 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
     return t`Steps`;
   },
   settings: SETTINGS,
-  getEventRefs: (settings) => settings["funnel.steps"],
-  toSpec: (settings, events) => ({
-    ...getCommonSpec("funnel", settings),
-    funnel: {
-      steps: settings["funnel.steps"].map((ref, index) => ({
-        index,
-        flag: events.flagFor(ref),
-        label: events.nameFor(ref),
-      })),
-      exclusions: [],
-      window: settings["funnel.window"],
-      anchor: settings["funnel.anchor"],
-      ordering: settings["funnel.ordering"],
-      allowRetry: settings["funnel.allow_retry"],
-    },
-    output: { funnelView: settings["funnel.view"] },
-  }),
+  toSpec: (settings, events) => {
+    const steps = settings["funnel.steps"];
+    if (steps.length < MIN_STEPS) {
+      return incomplete([
+        {
+          key: "funnel.steps",
+          message: t`Add at least ${MIN_STEPS} steps.`,
+        },
+      ]);
+    }
+    return ready({
+      ...getCommonSpec("funnel", settings),
+      funnel: {
+        steps: steps.map((event, index) => ({
+          index,
+          flag: events.flagFor(event),
+          label: event.name,
+        })),
+        exclusions: [],
+        window: settings["funnel.window"],
+        anchor: settings["funnel.anchor"],
+        ordering: settings["funnel.ordering"],
+        allowRetry: settings["funnel.allow_retry"],
+      },
+      output: { funnelView: settings["funnel.view"] },
+    });
+  },
   getDisplay: (settings) => {
     switch (settings["funnel.view"]) {
       case "steps":

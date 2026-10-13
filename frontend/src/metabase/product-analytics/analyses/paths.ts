@@ -1,18 +1,21 @@
 import { t } from "ttag";
 
-import { EventListWidget } from "../components/settings/EventListWidget";
-import { EventPickerWidget } from "../components/settings/EventPickerWidget";
+import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
+import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { withWidgetProps } from "../settings/with-widget-props";
 
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
-  getEventPickerProps,
+  getEventDefinitionProps,
+  incomplete,
   isBoolean,
+  isEventDefinitionList,
   isOneOf,
+  isOptionalEventDefinition,
   isPositiveInteger,
-  isValidEvent,
-  isValidEventList,
-  savedEvent,
+  missingIf,
+  ready,
 } from "./setting-helpers";
 import type {
   AnalysisConfig,
@@ -47,26 +50,26 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
       ],
     }),
   },
-  "paths.start": {
+  "paths.start": withWidgetProps({
     getTitle: () => t`Starting event`,
     getSection: () => "setup",
-    widget: EventPickerWidget,
-    getDefault: () => savedEvent("pricing"),
-    isValid: (value, context) => isValidEvent(context, value),
+    widget: EventDefinitionWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
     getHidden: (_context, settings) => settings["paths.direction"] === "to",
-    getProps: getEventPickerProps,
     readDependencies: ["paths.direction"],
-  },
-  "paths.end": {
+    getProps: getEventDefinitionProps,
+  }),
+  "paths.end": withWidgetProps({
     getTitle: () => t`Ending event`,
     getSection: () => "setup",
-    widget: EventPickerWidget,
-    getDefault: () => savedEvent("checkout"),
-    isValid: (value, context) => isValidEvent(context, value),
+    widget: EventDefinitionWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
     getHidden: (_context, settings) => settings["paths.direction"] === "from",
-    getProps: getEventPickerProps,
     readDependencies: ["paths.direction"],
-  },
+    getProps: getEventDefinitionProps,
+  }),
   "paths.steps": {
     getTitle: () => t`Steps to show`,
     getSection: () => "setup",
@@ -75,23 +78,14 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     isValid: (value) => isPositiveInteger(value),
     getProps: () => INTEGER_PROPS,
   },
-  "paths.included": {
+  "paths.included": withWidgetProps({
     getTitle: () => t`Events to include`,
     getSection: () => "setup",
-    widget: EventListWidget,
-    getDefault: () =>
-      [
-        "pricing",
-        "signup",
-        "trial",
-        "active",
-        "invite",
-        "report",
-        "checkout",
-      ].map(savedEvent),
-    isValid: (value, context) => isValidEventList(context, value),
-    getProps: getEventPickerProps,
-  },
+    widget: EventDefinitionListWidget,
+    getDefault: () => [],
+    isValid: (value) => isEventDefinitionList(value),
+    getProps: getEventDefinitionProps,
+  }),
   "paths.session_gap_minutes": {
     getTitle: () => t`New visit after (minutes idle)`,
     getSection: () => "advanced",
@@ -157,29 +151,46 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
     return t`Setup`;
   },
   settings: SETTINGS,
-  getEventRefs: (settings) => [
-    settings["paths.start"],
-    settings["paths.end"],
-    ...settings["paths.included"],
-  ],
-  toSpec: (settings, events) => ({
-    ...getCommonSpec("paths", settings),
-    paths: {
-      direction: settings["paths.direction"],
-      start: { flag: events.flagFor(settings["paths.start"]) },
-      end: { flag: events.flagFor(settings["paths.end"]) },
-      steps: settings["paths.steps"],
-      included: settings["paths.included"].map((ref) => ({
-        flag: events.flagFor(ref),
-      })),
-      sessionGapMinutes: settings["paths.session_gap_minutes"],
-      mergeRepeats: settings["paths.merge_repeats"],
-      collapseNoise: settings["paths.collapse_noise"],
-      maxNodes: settings["paths.max_nodes"],
-      minVolume: settings["paths.min_volume"],
-    },
-    output: { pathsEdgeMetric: settings["paths.edge_metric"] },
-  }),
+  toSpec: (settings, events) => {
+    const direction = settings["paths.direction"];
+    const usesStart = direction !== "to";
+    const usesEnd = direction !== "from";
+    // A hidden event keeps its value but mustn't reach the query.
+    const start = usesStart ? settings["paths.start"] : null;
+    const end = usesEnd ? settings["paths.end"] : null;
+    const isMissingStart = usesStart && start === null;
+    const isMissingEnd = usesEnd && end === null;
+    if (isMissingStart || isMissingEnd) {
+      return incomplete([
+        ...missingIf(isMissingStart, {
+          key: "paths.start",
+          message: t`Define a starting event.`,
+        }),
+        ...missingIf(isMissingEnd, {
+          key: "paths.end",
+          message: t`Define an ending event.`,
+        }),
+      ]);
+    }
+    return ready({
+      ...getCommonSpec("paths", settings),
+      paths: {
+        direction,
+        start: start !== null ? { flag: events.flagFor(start) } : null,
+        end: end !== null ? { flag: events.flagFor(end) } : null,
+        steps: settings["paths.steps"],
+        included: settings["paths.included"].map((event) => ({
+          flag: events.flagFor(event),
+        })),
+        sessionGapMinutes: settings["paths.session_gap_minutes"],
+        mergeRepeats: settings["paths.merge_repeats"],
+        collapseNoise: settings["paths.collapse_noise"],
+        maxNodes: settings["paths.max_nodes"],
+        minVolume: settings["paths.min_volume"],
+      },
+      output: { pathsEdgeMetric: settings["paths.edge_metric"] },
+    });
+  },
   getDisplay: () => "sankey",
   getVizSettings: () => ({
     "sankey.source": "source",

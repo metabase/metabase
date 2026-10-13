@@ -20,7 +20,8 @@ import { nativeCompileRequest } from "./compile-base";
 import type { AnalysisSpec } from "./spec/types";
 
 export type AnalysisQueryArgs = {
-  spec: AnalysisSpec;
+  /** Undefined while the settings are incomplete. Nothing is compiled or run. */
+  spec: AnalysisSpec | undefined;
   tableId: ConcreteTableId | undefined;
   /** Must keep its identity while unchanged; see the comment on `compiledBase`. */
   base: BaseQueryInput;
@@ -48,12 +49,15 @@ export const useAnalysisQuery = ({
   const table = tableMetadata.currentData;
   const databaseId = table?.db_id;
   const metadataProvider = useMetadataProvider(databaseId ?? null);
+  // A boolean, not `spec`: the spec is rebuilt every render, see below.
+  const isReady = spec !== undefined;
 
   // Lib.toJsQuery mints a new lib/uuid on every clause. Rebuilding the request
   // each render gives RTK a new cache key, so getNativeDataset stays pending
   // forever and /api/dataset never runs.
   const compiledBase = useMemo(() => {
     if (
+      !isReady ||
       databaseId === undefined ||
       tableId === undefined ||
       table === undefined
@@ -71,7 +75,7 @@ export const useAnalysisQuery = ({
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  }, [databaseId, tableId, table, metadataProvider, base]);
+  }, [isReady, databaseId, tableId, table, metadataProvider, base]);
 
   const native = useGetNativeDatasetQuery(compiledBase?.request ?? skipToken);
   const compiledDatabaseId = compiledBase?.databaseId;
@@ -80,7 +84,7 @@ export const useAnalysisQuery = ({
   const baseSql = native.currentData?.query;
 
   const built =
-    baseSql && compiledDatabaseId !== undefined
+    spec && baseSql && compiledDatabaseId !== undefined
       ? buildSql(spec, baseSql, {
           columns: base.columns,
           flags: base.events.map(({ flag }) => flag),

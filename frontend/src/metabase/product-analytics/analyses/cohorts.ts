@@ -1,15 +1,18 @@
 import { t } from "ttag";
 
-import { EventPickerWidget } from "../components/settings/EventPickerWidget";
+import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { withWidgetProps } from "../settings/with-widget-props";
 
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
-  getEventPickerProps,
+  getEventDefinitionProps,
+  incomplete,
   isOneOf,
+  isOptionalEventDefinition,
   isPositiveInteger,
-  isValidEvent,
-  savedEvent,
+  missingIf,
+  ready,
 } from "./setting-helpers";
 import type {
   AnalysisConfig,
@@ -35,22 +38,22 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
     granularity: { units: ["week", "month"], defaultUnit: "week" },
   }),
-  "cohorts.start": {
+  "cohorts.start": withWidgetProps({
     getTitle: () => t`Starting event`,
     getSection: () => "setup",
-    widget: EventPickerWidget,
-    getDefault: () => savedEvent("signup"),
-    isValid: (value, context) => isValidEvent(context, value),
-    getProps: getEventPickerProps,
-  },
-  "cohorts.return": {
+    widget: EventDefinitionWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: getEventDefinitionProps,
+  }),
+  "cohorts.return": withWidgetProps({
     getTitle: () => t`Returning event`,
     getSection: () => "setup",
-    widget: EventPickerWidget,
-    getDefault: () => savedEvent("active"),
-    isValid: (value, context) => isValidEvent(context, value),
-    getProps: getEventPickerProps,
-  },
+    widget: EventDefinitionWidget,
+    getDefault: () => null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: getEventDefinitionProps,
+  }),
   "cohorts.return_rule": {
     getTitle: () => t`Counts as returning`,
     getSection: () => "setup",
@@ -125,22 +128,34 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
     return t`Setup`;
   },
   settings: SETTINGS,
-  getEventRefs: (settings) => [
-    settings["cohorts.start"],
-    settings["cohorts.return"],
-  ],
-  toSpec: (settings, events) => ({
-    ...getCommonSpec("cohorts", settings),
-    cohorts: {
-      rowMode: settings["cohorts.row_mode"],
-      start: { flag: events.flagFor(settings["cohorts.start"]) },
-      startPeriods: settings["cohorts.start_periods"],
-      return: { flag: events.flagFor(settings["cohorts.return"]) },
-      returnRule: settings["cohorts.return_rule"],
-      horizon: settings["cohorts.horizon"],
-    },
-    output: { cohortsDisplay: settings["cohorts.display"] },
-  }),
+  toSpec: (settings, events) => {
+    const start = settings["cohorts.start"];
+    const returning = settings["cohorts.return"];
+    if (start === null || returning === null) {
+      return incomplete([
+        ...missingIf(start === null, {
+          key: "cohorts.start",
+          message: t`Define the event that starts a cohort.`,
+        }),
+        ...missingIf(returning === null, {
+          key: "cohorts.return",
+          message: t`Define the event that counts as coming back.`,
+        }),
+      ]);
+    }
+    return ready({
+      ...getCommonSpec("cohorts", settings),
+      cohorts: {
+        rowMode: settings["cohorts.row_mode"],
+        start: { flag: events.flagFor(start) },
+        startPeriods: settings["cohorts.start_periods"],
+        return: { flag: events.flagFor(returning) },
+        returnRule: settings["cohorts.return_rule"],
+        horizon: settings["cohorts.horizon"],
+      },
+      output: { cohortsDisplay: settings["cohorts.display"] },
+    });
+  },
   getDisplay: () => "table",
   getVizSettings: () => ({}),
 };
