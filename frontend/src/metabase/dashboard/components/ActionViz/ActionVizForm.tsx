@@ -194,10 +194,14 @@ export function ActionVizForm({
   }
 
   return (
+    // A zero flex basis lets the form fill the dashcard and scroll instead of growing past it
+    // The md radius matches the dashcard, which clips its content to its own corners
     <Paper
       className={CS.overflowYAuto}
+      flex="1 1 0"
+      mih={0}
       p="xl"
-      radius="sm"
+      radius="md"
       shadow="none"
       withBorder
     >
