@@ -30,6 +30,8 @@ Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
+> **Metabase 66 will drop support for React 18.** If you need to stay on React 18 for longer, use [Metabase 64 LTS](https://www.metabase.com/version-support).
+
 ## Quickstarts
 
 The best way to get started with Modular embedding SDK depends on what you already have:
