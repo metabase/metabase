@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import _ from "underscore";
 
 import { Box } from "metabase/ui";
@@ -55,26 +55,36 @@ export function GoalLineWarnings({
     weight: CHART_STYLE.goalLine.label.weight,
   });
 
-  const updateLabelLayouts = useCallback(() => {
-    const goalValue = getGoalLineValue(settings, isNormalized);
-    const axisValue = goalValue != null ? toEChartsAxisValue(goalValue) : null;
+  useEffect(() => {
+    const updateLabelLayouts = () => {
+      const goalValue = getGoalLineValue(settings, isNormalized);
+      const axisValue =
+        goalValue != null ? toEChartsAxisValue(goalValue) : null;
 
-    const next =
-      chartInstance == null || axisValue == null
-        ? []
-        : _.range(panelCount).map((yAxisIndex) =>
-            getGoalLineLabelLayout({
-              goalY: chartInstance.convertToPixel({ yAxisIndex }, axisValue),
-              plotLeft,
-              plotRight,
-              labelOnLeft,
-              fontSize,
-            }),
-          );
+      const next =
+        chartInstance == null || axisValue == null
+          ? []
+          : _.range(panelCount).map((yAxisIndex) =>
+              getGoalLineLabelLayout({
+                goalY: chartInstance.convertToPixel({ yAxisIndex }, axisValue),
+                plotLeft,
+                plotRight,
+                labelOnLeft,
+                fontSize,
+              }),
+            );
 
-    setLabelLayouts((previous) =>
-      _.isEqual(previous, next) ? previous : next,
-    );
+      setLabelLayouts((previous) =>
+        _.isEqual(previous, next) ? previous : next,
+      );
+    };
+
+    updateLabelLayouts();
+    chartInstance?.on("finished", updateLabelLayouts);
+
+    return () => {
+      chartInstance?.off("finished", updateLabelLayouts);
+    };
   }, [
     chartInstance,
     fontSize,
@@ -86,18 +96,6 @@ export function GoalLineWarnings({
     settings,
     toEChartsAxisValue,
   ]);
-
-  useEffect(() => {
-    updateLabelLayouts();
-  }, [updateLabelLayouts]);
-
-  useEffect(() => {
-    chartInstance?.on("finished", updateLabelLayouts);
-
-    return () => {
-      chartInstance?.off("finished", updateLabelLayouts);
-    };
-  }, [chartInstance, updateLabelLayouts]);
 
   return (
     <>
