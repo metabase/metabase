@@ -4,7 +4,7 @@ import { msgid, ngettext } from "ttag";
 
 import { getEventCount } from "metabase/common/utils/timelines";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Stack } from "metabase/ui";
 import type { Timeline } from "metabase-types/api";
 
 import S from "./TimelinePicker.module.css";
@@ -21,7 +21,7 @@ export const TimelinePicker = ({
   onChange,
 }: TimelinePickerProps) => {
   return (
-    <Box>
+    <Stack gap="sm">
       {options.map((option) => (
         <TimelineCard
           key={option.id}
@@ -30,7 +30,7 @@ export const TimelinePicker = ({
           onChange={onChange}
         />
       ))}
-    </Box>
+    </Stack>
   );
 };
 

@@ -1,7 +1,3 @@
-.card:not(:last-child) {
-  margin-bottom: 0.5rem;
-}
-
 .iconBorder {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 1rem;
