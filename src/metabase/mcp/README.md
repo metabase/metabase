@@ -70,8 +70,8 @@ the baseline, that reconnect never offered writes, raw SQL, or delivery, and the
 (ENG-11089). The authorization server metadata advertises all of them too.
 
 The baseline (`agent:content:read agent:query:run agent:resource:read`) is locked on the consent screen: when a
-client requests one of these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
-step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
+client requests one of these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never
+need a step-up. Claude Desktop retries a tool after a step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
 chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
