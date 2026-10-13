@@ -69,18 +69,13 @@
 
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
-  {:copy      [:display_name :identifier :icon :manifest :metabase_version :bundle_hash]
+  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
    :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
                :status :error_message
                ;; dev-only plugins are never served from another instance
                :dev_bundle_url]
+   :defaults  {:enabled true}
    :transform {:created_at (serdes/date)
-               ;; admin-owned state of this instance: ignored on import, so a new plugin gets the column default and an
-               ;; existing one keeps its toggle. Still exported when false because older patches of the same major copy
-               ;; it and would otherwise enable a disabled plugin. (Not a `:defaults` entry: those are merged back on
-               ;; import.)
-               :enabled    {:export (fn [enabled?] (if enabled? ::serdes/skip false))
-                            :import (constantly ::serdes/skip)}
                :bundle     {:export bundle->b64
                             :import b64->bundle}}})
 
