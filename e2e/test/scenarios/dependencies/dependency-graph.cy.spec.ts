@@ -117,11 +117,9 @@ describe("scenarios > dependencies > dependency graph", () => {
     function testEntityPicker({
       path,
       itemIcon,
-      isSearchable = true,
     }: {
       path: (string | RegExp)[];
       itemIcon: IconName;
-      isSearchable?: boolean;
     }) {
       const itemName = path[path.length - 1];
       const itemLevel = path.length - 1;
@@ -143,17 +141,20 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByLabelText("Close").click();
       });
       H.DependencyGraph.entryButton().icon("close").click();
+    }
 
-      if (!isSearchable) {
-        return;
-      }
-
+    function testEntityPickerSearch({
+      itemName,
+      itemIcon,
+    }: {
+      itemName: string;
+      itemIcon: IconName;
+    }) {
       cy.log(`verify that "${itemName}" can be found via search"`);
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        // Unjustified type cast. FIXME
-        cy.findByPlaceholderText(/Search/).type(itemName as string);
+        cy.findByPlaceholderText(/Search/).type(itemName);
         cy.findByText(/results for/).should("be.visible");
         cy.findByTestId("search-scope-selector")
           .findByText("Everywhere")
@@ -216,26 +217,45 @@ describe("scenarios > dependencies > dependency graph", () => {
         path: ["Databases", /Sample Database/, "Products"],
         itemIcon: "table",
       });
+      testEntityPickerSearch({
+        itemName: "Products",
+        itemIcon: "table",
+      });
       testEntityPicker({
         path: ["Our analytics", "Orders, Count, Grouped by Created At (year)"],
+        itemIcon: "line",
+      });
+      testEntityPickerSearch({
+        itemName: "Orders, Count, Grouped by Created At (year)",
         itemIcon: "line",
       });
       testEntityPicker({
         path: ["Our analytics", "Orders Model"],
         itemIcon: "model",
       });
+      testEntityPickerSearch({
+        itemName: "Orders Model",
+        itemIcon: "model",
+      });
       testEntityPicker({
         path: ["Our analytics", TABLE_BASED_METRIC_NAME],
+        itemIcon: "metric",
+      });
+      testEntityPickerSearch({
+        itemName: TABLE_BASED_METRIC_NAME,
         itemIcon: "metric",
       });
       testEntityPicker({
         path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
       });
+      testEntityPickerSearch({
+        itemName: TABLE_BASED_TRANSFORM_NAME,
+        itemIcon: "transform",
+      });
       testEntityPicker({
         path: ["SQL Snippets", EMPTY_SNIPPET_NAME],
         itemIcon: "snippet",
-        isSearchable: false,
       });
       testEntityPicker({
         path: [
@@ -244,7 +264,6 @@ describe("scenarios > dependencies > dependency graph", () => {
           TABLE_BASED_ACTION_NAME,
         ],
         itemIcon: "bolt",
-        isSearchable: false,
       });
     });
   });
