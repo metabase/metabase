@@ -25,7 +25,7 @@ export function UnarchiveSnippetModal(props: ArchiveSnippetModalProps) {
     if (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to unarchive snippet`),
-        icon: "warning",
+        variant: "negative",
       });
     } else {
       sendToast({

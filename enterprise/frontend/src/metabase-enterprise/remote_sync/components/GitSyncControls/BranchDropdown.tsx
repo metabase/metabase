@@ -91,7 +91,7 @@ export const BranchDropdown = ({
     } catch {
       sendToast({
         message: t`Failed to create branch`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   };

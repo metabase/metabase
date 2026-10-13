@@ -67,8 +67,7 @@ export const SetupGuideXrayPickerModal = ({
       });
     } catch {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: t`Failed to create dashboard`,
       });
     }
