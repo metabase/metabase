@@ -54,7 +54,7 @@
             but not SQL, writes or delivery. Every tool is listed whatever the token holds, and a call needing more is
             answered with a 403 `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather
             than a hidden tool."
-    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"} (set @#'v2.api/default-ask-scopes)))
+    (is (= #{"agent:content:read" "agent:query:run"} (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                           @#'v2.api/default-ask-scopes))))
@@ -200,7 +200,7 @@
       (testing "GHY-4543: every v2 scope survives narrowing on every alias, although the resource metadata
                 advertises only the baseline — otherwise a step-up for a write scope is stripped at consent"
         (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
-                         "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                         "agent:sql:run" "agent:delivery:write"]]
           (doseq [path (mcp/mcp-endpoint-paths)]
             (testing path
               (is (= (set v2-scopes)
