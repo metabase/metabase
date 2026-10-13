@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.dependencies.hooks]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -49,7 +49,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -741,15 +742,9 @@
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
-  (dependencies.hooks/entity-inserted! :model/Document model)
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
 
 (t2/define-before-update :model/Document [model]
-  (dependencies.hooks/entity-updated! :model/Document model)
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   (public-sharing/add-public-uuid-prefix-if-changed model))
-
-(t2/define-before-delete :model/Document [model]
-  (dependencies.hooks/entity-deleted! :model/Document model)
-  model)

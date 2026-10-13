@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.dependencies.hooks]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
@@ -35,7 +35,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/dependencies]]
   (derive :model/Transform trait))
 
 (defn- transform-readable?
@@ -155,7 +155,6 @@
 
 (t2/define-before-insert :model/Transform
   [{:keys [source collection_id source_database_id] :as transform}]
-  (dependencies.hooks/entity-inserted! :model/Transform transform)
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
@@ -192,7 +191,6 @@
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
-  (dependencies.hooks/entity-updated! :model/Transform transform)
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
@@ -363,7 +361,6 @@
   nil)
 
 (t2/define-before-delete :model/Transform [transform]
-  (dependencies.hooks/entity-deleted! :model/Transform transform)
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (delete-transform-tests! (:id transform))

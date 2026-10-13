@@ -407,7 +407,7 @@
        (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
          (mt/with-temp [:model/Table     {table-id :id}     {:schema "Other", :db_id (mt/id), :name "test_table"}
                         :model/Transform {transform-id :id} {:target target}]
-           (deps.hooks/transform-executed! transform-id (mt/id) "Other" "test_table")
+           (deps.hooks/after-transform-run transform-id (mt/id) "Other" "test_table")
            (is (=? [{:from_entity_type :table
                      :from_entity_id table-id,
                      :to_entity_type :transform,
@@ -433,7 +433,7 @@
                         :model/Transform {transform-id :id} {:target target
                                                              :source source}]
            (testing "initial run"
-             (deps.hooks/transform-executed! transform-id (mt/id) "Other" "test_table")
+             (deps.hooks/after-transform-run transform-id (mt/id) "Other" "test_table")
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -465,7 +465,7 @@
                         :model/Table     {}                              {:schema "Other", :db_id (mt/id), :name "test_table2"}
                         :model/Transform {transform-id :id} {:target target :source source}]
            (testing "initial run"
-             (deps.hooks/transform-executed! transform-id (mt/id) "Other" "test_table")
+             (deps.hooks/after-transform-run transform-id (mt/id) "Other" "test_table")
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -844,7 +844,7 @@
                                                              :target {:schema "public" :name "sample" :type :table}}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
-           (is (nil? (deps.hooks/transform-executed! transform-id (mt/id) "public" "sample")))))))))
+           (is (nil? (deps.hooks/after-transform-run transform-id (mt/id) "public" "sample")))))))))
 
 (deftest ^:synchronized transform-run-marks-dependents-stale-test
   (run-with-dependencies-setup!
@@ -862,7 +862,7 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! transform)
            (deps.findings/upsert-analysis! other-card)
-           (deps.hooks/transform-executed! transform-id (mt/id) "public" "sample")
+           (deps.hooks/after-transform-run transform-id (mt/id) "public" "sample")
            (testing "Dependent card should be marked stale"
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :card :analyzed_entity_id card-id))))

@@ -12,7 +12,7 @@
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -40,7 +40,8 @@
   (derive :metabase/model)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
@@ -292,7 +293,6 @@
 
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
-  (dependencies.hooks/entity-inserted! :model/Sandbox gtap)
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
     (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
@@ -302,7 +302,6 @@
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
-  (dependencies.hooks/entity-updated! :model/Sandbox updates)
   (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]
@@ -312,8 +311,3 @@
                          :status-code 400})))
       (when (:card_id updates)
         (check-columns-match-table (normalize-sandbox-attribute-remappings updated))))))
-
-(t2/define-before-delete :model/Sandbox
-  [sandbox]
-  (dependencies.hooks/entity-deleted! :model/Sandbox sandbox)
-  sandbox)

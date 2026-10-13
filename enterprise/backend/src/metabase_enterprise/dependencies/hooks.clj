@@ -78,14 +78,14 @@
    :model/Transform])
 
 (doseq [model entity-models]
-  (defmethod dependencies.hooks/entity-inserted! model
+  (defmethod dependencies.hooks/before-insert model
     [_model _instance]
     (mark-created!))
-  (defmethod dependencies.hooks/entity-deleted! model
+  (defmethod dependencies.hooks/before-delete model
     [model instance]
     (mark-deleted! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(defmethod dependencies.hooks/entity-updated! :model/Card
+(defmethod dependencies.hooks/before-update :model/Card
   [model card]
   (mark-entity-changed! model card #{:dataset_query :dimension_mappings :parameters})
   (when (changed? card #{:dataset_query :result_metadata :type})
@@ -93,53 +93,53 @@
           previous-card (t2/original card)]
       (mdb/do-after-commit #(deps.metadata-update/card-updated! card-id previous-card)))))
 
-(defmethod dependencies.hooks/entity-updated! :model/Dashboard
+(defmethod dependencies.hooks/before-update :model/Dashboard
   [model dashboard]
   (mark-entity-changed! model dashboard #{:parameters}))
 
-(defmethod dependencies.hooks/entity-updated! :model/Document
+(defmethod dependencies.hooks/before-update :model/Document
   [model document]
   (mark-entity-changed! model document #{:content_type :document}))
 
-(defmethod dependencies.hooks/entity-updated! :model/Measure
+(defmethod dependencies.hooks/before-update :model/Measure
   [model measure]
   (mark-entity-changed! model measure #{:definition :table_id}))
 
-(defmethod dependencies.hooks/entity-updated! :model/NativeQuerySnippet
+(defmethod dependencies.hooks/before-update :model/NativeQuerySnippet
   [model snippet]
   (mark-entity-changed! model snippet #{:content :template_tags}))
 
-(defmethod dependencies.hooks/entity-updated! :model/Sandbox
+(defmethod dependencies.hooks/before-update :model/Sandbox
   [model sandbox]
   (mark-entity-changed! model sandbox #{:card_id}))
 
-(defmethod dependencies.hooks/entity-updated! :model/Segment
+(defmethod dependencies.hooks/before-update :model/Segment
   [model segment]
   (mark-entity-changed! model segment #{:definition :table_id}))
 
-(defmethod dependencies.hooks/entity-updated! :model/Transform
+(defmethod dependencies.hooks/before-update :model/Transform
   [model transform]
   (mark-entity-changed! model transform #{:source :target}))
 
-(defmethod dependencies.hooks/entity-inserted! :model/DashboardCard
+(defmethod dependencies.hooks/before-insert :model/DashboardCard
   [_model dashcard]
   (mark-changed! :dashboard (:dashboard_id dashcard)))
 
-(defmethod dependencies.hooks/entity-updated! :model/DashboardCard
+(defmethod dependencies.hooks/before-update :model/DashboardCard
   [_model dashcard]
   (when (changed? dashcard #{:card_id :dashboard_id :visualization_settings})
     (doseq [dashboard-id (distinct [(:dashboard_id (t2/original dashcard)) (:dashboard_id dashcard)])]
       (mark-changed! :dashboard dashboard-id))))
 
-(defmethod dependencies.hooks/entity-deleted! :model/DashboardCard
+(defmethod dependencies.hooks/before-delete :model/DashboardCard
   [_model dashcard]
   (mark-changed! :dashboard (:dashboard_id dashcard)))
 
-(defmethod dependencies.hooks/entity-inserted! :model/DashboardCardSeries
+(defmethod dependencies.hooks/before-insert :model/DashboardCardSeries
   [_model series]
   (mark-changed! :dashboard (dependencies.db/dashcard-dashboard-id (:dashboardcard_id series))))
 
-(defmethod dependencies.hooks/entity-updated! :model/DashboardCardSeries
+(defmethod dependencies.hooks/before-update :model/DashboardCardSeries
   [_model series]
   (when (changed? series #{:card_id :dashboardcard_id})
     (doseq [dashcard-id (distinct [(:dashboardcard_id (t2/original series)) (:dashboardcard_id series)])]
@@ -151,48 +151,48 @@
   (when (deps.findings/mark-transitive-dependents-stale! {:table (filterv some? table-ids)})
     (trigger-jobs!)))
 
-(defmethod dependencies.hooks/entity-inserted! :model/TableUserSettings
+(defmethod dependencies.hooks/before-insert :model/TableUserSettings
   [_model settings]
   (mark-tables-changed! [(:table_id settings)]))
 
-(defmethod dependencies.hooks/entity-updated! :model/TableUserSettings
+(defmethod dependencies.hooks/before-update :model/TableUserSettings
   [_model settings]
   (mark-tables-changed! [(:table_id settings)]))
 
-(defmethod dependencies.hooks/entity-inserted! :model/FieldUserSettings
+(defmethod dependencies.hooks/before-insert :model/FieldUserSettings
   [_model settings]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
 
-(defmethod dependencies.hooks/entity-updated! :model/FieldUserSettings
+(defmethod dependencies.hooks/before-update :model/FieldUserSettings
   [_model settings]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
 
-(defmethod dependencies.hooks/entity-inserted! :model/Dimension
+(defmethod dependencies.hooks/before-insert :model/Dimension
   [_model dimension]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
 
-(defmethod dependencies.hooks/entity-updated! :model/Dimension
+(defmethod dependencies.hooks/before-update :model/Dimension
   [_model dimension]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
 
-(defmethod dependencies.hooks/entity-deleted! :model/Dimension
+(defmethod dependencies.hooks/before-delete :model/Dimension
   [_model dimension]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
 
-(defmethod dependencies.hooks/entity-deleted! :model/Database
+(defmethod dependencies.hooks/before-delete :model/Database
   [_model database]
   (when-let [transform-ids (not-empty (dependencies.db/transform-ids-of-source-database (:id database)))]
     (deps.analysis-finding/mark-stale! :transform transform-ids)
     (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
     (trigger-jobs!)))
 
-(defenterprise database-synced!
+(defenterprise after-database-sync
   "Mark the dependents of the Tables of the Database with `database-id` that changed since they were analyzed."
   :feature :dependencies
   [database-id]
   (mark-tables-changed! (dependencies.db/table-ids-with-outdated-findings database-id)))
 
-(defenterprise transform-executed!
+(defenterprise after-transform-run
   "Make the output table `table-name` in `schema` of the Database with `db-id` depend on the transform with
   `transform-id`, and mark the transform's dependents for re-analysis."
   :feature :dependencies
@@ -202,7 +202,7 @@
   (when (deps.findings/mark-transitive-dependents-stale! {:transform [transform-id]})
     (trigger-jobs!)))
 
-(defenterprise premium-token-updated!
+(defenterprise after-premium-token-update
   "Restart the backfill and entity-check jobs, which stop while the dependencies feature is disabled."
   :feature :dependencies
   []

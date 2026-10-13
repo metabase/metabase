@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.impl :as driver.impl]
@@ -70,6 +70,7 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -424,7 +425,6 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  (dependencies.hooks/entity-deleted! :model/Database database)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)

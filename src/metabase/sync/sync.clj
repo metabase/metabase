@@ -85,7 +85,7 @@
                      (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
                           (keep (partial do-phase! database))
                           (doall)))]
-       (dependencies.hooks/database-synced! (:id database))
+       (dependencies.hooks/after-database-sync (:id database))
        results))))
 
 (mu/defn sync-table!

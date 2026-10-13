@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.dependencies.hooks]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -25,6 +25,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
+  (derive :hook/dependencies)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
   #_(derive :hook/search-index))
 
@@ -63,7 +64,6 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (dependencies.hooks/entity-inserted! :model/DashboardCard dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -72,13 +72,7 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (dependencies.hooks/entity-updated! :model/DashboardCard dashcard)
   (validate-dashcard-on-write dashcard))
-
-(t2/define-before-delete :model/DashboardCard
-  [dashcard]
-  (dependencies.hooks/entity-deleted! :model/DashboardCard dashcard)
-  dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard

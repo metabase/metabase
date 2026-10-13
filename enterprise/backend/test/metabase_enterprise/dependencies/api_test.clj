@@ -463,7 +463,7 @@
                                                                      :name "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
           (t2/update! :model/Transform transform-id {:target_table_id table-id})
-          (deps.hooks/transform-executed! transform-id (mt/id) "PUBLIC" "inactive_transform_table")
+          (deps.hooks/after-transform-run transform-id (mt/id) "PUBLIC" "inactive_transform_table")
           (deps.test/synchronously-run-backfill!)
           (testing "GET /graph/dependents returns the inactive table as a child"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
@@ -1191,7 +1191,7 @@
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
-          (deps.hooks/transform-executed! referenced-transform-id (mt/id) "PUBLIC" "referenced_transform_table")
+          (deps.hooks/after-transform-run referenced-transform-id (mt/id) "PUBLIC" "referenced_transform_table")
           (deps.test/synchronously-run-backfill!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
             (is (=? {:data [{:id unreffed-transform-id

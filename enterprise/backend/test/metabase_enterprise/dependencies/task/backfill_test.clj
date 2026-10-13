@@ -387,7 +387,7 @@
           (mark-stale! :card card2-id)
           (mark-stale! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
-          (dependencies.hooks/premium-token-updated!)
+          (dependencies.hooks/after-premium-token-update)
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
                              :entity_type :card

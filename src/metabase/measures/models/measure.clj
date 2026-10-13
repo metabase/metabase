@@ -4,7 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -56,7 +56,8 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
@@ -133,7 +134,6 @@
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (dependencies.hooks/entity-inserted! :model/Measure measure)
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
@@ -151,7 +151,6 @@
   [_])
 
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
-  (dependencies.hooks/entity-updated! :model/Measure measure)
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-measure measure (t2/changes measure))
   ;; throw an Exception if someone tries to update creator_id
@@ -171,7 +170,6 @@
   [measure]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-measure measure)
-  (dependencies.hooks/entity-deleted! :model/Measure measure)
   measure)
 
 (defmethod mi/perms-objects-set :model/Measure

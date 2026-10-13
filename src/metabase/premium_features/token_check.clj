@@ -639,7 +639,7 @@
                                           503)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
-    ((requiring-resolve 'metabase.dependencies.hooks/premium-token-updated!))
+    ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update))
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present

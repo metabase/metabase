@@ -746,7 +746,7 @@
         (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
-      (dependencies.hooks/transform-executed! (:id transform) db-id (:schema target)
+      (dependencies.hooks/after-transform-run (:id transform) db-id (:schema target)
                                               (name (qualified-table-name (:engine database) target)))
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id          db-id
