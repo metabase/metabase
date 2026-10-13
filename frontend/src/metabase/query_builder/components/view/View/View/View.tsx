@@ -314,6 +314,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                   {...props}
                   showLeftSidebar={showLeftSidebar}
                   showRightSidebar={showRightSidebar}
+                  isFooterVisible={!hasSheetTabs}
                 />
                 <ViewSidebar
                   side="right"

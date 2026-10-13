@@ -20,7 +20,7 @@ import type {
   SummaryDragItem,
   SummaryWellId,
 } from "./types";
-import { canDropOnWell, getDataLabel, getPivotConfig } from "./utils";
+import { canDropOnWell, getPivotConfig } from "./utils";
 
 type SummaryPivotPreviewProps = {
   question: Question;
@@ -46,18 +46,11 @@ export function SummaryPivotPreview({
 
   return (
     <>
-      <Box className={S.previewHeader}>
-        <Text fw="bold" size="lg">
-          {t`Summary of ${getDataLabel(question)}`}
+      {summaryQuery == null && (
+        <Text c="text-secondary" mb="md">
+          {t`Some fields in this summary are no longer available. Remove them to continue.`}
         </Text>
-        <Text c="text-secondary">
-          {summaryQuery == null
-            ? t`Some fields in this summary are no longer available. Remove them to continue.`
-            : !hasDimensions || !hasValues
-              ? t`Drag columns into Rows and Columns, and columns or metrics into Values, to build a pivot table.`
-              : t`Filters from the data tab apply to this summary.`}
-        </Text>
-      </Box>
+      )}
       {summaryQuery != null && hasDimensions && hasValues ? (
         <SummaryPivotResult
           question={question}

@@ -87,6 +87,8 @@ interface ViewMainContainerProps {
   showLeftSidebar: boolean;
   showRightSidebar: boolean;
   isLiveResizable: boolean;
+  /** False when the footer content is rendered by the bottom sheet tab bar instead. */
+  isFooterVisible?: boolean;
   parameters: UiParameter[];
 
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
@@ -103,6 +105,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     setParameterValue,
     isLiveResizable,
     updateQuestion,
+    isFooterVisible = true,
   } = props;
 
   const visualizationResultProps = useVisualizationResultQBProps();
@@ -163,7 +166,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-        <ViewFooter className={CS.flexNoShrink} />
+        {isFooterVisible && <ViewFooter className={CS.flexNoShrink} />}
       </Box>
     </Box>
   );
