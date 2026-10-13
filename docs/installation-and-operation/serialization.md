@@ -65,7 +65,7 @@ Metabase will only export the following entities:
 - Glossary entries (data definitions)
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
-- Events and timelines
+- Events and timelines, including which timelines and events each question is saved with
 - Notification channels (email and webhook destinations used by alerts and subscriptions)
 - Metabot configuration (AI assistant settings and prompts)
 - Python libraries (shared Python modules used by transforms)
