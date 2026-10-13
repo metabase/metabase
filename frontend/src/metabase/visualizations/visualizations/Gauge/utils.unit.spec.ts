@@ -47,6 +47,24 @@ describe("getGaugeWarnings", () => {
     ]);
   });
 
+  it("merges warnings that land on the same spot of the arc", () => {
+    // [failed, 100] [0, 50] [60, failed]: only [0, 50] is drawn, so both
+    // warnings are clamped to its end
+    expect(
+      getGaugeWarnings(
+        [
+          FAILED,
+          { value: 100 },
+          { value: 0 },
+          { value: 50 },
+          { value: 60 },
+          { value: null, error: OTHER_ERROR },
+        ],
+        [0, 50],
+      ),
+    ).toEqual([{ value: 50, errors: [ERROR, OTHER_ERROR] }]);
+  });
+
   it("ignores bounds left empty", () => {
     expect(
       getGaugeWarnings(

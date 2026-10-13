@@ -466,7 +466,7 @@ describe("Scalar conditional colors", () => {
     expect(
       await screen.findByText("Couldn't get some color range values"),
     ).toBeInTheDocument();
-    expect(screen.getByText("boom")).toBeInTheDocument();
+    expect(screen.getAllByText("boom")).toHaveLength(2);
   });
 
   it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {

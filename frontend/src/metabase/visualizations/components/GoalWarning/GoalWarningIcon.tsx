@@ -1,11 +1,10 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Icon, List, Stack, Text, Tooltip } from "metabase/ui";
 import { type GoalRefError, getGoalErrorMessage } from "metabase/viz-core";
 
-export const GOAL_WARNING_ICON_SIZE = 12;
+export const GOAL_WARNING_ICON_SIZE = 16;
 const TOOLTIP_MAX_WIDTH = 300;
 
 type GoalWarningSource = "goal" | "color-ranges";
@@ -16,8 +15,6 @@ type GoalWarningIconProps = {
 };
 
 export function GoalWarningIcon({ errors, source }: GoalWarningIconProps) {
-  const messages = _.uniq(errors.map((error) => getGoalErrorMessage(error)));
-
   return (
     <Tooltip
       label={
@@ -26,9 +23,9 @@ export function GoalWarningIcon({ errors, source }: GoalWarningIconProps) {
             {getGoalWarningTitle(source)}
           </Text>
           <List fz="inherit">
-            {[...messages, ...messages].map((message) => (
-              <List.Item c="inherit" key={message}>
-                {message}
+            {errors.map((error, index) => (
+              <List.Item c="inherit" key={index}>
+                {getGoalErrorMessage(error)}
               </List.Item>
             ))}
           </List>
