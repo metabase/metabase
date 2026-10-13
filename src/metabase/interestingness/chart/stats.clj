@@ -58,8 +58,8 @@
 
 (defn- drop-nil-points
   "Drop the points of `series-config` whose x or y value is nil."
-  [{:keys [x_values y_values] :as series-config}]
-  (let [points (filter (fn [[x y]] (and (some? x) (some? y))) (map vector x_values y_values))]
+  [{x-values :x_values, y-values :y_values, :as series-config}]
+  (let [points (filter (fn [[x y]] (and (some? x) (some? y))) (map vector x-values y-values))]
     (assoc series-config
            :x_values (mapv first points)
            :y_values (mapv second points))))
