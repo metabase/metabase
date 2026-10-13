@@ -707,7 +707,7 @@
               ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
               ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
               unparsed
-              (throw (ex-info (if (contains? unparsed :raw-arguments)
+              (throw (ex-info (if malformed?
                                 "LLM returned malformed JSON in its structured tool call"
                                 "LLM returned a JSON value that is not an object in its structured tool call")
                               (merge {:parts      parts
