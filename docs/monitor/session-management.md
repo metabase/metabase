@@ -18,7 +18,7 @@ Metabase displays a list of all active sessions. Switch to ended sessions by cli
 
 Ended sessions are kept for 30 days and show the reason for why they ended (like a timeout or an admin revoking the session).
 
-Click any of the table's headings to sort it by that column. Click a session in the table to see a detail view with more information about it:
+Click any of the table's headings to sort it by that column. Click a session in the table to see its details:
 
 - User
 - Email
@@ -34,7 +34,7 @@ Click any of the table's headings to sort it by that column. Click a session in 
 - Ended (for ended sessions)
 - Reason (for ended sessions)
 
-Search for individual sessions by typing in the search field. The filter button on the right lets you filter by authentication method and the time window when the session was last active. Click **Apply** to apply the filter or **Clear filters** to clear all filters.
+Search for individual sessions by name or email with the search field. The filter button on the right lets you filter by authentication method and the time window when the session was last active. Click **Apply** to apply the filter or **Clear filters** to clear all filters.
 
 ## Revoke sessions to sign people out
 
