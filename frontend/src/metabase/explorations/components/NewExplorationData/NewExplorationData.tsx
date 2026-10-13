@@ -178,7 +178,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       console.error(error);
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to start research`,
       });
     }
@@ -200,7 +200,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       className={S.container}
       data-testid="research-content"
       gap="sm"
-      bg="background-primary"
+      bg="background_page-primary"
       flex={1}
       px="xxl"
       pt="xl"

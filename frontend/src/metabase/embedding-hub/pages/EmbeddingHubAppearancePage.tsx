@@ -47,15 +47,15 @@ export function EmbeddingHubAppearancePage() {
 
 function FullAppAppearanceBanner() {
   return (
-    <Card p="lg" bg="background-brand">
+    <Card p="lg" bg="background_surface-brand-subtle">
       {/* One flowing sentence, not a Group of rigid parts -- the link needs
           to wrap inline with the text on narrow screens rather than being
           pushed onto its own line. */}
       <Text c="text-secondary">
         {t`Colors and branding for full-app embedding are based on the appearance settings defined in the`}{" "}
         <Link to="/admin/settings/whitelabel">
-          <Text component="span" c="brand" fw="bold">{t`Admin`}</Text>{" "}
-          <Icon name="external" size={12} c="brand" />
+          <Text component="span" c="core-brand" fw="bold">{t`Admin`}</Text>{" "}
+          <Icon name="external" size={12} c="core-brand" />
         </Link>
       </Text>
     </Card>

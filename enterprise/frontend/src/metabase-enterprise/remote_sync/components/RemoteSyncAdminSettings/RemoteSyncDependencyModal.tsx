@@ -145,7 +145,7 @@ const RequiredSyncItem = ({
         gap="sm"
         px="md"
         wrap="nowrap"
-        bg={"background-secondary"}
+        bg={"background_page-secondary"}
         bdrs="md"
       >
         <Accordion.Control>
@@ -175,7 +175,7 @@ const RequiredSyncItem = ({
           <Group
             px="md"
             py="xs"
-            bg="background-secondary"
+            bg="background_page-secondary"
             className={S.contentRow}
           >
             <Text className={S.cell} fz="sm">{t`Item`}</Text>

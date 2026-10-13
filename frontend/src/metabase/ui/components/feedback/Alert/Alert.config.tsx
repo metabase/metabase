@@ -24,7 +24,7 @@ const COLOR_SETS: Record<AlertColor, AlertColorConfig> = {
   default: {
     icon: "icon-brand",
     background: "background_surface-primary",
-    border: "border",
+    border: "border-neutral",
     title: "text-primary",
   },
   "core-brand": {

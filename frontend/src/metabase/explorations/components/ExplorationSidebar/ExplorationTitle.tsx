@@ -29,7 +29,7 @@ export function ExplorationTitle({
         sendToast({
           message: t`Failed to update name`,
           icon: "warning_triangle_filled",
-          iconColor: "warning",
+          iconColor: "feedback-warning",
         });
       }
     },

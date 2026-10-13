@@ -167,10 +167,10 @@ function TenantsDocsLink({ label }: { label: string }) {
   return (
     <ExternalLink href={url}>
       <Group gap={4} wrap="nowrap">
-        <Text c="brand" fw="bold">
+        <Text c="core-brand" fw="bold">
           {label}
         </Text>
-        <Icon name="external" size={12} c="brand" aria-hidden />
+        <Icon name="external" size={12} c="core-brand" aria-hidden />
       </Group>
     </ExternalLink>
   );

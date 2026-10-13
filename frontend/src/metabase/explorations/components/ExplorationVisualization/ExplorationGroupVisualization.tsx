@@ -85,13 +85,18 @@ export function ExplorationGroupVisualization(
 
   return (
     <Box flex={1} h="100%" pb="3rem" pr="1rem">
-      <Box bg="background-primary" bd="1px solid border" bdrs="sm" h="100%">
+      <Box
+        bg="background_page-primary"
+        bd="1px solid border-neutral"
+        bdrs="sm"
+        h="100%"
+      >
         <ErrorBoundary
           errorComponent={() => (
             <Message
               groupName={groupName}
               message={t`Something’s gone wrong.`}
-              iconProps={{ name: "warning", c: "error", size: 32 }}
+              iconProps={{ name: "warning", c: "feedback-negative", size: 32 }}
             />
           )}
         >
@@ -120,7 +125,7 @@ function ExplorationGroupVisualizationBody(
       <Message
         groupName={groupName}
         message={t`We couldn't generate one or more of these charts.`}
-        iconProps={{ name: "warning", c: "error" }}
+        iconProps={{ name: "warning", c: "feedback-negative" }}
       />
     );
   }
@@ -299,7 +304,7 @@ function ExplorationGroupVisualizationChart({
         <Message
           groupName={groupName}
           message={t`This chart couldn't be loaded.`}
-          iconProps={{ name: "warning", c: "error" }}
+          iconProps={{ name: "warning", c: "feedback-negative" }}
         />
       );
     }
@@ -313,7 +318,7 @@ function ExplorationGroupVisualizationChart({
       <Message
         groupName={groupName}
         message={t`We couldn't find any data to display.`}
-        iconProps={{ name: "warning", c: "error" }}
+        iconProps={{ name: "warning", c: "feedback-negative" }}
       />
     );
   }

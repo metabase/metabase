@@ -25,7 +25,7 @@ export function useLocalSetting<
         sendToast({
           message: t`Failed to update setting`,
           icon: "warning_triangle_filled",
-          iconColor: "warning",
+          iconColor: "feedback-warning",
         });
         setLocalValue(previousValueRef.current);
         return;

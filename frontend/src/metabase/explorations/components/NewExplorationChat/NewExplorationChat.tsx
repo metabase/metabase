@@ -140,7 +140,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         console.error(error);
         sendToast({
           icon: "warning_triangle_filled",
-          iconColor: "warning",
+          iconColor: "feedback-warning",
           message: t`Failed to add research groups`,
         });
       }
@@ -183,7 +183,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         console.error(error);
         sendToast({
           icon: "warning_triangle_filled",
-          iconColor: "warning",
+          iconColor: "feedback-warning",
           message: t`Failed to update research plan`,
         });
       }
@@ -228,7 +228,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         console.error(error);
         sendToast({
           icon: "warning_triangle_filled",
-          iconColor: "warning",
+          iconColor: "feedback-warning",
           message: t`Failed to add timelines`,
         });
       }
@@ -277,7 +277,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="lg" bg="background-secondary">
+      <Stack flex={1} mih={0} gap="lg" bg="background_page-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
@@ -310,8 +310,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           <Box flex={1} mih={0} />
         )}
         <Flex
-          bg="background-primary"
-          bd="1px solid border"
+          bg="background_page-primary"
+          bd="1px solid border-neutral"
           bdrs="sm"
           mx="xl"
           pr="0.75rem"

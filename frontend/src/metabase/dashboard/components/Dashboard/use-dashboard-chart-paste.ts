@@ -66,7 +66,7 @@ export function useDashboardChartPaste() {
           addUndo({
             id: PASTE_TOAST_ID,
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Couldn't add the chart to this dashboard`,
           }),
         );
