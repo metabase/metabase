@@ -21,7 +21,6 @@ export const createMockOAuthClient = (
   client_id: "8f1b2c3d-0000-4a5b-8c9d-000000000001",
   client_name: "Claude Code",
   client_uri: "https://claude.ai",
-  logo_uri: null,
   redirect_uris: ["https://claude.ai/oauth/callback"],
   application_type: "native",
   registration_type: "dynamic",

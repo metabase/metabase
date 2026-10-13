@@ -24,7 +24,6 @@ export type OAuthClient = {
   client_id: OAuthClientId;
   client_name: string | null;
   client_uri: string | null;
-  logo_uri: string | null;
   redirect_uris: string[];
   application_type: string | null;
   registration_type: OAuthClientRegistrationType;

@@ -101,7 +101,6 @@
   [[:client_id         :string]
    [:client_name       [:maybe :string]]
    [:client_uri        [:maybe :string]]
-   [:logo_uri          [:maybe :string]]
    [:redirect_uris     [:sequential :string]]
    [:application_type  [:maybe :string]]
    [:registration_type [:enum "dynamic" "static"]]
@@ -195,13 +194,12 @@
   "One `::Client` from a [[metabase-enterprise.oauth-client-management.db/clients]] row, marked `current` when it is
   `current-client-id` — the client that issued the bearer this request authenticated with."
   [current-client-id
-   {:keys [client_id client_name client_uri logo_uri redirect_uris application_type registration_type created_at
+   {:keys [client_id client_name client_uri redirect_uris application_type registration_type created_at
            status revoked_at last_used_at live_tokens user_count]
     :as   row}]
   {:client_id         client_id
    :client_name       client_name
    :client_uri        client_uri
-   :logo_uri          logo_uri
    :redirect_uris     (json-array redirect_uris)
    :application_type  application_type
    :registration_type registration_type

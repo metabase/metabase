@@ -21,7 +21,6 @@
   [[:c.client_id :client_id]
    [:c.client_name :client_name]
    [:c.client_uri :client_uri]
-   [:c.logo_uri :logo_uri]
    [:c.redirect_uris :redirect_uris]
    [:c.application_type :application_type]
    [:c.registration_type :registration_type]

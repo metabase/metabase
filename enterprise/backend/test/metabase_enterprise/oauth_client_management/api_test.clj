@@ -137,7 +137,6 @@
             (is (=? {:client_id         client-id
                      :client_name       "Reporting Bot"
                      :client_uri        "https://bot.example.com"
-                     :logo_uri          "https://bot.example.com/logo.png"
                      :redirect_uris     ["https://bot.example.com/cb" "http://127.0.0.1:8765/cb"]
                      :application_type  "native"
                      :registration_type "dynamic"
@@ -155,7 +154,7 @@
               (is (= 3 (:live_tokens item)))
               (is (= 2 (:user_count item))))
             (testing "no hash, secret, scope or contact leaves the database"
-              (is (= #{:client_id :client_name :client_uri :logo_uri :redirect_uris :application_type
+              (is (= #{:client_id :client_name :client_uri :redirect_uris :application_type
                        :registration_type :created_at :status :revoked_at :revoked_by :last_used_at
                        :live_tokens :user_count :current}
                      (set (keys item))))
@@ -640,7 +639,6 @@
         (is (=? {:client_id         client-id
                  :client_name       "Reporting Bot"
                  :client_uri        "https://bot.example.com"
-                 :logo_uri          "https://bot.example.com/logo.png"
                  :redirect_uris     ["https://bot.example.com/cb"]
                  :application_type  "native"
                  :registration_type "dynamic"
@@ -657,7 +655,7 @@
                 item))
         (is (timestamp? (:created_at item)))
         (testing "and nothing else — no hash and no secret"
-          (is (= #{:client_id :client_name :client_uri :logo_uri :redirect_uris :application_type
+          (is (= #{:client_id :client_name :client_uri :redirect_uris :application_type
                    :registration_type :created_at :status :revoked_at :revoked_by :last_used_at
                    :live_tokens :user_count :current :scopes :contacts :users}
                  (set (keys item))))
