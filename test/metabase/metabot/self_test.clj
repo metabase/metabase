@@ -1943,22 +1943,25 @@
 (deftest call-llm-snowplow-test
   (llm.tu/with-default-connections
     (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
-      (let [rasta-id (mt/user->id :rasta)]
-        ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
-        ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
-        ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+      (let [rasta-id (mt/user->id :rasta)
+            ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
+            ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
+            ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+            chunks   (test-util/parts->aisdk-chunks
+                      [{:type :start :id "msg-1"}
+                       {:type :tool-input :id "call-1" :function "get-time"
+                        :arguments {:tz "UTC"}}
+                       {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
+                        :arguments {}}
+                       {:type :usage :usage {:promptTokens        950
+                                             :completionTokens    20
+                                             :cacheCreationTokens 50
+                                             :cacheReadTokens     800}
+                        :model "test-model" :id "msg-1"}
+                       {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
+                        :arguments {}}])]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (constantly (test-util/mock-llm-response
-                                                 [{:type :start :id "msg-1"}
-                                                  {:type :tool-input :id "call-1" :function "get-time"
-                                                   :arguments {:tz "UTC"}}
-                                                  {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
-                                                   :arguments {}}
-                                                  {:type :usage :usage {:promptTokens        950
-                                                                        :completionTokens    20
-                                                                        :cacheCreationTokens 50
-                                                                        :cacheReadTokens     800}
-                                                   :model "test-model" :id "msg-1"}]))]
+                                    (constantly (concat (butlast chunks) [{:type :error :errorText "Overloaded"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
@@ -1996,6 +1999,7 @@
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (some #(str/includes? (:message %) "call-3 unknown") logs))
                 (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
                     "a name the model made up never reaches analytics, spans or logs")))))))))
 

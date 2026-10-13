@@ -1115,12 +1115,14 @@
                    (vswap! active assoc toolCallId {:task task})))
 
                :error
-               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+               (let [cut-off (u/for-map [[id {:keys [task chunks]}] @active
+                                         :when (not task)
+                                         :let  [tool-name (:toolName (first chunks))]]
+                               [id (if (contains? tools tool-name) tool-name "unknown")])]
                  (vreset! errored? true)
                  (when (seq cut-off)
-                   (log/warn "Dropping tool calls that a stream error cut off"
-                             {:tool-calls (into {} (map (juxt identity #(get-in @active [% :chunks 0 :toolName]))) cut-off)})
-                   (vswap! active #(apply dissoc % cut-off))))
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % (keys cut-off)))))
 
                ;; otherwise: do nothing
                nil)
