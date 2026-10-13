@@ -1257,6 +1257,55 @@
                    (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
                        "no transport-internal marker leaks into a batch element")))))))))))
 
+(defn- rest-endpoint-scopes
+  "Every scope string a loaded REST endpoint declares in its defendpoint `:scope`."
+  []
+  (require 'metabase.api-routes.routes)
+  (when config/ee-available?
+    (require 'metabase-enterprise.api-routes.routes))
+  (into (sorted-set)
+        (for [nmspace          (all-ns)
+              [_ {:keys [form]}] (api.macros/ns-routes nmspace)
+              :let             [scope (get-in form [:metadata :scope])]
+              :when            (string? scope)]
+          scope)))
+
+(deftest rest-scopes-reach-no-mcp-tool-or-resource-test
+  (testing "GHY-4940: REST scopes gate REST endpoints only. A token holding every scope a REST endpoint declares, and
+            no MCP scope, is refused by every MCP tool and every MCP data resource. UI shells carry no data and are
+            read by any token, so they are not checked."
+    (let [rest-scopes (rest-endpoint-scopes)]
+      (testing "the token holds REST scopes and no MCP scope"
+        (is (seq rest-scopes))
+        (is (not-any? (set mcp.paths/v2-surface-scopes) rest-scopes)))
+      (do-with-bearer-token!
+       rest-scopes
+       (fn [headers]
+         (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                           {:request-options {:headers headers}}
+                                                           (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+                              (get-in [:headers "Mcp-Session-Id"]))
+               post!      (fn [body]
+                            (client/client-full-response :post endpoint
+                                                         {:request-options {:headers (assoc headers "mcp-session-id"
+                                                                                            session-id)}}
+                                                         body))
+               tools      (get-in (post! (jsonrpc-request "tools/list")) [:body :result :tools])
+               resources  (get-in (post! (jsonrpc-request "resources/list")) [:body :result :resources])]
+           (is (seq tools))
+           (doseq [{tool-name :name} tools]
+             (testing (str "tools/call " tool-name)
+               (let [response (post! (jsonrpc-request "tools/call" {:name tool-name :arguments {}}))]
+                 (is (= 403 (:status response)))
+                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"insufficient_scope\"")))))
+           (doseq [{:keys [uri mimeType]} resources
+                   :when (not= "text/html;profile=mcp-app" mimeType)]
+             (testing (str "resources/read " uri)
+               (let [response (post! (jsonrpc-request "resources/read" {:uri uri}))]
+                 (is (= 403 (:status response)))
+                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                    "error=\"insufficient_scope\"")))))))))))
+
 (deftest baseline-token-reads-the-fields-catalog-test
   (testing "GHY-4543, GHY-4939: the advertised baseline carries agent:content:read, so a freshly connected client reads the
             fields catalog without stepping up"
