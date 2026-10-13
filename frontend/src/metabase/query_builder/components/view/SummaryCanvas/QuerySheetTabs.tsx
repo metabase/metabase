@@ -13,8 +13,8 @@ import {
   useVisualizationSidebarToggles,
 } from "../ViewFooter";
 
-import S from "./SummarySheet.module.css";
-import { removeSummaryDefinition, useSummaryDefinition } from "./summary-store";
+import S from "./SummaryCanvas.module.css";
+import { removeSummaryCanvas, useSummaryCanvas } from "./canvas-store";
 import { getDataLabel, getSummaryKey } from "./utils";
 
 type QuerySheetTabsProps = {
@@ -26,7 +26,7 @@ type QuerySheetTabsProps = {
 
 /**
  * The query builder footer, laid out as spreadsheet-style tabs: the data tab (with its
- * visualization picker and settings) and its summary, followed by the result details.
+ * visualization picker and settings) and its summary canvas, followed by the result details.
  */
 export function QuerySheetTabs({
   question,
@@ -37,12 +37,13 @@ export function QuerySheetTabs({
   const result = useSelector(getFirstQueryResult);
   const isVisualized = useSelector(getIsVisualized);
   const summaryKey = getSummaryKey(question);
-  const summaryDefinition = useSummaryDefinition(summaryKey);
-  const hasSummaryTab = isShowingSummary || summaryDefinition != null;
+  const canvas = useSummaryCanvas(summaryKey);
+  const hasSummaryTab = isShowingSummary || canvas != null;
+  const blockCount = canvas?.blocks.length ?? 0;
 
   const handleDeleteSummary = () => {
     if (summaryKey != null) {
-      removeSummaryDefinition(summaryKey);
+      removeSummaryCanvas(summaryKey);
     }
     onShowData();
   };
@@ -69,13 +70,18 @@ export function QuerySheetTabs({
               onClick={onShowSummary}
             >
               <Icon name="pivot_table" />
-              {t`Summary`}
+              {t`Summaries`}
+              {blockCount > 0 && (
+                <Box component="span" className={S.sheetTabCount}>
+                  {blockCount}
+                </Box>
+              )}
             </UnstyledButton>
-            <Tooltip label={t`Delete summary`}>
+            <Tooltip label={t`Delete all summaries`}>
               <ActionIcon
                 size="sm"
                 variant="subtle"
-                aria-label={t`Delete summary`}
+                aria-label={t`Delete all summaries`}
                 onClick={handleDeleteSummary}
               >
                 <Icon name="close" size={12} />

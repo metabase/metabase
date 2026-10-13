@@ -37,7 +37,7 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import { QuerySheetTabs, SummarySheet } from "../../SummarySheet";
+import { QuerySheetTabs, SummaryCanvas } from "../../SummaryCanvas";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -297,7 +297,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               />
             )}
             {isShowingSummarySheet ? (
-              <SummarySheet question={question} />
+              <SummaryCanvas question={question} onShowData={onCloseSummary} />
             ) : (
               <>
                 <ViewSidebar side="left" isOpen={showLeftSidebar}>

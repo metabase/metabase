@@ -1,7 +1,7 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { getDataLabel } from "../SummarySheet/utils";
+import { getDataLabel } from "../SummaryCanvas/utils";
 
 const DEFAULT_COLUMN_NAME_MAX_LENGTH = 40;
 

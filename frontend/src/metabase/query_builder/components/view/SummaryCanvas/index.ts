@@ -1,2 +1,2 @@
 export { QuerySheetTabs } from "./QuerySheetTabs";
-export { SummarySheet } from "./SummarySheet";
+export { SummaryCanvas } from "./SummaryCanvas";

@@ -5,16 +5,16 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Icon, Tabs, Text, TextInput } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
-import S from "./SummarySheet.module.css";
+import S from "./SummaryCanvas.module.css";
 import type { SummaryBase, SummaryDragItem } from "./types";
 import {
   getAvailableMetrics,
   getColumnLabel,
   getColumnSections,
   getItemKey,
+  getMetricDescription,
   getMetricLabel,
 } from "./utils";
 
@@ -22,10 +22,14 @@ type FieldListTab = "columns" | "metrics";
 
 type SummaryFieldListProps = {
   base: SummaryBase;
+  onAddItem: (item: SummaryDragItem) => void;
 };
 
-/** Draggable source fields: the data tab's columns and the metrics defined on the same table. */
-export function SummaryFieldList({ base }: SummaryFieldListProps) {
+/**
+ * Source fields: the data tab's columns and the metrics defined on the same table.
+ * Drag them onto the canvas, a summary, or a well; clicking one adds it to the selected summary.
+ */
+export function SummaryFieldList({ base, onAddItem }: SummaryFieldListProps) {
   const [tab, setTab] = useState<FieldListTab>("columns");
   const [searchText, setSearchText] = useState("");
 
@@ -75,6 +79,7 @@ export function SummaryFieldList({ base }: SummaryFieldListProps) {
                     column,
                     label: getColumnLabel(base, column),
                   }}
+                  onAdd={onAddItem}
                 />
               ))}
             </Box>
@@ -90,9 +95,8 @@ export function SummaryFieldList({ base }: SummaryFieldListProps) {
                 metric,
                 label: getMetricLabel(base, metric),
               }}
-              description={
-                Lib.displayInfo(base.query, base.stageIndex, metric).description
-              }
+              description={getMetricDescription(base, metric)}
+              onAdd={onAddItem}
             />
           ))
         ) : (
@@ -112,9 +116,16 @@ type DraggableFieldProps = {
   icon: IconName;
   item: SummaryDragItem;
   description?: string;
+  onAdd: (item: SummaryDragItem) => void;
 };
 
-function DraggableField({ id, icon, item, description }: DraggableFieldProps) {
+function DraggableField({
+  id,
+  icon,
+  item,
+  description,
+  onAdd,
+}: DraggableFieldProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     data: item,
@@ -127,6 +138,7 @@ function DraggableField({ id, icon, item, description }: DraggableFieldProps) {
       data-testid="summary-field-item"
       {...attributes}
       {...listeners}
+      onClick={() => onAdd(item)}
     >
       <Icon name={icon} c="text-secondary" />
       <Box miw={0}>
