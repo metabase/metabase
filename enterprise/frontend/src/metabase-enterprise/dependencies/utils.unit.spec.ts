@@ -9,6 +9,8 @@ import type {
   IconName,
 } from "metabase-types/api";
 import {
+  createMockActionDependencyNode,
+  createMockActionDependencyNodeData,
   createMockAnalysisFindingError,
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
@@ -130,6 +132,10 @@ describe("getNodeIcon", () => {
       node: createMockSnippetDependencyNode(),
       expectedIcon: "snippet",
     },
+    {
+      node: createMockActionDependencyNode(),
+      expectedIcon: "bolt",
+    },
   ])("should get the $node.type node icon", ({ node, expectedIcon }) => {
     expect(getNodeIcon(node)).toBe(expectedIcon);
   });
@@ -205,6 +211,26 @@ describe("getNodeLink", () => {
       expectedLink: {
         label: "View this segment",
         url: "/data-studio/data/database/1/schema/1:public/table/1/segments/1",
+      },
+    },
+    {
+      node: createMockActionDependencyNode({
+        id: 1,
+        data: createMockActionDependencyNodeData({ model_id: 2 }),
+      }),
+      expectedLink: {
+        label: "View this action",
+        url: "/model/2/detail/actions/1",
+      },
+    },
+    {
+      node: createMockActionDependencyNode({
+        id: 1,
+        data: createMockActionDependencyNodeData({ model_id: null }),
+      }),
+      expectedLink: {
+        label: "View this action",
+        url: "/data-studio/actions/1",
       },
     },
   ])("should get the $node.type node link", ({ node, expectedLink }) => {
@@ -427,6 +453,17 @@ describe("getNodeLocationInfo", () => {
     expect(result?.links[1].label).toBe("public");
   });
 
+  it("should return collection location for action in collection", () => {
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({
+        collection: createMockCollection({ name: "My Collection" }),
+      }),
+    });
+    const result = getNodeLocationInfo(node);
+    expect(result?.icon).toBe("collection");
+    expect(result?.links[0].label).toBe("My Collection");
+  });
+
   it("should return null for sandbox", () => {
     const node = createMockSandboxDependencyNode();
     expect(getNodeLocationInfo(node)).toBeNull();
@@ -632,6 +669,10 @@ describe("getDependencyGroupType", () => {
     {
       node: createMockMeasureDependencyNode(),
       expected: "measure",
+    },
+    {
+      node: createMockActionDependencyNode(),
+      expected: "action",
     },
   ])("should get group type for $node.type", ({ node, expected }) => {
     expect(getDependencyGroupType(node)).toBe(expected);

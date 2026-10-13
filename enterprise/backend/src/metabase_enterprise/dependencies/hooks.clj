@@ -90,14 +90,18 @@
 (defmethod before-update* :default [_model _instance] nil)
 (defmethod before-delete* :default [_model _instance] nil)
 
-(doseq [model [:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Sandbox
-               :model/Segment :model/Transform]]
+(doseq [model [:model/Action :model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet
+               :model/Sandbox :model/Segment :model/Transform]]
   (defmethod before-insert* model
     [_model _instance]
     (trigger-jobs!))
   (defmethod before-delete* model
     [model instance]
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
+
+(defmethod before-update* :model/Action
+  [model action]
+  (mark-entity-changed! model action #{:model_id :type}))
 
 (doseq [[model columns] {:model/Card               #{:type :dataset_query :dimension_mappings :parameters}
                          :model/Dashboard          #{:parameters}
@@ -110,6 +114,15 @@
   (defmethod before-update* model
     [model instance]
     (mark-entity-changed! model instance columns)))
+
+(defmethod before-insert* :model/QueryAction
+  [_model query-action]
+  (mark-changed! :action (:action_id query-action)))
+
+(defmethod before-update* :model/QueryAction
+  [_model query-action]
+  (when (changed? query-action #{:dataset_query})
+    (mark-changed! :action (:action_id query-action))))
 
 (defmethod before-insert* :model/DashboardCard
   [_model dashcard]

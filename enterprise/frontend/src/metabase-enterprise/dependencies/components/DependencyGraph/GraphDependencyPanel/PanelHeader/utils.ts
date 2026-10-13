@@ -35,5 +35,7 @@ export function getHeaderLabel(
       return t`Segments that use ${nodeLabel}`;
     case "measure":
       return t`Measures that use ${nodeLabel}`;
+    case "action":
+      return t`Actions that use ${nodeLabel}`;
   }
 }

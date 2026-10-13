@@ -582,6 +582,33 @@
              (deps.test/synchronously-run-backfill!)
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 
+(deftest action-update-sets-correct-dependencies
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (let [action-deps (fn [action-id]
+                         (t2/select-fn-set (juxt :to_entity_type :to_entity_id)
+                                           :model/Dependency :from_entity_type :action :from_entity_id action-id))
+           sql-query   #(lib/native-query mp (str "DELETE FROM " % " WHERE id = 1"))]
+       (mt/with-temp [:model/Action {action-id :id} {:type :query, :name "Delete row"}
+                      :model/QueryAction _ {:action_id     action-id
+                                            :database_id   (mt/id)
+                                            :dataset_query (sql-query "venues")}]
+         (testing "creating an action creates dependencies on the tables its query reads"
+           (assert-stale :action action-id)
+           (deps.test/synchronously-run-backfill!)
+           (is (= #{[:table (mt/id :venues)]}
+                  (action-deps action-id))))
+         (testing "updating an action's query recalculates its dependencies"
+           (t2/update! :model/QueryAction action-id {:dataset_query (sql-query "checkins")})
+           (assert-stale :action action-id)
+           (deps.test/synchronously-run-backfill!)
+           (is (= #{[:table (mt/id :checkins)]}
+                  (action-deps action-id))))
+         (testing "deleting an action removes its dependencies and status"
+           (t2/delete! :model/Action action-id)
+           (is (empty? (action-deps action-id)))
+           (is (not (t2/exists? :model/DependencyStatus :entity_type :action :entity_id action-id)))))))))
+
 (deftest measure-with-measure-dependencies
   (run-with-dependencies-setup!
    (fn [mp]

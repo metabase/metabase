@@ -114,6 +114,8 @@ export function getNodeIconWithType(
       return "segment";
     case "measure":
       return "ruler";
+    case "action":
+      return "bolt";
   }
 }
 
@@ -206,6 +208,14 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this snippet`,
         url: Urls.dataStudioSnippet(node.id),
       };
+    case "action":
+      return {
+        label: t`View this action`,
+        url:
+          node.data.model_id != null
+            ? Urls.action({ id: node.data.model_id }, node.id)
+            : Urls.dataStudioAction(node.id),
+      };
   }
 }
 
@@ -270,6 +280,7 @@ export function getNodeLocationInfo(
       return null;
     case "dashboard":
     case "document":
+    case "action":
       if (node.data.collection != null) {
         return {
           icon: "collection",
@@ -366,6 +377,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "measure":
     case "snippet":
     case "transform":
+    case "action":
       return node.data.created_at;
     default:
       return null;
@@ -381,6 +393,7 @@ export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
     case "measure":
     case "snippet":
     case "transform":
+    case "action":
       return node.data.creator ?? null;
     default:
       return null;
@@ -454,6 +467,7 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
     case "document":
     case "segment":
     case "measure":
+    case "action":
       return null;
     default:
       return null;
@@ -534,6 +548,8 @@ export function getDependencyGroupType(
       return "measure";
     case "snippet":
       return "snippet";
+    case "action":
+      return "action";
   }
 }
 
@@ -566,6 +582,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Segment`, color: "accent2" };
     case "measure":
       return { label: t`Measure`, color: "core-summarize" };
+    case "action":
+      return { label: t`Action`, color: "text-secondary" };
   }
 }
 
@@ -617,6 +635,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     sandbox = 0,
     segment = 0,
     measure = 0,
+    action = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -631,6 +650,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "sandbox", count: sandbox },
     { type: "segment", count: segment },
     { type: "measure", count: measure },
+    { type: "action", count: action },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -699,6 +719,12 @@ export function getDependentGroupLabel({
       return c("{0} is the number of measures").ngettext(
         msgid`${count} measure`,
         `${count} measures`,
+        count,
+      );
+    case "action":
+      return c("{0} is the number of actions").ngettext(
+        msgid`${count} action`,
+        `${count} actions`,
         count,
       );
     default:

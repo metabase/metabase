@@ -58,7 +58,8 @@
 
   Handles different entity types:
   - Superuser-only (`:model/Sandbox`): only if `is-superuser?` is true
-  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`): filters
+  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`,
+    `:model/Action`): filters
     by collection visibility and archived status. Native query snippets have additional restrictions for
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
@@ -98,7 +99,7 @@
                                     :is-data-analyst? is-data-analyst?}
                                    {:perms/create-queries :query-builder})]}]])
 
-                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
+                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
                     (let [archived-column (keyword (name table-name) "archived")]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
@@ -286,7 +287,8 @@
                    :document :document
                    :sandbox :sandboxes
                    :segment :segment
-                   :measure :measure)
+                   :measure :measure
+                   :action :action)
      :name-column (case entity-type
                     :table :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
@@ -297,7 +299,7 @@
                                [:not= :entity.document_id nil] :document.name
                                :else [:coalesce :collection.name (:name root-collection)]]
                         :table :database.name
-                        (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
+                        (:transform :snippet :dashboard :document :action) [:coalesce :collection.name (:name root-collection)]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                         (:segment :measure) :table.display_name)}))
 
@@ -330,7 +332,7 @@
   [entity-type]
   (case entity-type
     :card #{:collection :dashboard :document}
-    (:transform :snippet :dashboard :document) #{:collection}
+    (:transform :snippet :dashboard :document :action) #{:collection}
     (:segment :measure) #{:table}
     :table #{:database}
     #{}))
@@ -367,13 +369,13 @@
         ;; broken by dropped tables stay visible
         archived-expr (when-not (= query-type :breaking)
                         {:expr (case entity-type
-                                 (:card :dashboard :document :snippet :segment :measure)
+                                 (:card :dashboard :document :snippet :segment :measure :action)
                                  [:= :entity.archived false]
                                  nil)
                          :joins #{}})
         personal-expr (when-not include-personal-collections?
                         (case entity-type
-                          (:card :dashboard :document :snippet)
+                          (:card :dashboard :document :snippet :action)
                           (let [personal-ids (personal-root-collection-ids)]
                             (when (seq personal-ids)
                               {:expr [:or
@@ -573,6 +575,11 @@
    id          :- ::deps.dependency-types/entity-id]
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
                  :id id (entity-source entity-type)))
+
+(mu/defn query-action-queries
+  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

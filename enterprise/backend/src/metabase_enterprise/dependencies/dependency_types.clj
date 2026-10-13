@@ -14,7 +14,8 @@
    :model/Document           :document
    :model/Sandbox            :sandbox
    :model/Segment            :segment
-   :model/Measure            :measure})
+   :model/Measure            :measure
+   :model/Action             :action})
 
 (def dependency-type->model
   "A map relating dependency types to their corresponding model."

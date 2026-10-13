@@ -17,6 +17,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     sandbox = 0,
     segment = 0,
     measure = 0,
+    action = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -31,6 +32,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "sandbox", count: sandbox },
     { type: "segment", count: segment },
     { type: "measure", count: measure },
+    { type: "action", count: action },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -89,6 +91,12 @@ export function getDependentGroupLabel({
       return c("{0} is the number of measures").ngettext(
         msgid`${count} measure`,
         `${count} measures`,
+        count,
+      );
+    case "action":
+      return c("{0} is the number of actions").ngettext(
+        msgid`${count} action`,
+        `${count} actions`,
         count,
       );
   }

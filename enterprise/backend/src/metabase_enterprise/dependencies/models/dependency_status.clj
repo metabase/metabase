@@ -41,6 +41,14 @@
 (defmethod hydrate-for-deps :dashboard [_ instances]
   (t2/hydrate instances [:dashcards :series]))
 
+(defmethod hydrate-for-deps :action [_ instances]
+  (let [queries (when (seq instances)
+                  (dependencies.db/query-action-queries (mapv :id instances)))]
+    (mapv (fn [{:keys [id] :as action}]
+            (cond-> action
+              (contains? queries id) (assoc :dataset_query (queries id))))
+          instances)))
+
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
   dependency calculation: no status row yet, stale=true, OR version < current.

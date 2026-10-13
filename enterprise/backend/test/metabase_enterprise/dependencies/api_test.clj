@@ -918,6 +918,49 @@
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
 
+(deftest graph-action-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents returns the actions a user can read"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection   {}
+                       :model/Collection unreadable-collection {:namespace "data-actions"}
+                       :model/Card {model-id :id} (assoc (basic-card "Venues model" :venues)
+                                                         :type          :model
+                                                         :collection_id (:id readable-collection))
+                       :model/Action {readable-id :id} {:type     :implicit
+                                                        :name     "Create venue"
+                                                        :model_id model-id}
+                       :model/ImplicitAction _ {:action_id readable-id, :kind "row/create"}
+                       :model/Action {unreadable-id :id} {:type          :query
+                                                          :name          "Delete venue"
+                                                          :collection_id (:id unreadable-collection)}
+                       :model/QueryAction _ {:action_id     unreadable-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                  (str "DELETE FROM venues WHERE id IN "
+                                                                                       "(SELECT id FROM {{#" model-id "}})"))
+                                                                (lib/with-template-tags
+                                                                  {(str "#" model-id) {:id           "model-tag"
+                                                                                       :type         :card
+                                                                                       :name         (str "#" model-id)
+                                                                                       :display-name "Venues model"
+                                                                                       :card-id      model-id}}))}]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+            (deps.test/synchronously-run-backfill!)
+            (let [dependents (fn [user]
+                               (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                          :id model-id
+                                                          :type "card"
+                                                          :dependent-types "action")
+                                    (map (juxt :type :id (comp :name :data) (comp :name :collection :data)))
+                                    set))]
+              (is (= #{["action" readable-id "Create venue" (:name readable-collection)]
+                       ["action" unreadable-id "Delete venue" (:name unreadable-collection)]}
+                     (dependents :crowberto)))
+              (is (= #{["action" readable-id "Create venue" (:name readable-collection)]}
+                     (dependents :rasta))))))))))
+
 (deftest graph-measure-root-test
   (testing "GET /api/ee/dependencies/graph with measure as root node"
     (mt/with-test-user :crowberto

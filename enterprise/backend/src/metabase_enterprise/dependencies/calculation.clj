@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase-enterprise.sandbox.schema]
+   [metabase.actions.schema :as actions.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.core :as lib-be]
@@ -33,7 +34,8 @@
    ::documents.schema/document
    :metabase-enterprise.sandbox.schema/sandbox
    :metabase.segments.schema/segment
-   :metabase.measures.schema/measure])
+   :metabase.measures.schema/measure
+   ::actions.schema/action])
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -198,3 +200,9 @@
    :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})
+
+(defmethod calculate-deps* :action
+  [_ {action-type :type, model-id :model_id, query :dataset_query}]
+  (case action-type
+    :implicit {:card #{model-id}}
+    :query    (upstream-deps:query (lib-be/normalize-query query))))
