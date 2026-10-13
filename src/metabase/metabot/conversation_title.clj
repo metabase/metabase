@@ -131,7 +131,7 @@
                     {:request-id  (str (random-uuid))
                      :session-id  conversation-id
                      :profile-id  profile-id
-                     :source      "conversation_title"
+                     :source      "metabot_agent"
                      :tag         "conversation-title"})
           title    (clean-title (:title response))]
       (when title
