@@ -95,7 +95,7 @@
                           "UTF-8"))))
 
 (defn- file-uri-path
-  "The decoded path SQLite opens for a `file:` URI with no query, or nil when it opens no local file. `file:/a`,
+  "The decoded path SQLite opens for a `file:` URI with no `?`, or nil when it opens no local file. `file:/a`,
   `file:///a` and `file://localhost/a` are `/a` and `file:a` is `a`. SQLite ignores everything from `#` on, decodes
   each `%XX` escape, ends the path at a decoded NUL, and refuses any authority but an empty one or (case-sensitively)
   `localhost`."
@@ -110,19 +110,20 @@
 
 (defn- db-local-file
   "The file on the Metabase host that SQLite opens for the `:db` detail, or nil when `:db` is not a form the driver
-  supports: a plain path, or a `file:` URI with no query.
+  supports: a plain path, or a `file:` URI, with no `?` in either.
 
   Every other form is unsupported: in-memory names, `:resource:` downloads, other URL schemes (`jar:`, `http:` ...), a
-  `file:` URI with a `?`, or one whose authority is neither empty nor `localhost`. Refusing these as a whole means no
-  SQLite or sqlite-jdbc option reaches a connection. SQLite matches the `file:` prefix case-sensitively, so another
-  case is refused as a URL scheme, and a value starting with `:` is refused as a special name."
+  `file:` URI whose authority is neither empty nor `localhost`, and anything with a `?`. sqlite-jdbc reads its own
+  settings from after a `?` in a plain path as well as in a URI, and strips them from the name it opens, so with one
+  the file SQLite opens is not the one these checks see. Refusing these as a whole means no SQLite or sqlite-jdbc
+  option reaches a connection. SQLite matches the `file:` prefix case-sensitively, so another case is refused as a URL
+  scheme, and a value starting with `:` is refused as a special name."
   [db]
-  (when (and (string? db) (not (str/blank? db)))
+  (when (and (string? db) (not (str/blank? db)) (not (str/includes? db "?")))
     (if (str/starts-with? db "file:")
-      (when-not (str/includes? db "?")
-        (let [path (file-uri-path db)]
-          (when-not (or (str/blank? path) (= path ":memory:"))
-            path)))
+      (let [path (file-uri-path db)]
+        (when-not (or (str/blank? path) (= path ":memory:"))
+          path))
       ;; a scheme of two or more characters, so a Windows drive letter is still a path
       (when-not (or (str/starts-with? db ":")
                     (re-find #"^[A-Za-z][A-Za-z0-9+.-]+:" db))
@@ -134,7 +135,7 @@
   [db]
   (let [files (map db-local-file (distinct [db (some-> db str/trim)]))]
     (when (some nil? files)
-      (throw (ex-info (tru "SQLite database must be a file path or a file: URI without query parameters.")
+      (throw (ex-info (tru "SQLite database must be a file path or a file: URI without a \"?\".")
                       {:status-code 400})))
     (set files)))
 

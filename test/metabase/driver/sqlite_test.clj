@@ -26,9 +26,8 @@
 (set! *warn-on-reflection* true)
 
 (deftest unsupported-db-forms-test
-  ;; Only a plain file path or a local `file:` URI without query parameters names a database. Everything else SQLite
-  ;; or sqlite-jdbc accepts -- in-memory names, `:resource:` downloads, other URL schemes, URI parameters -- is
-  ;; refused.
+  ;; Only a plain file path or a local `file:` URI, without a `?` in either, names a database. Everything else SQLite
+  ;; or sqlite-jdbc accepts -- in-memory names, `:resource:` downloads, other URL schemes, parameters -- is refused.
   (mt/with-premium-features #{}
     (doseq [db [nil
                 ""
@@ -58,7 +57,15 @@
                 ;; SQLite's `file:` prefix is case-sensitive, so this would be a relative path named `FILE:`
                 "FILE:/etc/x.db"
                 ;; SQLite refuses any authority but an empty one or `localhost`
-                "file://example.com/etc/x.db"]]
+                "file://example.com/etc/x.db"
+                ;; sqlite-jdbc strips its own settings from after a `?` in a plain path too, so the file it opens is not
+                ;; the one the path checks would normalize this to
+                "/etc/x.db?jdbc.explicit_readonly=../../allowed-dir/x.db"
+                "/etc/x.db?mode=memory"
+                "/etc/x.db?"
+                "x.db?foo=bar"
+                ;; refused even where it is part of the file name
+                "/allowed-dir/we?ird.db"]]
       (testing (pr-str db)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
                               (driver/validate-db-details! :sqlite {:db db})))))
@@ -78,8 +85,6 @@
                     "file://localhost/etc/x.db"
                     ;; SQLite drops a URI's `#` fragment, `..` segments in it included
                     "file:/etc/x.db#/../../allowed-dir/x.db"
-                    ;; outside a `file:` URI, `?` is part of the file name
-                    "/etc/x.db?mode=memory"
                     ;; a relative `file:` URI names a file relative to the working directory
                     "file:x.db"
                     ;; SQLite decodes each well-formed escape on its own, whatever else the path holds
@@ -234,6 +239,11 @@
         (testing "a query on an unsupported form is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
                                 (native-rows in-memory "SELECT 1"))))
+        (testing "a query on a row whose path carries sqlite-jdbc settings after a `?` is refused"
+          (mt/with-temp [:model/Database with-settings {:engine  :sqlite
+                                                        :details {:db (str path "?jdbc.explicit_readonly=../x.db")}}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
+                                  (native-rows with-settings "SELECT x FROM t")))))
         (testing "a query on a row with no database path is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
                                 (native-rows no-path "SELECT 1"))))))
