@@ -152,18 +152,26 @@
     (when-not read-only?
       (system/ensure-writable-path! path))))
 
+(defn- sample-database?
+  "Whether `details` open the bundled Sample Database the way Metabase does: read-only, at the exact path the
+  sample-data module registered."
+  [{:keys [db read-only?]}]
+  (boolean (and read-only?
+                (driver.settings/sqlite-path-allowed? db))))
+
 (defmethod driver/validate-db-details! :sqlite
-  [_driver {:keys [db] :as details}]
+  [_driver details]
   ;; The bundled Sample Database is the one file Metabase itself opens, so it is exempt from the checks: it lives in the
   ;; plugins directory, which neither `readable-paths` nor a hosted instance's allowlist need cover. Two things must
   ;; both hold for the exemption here:
   ;;   - the caller is an internal flow that needs it (sync, schema refresh, fingerprinting, etc.), which wraps its
   ;;     calls in `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`, so that a user-facing
   ;;     endpoint such as `POST /api/database` cannot create a connection to it, and
-  ;;   - `:db` is the exact path the sample-data module registered. Sync binds the flag for every database, so the flag
-  ;;     alone would let it open whatever `:db` a stored row carries, such as one written by a serialization import.
+  ;;   - the details are the Sample Database's own: read-only, at the exact path the sample-data module registered.
+  ;;     Sync binds the flag for every database, so the flag alone would let it open whatever `:db` a stored row
+  ;;     carries, such as one written by a serialization import.
   (when-not (and driver.settings/*allow-testing-sqlite-connections*
-                 (driver.settings/sqlite-path-allowed? db))
+                 (sample-database? details))
     (check-db-file! details))
   nil)
 
@@ -198,14 +206,12 @@
              (u/lower-case-en (if (instance? clojure.lang.Named k) (name k) (str k)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
-  [_ {:keys [db read-only?]
-      :or   {db "sqlite.db"}
-      :as   details}]
+  [_ {:keys [db read-only?] :as details}]
   ;; Every connection is built from this spec, including one for a Database row that never went through a connection
   ;; test (a serialization import, or a row stored before the path settings were set), so the file checks run here too.
-  ;; The registered Sample Database is exempt by its path alone: queries on it do not bind the testing flag.
-  (when-not (driver.settings/sqlite-path-allowed? db)
-    (check-db-file! (assoc details :db db)))
+  ;; The Sample Database is exempt by its details alone: queries on it do not bind the testing flag.
+  (when-not (sample-database? details)
+    (check-db-file! details))
   (merge {:classname   "org.sqlite.JDBC"
           :subprotocol "sqlite"
           :subname     db}
@@ -242,7 +248,9 @@
   ;; Two things in `:db` have the client fetch the database file from a URL, and no SSH tunnel carries either, so they
   ;; are reported here, where they are checked whether or not a tunnel is in use, rather than as a connection host:
   ;;   - `:resource:<url>`, which SQLite-JDBC reads from that URL (after trying the classpath);
-  ;;   - a `:db` that is itself a URL, which the file check in [[can-connect?]] opens with `io/input-stream`.
+  ;;   - a `:db` that is itself a URL.
+  ;; The file checks in [[check-db-file!]] refuse both forms before a connection opens; reporting their hosts here keeps
+  ;; them under the network policy as well.
   (let [db       (when (string? db) db)
         resource (some-> db (str/trim) (->> (re-find #"(?i)^:resource:(.*)$")) second)]
     (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)

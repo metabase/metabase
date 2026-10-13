@@ -147,7 +147,10 @@
        (mt/with-premium-features #{}
          (mt/with-temp-env-var-value! [mb-readable-paths "NONE" mb-writable-paths "NONE"]
            (binding [driver.settings/*allow-testing-sqlite-connections* true]
-             (is (nil? (driver/validate-db-details! :sqlite {:db sample-path}))))
+             (is (nil? (driver/validate-db-details! :sqlite {:db sample-path :read-only? true})))
+             (testing "only for a read-only connection, as the Sample Database is opened"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                     (driver/validate-db-details! :sqlite {:db sample-path})))))
            (testing "a user-facing endpoint does not bind it, so the path is checked like any other"
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
                                    (driver/validate-db-details! :sqlite {:db sample-path}))))
@@ -172,7 +175,7 @@
                                    (driver/can-connect? :sqlite {:db "/etc/hosts"})))))
          (testing "the Sample Database is only reachable by the internal flows that bind the flag"
            (binding [driver.settings/*allow-testing-sqlite-connections* true]
-             (is (nil? (driver/validate-db-details! :sqlite {:db sample-path}))))
+             (is (nil? (driver/validate-db-details! :sqlite {:db sample-path :read-only? true}))))
            (testing "so a user-facing endpoint, which does not bind it, cannot create a connection to it"
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
                                    (driver/validate-db-details! :sqlite {:db sample-path :read-only? false}))))))))))
@@ -216,7 +219,8 @@
   (let [path (temp-sqlite-file!)]
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Database database {:engine :sqlite :details {:db path}}
-                     :model/Database in-memory {:engine :sqlite :details {:db ":memory:"}}]
+                     :model/Database in-memory {:engine :sqlite :details {:db ":memory:"}}
+                     :model/Database no-path {:engine :sqlite :details {}}]
         (testing "a query opens a file the path settings allow"
           (is (= [] (native-rows database "SELECT x FROM t"))))
         (testing "a query is refused when the readable paths exclude the file"
@@ -229,7 +233,10 @@
                                   (native-rows database "SELECT x FROM t")))))
         (testing "a query on an unsupported form is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
-                                (native-rows in-memory "SELECT 1"))))))
+                                (native-rows in-memory "SELECT 1"))))
+        (testing "a query on a row with no database path is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
+                                (native-rows no-path "SELECT 1"))))))
     (testing "on a hosted instance, a query on any database but the Sample Database is refused"
       (mt/with-premium-features #{:hosting}
         (mt/with-temp [:model/Database database {:engine :sqlite :details {:db path}}]
@@ -263,9 +270,14 @@
        (mt/with-temp-env-var-value! [mb-readable-paths "NONE" mb-writable-paths "NONE"]
          (doseq [features [#{} #{:hosting}]]
            (mt/with-premium-features features
-             (mt/with-temp [:model/Database database {:engine :sqlite :details {:db sample-path :read-only? true}}]
+             (mt/with-temp [:model/Database database {:engine :sqlite :details {:db sample-path :read-only? true}}
+                            :model/Database writable {:engine :sqlite :details {:db sample-path}}]
                (testing (pr-str features)
-                 (is (= [] (native-rows database "SELECT x FROM t"))))))))))))
+                 (is (= [] (native-rows database "SELECT x FROM t")))
+                 (testing "but not for a writable connection to the same file, e.g. from a serialization import"
+                   (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                         #"Reading from path is disallowed|SQLite is not available as a data warehouse"
+                                         (native-rows writable "INSERT INTO t VALUES (1)")))))))))))))
 
 (deftest default-schema-test
   (mt/test-driver :sqlite
