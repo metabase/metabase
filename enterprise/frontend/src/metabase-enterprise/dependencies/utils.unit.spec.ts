@@ -282,7 +282,7 @@ describe("getNodeTypeInfo", () => {
     },
     {
       node: createMockSnippetDependencyNode(),
-      expectedTypeInfo: { label: "Snippet", color: "text-secondary" },
+      expectedTypeInfo: { label: "SQL snippet", color: "text-secondary" },
     },
   ])(
     "should get the $node.type node type info",

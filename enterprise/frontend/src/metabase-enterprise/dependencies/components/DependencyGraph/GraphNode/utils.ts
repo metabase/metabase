@@ -70,7 +70,11 @@ export function getDependentGroupLabel({
     case "transform":
       return ngettext(msgid`${count} transform`, `${count} transforms`, count);
     case "snippet":
-      return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
+      return ngettext(
+        msgid`${count} SQL snippet`,
+        `${count} SQL snippets`,
+        count,
+      );
     case "dashboard":
       return ngettext(msgid`${count} dashboard`, `${count} dashboards`, count);
     case "document":

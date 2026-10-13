@@ -602,7 +602,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       verifyPanelNavigation({
         itemTitle: EMPTY_SNIPPET_NAME,
-        groupTitle: "1 snippet",
+        groupTitle: "1 SQL snippet",
         dependentItemTitle: SNIPPET_BASED_SNIPPET_NAME,
       });
       verifyPanelNavigation({
@@ -720,7 +720,7 @@ function verifyCardDependentsNavigation({
   });
   verifyPanelNavigation({
     itemTitle,
-    groupTitle: "1 snippet",
+    groupTitle: "1 SQL snippet",
     dependentItemTitle: names.snippet,
   });
   verifyPanelNavigation({
