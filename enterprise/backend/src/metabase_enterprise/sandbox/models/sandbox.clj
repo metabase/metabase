@@ -205,14 +205,13 @@
                               e)))))))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "Checks that an update to a Card does not break the sandboxes built out of it.
-
-  A change to the query itself, or archiving the Card, decides what those sandboxes return rather than merely
-  constraining it, so those are admin-only. A change to `:result_metadata` is not -- the query processor rewrites it
-  for whoever ran the Card -- so it is held to the columns of the Table being sandboxed instead."
+  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches `:dataset_query`,
+  `:archived`, or `:result_metadata` (for a Card-backed sandbox, the column allow-list). If the result metadata
+  changes, also checks that it does not violate the constraints placed on sandboxes (the Card cannot add fields or
+  change types vs. the original Table)."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (some #(contains? changes %) [:dataset_query :archived])
+  (when (some #(contains? changes %) [:dataset_query :archived :result_metadata])
     (check-non-admin-cannot-affect-sandboxing! card-id))
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
