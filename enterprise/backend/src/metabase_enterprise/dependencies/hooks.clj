@@ -44,6 +44,11 @@
     owner-id
     (:id instance)))
 
+(defn- owner-created!
+  "Have the jobs pick up a created entity, which has no id before the insert and no status or findings yet."
+  []
+  (trigger-jobs!))
+
 (defn- owner-changed!
   "Mark the entity `entity-type` `entity-id` for recalculation, and its dependents for re-analysis when it is analyzed."
   [entity-type entity-id]
@@ -77,7 +82,7 @@
   [model instance opts]
   (logging-failures model #(if (:owner-model opts)
                              (owner-changed! (owner-type model opts) (owner-id instance opts))
-                             (trigger-jobs!))))
+                             (owner-created!))))
 
 (defenterprise entity-updated!
   "Mark the entity an updated `model` row is, or is part of, for recalculation."
