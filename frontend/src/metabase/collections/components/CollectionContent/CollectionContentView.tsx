@@ -26,10 +26,7 @@ import type {
   CollectionOrTableIdProps,
   OnFileUpload,
 } from "metabase/common/collections/types";
-import {
-  isDataAppNamespace,
-  isTrashedCollection,
-} from "metabase/common/collections/utils";
+import { isTrashedCollection } from "metabase/common/collections/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";
@@ -215,14 +212,10 @@ export const CollectionContentView = ({
     deleteBookmark({ id: collectionId, type: "collection" });
   };
 
-  // a data app owns its collection: the app's repo, not this page, changes what it holds
-  const readOnly = isDataAppNamespace(collection.namespace);
-
   const canCreateUpload =
     canCreateUploadInDb &&
     collection.can_write &&
-    !isTrashedCollection(collection) &&
-    !readOnly;
+    !isTrashedCollection(collection);
 
   const dropzoneProps = canCreateUpload
     ? getComposedDragProps(getRootProps())
@@ -294,7 +287,6 @@ export const CollectionContentView = ({
             canUpload={canCreateUpload}
             uploadsEnabled={uploadsEnabled}
             onSaveFile={saveFile}
-            readOnly={readOnly}
           />
         </ErrorBoundary>
 
@@ -311,7 +303,6 @@ export const CollectionContentView = ({
             selected={selected}
             getIsSelected={getIsSelected}
             onToggleSelected={toggleItem}
-            readOnly={readOnly}
           />
         </ErrorBoundary>
         <ErrorBoundary>
@@ -330,7 +321,6 @@ export const CollectionContentView = ({
             clear={clear}
             handleMove={handleMove}
             handleCopy={handleCopy}
-            readOnly={readOnly}
           />
           <CollectionBulkActions
             collection={collection}

@@ -7,10 +7,7 @@ import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
-import {
-  type RegisterShortcutProps,
-  useRegisterShortcut,
-} from "metabase/palette/hooks/useRegisterShortcut";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useDispatch } from "metabase/redux";
 import type {
   DatasetEditorTab,
@@ -41,8 +38,6 @@ interface Props {
     },
   ) => void;
   onInfoClick: () => void;
-  /** Offers only the info sidebar: no bookmark and no actions menu. */
-  readOnly?: boolean;
 }
 
 export const QuestionActions = ({
@@ -53,15 +48,10 @@ export const QuestionActions = ({
   question,
   onSetQueryBuilderMode,
   onInfoClick,
-  readOnly = false,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
 
   const dispatch = useDispatch();
-
-  const bookmarkShortcuts: RegisterShortcutProps[] = readOnly
-    ? []
-    : [{ id: "query-builder-bookmark", perform: onToggleBookmark }];
 
   useRegisterShortcut(
     [
@@ -69,9 +59,12 @@ export const QuestionActions = ({
         id: "query-builder-info-sidebar",
         perform: onInfoClick,
       },
-      ...bookmarkShortcuts,
+      {
+        id: "query-builder-bookmark",
+        perform: onToggleBookmark,
+      },
     ],
-    [isShowingQuestionInfoSidebar, isBookmarked, readOnly],
+    [isShowingQuestionInfoSidebar, isBookmarked],
   );
 
   const hasCollectionPermissions = question.canWrite();
@@ -137,7 +130,7 @@ export const QuestionActions = ({
   return (
     <>
       <Divider orientation="vertical" my="xxs" />
-      {!question.isArchived() && !readOnly && (
+      {!question.isArchived() && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
             onCreateBookmark={onToggleBookmark}
@@ -206,7 +199,7 @@ export const QuestionActions = ({
           />
         </>
       )}
-      {!question.isArchived() && !readOnly && (
+      {!question.isArchived() && (
         <QuestionMoreActionsMenu
           question={question}
           onOpenModal={onOpenModal}

@@ -8,11 +8,9 @@ import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
 
 export const CollectionInfoSidebarToggle = ({
   collection,
-  readOnly,
   onUpdateCollection,
 }: {
   collection: Collection;
-  readOnly?: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }) => {
   const [showSidesheet, setShowSidesheet] = useState(false);
@@ -29,7 +27,6 @@ export const CollectionInfoSidebarToggle = ({
         <CollectionInfoSidebar
           onClose={() => setShowSidesheet(false)}
           collection={collection}
-          readOnly={readOnly}
           onUpdateCollection={onUpdateCollection}
         />
       )}

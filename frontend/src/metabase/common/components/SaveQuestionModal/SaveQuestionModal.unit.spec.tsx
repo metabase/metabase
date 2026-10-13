@@ -92,10 +92,8 @@ const setup = async (
   originalQuestion: Question | null = null,
   {
     collectionEndpoints,
-    canSaveAsNew,
   }: {
     collectionEndpoints?: CollectionEndpoints;
-    canSaveAsNew?: boolean;
   } = {},
 ) => {
   const onCreateMock = jest.fn((question, _options) =>
@@ -152,7 +150,6 @@ const setup = async (
       onSave={onSaveMock}
       onClose={onCloseMock}
       opened={true}
-      canSaveAsNew={canSaveAsNew}
     />,
     {
       storeInitialState: state,
@@ -623,35 +620,6 @@ describe("SaveQuestionModal", () => {
           screen.queryByLabelText(/Which tab should this go on/),
         ).not.toBeInTheDocument();
       });
-    });
-  });
-
-  describe("a question that can't be saved as new", () => {
-    it("should only replace the original question", async () => {
-      const originalQuestion = getQuestion({
-        isSaved: true,
-        name: "App question",
-      });
-      const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onSaveMock, onCreateMock } = await setup(
-        dirtyQuestion,
-        originalQuestion,
-        { canSaveAsNew: false },
-      );
-
-      expect(
-        screen.getByText('Replace original question, "App question"'),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Save as new question"),
-      ).not.toBeInTheDocument();
-
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-      await waitFor(() => {
-        expect(onSaveMock).toHaveBeenCalledTimes(1);
-      });
-      expect(onCreateMock).not.toHaveBeenCalled();
     });
   });
 

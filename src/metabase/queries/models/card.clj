@@ -1033,6 +1033,14 @@
               (:id other)))
           (queries.db/other-cards-in-collection collection-id card-id))))
 
+(defn- check-data-app-card-stays
+  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it."
+  [id from]
+  ;; the next export would write the reader into a file every pull refuses
+  (when-let [reader (data-app-card-reader from id)]
+    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t leave the collection." reader)
+                    {:status-code 400}))))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
@@ -1078,19 +1086,6 @@
     (let [card (apply-dashboard-question-updates card changes)]
       (collection/check-allowed-content (library-content-type card mi/*deserializing?*) (:collection_id card)))))
 
-(defn- check-data-app-card-stays
-  "Throws when `changes` take `card` out of the data app's collection that `original` is in."
-  [card original changes]
-  (let [from (:collection_id original)]
-    (when (and (some #(contains? changes %) [:collection_id :dashboard_id])
-               ;; a load moves a card out before the card that reads it, and the validator has checked the files it loads
-               (not mi/*deserializing?*)
-               (some? from)
-               (not= from (:collection_id (apply-dashboard-question-updates card changes)))
-               (perms/data-app-collection? from))
-      (throw (ex-info (tru "A card in a data app''s collection can''t be moved out of it.")
-                      {:status-code 400})))))
-
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
                                                                            [:sequential
@@ -1134,7 +1129,8 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
-    (check-data-app-card-stays card original changes)
+    (when (contains? changes :collection_id)
+      (check-data-app-card-stays (:id card) (:collection_id original)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)

@@ -16,13 +16,10 @@ import type { Collection } from "metabase-types/api";
 export const CollectionInfoSidebar = ({
   onClose,
   collection,
-  readOnly = false,
   onUpdateCollection,
 }: {
   onClose: () => void;
   collection: Collection;
-  /** Shows the description without letting it be edited. */
-  readOnly?: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,7 +40,7 @@ export const CollectionInfoSidebar = ({
     [collection, onUpdateCollection],
   );
   const description = collection.description?.trim() || null;
-  const canWrite = collection.can_write && !readOnly;
+  const canWrite = collection.can_write;
 
   return (
     <Sidesheet

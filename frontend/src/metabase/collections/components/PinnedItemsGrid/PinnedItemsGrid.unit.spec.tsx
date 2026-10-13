@@ -60,13 +60,11 @@ function setup({
   collection = defaultCollection,
   selected = [],
   onToggleSelected = jest.fn(),
-  readOnly,
 }: {
   items?: CollectionItem[];
   collection?: Collection;
   selected?: CollectionItem[];
   onToggleSelected?: OnToggleSelectedWithItem;
-  readOnly?: boolean;
 } = {}) {
   mockOnCopy.mockReset();
   mockOnMove.mockReset();
@@ -86,7 +84,6 @@ function setup({
         selected.some((selectedItem) => isSameItem(selectedItem, item))
       }
       onToggleSelected={onToggleSelected}
-      readOnly={readOnly}
     />,
     {
       withDND: true,
@@ -167,21 +164,6 @@ describe("PinnedItemsGrid", () => {
     await screen.findByTestId("pinned-items");
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(defaultItems.length);
-  });
-
-  it("should offer no selection, item actions, or dragging when read-only", async () => {
-    const { container } = setup({
-      selected: [dashboardItem],
-      onToggleSelected: jest.fn(),
-      readOnly: true,
-    });
-
-    await screen.findByTestId("pinned-items");
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- drag sources have no role
-    expect(container.querySelectorAll("[draggable='true']")).toHaveLength(0);
-    expect(screen.getAllByRole("link")).toHaveLength(defaultItems.length);
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 
   it("should keep cards as links when selection props are omitted", async () => {

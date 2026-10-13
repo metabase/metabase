@@ -17,7 +17,6 @@ export type CollectionNamespace =
   | "snippets"
   | "transforms"
   | "data-actions"
-  | "data-apps"
   | "analytics"
   | "tenant-specific"
   | "shared-tenant-collection";

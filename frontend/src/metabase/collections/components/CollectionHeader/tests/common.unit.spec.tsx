@@ -261,44 +261,6 @@ describe("CollectionHeader", () => {
     });
   });
 
-  describe("read-only", () => {
-    it("should offer only the bookmark and the info sidebar, and no edits", async () => {
-      setup({
-        collection: { name: "Name", description: null, can_write: true },
-        isAdmin: true,
-        uploadsEnabled: true,
-        canUpload: true,
-        readOnly: true,
-      });
-
-      expect(await screen.findByLabelText("bookmark icon")).toBeInTheDocument();
-      expect(screen.getByLabelText("info icon")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Name")).toBeDisabled();
-      expect(
-        screen.queryByPlaceholderText("Add description"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByLabelText("Create a new collection"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("calendar icon")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
-    });
-
-    it("should not let the description be edited in the info sidebar", async () => {
-      setup({
-        collection: { description: "App summary", can_write: true },
-        readOnly: true,
-      });
-
-      await userEvent.click(screen.getByLabelText("info icon"));
-      const sidesheet = await screen.findByTestId("sidesheet");
-      await userEvent.click(within(sidesheet).getByText("App summary"));
-
-      expect(within(sidesheet).getByDisplayValue("App summary")).toBeDisabled();
-    });
-  });
-
   describe("uploads", () => {
     it("should show the upload button if uploads are enabled and the user has write permissions", () => {
       setup({

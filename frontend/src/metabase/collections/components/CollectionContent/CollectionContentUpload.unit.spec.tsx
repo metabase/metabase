@@ -46,20 +46,6 @@ const thirdCollection = createMockCollection({
   name: "Second Collection",
 });
 
-const appCollection = createMockCollection({
-  id: 5,
-  name: "Data App: shop",
-  namespace: "data-apps",
-  can_write: true,
-});
-
-const appQuestion = createMockCollectionItem({
-  id: 6,
-  name: "App question",
-  model: "card",
-  collection_namespace: "data-apps",
-});
-
 const uploadedModel = createMockCollectionItem({
   id: 3,
   name: "my uploaded model",
@@ -78,13 +64,8 @@ const uploadedModel2 = createMockCollectionItem({
 
 async function setupCollectionContent({
   canUpload = true,
-  expectUploadInput = canUpload,
   ...overrides
-}: {
-  canUpload?: boolean;
-  expectUploadInput?: boolean;
-  collectionId?: CollectionId;
-} = {}) {
+}: { canUpload?: boolean; collectionId?: CollectionId } = {}) {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([createMockDatabase({ can_upload: canUpload })]);
   setupBookmarksEndpoints([]);
@@ -118,7 +99,7 @@ async function setupCollectionContent({
   );
 
   // wait for loading to complete
-  if (expectUploadInput) {
+  if (canUpload) {
     await screen.findByTestId("upload-input");
   } else {
     await screen.findByTestId("collection-menu");
@@ -131,12 +112,7 @@ async function setupCollectionContent({
 describe("CollectionContent file uploads", () => {
   beforeEach(() => {
     setupCollectionByIdEndpoint({
-      collections: [
-        firstCollection,
-        secondCollection,
-        thirdCollection,
-        appCollection,
-      ],
+      collections: [firstCollection, secondCollection, thirdCollection],
     });
     setupCollectionsEndpoints({
       collections: [firstCollection, secondCollection, thirdCollection],
@@ -144,10 +120,6 @@ describe("CollectionContent file uploads", () => {
     setupCollectionItemsEndpoint({
       collection: firstCollection,
       collectionItems: [],
-    });
-    setupCollectionItemsEndpoint({
-      collection: appCollection,
-      collectionItems: [appQuestion],
     });
     setupCollectionItemsEndpoint({
       collection: secondCollection,
@@ -180,35 +152,6 @@ describe("CollectionContent file uploads", () => {
     await setupCollectionContent({ canUpload: false });
 
     expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
-  });
-
-  it("should accept a dropped file in a regular collection", async () => {
-    await setupCollectionContent();
-
-    expect(
-      screen.getByText(`Drop here to upload to ${firstCollection.name}`),
-    ).toBeInTheDocument();
-  });
-
-  describe("a data app's collection", () => {
-    it("should be read-only: no dropped files, header actions, or item actions", async () => {
-      await setupCollectionContent({
-        collectionId: appCollection.id,
-        expectUploadInput: false,
-      });
-
-      expect(await screen.findByText(appQuestion.name)).toBeInTheDocument();
-      expect(screen.queryByText(/Drop here to upload/)).not.toBeInTheDocument();
-      expect(
-        screen.queryByLabelText("Create a new collection"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
-      expect(
-        within(screen.getByTestId("collection-table")).queryByLabelText(
-          "ellipsis icon",
-        ),
-      ).not.toBeInTheDocument();
-    });
   });
 
   it("Should show a start exploring link on completion", async () => {

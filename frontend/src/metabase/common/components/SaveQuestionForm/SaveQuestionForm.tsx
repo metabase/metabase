@@ -14,7 +14,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Box, Button, Radio, Stack, Text } from "metabase/ui";
+import { Box, Button, Radio, Stack } from "metabase/ui";
 
 import type { OmniPickerItem } from "../Pickers";
 
@@ -32,7 +32,6 @@ export const SaveQuestionForm = ({
     question,
     originalQuestion,
     showSaveType,
-    canSaveAsNew,
     values,
     targetCollection,
     saveToDashboard,
@@ -58,12 +57,8 @@ export const SaveQuestionForm = ({
 
   return (
     <Form>
-      {showSaveType && !canSaveAsNew && (
-        <Text mb="lg">{overwriteOptionName}</Text>
-      )}
-      {showSaveType && canSaveAsNew && (
+      {showSaveType && (
         <FormRadioGroup name="saveType" label={title}>
-
           <Stack gap="sm" mb="lg">
             <Radio
               name={overwriteOptionName}

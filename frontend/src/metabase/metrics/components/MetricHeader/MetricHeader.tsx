@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { isDataAppNamespace } from "metabase/common/collections/utils";
 import {
   PaneHeader,
   PanelHeaderTitle,
@@ -52,14 +51,11 @@ export function MetricHeader({
       actions={
         <Group wrap="nowrap" align="center">
           {actions}
-          {/* a data app owns the metrics in its collection: they aren't moved, copied, or trashed from here */}
-          {!isDataAppNamespace(card.collection?.namespace) && (
-            <MetricToolbar
-              card={card}
-              urls={urls}
-              showDataStudioLink={showDataStudioLink}
-            />
-          )}
+          <MetricToolbar
+            card={card}
+            urls={urls}
+            showDataStudioLink={showDataStudioLink}
+          />
         </Group>
       }
       breadcrumbs={breadcrumbs}

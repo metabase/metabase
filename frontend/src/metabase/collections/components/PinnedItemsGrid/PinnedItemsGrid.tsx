@@ -36,8 +36,6 @@ type Props = {
   selected: CollectionItem[];
   getIsSelected: (item: CollectionItem) => boolean;
   onToggleSelected: OnToggleSelectedWithItem;
-  /** Shows the pinned items without selection, item actions, or dragging. */
-  readOnly?: boolean;
 };
 
 export function PinnedItemsGrid({
@@ -52,7 +50,6 @@ export function PinnedItemsGrid({
   selected,
   getIsSelected,
   onToggleSelected,
-  readOnly = false,
 }: Props) {
   // Trashed items keep their pin position, but the trash never shows a pinned section.
   const showPinnedItems = !isRootTrashCollection(collection);
@@ -67,7 +64,7 @@ export function PinnedItemsGrid({
         }
       : skipToken,
   );
-  const canSelect = !readOnly && canSelectItems(collection, onToggleSelected);
+  const canSelect = canSelectItems(collection, onToggleSelected);
   const isSelectMode = canSelect && selected.length > 0;
   const isShiftPressed = useIsShiftPressed(canSelect);
   const showSelectAffordance = canSelect && !isSelectMode && isShiftPressed;
@@ -94,23 +91,6 @@ export function PinnedItemsGrid({
           // keyed by display index instead.
           const pinIndex = index + 1;
           const isSelected = getIsSelected(item);
-          const card = (
-            <CompactPinnedItemCard
-              item={item}
-              collection={collection}
-              databases={databases}
-              bookmarks={bookmarks}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              onCopy={onCopy}
-              onMove={onMove}
-              isSelectMode={isSelectMode}
-              isSelected={isSelected}
-              onToggleSelected={canSelect ? onToggleSelected : undefined}
-              showSelectAffordance={showSelectAffordance}
-              readOnly={readOnly}
-            />
-          );
           return (
             <Box key={`${item.model}-${item.id}`} pos="relative">
               <PinnedItemSortDropTarget
@@ -118,19 +98,30 @@ export function PinnedItemsGrid({
                 pinIndex={pinIndex}
                 enableDropTargetBackground={false}
               />
-              {readOnly ? (
-                card
-              ) : (
-                <ItemDragSource
-                  item={{ ...item, collection_position: pinIndex }}
-                  collection={collection}
-                  isSelected={isSelected}
-                  selected={selected}
-                >
-                  {/* ItemDragSource needs a native DOM element to attach its drag ref */}
-                  <div data-drag-source-node>{card}</div>
-                </ItemDragSource>
-              )}
+              <ItemDragSource
+                item={{ ...item, collection_position: pinIndex }}
+                collection={collection}
+                isSelected={isSelected}
+                selected={selected}
+              >
+                {/* ItemDragSource needs a native DOM element to attach its drag ref */}
+                <div data-drag-source-node>
+                  <CompactPinnedItemCard
+                    item={item}
+                    collection={collection}
+                    databases={databases}
+                    bookmarks={bookmarks}
+                    createBookmark={createBookmark}
+                    deleteBookmark={deleteBookmark}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                    isSelectMode={isSelectMode}
+                    isSelected={isSelected}
+                    onToggleSelected={canSelect ? onToggleSelected : undefined}
+                    showSelectAffordance={showSelectAffordance}
+                  />
+                </div>
+              </ItemDragSource>
               <PinnedItemSortDropTarget
                 isBackTarget
                 pinIndex={pinIndex}

@@ -19,7 +19,6 @@ export const SaveQuestionModal = ({
   closeOnSuccess,
   initialCollectionId,
   targetCollection,
-  canSaveAsNew,
   ...modalProps
 }: SaveQuestionModalProps) => {
   return (
@@ -40,7 +39,6 @@ export const SaveQuestionModal = ({
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
-      canSaveAsNew={canSaveAsNew}
     >
       <Modal.Root padding="xxl" {...modalProps} onClose={onClose}>
         <Modal.Overlay />

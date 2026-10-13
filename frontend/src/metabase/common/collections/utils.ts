@@ -20,7 +20,6 @@ import {
   type CollectionId,
   type CollectionItem,
   type CollectionItemModel,
-  type CollectionNamespace,
   type CollectionType,
   type IconName,
   type User,
@@ -85,12 +84,6 @@ export function isRootTrashCollection(
   collection?: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
 ): boolean {
   return collection?.type === "trash";
-}
-
-export function isDataAppNamespace(
-  namespace: CollectionNamespace | undefined,
-): boolean {
-  return namespace === "data-apps";
 }
 
 export function isTrashedCollection(

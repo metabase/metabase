@@ -62,8 +62,6 @@ export type CompactPinnedItemCardProps = {
   isSelected?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
   showSelectAffordance?: boolean;
-  /** Shows the item without its action menu. */
-  readOnly?: boolean;
 };
 
 const isCollectionItem = (
@@ -86,7 +84,6 @@ export function CompactPinnedItemCard({
   isSelected,
   onToggleSelected,
   showSelectAffordance,
-  readOnly = false,
 }: CompactPinnedItemCardProps) {
   const getIcon = useGetIcon();
   const icon = getIcon({
@@ -96,9 +93,9 @@ export function CompactPinnedItemCard({
   });
   const description = item.description || DEFAULT_DESCRIPTION[item.model] || "";
   const actionMenuItem = isCollectionItem(item) ? item : null;
-  const hasActionHandlers =
-    !readOnly &&
-    Boolean(onCopy || onMove || createBookmark || deleteBookmark || collection);
+  const hasActionHandlers = Boolean(
+    onCopy || onMove || createBookmark || deleteBookmark || collection,
+  );
   const toggleSelected =
     onToggleSelected && isCollectionItem(item)
       ? () => onToggleSelected(item)
