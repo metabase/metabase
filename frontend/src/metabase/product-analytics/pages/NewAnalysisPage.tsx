@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { t } from "ttag";
 
+import { useLazyGetTableQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import { Alert, Box, Icon, SimpleGrid, Stack, Title } from "metabase/ui";
@@ -9,22 +11,26 @@ import type { ConcreteTableId } from "metabase-types/api";
 import { ANALYSIS_KINDS, getAnalysisConfig } from "../analyses/config";
 import { AnalysisTypeCard } from "../components/AnalysisTypeCard";
 import { EventTablePicker } from "../components/EventTablePicker";
-import { PROTOTYPE_TABLE_NAME } from "../config";
 import { usePrototypeTable } from "../use-prototype-table";
 
 export const NewAnalysisPage = () => {
   const navigate = useNavigate();
   const [sendToast] = useToast();
   const prototype = usePrototypeTable();
-  const tableId = prototype.tableId;
+  const [fetchTable] = useLazyGetTableQuery();
+  const [selectedTableId, setSelectedTableId] = useState<ConcreteTableId>();
+  const tableId = selectedTableId ?? prototype.tableId;
 
-  // Prototype: event definitions don't follow a table change yet, so analyses
-  // stay on one table. Lift this once they do.
-  const handleTableChange = (id: ConcreteTableId) => {
-    if (id !== tableId) {
+  // Prototype: the generated SQL is ClickHouse-only. Lift this once SQL
+  // generation moves to MBQL.
+  const handleTableChange = async (id: ConcreteTableId) => {
+    const { data: table } = await fetchTable({ id }, true);
+    if (table && prototype.clickHouseDatabaseIds.includes(table.db_id)) {
+      setSelectedTableId(id);
+    } else {
       sendToast({
         icon: "warning",
-        message: t`For now, only ${PROTOTYPE_TABLE_NAME} can be analyzed.`,
+        message: t`For now, only tables in ClickHouse databases can be analyzed.`,
       });
     }
   };

@@ -1,13 +1,17 @@
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { isConcreteTableId } from "metabase-types/api";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { ConcreteTableId, DatabaseId, Table } from "metabase-types/api";
 
 import { PROTOTYPE_DATABASE_NAME, PROTOTYPE_TABLE_NAME } from "./config";
+
+const CLICKHOUSE_ENGINE = "clickhouse";
 
 export type PrototypeTableResult = {
   table: Table | undefined;
   tableId: ConcreteTableId | undefined;
+  /** The databases whose tables can be analyzed: the SQL is ClickHouse-only. */
+  clickHouseDatabaseIds: DatabaseId[];
   isLoading: boolean;
   error: string | undefined;
 };
@@ -17,6 +21,10 @@ export const usePrototypeTable = (): PrototypeTableResult => {
   const database = databases.data?.data.find(
     (item) => item.name === PROTOTYPE_DATABASE_NAME,
   );
+
+  const clickHouseDatabaseIds = (databases.data?.data ?? [])
+    .filter((item) => item.engine === CLICKHOUSE_ENGINE)
+    .map((item) => item.id);
 
   const tables = useListTablesQuery({ term: PROTOTYPE_TABLE_NAME });
   const table = tables.data?.find(
@@ -41,6 +49,7 @@ export const usePrototypeTable = (): PrototypeTableResult => {
   return {
     table,
     tableId,
+    clickHouseDatabaseIds,
     isLoading: databases.isLoading || tables.isLoading,
     error,
   };

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { c, t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
@@ -11,7 +13,6 @@ import {
   Flex,
   Group,
   Icon,
-  Menu,
   Popover,
   Stack,
   Tooltip,
@@ -22,7 +23,6 @@ import { readEventQuery } from "../../events/read-event-query";
 import type { EventDefinition } from "../../events/types";
 
 const STAGE_INDEX = -1;
-const EDITABLE_TEXT_OFFSET = "calc(-0.25rem - 1px)";
 
 type EventDefinitionEditorProps = {
   id?: string;
@@ -33,8 +33,10 @@ type EventDefinitionEditorProps = {
 };
 
 /**
- * Edits a draft of an event's conditions and name until it's submitted. The
- * name follows the conditions until the user changes it.
+ * Edits a draft of an event's conditions and name until it's submitted, by the
+ * Done button, Enter in the name, or a click outside the editor. A click
+ * outside cancels it instead when it can't be submitted. The name follows the
+ * conditions until the user changes it.
  */
 export const EventDefinitionEditor = ({
   id,
@@ -50,8 +52,12 @@ export const EventDefinitionEditor = ({
   const [customName, setCustomName] = useState(() =>
     value && value.name !== getConditionsName(query) ? value.name : null,
   );
+  // The name as typed, which EditableText only commits on blur. A click
+  // outside is handled before that blur, so it submits this instead.
+  const [draftName, setDraftName] = useState<string | null>(null);
   const filters = Lib.filters(query, STAGE_INDEX);
-  const name = customName ?? getConditionsName(query);
+  const committedName = customName ?? getConditionsName(query);
+  const name = draftName?.trim() || committedName;
   const canSubmit = name !== "" && filters.length > 0;
 
   const handleNameChange = (newName: string) => {
@@ -61,7 +67,25 @@ export const EventDefinitionEditor = ({
     }
   };
 
-  const handleSubmit = () => onSubmit({ name, query: Lib.toJsQuery(query) });
+  const handleSubmit = () => {
+    if (canSubmit) {
+      onSubmit({ name, query: Lib.toJsQuery(query) });
+    }
+  };
+
+  const handleNameKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const isNameEnter =
+      event.key === "Enter" &&
+      !event.nativeEvent.isComposing &&
+      event.target instanceof HTMLTextAreaElement;
+    if (isNameEnter) {
+      handleSubmit();
+    }
+  };
+
+  const handlePointerDownInside = usePointerDownOutside(
+    canSubmit ? handleSubmit : onCancel,
+  );
 
   return (
     <Stack
@@ -70,40 +94,34 @@ export const EventDefinitionEditor = ({
       p="sm"
       bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
+      onPointerDownCapture={handlePointerDownInside}
     >
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xs" wrap="nowrap" onKeyDown={handleNameKeyDown}>
         <EditableText
           // Remounts so a cleared name reverts to the current one.
-          key={name}
+          key={committedName}
           flex={1}
           miw={0}
-          // Offsets its own border and padding, so the name doesn't shift
-          // from where EventDefinitionSummary shows it.
-          ml={EDITABLE_TEXT_OFFSET}
-          my={EDITABLE_TEXT_OFFSET}
-          fz="md"
-          initialValue={name}
-          placeholder={t`Give this a name`}
+          bg="input-background"
+          bd="1px solid var(--mb-color-border-neutral)"
+          bdrs="xs"
+          initialValue={committedName}
+          placeholder={t`Give this set of conditions a name`}
           data-testid="event-definition-name"
           onChange={handleNameChange}
+          onContentChange={setDraftName}
+          onBlur={() => setDraftName(null)}
         />
         <Tooltip label={t`Done`}>
           <ActionIcon
+            size="lg"
             c="icon-primary"
+            bd="1px solid var(--mb-color-border-neutral)"
             aria-label={t`Done`}
             disabled={!canSubmit}
             onClick={handleSubmit}
           >
             <Icon name="check" />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label={t`Discard changes`}>
-          <ActionIcon
-            variant="subtle"
-            aria-label={t`Discard changes`}
-            onClick={onCancel}
-          >
-            <Icon name="revert" />
           </ActionIcon>
         </Tooltip>
       </Group>
@@ -120,12 +138,37 @@ export const EventDefinitionEditor = ({
           ))}
         </Flex>
       )}
-      <Group gap="sm" grow>
-        <AddConditionButton query={query} onChange={setQuery} />
-        <BrowseActionsButton query={query} onChange={setQuery} />
-      </Group>
+      <AddConditionButton query={query} onChange={setQuery} />
     </Stack>
   );
+};
+
+/**
+ * Calls `onPointerDownOutside` when a press lands outside the element given the
+ * returned `onPointerDownCapture` handler. Presses in its portaled popovers
+ * count as inside.
+ */
+const usePointerDownOutside = (onPointerDownOutside: () => void) => {
+  const isInsideRef = useRef(false);
+  const onPointerDownOutsideRef = useLatest(onPointerDownOutside);
+
+  useEffect(() => {
+    // React events bubble through portals but DOM events don't, so the React
+    // handler flags presses inside before this listener on document sees them.
+    const handlePointerDown = () => {
+      if (!isInsideRef.current) {
+        onPointerDownOutsideRef.current();
+      }
+      isInsideRef.current = false;
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [onPointerDownOutsideRef]);
+
+  return () => {
+    isInsideRef.current = true;
+  };
 };
 
 /** The conditions' names joined with "and", or "" without conditions. */
@@ -204,7 +247,6 @@ const AddConditionButton = ({ query, onChange }: QueryEditorProps) => {
     <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
       <Popover.Target>
         <Button
-          variant="filled"
           leftSection={<Icon name="add" />}
           onClick={() => setIsOpened(!isOpened)}
         >
@@ -219,42 +261,5 @@ const AddConditionButton = ({ query, onChange }: QueryEditorProps) => {
         />
       </Popover.Dropdown>
     </Popover>
-  );
-};
-
-const BrowseActionsButton = ({ query, onChange }: QueryEditorProps) => {
-  const segments = Lib.availableSegments(query, STAGE_INDEX);
-
-  if (segments.length === 0) {
-    return null;
-  }
-
-  return (
-    <Menu position="bottom-start">
-      <Menu.Target>
-        <Button leftSection={<Icon name="segment" />}>
-          {t`Browse actions`}
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {segments.map((segment) => {
-          const { name, displayName, filterPositions } = Lib.displayInfo(
-            query,
-            STAGE_INDEX,
-            segment,
-          );
-          const isApplied = (filterPositions?.length ?? 0) > 0;
-          return (
-            <Menu.Item
-              key={name}
-              disabled={isApplied}
-              onClick={() => onChange(Lib.filter(query, STAGE_INDEX, segment))}
-            >
-              {displayName}
-            </Menu.Item>
-          );
-        })}
-      </Menu.Dropdown>
-    </Menu>
   );
 };

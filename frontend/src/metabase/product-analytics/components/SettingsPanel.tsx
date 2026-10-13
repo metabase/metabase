@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Paper, Text, Title } from "metabase/ui";
+import { Box, Paper, Title } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
@@ -38,10 +38,7 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
       ))}
       {columns.length > 0 && (
         <Box mt="md">
-          <Title order={5} mb="xs">{t`Columns`}</Title>
-          <Text c="text-secondary" size="sm" mb="lg">
-            {t`Which columns hold the event time, the person, and so on.`}
-          </Text>
+          <Title order={4} mb="md">{t`Columns`}</Title>
           {columns.map((widget) => (
             <ChartSettingsWidget
               key={widget.id}

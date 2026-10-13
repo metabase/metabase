@@ -261,6 +261,16 @@ describe("analysis settings", () => {
       },
     );
 
+    it("keeps an empty lifecycle group list and reports it as incomplete", () => {
+      const { computed, specResult } = setup({
+        kind: "lifecycle",
+        stored: { ...REQUIRED_EVENTS.lifecycle, "lifecycle.shown": [] },
+      });
+
+      expect(computed["lifecycle.shown"]).toEqual([]);
+      expect(getMissingKeys(specResult)).toEqual(["lifecycle.shown"]);
+    });
+
     it("reports every missing event at once", () => {
       const { specResult } = setup({
         kind: "cohorts",

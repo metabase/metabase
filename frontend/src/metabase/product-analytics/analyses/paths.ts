@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { SegmentedControl } from "metabase/ui";
+
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
@@ -37,21 +39,21 @@ const INTEGER_PROPS = { options: { isInteger: true, isNonNegative: true } };
 const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   ...commonSettings({ granularity: null }),
   "paths.direction": {
-    getTitle: () => t`Paths`,
+    getTitle: () => t`View the path that's…`,
     getSection: () => "setup",
-    widget: "segmentedControl",
+    widget: "radio",
     getDefault: () => "from",
     isValid: (value) => isOneOf(DIRECTIONS, value),
     getProps: () => ({
       options: [
-        { name: t`From`, value: "from" },
-        { name: t`To`, value: "to" },
-        { name: t`Between`, value: "between" },
+        { name: t`after an event`, value: "from" },
+        { name: t`backwards from an event`, value: "to" },
+        { name: t`between two events`, value: "between" },
       ],
     }),
   },
   "paths.start": withWidgetProps({
-    getTitle: () => t`Starting event`,
+    getTitle: () => t`The starting event`,
     getSection: () => "setup",
     widget: EventDefinitionWidget,
     getDefault: () => null,
@@ -61,7 +63,7 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     getProps: getEventDefinitionProps,
   }),
   "paths.end": withWidgetProps({
-    getTitle: () => t`Ending event`,
+    getTitle: () => t`The ending event`,
     getSection: () => "setup",
     widget: EventDefinitionWidget,
     getDefault: () => null,
@@ -71,32 +73,47 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     getProps: getEventDefinitionProps,
   }),
   "paths.steps": {
-    getTitle: () => t`Steps to show`,
+    getTitle: () => t`Number of steps to see`,
     getSection: () => "setup",
     widget: "number",
-    getDefault: () => 4,
+    getDefault: () => 5,
     isValid: (value) => isPositiveInteger(value),
     getProps: () => INTEGER_PROPS,
   },
   "paths.included": withWidgetProps({
-    getTitle: () => t`Events to include`,
-    getSection: () => "setup",
+    getTitle: () => t`Which kind of events count as steps?`,
+    getSection: () => "advanced",
     widget: EventDefinitionListWidget,
     getDefault: () => [],
     isValid: (value) => isEventDefinitionList(value),
     getProps: getEventDefinitionProps,
   }),
   "paths.session_gap_minutes": {
-    getTitle: () => t`New visit after (minutes idle)`,
+    getTitle: () => t`How many minutes of inactivity results in a new visit?`,
     getSection: () => "advanced",
     widget: "number",
     getDefault: () => 30,
     isValid: (value) => isPositiveInteger(value),
     getProps: () => INTEGER_PROPS,
   },
-  "paths.merge_repeats": {
-    getTitle: () => t`Merge repeated steps`,
+  "paths.edge_metric": withWidgetProps({
+    getTitle: () => t`What line thickness should represent`,
     getSection: () => "advanced",
+    widget: SegmentedControl,
+    getDefault: () => "people",
+    isValid: (value) => isOneOf(EDGE_METRICS, value),
+    getProps: () => ({
+      data: [
+        { label: t`People`, value: "people" as const },
+        { label: t`Events`, value: "events" as const },
+      ],
+      w: "100%",
+    }),
+  }),
+  "paths.merge_repeats": {
+    getTitle: () => t`Merge repeats of the same step`,
+    getSection: () => "advanced",
+    inline: true,
     widget: "toggle",
     getDefault: () => true,
     isValid: (value) => isBoolean(value),
@@ -104,6 +121,7 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   "paths.collapse_noise": {
     getTitle: () => t`Collapse noise`,
     getSection: () => "advanced",
+    inline: true,
     widget: "toggle",
     getDefault: () => true,
     isValid: (value) => isBoolean(value),
@@ -123,19 +141,6 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     getDefault: () => 5,
     isValid: (value) => isPositiveInteger(value),
     getProps: () => INTEGER_PROPS,
-  },
-  "paths.edge_metric": {
-    getTitle: () => t`Count`,
-    getSection: () => "advanced",
-    widget: "segmentedControl",
-    getDefault: () => "people",
-    isValid: (value) => isOneOf(EDGE_METRICS, value),
-    getProps: () => ({
-      options: [
-        { name: t`People`, value: "people" },
-        { name: t`Events`, value: "events" },
-      ],
-    }),
   },
 };
 

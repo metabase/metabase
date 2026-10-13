@@ -117,14 +117,65 @@ describe("EventDefinitionEditor", () => {
     expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
   });
 
-  it("discards changes", async () => {
-    const { onCancel, onSubmit } = setup({ value: null });
+  it("submits the typed name on Enter", async () => {
+    const { onSubmit } = setup({
+      value: createMockEventDefinition({ name: "Big order", filters: FILTERS }),
+    });
+
+    await userEvent.clear(getName());
+    await userEvent.type(getName(), "Huge order{enter}");
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Huge order" }),
+    );
+  });
+
+  it("submits the typed name on a click outside", async () => {
+    const { onSubmit } = setup({
+      value: createMockEventDefinition({ name: "Big order", filters: FILTERS }),
+    });
+
+    await userEvent.clear(getName());
+    await userEvent.type(getName(), "Huge order");
+    await userEvent.click(document.body);
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Huge order" }),
+    );
+  });
+
+  it("isn't submitted or cancelled by a click inside a condition picker", async () => {
+    const { onCancel, onSubmit } = setup({
+      value: createMockEventDefinition({ name: "Big order", filters: FILTERS }),
+    });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Discard changes" }),
+      screen.getByRole("button", { name: /Add a condition/ }),
     );
+    await userEvent.click(await screen.findByText("Total"));
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("is cancelled by a click outside without conditions", async () => {
+    const { onCancel, onSubmit } = setup({ value: null });
+
+    await userEvent.type(getName(), "Big order");
+    await userEvent.click(document.body);
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("isn't submitted by Enter without conditions", async () => {
+    const { onCancel, onSubmit } = setup({ value: null });
+
+    await userEvent.type(getName(), "Big order{enter}");
+
+    expect(onCancel).not.toHaveBeenCalled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

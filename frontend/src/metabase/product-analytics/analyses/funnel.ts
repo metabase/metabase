@@ -83,7 +83,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
   },
   "funnel.anchor": {
     getSection: () => "advanced",
-    widget: "segmentedControl",
+    widget: "radio",
     getDefault: () => "first",
     isValid: (value) => isOneOf(ANCHORS, value),
     getProps: () => ({

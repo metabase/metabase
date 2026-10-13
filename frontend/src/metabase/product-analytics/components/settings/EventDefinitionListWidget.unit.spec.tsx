@@ -49,13 +49,13 @@ describe("EventDefinitionListWidget", () => {
   it("edits one event at a time", async () => {
     setup({ value: [BIG_ORDER, HUGE_ORDER] });
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Big order" }));
     expect(screen.getByTestId("event-definition-name")).toHaveValue(
       "Big order",
     );
     expect(screen.getByText("Huge order")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await userEvent.click(screen.getByRole("button", { name: "Huge order" }));
     expect(screen.getByTestId("event-definition-name")).toHaveValue(
       "Huge order",
     );
@@ -65,7 +65,7 @@ describe("EventDefinitionListWidget", () => {
   it("renames an event", async () => {
     const { onChange } = setup({ value: [BIG_ORDER, HUGE_ORDER] });
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Edit" })[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Huge order" }));
     const name = screen.getByTestId("event-definition-name");
     await userEvent.clear(name);
     await userEvent.type(name, "Giant order");
@@ -88,12 +88,10 @@ describe("EventDefinitionListWidget", () => {
     expect(getHandles()).toHaveLength(2);
     getHandles().forEach((handle) => expect(handle).toBeVisible());
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Big order" }));
     getHandles().forEach((handle) => expect(handle).not.toBeVisible());
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Discard changes" }),
-    );
+    await userEvent.click(document.body);
     getHandles().forEach((handle) => expect(handle).toBeVisible());
   });
 
@@ -105,7 +103,7 @@ describe("EventDefinitionListWidget", () => {
     expect(onChange).toHaveBeenCalledWith([HUGE_ORDER]);
   });
 
-  it("needs a name and a condition to add an event, and discards it on cancel", async () => {
+  it("needs a name and a condition to add an event, and discards it on a click outside", async () => {
     const { onChange } = setup({ value: [BIG_ORDER] });
 
     await userEvent.click(screen.getByRole("button", { name: /Add an event/ }));
@@ -115,9 +113,7 @@ describe("EventDefinitionListWidget", () => {
     );
     expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Discard changes" }),
-    );
+    await userEvent.click(document.body);
 
     expect(onChange).not.toHaveBeenCalled();
     expect(
