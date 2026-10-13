@@ -162,7 +162,10 @@ describe(
       });
 
       cy.log("theme should still exist");
-      H.main().findByText("Copy of Untitled theme").should("be.visible");
+      H.main()
+        .findByText("Copy of Untitled theme")
+        .scrollIntoView()
+        .should("be.visible");
 
       cy.log("confirm deletion");
       clickThemeMenuItem("Copy of Untitled theme", "Delete");
@@ -178,10 +181,12 @@ describe(
       H.main().within(() => {
         cy.log("deleted theme is gone; other themes and new theme card remain");
         cy.findByText("Copy of Untitled theme").should("not.exist");
-        cy.findByText("Untitled theme").should("be.visible");
-        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
-        cy.findByText("Light").should("be.visible");
-        cy.findByText("Dark").should("be.visible");
+        cy.findByText("Untitled theme").scrollIntoView().should("be.visible");
+        cy.findByRole("button", { name: /New theme/ })
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText("Light").scrollIntoView().should("be.visible");
+        cy.findByText("Dark").scrollIntoView().should("be.visible");
       });
     });
   },
