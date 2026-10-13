@@ -70,6 +70,7 @@ export function UnarchiveCollectionButton({
   return (
     <Tooltip label={label}>
       <ActionIcon
+        variant="subtle"
         aria-label={label}
         size="md"
         onClick={(event) => {

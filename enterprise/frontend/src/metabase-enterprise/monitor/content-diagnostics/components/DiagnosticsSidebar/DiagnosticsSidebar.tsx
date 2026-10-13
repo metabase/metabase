@@ -128,6 +128,7 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
       <Group gap="xs" wrap="nowrap">
         <Tooltip label={viewLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={entityUrl}
             target="_blank"
@@ -137,7 +138,7 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
             <FixedSizeIcon name="external" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
