@@ -43,7 +43,7 @@ describe("a table source without a saved question", () => {
         QUERY_WITHOUT_SAVED_QUESTION,
       ),
     ).rejects.toThrow(
-      "This query has no saved question. Write it to the app's collection under `collections/data_apps/`",
+      "This query has no saved question. Set its `savedQuestionEntityId` in `defineQuery(...)` in `queries/`",
     );
   });
 

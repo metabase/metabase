@@ -44,10 +44,7 @@ describe("scenarios > data apps > semantic schema", () => {
   });
 
   it("tells the author about the filter a metric applies", () => {
-    cy.request<string>(
-      "GET",
-      "/api/typed-schemas/v1/typescript?include-metric-library=true",
-    ).then(({ body }) => {
+    cy.request<string>("GET", "/api/apps/generate/schemas").then(({ body }) => {
       const metadata = H.typedSchemaMetadata(body, "revenue: {");
 
       expect(metadata.description).to.eq(METRIC_DESCRIPTION);

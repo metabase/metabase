@@ -3,12 +3,30 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.driver :as driver]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
+
+(deftest create-target-schema!-serializes-concurrent-creation-test
+  (testing "concurrent transforms targeting a missing schema create it once, one at a time"
+    (let [created (atom #{})
+          inside  (atom 0)
+          peak    (atom 0)
+          calls   (atom 0)]
+      (with-redefs [driver/schema-exists?          (fn [_driver _db-id schema] (contains? @created schema))
+                    driver/create-schema-if-needed! (fn [_driver _conn-spec schema]
+                                                      (swap! calls inc)
+                                                      (swap! peak max (swap! inside inc))
+                                                      (Thread/sleep 50)
+                                                      (swap! created conj schema)
+                                                      (swap! inside dec))]
+        (run! deref (doall (repeatedly 8 #(future (transforms-base.u/create-target-schema! :postgres 1 {} "analytics")))))
+        (is (= 1 @peak))
+        (is (= 1 @calls))))))
 
 ;;; ------------------------------------------------- Merge target helpers -------------------------------------------------
 

@@ -237,9 +237,8 @@
     (is (=? [[:field
               (fn expected-opts? [opts]
                 (and
-                 ;; should retain the effective type of `:type/Integer` since `:year` is an extraction operation.
                  (= (:base-type opts) :type/Date)
-                 (= (:effective-type opts) :type/Integer)
+                 (= (:effective-type opts) :type/Date)
                  (not (:temporal-unit opts))))
               "DATE"]]
             (map lib/ref cols)))))

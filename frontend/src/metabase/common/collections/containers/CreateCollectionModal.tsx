@@ -73,14 +73,15 @@ function CreateCollectionModal({
 export default CreateCollectionModal;
 
 export function getCreatedCollectionUrl(collection: Collection): string {
-  if (
-    PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
-    collection.namespace === "snippets" ||
-    collection.namespace === "data-actions"
-  ) {
-    return Urls.dataStudioLibrary({
-      expandedIds: getCollectionPathAsArray(collection),
-    });
+  const expandedIds = getCollectionPathAsArray(collection);
+  if (collection.namespace === "snippets") {
+    return Urls.dataStudioSnippets({ expandedIds });
+  }
+  if (collection.namespace === "data-actions") {
+    return Urls.dataStudioActions({ expandedIds });
+  }
+  if (PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)) {
+    return Urls.dataStudioLibrary({ expandedIds });
   }
   return Urls.collection(collection);
 }

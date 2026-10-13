@@ -29,7 +29,7 @@
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
-                                :metabase/validate-defendpoint-has-response-schema         427
+                                :metabase/validate-defendpoint-has-response-schema         426
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       44
                                 :missing-docstring                                         4

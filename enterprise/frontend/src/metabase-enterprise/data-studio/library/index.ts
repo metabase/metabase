@@ -3,11 +3,14 @@ import { PLUGIN_DATA_REFERENCE } from "metabase/querying/components/DataReferenc
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { DataReferenceLibraryPane } from "./DataReferenceLibraryPane";
 import { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";
 import { CreateLibraryModal } from "./components/CreateLibraryModal";
+import { DataReferenceLibraryPane } from "./components/DataReferenceLibraryPane";
 import { PublishTablesModal } from "./components/PublishTablesModal";
 import { UnpublishTablesModal } from "./components/UnpublishTablesModal";
+import { useGetLibraryChildCollectionByType } from "./hooks/use-get-library-child-collection-by-type";
+import { useGetLibraryCollection } from "./hooks/use-get-library-collection";
+import { useGetResolvedLibraryCollection } from "./hooks/use-get-resolved-library-collection";
 import { getDataStudioLibraryRoutes } from "./routes";
 import {
   getCollectionPickerItems,
@@ -16,9 +19,6 @@ import {
   isLibraryCollectionType,
   isLibraryDataCollectionType,
   isLibrarySubCollectionType,
-  useGetLibraryChildCollectionByType,
-  useGetLibraryCollection,
-  useGetResolvedLibraryCollection,
 } from "./utils";
 
 export function initializePlugin() {
