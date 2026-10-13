@@ -71,6 +71,9 @@
                    (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
                          table-fields))
                  (catch Throwable e
+                   ;; an unreachable warehouse fails every table the same way; abort so sync can retry later
+                   (when (sync-util/transient-exception? e)
+                     (throw e))
                    (log/warn (str "Could not fetch fields from table " table-id ": " (ex-message e)))
                    nil))))
      table-ids)))
