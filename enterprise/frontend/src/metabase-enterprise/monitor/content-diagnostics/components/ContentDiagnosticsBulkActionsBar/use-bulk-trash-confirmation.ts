@@ -53,7 +53,7 @@ export function useBulkTrashConfirmation({
     if (failedFindings.length > 0) {
       dispatch(
         addUndo({
-          icon: "warning",
+          variant: "negative",
           message: ngettext(
             msgid`Couldn't remove ${failedFindings.length} item`,
             `Couldn't remove ${failedFindings.length} items`,
