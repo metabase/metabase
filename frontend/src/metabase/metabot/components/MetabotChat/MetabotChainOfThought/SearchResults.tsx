@@ -70,6 +70,7 @@ const SearchResultRow = ({
       model: toSearchModel(result.type),
       name: result.name,
       database_id: result.database_id,
+      table_id: result.table_id,
     })}
     className={cx(S.resultRow, animate && Animation.fadeIn)}
     style={

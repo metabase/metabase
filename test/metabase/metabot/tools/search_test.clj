@@ -55,7 +55,13 @@
             :moderated_status "verified"}
            (#'search/search-result->item
             {:id 7 :type "question" :name "Revenue" :display :line
-             :moderated_status "verified"})))))
+             :moderated_status "verified"}))))
+  (testing "carries the base table of a measure or segment, which the client needs to link to it"
+    (is (= [{:id 8 :type "measure" :name "Revenue" :database_id 2 :table_id 10}
+            {:id 9 :type "segment" :name "Big orders" :database_id 2 :table_id 10}]
+           (map #'search/search-result->item
+                [{:id 8 :type "measure" :name "Revenue" :database_id 2 :base_table_id 10}
+                 {:id 9 :type "segment" :name "Big orders" :database_id 2 :base_table_id 10}])))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"

@@ -607,11 +607,13 @@
 (defn- search-result->item
   "Trim a search result to the fields the chain-of-thought results card renders.
   `:display` (a question's viz type) and `:moderated_status` let the client pick the
-  exact entity icon, matching the app's search/command-palette icons."
+  exact entity icon, matching the app's search/command-palette icons.
+  `:table_id` is the base table of a measure or segment, which the client needs to link to it."
   [r]
   (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
       (m/assoc-some :display (some-> (:display r) name)
                     :moderated_status (:moderated_status r)
+                    :table_id (when (#{"measure" "segment"} (:type r)) (:base_table_id r))
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
 (defn- do-search
