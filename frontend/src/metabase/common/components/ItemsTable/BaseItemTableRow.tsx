@@ -13,6 +13,8 @@ import type { CollectionItem } from "metabase-types/api";
 
 import S from "./BaseItemTableRow.module.css";
 
+export const ITEM_ROW_HEIGHT = 48;
+
 export type ItemTableRowDndState =
   | "idle"
   | "dragged"
@@ -117,7 +119,7 @@ export const TableRow = ({
   <tr
     key={itemKey}
     data-testid={testIdPrefix}
-    style={{ height: 48 }}
+    style={{ height: ITEM_ROW_HEIGHT }}
     onClickCapture={getRowShiftSelectHandler({
       item,
       collection,
@@ -171,7 +173,7 @@ export const ItemDragSourceTableRow = ({
       <tr
         data-dnd-state={dndState}
         data-testid={testIdPrefix}
-        style={{ height: 48 }}
+        style={{ height: ITEM_ROW_HEIGHT }}
         className={cx({
           [S.draggedRow]: dndState === "dragged",
           [S.disabledRow]: dndState === "disabled",
