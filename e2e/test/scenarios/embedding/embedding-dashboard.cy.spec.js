@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { defer } from "metabase/utils/promise";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native/helpers/e2e-field-filter-helpers";
@@ -12,7 +13,8 @@ import {
   questionDetailsWithDefaults,
 } from "./shared/embedding-dashboard";
 
-const { ORDERS, PEOPLE, PEOPLE_ID, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID, ORDERS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > embedding > static embedding dashboard", () => {
   beforeEach(() => {
@@ -23,8 +25,28 @@ describe("scenarios > embedding > static embedding dashboard", () => {
     });
   });
 
-  it("should not call `GET /api/database` (metabase#63310)", () => {
+  it("should not call `GET /api/database` and should return cache headers for the js bundle (metabase#63310, metabase#50373)", () => {
     cy.intercept("GET", "/api/database").as("getDatabases");
+    cy.intercept(
+      {
+        method: "GET",
+        url: /^\/app\/dist\/(.*)\.js$/,
+      },
+      (req) => {
+        // When running in development (e.g. with `bun run dev`),
+        // the *.hot.bundle.js hot-reloaded file is served by the dev server.
+        if (req.url.includes("hot.bundle.js")) {
+          return;
+        }
+
+        req.on("response", (res) => {
+          expect(
+            res.headers["cache-control"],
+            `Invalid Cache-Control header for ${req.url}`,
+          ).to.equal("public, max-age=31536000");
+        });
+      },
+    );
     const payload = {
       resource: { dashboard: ORDERS_DASHBOARD_ID },
       params: {},
@@ -36,6 +58,48 @@ describe("scenarios > embedding > static embedding dashboard", () => {
     );
     cy.log("GET /api/database should not be called");
     cy.get("@getDatabases.all").should("have.length", 0);
+  });
+
+  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
+    const questionDetails = {
+      name: "Products",
+      query: { "source-table": PRODUCTS_ID, limit: 2 },
+    };
+
+    const dashboardDetails = {
+      name: "long dashboard",
+      enable_embedding: true,
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [{ card_id }, { card_id }, { card_id }],
+      });
+
+      H.visitDashboard(dashboard_id);
+
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
+    });
+
+    H.getIframeBody().within(() => {
+      cy.findByText(dashboardDetails.name).should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findAllByText("1018947080336").should("have.length", 3);
+      cy.findByTestId("embed-frame").scrollTo("bottom");
+
+      cy.findByRole("link", { name: "Powered by Metabase" })
+        .scrollIntoView()
+        .should("be.visible");
+    });
   });
 });
 
@@ -1251,26 +1315,50 @@ describe("scenarios > embedding > dashboard appearance", () => {
     });
   });
 
-  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+  it("should apply the `#locale`, `#font`, `#background` and `#theme` hash parameters to a static dashboard embed (metabase#50182, metabase#62391, metabase#66253)", () => {
+    const visitOrdersDashboard = (additionalHashOptions, onBeforeLoad) => {
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: ORDERS_DASHBOARD_ID },
+          params: {},
+        },
+        { additionalHashOptions, onBeforeLoad },
+      );
+    };
+
+    const visitWithTheme = (theme) => {
+      cy.clearLocalStorage();
+
+      visitOrdersDashboard({ theme }, (win) => {
+        // a bit gross but other stub techniques don't reliably work in Cypress
+        cy.stub(win, "matchMedia").callsFake((query) => {
+          return {
+            matches: query === "(prefers-color-scheme: dark)",
+            media: query,
+            addEventListener: cy.stub(),
+            removeEventListener: cy.stub(),
+            addListener: cy.stub(), // deprecated but sometimes needed
+            removeListener: cy.stub(),
+            dispatchEvent: cy.stub(),
+          };
+        });
+      });
+    };
+
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });
     cy.signOut();
 
+    cy.log("Test `#locale`, `#font` and `#background=false` without an iframe");
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
 
-    H.visitEmbeddedPage(
-      {
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          locale: "de-CH",
-        },
-      },
-    );
+    visitOrdersDashboard({
+      locale: "de-CH",
+      font: "Roboto",
+      background: "false",
+    });
 
     cy.wait("@deLocale");
 
@@ -1281,53 +1369,27 @@ describe("scenarios > embedding > dashboard appearance", () => {
     }).should("exist");
 
     cy.url().should("include", "locale=de");
-  });
-
-  it("should allow to set font from the `font` hash parameter", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
-    cy.signOut();
-
-    H.visitEmbeddedPage(
-      {
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          font: "Roboto",
-        },
-      },
-    );
 
     H.main().should(
       "have.css",
       "font-family",
       'Roboto, "Noto Sans", sans-serif',
     );
-  });
 
-  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
-    cy.signOut();
+    cy.findByTestId("embed-frame").should("exist");
 
-    H.visitEmbeddedPage(
-      {
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          background: "false",
-        },
-        onBeforeLoad: (window) => {
-          window.overrideIsWithinIframe = true;
-        },
-      },
+    cy.get("body.mb-wrapper").should(
+      "not.have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
     );
+
+    cy.log("Test `#background=false` inside an iframe");
+    cy.visit("/");
+
+    visitOrdersDashboard({ background: "false" }, (window) => {
+      window.overrideIsWithinIframe = true;
+    });
 
     cy.findByTestId("embed-frame").should("exist");
 
@@ -1340,73 +1402,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.window().then((win) => {
       delete win.overrideIsWithinIframe;
     });
-  });
 
-  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
-    cy.signOut();
-
-    H.visitEmbeddedPage(
-      {
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          background: "false",
-        },
-      },
-    );
-
-    cy.findByTestId("embed-frame").should("exist");
-
-    cy.get("body.mb-wrapper").should(
-      "not.have.css",
-      "background-color",
-      "rgba(0, 0, 0, 0)",
-    );
-  });
-
-  it("should apply theme hash parameter to static dashboard embed (metabase#66253)", () => {
-    const visit = (theme) => {
-      cy.clearLocalStorage();
-
-      H.visitEmbeddedPage(
-        {
-          resource: { dashboard: ORDERS_DASHBOARD_ID },
-          params: {},
-        },
-        {
-          additionalHashOptions: {
-            theme,
-          },
-          onBeforeLoad: (win) => {
-            // a bit gross but other stub techniques don't reliably work in Cypress
-            cy.stub(win, "matchMedia").callsFake((query) => {
-              return {
-                matches: query === "(prefers-color-scheme: dark)",
-                media: query,
-                addEventListener: cy.stub(),
-                removeEventListener: cy.stub(),
-                addListener: cy.stub(), // deprecated but sometimes needed
-                removeListener: cy.stub(),
-                dispatchEvent: cy.stub(),
-              };
-            });
-          },
-        },
-      );
-    };
-
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
-    cy.signOut();
+    cy.visit("/");
 
     cy.log("Test default light theme behavior");
-    visit();
+    visitWithTheme();
 
     // Test core functionality works with default theme
     cy.get("[data-testid=embed-frame]").should("be.visible");
@@ -1414,7 +1414,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.get('html[data-metabase-theme="light"]').should("exist");
 
     cy.log("Test explicit light theme via hash parameter");
-    visit("light");
+    visitWithTheme("light");
 
     // Test functionality still works with theme parameter
     cy.get("[data-testid=embed-frame]").should("be.visible");
@@ -1425,7 +1425,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.location("hash").should("include", "theme=light");
 
     cy.log("Test explicit dark theme via hash parameter");
-    visit("dark");
+    visitWithTheme("dark");
 
     // Test functionality still works with theme parameter
     cy.get("[data-testid=embed-frame]").should("be.visible");
@@ -1601,6 +1601,223 @@ describe("scenarios > embedding > dashboard appearance", () => {
         // The raw numeric value "1" should NOT appear as a separate option
         cy.findByText("1").should("not.exist");
       });
+    });
+  });
+});
+
+describe("issue 8490", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        name: "Dashboard to test locale",
+        enable_embedding: true,
+      },
+      questions: [
+        {
+          name: "Line chart",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            filter: [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              "2027-01-01",
+              "2028-01-01",
+            ],
+          },
+          limit: 100,
+          visualization_settings: {
+            "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+            "graph.metrics": ["count"],
+          },
+          display: "bar",
+          enable_embedding: true,
+        },
+        {
+          name: "Order quantity trend",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "sum",
+                ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            filter: [
+              "and",
+              [
+                "between",
+                ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+                "2027-10-01",
+                "2027-12-01",
+              ],
+              [
+                "=",
+                [
+                  "field",
+                  PRODUCTS.VENDOR,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+                "Alfreda Konopelski II Group",
+              ],
+            ],
+          },
+          display: "smartscalar",
+        },
+        {
+          name: "Pie chart",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.VENDOR,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+            limit: 5,
+          },
+          visualization_settings: {
+            "pie.slice_threshold": 20,
+          },
+          display: "pie",
+        },
+      ],
+      cards: [{}, { col: 11 }],
+    }).then(({ dashboard, questions: [lineChartQuestion] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(lineChartQuestion.id).as("lineChartQuestionId");
+    });
+  });
+
+  it("static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)", () => {
+    cy.log("test a static embedded dashboard");
+    const {
+      promise: dashboardLoaderPromise,
+      resolve: resolveDashboardLoaderPromise,
+    } = defer();
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/embed/dashboard/*",
+      },
+      () => dashboardLoaderPromise,
+    ).as("dashboardRequest");
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboardId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.log(
+        "static embeddings with `#locale` should show a translated the loading message",
+      );
+      // Loading...
+      cy.findByText("로드 중...")
+        .should("be.visible")
+        .then(resolveDashboardLoaderPromise);
+
+      cy.log("assert the line chart");
+      H.getDashboardCard(0).within(() => {
+        // X-axis labels: Jan 2024 (or some other year)
+        cy.findByText(/^1월 20\d\d\b/).should("be.visible");
+        // Aggregation "count"
+        cy.findByText("카운트").should("be.visible");
+      });
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.log("assert the trend chart");
+      H.getDashboardCard(2).within(() => {
+        // N/A (the comparison row combines it with the comparison description)
+        cy.findByText(/해당 없음/).should("be.visible");
+        // (No data)
+        cy.findByText("(데이터 없음)").should("be.visible");
+      });
+
+      cy.log("assert the pie chart");
+      H.getDashboardCard(1).within(() => {
+        // Total
+        cy.findByText("합계").should("be.visible");
+        // Other
+        cy.findByTestId("chart-legend").findByText("기타").should("be.visible");
+      });
+    });
+
+    cy.log("test a static embedded question");
+    const {
+      promise: questionLoaderPromise,
+      resolve: resolveQuestionLoaderPromise,
+    } = defer();
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/embed/card/*",
+      },
+      () => questionLoaderPromise,
+    ).as("questionRequest");
+
+    cy.log("assert the line chart");
+    cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
+      H.visitEmbeddedPage(
+        {
+          resource: { question: lineChartQuestionId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.log(
+        "static embeddings with `#locale` should show a translated the loading message",
+      );
+      // Loading...
+      cy.findByText("로딩...")
+        .should("be.visible")
+        .then(resolveQuestionLoaderPromise);
+
+      // X-axis labels: Jan 2023 (or some other year)
+      cy.findByText(/11월 20\d\d\b/).should("be.visible");
+      // Aggregation "count"
+      cy.findByText("카운트").should("be.visible");
     });
   });
 });
