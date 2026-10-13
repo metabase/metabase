@@ -28,7 +28,6 @@ const ROLE_RULES: Record<ColumnRole, RoleRule> = {
     names: ["session_id"],
   },
   event_id: {
-    semanticType: TYPE.PK,
     names: ["event_id", "id"],
   },
   event_name: {

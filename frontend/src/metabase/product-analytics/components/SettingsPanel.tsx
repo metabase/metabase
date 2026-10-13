@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Paper, Text, Title } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
@@ -23,7 +25,14 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
   const columns = visible.filter((widget) => widget.group === "columns");
 
   return (
-    <Paper withBorder pt="xl" px="xl" miw={280} maw={360} w="100%">
+    <Paper
+      withBorder
+      pt="xl"
+      px="xl"
+      w="25rem"
+      mah="100%"
+      className={cx(CS.alignSelfStart, CS.overflowYAuto)}
+    >
       {ungrouped.map((widget) => (
         <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
       ))}

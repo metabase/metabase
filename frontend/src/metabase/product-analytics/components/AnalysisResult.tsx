@@ -67,31 +67,33 @@ export const AnalysisResult = ({
     : warnings;
 
   return (
-    <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }} mih={420}>
-      <Group justify="space-between" wrap="nowrap">
-        <Title order={4}>{title}</Title>
-        <Warnings warnings={allWarnings} size={18} />
-      </Group>
-      <Stack gap="sm" mt="md">
-        {error && <Alert color="error">{error}</Alert>}
-        {isLoading && (
-          <Box ta="center" py="xl">
-            <Loader />
-          </Box>
-        )}
-        {!isLoading && !error && rawSeries === null && (
-          <Text c="text-secondary">{t`Results will appear here.`}</Text>
-        )}
-        {isShowingVisualization && (
-          <Box h={420}>
-            <Visualization
-              rawSeries={rawSeries}
-              isQueryBuilder={false}
-              onUpdateWarnings={setVizWarnings}
-              onChangeCardAndRun={noop}
-            />
-          </Box>
-        )}
+    <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }}>
+      <Stack h="100%">
+        <Group justify="space-between" wrap="nowrap">
+          <Title order={4}>{title}</Title>
+          <Warnings warnings={allWarnings} size={18} />
+        </Group>
+        <Stack gap="sm" flex={1}>
+          {error && <Alert color="error">{error}</Alert>}
+          {isLoading && (
+            <Box ta="center" py="xl">
+              <Loader />
+            </Box>
+          )}
+          {!isLoading && !error && rawSeries === null && (
+            <Text c="text-secondary">{t`Results will appear here.`}</Text>
+          )}
+          {isShowingVisualization && (
+            <Box flex={1}>
+              <Visualization
+                rawSeries={rawSeries}
+                isQueryBuilder={false}
+                onUpdateWarnings={setVizWarnings}
+                onChangeCardAndRun={noop}
+              />
+            </Box>
+          )}
+        </Stack>
       </Stack>
     </Paper>
   );

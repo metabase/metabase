@@ -81,7 +81,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const { isPickerOpen, closePicker } = useAddToDashboardToast();
 
   return (
-    <Stack flex={1} mih="100%" gap={0} bg="background-secondary">
+    <Stack flex={1} h="100%" gap={0} bg="background-secondary">
       <Stack
         gap="md"
         pl="xxl"
@@ -105,7 +105,16 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           onSave={handleSave}
         />
       </Stack>
-      <Group align="flex-start" gap="lg" wrap="nowrap" py="lg" pl="xxl" pr="lg">
+      <Group
+        gap="lg"
+        wrap="nowrap"
+        py="lg"
+        pl="xxl"
+        pr="lg"
+        flex={1}
+        align="stretch"
+        mih={0}
+      >
         {panel && <SettingsPanel panel={panel} widgets={widgets} />}
         <AnalysisResult
           title={config.question}

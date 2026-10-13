@@ -7,8 +7,12 @@ import { isRecord } from "metabase-types/guards";
  * revival is needed.
  */
 
+/**
+ * Never empty, even for empty settings: an empty hash means "no unsaved
+ * edits", which differs from clearing every saved setting.
+ */
 export const encodeSettings = (stored: object): string =>
-  Object.keys(stored).length > 0 ? utf8_to_b64url(JSON.stringify(stored)) : "";
+  utf8_to_b64url(JSON.stringify(stored));
 
 /** Untrusted: the settings engine validates each value and falls back to its default. */
 export const decodeSettings = (hash: string): Record<string, unknown> => {

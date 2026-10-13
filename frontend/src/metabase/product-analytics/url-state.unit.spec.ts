@@ -10,8 +10,9 @@ describe("url state", () => {
     expect(decodeSettings(encodeSettings(stored))).toEqual(stored);
   });
 
-  it("encodes empty settings as an empty hash", () => {
-    expect(encodeSettings({})).toBe("");
+  it("encodes empty settings as a non-empty hash", () => {
+    expect(encodeSettings({})).not.toBe("");
+    expect(decodeSettings(encodeSettings({}))).toEqual({});
     expect(decodeSettings("")).toEqual({});
   });
 

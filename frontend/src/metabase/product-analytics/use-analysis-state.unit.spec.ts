@@ -24,8 +24,9 @@ const setup = ({ savedSettings, hash = "" }: SetupOpts = {}) => {
     () => useAnalysisState<TestSettings>(savedSettings),
     { withRouter: true, initialRoute: `/event-analysis/5${hash}` },
   );
-  const getHash = () => checkNotNull(router).location.hash.replace(/^#/, "");
-  return { result, getHash };
+  const testRouter = checkNotNull(router);
+  const getHash = () => testRouter.location.hash.replace(/^#/, "");
+  return { result, router: testRouter, getHash };
 };
 
 describe("useAnalysisState", () => {
@@ -86,5 +87,48 @@ describe("useAnalysisState", () => {
     act(() => result.current.onChangeSettings({ counting: undefined }));
     expect(result.current.stored).toEqual(SAVED_SETTINGS);
     expect(result.current.hasUnsavedChanges).toBe(true);
+  });
+
+  it("steps through edits with browser back and forward", () => {
+    const { result, router } = setup({ savedSettings: SAVED_SETTINGS });
+
+    act(() => result.current.onChangeSettings({ counting: "event" }));
+    act(() => result.current.onChangeSettings({ counting: "session" }));
+
+    act(() => router.back());
+    expect(result.current.stored).toEqual({
+      "funnel.view": "overTime",
+      counting: "event",
+    });
+    expect(result.current.hasUnsavedChanges).toBe(true);
+
+    act(() => router.back());
+    expect(result.current.stored).toEqual(SAVED_SETTINGS);
+    expect(result.current.hasUnsavedChanges).toBe(false);
+
+    act(() => router.forward());
+    act(() => router.forward());
+    expect(result.current.stored).toEqual({
+      "funnel.view": "overTime",
+      counting: "session",
+    });
+  });
+
+  it("doesn't add a history entry when nothing changed", () => {
+    const { result, router } = setup({ savedSettings: SAVED_SETTINGS });
+    const onLocationChange = jest.fn();
+    router.onLocationChange(onLocationChange);
+
+    act(() => result.current.onChangeSettings({ "funnel.view": "overTime" }));
+    expect(onLocationChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps an edit that clears every saved setting", () => {
+    const { result, getHash } = setup({ savedSettings: SAVED_SETTINGS });
+
+    act(() => result.current.onChangeSettings({ "funnel.view": undefined }));
+    expect(result.current.stored).toEqual({});
+    expect(result.current.hasUnsavedChanges).toBe(true);
+    expect(getHash()).toBe(encodeSettings({}));
   });
 });
