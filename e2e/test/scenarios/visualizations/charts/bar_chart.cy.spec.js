@@ -1074,9 +1074,10 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.echartsContainer()
       .findAllByText(
-        /^(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}$/,
+        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$/,
       )
-      .should("have.length", 12);
+      .should("have.length", 12)
+      .and("be.visible");
   });
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {

@@ -647,8 +647,7 @@ WHERE NOT (
     cy.findByText("Separator style");
 
     cy.log("Value fields cannot be sorted");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Sort order/).should("not.be.visible");
+    H.popover().findByText("Sort order").should("not.exist");
 
     cy.log("Change the value formatting");
     cy.findByDisplayValue("Normal").click();
