@@ -399,3 +399,37 @@
             ;; Identity, not equality: providers compare equal when they wrap the same database id, so `=` would be
             ;; satisfied by two separate caches and would not detect the regression.
             (is (every? #(identical? (first @providers) %) @providers))))))))
+
+(deftest ^:synchronized malformed-source-id-does-not-break-the-finding-insert-test
+  (testing "an error naming a non-integer source is recorded without the source (GHY-4956)"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Card {cid :id} {:dataset_query (mt/native-query {:query "SELECT 1"})
+                                              :database_id   (mt/id)}]
+          (models.analysis-finding/upsert-analysis! :card cid false
+                                                    [{:type :missing-card, :source-entity-type :card, :source-entity-id "card__1"}])
+          (is (=? [{:error_type :missing-card, :source_entity_type nil, :source_entity_id nil}]
+                  (models.analysis-finding-error/errors-for-entity :card cid))))))))
+
+(deftest ^:synchronized failed-analysis-is-recorded-test
+  (testing "when recording an analysis fails, a failed analysis is recorded so the entity isn't re-selected first forever (GHY-4956)"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT 1"})
+                                         :database_id   (mt/id)}]
+          (let [cid      (:id card)
+                calls    (atom 0)
+                replace! (mt/original-fn #'models.analysis-finding-error/replace-errors-for-entity!)]
+            (models.analysis-finding/upsert-analysis! :card cid true [])
+            (models.analysis-finding/mark-stale! :card [cid])
+            (mt/with-dynamic-fn-redefs [models.analysis-finding-error/replace-errors-for-entity!
+                                        (fn [& args]
+                                          (when (= 1 (swap! calls inc))
+                                            (throw (ex-info "column \"source_entity_id\" is of type integer" {})))
+                                          (apply replace! args))]
+              (lib-be/with-metadata-provider-cache
+                (deps.findings/analyze-instances! [(t2/instance :model/Card card)])))
+            (is (=? {:stale false, :result false}
+                    (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id cid)))
+            (is (=? [{:error_detail #"Analysis failed: .*source_entity_id.*"}]
+                    (models.analysis-finding-error/errors-for-entity :card cid)))))))))
