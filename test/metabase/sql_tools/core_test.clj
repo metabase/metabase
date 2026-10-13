@@ -370,6 +370,27 @@
       :sqlserver "SELECT * FROM dbo.fn(1)"
       :postgres  "SELECT currval('seq')")))
 
+(deftest ^:parallel read-only-select?-sql-executing-function-test
+  (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
+    ;; The parser reads the inner SQL as an opaque literal, so a write, a lock or a session change hidden in it
+    ;; would otherwise pass. Refuse the wrapper itself.
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :postgres  "SELECT query_to_xml('SELECT nextval(''s'')', true, false, '')"
+      :postgres  "SELECT query_to_xml('SELECT pg_advisory_lock(4242)', true, false, '')"
+      :postgres  "SELECT query_to_xml('SELECT set_config(''application_name'', ''x'', false)', true, false, '')"
+      :postgres  "SELECT ts_stat('SELECT to_tsvector(nextval(''s'')::text)')"
+      :postgres  "SELECT ts_rewrite('a'::tsquery, 'SELECT ''a''::tsquery, (''b''||nextval(''s''))::tsquery')"
+      :postgres  "SELECT * FROM crosstab('DELETE FROM t RETURNING 1, 2') AS c(a int, b int)"
+      :postgres  "SELECT dblink_exec('dbname=x', 'DELETE FROM t')"
+      :postgres  "SELECT * FROM dblink('dbname=x', 'DELETE FROM t RETURNING id') AS r(id int)"
+      :sqlserver "SELECT * FROM OPENQUERY(loop, 'DELETE FROM t')"
+      :sqlserver "SELECT * FROM OPENROWSET('P', 's', 'DELETE FROM t')"
+      :bigquery  "SELECT * FROM EXTERNAL_QUERY('c', 'DELETE FROM t')"))
+  (testing "an ordinary read is still read-only"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :postgres "SELECT id, name FROM t WHERE id = 5"
+      :postgres "SELECT * FROM generate_series(1, 10) g")))
+
 (deftest ^:parallel read-only-select?-hidden-sql-test
   (testing "SQL the database would run and the parser reads as something else is not read-only"
     (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
@@ -410,6 +431,7 @@
       :sparksql  :writes-or-locks     nil                "SELECT TRANSFORM (a) USING 'cat' FROM t"
       :postgres  :session-function    "pg_advisory_lock" "SELECT pg_advisory_lock(42)"
       :mysql     :session-function    "get_lock"         "SELECT GET_LOCK('x', 10)"
+      :postgres  :sql-executing-function "query_to_xml"  "SELECT query_to_xml('SELECT pg_advisory_lock(1)', true, false, '')"
       :postgres  :unparseable         nil                "SELECT ("
       :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"

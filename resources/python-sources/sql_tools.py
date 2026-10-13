@@ -1916,6 +1916,37 @@ def _session_effect_function(stmt: exp.Expression):
     return None
 
 
+# Functions that take a SQL string and run it. The parser reads that string as an opaque literal, so a write, a lock,
+# or a session change hidden inside it escapes the checks above: `query_to_xml('SELECT pg_advisory_lock(1)')` and
+# `dblink_exec(conn, 'DELETE ...')` both read as a plain SELECT. The wrapper is refused whatever the string holds, so
+# the string is never trusted. These names are distinctive, so matching across dialects costs no real query. Oracle's
+# package functions (`dbms_xmlgen.getxml`, `utl_http.request`) are the same hazard but collapse to a bare name that
+# could collide with an innocent column function, so they are left to the connection-level work instead.
+_SQL_EXECUTING_FUNCTIONS = frozenset(
+    {
+        # Postgres query-to-xml family
+        "query_to_xml", "query_to_xmlschema", "query_to_xml_and_xmlschema", "cursor_to_xml", "cursor_to_xmlschema",
+        # Postgres full-text and tablefunc helpers that run a passed query
+        "ts_stat", "ts_rewrite", "crosstab", "crosstab2", "crosstab3", "crosstab4", "connectby",
+        # Postgres dblink
+        "dblink", "dblink_exec", "dblink_send_query", "dblink_fetch", "dblink_open",
+        # SQL Server linked-server and ad hoc access
+        "openquery", "openrowset", "opendatasource",
+        # BigQuery federated query
+        "external_query",
+    }
+)
+
+
+def _sql_executing_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_SQL_EXECUTING_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _SQL_EXECUTING_FUNCTIONS:
+            return name
+    return None
+
+
 # SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
 # `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
 _LOCKING_TABLE_HINTS = frozenset(
@@ -2005,6 +2036,9 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     function = _session_effect_function(stmts[0])
     if function is not None:
         return ("session-function", function)
+    executor = _sql_executing_function(stmts[0])
+    if executor is not None:
+        return ("sql-executing-function", executor)
     return _hidden_sql(sql, dialect)
 
 

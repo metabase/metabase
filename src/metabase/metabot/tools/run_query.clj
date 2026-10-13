@@ -225,6 +225,8 @@
         :not-a-select        "It is not a SELECT."
         :writes-or-locks     "It writes, takes a lock, or advances a sequence."
         :session-function    (str "It calls " detail ", which takes a lock, waits, or changes the session.")
+        :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
+                                     " see into.")
         :statement-word      (str "It uses the word " detail " outside quotes, which starts a new statement on"
                                   " SQL Server.")
         :executable-comment  "It holds a /*! or /*M! comment, which MySQL and MariaDB run as SQL."
