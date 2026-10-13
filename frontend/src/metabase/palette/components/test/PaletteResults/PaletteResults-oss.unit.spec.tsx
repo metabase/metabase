@@ -10,6 +10,27 @@ import {
 
 import { type CommonSetupProps, commonSetup } from "./setup";
 
+// The search debounce is idle time in all but one test here, which asserts that
+// the remote search waits for it.
+let searchDebounceDuration = 0;
+
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  get SEARCH_DEBOUNCE_DURATION() {
+    return searchDebounceDuration;
+  },
+}));
+
+const withRealSearchDebounce = () => {
+  const actual = jest.requireActual("metabase/utils/constants");
+  beforeEach(() => {
+    searchDebounceDuration = actual.SEARCH_DEBOUNCE_DURATION;
+  });
+  afterEach(() => {
+    searchDebounceDuration = 0;
+  });
+};
+
 const setup = (props: CommonSetupProps = {}) =>
   commonSetup({ ...props, isEE: false });
 
@@ -41,14 +62,18 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("Results")).toBeInTheDocument();
   });
 
-  it("should surface static actions before the remote search debounce fires", async () => {
-    setup({ query: "new" });
+  describe("with the real search debounce", () => {
+    withRealSearchDebounce();
 
-    expect(await screen.findByText("New question")).toBeInTheDocument();
+    it("should surface static actions before the remote search debounce fires", async () => {
+      setup({ query: "new" });
 
-    // useCommandPaletteBasicActions makes one baseline /api/search call; any
-    // additional call means the debounced remote search has already run.
-    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
+      expect(await screen.findByText("New question")).toBeInTheDocument();
+
+      // useCommandPaletteBasicActions makes one baseline /api/search call; any
+      // additional call means the debounced remote search has already run.
+      expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
+    });
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness

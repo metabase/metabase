@@ -309,7 +309,8 @@ function getSidebarTabItem({
     ? {
         value,
         ariaLabel: label,
-        icon: <Icon name={iconName} tooltip={label} />,
+        icon: iconName,
+        withTooltip: true,
       }
     : { value, label };
 }

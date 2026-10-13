@@ -261,6 +261,11 @@
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
 
+(defn group-permission-exists?
+  "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
+  [where]
+  (t2/exists? :model/McpGroupPermission {:where where}))
+
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
   database and answers `{}` — `[:in ()]` is not valid SQL.
@@ -284,12 +289,3 @@
   (if (seq user-ids)
     (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
     {}))
-
-(defn existing-transform-tag-ids
-  "The subset of `tag-ids` that name a real TransformTag, as a set. `ids` is expected non-empty — an
-  empty `:in` is a SQL error rather than an empty result, so callers guard it.
-
-  A set rather than the select's own return: `t2/select-fn-set` answers nil when nothing matches,
-  which is exactly the all-unknown case the caller is checking for."
-  [tag-ids]
-  (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids])))

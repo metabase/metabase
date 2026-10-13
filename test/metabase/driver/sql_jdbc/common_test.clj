@@ -66,7 +66,27 @@
     (is (= ["backup.corp"]
            (sql-jdbc.common/connection-parameter-hosts "jdbc:vertica://real.example.com:5433/db"
                                                        {:backupservernode "backup.corp" :loginTimeout 10}
-                                                       ["backupservernode"])))))
+                                                       ["backupservernode"]))))
+  (testing "a percent-encoded name or value is read as the client that decodes it would read it"
+    (are [conn-str declared expected]
+         (= expected (sql-jdbc.common/connection-parameter-hosts conn-str nil declared))
+      "jdbc:snowflake://acct.snowflakecomputing.com/?proxy%48ost=internal.corp" ["proxyHost"] ["internal.corp"]
+      "jdbc:snowflake://acct.snowflakecomputing.com/?proxyHost=%69nternal.corp" ["proxyHost"] ["internal.corp"]
+      "jdbc:snowflake://acct.snowflakecomputing.com/?serverURL=https%3A%2F%2F10.0.0.1%2F" nil ["10.0.0.1"]))
+  (testing "a value that is not valid percent-encoding is still read as written"
+    (is (= ["internal.corp"]
+           (sql-jdbc.common/connection-parameter-hosts "jdbc:x://h:1/db?host=internal.corp&password=100%zz"
+                                                       nil ["host"])))))
+
+(deftest ^:parallel connection-string-parameter-values-test
+  (testing "every value given the parameter, case-insensitively, as written and percent-decoded"
+    (is (= ["SNOWFLAKE_JWT" "https://a.corp/" "https%3A%2F%2Fb.corp%2F" "https://b.corp/"]
+           (sql-jdbc.common/connection-string-parameter-values
+            "jdbc:snowflake://acct.snowflakecomputing.com/?authenticator=SNOWFLAKE_JWT&AUTHENTICATOR=https://a.corp/&user=u&authenticator=https%3A%2F%2Fb.corp%2F"
+            "authenticator"))))
+  (testing "nothing for a parameter that is absent, or a string with no parameters"
+    (is (= [] (sql-jdbc.common/connection-string-parameter-values "jdbc:x://h:1/db?user=u" "authenticator")))
+    (is (= [] (sql-jdbc.common/connection-string-parameter-values "jdbc:x://h:1/db" "authenticator")))))
 
 (deftest ^:parallel connection-string-hosts-test
   (testing "the authority is read whichever shape the driver built it in"

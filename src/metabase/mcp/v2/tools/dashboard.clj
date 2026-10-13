@@ -462,13 +462,14 @@
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on every referenced card."
-  {:name         "dashboard_write"
-   :scope        metabot.scope/agent-content-write
+  {:name           "dashboard_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
    ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
    ;; would assert.
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         dashboard-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)]
     (common/success-content

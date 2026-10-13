@@ -71,6 +71,11 @@ const setup = async ({
   writeStatus,
   writeMessage,
   writeGate,
+  checkResponse = {
+    ok: true,
+    discovery: { step: "discovery", success: true },
+    credentials: { step: "credentials", success: true, verified: true },
+  },
 }: {
   providers?: CustomOidcConfig[];
   configured?: boolean;
@@ -82,6 +87,7 @@ const setup = async ({
   writeStatus?: number;
   writeMessage?: string;
   writeGate?: Promise<void>;
+  checkResponse?: object;
 } = {}) => {
   setupSettingsEndpoints(
     providersEnvName == null
@@ -133,11 +139,7 @@ const setup = async ({
     },
     { delay: writeDelay },
   );
-  fetchMock.post("path:/api/ee/sso/oidc/check", {
-    ok: true,
-    discovery: { step: "discovery", success: true },
-    credentials: { step: "credentials", success: true, verified: true },
-  });
+  fetchMock.post("path:/api/ee/sso/oidc/check", checkResponse);
 
   renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
 
@@ -229,16 +231,16 @@ describe("SettingsOIDCForm", () => {
         /Using MB_OIDC_PROVIDERS/,
       );
       const banner = screen.getByTestId("setting-env-var-message");
-      const bannerAfterProvisioning = screen
-        .getByRole("switch", { name: "User provisioning" })
-        .compareDocumentPosition(banner);
       const serverSettingsAfterBanner = banner.compareDocumentPosition(
         screen.getByRole("heading", { name: "Server settings" }),
       );
-      expect(bannerAfterProvisioning & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      const provisioningAfterBanner = banner.compareDocumentPosition(
+        screen.getByRole("switch", { name: "User provisioning" }),
       );
       expect(serverSettingsAfterBanner & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(provisioningAfterBanner & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
       expect(queryMappingRow("admins")).toBeInTheDocument();
@@ -287,6 +289,44 @@ describe("SettingsOIDCForm", () => {
     });
   });
 
+  describe("check connection", () => {
+    it("warns when discovery succeeds but the credentials cannot be verified", async () => {
+      await setup({
+        checkResponse: {
+          ok: true,
+          discovery: { step: "discovery", success: true },
+          credentials: { step: "credentials", success: true, verified: false },
+        },
+      });
+      await fillRequiredFields();
+
+      await clickWhenEnabled(
+        screen.getByRole("button", { name: "Check connection" }),
+      );
+
+      const toast = await screen.findByTestId("toast-undo");
+      expect(toast).toHaveTextContent(
+        "OIDC discovery succeeded, but credentials could not be verified.",
+      );
+      expect(toast).toHaveAttribute("data-variant", "warning");
+    });
+
+    it("shows a negative toast with the server message when the check fails", async () => {
+      await setup({
+        checkResponse: { status: 400, body: { message: "Invalid issuer" } },
+      });
+      await fillRequiredFields();
+
+      await clickWhenEnabled(
+        screen.getByRole("button", { name: "Check connection" }),
+      );
+
+      const toast = await screen.findByTestId("toast-undo");
+      expect(toast).toHaveTextContent("Invalid issuer");
+      expect(toast).toHaveAttribute("data-variant", "negative");
+    });
+  });
+
   describe("layout", () => {
     it("lays the cards out in the designed order", async () => {
       await setup({ providers: [EXISTING_PROVIDER] });
@@ -295,8 +335,8 @@ describe("SettingsOIDCForm", () => {
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
-        "User provisioning",
         "Server settings",
+        "User provisioning",
         "Attributes",
         "Group mapping",
       ]);

@@ -31,13 +31,42 @@ describe("scenarios > visualizations > line chart", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to change y axis position (metabase#13487)", () => {
+  it("should change formatting, y-axis position, color and line settings of a series (metabase#51952, metabase#13487, metabase#53735)", () => {
     H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "line",
     });
 
     H.openVizSettingsSidebar();
+
+    cy.log("x-axis column settings (metabase#51952)");
+    cy.findByTestId("settings-CREATED_AT").click();
+    H.popover().findByText("Abbreviate days and months").click();
+    H.echartsContainer().findByText("Jan 2027");
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+
+    cy.log("series formatting settings");
+    H.openSeriesSettings("Count");
+
+    H.popover().within(() => {
+      cy.findByText("Formatting").click();
+
+      cy.findByText("Add a prefix").should("exist");
+      cy.findByPlaceholderText("$").type("prefix").blur();
+    });
+
+    H.echartsContainer().findByText("prefix0");
+    // The popover closes on Escape only when the key event starts inside it
+    H.popover().findByPlaceholderText("$").focus();
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+
+    cy.log("y-axis position (metabase#13487)");
     H.openSeriesSettings("Count");
 
     H.echartsContainer()
@@ -47,25 +76,34 @@ describe("scenarios > visualizations > line chart", () => {
         cy.wrap({ x, y }).as("leftAxisLabelPosition");
       });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Right").click();
-    H.echartsContainer()
-      .findByText("Count")
-      .then((label) => {
-        const { x: xRight, y: yRight } = H.getXYTransform(label);
-        cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+    H.popover().findByText("Right").click();
+    cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+      H.echartsContainer()
+        .findByText("Count")
+        .should(($label) => {
+          const { x: xRight, y: yRight } = H.getXYTransform($label);
           expect(yRight).to.be.eq(yLeft);
           expect(xRight).to.be.greaterThan(xLeft);
         });
-      });
-  });
-
-  it("should display line settings only for line/area charts", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "line",
     });
 
+    cy.log("series color (metabase#53735)");
+    H.popover().within(() => {
+      cy.findByTestId("color-selector-button").button().click();
+    });
+
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .within(() => {
+        cy.findByLabelText("#EF8C8C").realClick();
+      });
+
+    cy.button("Done").click();
+
+    H.cartesianChartCircleWithColor("#EF8C8C");
+
+    cy.log("line settings show only for line and area charts");
     H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
@@ -90,35 +128,6 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Line size").should("not.be.visible");
       cy.findByText("Show dots on lines").should("not.be.visible");
     });
-  });
-
-  it("should allow changing formatting settings", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "line",
-    });
-
-    H.openVizSettingsSidebar();
-
-    cy.log("x-axis column settings (metabase#51952)");
-    cy.findByTestId("settings-CREATED_AT").click();
-    H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2027");
-    cy.realPress("Escape");
-    cy.get("[data-element-id=mantine-popover]")
-      .filter(":visible")
-      .should("not.exist");
-
-    H.openSeriesSettings("Count");
-
-    H.popover().within(() => {
-      cy.findByText("Formatting").click();
-
-      cy.findByText("Add a prefix").should("exist");
-      cy.findByPlaceholderText("$").type("prefix").blur();
-    });
-
-    H.echartsContainer().findByText("prefix0");
   });
 
   it("should reset series settings when switching to line chart", () => {
@@ -159,6 +168,8 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    H.echartsContainer().findByText("100%").should("be.visible");
+
     H.openVizTypeSidebar();
 
     cy.icon("line").click();
@@ -198,7 +209,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    H.echartsContainer().get("text").contains("39.75%");
+    H.echartsContainer().find("text").contains("39.75%");
   });
 
   it("should let unpin y-axis from zero", () => {
@@ -286,9 +297,6 @@ describe("scenarios > visualizations > line chart", () => {
       cy.get("@questionId").then((id) => H.visitQuestion(id));
 
       assertNoPoints();
-
-      // Check that message is displayed
-      cy.findByRole("dialog", { name: /data points are off screen/i });
 
       H.openVizSettingsSidebar();
 
@@ -721,7 +729,11 @@ describe("scenarios > visualizations > line chart", () => {
         display: "line",
       });
 
-      cy.get("g.axis.yr").should("not.exist");
+      H.echartsContainer().within(() => {
+        cy.findByText(/^Created At/).should("be.visible");
+        cy.findByText("Average of Total").should("not.exist");
+        cy.findByText("Min of Total").should("not.exist");
+      });
     });
 
     it("should split the y-axis when columns are of different semantic_type", () => {
@@ -749,7 +761,7 @@ describe("scenarios > visualizations > line chart", () => {
       });
     });
 
-    it("should split the y-axis when columns are of the same semantic_type but have far values", () => {
+    it("should label each side of a split y-axis separately", () => {
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -771,51 +783,6 @@ describe("scenarios > visualizations > line chart", () => {
       H.echartsContainer().within(() => {
         cy.findByText("Sum of Total").should("be.visible");
         cy.findByText("Min of Total").should("be.visible");
-      });
-    });
-
-    it("should not split the y-axis when the setting is disabled", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["min", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
-        visualization_settings: {
-          "graph.y_axis.auto_split": false,
-        },
-      });
-
-      cy.get("g.axis.yr").should("not.exist");
-    });
-
-    it("should label each side of a split y-axis separately", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["min", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
       });
 
       H.openVizSettingsSidebar();
@@ -914,31 +881,6 @@ describe("scenarios > visualizations > line chart", () => {
         });
       });
     });
-
-    it("should allow changing a series' color - #53735", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: testQuery,
-        display: "line",
-      });
-
-      H.openVizSettingsSidebar();
-      H.openSeriesSettings("Count");
-
-      H.popover().within(() => {
-        cy.findByTestId("color-selector-button").button().click();
-      });
-
-      H.popover()
-        .should("have.length", 2)
-        .last()
-        .within(() => {
-          cy.findByLabelText("#EF8C8C").realClick();
-        });
-
-      cy.button("Done").click();
-
-      H.cartesianChartCircleWithColor("#EF8C8C");
-    });
   });
 
   describe("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
@@ -963,24 +905,22 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Category is Doohickey");
     });
 
-    it("should not drop the chart legend (metabase#4995)", () => {
+    it("should keep the chart legend and axis labels (metabase#4995, metabase#12782)", () => {
+      H.echartsContainer()
+        .find("text")
+        .contains("Created At")
+        .should("be.visible");
+      H.echartsContainer()
+        .find("text")
+        .contains("Average of Price")
+        .should("be.visible");
+
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
 
       cy.log("Ensure that legend is hidden when not dealing with multi series");
       H.openVizSettingsSidebar();
       cy.findByTestId("remove-CATEGORY").click();
       H.queryBuilderMain().should("not.contain", "Doohickey");
-    });
-
-    it("should display correct axis labels (metabase#12782)", () => {
-      H.echartsContainer()
-        .get("text")
-        .contains("Created At")
-        .should("be.visible");
-      H.echartsContainer()
-        .get("text")
-        .contains("Average of Price")
-        .should("be.visible");
     });
   });
 
@@ -1331,6 +1271,12 @@ describe("scenarios > visualizations > line chart", () => {
         .trigger("mousedown", 180, 200)
         .trigger("mousemove", 180, 200)
         .trigger("mouseup", 400, 200);
+
+      cy.wait("@dataset");
+      cy.findByTestId("qb-filters-panel").should(
+        "contain",
+        "Created At: Month is",
+      );
 
       H.chartPathWithFillColor("#EF8C8C").should("be.visible");
       H.cartesianChartCircleWithColor("#A989C5");

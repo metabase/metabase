@@ -25,12 +25,6 @@ const QUESTION_DETAILS = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-function createDashboardDetails({ parameters }) {
-  return {
-    parameters,
-  };
-}
-
 const filterToggleLabel = "Auto-apply filters";
 
 describe(
@@ -48,7 +42,12 @@ describe(
     });
 
     describe("modifying only dashboard", () => {
-      it("should handle toggling auto applying filters on and off", () => {
+      it("should handle toggling auto applying filters on and off and send snowplow events only when disabling them", () => {
+        H.resetSnowplow();
+        cy.signInAsAdmin();
+        H.enableTracking();
+        cy.signInAsNormalUser();
+
         createDashboard();
         openDashboard();
         cy.wait("@cardQuery");
@@ -72,6 +71,9 @@ describe(
           cy.findByLabelText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "auto_apply_filters_disabled",
         });
         H.closeDashboardSettingsSidebar();
         H.filterWidget().findByText("Gadget").should("be.visible");
@@ -108,6 +110,10 @@ describe(
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
+        cy.log("enabling auto-apply filters should not send an event");
+        H.expectUnstructuredSnowplowEvent({
+          event: "auto_apply_filters_disabled",
+        });
         H.closeDashboardSettingsSidebar();
 
         H.filterWidget().findByText("Widget").should("be.visible");
@@ -136,52 +142,16 @@ describe(
         cy.get("@cardQuery.all").should("have.length", 5);
 
         cy.get("@updateDashboardSpy").should("have.callCount", 3);
-      });
-    });
-
-    it("should not save unapplied filter state and allow resetting it", () => {
-      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-      openDashboard();
-
-      H.filterWidget().findByText(FILTER.name).click();
-      H.popover().within(() => {
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-
-      H.applyFilterButton().should("be.visible");
-      H.applyFilterToast().findByText("1 filter changed");
-
-      cy.log("verify filter value is not saved");
-
-      H.visitDashboard("@dashboardId");
-      H.filterWidget()
-        .should("contain", FILTER.name)
-        .and("not.contain", "Gadget");
-
-      cy.log("verify unapplied filter value can be reset");
-
-      H.filterWidget().findByText(FILTER.name).click();
-      H.popover().within(() => {
-        cy.findByLabelText("Gadget").click();
-        cy.findByLabelText("Gadget").should("be.checked");
-        cy.button("Add filter").click();
-      });
-
-      H.applyFilterButton().should("be.visible");
-      H.applyFilterToast().findByText("1 filter changed");
-
-      H.cancelFilterButton().click();
-      H.applyFilterToast().should("not.exist");
-
-      H.filterWidget().findByText(FILTER.name).click();
-      H.popover().within(() => {
-        cy.findByLabelText("Gadget").should("not.be.checked");
+        H.expectUnstructuredSnowplowEvent(
+          { event: "auto_apply_filters_disabled" },
+          2,
+        );
+        H.expectNoBadSnowplowEvents();
       });
     });
 
     describe("modifying dashboard and dashboard cards", () => {
-      it("should preserve draft parameter values when editing is cancelled but not when the dashboard is saved", () => {
+      it("should not save draft parameter values, allow resetting them, and keep them when editing is cancelled but not when the dashboard is saved", () => {
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
         openDashboard();
 
@@ -191,11 +161,40 @@ describe(
           cy.button("Add filter").click();
         });
         H.applyFilterButton().should("be.visible");
+        H.applyFilterToast().findByText("1 filter changed");
 
         cy.log("cancel editing");
         H.editDashboard();
         cy.findByTestId("edit-bar").button("Cancel").click();
         H.filterWidget().findByText("Gadget").should("be.visible");
+        H.applyFilterButton().should("be.visible");
+
+        cy.log("verify filter value is not saved");
+        H.visitDashboard("@dashboardId");
+        H.filterWidget()
+          .should("contain", FILTER.name)
+          .and("not.contain", "Gadget");
+
+        cy.log("verify unapplied filter value can be reset");
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
+          cy.findByLabelText("Gadget").click();
+          cy.findByLabelText("Gadget").should("be.checked");
+          cy.button("Add filter").click();
+        });
+
+        H.applyFilterButton().should("be.visible");
+        H.applyFilterToast().findByText("1 filter changed");
+
+        H.cancelFilterButton().click();
+        H.applyFilterToast().should("not.exist");
+
+        H.filterWidget().findByText(FILTER.name).click();
+        H.popover().within(() => {
+          cy.findByLabelText("Gadget").should("not.be.checked");
+          cy.findByLabelText("Gadget").click();
+          cy.button("Add filter").click();
+        });
         H.applyFilterButton().should("be.visible");
 
         cy.log("edit and save the dashboard");
@@ -291,73 +290,7 @@ describe(
     });
 
     describe("embeddings", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-      });
-
-      describe("public embeds", () => {
-        it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
-          createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-          cy.get("@dashboardId").then((dashboardId) => {
-            H.visitPublicDashboard(dashboardId);
-          });
-
-          H.applyFilterToast().should("not.exist");
-          H.filterWidget().findByText("Category").click();
-          H.popover().within(() => {
-            cy.findByText("Widget").click();
-            cy.button("Add filter").click();
-          });
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(200);
-          });
-          H.applyFilterButton().should("be.visible").click();
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(54);
-          });
-        });
-      });
-
-      describe("signed embeds", () => {
-        it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
-          createDashboard({
-            dashboardDetails: {
-              auto_apply_filters: false,
-              enable_embedding: true,
-              embedding_params: {
-                [FILTER.slug]: "enabled",
-              },
-            },
-          });
-          cy.get("@dashboardId").then((dashboardId) => {
-            const embeddingPayload = {
-              resource: { dashboard: dashboardId },
-              params: {},
-            };
-            H.visitEmbeddedPage(embeddingPayload);
-          });
-
-          H.applyFilterToast().should("not.exist");
-          H.filterWidget().findByText("Category").click();
-          H.popover().within(() => {
-            cy.findByText("Widget").click();
-            cy.button("Add filter").click();
-          });
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(200);
-          });
-          H.applyFilterButton().should("be.visible").click();
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(54);
-          });
-        });
-      });
-
       describe("full-app embeddings", () => {
-        beforeEach(() => {
-          cy.signInAsNormalUser();
-        });
-
         it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
           createDashboard({
             dashboardDetails: {
@@ -377,7 +310,6 @@ describe(
           // Ensure that we're viewing the dashboard in full-app embedding mode, since `logo` is a full-app embedding parameter.
           cy.findByTestId("main-logo").should("not.exist");
 
-          H.applyFilterToast().should("not.exist");
           H.filterWidget().findByText("Category").click();
           H.popover().within(() => {
             cy.findByText("Widget").click();
@@ -387,6 +319,7 @@ describe(
             H.assertTableRowsCount(200);
           });
           H.applyFilterButton().should("be.visible").click();
+          H.applyFilterToast().should("not.exist");
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(54);
           });
@@ -396,44 +329,6 @@ describe(
   },
 );
 
-describe("scenarios > dashboards > filters > auto apply", () => {
-  beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.enableTracking();
-    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should send snowplow events only when disabling auto-apply filters", () => {
-    createDashboard();
-    openDashboard();
-    cy.wait("@cardQuery");
-
-    H.openDashboardSettingsSidebar();
-    H.sidesheet().within(() => {
-      cy.findByLabelText(filterToggleLabel).click();
-      cy.wait("@updateDashboard");
-      cy.findByLabelText(filterToggleLabel).should("not.be.checked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "auto_apply_filters_disabled",
-      });
-
-      cy.log("enabling auto-apply filters should not send an event");
-      cy.findByLabelText(filterToggleLabel).click();
-      cy.wait("@updateDashboard");
-      cy.findByLabelText(filterToggleLabel).should("be.checked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "auto_apply_filters_disabled",
-      });
-    });
-  });
-});
-
 const createDashboard = ({
   dashboardDetails: dashboardOpts = {},
   parameter = FILTER,
@@ -442,7 +337,7 @@ const createDashboard = ({
   H.createQuestionAndDashboard({
     questionDetails: QUESTION_DETAILS,
     dashboardDetails: {
-      ...createDashboardDetails({ parameters }),
+      parameters,
       ...dashboardOpts,
     },
   }).then(({ body: card }) => {
@@ -461,12 +356,12 @@ const getParameterMapping = ({ card_id }, parameters) => ({
   }),
 });
 
-const openDashboard = (params = {}) => {
+const openDashboard = () => {
   cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
     "cardQuery",
   );
 
-  H.visitDashboard("@dashboardId", { params });
+  H.visitDashboard("@dashboardId");
 };
 
 const visitFullAppEmbeddingUrl = ({ url, qs }) => {

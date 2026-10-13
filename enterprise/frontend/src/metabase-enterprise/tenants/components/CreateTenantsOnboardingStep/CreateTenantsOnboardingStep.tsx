@@ -108,8 +108,7 @@ export const CreateTenantsOnboardingStep = ({
       onTenantsCreated?.(tenants);
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(error, t`Failed to create tenants`),
       });
     }
