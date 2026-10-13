@@ -115,6 +115,11 @@
    would be refused again, so the hint points away from it."
   "To get values, build the question from tables with construct_notebook_query instead.")
 
+(def ^:private metric-hint
+  "Ends the refusal of a metric's id. A metric is an aggregation, not a source, so no query over it would run."
+  (str "To get its values, build a notebook query with construct_notebook_query that has the metric's base table as "
+       "its source and the metric in `aggregation`, then run that query with run_query."))
+
 (defn- recovery-hint
   "Ends a refusal of a query the model could ask for another way. With `allow-non-sql?` the tool is the one offered
    beside the notebook builder, so the hint names it. Without, the way is SQL where Metabot may run SQL, and
@@ -131,11 +136,13 @@
    The conversation holds no query under a saved question's id. The client sends the query on screen with the item,
    and that query is not what runs: the saved question is, as a source-card query, which keeps the question's own
    permissions and the checks on SQL that Metabot saved. Only run_query reads it this way: the chart, link and save
-   tools still take a query the conversation holds."
+   tools still take a query the conversation holds.
+   A metric the user can read is refused, with how to query it. The item's type is the client's claim, so the saved
+   card decides which it is."
   [query-id]
   (when-let [card-id (some (fn [{:keys [id type]}]
                              (when (and (= query-id (str id))
-                                        (contains? #{"question" "model"} (some-> type name)))
+                                        (contains? #{"question" "model" "metric"} (some-> type name)))
                                (let [parsed (parse-long (str id))]
                                  (when (pos-int? parsed)
                                    parsed))))
@@ -143,6 +150,9 @@
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
       (when (some-> card mi/can-read?)
+        (when (= :metric (:type card))
+          (throw (refusal (str "Query id " query-id " is a metric the user is viewing, and a metric does not run by "
+                               "its id. " metric-hint))))
         {:saved-card card
          :query      {:lib/type :mbql/query
                       :database (:database_id card)

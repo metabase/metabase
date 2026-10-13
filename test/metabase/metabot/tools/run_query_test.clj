@@ -716,8 +716,23 @@
       (testing "a viewed question in the trash runs like any other the user can read"
         (is (=? {:structured-output {:returned 1}}
                 (run-viewing! [{:type "question", :id archived-card}] (str archived-card)))))
-      (testing "a viewed metric does not run by its id"
-        (is (=? unknown-id (run-viewing! [{:type "metric", :id metric-card}] (str metric-card)))))
+      (testing "a viewed metric is refused with how to query it, whatever type the client gives the item"
+        (doseq [item-type ["metric" "question"]]
+          (is (= {:output (str "Query id " metric-card " is a metric the user is viewing, and a metric does not run by its "
+                               "id. To get its values, build a notebook query with construct_notebook_query that has "
+                               "the metric's base table as its source and the metric in `aggregation`, then run that "
+                               "query with run_query.")}
+                 (run-viewing! [{:type item-type, :id metric-card}] (str metric-card))))))
+      (testing "a viewed metric the user can't read is refused like an id that names nothing"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {hidden :id}        {}
+                         :model/Card       {hidden-metric :id} {:collection_id hidden
+                                                                :dataset_query (venues-count)
+                                                                :type          :metric}]
+            (is (=? unknown-id (run-viewing! [{:type "metric", :id hidden-metric}] (str hidden-metric)))))))
+      (testing "a viewed question runs by its id when the client calls the item a metric"
+        (is (=? {:structured-output {:returned 1}}
+                (run-viewing! [{:type "metric", :id sql-card}] (str sql-card)))))
       (testing "an id that can't name a question is refused like any unknown id"
         (doseq [id [0 -5]]
           (is (=? unknown-id (run-viewing! [{:type "question", :id id}] (str id)))))))))
