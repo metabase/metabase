@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -57,9 +58,9 @@
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
 
-(deftest entity->path-uses-git-separators-test
+(deftest entity-file-path-uses-git-separators-test
   (testing "paths are git tree paths joined with / and never the host filesystem separator (#74095)"
-    (let [path (source/entity->path (serdes/storage-base-context) (create-test-entity "A" "a" "Card"))]
+    (let [path (serialization/entity-file-path (serdes/storage-base-context) (create-test-entity "A" "a" "Card"))]
       (is (= "collections/main/test_a.yaml" path))
       (is (not (str/includes? path "\\")))
       (testing "JGit's Windows path checker accepts the path, so pushing from a Windows host does not fail"

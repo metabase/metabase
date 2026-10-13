@@ -1,10 +1,10 @@
 import { msgid, ngettext } from "ttag";
 
-import { Label, LabelContainer } from "../MetadataInfo.styled";
+import { Label, LabelContainer } from "../MetadataInfo";
 
 export function ColumnCount({ fieldCount }: { fieldCount: number }) {
   return (
-    <LabelContainer color="text-primary">
+    <LabelContainer c="text-primary">
       <Label>
         {ngettext(
           msgid`${fieldCount} column`,

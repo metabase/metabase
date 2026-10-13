@@ -424,7 +424,7 @@ jobs:
         if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
-      # The data-app suite synchronizes real actions, and Metabase only permits
+      # The data-app suite publishes copies of real actions, and Metabase only permits
       # those against a writable warehouse, which comes from the `qa-db`
       # snapshot below. That snapshot creator builds every QA database in one
       # pass — Mongo and MySQL included — so all three have to be up even though

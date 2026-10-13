@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -10,7 +11,6 @@ const tableQuestion = {
   query: {
     "source-table": ORDERS_ID,
   },
-  limit: 5,
 };
 
 const tableQuestionWithJoin = {
@@ -74,7 +74,6 @@ const tableQuestionWithJoinAndFields = {
       },
     ],
   },
-  limit: 5,
 };
 
 const tableQuestionWithSelfJoinAndFields = {
@@ -162,7 +161,6 @@ const nativeQuestion = {
   native: {
     query: "SELECT * FROM ORDERS",
   },
-  limit: 5,
 };
 
 const nestedQuestion = (card) => ({
@@ -170,7 +168,6 @@ const nestedQuestion = (card) => ({
   query: {
     "source-table": `card__${card.id}`,
   },
-  limit: 5,
 });
 
 const nestedQuestionWithJoinOnTable = (card) => ({
@@ -228,18 +225,24 @@ describe("scenarios > visualizations > table column settings", () => {
     needsScroll = true,
     scrollTimes = 1,
   }) => {
+    const scroll = () => {
+      if (needsScroll) {
+        _.times(scrollTimes, () => {
+          scrollVisualization();
+          cy.wait(200);
+        });
+      }
+    };
+
     cy.log("hide the column");
+    scroll();
+    visualization().findByText(columnName).should("exist");
     visibleColumns().within(() => hideColumn(columnName));
     assertColumnHidden(getColumn(columnName));
     if (sanityCheck) {
       assertColumnEnabled(getColumn(sanityCheck));
     }
-    if (needsScroll) {
-      _.times(scrollTimes, () => {
-        scrollVisualization();
-        cy.wait(200);
-      });
-    }
+    scroll();
     visualization().findByText(columnName).should("not.exist");
 
     cy.findByRole("button", { name: /Add or remove columns/ }).click();
@@ -330,9 +333,20 @@ describe("scenarios > visualizations > table column settings", () => {
   };
 
   describe("tables", () => {
-    it("should be able to show and hide table fields", () => {
+    it("should be able to show and hide table fields, implicitly joinable fields, and rename columns via popover", () => {
       H.createQuestion(tableQuestion, { visitQuestion: true });
       openSettings();
+
+      const implicitColumn = {
+        column: "Category",
+        columnName: "Product → Category",
+        table: "product",
+      };
+
+      _addColumn(implicitColumn);
+      _hideColumn(implicitColumn);
+      _showColumn(implicitColumn);
+      _removeColumn(implicitColumn);
 
       const testData = {
         column: "Tax",
@@ -345,10 +359,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _removeColumn(testData);
       _addColumn(testData);
-    });
-
-    it("should be able to rename table columns via popover", () => {
-      H.createQuestion(tableQuestion, { visitQuestion: true });
 
       H.tableHeaderClick("Product ID");
 
@@ -365,24 +375,7 @@ describe("scenarios > visualizations > table column settings", () => {
       });
     });
 
-    it("should be able to show and hide table fields with in a join", () => {
-      H.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
-      openSettings();
-
-      const testData = {
-        column: "Category",
-        columnName: "Products → Category",
-        sanityCheck: "Products → Ean",
-        table: "products",
-      };
-
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
-    });
-
-    it("should be able to show and hide all table fields with a single click", () => {
+    it("should be able to show and hide all and single table fields in a join", () => {
       H.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
       openSettings();
 
@@ -418,6 +411,19 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByLabelText("Category").should("be.checked");
         cy.findByLabelText("Price").should("be.checked");
       });
+      cy.findByRole("button", { name: /Done picking columns/ }).click();
+
+      const testData = {
+        column: "Category",
+        columnName: "Products → Category",
+        sanityCheck: "Products → Ean",
+        table: "products",
+      };
+
+      _hideColumn(testData);
+      _showColumn(testData);
+      _removeColumn(testData);
+      _addColumn(testData);
     });
 
     it("should be able to show and hide table fields with a join with fields", () => {
@@ -461,22 +467,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _removeColumn(testData);
       _addColumn(testData);
-    });
-
-    it("should be able to show and hide implicitly joinable fields for a table", () => {
-      H.createQuestion(tableQuestion, { visitQuestion: true });
-      openSettings();
-
-      const testData = {
-        column: "Category",
-        columnName: "Product → Category",
-        table: "product",
-      };
-
-      _addColumn(testData);
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
     });
 
     it("should be able to show and hide custom expressions for a table", () => {
@@ -557,6 +547,47 @@ describe("scenarios > visualizations > table column settings", () => {
       });
 
       H.assertRowHeight(0, 36);
+    });
+
+    describe("issue 22206", () => {
+      beforeEach(() => {
+        H.openOrdersTable();
+
+        cy.findByTestId("loading-indicator").should("not.exist");
+      });
+
+      it("should not duplicate column in settings when removing and adding it back (metabase#22206)", () => {
+        H.openVizSettingsSidebar();
+
+        // The duplicate shows on the second cycle
+        _.times(2, () => {
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_outline")
+            .click({ force: true });
+
+          cy.findAllByTestId("run-button").first().click();
+          cy.wait("@dataset");
+          cy.findByTestId("loading-indicator").should("not.exist");
+
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_crossed_out")
+            .click({ force: true });
+
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_outline")
+            .should("exist");
+          cy.findByTestId("sidebar-content")
+            .findAllByTestId("draggable-item-Subtotal")
+            .should("have.length", 1);
+        });
+
+        cy.findAllByTestId("run-button").first().click();
+        cy.wait("@dataset");
+        H.tableInteractive().findByText("Subtotal").should("exist");
+      });
     });
   });
 
@@ -653,11 +684,21 @@ describe("scenarios > visualizations > table column settings", () => {
   });
 
   describe("nested structured questions", () => {
-    it("should be able to show and hide fields from a nested query", () => {
+    it("should be able to show and hide fields and implicitly joinable fields from a nested query", () => {
       H.createQuestion(tableQuestion).then(({ body: card }) => {
         H.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
+
+      const implicitColumn = {
+        column: "Category",
+        columnName: "Product → Category",
+        table: "product",
+      };
+
+      _addColumn(implicitColumn);
+      _hideColumn(implicitColumn);
+      _removeColumn(implicitColumn);
 
       const testData = {
         column: "Tax",
@@ -732,23 +773,6 @@ describe("scenarios > visualizations > table column settings", () => {
         columnName: "User → ID",
         table: "user",
         scrollTimes: 3,
-      };
-
-      _addColumn(newColumn);
-      _hideColumn(newColumn);
-      _removeColumn(newColumn);
-    });
-
-    it("should be able to show and hide implicitly joinable fields for a nested query", () => {
-      H.createQuestion(tableQuestion).then(({ body: card }) => {
-        H.createQuestion(nestedQuestion(card), { visitQuestion: true });
-      });
-      openSettings();
-
-      const newColumn = {
-        column: "Category",
-        columnName: "Product → Category",
-        table: "product",
       };
 
       _addColumn(newColumn);
@@ -884,6 +908,285 @@ describe("scenarios > visualizations > table column settings", () => {
       _removeColumn(taxColumn);
       _addColumn(taxColumn);
     });
+
+    const oldSourceQuestionDetails = {
+      native: {
+        query: "SELECT 1 AS C1, 2 AS C2, 3 AS C3",
+      },
+    };
+
+    const newSourceQuestionDetails = {
+      native: {
+        query: "SELECT 1 AS C1, 3 AS C3",
+      },
+    };
+
+    const getNestedQuestionDetails = (sourceQuestionId) => ({
+      query: {
+        "source-table": `card__${sourceQuestionId}`,
+      },
+      display: "table",
+      visualization_settings: {
+        "table.columns": [
+          { name: "C3", enabled: true },
+          { name: "C1", enabled: true },
+          { name: "C2", enabled: true },
+        ],
+      },
+    });
+
+    it("should not reset the column order after one of the columns is removed from data source (metabase#7884)", () => {
+      H.createNativeQuestion(oldSourceQuestionDetails).then(
+        ({ body: sourceQuestion }) =>
+          H.createQuestion(getNestedQuestionDetails(sourceQuestion.id)).then(
+            ({ body: nestedQuestion }) => {
+              cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
+                ...sourceQuestion,
+                dataset_query: {
+                  type: "native",
+                  database: SAMPLE_DB_ID,
+                  native: newSourceQuestionDetails.native,
+                },
+              });
+              H.visitQuestion(nestedQuestion.id);
+            },
+          ),
+      );
+
+      cy.log("verify column order in the table");
+      cy.findAllByTestId("header-cell").eq(0).should("contain.text", "C3");
+      cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
+
+      cy.log("verify column order in viz settings");
+      H.openVizSettingsSidebar();
+      H.getDraggableElements().eq(0).should("contain.text", "C3");
+      H.getDraggableElements().eq(1).should("contain.text", "C1");
+    });
+  });
+
+  describe("issue 28304", () => {
+    const questionDetails = {
+      name: "28304",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "table",
+      visualization_settings: {
+        "table.columns": [
+          {
+            fieldRef: ["field", ORDERS.ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.USER_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.PRODUCT_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.SUBTOTAL, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.TAX, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.DISCOUNT, null],
+            enabled: true,
+          },
+        ],
+        column_settings: {
+          '["name","count"]': { show_mini_bar: true },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+
+      H.visitQuestionAdhoc(questionDetails);
+    });
+
+    it("table should should generate default columns when table.columns entries do not match data.cols (metabase#28304)", () => {
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Count by Created At: Month").should("be.visible");
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().should("not.contain", "[Unknown]");
+      H.leftSidebar().should("contain", "Created At");
+      H.leftSidebar().should("contain", "Count");
+      cy.findAllByTestId("mini-bar-container").should(
+        "have.length.greaterThan",
+        0,
+      );
+      H.getDraggableElements().should("have.length", 2);
+    });
+  });
+
+  describe("issue 28311", () => {
+    const questionDetails = {
+      name: "28311",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "table",
+      visualization_settings: {
+        "table.columns": [
+          {
+            fieldRef: ["field", ORDERS.ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.USER_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.PRODUCT_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.SUBTOTAL, null],
+            enabled: false,
+          },
+          {
+            fieldRef: ["field", ORDERS.TAX, null],
+            enabled: false,
+          },
+          {
+            fieldRef: ["field", ORDERS.DISCOUNT, null],
+            enabled: false,
+          },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+
+      H.visitQuestionAdhoc(questionDetails);
+    });
+
+    it("should move a column to a new position on the first drag (metabase#28311)", () => {
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Product ID").should("be.visible");
+
+      H.openVizSettingsSidebar();
+      H.getDraggableElements().contains("Product ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: -100,
+        useMouseEvents: true,
+      });
+      H.getDraggableElements().eq(0).should("contain", "Product ID");
+    });
+  });
+
+  describe("issue 42049", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    it("should not mess up columns order (metabase#42049)", () => {
+      cy.intercept("POST", "/api/card/*/query", (req) => {
+        req.on("response", (res) => {
+          const createdAt = res.body.data.cols[1];
+
+          createdAt.field_ref[1] = "created_at"; // simulate named field ref
+
+          res.send();
+        });
+      });
+
+      // A dirty question runs through /api/dataset, so give it the same named field ref.
+      cy.intercept("POST", "/api/dataset", (req) => {
+        req.on("response", (res) => {
+          const createdAt = res.body.data.cols[1];
+
+          createdAt.field_ref[1] = "created_at"; // simulate named field ref
+
+          res.send();
+        });
+      }).as("dataset");
+
+      H.createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+            ],
+          },
+          visualization_settings: {
+            "table.columns": [
+              {
+                name: "ID",
+                fieldRef: ["field", ORDERS.ID, null],
+                enabled: true,
+              },
+              {
+                name: "CREATED_AT",
+                fieldRef: [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "temporal-unit": "default",
+                  },
+                ],
+                enabled: true,
+              },
+              {
+                name: "QUANTITY",
+                fieldRef: ["field", ORDERS.QUANTITY, null],
+                enabled: true,
+              },
+            ],
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      cy.log("verify initial columns order");
+
+      cy.findAllByTestId("header-cell").as("headerCells");
+      cy.get("@headerCells").eq(0).should("have.text", "ID");
+      cy.get("@headerCells").eq(1).should("have.text", "Created At");
+      cy.get("@headerCells").eq(2).should("have.text", "Quantity");
+
+      cy.findByTestId("question-filter-header").click();
+
+      H.popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.button("Previous month").click();
+      });
+
+      cy.wait("@dataset");
+      H.queryBuilderFiltersPanel()
+        .findByTestId("filter-pill")
+        .should("contain", "Created At");
+
+      cy.log("verify columns order after applying the filter");
+
+      cy.findAllByTestId("header-cell").as("headerCells");
+      cy.get("@headerCells").eq(0).should("have.text", "ID");
+      cy.get("@headerCells").eq(1).should("have.text", "Created At");
+      cy.get("@headerCells").eq(2).should("have.text", "Quantity");
+    });
   });
 
   it("should handle duplicated values in table.columns viz settings (metabase#62053)", () => {
@@ -955,7 +1258,8 @@ describe("scenarios > visualizations > table column settings", () => {
           .findAllByTestId("header-cell")
           .should("have.length", 1)
           .first()
-          .should("contain.text", "ID");
+          .findByText("ID")
+          .should("exist");
 
         H.tableHeaderColumn("User ID").as("dragElement");
         H.moveDnDKitElementByAlias("@dragElement", { horizontal: -50 });
@@ -964,7 +1268,8 @@ describe("scenarios > visualizations > table column settings", () => {
           .findAllByTestId("header-cell")
           .should("have.length", 1)
           .first()
-          .should("contain.text", "User ID");
+          .findByText("User ID")
+          .should("exist");
       });
 
       it("should allow reordering a column from the pinned section into the unpinned section", () => {
@@ -982,9 +1287,9 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByTestId("header-pinned-quadrant")
           .findAllByTestId("header-cell")
           .should("have.length", 2)
-          .then((cells) => {
-            expect(cells.eq(0)).to.contain("ID");
-            expect(cells.eq(1)).to.contain("User ID");
+          .should((cells) => {
+            expect(cells.eq(0).text()).to.match(/^ID/);
+            expect(cells.eq(1).text()).to.match(/^User ID/);
           });
 
         H.tableHeaderColumn("ID").as("dragElement");
@@ -992,9 +1297,9 @@ describe("scenarios > visualizations > table column settings", () => {
 
         cy.findByTestId("header-pinned-quadrant")
           .findAllByTestId("header-cell")
-          .then((cells) => {
-            expect(cells.eq(0)).to.contain("User ID");
-            expect(cells.eq(1)).to.contain("Product ID");
+          .should((cells) => {
+            expect(cells.eq(0).text()).to.match(/^User ID/);
+            expect(cells.eq(1).text()).to.match(/^Product ID/);
           });
       });
     });

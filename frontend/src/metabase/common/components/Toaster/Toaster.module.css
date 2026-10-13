@@ -82,3 +82,34 @@
 .dismiss:active {
   background-color: var(--mb-color-button-on_dark-secondary-pressed);
 }
+
+.toast[data-variant="negative"],
+.toast[data-variant="warning"] {
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+.toast[data-variant="negative"] {
+  border: 0.5px solid var(--mb-color-feedback-negative-strong);
+}
+
+.toast[data-variant="warning"] {
+  border: 0.5px solid var(--mb-color-feedback-warning-strong);
+}
+
+.toast[data-variant="negative"] .icon {
+  color: var(--mb-color-feedback-negative-strong);
+}
+
+.toast[data-variant="warning"] .icon {
+  color: var(--mb-color-feedback-warning-strong);
+}
+
+.toast[data-variant="negative"] .dismiss,
+.toast[data-variant="warning"] .dismiss {
+  color: var(--mb-color-text-primary);
+}
+
+.toast[data-variant="negative"] .dismiss:hover,
+.toast[data-variant="warning"] .dismiss:hover {
+  background-color: var(--mb-color-background-hover);
+}

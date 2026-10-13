@@ -147,18 +147,18 @@
   the skill registry (`metabase.metabot.skills`) and are surfaced as a manifest
   in the system prompt, with full bodies loaded on demand via the `load_skill`
   tool."
-  [tools memory-atom metabot-id profile-id]
+  [tools memory-atom metabot profile-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
      (let [m          (meta tool-var)
            base-fn    (if (contains? state-dependent-tools tool-name)
                         (fn [args]
                           (binding [shared/*memory-atom* memory-atom
-                                    shared/*metabot-id*  metabot-id
+                                    shared/*metabot*     metabot
                                     shared/*profile-id*  profile-id]
                             (tool-var args)))
                         (fn [args]
-                          (binding [shared/*metabot-id* metabot-id
+                          (binding [shared/*metabot* metabot
                                     shared/*profile-id* profile-id]
                             (tool-var args))))
            tool-scope (:scope m)

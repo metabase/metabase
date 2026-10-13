@@ -3,12 +3,12 @@ import cx from "classnames";
 import PinDropZone from "metabase/common/collections/components/PinDropZone";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import CS from "metabase/css/core/index.css";
+import { Flex } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
 import S from "./ItemsTable.module.css";
-import { ItemsTableRoot } from "./ItemsTable.styled";
 
 const Item = ({
   item,
@@ -35,9 +35,9 @@ export const ItemsTable = ({
 } & BaseItemsTableProps) => {
   if (items.length === 0) {
     return (
-      <ItemsTableRoot>
+      <Flex pos="relative" justify="center" align="center" m="lg" p="4rem">
         <PinDropZone variant="unpin" />
-      </ItemsTableRoot>
+      </Flex>
     );
   }
 

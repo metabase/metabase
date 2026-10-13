@@ -91,6 +91,19 @@ export const getRootCollectionItem = async ({
     };
   }
 
+  if (namespace === "data-actions") {
+    return {
+      model: "collection",
+      id: "root",
+      namespace: "data-actions",
+      location: "/",
+      can_write: canWrite,
+      name: t`Data actions`,
+      here: ["collection", "action"],
+      below: ["collection", "action"],
+    };
+  }
+
   return {
     ...getOurAnalytics(),
     // if we failed to fetch our analytics, the user doesn't have access to it

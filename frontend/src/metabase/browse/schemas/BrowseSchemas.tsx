@@ -22,6 +22,7 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };
 
@@ -61,13 +62,20 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <Flex align="center" pt="lg" pr="sm" pb="sm">
+              <Flex
+                align="center"
+                justify="space-between"
+                pt="lg"
+                pr="sm"
+                pb="sm"
+              >
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
                     { title: database?.name ?? "" },
                   ]}
                 />
+                <DatabaseQuickLinksMenu databaseId={dbId} />
               </Flex>
               {schemas.length === 0 ? (
                 <h2

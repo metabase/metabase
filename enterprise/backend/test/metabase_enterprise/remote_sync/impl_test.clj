@@ -237,6 +237,20 @@
           (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
           (is (= :successful (:status (t2/hydrate task :status)))))))))
 
+(deftest handle-task-result!-names-the-task-branch-in-outcome-test
+  (testing "an import that switches branches records the branch it imported, not the one the setting held while it ran"
+    (mt/with-temporary-setting-values [remote-sync-branch "main"]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                               {:sync_task_type "import"
+                                                :initiated_by (mt/user->id :rasta)})]
+          (impl/handle-task-result! {:status :success
+                                     :outcome {:kind "pulled" :count 3 :branch "main"}}
+                                    task-id
+                                    "feature")
+          (is (= {:kind "pulled" :count 3 :branch "feature"}
+                 (:outcome (t2/select-one :model/RemoteSyncTask :id task-id)))))))))
+
 (deftest handle-task-result!-stores-conflict-categories-test
   (testing "handle-task-result! records a conflict result's category set on the task as a vector"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
@@ -2455,3 +2469,13 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
+
+(deftest keep-library-dashboards-test
+  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
+    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
+           (get-in (#'impl/keep-library-dashboards
+                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
+                   [:by-entity-id "Collection"]))))
+  (testing "An import without the Library leaves it to be removed with the Library"
+    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
+           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

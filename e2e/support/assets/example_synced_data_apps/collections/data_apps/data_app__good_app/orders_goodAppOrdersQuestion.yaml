@@ -1,0 +1,20 @@
+name: Orders
+entity_id: goodAppOrdersQuestion
+type: question
+display: table
+collection_id: goodAppCollection0000
+creator_id: admin@metabase.test
+dataset_query:
+  lib/type: mbql/query
+  database: Sample Database
+  stages:
+  - lib/type: mbql.stage/mbql
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+visualization_settings: {}
+serdes/meta:
+- id: goodAppOrdersQuestion
+  label: orders
+  model: Card
