@@ -151,6 +151,7 @@
      custom-viz-plugin
      dashboards
      data-apps
+     dependencies
      documents
      api.eid-translation
      embedding
