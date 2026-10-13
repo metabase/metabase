@@ -153,7 +153,16 @@
                                                                          table)]
                                                        (sync-and-update! database table all-metadata))
                                                      (catch Exception e
-                                                       (log/error (ex-message e))
+                                                       ;; an unreachable warehouse fails every table: abort the step
+                                                       (when (sync-util/transient-exception? e)
+                                                         (throw e))
+                                                       ;; a missing grant or FDW user mapping is for the customer to
+                                                       ;; fix, not a Metabase bug
+                                                       (if (sync-util/customer-environment-exception? e)
+                                                         (log/warnf "Error syncing Fields for Table %s: %s"
+                                                                    (sync-util/name-for-logging table) (ex-message e))
+                                                         (log/errorf e "Error syncing Fields for Table %s: %s"
+                                                                     (sync-util/name-for-logging table) (ex-message e)))
                                                        0))
                                                    0)]
                                      {:total-fields   (count table-metadata)
