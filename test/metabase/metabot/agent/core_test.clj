@@ -1137,10 +1137,27 @@
            :code     400
            :metadata {:provider_name nil}}})
 
+(def ^:private openrouter-relayed-overflow-body
+  "OpenRouter's 400 body when every upstream refused a prompt over the window (probed 2026-10-13,
+  https://github.com/metabase/metabase/pull/83989). The overflow text is only in the upstream's own body, a JSON
+  string in `metadata.raw`."
+  {:error {:message  "Provider returned error"
+           :code     400
+           :metadata {:raw             (str "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\","
+                                            "\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"},"
+                                            "\"request_id\":\"req_011\"}")
+                      :provider_name   "Azure"
+                      :is_byok         false
+                      :previous_errors [{:code          400
+                                         :message       "Provider returned error"
+                                         :provider_name "Amazon Bedrock"
+                                         :raw           "{\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}"}]}}})
+
 (deftest agent-loop-context-overflow-error-part-test
   (testing "a 400 for a request over the window becomes a \"full\" error part with the web copy"
     (doseq [[model-ref provider body]
             [["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-overflow-body]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-relayed-overflow-body]
              ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
              ["anthropic/claude-sonnet-4-6" "anthropic"
               {:type  "error"
@@ -1153,6 +1170,52 @@
           (is (= parts (mt/as-admin (agent-loop-error-parts! model-ref e))))
           (is (= parts (mt/with-current-user (mt/user->id :rasta)
                          (agent-loop-error-parts! model-ref e)))))))))
+
+(defn- openrouter-midstream-error-chunks
+  "OpenRouter's documented mid-stream error event carrying `error`, after a first chunk of text.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  its `model`, `provider` and `error` values replaced."
+  [error]
+  [{:id      "gen-abc123"
+    :object  "chat.completion.chunk"
+    :created 1234567890
+    :model   "anthropic/claude-haiku-4.5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:id       "gen-abc123"
+    :object   "chat.completion.chunk"
+    :created  1234567890
+    :model    "anthropic/claude-haiku-4.5"
+    :provider "Anthropic"
+    :error    error
+    :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}])
+
+(defn- agent-loop-streamed-error-parts!
+  "The `:error` parts of an agent loop on OpenRouter whose stream sends the raw Chat Completions `chunks`."
+  [chunks]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4.5"]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                        (eduction (openrouter/openrouter->aisdk-chunks-xf) chunks))]
+      (filterv #(= :error (:type %))
+               (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                :state      {}
+                                :profile-id :embedding_next
+                                :context    {}})))))
+
+(deftest agent-loop-streamed-context-overflow-error-part-test
+  (testing "an overflow OpenRouter streams after its 200 becomes a \"full\" error part with the web copy"
+    (let [chunks (openrouter-midstream-error-chunks {:code     400
+                                                     :message  "Provider returned error"
+                                                     :metadata {:error_type "context_length_exceeded"}})
+          errors [{:error-code "ai_provider_context_full" :message context-full-copy}]]
+      (is (= errors (map :error (mt/as-admin (agent-loop-streamed-error-parts! chunks)))))
+      (is (= errors (map :error (mt/with-current-user (mt/user->id :rasta)
+                                  (agent-loop-streamed-error-parts! chunks)))))))
+  (testing "any other streamed error keeps no error code"
+    (let [error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}]
+      (is (= [error]
+             (map :error (mt/as-admin (agent-loop-streamed-error-parts! (openrouter-midstream-error-chunks error)))))))))
 
 (deftest agent-loop-other-400s-keep-the-generic-error-part-test
   (testing "a 400 that is not a context overflow keeps the generic error part"

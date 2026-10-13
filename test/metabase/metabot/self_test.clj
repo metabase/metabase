@@ -2800,6 +2800,22 @@
         (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
                 (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
 
+(defn- openrouter-relayed-error-body
+  "OpenRouter's 400 body when every upstream refused the request with the JSON string `raw`.
+
+  Shape probed 2026-10-13 (https://github.com/metabase/metabase/pull/83989): OpenRouter's own message is generic, and
+  the upstream's body is only in `metadata.raw`."
+  [raw]
+  {:error {:message  "Provider returned error"
+           :code     400
+           :metadata {:raw             raw
+                      :provider_name   "Azure"
+                      :is_byok         false
+                      :previous_errors [{:code          400
+                                         :message       "Provider returned error"
+                                         :provider_name "Amazon Bedrock"
+                                         :raw           raw}]}}})
+
 (deftest context-overflow-error-test
   (testing "a 400 for a prompt that does not fit the window is a \"full\" error"
     ;; Bodies probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989), unless a row names a doc.
@@ -2835,12 +2851,16 @@
       "anthropic"  {:type  "error"
                     :error {:type "invalid_request_error" :message "prompt is too long: 208310 tokens > 200000 maximum"}}
       ;; https://docs.z.ai/api-reference/api-code
-      "zai"        {:error {:code "1261" :message "Prompt too long"}}))
+      "zai"        {:error {:code "1261" :message "Prompt too long"}}
+      "openrouter" (openrouter-relayed-error-body
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}}")))
   (testing "any other failure is not a \"full\" error"
     (are [status body]
          (nil? (self/context-overflow-error (provider-api-error! "openrouter" status body)))
       400 {:error {:code 400 :message "Bad request"}}
       400 {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}
+      400 (openrouter-relayed-error-body
+           "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tools.0: Input should be a valid dictionary\"}}")
       400 anthropic-credit-balance-body
       429 {:error {:code 429 :message "This endpoint's maximum context length is 200000 tokens."}}
       500 {:error {:code 500 :message "This endpoint's maximum context length is 200000 tokens."}}))
