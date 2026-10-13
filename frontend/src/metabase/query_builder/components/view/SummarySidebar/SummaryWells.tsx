@@ -13,7 +13,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import S from "./SummarySheet.module.css";
+import S from "./SummarySidebar.module.css";
 import { SummaryValuesInput } from "./SummaryValuesInput";
 import type {
   SummaryBase,

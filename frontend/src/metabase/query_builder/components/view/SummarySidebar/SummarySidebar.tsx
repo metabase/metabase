@@ -7,21 +7,23 @@ import {
   pointerWithin,
   useSensor,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { t } from "ttag";
 
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type Question from "metabase-lib/v1/Question";
 
 import { SummaryFieldList } from "./SummaryFieldList";
-import { SummaryPivotPreview } from "./SummaryPivotPreview";
-import S from "./SummarySheet.module.css";
+import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import {
-  EMPTY_SUMMARY,
-  setSummaryDefinition,
-  useSummaryDefinition,
-} from "./summary-store";
+  getSummaryQuestion,
+  getSummarySession,
+  rememberSummarySession,
+} from "./summary-session";
 import {
   SUMMARY_WELL_IDS,
   type SummaryDefinition,
@@ -32,13 +34,13 @@ import {
   buildSummaryQuery,
   dropOnWell,
   getItemLabels,
-  getSummaryBase,
-  getSummaryKey,
   isSummaryDragItem,
 } from "./utils";
 
-type SummarySheetProps = {
+type SummarySidebarProps = {
   question: Question;
+  onQuestionChange: (question: Question) => void;
+  onClose: () => void;
 };
 
 function getDropWellId(data: unknown): SummaryWellId | null {
@@ -49,15 +51,26 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 }
 
 /**
- * The "Summary" tab: a pivot table of the data tab's table, built by dragging
- * columns and metrics into Rows, Columns, and Values. One summary per table.
+ * Summarizes the question as a pivot table, built by dragging columns and metrics into
+ * Rows, Columns, and Values. Every change updates and reruns the question.
  */
-export function SummarySheet({ question }: SummarySheetProps) {
-  const summaryKey = getSummaryKey(question);
-  const storedDefinition = useSummaryDefinition(summaryKey);
-  const definition = storedDefinition ?? EMPTY_SUMMARY;
+export function SummarySidebar({
+  question,
+  onQuestionChange,
+  onClose,
+}: SummarySidebarProps) {
+  const [session, setSession] = useState(() => getSummarySession(question));
+  const { base, definition } = session;
 
-  const base = useMemo(() => getSummaryBase(question.query()), [question]);
+  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch
+  useEffect(() => {
+    setSession((currentSession) => getSummarySession(question, currentSession));
+  }, [question]);
+
+  useEffect(() => {
+    rememberSummarySession(session);
+  }, [session]);
+
   const summaryQuery = useMemo(
     () => buildSummaryQuery(base, definition),
     [base, definition],
@@ -67,20 +80,14 @@ export function SummarySheet({ question }: SummarySheetProps) {
     [base, definition, summaryQuery],
   );
 
-  useEffect(() => {
-    if (summaryKey != null && storedDefinition == null) {
-      setSummaryDefinition(summaryKey, EMPTY_SUMMARY);
+  const handleChange = (nextDefinition: SummaryDefinition) => {
+    const nextSession = { ...session, definition: nextDefinition };
+    setSession(nextSession);
+    const nextQuestion = getSummaryQuestion(nextSession);
+    if (nextQuestion != null) {
+      onQuestionChange(nextQuestion);
     }
-  }, [summaryKey, storedDefinition]);
-
-  const handleChange = useCallback(
-    (nextDefinition: SummaryDefinition) => {
-      if (summaryKey != null) {
-        setSummaryDefinition(summaryKey, nextDefinition);
-      }
-    },
-    [summaryKey],
-  );
+  };
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 5 },
@@ -108,28 +115,21 @@ export function SummarySheet({ question }: SummarySheetProps) {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setDraggedItem(null)}
     >
-      <Box className={S.root} data-testid="summary-sheet">
-        <Box className={S.main}>
-          <SummaryPivotPreview
-            question={question}
-            base={base}
-            definition={definition}
-            summaryQuery={summaryQuery}
-            itemLabels={itemLabels}
-            draggedItem={draggedItem}
-          />
-        </Box>
-        <Box className={S.sidebar} data-testid="summary-sheet-sidebar">
-          <SummaryFieldList base={base} />
-          <SummaryWells
-            base={base}
-            definition={definition}
-            itemLabels={itemLabels}
-            draggedItem={draggedItem}
-            onChange={handleChange}
-          />
-        </Box>
-      </Box>
+      <SidebarContent
+        title={t`Summarize`}
+        color={color("core-summarize")}
+        onDone={onClose}
+        data-testid="summary-sidebar"
+      >
+        <SummaryFieldList base={base} />
+        <SummaryWells
+          base={base}
+          definition={definition}
+          itemLabels={itemLabels}
+          draggedItem={draggedItem}
+          onChange={handleChange}
+        />
+      </SidebarContent>
       {createPortal(
         <DragOverlay dropAnimation={null}>
           {draggedItem && (

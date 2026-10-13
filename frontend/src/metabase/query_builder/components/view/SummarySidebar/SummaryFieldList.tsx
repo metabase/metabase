@@ -8,7 +8,7 @@ import { Box, Icon, Tabs, Text, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
-import S from "./SummarySheet.module.css";
+import S from "./SummarySidebar.module.css";
 import type { SummaryBase, SummaryDragItem } from "./types";
 import {
   getAvailableMetrics,
@@ -24,7 +24,7 @@ type SummaryFieldListProps = {
   base: SummaryBase;
 };
 
-/** Draggable source fields: the data tab's columns and the metrics defined on the same table. */
+/** Draggable source fields: the summarized question's columns and the metrics defined on the same table. */
 export function SummaryFieldList({ base }: SummaryFieldListProps) {
   const [tab, setTab] = useState<FieldListTab>("columns");
   const [searchText, setSearchText] = useState("");

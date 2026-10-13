@@ -27,7 +27,7 @@ export type SummaryDefinition = {
   values: SummaryValue[];
 };
 
-/** The query a summary is built on top of: the data tab's query, minus raw-row presentation clauses. */
+/** The query a summary is built on top of: the summarized question's query, minus raw-row presentation clauses. */
 export type SummaryBase = {
   query: Lib.Query;
   stageIndex: number;

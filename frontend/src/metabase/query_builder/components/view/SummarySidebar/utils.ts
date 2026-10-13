@@ -2,7 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type { PivotTableColumnSplitSetting } from "metabase-types/api";
 
 import type {
@@ -14,24 +13,6 @@ import type {
   SummaryValue,
   SummaryWellId,
 } from "./types";
-
-/** Summaries are scoped to the source table (or card) of the data tab, so there is one per table. */
-export function getSummaryKey(question: Question): string | null {
-  const sourceId = Lib.sourceTableOrCardId(question.query());
-  return sourceId != null ? String(sourceId) : null;
-}
-
-/** The saved question's name, or the source table's name for ad-hoc questions. */
-export function getDataLabel(question: Question): string {
-  const query = question.query();
-  const sourceId = Lib.sourceTableOrCardId(query);
-  const source =
-    sourceId != null ? Lib.tableOrCardMetadata(query, sourceId) : null;
-  return (
-    question.displayName() ??
-    (source ? Lib.displayInfo(query, -1, source).displayName : t`Data`)
-  );
-}
 
 export function getSummaryBase(dataQuery: Lib.Query): SummaryBase {
   const stageIndex = -1;
@@ -202,7 +183,7 @@ function getAggregable(
 
 /**
  * Builds the summary query: rows then columns as breakouts, values as aggregations, in well order.
- * Returns `null` when an item no longer resolves against the data tab's query (e.g. a removed join).
+ * Returns `null` when an item no longer resolves against the base query (e.g. a removed join).
  */
 export function buildSummaryQuery(
   base: SummaryBase,
