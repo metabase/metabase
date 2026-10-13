@@ -241,10 +241,10 @@
        (let [query (assoc query :info {:card-id card-id})]
          (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
          (merge {:card-id card-id}
-                (or (when (qp.persistence/can-substitute? card persisted-info)
-                      {:query (qp.persistence/persisted-info-native-query
-                               (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                               persisted-info)})
+                (or (let [database-id (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
+                      (when (and (qp.persistence/can-substitute? card persisted-info)
+                                 (qp.persistence/allowed-for-current-user? database-id))
+                        {:query (qp.persistence/persisted-info-native-query database-id persisted-info)}))
                     (qp.compile/compile (limit/disable-max-results query))))))
       (catch ExceptionInfo e
         (throw (ex-info
