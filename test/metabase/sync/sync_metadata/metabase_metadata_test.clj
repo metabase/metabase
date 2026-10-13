@@ -74,3 +74,13 @@
                   (t2/select-one :model/Table :id (u/the-id table))))
           (is (=? {:table_id (u/the-id table), :visibility_type :normal}
                   (t2/select-one :model/Field :id (u/the-id field)))))))))
+
+(deftest unmatched-keypaths-log-one-warning-test
+  (testing "rows for tables that don't exist log one WARN per sync, not an ERROR per row (GHY-4946)"
+    (mt/with-temp [:model/Database db {:engine ::moviedb/moviedb}]
+      ;; no `movies` table, so the two `movies.*` keypaths don't match anything
+      (is (=? [{:level   :warn
+                :message #"Ignoring 2 _metabase_metadata row\(s\).*: movies.filming.description, movies.description"}]
+              (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.metabase-metadata :warn]]
+                (metabase-metadata/sync-metabase-metadata! db)
+                (messages)))))))

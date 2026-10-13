@@ -16,13 +16,17 @@
    [metabase.util.malli.fn :as mu.fn]))
 
 (defmacro log-if-error
-  "Logs an error message if an exception is thrown while executing the body."
+  "Logs an error message if an exception is thrown while executing the body. The sync step that catches the exception
+  logs it too, so failures that aren't Metabase bugs (an unreachable warehouse, a missing grant) only log at DEBUG
+  here."
   {:style/indent 1}
   [function-name & body]
   `(try
      ~@body
      (catch Throwable e#
-       (log/errorf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#))
+       (if (or (sync-util/transient-exception? e#) (sync-util/customer-environment-exception? e#))
+         (log/debugf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#))
+         (log/errorf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#)))
        (throw e#))))
 
 (mu/defn db-metadata :- i/DatabaseMetadata
