@@ -45,7 +45,7 @@ export const MoveEventModal = ({
   }, [event, newTimeline, oldTimeline, onSubmit, onSubmitSuccess]);
 
   return (
-    <Stack gap={0} mih="35.8125rem" mah="90vh">
+    <Stack gap={0} mih="36rem" mah="90vh">
       <ModalHeader title={t`Move ${event.name}`} onClose={onClose} />
       <Stack
         className={CS.overflowYAuto}
