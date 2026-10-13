@@ -1,4 +1,7 @@
 .tab {
+  background-color: transparent;
+  border: 0;
+  cursor: pointer;
   border-radius: 999px;
   padding: 0.6rem 1rem;
   color: var(--mb-color-text-primary);
@@ -23,6 +26,7 @@
 }
 
 .label {
+  flex-shrink: 0;
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: 1.15;

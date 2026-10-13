@@ -12,10 +12,7 @@ export type RouteParams = {
 
 export type NotificationsTab = "all" | "failing" | "ownerless";
 
-export type TabCountState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "loaded"; value: number };
+export type { TabCountState } from "metabase/common/components/PillTabNavigation";
 
 export type NotificationsUrlState = {
   page: number;
