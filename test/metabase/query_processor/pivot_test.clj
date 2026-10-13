@@ -1498,8 +1498,8 @@
       (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
         ;; Use the standard pivot-query but override the pivot limit to be very small.
         ;; The master query (state × source × category) produces ~200+ rows.
-        ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
-        (binding [qp.pivot/*pivot-max-result-rows* 20]
+        ;; With pivot-max-result-rows 20, the limit is 20/2=10 per sub-query.
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20]
           (let [query   (qp.pivot.test-util/pivot-query)
                 results (qp.pivot/run-pivot-query query)
                 rows    (mt/rows results)]
@@ -1520,15 +1520,15 @@
         ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
         ;; which violates the constraint schema without the fix.
         ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
-        (binding [qp.pivot/*pivot-max-result-rows* 20]
-          (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
-            (let [query   (-> (qp.pivot.test-util/pivot-query)
-                              (assoc :constraints (qp.constraints/default-query-constraints)))
-                  results (qp.pivot/run-pivot-query query)]
-              (is (<= 2 (count (get-in query [:query :aggregation])))
-                  "Sanity check: pivot-query should have at least 2 aggregations")
-              (is (not= :failed (:status results))
-                  "Pivot query should not fail with a constraint violation"))))))))
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20
+                                           qp.settings/unaggregated-query-row-limit 15]
+          (let [query   (-> (qp.pivot.test-util/pivot-query)
+                            (assoc :constraints (qp.constraints/default-query-constraints)))
+                results (qp.pivot/run-pivot-query query)]
+            (is (<= 2 (count (get-in query [:query :aggregation])))
+                "Sanity check: pivot-query should have at least 2 aggregations")
+            (is (not= :failed (:status results))
+                "Pivot query should not fail with a constraint violation")))))))
 
 (defn- native-pivot-two-breakout-query
   "An orders breakout product × user × count pivot query, used by the native-pivot limit/ordering tests to
@@ -1555,14 +1555,14 @@
               results                (qp.pivot/run-pivot-query query)]
           (testing "row count exceeds the default aggregated cap"
             (is (< default-aggregated-max (count (mt/rows results)))))
-          (testing "no truncation flag (we're well under `*pivot-max-result-rows*`)"
+          (testing "no truncation flag (we're well under `pivot-max-result-rows`)"
             (is (not (contains? (:data results) :pivot_rows_truncated)))))))))
 
 (deftest native-pivot-caps-max-results-at-pivot-cap-test
-  (testing "Native pivot path caps `:constraints :max-results` at `*pivot-max-result-rows*` but honors a smaller caller-supplied value"
+  (testing "Native pivot path caps `:constraints :max-results` at `pivot-max-result-rows` but honors a smaller caller-supplied value"
     (qp.pivot.test-util/with-single-query-pivot!
       (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
-        (binding [qp.pivot/*pivot-max-result-rows* 100]
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 100]
           (let [run (fn [caller-max]
                       (qp.pivot/run-pivot-query
                        (-> (native-pivot-two-breakout-query)
@@ -1572,21 +1572,21 @@
               (let [results (run 10)]
                 (is (= 10 (count (mt/rows results))))
                 (is (= 10 (get-in results [:data :pivot_rows_truncated])))))
-            (testing "caller's larger `:max-results` is clamped to `*pivot-max-result-rows*`"
+            (testing "caller's larger `:max-results` is clamped to `pivot-max-result-rows`"
               (let [results (run 500)]
                 (is (= 100 (count (mt/rows results))))
                 (is (= 100 (get-in results [:data :pivot_rows_truncated])))))
-            (testing "no caller `:max-results` falls back to `*pivot-max-result-rows*`"
+            (testing "no caller `:max-results` falls back to `pivot-max-result-rows`"
               (let [results (run nil)]
                 (is (= 100 (count (mt/rows results))))
                 (is (= 100 (get-in results [:data :pivot_rows_truncated])))))))))))
 
 (deftest native-pivot-caps-max-results-bare-rows-test
-  (testing "Native pivot path caps `:max-results-bare-rows` at `*pivot-max-result-rows*` so it stays ≤ `:max-results`"
+  (testing "Native pivot path caps `:max-results-bare-rows` at `pivot-max-result-rows` so it stays ≤ `:max-results`"
     (qp.pivot.test-util/with-single-query-pivot!
       (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
-        (binding [qp.pivot/*pivot-max-result-rows* 10]
-          ;; `:max-results-bare-rows` (2000) > `*pivot-max-result-rows*` (10). Without the cap, the
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 10]
+          ;; `:max-results-bare-rows` (2000) > `pivot-max-result-rows` (10). Without the cap, the
           ;; constraints middleware rejects the query with
           ;; `max-results-bare-rows must be less than or equal to max-results`.
           (let [query   (-> (native-pivot-two-breakout-query)
@@ -1596,7 +1596,7 @@
                 results (qp.pivot/run-pivot-query query)]
             (testing "query completes without a constraint-schema violation"
               (is (= :completed (:status results))))
-            (testing "row count is capped at `*pivot-max-result-rows*` and the truncation flag fires"
+            (testing "row count is capped at `pivot-max-result-rows` and the truncation flag fires"
               (is (= 10 (count (mt/rows results))))
               (is (= 10 (get-in results [:data :pivot_rows_truncated]))))))))))
 
