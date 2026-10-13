@@ -1120,7 +1120,8 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (dependencies/entity-updated! :model/Card card {:columns #{:dataset_query :dimension_mappings :parameters}})
+  (when (seq (select-keys (t2/changes card) [:dataset_query :dimension_mappings :parameters]))
+    (dependencies/entity-updated! :model/Card card {}))
   (let [changes  (some-> card t2/changes normalize-card)
         ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
         ;; normalization preserving the instance's original.

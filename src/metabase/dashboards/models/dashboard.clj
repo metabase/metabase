@@ -101,7 +101,8 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (dependencies/entity-updated! :model/Dashboard dashboard {:columns #{:parameters}})
+  (when (seq (select-keys (t2/changes dashboard) [:parameters]))
+    (dependencies/entity-updated! :model/Dashboard dashboard {}))
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]

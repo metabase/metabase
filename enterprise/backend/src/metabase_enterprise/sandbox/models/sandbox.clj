@@ -302,7 +302,8 @@
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
-  (dependencies/entity-updated! :model/Sandbox updates {:columns #{:card_id}})
+  (when (seq (select-keys (t2/changes updates) [:card_id]))
+    (dependencies/entity-updated! :model/Sandbox updates {}))
   (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]

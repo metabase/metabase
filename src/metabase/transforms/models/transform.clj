@@ -192,7 +192,8 @@
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
-  (dependencies/entity-updated! :model/Transform transform {:columns #{:source :target}})
+  (when (seq (select-keys (t2/changes transform) [:source :target]))
+    (dependencies/entity-updated! :model/Transform transform {}))
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))

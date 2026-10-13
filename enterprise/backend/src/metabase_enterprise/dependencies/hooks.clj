@@ -79,15 +79,12 @@
                              (trigger-jobs!))))
 
 (defenterprise entity-updated!
-  "Mark the entity an updated `model` row is, or was and is now part of, for recalculation when one of the `:columns` in
-  `opts` changes."
+  "Mark the entity an updated `model` row is, or was and is now part of, for recalculation."
   :feature :dependencies
   [model instance opts]
-  (let [changes (t2/changes instance)]
-    (when (some #(contains? changes %) (:columns opts))
-      (logging-failures model #(doseq [id (distinct [(owner-id (t2/original instance) opts)
-                                                     (owner-id instance opts)])]
-                                 (owner-changed! (owner-type model opts) id))))))
+  (logging-failures model #(doseq [id (distinct [(owner-id (t2/original instance) opts)
+                                                 (owner-id instance opts)])]
+                             (owner-changed! (owner-type model opts) id))))
 
 (defenterprise entity-deleted!
   "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."

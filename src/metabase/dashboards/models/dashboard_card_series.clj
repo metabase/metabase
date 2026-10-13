@@ -12,20 +12,19 @@
 (doto :model/DashboardCardSeries
   (derive :metabase/model))
 
-(def ^:private dependency-owner
-  "The dashboard whose dependencies a dashboard card series is part of."
-  {:owner-model :model/Dashboard
-   :owner-id    #(some-> (:dashboardcard_id %) dashboards.db/dashcard-dashboard-id)})
-
 (t2/define-before-insert :model/DashboardCardSeries
   [series]
-  (dependencies/entity-inserted! :model/DashboardCardSeries series dependency-owner)
+  (dependencies/entity-inserted! :model/DashboardCardSeries series
+                                 {:owner-model :model/Dashboard
+                                  :owner-id    #(some-> (:dashboardcard_id %) dashboards.db/dashcard-dashboard-id)})
   series)
 
 (t2/define-before-update :model/DashboardCardSeries
   [series]
-  (dependencies/entity-updated! :model/DashboardCardSeries series
-                                (assoc dependency-owner :columns #{:card_id :dashboardcard_id}))
+  (when (seq (select-keys (t2/changes series) [:card_id :dashboardcard_id]))
+    (dependencies/entity-updated! :model/DashboardCardSeries series
+                                  {:owner-model :model/Dashboard
+                                   :owner-id    #(some-> (:dashboardcard_id %) dashboards.db/dashcard-dashboard-id)}))
   series)
 
 ;; Serialization

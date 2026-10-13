@@ -11,8 +11,8 @@
   nil)
 
 (defenterprise entity-updated!
-  "Hook for the `model` row `instance` before it is updated, whose `opts` name the `:columns` its dependencies come from and
-  the `:owner-model` and `:owner-id` function of the entity the row is part of, if any."
+  "Hook for the `model` row `instance` before an update that changes a column its dependencies come from, whose `opts`
+  name the `:owner-model` and `:owner-id` function of the entity the row is part of, if any."
   metabase-enterprise.dependencies.hooks
   [_model _instance _opts]
   nil)

@@ -183,7 +183,8 @@
   [_])
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
-  (dependencies/entity-updated! :model/Segment segment {:columns #{:definition :table_id}})
+  (when (seq (select-keys (t2/changes segment) [:definition :table_id]))
+    (dependencies/entity-updated! :model/Segment segment {}))
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
   ;; throw an Exception if someone tries to update creator_id

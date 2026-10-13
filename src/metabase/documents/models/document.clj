@@ -746,7 +746,8 @@
   (public-sharing/add-public-uuid-prefix model))
 
 (t2/define-before-update :model/Document [model]
-  (dependencies/entity-updated! :model/Document model {:columns #{:content_type :document}})
+  (when (seq (select-keys (t2/changes model) [:content_type :document]))
+    (dependencies/entity-updated! :model/Document model {}))
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   (public-sharing/add-public-uuid-prefix-if-changed model))
 

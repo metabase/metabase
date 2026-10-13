@@ -151,7 +151,8 @@
   [_])
 
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
-  (dependencies/entity-updated! :model/Measure measure {:columns #{:definition :table_id}})
+  (when (seq (select-keys (t2/changes measure) [:definition :table_id]))
+    (dependencies/entity-updated! :model/Measure measure {}))
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-measure measure (t2/changes measure))
   ;; throw an Exception if someone tries to update creator_id

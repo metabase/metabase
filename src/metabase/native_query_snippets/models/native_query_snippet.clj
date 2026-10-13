@@ -105,7 +105,8 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
-  (dependencies/entity-updated! :model/NativeQuerySnippet snippet {:columns #{:content :template_tags}})
+  (when (seq (select-keys (t2/changes snippet) [:content :template_tags]))
+    (dependencies/entity-updated! :model/NativeQuerySnippet snippet {}))
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
