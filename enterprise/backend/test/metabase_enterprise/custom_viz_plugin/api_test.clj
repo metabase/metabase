@@ -167,6 +167,24 @@
           (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
               "dev-only plugins are exempt from version warnings but not from this one"))))))
 
+(deftest admin-listing-includes-pending-plugins-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "a plugin left as `pending` by an older serdes import is still listed for admins"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "pending-viz"
+                                                      :display_name "Pending Viz"
+                                                      :status       :pending
+                                                      :enabled      true
+                                                      :bundle_hash  "pending-hash"}]
+        (is (=? {:status "pending"}
+                (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+                     (filter #(= id (:id %)))
+                     first)))
+        (testing "but never served to viewers"
+          (is (not (contains? (->> (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                                   (map :id)
+                                   set)
+                              id))))))))
+
 ;;; ------------------------------------------------ Bundle bytes not exposed ------------------------------------------------
 
 (deftest bundle-bytes-not-exposed-test

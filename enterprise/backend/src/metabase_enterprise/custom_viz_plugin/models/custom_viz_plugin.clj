@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema]
    [metabase.api.common :as api]
@@ -68,14 +69,36 @@
 
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [:dev_bundle_url :error_message]
-   :defaults  {:enabled true}
+  {:copy      [:display_name :identifier :icon :manifest :metabase_version :bundle_hash]
+   :skip      [;; admin-owned state of this instance; a new plugin gets the column default (enabled)
+               :enabled
+               ;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
+               :status :error_message
+               ;; dev-only plugins are never served from another instance
+               :dev_bundle_url]
    :transform {:created_at (serdes/date)
-               :status     {:export (constantly ::serdes/skip)
-                            :import (constantly "pending")}
                :bundle     {:export bundle->b64
                             :import b64->bundle}}})
+
+(defn- bundle-columns
+  "Columns derived from validating the imported `bundle` bytes: the `:active` state plus manifest-derived metadata
+  when the bundle is valid, or the `:error` state with the validation message when it is not."
+  [bundle]
+  (try
+    (cache/derived-columns (cache/validate-bundle! bundle))
+    (catch Exception e
+      {:status        :error
+       :error_message (ex-message e)})))
+
+(defmethod serdes/load-insert! "CustomVizPlugin"
+  [_model-name {:keys [bundle] :as ingested}]
+  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns bundle))))
+
+(defmethod serdes/load-update! "CustomVizPlugin"
+  [_model-name {:keys [bundle] :as ingested} {:keys [id]}]
+  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns bundle)))
+  (cache/purge-plugin-cache! {:id id})
+  (custom-viz-plugin.db/non-blob-plugin id))
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)

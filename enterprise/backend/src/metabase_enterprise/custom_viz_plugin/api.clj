@@ -62,7 +62,9 @@
    [:id              ms/PositiveInt]
    [:display_name    ms/NonBlankString]
    [:identifier      ms/NonBlankString]
-   [:status          [:enum :active :error]]
+   ;; `:pending` is a leftover from older serdes imports that never validated the bundle; nothing produces it any more,
+   ;; but existing rows still carry it and the admin UI presents it as an error
+   [:status          [:enum :active :error :pending]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]

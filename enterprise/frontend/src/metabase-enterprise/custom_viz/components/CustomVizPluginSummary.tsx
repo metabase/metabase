@@ -7,6 +7,7 @@ import type { CustomVizPlugin } from "metabase-types/api";
 import { CustomVizIcon } from "./CustomVizIcon";
 import {
   SDK_CHANGELOG_URL,
+  getCustomVizPluginErrorMessage,
   getCustomVizPluginWarningMessage,
 } from "./warning-messages";
 
@@ -15,6 +16,8 @@ type Props = {
 };
 
 export function CustomVizPluginSummary({ plugin }: Props) {
+  const errorMessage = getCustomVizPluginErrorMessage(plugin);
+
   return (
     <Group align="flex-start" flex="1" wrap="nowrap">
       <CustomVizIcon plugin={plugin} />
@@ -45,9 +48,9 @@ export function CustomVizPluginSummary({ plugin }: Props) {
           )}
         </Stack>
 
-        {plugin.error_message && (
+        {errorMessage && (
           <Text size="sm" c="feedback-negative">
-            {plugin.error_message}
+            {errorMessage}
           </Text>
         )}
 

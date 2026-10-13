@@ -224,8 +224,8 @@
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
 
-(defn- derived-columns
-  "DB columns derived from a validated bundle."
+(defn derived-columns
+  "DB columns derived from a validated bundle (see [[validate-bundle!]])."
   [{:keys [bytes hash manifest version-str]}]
   {:status           :active
    :error_message    nil
