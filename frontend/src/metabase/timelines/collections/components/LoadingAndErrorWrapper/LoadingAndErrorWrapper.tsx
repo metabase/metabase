@@ -2,6 +2,7 @@ import {
   LoadingAndErrorWrapper as BaseLoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps as BaseLoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MODAL_MIN_HEIGHT } from "metabase/timelines/common/constants";
 import { Flex } from "metabase/ui";
 
 // Rendered as a leaf, and the base wrapper's render-function children would not fit Flex anyway
@@ -14,7 +15,7 @@ const LoadingAndErrorWrapper = (props: LoadingAndErrorWrapperProps) => (
   <Flex
     component={BaseLoadingAndErrorWrapper}
     direction="column"
-    mih="36rem"
+    mih={MODAL_MIN_HEIGHT}
     {...props}
   />
 );
