@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -299,4 +300,5 @@
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.
-        (search/reindex!)))))
+        (search/reindex!))
+      (events/publish-event! :event/serdes-load {:seen (:seen <>)}))))

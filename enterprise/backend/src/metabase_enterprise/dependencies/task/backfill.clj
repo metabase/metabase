@@ -228,7 +228,6 @@
     (deps.settings/dependency-backfill-variance-minutes))))
 
 (events/derive! ::backfill :metabase/event)
-(events/derive! :event/serdes-load ::backfill)
 (events/derive! :event/set-premium-embedding-token ::backfill)
 
 (methodical/defmethod events/publish-event! ::backfill
