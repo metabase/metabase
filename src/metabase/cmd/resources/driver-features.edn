@@ -1,0 +1,242 @@
+;; The hand-curated half of `docs/databases/feature-support.md`. The other half, which database supports which
+;; feature, comes from each driver's `driver/database-supports?` methods. See [[metabase.cmd.driver-feature-dox]].
+;;
+;; Every keyword in `metabase.driver/features` goes in exactly one place: a section's `:features`, or `:internal`.
+;; `metabase.cmd.driver-feature-dox-test` fails until a new keyword is classified.
+;;
+;; `:drivers` are the table columns, in page order.
+;;   - `:dbms-version` is merged into both of the fake databases the driver is asked about. It turns a driver into a
+;;     variant, like MariaDB, which is the `:mysql` driver with a different flavor.
+;;   - `:newest` and `:oldest` replace the default `:semantic-version` of the two fake databases, for drivers that
+;;     store their version in another shape.
+;;   - `:notes` explain a cell that is supported on the newest database but not on the oldest one, keyed by feature.
+;;     A note is a sentence that names the database, since the notes print below the table.
+;;
+;; `:sections` are the tables, in page order. A row's `:feature` is a keyword, or a vector of keywords when the page
+;; treats several driver features as one; a database supports the row when it supports any of them. `:doc` paths are
+;; relative to `docs/databases/`.
+{:drivers
+ [{:driver :athena             :label "Athena"}
+  {:driver :bigquery-cloud-sdk :label "BigQuery"}
+  {:driver :clickhouse         :label "ClickHouse"
+   :newest {:semantic-version {:major 999 :minor 0}}
+   :oldest {:semantic-version {:major 1 :minor 0}}
+   :notes  {:uploads                  "ClickHouse Cloud only."
+            :connection-impersonation "ClickHouse 24.4 and later."}}
+  {:driver :databricks         :label "Databricks"}
+  {:driver :druid-jdbc         :label "Druid"}
+  {:driver :mongo              :label "MongoDB"
+   :notes  {:expressions                 "MongoDB 4.2 and later."
+            :now                         "MongoDB 4.2 and later."
+            :date-arithmetics            "MongoDB 5.0 and later."
+            :datetime-diff               "MongoDB 5.0 and later."
+            :window-functions/cumulative "MongoDB 5.0 and later."}}
+  {:driver :mysql              :label "MariaDB"
+   :dbms-version {:flavor "MariaDB"}}
+  {:driver :mysql              :label "MySQL"
+   :dbms-version {:flavor "MySQL"}}
+  {:driver :oracle             :label "Oracle"}
+  {:driver :postgres           :label "PostgreSQL"}
+  {:driver :presto-jdbc        :label "Presto"}
+  {:driver :redshift           :label "Redshift"}
+  {:driver :snowflake          :label "Snowflake"}
+  {:driver :sparksql           :label "SparkSQL"}
+  {:driver :sqlserver          :label "SQL Server"
+   :notes  {:percentile-aggregations "SQL Server 2022 (version 16) and later."}}
+  {:driver :sqlite             :label "SQLite"}
+  {:driver :starburst          :label "Starburst"}
+  {:driver :vertica            :label "Vertica"}]
+
+ :sections
+ [{:title    "Joins"
+   :features [{:feature :left-join  :label "Left outer join"  :doc "../questions/query-builder/join.md"}
+              {:feature :right-join :label "Right outer join" :doc "../questions/query-builder/join.md"}
+              {:feature :inner-join :label "Inner join"       :doc "../questions/query-builder/join.md"}
+              {:feature :full-join  :label "Full outer join"  :doc "../questions/query-builder/join.md"}]}
+
+  {:title    "Query builder"
+   :features [{:feature :nested-queries
+               :label   "Saved questions and models as data sources"
+               :doc     "../questions/query-builder/editor.md#pick-data"}
+              {:feature :expressions
+               :label   "Custom columns"
+               :doc     "../questions/query-builder/editor.md#custom-columns"}
+              {:feature :expression-aggregations
+               :label   "Custom expressions in summaries"
+               :doc     "../questions/query-builder/expressions.md"}
+              {:feature :binning
+               :label   "Binning numbers and coordinates"
+               :doc     "../questions/query-builder/summarizing-and-grouping.md#grouping-your-metrics"}
+              {:feature :case-sensitivity-string-filter-options
+               :label   "Case-sensitive text filters"}]}
+
+  {:title    "Aggregations"
+   :features [{:feature :basic-aggregations
+               :label   "Count, sum, average, min, and max"
+               :doc     "../questions/query-builder/expressions-list.md#aggregations"}
+              {:feature :standard-deviation-aggregations
+               :label   "StandardDeviation and Variance"
+               :doc     "../questions/query-builder/expressions-list.md#standarddeviation"}
+              {:feature :percentile-aggregations
+               :label   "Percentile and Median"
+               :doc     "../questions/query-builder/expressions-list.md#percentile"}
+              {:feature :distinct-where
+               :label   "DistinctIf"
+               :doc     "../questions/query-builder/expressions-list.md#distinctif"}
+              {:feature :window-functions/cumulative
+               :label   "CumulativeCount and CumulativeSum"
+               :doc     "../questions/query-builder/expressions-list.md#cumulativecount"}
+              {:feature :window-functions/offset
+               :label   "Offset"
+               :doc     "../questions/query-builder/expressions/offset.md"}]}
+
+  {:title    "Custom expression functions"
+   :features [{:feature :advanced-math-expressions
+               :label   "exp, log, power, and sqrt"
+               :doc     "../questions/query-builder/expressions-list.md#math-functions"}
+              {:feature :regex
+               :label   "regexExtract"
+               :doc     "../questions/query-builder/expressions/regexextract.md"}
+              {:feature :regex/lookaheads-and-lookbehinds
+               :label   "Lookaheads and lookbehinds in regexExtract"
+               :doc     "../questions/query-builder/expressions/regexextract.md"}
+              {:feature :split-part
+               :label   "splitPart"
+               :doc     "../questions/query-builder/expressions-list.md#splitpart"}
+              {:feature :expressions/integer
+               :label   "integer"
+               :doc     "../questions/query-builder/expressions-list.md#integer"}
+              {:feature :expressions/float
+               :label   "float"
+               :doc     "../questions/query-builder/expressions-list.md#float"}
+              {:feature :expressions/text
+               :label   "text"
+               :doc     "../questions/query-builder/expressions-list.md#text"}
+              {:feature :expressions/date
+               :label   "date"
+               :doc     "../questions/query-builder/expressions-list.md#date"}
+              {:feature :expressions/datetime
+               :label   "datetime"
+               :doc     "../questions/query-builder/expressions-list.md#datetime"}
+              {:feature :temporal-extract
+               :label   "year, month, day, and other date parts"
+               :doc     "../questions/query-builder/expressions-list.md#date-functions"}
+              {:feature :date-arithmetics
+               :label   "datetimeAdd and datetimeSubtract"
+               :doc     "../questions/query-builder/expressions/datetimeadd.md"}
+              {:feature :datetime-diff
+               :label   "datetimeDiff"
+               :doc     "../questions/query-builder/expressions/datetimediff.md"}
+              {:feature :convert-timezone
+               :label   "convertTimezone"
+               :doc     "../questions/query-builder/expressions/converttimezone.md"}
+              {:feature :now
+               :label   "now"
+               :doc     "../questions/query-builder/expressions/now.md"}
+              {:feature :expressions/today
+               :label   "today"
+               :doc     "../questions/query-builder/expressions-list.md#today"}]}
+
+  {:title    "SQL editor"
+   :features [{:feature :native-parameters
+               :label   "SQL variables"
+               :doc     "../questions/native-editor/sql-parameters.md"}
+              {:feature :native-parameter-card-reference
+               :label   "Saved question references"
+               :doc     "../questions/native-editor/referencing-saved-questions-in-queries.md"}
+              {:feature :parameters/table-reference
+               :label   "Table variables"
+               :doc     "../questions/native-editor/table-variables.md"}
+              {:feature :native-temporal-units
+               :label   "Time grouping parameters"
+               :doc     "../questions/native-editor/time-grouping-parameters.md"}]}
+
+  {:title    "Data modeling"
+   :features [{:feature :persist-models
+               :label   "Model persistence"
+               :doc     "../data-modeling/models/model-persistence.md"}
+              ;; BigQuery records and MongoDB documents unfold through `:nested-fields`, JSON columns through
+              ;; `:nested-field-columns`; the JSON unfolding docs cover both
+              {:feature [:nested-field-columns :nested-fields]
+               :label   "JSON unfolding"
+               :doc     "../data-modeling/metadata/json-unfolding.md"}
+              {:feature :transforms/table
+               :label   "Query transforms"
+               :doc     "../data-modeling/transforms/query.md"}
+              {:feature :transforms/python
+               :label   "Python transforms"
+               :doc     "../data-modeling/transforms/python.md"}]}
+
+  {:title    "Writing data"
+   :features [{:feature :uploads
+               :label   "CSV uploads"
+               :doc     "uploads.md"}
+              {:feature :actions
+               :label   "Actions"
+               :doc     "../data-modeling/models/actions/introduction.md"}
+              {:feature :actions/data-editing
+               :label   "Editable tables"
+               :doc     "../data-modeling/editable-tables.md"}]}
+
+  {:title    "Permissions"
+   :features [{:feature :saved-question-sandboxing
+               :label   "Custom row and column security"
+               :doc     "../permissions/row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table"}
+              {:feature :connection-impersonation
+               :label   "Connection impersonation"
+               :doc     "../permissions/impersonation.md"}
+              {:feature :database-routing
+               :label   "Database routing"
+               :doc     "../permissions/database-routing.md"}]}
+
+  {:title    "Database settings"
+   :features [{:feature :set-timezone
+               :label   "Report timezone"
+               :doc     "../configuring-metabase/localization.md#set-default-instance-report-timezone"}]}]
+
+ ;; Driver plumbing that doesn't change what a person can do, or that the page would only confuse them with.
+ :internal
+ #{:actions/custom
+   :atomic-renames
+   :collate
+   :connection-impersonation-requires-role
+   :connection/multiple-databases
+   :create-or-replace-table
+   :database-replication
+   :dependencies/native
+   :describe-default-expr
+   :describe-fields
+   :describe-indexes
+   :describe-is-generated
+   :describe-is-nullable
+   :expression-literals
+   :fingerprint
+   :identifiers-with-spaces
+   :index-info
+   :index/fetch
+   :index/inline-create
+   :index/standalone-create
+   :jdbc/set-query-timeout
+   :jdbc/statements
+   :metadata/key-constraints
+   :metadata/table-existence-check
+   :metadata/table-writable-check
+   :multi-level-schema
+   :native-pivot-tables
+   :native-requires-specified-collection
+   :parameterized-sql
+   :persist-models-enabled
+   :rename
+   :schemas
+   :table-privileges
+   :temporal/requires-default-unit
+   :test/cannot-destroy-db
+   :test/create-table-without-data
+   :test/creates-db-on-connect
+   :test/dynamic-dataset-loading
+   :test/jvm-timezone-setting
+   :test/use-fake-sync
+   :test/uuids-in-create-table-statements
+   :transforms/testing
+   :upload-with-auto-pk
+   :uuid-type}}

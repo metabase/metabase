@@ -128,6 +128,7 @@ jobs:
             ":test"                                             # build-scripts.yml (bin/build unit tests)
             ":ee:drivers:load-namespaces"                       # backend.yml (load-namespaces)
             ":ee:doc"                                           # docs-generate-base.yml
+            ":ee:drivers:doc"                                   # docs-generate-base.yml (database feature support)
             ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
             ":run:ee"                                           # cross-branch-migration-test
             ":dev:ee:migrate"                                   # cross-branch-migration-test

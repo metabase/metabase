@@ -96,6 +96,17 @@ jobs:
           clojure -M:ee:doc mcp-tools-documentation
         continue-on-error: false
 
+      - name: Generate database feature support documentation
+        id: generate_driver_feature_docs
+        # Same reason as the AI provider step: release branches without the generator would fail the command.
+        if: hashFiles('src/metabase/cmd/driver_feature_dox.clj') != ''
+        run: |
+          set -e  # Exit on any error
+          echo "Generating database feature support documentation..."
+          # :drivers puts the driver modules on the classpath, so the page can ask each driver what it supports
+          clojure -M:ee:drivers:doc driver-features-documentation
+        continue-on-error: false
+
       - name: Generate usage analytics documentation
         run: ./bin/generate-usage-analytics-docs.bb
 
@@ -187,6 +198,7 @@ jobs:
           - \`clojure -M:ee:doc command-documentation\`
           - \`clojure -M:ee:doc ai-providers-documentation\`
           - \`clojure -M:ee:doc mcp-tools-documentation\`
+          - \`clojure -M:ee:drivers:doc driver-features-documentation\`
           - \`./bin/generate-usage-analytics-docs.bb\`
           - \`bun run embedding-sdk:docs:generate\`
           - \`bun run embedding-eajs:docs:generate\`
