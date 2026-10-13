@@ -29,6 +29,8 @@ import type {
   TransformDependencyNodeData,
 } from "metabase-types/api";
 
+import { createMockUserInfo } from "./user";
+
 export function createMockDependencyEntry(
   opts?: Partial<DependencyEntry>,
 ): DependencyEntry {
@@ -307,6 +309,7 @@ export function createMockActionDependencyNodeData(
     model_id: null,
     created_at: "2020-01-01T00:00:00Z",
     creator_id: 1,
+    creator: createMockUserInfo(),
     collection_id: null,
     ...opts,
   };

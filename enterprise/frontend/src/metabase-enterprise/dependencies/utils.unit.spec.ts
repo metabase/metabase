@@ -216,16 +216,6 @@ describe("getNodeLink", () => {
     {
       node: createMockActionDependencyNode({
         id: 1,
-        data: createMockActionDependencyNodeData({ model_id: 2 }),
-      }),
-      expectedLink: {
-        label: "View this action",
-        url: "/model/2/detail/actions/1",
-      },
-    },
-    {
-      node: createMockActionDependencyNode({
-        id: 1,
         data: createMockActionDependencyNodeData({ model_id: null }),
       }),
       expectedLink: {
@@ -235,6 +225,13 @@ describe("getNodeLink", () => {
     },
   ])("should get the $node.type node link", ({ node, expectedLink }) => {
     expect(getNodeLink(node)).toEqual(expectedLink);
+  });
+
+  it("should not link an action of a model", () => {
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({ model_id: 2 }),
+    });
+    expect(getNodeLink(node)).toBeNull();
   });
 });
 
@@ -453,15 +450,46 @@ describe("getNodeLocationInfo", () => {
     expect(result?.links[1].label).toBe("public");
   });
 
-  it("should return collection location for action in collection", () => {
+  it("should link an action in a data actions folder to that folder in Data Studio", () => {
     const node = createMockActionDependencyNode({
       data: createMockActionDependencyNodeData({
+        collection: createMockCollection({
+          id: 7,
+          name: "My Folder",
+          namespace: "data-actions",
+          location: "/5/",
+        }),
+      }),
+    });
+    expect(getNodeLocationInfo(node)).toEqual({
+      icon: "collection",
+      links: [
+        {
+          label: "My Folder",
+          url: "/data-studio/actions?expandedId=5&expandedId=7",
+        },
+      ],
+    });
+  });
+
+  it("should link an action outside a data actions folder to the Data Studio actions root", () => {
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({ collection: null }),
+    });
+    expect(getNodeLocationInfo(node)).toEqual({
+      icon: "collection",
+      links: [{ label: "Data actions", url: "/data-studio/actions" }],
+    });
+  });
+
+  it("should return null for an action of a model", () => {
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({
+        model_id: 2,
         collection: createMockCollection({ name: "My Collection" }),
       }),
     });
-    const result = getNodeLocationInfo(node);
-    expect(result?.icon).toBe("collection");
-    expect(result?.links[0].label).toBe("My Collection");
+    expect(getNodeLocationInfo(node)).toBeNull();
   });
 
   it("should return null for sandbox", () => {

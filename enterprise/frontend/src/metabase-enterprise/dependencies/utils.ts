@@ -1,5 +1,6 @@
 import { c, msgid, ngettext, t } from "ttag";
 
+import { getCollectionPathAsArray } from "metabase/common/collections/utils";
 import * as Urls from "metabase/urls";
 import type { NamedUser } from "metabase/utils/user";
 import { visualizations } from "metabase/viz-core";
@@ -7,6 +8,7 @@ import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
   CardType,
+  Collection,
   DependencyEntry,
   DependencyGroupType,
   DependencyId,
@@ -209,13 +211,9 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         url: Urls.dataStudioSnippet(node.id),
       };
     case "action":
-      return {
-        label: t`View this action`,
-        url:
-          node.data.model_id != null
-            ? Urls.action({ id: node.data.model_id }, node.id)
-            : Urls.dataStudioAction(node.id),
-      };
+      return node.data.model_id == null
+        ? { label: t`View this action`, url: Urls.dataStudioAction(node.id) }
+        : null;
   }
 }
 
@@ -280,7 +278,6 @@ export function getNodeLocationInfo(
       return null;
     case "dashboard":
     case "document":
-    case "action":
       if (node.data.collection != null) {
         return {
           icon: "collection",
@@ -342,10 +339,36 @@ export function getNodeLocationInfo(
         };
       }
       return null;
+    case "action":
+      return node.data.model_id == null
+        ? getDataActionLocationInfo(node.data.collection)
+        : null;
     case "transform":
     case "sandbox":
       return null;
   }
+}
+
+function getDataActionLocationInfo(
+  collection: Collection | null | undefined,
+): NodeLocationInfo {
+  if (collection?.namespace === "data-actions") {
+    return {
+      icon: "collection",
+      links: [
+        {
+          label: collection.name,
+          url: Urls.dataStudioActions({
+            expandedIds: getCollectionPathAsArray(collection),
+          }),
+        },
+      ],
+    };
+  }
+  return {
+    icon: "collection",
+    links: [{ label: t`Data actions`, url: Urls.dataStudioActions() }],
+  };
 }
 
 export function getNodeOwner(node: DependencyNode): NamedUser | null {
