@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
@@ -129,16 +130,16 @@
 (defn- sha256-hex [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
 
-(defn- do-with-plugin-cleanup [identifier thunk]
-  (try
-    (thunk)
-    (finally
-      (t2/delete! :model/CustomVizPlugin :identifier identifier))))
+(defn- do-with-plugin-cleanup!
+  "Run `thunk` and delete the plugin rows it inserted. Unlike a bare `t2/delete!`, this also initializes the app DB, so
+  the test passes when it runs first in the namespace."
+  [thunk]
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (thunk)))
 
 (deftest load-insert-validates-bundle-test
   (testing "loading an exported plugin with a valid bundle makes it :active"
-    (do-with-plugin-cleanup
-     "imported-viz"
+    (do-with-plugin-cleanup!
      (fn []
        (let [bundle   (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart"})
              ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "imported-viz" :label "imported-viz"}]
@@ -155,8 +156,7 @@
                   :bundle_hash   (sha256-hex bundle)}
                  (t2/select-one :model/CustomVizPlugin :identifier "imported-viz")))))))
   (testing "loading a plugin whose bundle is not a valid archive makes it :error"
-    (do-with-plugin-cleanup
-     "broken-viz"
+    (do-with-plugin-cleanup!
      (fn []
        (let [ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "broken-viz" :label "broken-viz"}]
                        :identifier   "broken-viz"
@@ -197,3 +197,36 @@
                    :icon          "star"
                    :bundle_hash   (sha256-hex new-bundle)}
                   (t2/select-one :model/CustomVizPlugin :id id))))))))
+
+(deftest load-rejects-bundle-identifier-mismatch-test
+  (testing "a bundle whose manifest name differs from the imported identifier lands as :error, never :active"
+    (let [bundle   (cv.tu/valid-bundle-bytes "thumbs-viz")
+          ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "calendar-heatmap-viz" :label "calendar-heatmap-viz"}]
+                    :identifier   "calendar-heatmap-viz"
+                    :display_name "calendar-heatmap-viz"
+                    :manifest     {:name "thumbs-viz"}
+                    :bundle_hash  (sha256-hex bundle)
+                    :bundle       (codecs/bytes->b64-str bundle)
+                    :created_at   "2026-01-01T00:00:00Z"}]
+      (testing "on insert"
+        (do-with-plugin-cleanup!
+         (fn []
+           (serdes/load-one! ingested nil)
+           (is (=? {:identifier    "calendar-heatmap-viz"
+                    :status        :error
+                    :error_message #(str/includes? % "does not match")}
+                   (t2/select-one :model/CustomVizPlugin :identifier "calendar-heatmap-viz"))))))
+      (testing "on update over an active plugin"
+        (let [good-bundle (cv.tu/valid-bundle-bytes "calendar-heatmap-viz")]
+          (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "calendar-heatmap-viz"
+                                                          :display_name "calendar-heatmap-viz"
+                                                          :status       :active
+                                                          :enabled      true
+                                                          :manifest     {:name "calendar-heatmap-viz"}
+                                                          :bundle       good-bundle
+                                                          :bundle_hash  (sha256-hex good-bundle)}]
+            (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
+            (is (=? {:id            id
+                     :status        :error
+                     :error_message #(str/includes? % "does not match")}
+                    (t2/select-one :model/CustomVizPlugin :id id)))))))))

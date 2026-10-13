@@ -81,22 +81,25 @@
                             :import b64->bundle}}})
 
 (defn- bundle-columns
-  "Columns derived from validating the imported `bundle` bytes: the `:active` state plus manifest-derived metadata
-  when the bundle is valid, or the `:error` state with the validation message when it is not."
-  [bundle]
+  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
+  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
+  reason when it is not. The same checks guard a bundle upload."
+  [{:keys [identifier bundle]}]
   (try
-    (cache/derived-columns (cache/validate-bundle! bundle))
+    (->> (cache/validate-bundle! bundle)
+         (cache/check-bundle-identifier! identifier)
+         cache/derived-columns)
     (catch Exception e
       {:status        :error
        :error_message (ex-message e)})))
 
 (defmethod serdes/load-insert! "CustomVizPlugin"
-  [_model-name {:keys [bundle] :as ingested}]
-  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns bundle))))
+  [_model-name ingested]
+  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
 
 (defmethod serdes/load-update! "CustomVizPlugin"
-  [_model-name {:keys [bundle] :as ingested} {:keys [id]}]
-  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns bundle)))
+  [_model-name ingested {:keys [id]}]
+  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
   (cache/purge-plugin-cache! {:id id})
   (custom-viz-plugin.db/non-blob-plugin id))
 
