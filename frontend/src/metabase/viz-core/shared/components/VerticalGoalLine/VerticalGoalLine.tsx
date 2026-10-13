@@ -1,11 +1,11 @@
 import { Line } from "@visx/shape";
 import { Text } from "@visx/text";
-import type { ReactNode } from "react";
 
 import type { GoalStyle } from "../../types/style";
 
+import { GOAL_ADORNMENT_GAP, type GoalAdornment } from "./adornment";
+
 const LABEL_OFFSET_EM = 0.2;
-const ADORNMENT_GAP = 4;
 
 interface VerticalGoalLineProps {
   x: number;
@@ -14,7 +14,7 @@ interface VerticalGoalLineProps {
   labelWidth: number;
   position: "left" | "right";
   style: GoalStyle;
-  adornment?: ReactNode;
+  adornment?: GoalAdornment;
 }
 
 export const VerticalGoalLine = ({
@@ -27,12 +27,7 @@ export const VerticalGoalLine = ({
   adornment,
 }: VerticalGoalLineProps) => {
   const textAnchor = position === "right" ? "start" : "end";
-  // a square as tall as the label, on its outer side
-  const adornmentSize = style.label.size;
-  const adornmentX =
-    position === "right"
-      ? x + labelWidth + ADORNMENT_GAP
-      : x - labelWidth - ADORNMENT_GAP - adornmentSize;
+  const labelSize = style.label.size;
 
   return (
     <g role="graphics-symbol" aria-roledescription="goal line">
@@ -50,10 +45,14 @@ export const VerticalGoalLine = ({
       </Text>
       {adornment != null && (
         <foreignObject
-          x={adornmentX}
-          y={-(1 + LABEL_OFFSET_EM) * adornmentSize}
-          width={adornmentSize}
-          height={adornmentSize}
+          x={
+            position === "right"
+              ? x + labelWidth + GOAL_ADORNMENT_GAP
+              : x - labelWidth - GOAL_ADORNMENT_GAP - adornment.size
+          }
+          y={-(1 + LABEL_OFFSET_EM) * labelSize}
+          width={adornment.size}
+          height={labelSize}
           overflow="visible"
         >
           <div
@@ -64,7 +63,7 @@ export const VerticalGoalLine = ({
               height: "100%",
             }}
           >
-            {adornment}
+            {adornment.content}
           </div>
         </foreignObject>
       )}

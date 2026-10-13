@@ -17,6 +17,7 @@ import type { HoveredData } from "../../types/events";
 import type { Margin } from "../../types/layout";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
+import type { GoalAdornment } from "../VerticalGoalLine/adornment";
 
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
@@ -40,7 +41,7 @@ export interface RowChartViewProps<TDatum> {
     value: number;
     position: "left" | "right";
   } | null;
-  goalAdornment?: React.ReactNode;
+  goalAdornment?: GoalAdornment;
   theme: RowChartTheme;
   margin: Margin;
   innerWidth: number;

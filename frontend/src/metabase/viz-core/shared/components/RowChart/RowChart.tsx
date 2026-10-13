@@ -1,5 +1,5 @@
 import type { NumberValue } from "d3-scale";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
@@ -9,6 +9,10 @@ import type { ChartTicksFormatters } from "../../types/format";
 import type { ContinuousScaleType, Range } from "../../types/scale";
 import type { ChartGoal } from "../../types/settings";
 import RowChartView from "../RowChartView/RowChartView";
+import {
+  type GoalAdornment,
+  getGoalAdornmentWidth,
+} from "../VerticalGoalLine/adornment";
 
 import type { BarData, RowChartTheme, Series, StackOffset } from "./types";
 import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
@@ -36,7 +40,7 @@ export interface RowChartProps<TDatum> {
 
   goal?: ChartGoal | null;
   // drawn next to the goal label
-  goalAdornment?: ReactNode;
+  goalAdornment?: GoalAdornment;
   theme: RowChartTheme;
   stackOffset: StackOffset;
   labelledSeries?: string[] | null;
@@ -250,9 +254,17 @@ export const RowChart = <TDatum,>({
     ],
   );
 
+  const goalAdornmentWidth = getGoalAdornmentWidth(goalAdornment);
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale),
-    [goal, measureTextWidth, theme.goal, paddedXScale],
+    () =>
+      getRowChartGoal(
+        goal,
+        theme.goal,
+        measureTextWidth,
+        paddedXScale,
+        goalAdornmentWidth,
+      ),
+    [goal, measureTextWidth, theme.goal, paddedXScale, goalAdornmentWidth],
   );
 
   return (

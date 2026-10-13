@@ -7,7 +7,10 @@ import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
-import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -297,9 +300,14 @@ const RowChartVisualization = ({
             seriesColors={seriesColors}
             goal={goal}
             goalAdornment={
-              isQueryBuilder && goalErrors.length > 0 ? (
-                <GoalWarningIcon errors={goalErrors} source="goal" />
-              ) : undefined
+              isQueryBuilder && goalErrors.length > 0
+                ? {
+                    content: (
+                      <GoalWarningIcon errors={goalErrors} source="goal" />
+                    ),
+                    size: GOAL_WARNING_ICON_SIZE,
+                  }
+                : undefined
             }
             theme={theme}
             stackOffset={stackOffset}

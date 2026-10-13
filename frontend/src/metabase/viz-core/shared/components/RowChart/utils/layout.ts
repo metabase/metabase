@@ -91,6 +91,7 @@ export const getRowChartGoal = (
   style: GoalStyle,
   measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
+  adornmentWidth = 0,
 ) => {
   if (!goal) {
     return null;
@@ -101,7 +102,7 @@ export const getRowChartGoal = (
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;
   const position =
-    labelWidth > availableRightSideSpace
+    labelWidth + adornmentWidth > availableRightSideSpace
       ? ("left" as const)
       : ("right" as const);
 
