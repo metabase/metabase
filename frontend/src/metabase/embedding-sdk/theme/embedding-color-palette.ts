@@ -5,6 +5,7 @@ import type {
 } from "metabase/embedding-sdk/theme";
 import { colors } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorName, ColorPalette } from "metabase/ui/colors/types";
 
 /**
@@ -26,12 +27,12 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
   ColorName[]
 > = {
-  brand: ["brand", "core-brand"],
+  brand: ["core-brand"],
   "brand-hover": ["background-hover", "background_surface-hover"],
   "brand-hover-light": ["background-hover", "background_surface-hover"],
   border: ["border", "border-neutral"],
-  filter: ["filter", "core-filter"],
-  summarize: ["summarize", "core-summarize"],
+  filter: ["core-filter"],
+  summarize: ["core-summarize"],
   "text-primary": [
     "text-primary",
     "button_label-default-neutral-default",
@@ -124,7 +125,7 @@ export function getEmbeddingColorPalette(
 
   const merged: ColorPalette = {
     ...originalColors,
-    ...appPalette,
+    ...mapWhitelabelColorsToTokens(appPalette),
     ...mappedSdkColors,
     ...chartColors,
   };

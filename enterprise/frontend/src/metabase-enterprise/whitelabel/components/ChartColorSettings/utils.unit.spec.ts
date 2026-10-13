@@ -22,7 +22,7 @@ describe("getDefaultChartColors", () => {
 
 describe("getAutoChartColors", () => {
   const groups = [["accent1"], ["accent2"], ["accent3"]];
-  const palette = { brand: "blue" };
+  const palette = { "core-brand": "blue" };
 
   it("should use the brand color for the first chart color when there are no custom colors", () => {
     const values = {

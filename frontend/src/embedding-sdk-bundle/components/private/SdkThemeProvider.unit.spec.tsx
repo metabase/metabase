@@ -157,7 +157,10 @@ describe("SdkThemeProvider", () => {
 
     it.each([
       ["a V1 theme", { colors: { brand: "#DF75E9" } }],
-      ["a V2 theme", { version: 2 as const, colors: { brand: "#DF75E9" } }],
+      [
+        "a V2 theme",
+        { version: 2 as const, colors: { "core-brand": "#DF75E9" } },
+      ],
       [
         "a dark V1 theme",
         { preset: "dark" as const, colors: { brand: "#DF75E9" } },

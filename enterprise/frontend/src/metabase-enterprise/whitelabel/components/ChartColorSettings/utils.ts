@@ -35,7 +35,7 @@ export const getAutoChartColors = (
     .map(([name]) => values[name])
     .map((value) => (value ? Color(value) : undefined));
 
-  const fallbackColor = Color(palette["brand"]);
+  const fallbackColor = Color(palette["core-brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
 
   const newValues = groups
