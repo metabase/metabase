@@ -164,6 +164,9 @@
    ;; Metabot searches for data sources, so it uses the data picker's library boost.
    ;; This preserves the preference when library-only retrieval falls back to general search.
    {:library             80
+    ;; An exact name match must win, so :exact exceeds the most the other scorers add together:
+    ;; :library (80) plus the semantic-layer type boost (35), with room for the tie-breakers.
+    :exact               150
     ;; Recency only breaks ties within a tier, so :recency plus :user-recency stays below the narrowest tier gap (1).
     :recency             0.4
     :user-recency        0.4

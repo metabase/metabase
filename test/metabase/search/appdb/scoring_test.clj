@@ -533,3 +533,17 @@
             :collection_location (:location lib)
             :collection_type     "library"}]
           (is (= [2 1] (map second (search-results* "foo" :context :metabot)))))))))
+
+(deftest metabot-exact-match-test
+  (testing "with Metabot weights, an exact name match outranks a library metric that only contains the term"
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
+        (with-index-contents
+          [{:model "dataset" :id 1 :name "foo"}
+           {:model               "metric"
+            :id                  2
+            :name                "foo metric"
+            :collection_id       (:id lib)
+            :collection_location (:location lib)
+            :collection_type     "library"}]
+          (is (= [1 2] (map second (search-results* "foo" :context :metabot)))))))))
