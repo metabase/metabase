@@ -47,28 +47,16 @@ describe("scenarios > dashboard", () => {
       cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
+      cy.log("Create a new dashboard");
       H.modal().within(() => {
         // Without waiting for this, the test was constantly flaking locally.
         cy.findByText("Our analytics");
 
-        cy.log("A blank name shows an error (metabase#63176)");
-        cy.findByPlaceholderText(/name of your dashboard/i).type(" ");
-        cy.button("Create").click();
-        cy.findByText("value must be a non-blank string.").should("be.visible");
-        cy.findByPlaceholderText(/name of your dashboard/i).should(
-          "have.attr",
-          "aria-invalid",
-          "true",
-        );
-        cy.button("Failed").should("be.visible");
-
-        cy.log("Create a new dashboard");
+        cy.findByPlaceholderText(/name of your dashboard/i).type(dashboardName);
         cy.findByLabelText("Description").type(dashboardDescription, {
           delay: 0,
         });
-        cy.findByPlaceholderText(/name of your dashboard/i)
-          .clear()
-          .type(`${dashboardName}{enter}`);
+        cy.button("Create").click();
       });
 
       cy.log("Router should immediately navigate to it");
@@ -120,6 +108,24 @@ describe("scenarios > dashboard", () => {
       cy.findAllByTestId("collection-entry-name")
         .should("contain", dashboardName)
         .and("not.contain", newQuestionName);
+    });
+
+    it("should not create a dashboard with a blank name (metabase#63176)", () => {
+      cy.visit("/");
+      H.newButton().click();
+      H.popover().findByText("Dashboard").click();
+      H.modal().within(() => {
+        cy.findByPlaceholderText(/name of your dashboard/i).type(" ");
+        cy.button("Create").click();
+
+        cy.findByText("value must be a non-blank string.").should("be.visible");
+        cy.findByPlaceholderText(/name of your dashboard/i).should(
+          "have.attr",
+          "aria-invalid",
+          "true",
+        );
+        cy.button("Failed").should("be.visible");
+      });
     });
 
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
