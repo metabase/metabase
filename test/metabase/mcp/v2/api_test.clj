@@ -417,9 +417,8 @@
         (testing scope
           (is (contains? grantable scope)
               "a scope the v2 challenge asks for must be one the OAuth server will actually grant")))))
-  (testing "GHY-4543: the challenge asks for the baseline, a subset of what the surface accepts, in surface order"
-    (is (= ["agent:content:read" "agent:query:run"] @#'v2.api/default-ask-scopes))
-    (is (= @#'v2.api/default-ask-scopes (filterv (set @#'v2.api/default-ask-scopes) mcp.paths/v2-surface-scopes)))))
+  (testing "ENG-11089: the challenge asks for everything the surface accepts, in surface order"
+    (is (= mcp.paths/v2-surface-scopes @#'v2.api/default-ask-scopes))))
 
 (def ^:private mcp-app-ui-capabilities
   "The `initialize` capabilities an MCP Apps host advertises. Tools gated on `:mcp-app-ui` are hidden from — and
@@ -620,17 +619,17 @@
         (is (= 401 (:status response)))
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
                            "/.well-known/oauth-protected-resource/api/metabase-mcp"))))
-    (testing "GHY-4543: the challenge asks for the baseline, not everything the surface accepts. ChatGPT takes its
-              login scope from this parameter; every tool is still listed, and a call needing more is answered with
-              a 403 `insufficient_scope` step-up. The baseline includes agent:query:run, so charts never step up."
+    (testing "ENG-11089: the challenge asks for every v2 scope. ChatGPT takes its login scope from this parameter, and a
+              client that reconnects by hand rather than stepping up never sees a scope this leaves out."
       (doseq [path ["metabase-mcp" "mcp"]]
         (testing path
           (let [response (client/client-full-response :post 401 path
                                                       {:request-options {:headers {}}}
                                                       (jsonrpc-request "initialize"))]
             (is (str/ends-with? (get-in response [:headers "WWW-Authenticate"] "")
-                                ", scope=\"agent:content:read agent:query:run\""))))))
-    (testing "GHY-4543: an invalid bearer token's challenge asks for the same baseline"
+                                (str ", scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run "
+                                     "agent:delivery:write\"")))))))
+    (testing "ENG-11089: an invalid bearer token's challenge asks for the same scopes"
       (doseq [path ["metabase-mcp" "mcp"]]
         (testing path
           (let [response (client/client-full-response :post 401 path
@@ -640,7 +639,8 @@
             (is (= (str "Bearer realm=\"mcp\", "
                         "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                         "/api/" path "\", "
-                        "scope=\"agent:content:read agent:query:run\", "
+                        "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run "
+                        "agent:delivery:write\", "
                         "error=\"invalid_token\"")
                    (get-in response [:headers "WWW-Authenticate"])))))))
     (testing "auth-params are comma-delimited per RFC 7235, the form every spec and vendor example
@@ -651,7 +651,8 @@
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                     "/api/metabase-mcp\", "
-                    "scope=\"agent:content:read agent:query:run\"")
+                    "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run "
+                    "agent:delivery:write\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 
 ;;; ------------------------------------------------ Auth methods --------------------------------------------------
@@ -978,7 +979,7 @@
                "and nothing was created")))))))
 
 (deftest baseline-token-steps-up-from-a-write-tool-test
-  (testing "GHY-4543: a client that connected with only the advertised baseline is challenged, on a write, for the
+  (testing "GHY-4543: a client holding only the always-granted baseline is challenged, on a write, for the
             baseline plus the scope that write needs, so its step-up keeps what it already holds"
     (do-with-bearer-token!
      (set mcp.paths/v2-baseline-scopes)
@@ -1084,8 +1085,8 @@
                        "no transport-internal marker leaks into a batch element")))))))))))
 
 (deftest baseline-token-reads-the-fields-catalog-test
-  (testing "GHY-4543, GHY-4939: the advertised baseline carries agent:content:read, so a freshly connected client reads the
-            fields catalog without stepping up"
+  (testing "GHY-4543, GHY-4939: the locked baseline carries agent:content:read, so a client that unticked everything
+            else still reads the fields catalog without stepping up"
     (do-with-bearer-token!
      (set mcp.paths/v2-baseline-scopes)
      (fn [headers]

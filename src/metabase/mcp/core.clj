@@ -93,6 +93,7 @@
   mcp.paths/v2-surface-scopes)
 
 (defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] a client is told to request when it first connects."
+  "The subset of [[v2-scopes]] that the consent page locks: when a client requests one of these, the user cannot
+   untick it."
   []
   mcp.paths/v2-baseline-scopes)
