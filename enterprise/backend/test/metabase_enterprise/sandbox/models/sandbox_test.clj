@@ -235,6 +235,32 @@
                                                :result_metadata (:result_metadata served)}))))
           (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
 
+(deftest lib-bookkeeping-keys-are-not-a-change-to-a-policy-card-result-metadata-test
+  (testing "result metadata that differs from what is stored only in `:metabase.lib.*` keys, which the API drops from a
+           request, is not a change a non-admin is refused"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [:model/Card    {card-id :id} {:dataset_query (mt/mbql-query venues)}
+                     :model/Sandbox _             {:table_id (mt/id :venues)
+                                                   :group_id (u/the-id (perms-group/all-users))
+                                                   :card_id  card-id}]
+        (let [stored (mt/with-test-user :crowberto
+                       (t2/update! :model/Card card-id
+                                   {:result_metadata (mapv #(assoc % :metabase.lib.query/transformation-added-base-type true)
+                                                           (venues-cols "ID" "NAME"))})
+                       (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+          (is (every? :metabase.lib.query/transformation-added-base-type stored))
+          (mt/with-test-user :rasta
+            (is (pos? (t2/update! :model/Card card-id
+                                  {:name            "Renamed"
+                                   :result_metadata (mapv #(dissoc % :metabase.lib.query/transformation-added-base-type)
+                                                          stored)})))
+            (testing "but any other difference still is"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to modify a question that is used for row and column level security"
+                   (t2/update! :model/Card card-id
+                               {:result_metadata (mapv #(assoc % :display_name "Something else") stored)}))))))))))
+
 (deftest running-a-policy-card-with-drifted-metadata-as-a-non-admin-test
   (testing "a non-admin running a policy Card whose stored metadata has drifted gets results, but the QP's metadata
            write-back is refused so the Card's column allow-list is unchanged"
