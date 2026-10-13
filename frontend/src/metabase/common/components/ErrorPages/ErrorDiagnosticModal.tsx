@@ -267,12 +267,14 @@ export const ErrorExplanationModal = ({
       opened={isModalOpen}
       onClose={onClose}
     >
-      <Text>
-        {t`We’ve run into an error, try to refresh the page or go back.`}
-      </Text>
-      <Text mt="lg">
-        {t`If the error persists, you can download diagnostic information`}
-      </Text>
+      <Stack gap="lg">
+        <Text>
+          {t`We’ve run into an error, try to refresh the page or go back.`}
+        </Text>
+        <Text>
+          {t`If the error persists, you can download diagnostic information`}
+        </Text>
+      </Stack>
       <Modal.Footer>
         <Button variant="filled" onClick={openDiagnosticModal}>
           {t`Download diagnostic info`}

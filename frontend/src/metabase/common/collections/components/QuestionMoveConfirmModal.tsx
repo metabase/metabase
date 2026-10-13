@@ -4,7 +4,16 @@ import { jt, msgid, ngettext, t } from "ttag";
 import { first } from "underscore";
 
 import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
-import { Button, Flex, List, Loader, Modal, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  List,
+  Loader,
+  Modal,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import type {
   CardId,
   Collection,
@@ -133,30 +142,32 @@ export const QuestionMoveConfirmModal = ({
       } else {
         return (
           <>
-            <Text mb="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
-            <List>
-              {cardsThatAppearInOtherDashboards.map((cd) => {
-                const card = selectedItems.find(
-                  (item) => item.id === cd.card_id && item.model === "card",
-                );
+            <Stack gap="sm">
+              <Text>{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
+              <List>
+                {cardsThatAppearInOtherDashboards.map((cd) => {
+                  const card = selectedItems.find(
+                    (item) => item.id === cd.card_id && item.model === "card",
+                  );
 
-                const dashboardNames = cd.dashboards
-                  .filter((d) => d.id !== destination.id)
-                  .map((d) => d.name);
+                  const dashboardNames = cd.dashboards
+                    .filter((d) => d.id !== destination.id)
+                    .map((d) => d.name);
 
-                return (
-                  <List.Item key={`card-${cd.card_id}`}>
-                    <Text>{jt`${(
-                      <Text key="name" component="span" fw={700}>
-                        {card?.name}
-                      </Text>
-                    )} will be removed from ${(
-                      <DashboardNames key="names" names={dashboardNames} />
-                    )}`}</Text>
-                  </List.Item>
-                );
-              })}
-            </List>
+                  return (
+                    <List.Item key={`card-${cd.card_id}`}>
+                      <Text>{jt`${(
+                        <Text key="name" component="span" fw={700}>
+                          {card?.name}
+                        </Text>
+                      )} will be removed from ${(
+                        <DashboardNames key="names" names={dashboardNames} />
+                      )}`}</Text>
+                    </List.Item>
+                  );
+                })}
+              </List>
+            </Stack>
 
             <Modal.Footer>
               {errorMessage && (

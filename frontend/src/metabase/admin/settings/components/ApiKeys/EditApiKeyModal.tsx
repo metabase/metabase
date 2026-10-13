@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Modal, Paper, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import {
@@ -164,17 +164,20 @@ export const EditApiKeyModal = ({
                 />
               </Stack>
               <Modal.Footer>
-                <Button
-                  mr="auto"
-                  onClick={() => setModal("regenerate")}
-                >{t`Regenerate API key`}</Button>
-                <FormErrorMessage flex={1} />
-                <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  disabled={!dirty}
-                  variant="filled"
-                  label={t`Save`}
-                />
+                <Group justify="space-between" flex={1}>
+                  <Button
+                    onClick={() => setModal("regenerate")}
+                  >{t`Regenerate API key`}</Button>
+                  <Group>
+                    <FormErrorMessage />
+                    <Button onClick={onClose}>{t`Cancel`}</Button>
+                    <FormSubmitButton
+                      disabled={!dirty}
+                      variant="filled"
+                      label={t`Save`}
+                    />
+                  </Group>
+                </Group>
               </Modal.Footer>
             </Form>
           )}

@@ -4,7 +4,7 @@ import { Link } from "metabase/common/components/Link";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Button, Modal, Text } from "metabase/ui";
+import { Button, Group, Modal, Text } from "metabase/ui";
 
 export const LegacyPermissionsModal = ({
   isOpen,
@@ -49,19 +49,20 @@ export const LegacyPermissionsModal = ({
         {t`Your permissions have been automatically converted to the new settings, with no change in data access for your groups.`}
       </Text>
       <Modal.Footer>
-        <Button
-          variant="transparent"
-          size="compact-md"
-          component={Link}
-          to={docsUrl}
-          target="_blank"
-          mr="auto"
-        >
-          {t`Learn more`}
-        </Button>
-        <Button onClick={onClose} variant="filled">
-          {t`Got it`}
-        </Button>
+        <Group justify="space-between" flex={1}>
+          <Button
+            variant="transparent"
+            size="compact-md"
+            component={Link}
+            to={docsUrl}
+            target="_blank"
+          >
+            {t`Learn more`}
+          </Button>
+          <Button onClick={onClose} variant="filled">
+            {t`Got it`}
+          </Button>
+        </Group>
       </Modal.Footer>
     </Modal>
   );
