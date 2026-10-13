@@ -257,15 +257,6 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defn- table-root-collection-type
-  "The `:type` of the top-level ancestor of the parent table's collection, so a segment on a Library table inherits
-  the table's library ranking boost and curated status. Reads the table's collection columns from the ingestion
-  record, where the search spec's `:render-terms` put them."
-  [{:keys [table_collection_id table_collection_location table_collection_type]}]
-  (collection/root-collection-type {:collection_id       table_collection_id
-                                    :collection_location table_collection_location
-                                    :collection_type     table_collection_type}))
-
 (search/define-spec "segment"
   {:model :model/Segment
    :attrs {:archived true
@@ -275,15 +266,17 @@
            ;; should probably change this, but will break legacy search tests
            :created-at false
            :updated-at true
-           :root-collection-type {:fn table-root-collection-type}}
+           ;; A segment on a Library table inherits the table's library ranking boost and curated status.
+           :root-collection-type {:fn collection/table-root-collection-type}}
    :search-terms [:name :description]
-   :render-terms {:table-id :table_id
-                  :table_description :table.description
-                  :table_name :table.name
-                  :table_display_name :table.display_name
-                  :table_schema :table.schema
-                  ;; The parent table's collection, for [[table-root-collection-type]]. Listing the table columns
-                  ;; here is also what makes a table moving into or out of the Library reindex its segments.
+   :render-terms {:table-id                  :table_id
+                  :table_description         :table.description
+                  :table_name                :table.name
+                  :table_display_name        :table.display_name
+                  :table_schema              :table.schema
+                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                  ;; Listing the table columns here also makes a table that moves into or out of the Library
+                  ;; reindex its segments.
                   :table-collection-id       :table.collection_id
                   :table-is-published        :table.is_published
                   :table-collection-location :collection.location

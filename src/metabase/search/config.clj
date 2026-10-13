@@ -176,12 +176,12 @@
     ;; The semantic layer edges out a final-layer table (33 + 1), so a metric beats every table on an equal match.
     ;; List every model Metabot searches; otherwise [[models-search-order]] supplies its fallback boost.
     :model               10
-    :model/metric        3.5   ; ≈ 35
-    :model/measure       3.5   ; ≈ 35
-    :model/segment       3.5   ; ≈ 35
-    :model/dashboard     0.3   ; ≈ 3
-    :model/card          0.3   ; ≈ 3
-    :model/table         0.1   ; ≈ 1
+    :model/metric        3.5   ; = 35
+    :model/measure       3.5   ; = 35
+    :model/segment       3.5   ; = 35
+    :model/dashboard     0.3   ; = 3
+    :model/card          0.3   ; = 3
+    :model/table         0.1   ; = 1
     :model/dataset       0
     :model/document      0
     :model/transform     0

@@ -121,8 +121,7 @@
   - Library membership is not scored.
   - A table's `data_layer` is not scored.
   - Official-collection and verified scores use their default weights, not the context's boosts.
-  Results also omit `curated`.
-  It is undecided whether to close these gaps or to deprecate this engine."
+  Results also omit `curated`."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]

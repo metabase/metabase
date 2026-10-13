@@ -89,7 +89,7 @@
 
       ("measure" "segment")
       ;; Measures and segments hang off a table rather than a collection, so surface the base table the
-      ;; index row already carries. `:portable_entity_id` is attached by [[enrich-with-measure-segment-entity-ids]].
+      ;; index row already carries. `:portable_entity_id` is attached by [[enrich-with-portable-entity-ids]].
       (-> common-fields
           (merge {:database_id       (:database_id result)
                   :base_table_id     (:table_id result)
@@ -139,25 +139,36 @@
                                  (m/assoc-some :database_engine engine)
                                  (m/assoc-some :database_name db-name))))))))
 
+(def ^:private entity-id-lookups
+  "Pairs of the entity types that share an ID space, and the function that maps a seq of those IDs to a map of ID
+  to entity ID."
+  [[#{"metric" "model" "question"} metabot.db/card-entity-ids]
+   [#{"measure"}                   metabot.db/measure-entity-ids]
+   [#{"segment"}                   metabot.db/segment-entity-ids]])
+
 (defn- enrich-with-portable-entity-ids
-  "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
-  and metric search results so the LLM can use it verbatim as `source-card:` (for
-  questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `read_resource` round-trip."
+  "Attach `:portable_entity_id` (the entity's `entity_id` NanoID) to saved-question, model, metric, measure and
+  segment search results that do not have one yet.
+  The LLM can then use it verbatim as `source-card:` (questions and models) or inside a
+  `[metric|measure|segment, {}, <entity_id>]` clause without a follow-up `read_resource` round-trip."
   [results]
-  (let [carded-types #{"question" "model" "metric"}
-        card-ids (->> results
-                      (filter #(carded-types (:type %)))
-                      (keep :id)
-                      distinct)
-        id->eid  (when (seq card-ids)
-                   (metabot.db/card-entity-ids card-ids))]
+  ;; The search index doesn't carry `entity_id`, so each lookup is one query for all the types that share it.
+  (let [type->id->eid (into {}
+                            (for [[types ids->eids] entity-id-lookups
+                                  :let [ids (->> results
+                                                 (filter (comp types :type))
+                                                 (remove :portable_entity_id)
+                                                 (keep :id)
+                                                 distinct)]
+                                  :when (seq ids)
+                                  :let [id->eid (ids->eids ids)]
+                                  type types]
+                              [type id->eid]))]
     (cond->> results
-      (seq id->eid) (mapv (fn [r]
-                            (if-let [eid (and (carded-types (:type r))
-                                              (get id->eid (:id r)))]
-                              (assoc r :portable_entity_id eid)
-                              r))))))
+      (seq type->id->eid) (mapv (fn [{:keys [id type] :as r}]
+                                  (if-let [eid (get-in type->id->eid [type id])]
+                                    (assoc r :portable_entity_id eid)
+                                    r))))))
 
 (defn- enrich-with-metric-base-tables
   "Attach base-table info (`:base_table_id`, `:base_table_name`, `:base_table_schema`,
@@ -208,25 +219,10 @@
                   (assoc :base_table_portable_fk [database_name schema table-name]))
                 result))))))
 
-(defn- enrich-with-measure-segment-entity-ids
-  "Attach `:portable_entity_id` (the entity's NanoID) to measure and segment search results, for use in a
-  `[measure|segment, {}, <id>]` clause the way a metric uses its portable entity id. The search index doesn't
-  carry `entity_id`, so look it up like [[enrich-with-portable-entity-ids]] does for cards."
-  [results]
-  (let [ids-of  (fn [type] (->> results (filter #(= type (:type %))) (keep :id) distinct))
-        lookup  (fn [db-fn ids] (when (seq ids) (db-fn ids)))
-        id->eid {"measure" (lookup metabot.db/measure-entity-ids (ids-of "measure"))
-                 "segment" (lookup metabot.db/segment-entity-ids (ids-of "segment"))}]
-    (cond->> results
-      (some seq (vals id->eid)) (mapv (fn [{:keys [id type] :as r}]
-                                        (if-let [eid (get-in id->eid [type id])]
-                                          (assoc r :portable_entity_id eid)
-                                          r))))))
-
 (defn- enrich-with-measure-segment-base-tables
-  "Assemble `:base_table_portable_fk [database_name schema table]` for measure/segment results once
-  `:database_name` is set (by [[enrich-with-database-engines]]), giving the agent the table to query a
-  measure/segment against — the same affordance metrics get from [[enrich-with-metric-base-tables]]."
+  "Attach `:base_table_portable_fk` (`[database_name schema table]`) to measure and segment results.
+  The agent queries a measure or segment against that table, as it does for a metric.
+  Requires `:database_name` to already be set on each result, by [[enrich-with-database-engines]]."
   [results]
   (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
           (if (and (#{"measure" "segment"} type) database_name base_table_name)
@@ -458,7 +454,6 @@
              enrich-with-database-engines
              enrich-with-portable-entity-ids
              enrich-with-metric-base-tables
-             enrich-with-measure-segment-entity-ids
              enrich-with-measure-segment-base-tables
              (validate-and-enrich-documents (boolean archived)))
         (vary-meta assoc :total total))))
@@ -656,12 +651,22 @@
 (def ^:private limit-schema
   [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]])
 
+(def ^:private general-entity-types
+  "The entity types the general and NLQ search tools accept."
+  (sorted-set "dashboard"
+              "document"
+              "measure"
+              "metric"
+              "model"
+              "question"
+              "segment"
+              "table"))
+
 (def ^:private search-schema
   [:map {:closed true}
    [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
    [:keyword_queries {:optional true} keyword-queries-schema]
-   [:entity_types {:optional true}
-    (entity-types-schema "table" "model" "metric" "measure" "segment" "dashboard" "document" "question")]
+   [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:limit {:optional true} limit-schema]])
 
 (defn- search-display
@@ -683,17 +688,7 @@
   search-tool
   "Find tables, models, metrics, measures, segments, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
-  (do-search "search"
-             (sorted-set "dashboard"
-                         "document"
-                         "measure"
-                         "metric"
-                         "model"
-                         "question"
-                         "segment"
-                         "table")
-             {}
-             args))
+  (do-search "search" general-entity-types {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -715,8 +710,7 @@
   [:map {:closed true}
    [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
    [:keyword_queries {:optional true} keyword-queries-schema]
-   [:entity_types {:optional true}
-    (entity-types-schema "table" "model" "metric" "measure" "segment" "question" "dashboard" "document")]
+   [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:limit {:optional true} limit-schema]])
 
 (mu/defn ^{:tool-name  "search"
@@ -725,18 +719,10 @@
   nlq-search-tool
   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
   [{:keys [entity_types] :as args} :- nlq-search-schema]
-  (let [allowed-types (sorted-set "dashboard"
-                                  "document"
-                                  "measure"
-                                  "metric"
-                                  "model"
-                                  "question"
-                                  "segment"
-                                  "table")
-        args          (cond-> args
-                        (not (seq entity_types))
-                        (assoc :entity_types ["metric" "measure" "segment" "model" "question" "table"]))]
-    (do-search "NLQ search" allowed-types {:profile-id "nlq"} args)))
+  (let [args (cond-> args
+               (not (seq entity_types))
+               (assoc :entity_types ["metric" "measure" "segment" "model" "question" "table"]))]
+    (do-search "NLQ search" general-entity-types {:profile-id "nlq"} args)))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
