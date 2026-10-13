@@ -6,7 +6,12 @@
  */
 
 import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sql";
-import type { AnalysisKind } from "../../frontend/src/metabase/product-analytics/spec/types";
+import type {
+  AnalysisKind,
+  AnalysisSpec,
+  PathsSpec,
+} from "../../frontend/src/metabase/product-analytics/spec/types";
+import { hasCyclicFlow } from "../../frontend/src/metabase/visualizations/visualizations/SankeyChart/utils/cycle-detection";
 
 import { FLAG, defaultSpec } from "./specs";
 
@@ -104,8 +109,13 @@ const check = (name: string, ok: boolean, detail: string) => {
   }
 };
 
-const run = async (kind: AnalysisKind, truth: GroundTruth) => {
-  const built = buildSql(defaultSpec(kind), eventsBaseSql(truth), {
+const run = async (
+  kind: AnalysisKind,
+  truth: GroundTruth,
+  spec: AnalysisSpec = defaultSpec(kind),
+  label: string = kind,
+) => {
+  const built = buildSql(spec, eventsBaseSql(truth), {
     columns: {
       timestamp: "created_at",
       person: "person_id",
@@ -117,7 +127,7 @@ const run = async (kind: AnalysisKind, truth: GroundTruth) => {
     flags: Object.values(FLAG),
   });
   const rows = await chJson(built.sql);
-  console.log(`\n${kind} (${rows.length} rows)`);
+  console.log(`\n${label} (${rows.length} rows)`);
 
   if (kind === "funnel") {
     const byStep = new Map<number, number>();
@@ -143,6 +153,23 @@ const run = async (kind: AnalysisKind, truth: GroundTruth) => {
 
   if (kind === "paths") {
     check("paths has edges", rows.length > 0, `${rows.length} edges`);
+    const edges = rows.map((row) => [String(row.source), String(row.target)]);
+    check(
+      "paths has no cycles",
+      !hasCyclicFlow(edges, 0, 1),
+      edges
+        .slice(0, 3)
+        .map(([source, target]) => `${source} → ${target}`)
+        .join(", "),
+    );
+    const stepOf = (name: string) => Number(name.split(".")[0]);
+    const sourceSteps = edges.map(([source]) => stepOf(source));
+    const targetSteps = edges.map(([, target]) => stepOf(target));
+    check(
+      "paths edges go to the next step",
+      edges.every(([source, target]) => stepOf(target) === stepOf(source) + 1),
+      `steps ${Math.min(...sourceSteps)}–${Math.max(...targetSteps)}`,
+    );
     return;
   }
 
@@ -186,6 +213,24 @@ if (resolved.trim() !== "1") {
 
 for (const kind of ["funnel", "paths", "habit", "lifecycle", "cohorts"] as const) {
   await run(kind, truth);
+}
+
+// the generator puts signup and checkout in visits of their own, so "between"
+// needs an ending event that shares a visit with pricing
+const pathsSpec = defaultSpec("paths");
+const pathsVariants: [string, Partial<PathsSpec>][] = [
+  ["to checkout", { direction: "to" }],
+  [
+    "between pricing and report",
+    { direction: "between", end: { flag: FLAG.report } },
+  ],
+];
+for (const [label, overrides] of pathsVariants) {
+  const paths: PathsSpec | undefined = pathsSpec.paths && {
+    ...pathsSpec.paths,
+    ...overrides,
+  };
+  await run("paths", truth, { ...pathsSpec, paths }, `paths (${label})`);
 }
 
 if (failures.length > 0) {

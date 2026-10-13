@@ -1,9 +1,69 @@
-import type { AnalysisSpec } from "../../spec/types";
+import type { AnalysisSpec, PathsSpec } from "../../spec/types";
 import { lit } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import type { Cte, QueryPlan } from "../compose";
 
 import { scopedEvents } from "./base";
+
+const STEP_NAME_SQL =
+  "if(event_name != '' AND event_name IS NOT NULL, event_name, url_path)";
+
+const BOUNDS_NOTES: Record<PathsSpec["direction"], string> = {
+  from: "the window of steps in each visit, starting at the first starting event",
+  to: "the window of steps in each visit, ending at the first ending event",
+  between:
+    "the window of steps in each visit, from the first starting event to the next ending event",
+};
+
+const getBoundsBody = (
+  direction: PathsSpec["direction"],
+  depth: number,
+): string[] => {
+  switch (direction) {
+    case "from":
+      return [
+        "SELECT",
+        "  actor,",
+        "  visit,",
+        "  toInt64(min(position)) AS first_position,",
+        `  first_position + ${depth} AS last_position`,
+        "FROM ordered_steps",
+        "WHERE is_start",
+        "GROUP BY actor, visit",
+      ];
+    case "to":
+      // first_position can go below 1 so the ending event always lands on the
+      // same step number, however many steps a visit had before it
+      return [
+        "SELECT",
+        "  actor,",
+        "  visit,",
+        "  toInt64(min(position)) AS last_position,",
+        `  last_position - ${depth} AS first_position`,
+        "FROM ordered_steps",
+        "WHERE is_end",
+        "GROUP BY actor, visit",
+      ];
+    case "between":
+      return [
+        "SELECT",
+        "  o.actor AS actor,",
+        "  o.visit AS visit,",
+        "  any(starts.first_position) AS first_position,",
+        "  toInt64(min(o.position)) AS last_position",
+        "FROM ordered_steps AS o",
+        "INNER JOIN (",
+        "  SELECT actor, visit, toInt64(min(position)) AS first_position",
+        "  FROM ordered_steps",
+        "  WHERE is_start",
+        "  GROUP BY actor, visit",
+        ") AS starts ON starts.actor = o.actor AND starts.visit = o.visit",
+        "WHERE o.is_end AND o.position > starts.first_position",
+        "GROUP BY o.actor, o.visit",
+        `HAVING last_position - first_position <= ${depth}`,
+      ];
+  }
+};
 
 export const planPaths = (spec: AnalysisSpec): QueryPlan => {
   const paths = spec.paths;
@@ -19,18 +79,14 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ? paths.included.map((ref) => flagSql(ref.flag)).join("\n     OR ")
     : "1";
 
-  const anchor =
-    paths.direction === "to"
-      ? flagSql(paths.end.flag)
-      : flagSql(paths.start.flag);
-
-  const stepName =
-    "if(event_name != '' AND event_name IS NOT NULL, event_name, url_path)";
+  const usesStart = paths.direction !== "to";
+  const usesEnd = paths.direction !== "from";
 
   const base = scopedEvents(spec, undefined, [
     { as: "is_step", sql: `(${isStep})` },
-    { as: "is_anchor", sql: anchor },
-    { as: "step_name", sql: stepName },
+    { as: "is_start", sql: usesStart ? flagSql(paths.start.flag) : "0" },
+    { as: "is_end", sql: usesEnd ? flagSql(paths.end.flag) : "0" },
+    { as: "step_name", sql: STEP_NAME_SQL },
   ]);
   warnings.push(...base.warnings);
 
@@ -45,7 +101,8 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       "  actor,",
       "  ts,",
       "  step_name,",
-      "  is_anchor,",
+      "  is_start,",
+      "  is_end,",
       "  sum(new_visit) OVER (PARTITION BY actor ORDER BY ts",
       "    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS visit",
       "FROM (",
@@ -53,14 +110,15 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       "    actor,",
       "    ts,",
       "    step_name,",
-      "    is_anchor,",
+      "    is_start,",
+      "    is_end,",
       "    if(row_number() OVER (PARTITION BY actor ORDER BY ts) = 1",
       `       OR dateDiff('second', lagInFrame(ts, 1, ts) OVER (PARTITION BY actor ORDER BY ts`,
       "         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), ts) > " +
         `${gap},`,
       "       1, 0) AS new_visit",
       "  FROM scoped_events",
-      "  WHERE is_step OR is_anchor",
+      "  WHERE is_step OR is_start OR is_end",
       ")",
     ].join("\n"),
   });
@@ -78,11 +136,12 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       "  visit,",
       "  ts,",
       "  step_name,",
-      "  is_anchor,",
+      "  is_start,",
+      "  is_end,",
       "  row_number() OVER (PARTITION BY actor, visit ORDER BY ts) AS position",
       "FROM (",
       "  SELECT",
-      "    actor, visit, ts, step_name, is_anchor,",
+      "    actor, visit, ts, step_name, is_start, is_end,",
       "    lagInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY ts",
       "      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_name",
       "  FROM visits",
@@ -94,46 +153,48 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
   });
 
   ctes.push({
-    name: "anchored",
-    note:
-      paths.direction === "to"
-        ? "each visit's steps, numbered backwards from the anchor"
-        : "each visit's steps, numbered forwards from the anchor",
+    name: "bounds",
+    note: BOUNDS_NOTES[paths.direction],
     deps: ["ordered_steps"],
+    body: getBoundsBody(paths.direction, depth).join("\n"),
+  });
+
+  ctes.push({
+    name: "numbered",
+    note: "each visit's steps inside its window, numbered from 1 in time order",
+    deps: ["ordered_steps", "bounds"],
     body: [
-      "SELECT actor, visit, step_name, hop",
-      "FROM (",
-      "  SELECT",
-      "    s.actor AS actor,",
-      "    s.visit AS visit,",
-      "    s.step_name AS step_name,",
-      paths.direction === "to"
-        ? "    a.position - s.position AS hop"
-        : "    s.position - a.position AS hop",
-      "  FROM ordered_steps AS s",
-      "  INNER JOIN (",
-      "    SELECT actor, visit, min(position) AS position",
-      "    FROM ordered_steps",
-      "    WHERE is_anchor",
-      "    GROUP BY actor, visit",
-      "  ) AS a ON a.actor = s.actor AND a.visit = s.visit",
-      ")",
-      `WHERE hop BETWEEN 0 AND ${depth}`,
+      "SELECT",
+      "  s.actor AS actor,",
+      "  s.visit AS visit,",
+      "  s.step_name AS step_name,",
+      "  toInt64(s.position) - b.first_position + 1 AS step",
+      "FROM ordered_steps AS s",
+      "INNER JOIN bounds AS b ON b.actor = s.actor AND b.visit = s.visit",
+      "WHERE s.position BETWEEN b.first_position AND b.last_position",
     ].join("\n"),
   });
 
   ctes.push({
     name: "edges",
-    note: "one row per hop, from each step to the next",
-    deps: ["anchored"],
+    note: "one row per step, from each step to the next — labels carry the step number so a repeated step is a new node, not a loop",
+    deps: ["numbered"],
     body: [
       "SELECT",
-      "  hop,",
-      "  step_name AS source,",
-      "  leadInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY hop",
-      "    ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS target,",
+      "  step,",
+      "  concat(toString(step), '. ', step_name) AS source,",
+      "  concat(toString(step + 1), '. ', next_name) AS target,",
       "  actor",
-      "FROM anchored",
+      "FROM (",
+      "  SELECT",
+      "    actor,",
+      "    step,",
+      "    step_name,",
+      "    leadInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY step",
+      "      ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS next_name",
+      "  FROM numbered",
+      ")",
+      "WHERE next_name != ''",
     ].join("\n"),
   });
 
@@ -146,16 +207,15 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ctes,
     select: [
       "SELECT",
-      "  hop,",
+      "  step,",
       "  source,",
       "  target,",
       `  ${metric}`,
       "FROM edges",
-      "WHERE target IS NOT NULL AND target != ''",
-      "GROUP BY hop, source, target",
+      "GROUP BY step, source, target",
       `HAVING weight >= ${paths.minVolume}`,
-      "ORDER BY hop, weight DESC",
-      `LIMIT ${paths.maxNodes} BY hop`,
+      "ORDER BY step, weight DESC",
+      `LIMIT ${paths.maxNodes} BY step`,
     ].join("\n"),
     warnings: [
       ...warnings,
