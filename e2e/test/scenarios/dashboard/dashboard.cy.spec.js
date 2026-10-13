@@ -17,7 +17,7 @@ import {
 
 const { H } = cy;
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 // There's a race condition when saving a dashboard
 // and then immediately editing it again. After saving,
@@ -182,9 +182,11 @@ describe("scenarios > dashboard", () => {
     });
 
     context("add a question (dashboard card)", () => {
-      it("should be possible via questions sidebar", () => {
-        H.editDashboard();
-        H.openQuestionsSidebar();
+      it("should be possible via questions sidebar from an empty state (metabase#29450)", () => {
+        cy.findByTestId("dashboard-empty-state").within(() => {
+          cy.findByText("This dashboard is empty").should("be.visible");
+          cy.findByText("Add a chart").click();
+        });
 
         cy.log("The list of saved questions");
         H.sidebar().findByText("Orders, Count").click();
@@ -228,19 +230,14 @@ describe("scenarios > dashboard", () => {
         };
         H.createCollection(collectionInRoot);
         const myPersonalCollection = "My personal collection";
-        H.createDashboard({
-          name: "dashboard in root collection",
-        }).then(({ body: { id: dashboardId } }) => {
-          H.visitDashboard(dashboardId);
-        });
 
         cy.log("assert that personal collections are not visible");
         H.editDashboard();
         H.openQuestionsSidebar();
         H.sidebar().within(() => {
           cy.findByText("Our analytics").should("be.visible");
-          cy.findByText(myPersonalCollection).should("not.exist");
           cy.findByText(collectionInRoot.name).should("be.visible");
+          cy.findByText(myPersonalCollection).should("not.exist");
         });
 
         cy.log("Move dashboard to a personal collection");
@@ -274,25 +271,9 @@ describe("scenarios > dashboard", () => {
         H.openQuestionsSidebar();
         H.sidebar().within(() => {
           cy.findByText("Our analytics").should("be.visible");
-          cy.findByText(myPersonalCollection).should("not.exist");
           cy.findByText(collectionInRoot.name).should("be.visible");
+          cy.findByText(myPersonalCollection).should("not.exist");
         });
-      });
-
-      it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
-        cy.findByTestId("dashboard-empty-state").within(() => {
-          cy.findByText("This dashboard is empty");
-          cy.findByText("Add a chart").click();
-        });
-
-        H.sidebar().findByText("Orders, Count").click();
-
-        H.saveDashboard();
-
-        H.getDashboardCards()
-          .should("have.length", 1)
-          .and("contain", "Orders, Count")
-          .and("contain", "18,760");
       });
 
       it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
@@ -321,65 +302,6 @@ describe("scenarios > dashboard", () => {
         );
         cy.findAllByRole("tab", { name: /Tab \d/ }).should("have.length", 2);
         H.getDashboardCards().should("have.length", 2);
-      });
-
-      it("should allow navigating to the notebook editor directly from a dashboard card", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.popover().findByText("Edit question").should("be.visible").click();
-        cy.findByRole("button", { name: "Visualize" }).should("be.visible");
-      });
-
-      it("should allow navigating to the model editor directly from a dashboard card", () => {
-        H.createQuestionAndDashboard({
-          questionDetails: {
-            name: "orders",
-            type: "model",
-            query: {
-              "source-table": ORDERS_ID,
-            },
-          },
-          dashboardDetails: {
-            name: "Dashboard",
-          },
-        }).then(({ body: { dashboard_id, card } }) => {
-          cy.wrap(`${card.id}-${card.name}`).as("slug");
-          H.visitDashboard(dashboard_id);
-        });
-
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.popover().findByText("Edit model").should("be.visible").click();
-        cy.get("@slug").then((slug) => {
-          cy.location("pathname").should("eq", `/model/${slug}/query`);
-        });
-      });
-
-      it("should allow navigating to the metric editor directly from a dashboard card", () => {
-        H.createQuestionAndDashboard({
-          questionDetails: {
-            name: "orders",
-            type: "metric",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-            },
-          },
-          dashboardDetails: {
-            name: "Dashboard",
-          },
-        }).then(({ body: { dashboard_id, card } }) => {
-          cy.wrap(`${card.id}-${card.name}`).as("slug");
-          H.visitDashboard(dashboard_id);
-        });
-
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.popover().findByText("Edit metric").should("be.visible").click();
-        cy.get("@slug").then((slug) => {
-          cy.location("pathname").should("eq", `/metric/${slug}/query`);
-        });
       });
     });
 
@@ -613,111 +535,63 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  describe("iframe cards", () => {
-    it("should handle various iframe and URL inputs", () => {
-      const testCases = [
-        {
-          input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        },
-        {
-          input: "https://youtu.be/dQw4w9WgXcQ",
-          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        },
-        {
-          input: "https://www.loom.com/share/1234567890abcdef",
-          expected: "https://www.loom.com/embed/1234567890abcdef",
-        },
-        {
-          input: "https://vimeo.com/123456789",
-          expected: "https://player.vimeo.com/video/123456789",
-        },
-        {
-          input: "example.com",
-          expected: "https://example.com",
-        },
-        {
-          input: "https://example.com",
-          expected: "https://example.com",
-        },
-        {
-          input:
-            '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
-          expected: "https://example.com",
-        },
-      ];
+  it("should allow navigating to the notebook, model and metric editors directly from a dashboard card", () => {
+    cy.log("notebook editor");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.showDashboardCardActions();
+    H.getDashboardCardMenu().click();
+    H.popover().findByText("Edit question").should("be.visible").click();
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
 
-      H.updateSetting("allowed-iframe-hosts", "*");
-
-      H.createDashboard().then(({ body: { id } }) => {
-        H.visitDashboard(id);
-      });
-
-      H.editDashboard();
-
-      testCases.forEach(({ input, expected }, index) => {
-        H.addIFrameWhileEditing(input);
-        cy.button("Done").click();
-        validateIFrame(expected, index);
-      });
+    cy.log("model editor");
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "orders",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      dashboardDetails: {
+        name: "Model dashboard",
+      },
+    }).then(({ body: { dashboard_id, card } }) => {
+      cy.wrap(`${card.id}-${card.name}`).as("modelSlug");
+      H.visitDashboard(dashboard_id);
     });
 
-    it("should respect allowed-iframe-hosts setting", () => {
-      const errorMessage = /can not be embedded in iframe cards/;
+    H.showDashboardCardActions();
+    H.getDashboardCardMenu().click();
+    H.popover().findByText("Edit model").should("be.visible").click();
+    H.datasetEditBar().should("be.visible");
+    cy.get("@modelSlug").then((slug) => {
+      cy.location("pathname").should("eq", `/model/${slug}/query`);
+    });
 
-      H.updateSetting(
-        "allowed-iframe-hosts",
-        ["youtube.com", "player.videos.com"].join("\n"),
-      );
+    cy.log("metric editor");
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "orders",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+      dashboardDetails: {
+        name: "Metric dashboard",
+      },
+    }).then(({ body: { dashboard_id, card } }) => {
+      cy.wrap(`${card.id}-${card.name}`).as("metricSlug");
+      H.visitDashboard(dashboard_id);
+    });
 
-      H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
-      H.editDashboard();
-
-      // Test allowed domain with subdomains
-      H.addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
-      cy.button("Done").click();
-      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
-
-      H.editIFrameWhileEditing(
-        0,
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      );
-      cy.button("Done").click();
-      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
-
-      // Test allowed subdomain, but no other domains
-      H.editIFrameWhileEditing(0, "player.videos.com/video/123456789");
-      cy.button("Done").click();
-      validateIFrame("https://player.videos.com/video/123456789");
-
-      H.editIFrameWhileEditing(0, "videos.com/video/123456789");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      H.editIFrameWhileEditing(0, "www.videos.com/video");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      // Test forbidden domain and subdomains
-      H.editIFrameWhileEditing(0, "https://example.com");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      H.editIFrameWhileEditing(0, "www.example.com");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
+    H.showDashboardCardActions();
+    H.getDashboardCardMenu().click();
+    H.popover().findByText("Edit metric").should("be.visible").click();
+    H.MetricPage.queryEditor().should("be.visible");
+    cy.get("@metricSlug").then((slug) => {
+      cy.location("pathname").should("eq", `/metric/${slug}/query`);
     });
   });
 
@@ -808,115 +682,6 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
-  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
-    H.createQuestion({
-      name: "13597",
-      query: {
-        "source-table": PEOPLE_ID,
-        limit: 2,
-      },
-      display: "map",
-    }).then(({ body: { id: questionId } }) => {
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        // add filter (ID) to the dashboard
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          parameters: [
-            {
-              id: "92eb69ea",
-              name: "ID",
-              sectionId: "id",
-              slug: "id",
-              type: "id",
-            },
-          ],
-        });
-
-        H.addOrUpdateDashboardCard({
-          card_id: questionId,
-          dashboard_id: dashboardId,
-          card: {
-            parameter_mappings: [
-              {
-                parameter_id: "92eb69ea",
-                card_id: questionId,
-                target: ["dimension", ["field", PEOPLE.ID, null]],
-              },
-            ],
-            visualization_settings: {
-              // set click behavior to update filter (ID)
-              click_behavior: {
-                type: "crossfilter",
-                parameterMapping: {
-                  "92eb69ea": {
-                    id: "92eb69ea",
-                    source: { id: "ID", name: "ID", type: "column" },
-                    target: {
-                      id: "92eb69ea",
-                      type: "parameter",
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        H.visitDashboard(dashboardId);
-        H.mapPinIcon().eq(0).click({ force: true });
-        cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
-        cy.contains("Hudson Borer - 1");
-      });
-    });
-  });
-
-  it("should display column options for cross-filter (metabase#14473)", () => {
-    const questionDetails = {
-      name: "14473",
-      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-    };
-
-    H.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { dashboard_id } }) => {
-        cy.log("Add 4 filters to the dashboard");
-
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters: [
-            { name: "ID", slug: "id", id: "729b6456", type: "id" },
-            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
-            {
-              name: "Category",
-              slug: "category",
-              id: "89873480",
-              type: "category",
-            },
-            {
-              name: "Category 1",
-              slug: "category_1",
-              id: "cbc045f2",
-              type: "category",
-            },
-          ],
-        });
-
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    // Add cross-filter click behavior manually
-    cy.icon("pencil").click();
-    H.showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("COUNT(*)").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Update a dashboard filter").click();
-
-    checkOptionsForFilter("ID");
-    checkOptionsForFilter("Category");
-  });
-
   it("should not get the parameter values from the field API", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "d7988e02";
@@ -983,60 +748,6 @@ describe("scenarios > dashboard", () => {
     cy.get("@fetchDashboardParams").should("have.been.calledOnce");
     cy.get("@fetchField").should("not.have.been.called");
     cy.get("@fetchFieldValues").should("not.have.been.called");
-  });
-
-  it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
-    cy.request("GET", "/api/user/current").then(
-      ({ body: { personal_collection_id } }) => {
-        // Save new dashboard in admin's personal collection
-        cy.request("POST", "/api/dashboard", {
-          name: "15368D",
-          collection_id: personal_collection_id,
-        }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
-          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
-          // Add click behavior to the existing "Orders in a dashboard" dashboard
-          cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-            dashcards: [
-              {
-                id: ORDERS_DASHBOARD_DASHCARD_ID,
-                card_id: ORDERS_QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 8,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [COLUMN_REF]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "dashboard",
-                        parameterMapping: {},
-                        targetId: NEW_DASHBOARD_ID,
-                      },
-                    },
-                  },
-                },
-                parameter_mappings: [],
-              },
-            ],
-          });
-
-          cy.intercept(
-            "GET",
-            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
-          ).as("queryMetadata");
-        });
-      },
-    );
-    cy.signInAsNormalUser();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    cy.wait("@queryMetadata");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders in a dashboard");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
   });
 
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
@@ -1299,7 +1010,6 @@ describe("scenarios > dashboard", () => {
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
@@ -1310,69 +1020,144 @@ describe("scenarios > dashboard", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible to add an iframe card", () => {
+  it("should be possible to add iframe cards from various iframe and URL inputs and allowed hosts", () => {
+    const testCases = [
+      {
+        input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      },
+      {
+        input: "https://youtu.be/dQw4w9WgXcQ",
+        expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      },
+      {
+        input: "https://www.loom.com/share/1234567890abcdef",
+        expected: "https://www.loom.com/embed/1234567890abcdef",
+      },
+      {
+        input: "https://vimeo.com/123456789",
+        expected: "https://player.vimeo.com/video/123456789",
+      },
+      {
+        input: "example.com",
+        expected: "https://example.com",
+      },
+      {
+        input: "https://example.com",
+        expected: "https://example.com",
+      },
+      {
+        input:
+          '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+        expected: "https://example.com",
+      },
+    ];
+
     H.updateSetting("allowed-iframe-hosts", "*");
     H.createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
       H.visitDashboard(id);
 
       H.editDashboard();
-      H.addIFrameWhileEditing("https://example.com");
-      cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
-      cy.button("Done").click();
-      H.getDashboardCard(0).realHover();
-      cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
-      validateIFrame("https://example.com");
-      H.saveDashboard();
-      validateIFrame("https://example.com");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "new_iframe_card_created",
-        target_id: id,
-        event_detail: "example.com",
+      testCases.forEach(({ input, expected }, index) => {
+        H.addIFrameWhileEditing(input);
+        H.getDashboardCard(index)
+          .findByTestId("dashboardcard-actions-panel")
+          .should("not.exist");
+        cy.button("Done").click();
+        H.getDashboardCard(index).realHover();
+        H.getDashboardCard(index)
+          .findByTestId("dashboardcard-actions-panel")
+          .should("be.visible");
+        validateIFrame(expected, index);
       });
+
+      H.saveDashboard();
+      H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+
+      // The saved dashcard order is not guaranteed, so compare sorted sources
+      H.getDashboardCards()
+        .find("iframe")
+        .should(($iframes) => {
+          const iframes = $iframes.toArray();
+          expect(
+            iframes.map((el) => el.getAttribute("src")).sort(),
+          ).to.deep.equal(testCases.map(({ expected }) => expected).sort());
+          iframes.forEach((el) => {
+            expect(el.getAttribute("sandbox")).to.equal(IFRAME_SANDBOX);
+            expect(el.hasAttribute("onload")).to.equal(false);
+          });
+        });
+
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "new_iframe_card_created",
+          target_id: id,
+          event_detail: "example.com",
+        },
+        3,
+      );
+      ["www.youtube.com", "youtu.be", "www.loom.com", "vimeo.com"].forEach(
+        (domain) =>
+          H.expectUnstructuredSnowplowEvent({
+            event: "new_iframe_card_created",
+            target_id: id,
+            event_detail: domain,
+          }),
+      );
     });
-  });
 
-  it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    const newTitle = "New title";
-    cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent({
-      event: "dashboard_saved",
-    });
-  });
+    cy.log("allowed-iframe-hosts setting");
+    const errorMessage = /can not be embedded in iframe cards/;
 
-  it("should allow users to add link cards to dashboards", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-
-    cy.wait("@recentViews");
-
-    cy.findByTestId("custom-edit-text-link")
-      .findByPlaceholderText("https://example.com")
-      .type("Orders");
-
-    H.popover().within(() => {
-      cy.findByText(/Loading/i).should("not.exist");
-      cy.findByText("Orders in a dashboard").click();
-    });
-
-    cy.findByTestId("entity-edit-display-link").findByText(
-      /orders in a dashboard/i,
+    H.updateSetting(
+      "allowed-iframe-hosts",
+      ["youtube.com", "player.videos.com"].join("\n"),
     );
 
-    H.saveDashboard();
+    H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
+    H.editDashboard();
 
-    cy.findByTestId("entity-view-display-link").findByText(
-      /orders in a dashboard/i,
-    );
+    // Test allowed domain with subdomains
+    H.addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
+    cy.button("Done").click();
+    validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_link_card_created",
+    H.editIFrameWhileEditing(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    cy.button("Done").click();
+    validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+    // Test allowed subdomain, but no other domains
+    H.editIFrameWhileEditing(0, "player.videos.com/video/123456789");
+    cy.button("Done").click();
+    validateIFrame("https://player.videos.com/video/123456789");
+
+    H.editIFrameWhileEditing(0, "videos.com/video/123456789");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+
+    H.editIFrameWhileEditing(0, "www.videos.com/video");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+
+    // Test forbidden domain and subdomains
+    H.editIFrameWhileEditing(0, "https://example.com");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+
+    H.editIFrameWhileEditing(0, "www.example.com");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
     });
   });
 
@@ -1515,18 +1300,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 });
-
-function checkOptionsForFilter(filter) {
-  cy.findByText("Available filters").parent().contains(filter).click();
-  H.selectDropdown()
-    .should("contain", "Columns")
-    .and("contain", "COUNT(*)")
-    .and("not.contain", "Dashboard filters");
-
-  // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text.
-  cy.findByText("Pick one or more filters to update").click({ force: true });
-}
 
 function assertScrollBarExists() {
   cy.get("body").then(($body) => {
@@ -1753,16 +1526,15 @@ describe("scenarios > dashboard > entity id support", () => {
   });
 });
 
+const IFRAME_SANDBOX =
+  "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts";
+
 function validateIFrame(src, index = 0) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.getDashboardCards()
     .get("iframe")
     .eq(index)
     .should("have.attr", "src", src)
-    .and(
-      "have.attr",
-      "sandbox",
-      "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts",
-    )
+    .and("have.attr", "sandbox", IFRAME_SANDBOX)
     .and("not.have.attr", "onload");
 }

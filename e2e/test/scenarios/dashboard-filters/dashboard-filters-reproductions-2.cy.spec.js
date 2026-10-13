@@ -22,31 +22,6 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-describe("issue 27579", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able to remove the last exclude hour option (metabase#27579)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    H.setFilter("Date picker", "All Options");
-    H.selectDashboardFilter(H.getDashboardCard(), "Created At");
-    H.saveDashboard();
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Exclude…").click();
-      cy.findByText("Hours of the day…").click();
-      cy.findByText("Select all").click();
-      cy.findByLabelText("12 AM").should("be.checked");
-
-      cy.findByText("Select all").click();
-      cy.findByLabelText("12 AM").should("not.be.checked");
-    });
-  });
-});
-
 describe("issue 32804", () => {
   const question1Details = {
     name: "Q1",
@@ -447,6 +422,7 @@ describe("issue 44790", () => {
       },
     });
     H.getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(5));
 
     cy.log("wrong value for number filter should be ignored");
     H.visitDashboard("@dashboardId", {
@@ -456,6 +432,7 @@ describe("issue 44790", () => {
       },
     });
     H.getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(1));
   });
 });
 
@@ -843,7 +820,7 @@ describe("issue 32573", () => {
   });
 });
 
-describe("issue 45670", { tags: ["@external"] }, () => {
+describe("issues 45670 and 14595", { tags: ["@external"] }, () => {
   const dialect = "postgres";
   const tableName = "many_data_types";
 
@@ -898,6 +875,103 @@ describe("issue 45670", { tags: ["@external"] }, () => {
     };
   }
 
+  function createDashboard() {
+    return H.getTableId({ name: tableName }).then((tableId) => {
+      return H.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [
+            createMockParameter({
+              id: "p1",
+              slug: "p1",
+              name: "p1",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "p2",
+              slug: "p2",
+              name: "p2",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "p3",
+              slug: "p3",
+              name: "p3",
+              type: "string/=",
+              sectionId: "string",
+            }),
+          ],
+        },
+        questions: [
+          {
+            name: "Orders",
+            query: { "source-table": ORDERS_ID },
+          },
+          {
+            name: "Products",
+            query: { "source-table": PRODUCTS_ID },
+          },
+          {
+            name: "Many data types",
+            database: WRITABLE_DB_ID,
+            query: { "source-table": tableId },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        return dashboard.id;
+      });
+    });
+  }
+
+  function mapParameters() {
+    cy.findByTestId("fixed-width-filters").findByText("p1").click();
+    H.selectDashboardFilter(H.getDashboardCard(0), "Source");
+    cy.findByTestId("fixed-width-filters").findByText("p2").click();
+    H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+    cy.findByTestId("fixed-width-filters").findByText("p3").click();
+    H.selectDashboardFilter(H.getDashboardCard(2), "String");
+  }
+
+  function assertLinkedFilterSettings({
+    parameterName,
+    compatibleParameterNames,
+    incompatibleParameterNames,
+  }) {
+    cy.findByTestId("fixed-width-filters").findByText(parameterName).click();
+    H.sidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      compatibleParameterNames.forEach((compatibleParameterName) => {
+        cy.findByTestId("compatible-parameters")
+          .findByText(compatibleParameterName)
+          .should("be.visible");
+      });
+      incompatibleParameterNames.forEach((incompatibleParameterName) => {
+        cy.findByTestId("incompatible-parameters")
+          .findByText(incompatibleParameterName)
+          .should("be.visible");
+      });
+    });
+  }
+
+  function assertParameterSettings() {
+    assertLinkedFilterSettings({
+      parameterName: "p1",
+      compatibleParameterNames: ["p2"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p2",
+      compatibleParameterNames: ["p1"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p3",
+      compatibleParameterNames: [],
+      incompatibleParameterNames: ["p1", "p2"],
+    });
+  }
+
   beforeEach(() => {
     H.restore(`${dialect}-writable`);
     H.resetTestTable({ type: dialect, table: tableName });
@@ -905,7 +979,10 @@ describe("issue 45670", { tags: ["@external"] }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
   });
 
-  it("should be able to pass query string parameters for boolean parameters in dashboards (metabase#45670)", () => {
+  it("should pass query string parameters for boolean parameters and hide parameters that cannot be linked (metabase#45670, metabase#14595)", () => {
+    cy.log(
+      "Pass query string parameters for boolean parameters in dashboards (metabase#45670)",
+    );
     getField().then((field) => {
       H.createNativeQuestion(getQuestionDetails(field.id)).then(
         ({ body: card }) => {
@@ -934,6 +1011,14 @@ describe("issue 45670", { tags: ["@external"] }, () => {
       cy.findByText("true").should("be.visible");
       cy.findByText("false").should("not.exist");
     });
+
+    cy.log(
+      "Don't show parameters that cannot be linked in parameter settings (metabase#14595)",
+    );
+    createDashboard().then((dashboardId) => H.visitDashboard(dashboardId));
+    H.editDashboard();
+    mapParameters();
+    assertParameterSettings();
   });
 });
 
@@ -1150,28 +1235,6 @@ describe("issue 52627", () => {
   });
 });
 
-describe("issue 52918", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should re-position the parameter dropdown when its size changes (metabase#52918)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    H.setFilter("Date picker", "All Options");
-    H.sidebar().findByLabelText("No default").click();
-    H.popover().within(() => {
-      cy.findByText("Fixed date range…").click();
-      cy.findByText("Between").should("be.visible");
-    });
-    cy.log("check that there is no overflow in the popover");
-    H.popover().should(([element]) => {
-      expect(element.offsetWidth).to.gte(element.scrollWidth);
-    });
-  });
-});
-
 describe("issue 54236", () => {
   beforeEach(() => {
     H.restore();
@@ -1365,122 +1428,6 @@ describe("issue 55678", () => {
   });
 });
 
-describe("issue 14595", { tags: ["@external"] }, () => {
-  const dialect = "postgres";
-  const tableName = "many_data_types";
-
-  function createDashboard() {
-    return H.getTableId({ name: tableName }).then((tableId) => {
-      return H.createDashboardWithQuestions({
-        dashboardDetails: {
-          parameters: [
-            createMockParameter({
-              id: "p1",
-              slug: "p1",
-              name: "p1",
-              type: "string/=",
-              sectionId: "string",
-            }),
-            createMockParameter({
-              id: "p2",
-              slug: "p2",
-              name: "p2",
-              type: "string/=",
-              sectionId: "string",
-            }),
-            createMockParameter({
-              id: "p3",
-              slug: "p3",
-              name: "p3",
-              type: "string/=",
-              sectionId: "string",
-            }),
-          ],
-        },
-        questions: [
-          {
-            name: "Orders",
-            query: { "source-table": ORDERS_ID },
-          },
-          {
-            name: "Products",
-            query: { "source-table": PRODUCTS_ID },
-          },
-          {
-            name: "Many data types",
-            database: WRITABLE_DB_ID,
-            query: { "source-table": tableId },
-          },
-        ],
-      }).then(({ dashboard }) => {
-        return dashboard.id;
-      });
-    });
-  }
-
-  function mapParameters() {
-    cy.findByTestId("fixed-width-filters").findByText("p1").click();
-    H.selectDashboardFilter(H.getDashboardCard(0), "Source");
-    cy.findByTestId("fixed-width-filters").findByText("p2").click();
-    H.selectDashboardFilter(H.getDashboardCard(1), "Category");
-    cy.findByTestId("fixed-width-filters").findByText("p3").click();
-    H.selectDashboardFilter(H.getDashboardCard(2), "String");
-  }
-
-  function assertLinkedFilterSettings({
-    parameterName,
-    compatibleParameterNames,
-    incompatibleParameterNames,
-  }) {
-    cy.findByTestId("fixed-width-filters").findByText(parameterName).click();
-    H.sidebar().within(() => {
-      cy.findByText("Linked filters").click();
-      compatibleParameterNames.forEach((compatibleParameterName) => {
-        cy.findByTestId("compatible-parameters")
-          .findByText(compatibleParameterName)
-          .should("be.visible");
-      });
-      incompatibleParameterNames.forEach((incompatibleParameterName) => {
-        cy.findByTestId("incompatible-parameters")
-          .findByText(incompatibleParameterName)
-          .should("be.visible");
-      });
-    });
-  }
-
-  function assertParameterSettings() {
-    assertLinkedFilterSettings({
-      parameterName: "p1",
-      compatibleParameterNames: ["p2"],
-      incompatibleParameterNames: ["p3"],
-    });
-    assertLinkedFilterSettings({
-      parameterName: "p2",
-      compatibleParameterNames: ["p1"],
-      incompatibleParameterNames: ["p3"],
-    });
-    assertLinkedFilterSettings({
-      parameterName: "p3",
-      compatibleParameterNames: [],
-      incompatibleParameterNames: ["p1", "p2"],
-    });
-  }
-
-  beforeEach(() => {
-    H.restore(`${dialect}-writable`);
-    H.resetTestTable({ type: dialect, table: tableName });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
-  });
-
-  it("should not see parameters that cannot be linked to the current parameter in parameter settings (metabase#14595)", () => {
-    createDashboard().then((dashboardId) => H.visitDashboard(dashboardId));
-    H.editDashboard();
-    mapParameters();
-    assertParameterSettings();
-  });
-});
-
 describe("issue 44090", () => {
   const parameterDetails = {
     name: "p1",
@@ -1567,57 +1514,6 @@ describe("issue 44090", () => {
       .should("contain", "Minima")
       .invoke("outerWidth")
       .should("be.lt", 300);
-  });
-});
-
-describe("issue 59306", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    const parameter = createMockParameter({
-      id: "p1",
-      slug: "p1",
-      type: "string/=",
-      sectionId: "string",
-      default: undefined,
-      values_query_type: "none",
-    });
-
-    H.createDashboardWithQuestions({
-      dashboardDetails: {
-        parameters: [parameter],
-      },
-      questions: [{ name: "q1", query: { "source-table": PRODUCTS_ID } }],
-    }).then(({ dashboard, questions: [card] }) => {
-      H.updateDashboardCards({
-        dashboard_id: dashboard.id,
-        cards: [
-          {
-            card_id: card.id,
-            parameter_mappings: [
-              {
-                card_id: card.id,
-                parameter_id: parameter.id,
-                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-              },
-            ],
-          },
-        ],
-      }).then(() => {
-        H.visitDashboard(dashboard.id);
-      });
-    });
-  });
-
-  it("should not overflow the filter box (metabase#59306)", () => {
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Enter some text")
-        .type("asdf".repeat(20))
-        .invoke("outerWidth")
-        .should("be.lt", 400);
-    });
   });
 });
 

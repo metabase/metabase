@@ -94,6 +94,83 @@ describe("UndoListing", () => {
     });
   });
 
+  it("places the primary action after the extra action", async () => {
+    await setup(
+      makeUndo({
+        actions: [jest.fn()],
+        extraAction: { label: "See all", action: jest.fn() },
+      }),
+    );
+
+    expect(
+      screen.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["See all", "Undo"]);
+  });
+
+  describe("variants", () => {
+    async function setupAdded(undo: Partial<Undo>) {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { store } = renderWithProviders(<UndoListing />);
+
+      await act(async () => {
+        store.dispatch(addUndo({ message: "Something happened", ...undo }));
+      });
+
+      const toast = await screen.findByRole("status");
+      return { user, toast };
+    }
+
+    it.each([
+      { variant: undefined, renderedVariant: "neutral", icon: "check_filled" },
+      { variant: "neutral", renderedVariant: "neutral", icon: "check_filled" },
+      { variant: "negative", renderedVariant: "negative", icon: "warning" },
+      {
+        variant: "warning",
+        renderedVariant: "warning",
+        icon: "warning_triangle_filled",
+      },
+    ] as const)(
+      "renders a $renderedVariant toast with the $icon icon (variant: $variant)",
+      async ({ variant, renderedVariant, icon }) => {
+        const { toast } = await setupAdded({ variant });
+
+        expect(toast).toHaveAttribute("data-variant", renderedVariant);
+        expect(screen.getByLabelText(`${icon} icon`)).toBeInTheDocument();
+      },
+    );
+
+    it.each(["Retry", "More info"] as const)(
+      "performs the %s action on a colored toast and dismisses it",
+      async (buttonName) => {
+        const handlers = { Retry: jest.fn(), "More info": jest.fn() };
+        const { user } = await setupAdded({
+          variant: "negative",
+          actions: [handlers.Retry],
+          actionLabel: "Retry",
+          extraAction: { label: "More info", action: handlers["More info"] },
+        });
+
+        await user.click(screen.getByRole("button", { name: buttonName }));
+
+        await waitFor(() => {
+          expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        });
+        expect(handlers[buttonName]).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it("dismisses a colored toast with its close icon", async () => {
+      const { user } = await setupAdded({ variant: "warning" });
+
+      await user.click(screen.getByLabelText("close icon"));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe("auto-dismiss", () => {
     const TIMEOUT = 5000;
 

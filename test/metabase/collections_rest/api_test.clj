@@ -1886,14 +1886,11 @@
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
     (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
       (mt/with-test-user :crowberto
-        (let [queries     (atom [])
-              real-query  mdb/query
-              this-thread (Thread/currentThread)]
-          ;; `with-redefs` is global, so only record what this thread asks for.
-          (with-redefs [mdb/query (fn [query & args]
-                                    (when (identical? this-thread (Thread/currentThread))
-                                      (swap! queries conj query))
-                                    (apply real-query query args))]
+        (let [queries    (atom [])
+              real-query (mt/original-fn #'mdb/query)]
+          (mt/with-dynamic-fn-redefs [mdb/query (fn [query & args]
+                                                  (swap! queries conj query)
+                                                  (apply real-query query args))]
             (request/with-limit-and-offset 0 0
               (is (pos? (:total (collections.children/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
@@ -2140,6 +2137,11 @@
               :can_delete          false}
              (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
+
+(deftest fetch-data-actions-root-collection-test
+  (testing "GET /api/collection/root?namespace=data-actions names the root after data actions"
+    (is (=? {:id "root" :name "Data actions" :namespace "data-actions"}
+            (mt/user-http-request :crowberto :get 200 "collection/root" :namespace "data-actions")))))
 
 (deftest fetch-root-collection-permissions-test
   (testing "GET /api/collection/root"

@@ -9,7 +9,7 @@
   max-height: 100%;
   overflow: hidden;
 
-  &.readOnly {
+  &.fullHeight {
     border-bottom: none;
     height: 100%;
   }

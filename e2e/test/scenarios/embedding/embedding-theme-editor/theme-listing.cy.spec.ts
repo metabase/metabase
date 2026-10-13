@@ -19,7 +19,7 @@ describe(
     });
 
     it("lazily seeds Light and Dark on first visit, and preserves admin deletions across reloads", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.log(
@@ -45,7 +45,7 @@ describe(
         cy.findByRole("button", { name: /New theme/ }).click();
       });
 
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/new$/);
     });
 
     it("uses white-labeled colors as a base for creating themes", () => {
@@ -61,14 +61,13 @@ describe(
       H.updateSetting("application-colors", whitelabelColors);
 
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has no upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("not.exist");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("not.exist");
 
       H.main().within(() => {
         cy.log("theme listing is rendered");
@@ -83,7 +82,7 @@ describe(
         cy.findByRole("button", { name: /New theme/ }).click();
       });
 
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/new$/);
 
       cy.log("the draft editor has no delete button");
       cy.findByLabelText("Theme name").should("be.visible");
@@ -92,7 +91,7 @@ describe(
       cy.findByRole("button", { name: /Cancel/ }).click();
 
       cy.log("navigates back to the listing");
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      cy.url().should("match", /\/embedding\/appearance$/);
 
       cy.log("cancelling does not create a theme");
       H.main()
@@ -126,15 +125,15 @@ describe(
 
     it("can duplicate and delete themes, and open a theme from its card", () => {
       createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("clicking a theme card opens the theme editor");
       H.main().findByText("Untitled theme").click();
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/\d+$/);
       cy.findByLabelText("Theme name").should("have.value", "Untitled theme");
 
       cy.findByRole("button", { name: /Cancel/ }).click();
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      cy.url().should("match", /\/embedding\/appearance$/);
 
       cy.log("duplicate a theme");
       clickThemeMenuItem("Untitled theme", "Duplicate");

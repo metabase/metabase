@@ -20,7 +20,7 @@ describe("scenarios > data studio > snippets", () => {
         content: "SELECT * FROM orders",
       });
 
-      H.DataStudio.Library.visit();
+      H.DataStudio.Snippets.visitList();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
@@ -95,7 +95,7 @@ describe("scenarios > data studio > snippets", () => {
         description: "**Bold text** and *italic text*",
       });
 
-      H.DataStudio.Library.visit();
+      H.DataStudio.Snippets.visitList();
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
@@ -149,7 +149,7 @@ describe("scenarios > data studio > snippets", () => {
         .findByText("Test snippet")
         .should("not.exist");
 
-      H.DataStudio.Library.visit();
+      H.DataStudio.Snippets.visitList();
 
       H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
@@ -164,7 +164,7 @@ describe("scenarios > data studio > snippets", () => {
     });
 
     it("should create a snippet, then a folder and a snippet inside it", () => {
-      H.DataStudio.Library.visit();
+      H.DataStudio.Snippets.visitList();
 
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Snippet").click();
@@ -196,14 +196,14 @@ describe("scenarios > data studio > snippets", () => {
         cy.findByText(/by Bobby Tables/).should("be.visible");
       });
 
-      H.DataStudio.nav().findByRole("link", { name: "Semantic layer" }).click();
+      H.DataStudio.nav().findByRole("link", { name: "SQL snippets" }).click();
       H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("be.visible");
 
       cy.log("Create a folder and a snippet inside it");
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Collection").click();
+      H.popover().findByText("Folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Test Folder");
@@ -219,7 +219,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@createCollection");
       });
 
-      H.DataStudio.Library.visit();
+      H.DataStudio.Snippets.visitList();
       H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("be.visible");
@@ -251,7 +251,7 @@ describe("scenarios > data studio > snippets", () => {
         name: "Test Folder",
       });
 
-      H.DataStudio.Library.visit();
+      H.DataStudio.Snippets.visitList();
 
       H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 

@@ -106,7 +106,7 @@
 (deftest ^:parallel unknown-topic-and-reference-text-test
   (testing "GHY-4544: teaching errors quote the caller's topic and reference and the server's names"
     (is (= (str "Unknown topic \"nope\". Topics: \"query-dialect\", \"native-parameters\", \"dashboard-filters\", "
-                "\"dashboard-layout\", \"documents\", \"transforms\", \"visualization-settings\". "
+                "\"dashboard-layout\", \"documents\", \"visualization-settings\". "
                 "Call learn() with no arguments for the catalog with descriptions.")
            (text-of (call {:topic "nope"}))))
     (is (= "Topic \"query-dialect\" has no reference \"nope\". Its references: \"operators\"."

@@ -1,0 +1,15 @@
+.bulkSelect {
+  width: 3em;
+  padding-inline: 0.75rem;
+}
+
+.itemLink {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rowActions span {
+  display: flex;
+  align-items: center;
+}

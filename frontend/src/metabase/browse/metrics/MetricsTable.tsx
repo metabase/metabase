@@ -11,14 +11,14 @@ import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import {
   ColumnHeader,
   ItemNameCell,
   TBody,
   Table,
   TableColumn,
-} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/common/components/ItemsTable/Columns";
+} from "metabase/common/components/ItemsTable/TableElements";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
@@ -52,28 +52,12 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_direction: "asc",
 };
 
-export const itemsTableContainerName = "ItemsTableContainer";
-
-const sharedProps = {
-  containerName: itemsTableContainerName,
-};
-
-const nameProps = {
-  ...sharedProps,
-};
-
 const descriptionProps: ResponsiveProps = {
-  ...sharedProps,
   hideAtContainerBreakpoint: "md",
 };
 
 const collectionProps: ResponsiveProps = {
-  ...sharedProps,
   hideAtContainerBreakpoint: "sm",
-};
-
-const menuProps = {
-  ...sharedProps,
 };
 
 const DOTMENU_WIDTH = 34;
@@ -99,7 +83,7 @@ export function MetricsTable({
         <col className={BrowseTableS.nameColumn} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
-        <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
+        <TableColumn width={DOTMENU_WIDTH} />
         <Columns.RightEdge.Col />
       </colgroup>
       <thead>
@@ -108,7 +92,6 @@ export function MetricsTable({
             name="name"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
-            {...nameProps}
             style={{ paddingInlineStart: ".625rem" }}
             columnHeaderProps={{
               style: { paddingInlineEnd: ".5rem" },
@@ -229,11 +212,7 @@ function preventDefault(event: MouseEvent) {
 function NameCell({ metric }: { metric?: MetricResult }) {
   const headingId = `metric-${metric?.id ?? "dummy"}-heading`;
   return (
-    <ItemNameCell
-      data-testid="metric-name"
-      aria-labelledby={headingId}
-      {...nameProps}
-    >
+    <ItemNameCell data-testid="metric-name" aria-labelledby={headingId}>
       <Flex align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">
         {metric ? (
           <Link

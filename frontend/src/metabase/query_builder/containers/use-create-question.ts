@@ -4,12 +4,11 @@ import type { ScheduleCallback } from "metabase/common/hooks/use-callback-effect
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type Question from "metabase-lib/v1/Question";
-import type { DashboardTabId } from "metabase-types/api";
 
-import { apiCreateQuestion } from "../actions";
+import { type OnCreateOptions, apiCreateQuestion } from "../actions";
 import { updateUrl } from "../actions/url";
 
-export type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+export type { OnCreateOptions };
 
 interface UseCreateQuestionParams {
   scheduleCallback?: ScheduleCallback;

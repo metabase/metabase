@@ -175,6 +175,9 @@
                                                 :metric  #{}
                                                 :card    #{}}
                                                (collections-rest.db/unarchived-card-collection-types-reducible))
+                                       {:action (->> (collections-rest.db/unarchived-action-collection-ids)
+                                                     (map :collection_id)
+                                                     (into #{}))}
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
                                          {:table (->> (collections-rest.db/published-table-collection-ids)

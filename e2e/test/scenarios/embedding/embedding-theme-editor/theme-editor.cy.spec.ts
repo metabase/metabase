@@ -38,7 +38,7 @@ function createThemeViaApi(name = "Test theme") {
 
 function visitThemeEditor(themeId: number) {
   cy.intercept("GET", `/api/embed-theme/${themeId}`).as("getTheme");
-  cy.visit(`/admin/embedding/themes/${themeId}`);
+  cy.visit(`/embedding/appearance/theme/${themeId}`);
   cy.wait("@getTheme");
 }
 
@@ -63,7 +63,7 @@ describe(
     });
 
     it("loads the theme editor page and shows the theme name", () => {
-      H.updateSetting("enable-embedding-simple", false);
+      H.updateSetting("enable-embedding-modular", false);
 
       createThemeViaApi("My custom theme").then((theme) => {
         visitThemeEditor(theme.id);
@@ -72,8 +72,8 @@ describe(
       cy.log("editor panel should show the theme name");
       cy.findByLabelText("Theme name").should("have.value", "My custom theme");
 
-      cy.log("sidebar should be hidden on theme editor page");
-      cy.findByTestId("admin-layout-sidebar").should("not.exist");
+      cy.log("theme editor should render full width");
+      cy.findByTestId("embedding-hub-content-cap").should("not.exist");
 
       cy.log("save button should be disabled when no changes");
       cy.findByRole("button", { name: /Save theme/ }).should("be.disabled");
@@ -91,13 +91,13 @@ describe(
 
       cy.log("cancel should navigate back to the themes listing");
       cy.findByRole("button", { name: /Cancel/ }).click();
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      cy.url().should("match", /\/embedding\/appearance$/);
       H.main().findByText("My custom theme").should("be.visible");
     });
 
     it("can delete a theme that has unsaved changes without getting stuck on a 404", () => {
       cy.log("an unknown theme id shows the not found page");
-      cy.visit("/admin/embedding/themes/99999");
+      cy.visit("/embedding/appearance/theme/99999");
       H.main().findByText("We're a little lost...").should("be.visible");
 
       // Repro of a bug where deleting a dirty theme would trigger the
@@ -145,7 +145,7 @@ describe(
       H.undoToast().findByText("Theme deleted successfully").should("exist");
 
       cy.log("should land on the themes listing — not 404 or leave-prompt");
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      cy.url().should("match", /\/embedding\/appearance$/);
       H.main()
         .findByRole("button", { name: /New theme/ })
         .should("be.visible");
@@ -198,7 +198,7 @@ describe(
         H.undoToastList().contains("Theme saved").should("be.visible");
 
         cy.log("saving navigates back to the listing with the new name");
-        cy.url().should("match", /\/admin\/embedding\/themes$/);
+        cy.url().should("match", /\/embedding\/appearance$/);
         H.main().findByText("Updated name").should("be.visible");
       });
     });
@@ -318,8 +318,8 @@ describe(
 
     describe("preview picker", () => {
       beforeEach(() => {
-        H.updateSetting("enable-embedding-simple", true);
-        H.updateSetting("show-simple-embed-terms", false);
+        H.updateSetting("enable-embedding-modular", true);
+        H.updateSetting("show-modular-embed-terms", false);
       });
 
       it("defaults to a dashboard and can switch to a question", () => {

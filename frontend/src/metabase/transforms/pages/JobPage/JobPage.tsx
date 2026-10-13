@@ -21,7 +21,11 @@ import type {
 } from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
-import { JobMoreMenu } from "../../components/JobMoreMenu";
+import {
+  JobModal,
+  type JobModalState,
+  JobMoreMenu,
+} from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
 import { POLLING_INTERVAL } from "../../constants";
 
@@ -87,6 +91,7 @@ function JobPageBody({
   onNameChange,
 }: JobPageBodyProps) {
   const [updateJob] = useUpdateTransformJobMutation();
+  const [jobModal, setJobModal] = useState<JobModalState>();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -133,16 +138,19 @@ function JobPageBody({
   };
 
   return (
-    <JobEditor
-      job={job}
-      menu={!readOnly && <JobMoreMenu job={job} />}
-      tabs={<JobTabs jobId={job.id} />}
-      readOnly={readOnly}
-      isCheckingPermissions={isCheckingPermissions}
-      onNameChange={onNameChange}
-      onScheduleChange={handleScheduleChange}
-      onTagListChange={handleTagListChange}
-    />
+    <>
+      <JobEditor
+        job={job}
+        menu={!readOnly && <JobMoreMenu job={job} onOpenModal={setJobModal} />}
+        tabs={<JobTabs jobId={job.id} />}
+        readOnly={readOnly}
+        isCheckingPermissions={isCheckingPermissions}
+        onNameChange={onNameChange}
+        onScheduleChange={handleScheduleChange}
+        onTagListChange={handleTagListChange}
+      />
+      <JobModal modal={jobModal} onClose={() => setJobModal(undefined)} />
+    </>
   );
 }
 

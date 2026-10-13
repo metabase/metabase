@@ -11,6 +11,7 @@ import type {
   QueryBuilderUIControls,
   Range,
 } from "metabase/redux/store";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -47,6 +48,7 @@ import {
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
   getShouldShowUnsavedChangesWarning,
+  getSubmittableQuestion,
 } from "./selectors";
 
 registerVisualizations();
@@ -584,5 +586,53 @@ describe("getShouldShowUnsavedChangesWarning", () => {
       });
       expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
     });
+  });
+});
+
+describe("getSubmittableQuestion", () => {
+  function getTimeseriesCard(opts?: Parameters<typeof createMockCard>[0]) {
+    return createMockCard({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      ...opts,
+    });
+  }
+
+  it("sets the default display when the question has never been run (metabase#83091)", () => {
+    const card = getTimeseriesCard();
+    const state = getBaseState({ card });
+    const question = checkNotNull(getQuestion(state));
+
+    expect(getSubmittableQuestion(state, question).display()).toBe("line");
+  });
+
+  it("does not change the display after the question has been run", () => {
+    const card = getTimeseriesCard();
+    const state = getBaseState({
+      card,
+      lastRunCard: createMockCard(),
+    });
+    const question = checkNotNull(getQuestion(state));
+
+    expect(getSubmittableQuestion(state, question).display()).toBe("table");
+  });
+
+  it("does not change the display for a question with a locked display", () => {
+    // displayIsLocked is true for saved cards or if the user explicitly picks a display
+    const card = getTimeseriesCard({ displayIsLocked: true });
+    const state = getBaseState({ card });
+    const question = checkNotNull(getQuestion(state));
+
+    expect(getSubmittableQuestion(state, question).display()).toBe("table");
   });
 });

@@ -8,14 +8,13 @@ describe("scenarios > embedding > themes > upsell", () => {
     });
 
     it("shows the upsell with Metabase Pro copy and an external upgrade link", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("be.visible");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("exist");
 
       H.main().within(() => {
         cy.log("upsell copy matches the Figma");
@@ -53,15 +52,14 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: false, plan_alias: "pro-cloud" },
       }).as("trialUnavailable");
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
       cy.wait("@trialUnavailable");
 
       cy.log("nav label has an upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("be.visible");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("exist");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -81,7 +79,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         cy.findByText(/Please ask a Metabase Store Admin/).should("not.exist");
 
         cy.log("no trial → no trial line");
-        cy.findByText(/14-day free trial/).should("not.exist");
+        cy.findByText(/14 day trial/).should("not.exist");
       });
 
       cy.log(
@@ -101,7 +99,7 @@ describe("scenarios > embedding > themes > upsell", () => {
 
         cy.log("trial line is rendered");
         cy.findByText(
-          /Get a 14-day free trial of this and other pro features/,
+          /Get a 14 day trial of this and other Pro features/,
         ).should("be.visible");
 
         cy.log("button text switches to 'Try for free'");
