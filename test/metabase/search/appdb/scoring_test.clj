@@ -405,6 +405,23 @@
                      (map #(str/ends-with? (:name %) " lib")
                           (search-results** "foo" {:context :metabot :models #{"measure" "segment"} :curated true})))))))))))
 
+(deftest measure-segment-library-user-settings-test
+  ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
+  (search.tu/with-temp-index-table
+    (testing "measures and segments follow a table published and unpublished through its user settings"
+      (collections.tu/with-library [{data :data}]
+        (mt/with-temp [:model/Table   {table-id :id} {:name "tbl"}
+                       :model/Measure _ {:name "foo measure" :table_id table-id}
+                       :model/Segment _ {:name "foo segment" :table_id table-id}]
+          (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
+            (is (= [[false false] [true true] [false false]]
+                   [(curated)
+                    (do (t2/insert! :model/TableUserSettings
+                                    {:table_id table-id :is_published true :collection_id (:id data)})
+                        (curated))
+                    (do (t2/update! :model/TableUserSettings table-id {:is_published false :collection_id nil})
+                        (curated))]))))))))
+
 (deftest ^:parallel data-layer-test
   (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
     (with-index-contents
