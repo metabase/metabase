@@ -169,8 +169,8 @@ function isInsideCall(node: SyntaxNode) {
   return false;
 }
 
-const operatorMark = Decoration.mark({ class: S.operator });
-const numberMark = Decoration.mark({ class: S.number });
+const operatorMark = /* #__PURE__ */ Decoration.mark({ class: S.operator });
+const numberMark = /* #__PURE__ */ Decoration.mark({ class: S.number });
 
 function getOperatorRange(
   state: EditorState,
