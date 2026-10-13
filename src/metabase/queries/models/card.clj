@@ -16,7 +16,6 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dependencies.hooks]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]

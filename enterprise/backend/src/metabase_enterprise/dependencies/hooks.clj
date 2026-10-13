@@ -12,7 +12,6 @@
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -72,16 +71,35 @@
   (when (changed? instance columns)
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
+(defmulti ^:private before-insert*
+  "Mark what inserting the `model` row `instance` affects."
+  {:arglists '([model instance])}
+  (fn [model _instance] model))
+
+(defmulti ^:private before-update*
+  "Mark what updating the `model` row `instance` affects."
+  {:arglists '([model instance])}
+  (fn [model _instance] model))
+
+(defmulti ^:private before-delete*
+  "Mark what deleting the `model` row `instance` affects."
+  {:arglists '([model instance])}
+  (fn [model _instance] model))
+
+(defmethod before-insert* :default [_model _instance] nil)
+(defmethod before-update* :default [_model _instance] nil)
+(defmethod before-delete* :default [_model _instance] nil)
+
 (doseq [model [:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Sandbox
                :model/Segment :model/Transform]]
-  (defmethod dependencies.hooks/before-insert model
+  (defmethod before-insert* model
     [_model _instance]
     (mark-created!))
-  (defmethod dependencies.hooks/before-delete model
+  (defmethod before-delete* model
     [model instance]
     (mark-deleted! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(defmethod dependencies.hooks/before-update :model/Card
+(defmethod before-update* :model/Card
   [model card]
   (mark-entity-changed! model card #{:dataset_query :dimension_mappings :parameters})
   (when (changed? card #{:dataset_query :result_metadata :type})
@@ -89,53 +107,53 @@
           previous-card (t2/original card)]
       (mdb/do-after-commit #(deps.metadata-update/card-updated! card-id previous-card)))))
 
-(defmethod dependencies.hooks/before-update :model/Dashboard
+(defmethod before-update* :model/Dashboard
   [model dashboard]
   (mark-entity-changed! model dashboard #{:parameters}))
 
-(defmethod dependencies.hooks/before-update :model/Document
+(defmethod before-update* :model/Document
   [model document]
   (mark-entity-changed! model document #{:content_type :document}))
 
-(defmethod dependencies.hooks/before-update :model/Measure
+(defmethod before-update* :model/Measure
   [model measure]
   (mark-entity-changed! model measure #{:definition :table_id}))
 
-(defmethod dependencies.hooks/before-update :model/NativeQuerySnippet
+(defmethod before-update* :model/NativeQuerySnippet
   [model snippet]
   (mark-entity-changed! model snippet #{:content :template_tags}))
 
-(defmethod dependencies.hooks/before-update :model/Sandbox
+(defmethod before-update* :model/Sandbox
   [model sandbox]
   (mark-entity-changed! model sandbox #{:card_id}))
 
-(defmethod dependencies.hooks/before-update :model/Segment
+(defmethod before-update* :model/Segment
   [model segment]
   (mark-entity-changed! model segment #{:definition :table_id}))
 
-(defmethod dependencies.hooks/before-update :model/Transform
+(defmethod before-update* :model/Transform
   [model transform]
   (mark-entity-changed! model transform #{:source :target}))
 
-(defmethod dependencies.hooks/before-insert :model/DashboardCard
+(defmethod before-insert* :model/DashboardCard
   [_model dashcard]
   (mark-changed! :dashboard (:dashboard_id dashcard)))
 
-(defmethod dependencies.hooks/before-update :model/DashboardCard
+(defmethod before-update* :model/DashboardCard
   [_model dashcard]
   (when (changed? dashcard #{:card_id :dashboard_id :visualization_settings})
     (doseq [dashboard-id (distinct [(:dashboard_id (t2/original dashcard)) (:dashboard_id dashcard)])]
       (mark-changed! :dashboard dashboard-id))))
 
-(defmethod dependencies.hooks/before-delete :model/DashboardCard
+(defmethod before-delete* :model/DashboardCard
   [_model dashcard]
   (mark-changed! :dashboard (:dashboard_id dashcard)))
 
-(defmethod dependencies.hooks/before-insert :model/DashboardCardSeries
+(defmethod before-insert* :model/DashboardCardSeries
   [_model series]
   (mark-changed! :dashboard (dependencies.db/dashcard-dashboard-id (:dashboardcard_id series))))
 
-(defmethod dependencies.hooks/before-update :model/DashboardCardSeries
+(defmethod before-update* :model/DashboardCardSeries
   [_model series]
   (when (changed? series #{:card_id :dashboardcard_id})
     (doseq [dashcard-id (distinct [(:dashboardcard_id (t2/original series)) (:dashboardcard_id series)])]
@@ -147,40 +165,58 @@
   (when (deps.findings/mark-transitive-dependents-stale! {:table (filterv some? table-ids)})
     (trigger-jobs!)))
 
-(defmethod dependencies.hooks/before-insert :model/TableUserSettings
+(defmethod before-insert* :model/TableUserSettings
   [_model settings]
   (mark-tables-changed! [(:table_id settings)]))
 
-(defmethod dependencies.hooks/before-update :model/TableUserSettings
+(defmethod before-update* :model/TableUserSettings
   [_model settings]
   (mark-tables-changed! [(:table_id settings)]))
 
-(defmethod dependencies.hooks/before-insert :model/FieldUserSettings
+(defmethod before-insert* :model/FieldUserSettings
   [_model settings]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
 
-(defmethod dependencies.hooks/before-update :model/FieldUserSettings
+(defmethod before-update* :model/FieldUserSettings
   [_model settings]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
 
-(defmethod dependencies.hooks/before-insert :model/Dimension
+(defmethod before-insert* :model/Dimension
   [_model dimension]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
 
-(defmethod dependencies.hooks/before-update :model/Dimension
+(defmethod before-update* :model/Dimension
   [_model dimension]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
 
-(defmethod dependencies.hooks/before-delete :model/Dimension
+(defmethod before-delete* :model/Dimension
   [_model dimension]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
 
-(defmethod dependencies.hooks/before-delete :model/Database
+(defmethod before-delete* :model/Database
   [_model database]
   (when-let [transform-ids (not-empty (dependencies.db/transform-ids-of-source-database (:id database)))]
     (deps.analysis-finding/mark-stale! :transform transform-ids)
     (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
     (trigger-jobs!)))
+
+(defenterprise before-insert
+  "Mark what inserting the `model` row `instance` affects for recalculation."
+  :feature :dependencies
+  [model instance]
+  (before-insert* model instance))
+
+(defenterprise before-update
+  "Mark what updating the `model` row `instance` affects for recalculation."
+  :feature :dependencies
+  [model instance]
+  (before-update* model instance))
+
+(defenterprise before-delete
+  "Mark what deleting the `model` row `instance` affects for recalculation."
+  :feature :dependencies
+  [model instance]
+  (before-delete* model instance))
 
 (defenterprise after-database-sync
   "Mark the dependents of the Tables of the Database with `database-id` that changed since they were analyzed."

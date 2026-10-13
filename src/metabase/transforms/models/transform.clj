@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dependencies.hooks]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]

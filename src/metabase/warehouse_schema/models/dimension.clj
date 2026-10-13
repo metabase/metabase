@@ -3,7 +3,6 @@
   Query Processor. For a more detailed explanation, refer to the documentation in
   `metabase.query-processor.middleware.add-remaps`."
   (:require
-   [metabase.dependencies.hooks]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.warehouse-schema.db :as warehouse-schema.db]

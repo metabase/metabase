@@ -1,64 +1,26 @@
 (ns metabase.dependencies.hooks
-  "Hooks that keep the dependency graph current as content is written, implemented by the enterprise module; models
-  whose writes change dependencies derive from `:hook/dependencies`."
+  "Hooks that keep the dependency graph current as content is written, implemented by the enterprise module."
   (:require
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.tools.before-delete :as t2.before-delete]
-   [toucan2.tools.before-insert :as t2.before-insert]
-   [toucan2.tools.before-update :as t2.before-update]))
+   [metabase.premium-features.defenterprise :refer [defenterprise]]))
 
-(defn- dispatch-model
-  "The `model` to dispatch a hook on, or `:default` without the dependencies feature."
-  [model _instance]
-  (if (premium-features/has-feature? :dependencies)
-    model
-    :default))
+(defenterprise before-insert
+  "Hook for the `model` row `instance` before it is inserted. The OSS implementation is a no-op."
+  metabase-enterprise.dependencies.hooks
+  [_model _instance]
+  nil)
 
-(defmulti before-insert
-  "Hook for the `model` row `instance` before it is inserted."
-  {:arglists '([model instance])}
-  #'dispatch-model)
+(defenterprise before-update
+  "Hook for the `model` row `instance` before it is updated, whose Toucan changes say what changes. The OSS
+  implementation is a no-op."
+  metabase-enterprise.dependencies.hooks
+  [_model _instance]
+  nil)
 
-(defmulti before-update
-  "Hook for the `model` row `instance` before it is updated, whose Toucan changes say what changes."
-  {:arglists '([model instance])}
-  #'dispatch-model)
-
-(defmulti before-delete
-  "Hook for the `model` row `instance` before it is deleted."
-  {:arglists '([model instance])}
-  #'dispatch-model)
-
-(defmethod before-insert :default [_model _instance] nil)
-(defmethod before-update :default [_model _instance] nil)
-(defmethod before-delete :default [_model _instance] nil)
-
-(doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
-  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/dependencies))
-
-(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
-  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
-
-(t2/define-before-insert :hook/dependencies
-  [instance]
-  (before-insert &model instance)
-  instance)
-
-(t2/define-before-update :hook/dependencies
-  [instance]
-  (before-update &model instance)
-  instance)
-
-(t2/define-before-delete :hook/dependencies
-  [instance]
-  instance)
-
-(methodical/defmethod t2.before-delete/before-delete :before :hook/dependencies
-  [model instance]
-  (before-delete model instance)
-  instance)
+(defenterprise before-delete
+  "Hook for the `model` row `instance` before it is deleted. The OSS implementation is a no-op."
+  metabase-enterprise.dependencies.hooks
+  [_model _instance]
+  nil)
 
 (defenterprise after-database-sync
   "Hook for the Database with `database-id` after a sync. The OSS implementation is a no-op."

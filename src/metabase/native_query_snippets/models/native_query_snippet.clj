@@ -2,7 +2,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dependencies.hooks]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]

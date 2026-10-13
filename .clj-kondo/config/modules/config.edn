@@ -780,7 +780,6 @@
            audit-app
            collections
            content-verification
-           dependencies
            embedding
            events
            lib
@@ -910,7 +909,6 @@
            audit-app.view-log
            batch-processing
            collections
-           dependencies
            events
            lib
            lib.be
@@ -1463,7 +1461,6 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
-           dependencies
            events
            lib
            lib.be
@@ -1746,6 +1743,7 @@
            metabase.models.visualization-settings}
    :uses #{api
            app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
@@ -1816,7 +1814,6 @@
    :uses #{api
            api-scope
            collections
-           dependencies
            events
            lib
            lib.schema
@@ -2151,7 +2148,6 @@
            collections
            content-verification
            dashboards
-           dependencies
            documents
            embedding
            events
@@ -2560,7 +2556,6 @@
    :module-exports #{segments.rest}
    :api  #{metabase.segments.schema}
    :uses #{api
-           dependencies
            lib
            lib.be
            lib.schema
@@ -2999,7 +2994,6 @@
            channel
            collections
            database-routing
-           dependencies
            driver
            events
            lib
@@ -3301,7 +3295,6 @@
            api
            app-db
            audit-app
-           dependencies
            driver
            lib.schema
            models
@@ -3379,7 +3372,6 @@
            app-db
            audit-app
            collections
-           dependencies
            driver
            lib
            lib.be
@@ -3891,7 +3883,6 @@
            batch-processing
            collections
            database-routing
-           dependencies
            documents
            driver
            lib
@@ -4218,7 +4209,6 @@
            api-scope
            app-db
            audit-app
-           dependencies
            driver
            lib
            lib.be

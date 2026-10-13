@@ -4,7 +4,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]

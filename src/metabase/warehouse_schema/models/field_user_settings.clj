@@ -1,6 +1,5 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
-   [metabase.dependencies.hooks]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
