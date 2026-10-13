@@ -9,6 +9,9 @@
   # Use SQLGlot (default)
   MB_SQL_TOOLS_PARSER_BACKEND=sqlglot
 
+  # Use the Java SQLGlot port
+  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java
+
   # Use Macaw (legacy)
   MB_SQL_TOOLS_PARSER_BACKEND=macaw
   ```
@@ -26,7 +29,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (def ^:private available-parser-backends
-  #{:macaw :sqlglot})
+  #{:macaw :sqlglot :sqlglot-java})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parser-backend-override*
