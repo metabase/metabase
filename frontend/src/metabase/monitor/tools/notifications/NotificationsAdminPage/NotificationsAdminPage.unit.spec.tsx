@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import {
   findRequests,
@@ -25,6 +25,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { defer } from "metabase/utils/promise";
@@ -48,7 +49,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
-import { PAGE_SIZE } from "./constants";
 
 const PATHNAME = "/monitor/notifications";
 
@@ -146,6 +146,10 @@ type SetupOpts = {
   countsError?: boolean;
   countsDelay?: number;
   refetchDelay?: number;
+  /** Answers each list request in place of `notifications` and `total` */
+  getListResponse?: (
+    call: CallLog,
+  ) => AdminNotificationListResponse | Promise<AdminNotificationListResponse>;
 };
 
 const setup = ({
@@ -162,6 +166,7 @@ const setup = ({
   countsError = false,
   countsDelay,
   refetchDelay,
+  getListResponse,
 }: SetupOpts = {}) => {
   let listCallCount = 0;
 
@@ -173,7 +178,10 @@ const setup = ({
       { delay: countsDelay, name: "admin-notification-counts" },
     );
   }
-  setupAdminListNotificationsEndpoint(() => {
+  setupAdminListNotificationsEndpoint((call) => {
+    if (getListResponse) {
+      return getListResponse(call);
+    }
     const page: AdminNotificationListResponse = {
       data: notifications,
       total,
@@ -593,6 +601,110 @@ describe("NotificationsAdminPage", () => {
   });
 
   describe("search, sorting and pagination", () => {
+    it("shows a skeleton only initially and keeps rows under the loader while paging", async () => {
+      const pending = defer<AdminNotificationListResponse>();
+      const nextPage: AdminNotificationListResponse = {
+        data: [notification2],
+        total: 26,
+        limit: 25,
+        offset: 25,
+      };
+      setup({
+        getListResponse: ({ url }) =>
+          new URL(url).searchParams.get("offset") === "25"
+            ? pending.promise
+            : { ...nextPage, data: [notification1], offset: 0 },
+      });
+      try {
+        expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+        await waitForTableToLoad();
+        await userEvent.click(screen.getByLabelText("Next page"));
+        await waitFor(() => expect(getListCalls()).toHaveLength(2));
+        expect(screen.getByTestId("notification-row-1")).toBeVisible();
+        expect(screen.getByTestId("loading-overlay")).toBeVisible();
+        expect(
+          screen.queryByTestId("tree-table-skeleton"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+        await act(async () => pending.resolve(nextPage));
+        expect(
+          await screen.findByTestId("notification-row-2"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("notification-row-1"),
+        ).not.toBeInTheDocument();
+      } finally {
+        pending.resolve(nextPage);
+      }
+    });
+
+    it("pages Ownerless alerts by 25 rows and keeps its filters", async () => {
+      const ownerless = Array.from({ length: 42 }, (_, index) =>
+        createMockAdminNotification({
+          id: index + 1,
+          creator_id: null,
+          creator: null,
+        }),
+      );
+      const all = [
+        ...ownerless,
+        createMockAdminNotification({ id: 99, creator: ANN }),
+      ];
+      setup({
+        ownerlessCount: 42,
+        initialRoute: `${PATHNAME}?tab=ownerless`,
+        getListResponse: ({ url }) => {
+          const params = new URL(url).searchParams;
+          const rows = params.get("creatorless") === "true" ? ownerless : all;
+          const offset = Number(params.get("offset"));
+          const limit = Number(params.get("limit"));
+          return {
+            data: rows.slice(offset, offset + limit),
+            total: rows.length,
+            limit,
+            offset,
+          };
+        },
+      });
+      await waitForTableToLoad();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("42");
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+      // Row 26 opens the second page, so the first page held rows 1-25.
+      expect(
+        await screen.findByTestId("notification-row-26"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("notification-row-1"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+      const params = new URL(getListCalls()[1].url).searchParams;
+      expect(params.get("limit")).toBe("25");
+      expect(params.get("offset")).toBe("25");
+      expect(params.get("active")).toBe("true");
+      expect(params.get("creatorless")).toBe("true");
+    });
+
+    it.each([0, 25])(
+      "hides the pager when %i alerts fit on one page",
+      async (total) => {
+        setup({
+          notifications: Array.from({ length: total }, (_, index) =>
+            createMockAdminNotification({ id: index + 1 }),
+          ),
+        });
+        await waitForTableToLoad();
+        expect(
+          screen.queryByTestId("pagination-total"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Next page" }),
+        ).not.toBeInTheDocument();
+      },
+    );
+
     it("pushes the search query to the URL", async () => {
       const { router } = setup();
       await waitForTableToLoad();
@@ -657,7 +769,7 @@ describe("NotificationsAdminPage", () => {
 
       await waitFor(() => {
         expect(
-          getListCalls().some((call) => call.url.includes("offset=50")),
+          getListCalls().some((call) => call.url.includes("offset=25")),
         ).toBe(true);
       });
 

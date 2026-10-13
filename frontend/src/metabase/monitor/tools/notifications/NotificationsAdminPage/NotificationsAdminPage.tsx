@@ -22,6 +22,7 @@ import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useLocation, useNavigate, useParams } from "metabase/router";
@@ -44,7 +45,6 @@ import {
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
-  PAGE_SIZE,
   SORT_COLUMN_VALUES,
 } from "./constants";
 import type { RouteParams } from "./types";

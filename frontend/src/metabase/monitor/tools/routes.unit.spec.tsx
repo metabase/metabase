@@ -46,13 +46,13 @@ function setup({
   const tasksResponse: ListTasksResponse = {
     data: [],
     total: 0,
-    limit: 50,
+    limit: 25,
     offset: 0,
   };
   const runsResponse: ListTaskRunsResponse = {
     data: [createMockTaskRun()],
     total: 1,
-    limit: 50,
+    limit: 25,
     offset: 0,
   };
   setupTasksEndpoints(tasksResponse);
@@ -97,7 +97,7 @@ describe("task section counts", () => {
     const params = new URL(listCalls[0].url).searchParams;
     expect(params.get("status")).toBe("failed");
     expect(params.get("offset")).toBe("0");
-    expect(params.get("limit")).toBe("50");
+    expect(params.get("limit")).toBe("25");
   });
 
   it("does not block tab navigation while counts are pending", async () => {

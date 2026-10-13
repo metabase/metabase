@@ -18,6 +18,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
@@ -34,7 +35,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { SessionsPage } from "./SessionsPage";
-import { PAGE_SIZE } from "./constants";
 
 const PATHNAME = "/monitor/sessions";
 
@@ -178,7 +178,7 @@ describe("SessionsPage", () => {
     it("shows the default populations independently of the filtered and paged table", async () => {
       setup({
         initialRoute: `${PATHNAME}?tab=ended&query=ann&page=1`,
-        total: PAGE_SIZE + 10,
+        total: 35,
       });
       await screen.findByTestId("session-row-ann-session");
 
@@ -197,8 +197,8 @@ describe("SessionsPage", () => {
       expect(new URL(calls[0].url).search).toBe("");
       expect(getLastListParams().get("status")).toBe("ended");
       expect(getLastListParams().get("query")).toBe("ann");
-      expect(getLastListParams().get("limit")).toBe(String(PAGE_SIZE));
-      expect(getLastListParams().get("offset")).toBe("50");
+      expect(getLastListParams().get("limit")).toBe("25");
+      expect(getLastListParams().get("offset")).toBe("25");
     });
 
     it("reuses the section counts when switching tabs repeatedly", async () => {
@@ -297,17 +297,23 @@ describe("SessionsPage", () => {
   });
 
   describe("list", () => {
-    it("requests the tab in the URL, sorted by sign-in time by default", async () => {
-      setup({ initialRoute: `${PATHNAME}?tab=ended` });
-      await screen.findByTestId("session-row-ann-session");
+    it.each([
+      { tab: "active", status: "live" },
+      { tab: "ended", status: "ended" },
+    ])(
+      "requests $tab sessions in 25-row pages sorted by sign-in time",
+      async ({ tab, status }) => {
+        setup({ initialRoute: `${PATHNAME}?tab=${tab}` });
+        await screen.findByTestId("session-row-ann-session");
 
-      const params = getLastListParams();
-      expect(params.get("status")).toBe("ended");
-      expect(params.get("limit")).toBe(String(PAGE_SIZE));
-      expect(params.get("offset")).toBe("0");
-      expect(params.get("sort-column")).toBe("created_at");
-      expect(params.get("sort-direction")).toBe("desc");
-    });
+        const params = getLastListParams();
+        expect(params.get("status")).toBe(status);
+        expect(params.get("limit")).toBe("25");
+        expect(params.get("offset")).toBe("0");
+        expect(params.get("sort-column")).toBe("created_at");
+        expect(params.get("sort-direction")).toBe("desc");
+      },
+    );
 
     it("says when there are no active sessions", async () => {
       setup({ sessions: [] });
@@ -395,13 +401,13 @@ describe("SessionsPage", () => {
     });
 
     it("pages to the next set of sessions, dropping the selection", async () => {
-      setup({ total: PAGE_SIZE + 10 });
+      setup({ total: 35 });
       await clickRowCheckbox("ann-session");
 
       await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
       await waitFor(() => {
-        expect(getLastListParams().get("offset")).toBe(String(PAGE_SIZE));
+        expect(getLastListParams().get("offset")).toBe("25");
       });
       expect(queryBulkActionBar()).not.toBeInTheDocument();
     });
