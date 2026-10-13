@@ -293,14 +293,6 @@ describe("scenarios > dependencies > dependency diagnostics", () => {
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
       });
 
-      cy.log("snowplow event when dependency graph link is clicked");
-      cy.findByRole("link", { name: "View in dependency graph" }).click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_entity_selected",
-        triggered_from: "diagnostics-broken-list",
-        event_detail: "card",
-      });
-
       cy.log("sorting");
       H.DependencyDiagnostics.visitBrokenDependencies();
       H.DependencyDiagnostics.searchInput().type("test");
@@ -474,6 +466,17 @@ describe("scenarios > dependencies > dependency diagnostics", () => {
           name: "Include items in personal collections",
         }).should("not.be.checked");
       });
+
+      H.DependencyDiagnostics.filterButton().click();
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-broken-list",
+        event_detail: "card",
+      });
     });
   });
 
@@ -594,14 +597,6 @@ describe("scenarios > dependencies > dependency diagnostics", () => {
         title: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         location: "SQL snippets",
         createdBy: "Bobby Tables",
-      });
-
-      cy.log("snowplow event when dependency graph link is clicked");
-      cy.findByRole("link", { name: "View in dependency graph" }).click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_entity_selected",
-        triggered_from: "diagnostics-unreferenced-list",
-        event_detail: "snippet",
       });
 
       cy.log("sorting");
@@ -741,6 +736,17 @@ describe("scenarios > dependencies > dependency diagnostics", () => {
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
         hiddenEntities: [...SEGMENT_NAMES, ...METRIC_NAMES],
+      });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      H.DependencyDiagnostics.list()
+        .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
+        .click();
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-unreferenced-list",
+        event_detail: "snippet",
       });
     });
   });
