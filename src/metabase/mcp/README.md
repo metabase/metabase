@@ -65,15 +65,16 @@ Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
 MCP client grants nothing on the REST API.
 
-Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run`: a fresh connection can read,
-query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
-(`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
-server metadata still advertises all of them.
+The protected-resource metadata's `scopes_supported` and the `scope` of the 401 challenge both list every scope in
+the table, so a fresh connection asks for all of them. Some clients do not step up after a 403: a manual reconnect
+from Claude's connector settings registers a new client and asks for exactly what these list. When they listed only
+the baseline, that reconnect never offered writes, raw SQL, or delivery, and the user had no way to grant them
+(ENG-11089). The authorization server metadata advertises all of them too.
 
-`agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
-step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
-chart never embeds.
+The baseline (`agent:content:read agent:query:run`) is locked on the consent screen: when a client requests one of
+these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never need a step-up. Claude
+Desktop retries a tool after a step-up over a session that doesn't declare MCP Apps support, so a stepped-up
+`visualize_query` is refused and its chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
