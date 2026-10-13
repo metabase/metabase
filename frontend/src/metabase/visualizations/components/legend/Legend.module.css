@@ -24,6 +24,7 @@
 }
 
 .itemTitle {
+  color: var(--mb-color-text-primary);
   overflow: hidden;
 }
 

@@ -29,10 +29,10 @@ const CARTESIAN_TICKS: Record<
   CartesianChartSize,
   VisualizationTheme["cartesian"]["ticks"]
 > = {
-  small: { fontSize: 12, marginX: 8, marginY: 12 },
-  medium: { fontSize: 12, marginX: 8, marginY: 12 },
-  large: { fontSize: 12, marginX: 8, marginY: 16 },
-  fullscreen: { fontSize: 14, marginX: 12, marginY: 24 },
+  small: { fontSize: 12, marginX: 10, marginY: 12 },
+  medium: { fontSize: 12, marginX: 10, marginY: 12 },
+  large: { fontSize: 12, marginX: 10, marginY: 16 },
+  fullscreen: { fontSize: 14, marginX: 14, marginY: 24 },
 };
 
 const CARTESIAN_AXIS_TITLE: Record<

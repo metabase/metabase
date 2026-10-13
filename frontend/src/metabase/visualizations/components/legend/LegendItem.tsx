@@ -80,7 +80,6 @@ const LegendItemInner = ({
           className={cx(DashboardS.fullscreenNormalText, S.itemTitle, {
             [S.clickableTitle]: onSelectSeries != null,
           })}
-          c="text-primary"
           fz={typography}
           lh={typography}
           ml={dotGap}

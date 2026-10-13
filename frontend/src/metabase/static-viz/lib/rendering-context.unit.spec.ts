@@ -14,7 +14,7 @@ describe("withCartesianChartSize", () => {
     expect(renderingContext.cartesianSize).toBe("medium");
     expect(renderingContext.theme.cartesian.ticks).toEqual({
       fontSize: 12,
-      marginX: 8,
+      marginX: 10,
       marginY: 12,
     });
     expect(renderingContext.theme.cartesian.axisTitle).toEqual({
