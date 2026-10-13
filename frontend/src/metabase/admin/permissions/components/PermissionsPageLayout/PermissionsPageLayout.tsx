@@ -10,6 +10,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import CS from "metabase/css/core/index.css";
+import { CONTENT_PADDING_X } from "metabase/nav/components/AreaLayout";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
@@ -125,10 +126,20 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <Flex className={S.borderBottom} justify="space-between" align="center">
+        <Flex
+          className={CS.borderBottom}
+          justify="space-between"
+          align="center"
+        >
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
-          {/* The hub's wider right padding lines the toolbar up with its app switcher (CONTENT_PADDING_X minus the button's own padding) */}
-          <Flex pl="lg" pr={isEmbeddingHubPermissions() ? "2.75rem" : "lg"}>
+          <Flex
+            pl="lg"
+            pr={
+              isEmbeddingHubPermissions()
+                ? `calc(${CONTENT_PADDING_X} - 0.75rem)`
+                : "lg"
+            }
+          >
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}
@@ -147,7 +158,7 @@ export function PermissionsPageLayout({
       {isHelpReferenceOpen && (
         <Flex
           component="aside"
-          className={cx(S.borderLeft, CS.overflowAuto)}
+          className={cx(CS.borderLeft, CS.overflowAuto)}
           direction="column"
           pos="relative"
           maw="20rem"

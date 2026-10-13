@@ -1,11 +1,3 @@
-.borderBottom {
-  border-bottom: 1px solid var(--mb-color-border-neutral);
-}
-
-.borderLeft {
-  border-left: 1px solid var(--mb-color-border-neutral);
-}
-
 .closeButton {
   color: var(--mb-color-text-disabled);
   transition: color 200ms;
