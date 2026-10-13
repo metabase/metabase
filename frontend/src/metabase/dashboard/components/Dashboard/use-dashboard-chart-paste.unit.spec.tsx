@@ -2,6 +2,7 @@ import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardCreateEndpoint,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -151,8 +152,8 @@ describe("useDashboardChartPaste", () => {
   ])(
     "adds a chart pasted from $source as an untitled question",
     async ({ text }) => {
-      setupCardMocks(CREATED_CARD);
-      fetchMock.post("path:/api/card", CREATED_CARD, { name: "create-card" });
+      setupCardCreateEndpoint();
+      setupCardMocks(createMockCard());
 
       const { store } = setup({ isEditing: true });
       act(() => {
@@ -165,7 +166,7 @@ describe("useDashboardChartPaste", () => {
         );
       });
       const body: unknown = JSON.parse(
-        String(fetchMock.callHistory.lastCall("create-card")?.options.body),
+        String(fetchMock.callHistory.lastCall("card-create")?.options.body),
       );
       expect(body).toMatchObject({
         name: "Untitled question",

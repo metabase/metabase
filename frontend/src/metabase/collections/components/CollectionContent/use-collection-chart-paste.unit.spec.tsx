@@ -1,6 +1,7 @@
 import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { setupCardCreateEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import * as Urls from "metabase/urls";
@@ -88,9 +89,7 @@ describe("useCollectionChartPaste", () => {
   ])(
     "saves a chart pasted from $source as an untitled question",
     async ({ text }) => {
-      fetchMock.post("path:/api/card", createMockCard({ id: 5 }), {
-        name: "create-card",
-      });
+      setupCardCreateEndpoint();
 
       const { store } = setup({ canWrite: true });
       act(() => {
@@ -103,7 +102,7 @@ describe("useCollectionChartPaste", () => {
         );
       });
       const body: unknown = JSON.parse(
-        String(fetchMock.callHistory.lastCall("create-card")?.options.body),
+        String(fetchMock.callHistory.lastCall("card-create")?.options.body),
       );
       expect(body).toMatchObject({
         name: "Untitled question",
