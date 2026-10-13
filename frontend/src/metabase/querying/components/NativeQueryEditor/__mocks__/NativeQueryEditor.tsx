@@ -17,7 +17,7 @@ type NativeQueryEditorProps = Pick<
   | "setDatasetQuery"
 >;
 
-export const NATIVE_EDITOR_ICON_SIZE = 18;
+export const NATIVE_EDITOR_ICON_SIZE = 16;
 
 export const NativeQueryEditor = ({
   canChangeDatabase = true,

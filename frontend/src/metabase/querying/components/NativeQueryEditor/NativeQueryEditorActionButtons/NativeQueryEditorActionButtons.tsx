@@ -13,7 +13,7 @@ import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./NativeQueryEditorActionButtons.module.css";
 
-export const NATIVE_EDITOR_ICON_SIZE = 18;
+export const NATIVE_EDITOR_ICON_SIZE = 16;
 
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
@@ -94,12 +94,12 @@ export const NativeQueryEditorActionButtons = (
         <Tooltip label={t`Auto-format`}>
           <ActionIcon
             variant="subtle"
-            size={NATIVE_EDITOR_ICON_SIZE}
+            size="xs"
             className={S.button}
             aria-label={t`Auto-format`}
             onClick={onFormatQuery}
           >
-            <Icon name="format_code" size={NATIVE_EDITOR_ICON_SIZE} />
+            <Icon name="format_code" />
           </ActionIcon>
         </Tooltip>
       )}

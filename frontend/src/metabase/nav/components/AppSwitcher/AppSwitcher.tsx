@@ -204,30 +204,13 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         <Menu.Target>
           {appsSection ? (
             <ActionIcon
-              size="2rem"
-              p="sm"
-              variant={currentApp === "admin" ? "outline" : "default"}
-              bd={
-                currentApp === "admin"
-                  ? "1px solid var(--mb-color-border-neutral)"
-                  : undefined
-              }
+              variant={currentApp === "admin" ? "on-dark-secondary" : "default"}
+              radius="xl"
               aria-label={t`Settings`}
-              bdrs="50%"
               className={className}
               data-testid="app-switcher-target"
             >
-              <Icon
-                name="mode"
-                // Need an escape hatch here for the white color in admin settings
-                style={{
-                  color:
-                    currentApp === "admin"
-                      ? "var(--mantine-color-white)"
-                      : "var(--mb-color-text-primary)",
-                }}
-                size={16}
-              />
+              <Icon name="mode" />
             </ActionIcon>
           ) : (
             <Avatar

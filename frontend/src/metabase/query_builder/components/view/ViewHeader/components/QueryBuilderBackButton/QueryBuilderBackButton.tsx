@@ -55,8 +55,8 @@ export function QueryBuilderBackButton({
   return (
     <Tooltip label={label}>
       <ActionIcon
+        size="lg"
         radius="xl"
-        size="2.625rem"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}

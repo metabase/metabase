@@ -9,7 +9,12 @@ import type { ActionIconProps } from "./types";
 
 export type { ActionIconGroupProps } from "@mantine/core";
 export { actionIconOverrides } from "./ActionIcon.config";
-export type { ActionIconColor, ActionIconProps } from "./types";
+export type {
+  ActionIconColor,
+  ActionIconProps,
+  ActionIconSize,
+  ActionIconVariant,
+} from "./types";
 
 type SizeVariantProps = Pick<ActionIconProps, "size" | "variant">;
 

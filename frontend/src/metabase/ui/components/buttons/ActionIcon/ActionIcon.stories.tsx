@@ -8,7 +8,7 @@ import {
   StorySection,
 } from "metabase/ui/stories/showcase";
 
-import { ActionIcon, type ActionIconProps } from "./";
+import { ActionIcon, type ActionIconProps, type ActionIconVariant } from "./";
 
 const args = {
   variant: "default",
@@ -20,11 +20,18 @@ const args = {
 
 const argTypes = {
   variant: {
-    options: ["default", "light", "subtle", "filled", "outline", "transparent"],
-    control: { type: "select" },
+    options: [
+      "default",
+      "filled",
+      "light",
+      "subtle",
+      "on-dark-primary",
+      "on-dark-secondary",
+    ],
+    control: { type: "inline-radio" },
   },
   color: {
-    options: [undefined, "brand", "negative", "positive", "warning"],
+    options: [undefined, "brand", "negative", "positive", "warning", "neutral"],
     control: { type: "inline-radio" },
   },
   size: {
@@ -66,6 +73,14 @@ const MATRIX_STATES = [
   "disabled",
   "loading",
 ] as const;
+const SELECTABLE_STATES = [
+  "default",
+  "hover",
+  "active",
+  "disabled",
+  "selected",
+  "selected-hover",
+] as const;
 
 const MATRIX_COLORS = {
   neutral: undefined,
@@ -89,32 +104,56 @@ const STATE_LABELS: Record<MatrixState, string> = {
   active: "pressed",
   disabled: "disabled",
   loading: "loading",
+  selected: "selected",
+  "selected-hover": "hover (selected)",
 };
 
-type MatrixVariant = "default" | "light" | "subtle";
 type MatrixSize = (typeof MATRIX_SIZES)[number];
-type MatrixState = (typeof MATRIX_STATES)[number];
+type MatrixState =
+  | (typeof MATRIX_STATES)[number]
+  | (typeof SELECTABLE_STATES)[number];
 type MatrixColor = keyof typeof MATRIX_COLORS;
 
 const matrixStateProps = (
   state: MatrixState,
-): { disabled?: boolean; loading?: boolean } => {
+): { disabled?: boolean; loading?: boolean; "aria-pressed"?: boolean } => {
   if (state === "disabled") {
     return { disabled: true };
   }
   if (state === "loading") {
     return { loading: true };
   }
+  if (state === "selected" || state === "selected-hover") {
+    return { "aria-pressed": true };
+  }
   return {};
 };
 
-const matrixCell = (variant: MatrixVariant, color: MatrixColor) =>
-  color === "neutral" ? variant : `${variant}-${color}`;
+const matrixCell = (
+  variant: ActionIconVariant,
+  color: MatrixColor,
+  rounded: boolean,
+) =>
+  [variant, color === "neutral" ? null : color, rounded ? "rounded" : null]
+    .filter(Boolean)
+    .join("-");
 
-const matrixJsx = (variant: MatrixVariant, color: MatrixColor) =>
-  color === "neutral"
-    ? `<ActionIcon variant="${variant}" />`
-    : `<ActionIcon variant="${variant}" color="${MATRIX_COLORS[color]}" />`;
+const matrixJsx = (
+  variant: ActionIconVariant,
+  color: MatrixColor,
+  rounded: boolean,
+  selectable: boolean,
+) =>
+  [
+    "<ActionIcon",
+    `variant="${variant}"`,
+    color === "neutral" ? null : `color="${MATRIX_COLORS[color]}"`,
+    rounded ? 'radius="xl"' : null,
+    selectable ? "aria-pressed={selected}" : null,
+    "/>",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
 const BOARD_BACKGROUND = "background_page-primary";
 
@@ -130,9 +169,11 @@ const matrixGridStyle = (columns: number) =>
 
 interface MatrixSectionProps {
   title: string;
-  variant: MatrixVariant;
+  variant: ActionIconVariant;
   color: MatrixColor;
   sizes: readonly MatrixSize[];
+  rounded?: boolean;
+  states?: readonly MatrixState[];
 }
 
 const MatrixSection = ({
@@ -140,17 +181,23 @@ const MatrixSection = ({
   variant,
   color,
   sizes,
+  rounded = false,
+  states = MATRIX_STATES,
 }: MatrixSectionProps) => (
   <StorySection
     title={title}
-    description={<StoryJsx>{matrixJsx(variant, color)}</StoryJsx>}
+    description={
+      <StoryJsx>
+        {matrixJsx(variant, color, rounded, states === SELECTABLE_STATES)}
+      </StoryJsx>
+    }
   >
     <Box style={matrixGridStyle(sizes.length)}>
       <Box />
       {sizes.map((size) => (
         <StoryLabel key={size}>{size}</StoryLabel>
       ))}
-      {MATRIX_STATES.map((state) => (
+      {states.map((state) => (
         <Fragment key={state}>
           <StoryLabel>{STATE_LABELS[state]}</StoryLabel>
           {sizes.map((size) => (
@@ -159,8 +206,9 @@ const MatrixSection = ({
               variant={variant}
               color={MATRIX_COLORS[color]}
               size={size}
+              radius={rounded ? "xl" : undefined}
               aria-label="action"
-              data-spec-cell={`${matrixCell(variant, color)}/${size}/${state}`}
+              data-spec-cell={`${matrixCell(variant, color, rounded)}/${size}/${state}`}
               {...matrixStateProps(state)}
             >
               <Icon name="model" />
@@ -172,7 +220,7 @@ const MatrixSection = ({
   </StorySection>
 );
 
-const groupJsx = (variant: MatrixVariant) =>
+const groupJsx = (variant: ActionIconVariant) =>
   [
     "<ActionIcon.Group>",
     `  <ActionIcon variant="${variant}" />`,
@@ -180,10 +228,10 @@ const groupJsx = (variant: MatrixVariant) =>
     "</ActionIcon.Group>",
   ].join("\n");
 
-const groupCell = (variant: MatrixVariant) =>
+const groupCell = (variant: ActionIconVariant) =>
   variant === "subtle" ? "group" : `group-${variant}`;
 
-const GroupSection = ({ variant }: { variant: MatrixVariant }) => (
+const GroupSection = ({ variant }: { variant: ActionIconVariant }) => (
   <StorySection
     title="ActionIcon.Group"
     description={<StoryJsx>{groupJsx(variant)}</StoryJsx>}
@@ -226,7 +274,7 @@ const GroupSection = ({ variant }: { variant: MatrixVariant }) => (
 
 interface VariantMatrixProps {
   title: string;
-  variant: MatrixVariant;
+  variant: ActionIconVariant;
   colors: readonly MatrixColor[];
   sizes?: readonly MatrixSize[];
   group?: boolean;
@@ -255,7 +303,11 @@ const VariantMatrix = ({
 
 const matrixParameters = {
   pseudo: {
-    hover: ['[data-spec-cell$="/hover"]', '[data-group-state="hover"]'],
+    hover: [
+      '[data-spec-cell$="/hover"]',
+      '[data-spec-cell$="/selected-hover"]',
+      '[data-group-state="hover"]',
+    ],
     active: ['[data-spec-cell$="/active"]', '[data-group-state="active"]'],
   },
   controls: { disable: true },
@@ -264,13 +316,26 @@ const matrixParameters = {
 export const VariantDefault = {
   name: "Variant: Default",
   render: () => (
-    <VariantMatrix
+    <StoryBoard
       title="ActionIcon · default"
-      variant="default"
-      colors={["neutral"]}
-      sizes={NO_XS_SIZES}
-      group
-    />
+      background={BOARD_BACKGROUND}
+      padding="2rem"
+    >
+      <MatrixSection
+        title="Neutral"
+        variant="default"
+        color="neutral"
+        sizes={NO_XS_SIZES}
+      />
+      <MatrixSection
+        title="Rounded"
+        variant="default"
+        color="neutral"
+        sizes={NO_XS_SIZES}
+        rounded
+      />
+      <GroupSection variant="default" />
+    </StoryBoard>
   ),
   parameters: matrixParameters,
 };
@@ -281,7 +346,7 @@ export const VariantLight = {
     <VariantMatrix
       title="ActionIcon · light"
       variant="light"
-      colors={["neutral"]}
+      colors={["neutral", "brand", "negative", "positive", "warning"]}
       sizes={NO_XS_SIZES}
       group
     />
@@ -298,6 +363,65 @@ export const VariantSubtle = {
       colors={["neutral", "brand", "negative", "positive", "warning"]}
       group
     />
+  ),
+  parameters: matrixParameters,
+};
+
+export const VariantFilled = {
+  name: "Variant: Filled",
+  render: () => (
+    <VariantMatrix
+      title="ActionIcon · filled"
+      variant="filled"
+      colors={["brand"]}
+      sizes={NO_XS_SIZES}
+    />
+  ),
+  parameters: matrixParameters,
+};
+
+export const VariantOnDark = {
+  name: "Variant: On Dark",
+  render: () => (
+    <StoryBoard title="ActionIcon · on dark" padding="2rem" onDark>
+      <MatrixSection
+        title="Primary"
+        variant="on-dark-primary"
+        color="neutral"
+        sizes={NO_XS_SIZES}
+      />
+      <MatrixSection
+        title="Secondary"
+        variant="on-dark-secondary"
+        color="neutral"
+        sizes={NO_XS_SIZES}
+      />
+    </StoryBoard>
+  ),
+  parameters: matrixParameters,
+};
+
+export const Selectable = {
+  render: () => (
+    <StoryBoard
+      title="ActionIcon · selectable"
+      background={BOARD_BACKGROUND}
+      padding="2rem"
+    >
+      {(["light", "subtle"] as const).flatMap((variant) =>
+        [false, true].map((rounded) => (
+          <MatrixSection
+            key={`${variant}-${rounded}`}
+            title={`${variant === "light" ? "Light" : "Subtle"}${rounded ? " · rounded" : ""}`}
+            variant={variant}
+            color="neutral"
+            sizes={NO_XS_SIZES}
+            rounded={rounded}
+            states={SELECTABLE_STATES}
+          />
+        )),
+      )}
+    </StoryBoard>
   ),
   parameters: matrixParameters,
 };

@@ -34,7 +34,6 @@ export const ChartTypeOption = ({
 
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
-  const hasCustomIcon = !!visualization?.iconUrl;
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -46,9 +45,10 @@ export const ChartTypeOption = ({
         data-testid={`${displayName}-container`}
       >
         <ActionIcon
-          w="3.125rem"
-          h="3.125rem"
-          radius="50%"
+          variant="light"
+          size="lg"
+          radius="xl"
+          aria-pressed={isSelected}
           onClick={() => {
             if (isSelected) {
               onOpenSettings?.();
@@ -56,26 +56,14 @@ export const ChartTypeOption = ({
               onSelectVisualization(visualizationType);
             }
           }}
-          color="brand"
-          data-is-selected={isSelected}
-          variant={isSelected ? "filled" : "outline"}
-          className={cx(
-            ChartTypeOptionS.BorderedButton,
-            ChartTypeOptionS.VisualizationButton,
-          )}
+          className={ChartTypeOptionS.VisualizationButton}
           data-testid={`${displayName}-button`}
         >
           <EntityIcon
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
             alt={displayName}
-            color={isSelected ? "core-white" : "core-brand"}
-            size={20}
-            style={
-              hasCustomIcon && isSelected
-                ? { filter: "brightness(0) invert(1)" }
-                : undefined
-            }
+            color="inherit"
           />
         </ActionIcon>
 

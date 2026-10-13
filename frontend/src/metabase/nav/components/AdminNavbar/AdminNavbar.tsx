@@ -146,10 +146,9 @@ const MobileNavbar = ({
     <Group ref={ref} hiddenFrom="md" gap="0.5rem" align="center">
       <ActionIcon
         onClick={() => setMobileNavOpen((prev) => !prev)}
-        variant="transparent"
-        size={24}
+        variant="on-dark-secondary"
       >
-        <Icon name="burger" size={24} color="text-primary-inverse" />
+        <Icon name="burger" />
       </ActionIcon>
 
       {mobileNavOpen && (

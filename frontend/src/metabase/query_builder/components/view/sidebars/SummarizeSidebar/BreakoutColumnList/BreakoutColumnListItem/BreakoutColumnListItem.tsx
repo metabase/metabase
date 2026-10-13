@@ -142,12 +142,11 @@ export function BreakoutColumnListItem({
         />
         {isSelected && (
           <ActionIcon
-            variant="transparent"
-            size="2rem"
+            variant="on-dark-secondary"
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
           >
-            <Icon c="icon-primary-inverse" name="close" />
+            <Icon name="close" />
           </ActionIcon>
         )}
       </Flex>
