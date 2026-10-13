@@ -7,7 +7,7 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
-   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -1040,22 +1040,16 @@
              (events/publish-event! :event/field-update {:object field :user-id api/*current-user-id*})
              (assert-has-analyses {:card {card-id nil}}))))))))
 
-(defn- ingestion-in-memory
-  "An Ingestable serving the extracted `entities`."
-  [entities]
-  (let [by-path (into {} (map (juxt serdes/path identity)) entities)]
-    (reify serdes.ingest/Ingestable
-      (ingest-list [_] (keys by-path))
-      (ingest-one [_ path] (by-path path))
-      (ingest-errors [_] []))))
-
-(deftest serdes-load-recalculates-loaded-entities-test
-  (testing "a serdes load recalculates the dependencies of the entities it updates"
+(deftest serdes-load-recalculates-changed-entities-test
+  (testing "a serdes load recalculates the dependencies of the entities it changes, and only those"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [card-deps #(t2/select-fn-set (juxt :to_entity_type :to_entity_id)
                                           :model/Dependency :from_entity_type :card :from_entity_id %)
-             query     #(lib/query mp (lib.metadata/table mp (mt/id %)))]
+             query     #(lib/query mp (lib.metadata/table mp (mt/id %)))
+             processed #(t2/exists? :model/DependencyStatus :entity_type :card :entity_id % :stale false)
+             load!     #(serdes/with-cache
+                          (serdes.load/load-metabase! (ts/ingestion-in-memory %) :reindex? false))]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (query :products)}
                         :model/Card {other-id :id}         {:dataset_query (query :products)}]
            (let [exported (serdes/extract-one "Card" {} card)]
@@ -1063,10 +1057,12 @@
              (deps.dependency-status/mark-stale! :card [card-id other-id])
              (deps.test/synchronously-run-backfill!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))
-             (serdes/with-cache
-               (serdes.load/load-metabase! (ingestion-in-memory [exported]) :reindex? false))
-             (testing "only the loaded card is marked stale"
+             (load! [exported])
+             (testing "only the changed card is marked stale"
                (assert-stale :card card-id)
-               (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id other-id :stale true))))
+               (is (processed other-id)))
              (deps.test/synchronously-run-backfill!)
-             (is (= #{[:table (mt/id :products)]} (card-deps card-id))))))))))
+             (is (= #{[:table (mt/id :products)]} (card-deps card-id)))
+             (testing "reloading it unchanged marks nothing"
+               (load! [exported])
+               (is (processed card-id))))))))))

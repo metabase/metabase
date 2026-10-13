@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -103,6 +104,7 @@
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  (dependencies/entity-updated! :model/NativeQuerySnippet snippet)
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
@@ -122,6 +124,7 @@
   [snippet]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-snippet snippet)
+  (dependencies/entity-deleted! :model/NativeQuerySnippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 

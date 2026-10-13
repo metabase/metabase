@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -198,22 +197,6 @@
   (when (premium-features/has-feature? :dependencies)
     (dependencies.db/delete-dependencies-from! :measure (:id object))
     (dependencies.db/delete-dependency-status! :measure (:id object))))
-
-;; ### Serialization loads
-(events/derive! ::serdes-load :metabase/event)
-(events/derive! :event/serdes-load ::serdes-load)
-
-(methodical/defmethod events/publish-event! ::serdes-load
-  [_ {:keys [loaded]}]
-  (when (premium-features/has-feature? :dependencies)
-    (try
-      (doseq [[model ids] loaded
-              :let  [entity-type (deps.dependency-types/model->dependency-type model)]
-              :when (contains? deps.dependency-types/backfillable-dependency-types entity-type)]
-        (deps.dependency-status/mark-stale! entity-type ids))
-      (task.backfill/trigger-backfill-job!)
-      (catch Throwable e
-        (log/error "Failed to mark loaded entities stale" {:error (ex-message e)})))))
 
 ;; ## Checking dependents for breakage (analysis_finding staleness)
 ;;

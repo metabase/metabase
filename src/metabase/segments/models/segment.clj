@@ -4,6 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -181,6 +182,7 @@
   [_])
 
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
+  (dependencies/entity-updated! :model/Segment segment)
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
   ;; throw an Exception if someone tries to update creator_id
@@ -199,6 +201,7 @@
   [segment]
   ;; additional checks (Enterprise Edition only)
   (pre-delete-check-sandbox-constraints-for-segment segment)
+  (dependencies/entity-deleted! :model/Segment segment)
   segment)
 
 (defmethod mi/perms-objects-set :model/Segment

@@ -221,16 +221,15 @@
                                                                             :level     (count expanding)}))
               local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
           (try
-            (let [loaded (with-retries 3 200
-                           (fn []
-                             (try
-                               (t2/with-transaction [_tx]
-                                 (serdes/load-one! ingested local-or-nil))
-                               (catch Throwable e
-                                 (serdes/reset-import-cache!)
-                                 (throw e)))))]
-              (cond-> ctx
-                (t2/instance? loaded) (update-in [:loaded (t2/model loaded)] (fnil conj #{}) (:id loaded))))
+            (with-retries 3 200
+              (fn []
+                (try
+                  (t2/with-transaction [_tx]
+                    (serdes/load-one! ingested local-or-nil))
+                  (catch Throwable e
+                    (serdes/reset-import-cache!)
+                    (throw e)))))
+            ctx
             (catch Exception e
               ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with
               ;; continue-on-error that stripped row survives the import, so leave a breadcrumb in the error
@@ -259,16 +258,13 @@
   [ingestion]
   {:expanding #{}
    :seen      #{}
-   :loaded    {}
    :circular  #{}
    :ingestion ingestion
    :errors    []})
 
-(defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [continue-on-error reindex?]
-                :or   {continue-on-error false
-                       reindex?          true}}]
+(defn- load-entities!
+  "Loads every entity of `ingestion`, as [[load-metabase!]] does."
+  [ingestion {:keys [continue-on-error reindex?]}]
   (binding [serdes/*skip-schema-validation?* (serialization.settings/serialization-skip-schema-validation)]
     (u/prog1
       ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
@@ -302,5 +298,15 @@
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.
-        (search/reindex!))
-      (events/publish-event! :event/serdes-load {:loaded (:loaded <>)}))))
+        (search/reindex!)))))
+
+(defn load-metabase!
+  "Loads in a database export from an ingestion source, which is any Ingestable instance, then announces the load,
+  even one that failed partway, since every entity commits on its own."
+  [ingestion & {:keys [continue-on-error reindex?]
+                :or   {continue-on-error false
+                       reindex?          true}}]
+  (try
+    (load-entities! ingestion {:continue-on-error continue-on-error, :reindex? reindex?})
+    (finally
+      (events/publish-event! :event/serdes-load {}))))

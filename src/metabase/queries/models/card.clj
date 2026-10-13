@@ -16,6 +16,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
+   [metabase.dependencies.core :as dependencies]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
@@ -1118,6 +1119,7 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
+  (dependencies/entity-updated! :model/Card card)
   (let [changes  (some-> card t2/changes normalize-card)
         ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
         ;; normalization preserving the instance's original.
@@ -1149,6 +1151,7 @@
 (t2/define-before-delete :model/Card
   [{:keys [id] :as card}]
   (pre-delete-check-sandbox-constraints card)
+  (dependencies/entity-deleted! :model/Card card)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card

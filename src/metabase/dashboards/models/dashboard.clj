@@ -11,6 +11,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -76,6 +77,7 @@
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
+  (dependencies/entity-deleted! :model/Dashboard dashboard)
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
     (dashboards.db/delete-dashboard-revisions! dashboard-id)
@@ -98,6 +100,7 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
+  (dependencies/entity-updated! :model/Dashboard dashboard)
   (let [changes   (t2/changes dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]

@@ -780,6 +780,7 @@
            audit-app
            collections
            content-verification
+           dependencies
            embedding
            events
            lib
@@ -891,6 +892,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Graphy"
+   :api  #{metabase.dependencies.core}
+   :uses #{premium-features}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -904,6 +910,7 @@
            audit-app.view-log
            batch-processing
            collections
+           dependencies
            events
            lib
            lib.be
@@ -1456,6 +1463,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
+           dependencies
            events
            lib
            lib.be
@@ -1808,6 +1816,7 @@
    :uses #{api
            api-scope
            collections
+           dependencies
            events
            lib
            lib.schema
@@ -2142,6 +2151,7 @@
            collections
            content-verification
            dashboards
+           dependencies
            documents
            embedding
            events
@@ -2550,6 +2560,7 @@
    :module-exports #{segments.rest}
    :api  #{metabase.segments.schema}
    :uses #{api
+           dependencies
            lib
            lib.be
            lib.schema
@@ -2987,6 +2998,7 @@
            channel
            collections
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3904,6 +3916,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/Document
                     :model/FieldUserSettings
                     :model/Measure

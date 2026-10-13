@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -62,6 +63,7 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (dependencies/entity-inserted! :model/DashboardCard dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -70,7 +72,13 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
+  (dependencies/entity-updated! :model/DashboardCard dashcard)
   (validate-dashcard-on-write dashcard))
+
+(t2/define-before-delete :model/DashboardCard
+  [dashcard]
+  (dependencies/entity-deleted! :model/DashboardCard dashcard)
+  dashcard)
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard

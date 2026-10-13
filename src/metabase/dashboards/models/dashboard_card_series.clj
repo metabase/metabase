@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.dashboards.schema]
+   [metabase.dependencies.core :as dependencies]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -9,6 +10,16 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model))
+
+(t2/define-before-insert :model/DashboardCardSeries
+  [series]
+  (dependencies/entity-inserted! :model/DashboardCardSeries series)
+  series)
+
+(t2/define-before-update :model/DashboardCardSeries
+  [series]
+  (dependencies/entity-updated! :model/DashboardCardSeries series)
+  series)
 
 ;; Serialization
 
