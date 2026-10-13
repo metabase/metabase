@@ -3,9 +3,12 @@ import { Text } from "@visx/text";
 
 import type { GoalStyle } from "../../types/style";
 
-import { GOAL_ADORNMENT_GAP, type GoalAdornment } from "./adornment";
-
-const LABEL_OFFSET_EM = 0.2;
+import {
+  GOAL_ADORNMENT_GAP,
+  GOAL_LABEL_OFFSET_EM,
+  type GoalAdornment,
+  getGoalAdornmentY,
+} from "./adornment";
 
 interface VerticalGoalLineProps {
   x: number;
@@ -35,7 +38,7 @@ export const VerticalGoalLine = ({
         y={0}
         textAnchor={textAnchor}
         verticalAnchor="end"
-        dy={`-${LABEL_OFFSET_EM}em`}
+        dy={`-${GOAL_LABEL_OFFSET_EM}em`}
         x={x}
         fill={style.label.color}
         fontSize={style.label.size}
@@ -50,9 +53,9 @@ export const VerticalGoalLine = ({
               ? x + labelWidth + GOAL_ADORNMENT_GAP
               : x - labelWidth - GOAL_ADORNMENT_GAP - adornment.size
           }
-          y={-(1 + LABEL_OFFSET_EM) * labelSize}
+          y={getGoalAdornmentY(labelSize, adornment.size)}
           width={adornment.size}
-          height={labelSize}
+          height={adornment.size}
           overflow="visible"
         >
           <div

@@ -2,7 +2,7 @@ import { scaleLinear } from "@visx/scale";
 
 import type { GoalStyle } from "../../../types/style";
 
-import { getRowChartGoal } from "./layout";
+import { getGoalLinePadding, getRowChartGoal } from "./layout";
 
 const GOAL_STYLE: GoalStyle = {
   lineStroke: "black",
@@ -29,5 +29,15 @@ describe("getRowChartGoal", () => {
       getRowChartGoal(GOAL, GOAL_STYLE, measureTextWidth, X_SCALE, 20)
         ?.position,
     ).toBe("left");
+  });
+});
+
+describe("getGoalLinePadding", () => {
+  it("leaves room for the goal label", () => {
+    expect(getGoalLinePadding(GOAL_STYLE, undefined)).toBe(14);
+  });
+
+  it("leaves room for an adornment taller than the goal label", () => {
+    expect(getGoalLinePadding(GOAL_STYLE, 16)).toBe(16);
   });
 });

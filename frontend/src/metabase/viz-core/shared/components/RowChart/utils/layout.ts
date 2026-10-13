@@ -5,6 +5,7 @@ import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { Margin } from "../../../types/layout";
 import type { ChartGoal } from "../../../types/settings";
 import type { ChartFont, GoalStyle } from "../../../types/style";
+import { getGoalAdornmentY } from "../../VerticalGoalLine/adornment";
 import { LABEL_PADDING } from "../constants";
 import type { SeriesData } from "../types";
 
@@ -33,7 +34,7 @@ export const getChartMargin = <TDatum>(
   yTickFormatter: (value: any) => string,
   ticksFont: ChartFont,
   labelFont: ChartFont,
-  hasGoalLine: boolean,
+  goalLinePadding: number | null,
   measureTextWidth: TextWidthMeasurer,
   xLabel?: string | null,
   yLabel?: string | null,
@@ -60,7 +61,7 @@ export const getChartMargin = <TDatum>(
   const xAxisOffset = hasXAxis ? TICKS_OFFSET + ticksFont.size : 0;
 
   const margin: Margin = {
-    top: hasGoalLine ? GOAL_LINE_PADDING : CHART_PADDING,
+    top: goalLinePadding ?? CHART_PADDING,
     left:
       yAxisOffset +
       CHART_PADDING +
@@ -74,6 +75,17 @@ export const getChartMargin = <TDatum>(
 
   return margin;
 };
+
+export const getGoalLinePadding = (
+  style: GoalStyle,
+  adornmentSize: number | undefined,
+) =>
+  adornmentSize != null
+    ? Math.max(
+        GOAL_LINE_PADDING,
+        Math.ceil(-getGoalAdornmentY(style.label.size, adornmentSize)),
+      )
+    : GOAL_LINE_PADDING;
 
 export const getMaxYValuesCount = (
   viewportHeight: number,

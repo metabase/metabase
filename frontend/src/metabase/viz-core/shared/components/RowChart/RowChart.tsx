@@ -18,6 +18,7 @@ import type { BarData, RowChartTheme, Series, StackOffset } from "./types";
 import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import {
   getChartMargin,
+  getGoalLinePadding,
   getMaxYValuesCount,
   getRowChartGoal,
 } from "./utils/layout";
@@ -152,6 +153,8 @@ export const RowChart = <TDatum,>({
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;
 
+  const goalLinePadding =
+    goal != null ? getGoalLinePadding(theme.goal, goalAdornment?.size) : null;
   const margin = useMemo(
     () =>
       getChartMargin(
@@ -159,7 +162,7 @@ export const RowChart = <TDatum,>({
         yTickFormatter,
         theme.axis.ticks,
         theme.axis.label,
-        goal != null,
+        goalLinePadding,
         measureTextWidth,
         xLabel,
         yLabel,
@@ -172,7 +175,7 @@ export const RowChart = <TDatum,>({
       yTickFormatter,
       theme.axis.ticks,
       theme.axis.label,
-      goal,
+      goalLinePadding,
       measureTextWidth,
       xLabel,
       yLabel,
