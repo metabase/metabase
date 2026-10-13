@@ -133,6 +133,7 @@
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
+  (dependencies/entity-inserted! :model/Measure measure)
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))

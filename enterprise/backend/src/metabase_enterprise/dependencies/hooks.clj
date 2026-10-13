@@ -1,15 +1,40 @@
 (ns metabase-enterprise.dependencies.hooks
-  "Implements the hooks of `metabase.dependencies.core`, marking written content for the backfill job to recompute."
+  "Implements the hooks of `metabase.dependencies.core`, marking written content for the background jobs to recompute."
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.task.backfill :as task.backfill]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
+(def ^:private trigger-delay-ms
+  "How long writes are collected before the jobs are triggered for all of them."
+  1000)
+
+(defonce ^:private trigger-pending? (atom false))
+
+(defn- trigger-jobs!
+  "Trigger the backfill and entity-check jobs once for every write made within the next second."
+  []
+  (when (compare-and-set! trigger-pending? false true)
+    (future
+      (try
+        (Thread/sleep (long trigger-delay-ms))
+        (reset! trigger-pending? false)
+        (task.backfill/trigger-backfill-job!)
+        (task.entity-check/trigger-entity-check-job!)
+        (catch Exception e
+          (reset! trigger-pending? false)
+          (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))))
+
 (def ^:private dependency-columns
-  "The columns of each model that its own dependencies, or its dashboard's, are calculated from."
+  "The columns of each model that its own dependencies, or those of the entity it is part of, are calculated from."
   {:model/Card                #{:dataset_query :dimension_mappings :parameters}
    :model/Dashboard           #{:parameters}
    :model/DashboardCard       #{:card_id :dashboard_id :visualization_settings}
@@ -17,54 +42,73 @@
    :model/Document            #{:content_type :document}
    :model/Measure             #{:definition :table_id}
    :model/NativeQuerySnippet  #{:content :template_tags}
+   :model/Sandbox             #{:card_id}
    :model/Segment             #{:definition :table_id}
    :model/Transform           #{:source}})
 
-(defn- dashboard-id
-  "The id of the Dashboard whose dependencies the `model` row `instance` is part of, or nil."
+(defn- dependency-owner
+  "The `[entity-type id]` whose dependencies the `model` row `instance` is part of, or nil."
   [model instance]
   (case model
-    :model/DashboardCard       (:dashboard_id instance)
-    :model/DashboardCardSeries (some-> (:dashboardcard_id instance) dependencies.db/dashcard-dashboard-id)
-    nil))
+    :model/DashboardCard       [:dashboard (:dashboard_id instance)]
+    :model/DashboardCardSeries [:dashboard (some-> (:dashboardcard_id instance) dependencies.db/dashcard-dashboard-id)]
+    (some-> (deps.dependency-types/model->dependency-type model) (vector (:id instance)))))
 
-(defn- mark-stale!
-  "Mark the entity `entity-type` `entity-id` for recalculation, logging a failure rather than failing the write."
-  [entity-type entity-id]
+(defn- own-row?
+  "Whether the `model` row is a tracked entity itself rather than part of one."
+  [model]
+  (some? (deps.dependency-types/model->dependency-type model)))
+
+(defn- owner-changed!
+  "Mark the entity `entity-type` `entity-id` for recalculation, and its dependents for re-analysis when it is analyzed."
+  [[entity-type entity-id]]
   (when entity-id
-    (try
-      (deps.dependency-status/mark-stale! entity-type [entity-id])
-      (catch Exception e
-        (log/warnf "Failed to mark %s %s stale: %s" (name entity-type) entity-id (ex-message e))))))
+    (deps.dependency-status/mark-stale! entity-type [entity-id])
+    (when (contains? deps.findings/analyzable-entities entity-type)
+      (deps.findings/mark-entity-and-transitive-dependents-stale! entity-type entity-id))
+    (trigger-jobs!)))
+
+(defn- owner-deleted!
+  "Mark the dependents of the deleted entity `entity-type` `entity-id` for re-analysis and drop its dependencies."
+  [[entity-type entity-id]]
+  (when (contains? deps.findings/analyzable-entities entity-type)
+    (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]}))
+  (dependencies.db/delete-dependencies-from! entity-type entity-id)
+  (dependencies.db/delete-dependency-status! entity-type entity-id)
+  (trigger-jobs!))
+
+(defn- logging-failures
+  "Run `f`, logging a failure rather than failing the write of the `model` row that called it."
+  [model f]
+  (try
+    (f)
+    (catch Exception e
+      (log/warnf "Failed to update the dependencies of a %s: %s" (name model) (ex-message e)))))
 
 (defenterprise entity-inserted!
-  "Mark the dashboard of an inserted dashboard card or series stale; an inserted entity has no status yet, which the
-  backfill job picks up on its own."
+  "Have the jobs pick up an inserted entity, which has no status or findings yet, or mark the entity a `model` row is
+  being inserted into for recalculation."
   :feature :dependencies
   [model instance]
-  (mark-stale! :dashboard (dashboard-id model instance)))
+  (logging-failures model #(if (own-row? model)
+                             (trigger-jobs!)
+                             (owner-changed! (dependency-owner model instance)))))
 
 (defenterprise entity-updated!
-  "Mark an updated entity, or the dashboard of an updated dashboard card or series, stale when its dependency columns
-  changed."
+  "Mark the entity an updated `model` row is, or was and is now part of, for recalculation when a column its
+  dependencies come from changes."
   :feature :dependencies
   [model instance]
   (let [changes (t2/changes instance)]
     (when (some #(contains? changes %) (dependency-columns model))
-      (if-let [entity-type (deps.dependency-types/model->dependency-type model)]
-        (mark-stale! entity-type (:id instance))
-        (doseq [id (distinct [(dashboard-id model (t2/original instance)) (dashboard-id model instance)])]
-          (mark-stale! :dashboard id))))))
+      (logging-failures model #(doseq [owner (distinct [(dependency-owner model (t2/original instance))
+                                                        (dependency-owner model instance)])]
+                                 (owner-changed! owner))))))
 
 (defenterprise entity-deleted!
-  "Drop the dependencies and status of a deleted entity, or mark the dashboard of a deleted dashboard card or series
-  stale."
+  "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."
   :feature :dependencies
   [model instance]
-  (if-let [entity-type (deps.dependency-types/model->dependency-type model)]
-    (try
-      (dependencies.db/delete-dependencies-from! entity-type (:id instance))
-      (dependencies.db/delete-dependency-status! entity-type (:id instance))
-      (catch Exception e
-        (log/warnf "Failed to drop the dependencies of %s %s: %s" (name entity-type) (:id instance) (ex-message e))))
-    (mark-stale! :dashboard (dashboard-id model instance))))
+  (logging-failures model #(if (own-row? model)
+                             (owner-deleted! (dependency-owner model instance))
+                             (owner-changed! (dependency-owner model instance)))))

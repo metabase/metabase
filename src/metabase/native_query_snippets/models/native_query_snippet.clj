@@ -83,6 +83,7 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
+  (dependencies/entity-inserted! :model/NativeQuerySnippet snippet)
   (u/prog1 (add-template-tags snippet)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))

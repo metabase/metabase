@@ -741,6 +741,7 @@
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
+  (dependencies/entity-inserted! :model/Document model)
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
 

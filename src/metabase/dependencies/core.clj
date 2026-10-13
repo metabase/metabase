@@ -4,20 +4,20 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise entity-inserted!
-  "Hook for the `model` row `instance` being inserted. The OSS implementation is a no-op."
+  "Hook for the `model` row `instance` before it is inserted. The OSS implementation is a no-op."
   metabase-enterprise.dependencies.hooks
   [_model _instance]
   nil)
 
 (defenterprise entity-updated!
-  "Hook for the `model` row `instance` being updated, whose Toucan changes say what changed. The OSS implementation is
-  a no-op."
+  "Hook for the `model` row `instance` before it is updated, whose Toucan changes say what changes. The OSS implementation
+  is a no-op."
   metabase-enterprise.dependencies.hooks
   [_model _instance]
   nil)
 
 (defenterprise entity-deleted!
-  "Hook for the `model` row `instance` being deleted. The OSS implementation is a no-op."
+  "Hook for the `model` row `instance` before it is deleted. The OSS implementation is a no-op."
   metabase-enterprise.dependencies.hooks
   [_model _instance]
   nil)

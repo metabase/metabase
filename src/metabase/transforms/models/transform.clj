@@ -155,6 +155,7 @@
 
 (t2/define-before-insert :model/Transform
   [{:keys [source collection_id source_database_id] :as transform}]
+  (dependencies/entity-inserted! :model/Transform transform)
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))

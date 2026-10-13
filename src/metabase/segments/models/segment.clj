@@ -165,6 +165,7 @@
 
 (t2/define-before-insert :model/Segment
   [segment]
+  (dependencies/entity-inserted! :model/Segment segment)
   (let [definition (migrated-segment-definition segment)]
     (when (seq definition)
       (lib/check-segment-overwrite nil definition))

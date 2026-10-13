@@ -86,6 +86,7 @@
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
+  (dependencies/entity-inserted! :model/Dashboard dashboard)
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)

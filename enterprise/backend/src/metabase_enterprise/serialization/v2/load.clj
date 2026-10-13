@@ -9,7 +9,6 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
-   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -262,9 +261,11 @@
    :ingestion ingestion
    :errors    []})
 
-(defn- load-entities!
-  "Loads every entity of `ingestion`, as [[load-metabase!]] does."
-  [ingestion {:keys [continue-on-error reindex?]}]
+(defn load-metabase!
+  "Loads in a database export from an ingestion source, which is any Ingestable instance."
+  [ingestion & {:keys [continue-on-error reindex?]
+                :or   {continue-on-error false
+                       reindex?          true}}]
   (binding [serdes/*skip-schema-validation?* (serialization.settings/serialization-skip-schema-validation)]
     (u/prog1
       ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
@@ -299,14 +300,3 @@
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.
         (search/reindex!)))))
-
-(defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance, then announces the load,
-  even one that failed partway, since every entity commits on its own."
-  [ingestion & {:keys [continue-on-error reindex?]
-                :or   {continue-on-error false
-                       reindex?          true}}]
-  (try
-    (load-entities! ingestion {:continue-on-error continue-on-error, :reindex? reindex?})
-    (finally
-      (events/publish-event! :event/serdes-load {}))))

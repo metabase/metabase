@@ -1044,6 +1044,7 @@
 
 (t2/define-before-insert :model/Card
   [card]
+  (dependencies/entity-inserted! :model/Card card)
   (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card

@@ -232,9 +232,6 @@
 (events/derive! :event/set-premium-embedding-token ::backfill)
 
 (methodical/defmethod events/publish-event! ::backfill
-  [topic _]
+  [_ _]
   (when (premium-features/has-feature? :dependencies)
-    (try
-      (trigger-backfill-job!)
-      (catch Exception e
-        (log/warnf "Failed to trigger the dependency backfill on %s: %s" topic (ex-message e))))))
+    (trigger-backfill-job!)))

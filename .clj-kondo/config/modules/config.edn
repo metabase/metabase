@@ -4209,6 +4209,7 @@
            api-scope
            app-db
            audit-app
+           dependencies
            driver
            events
            lib
