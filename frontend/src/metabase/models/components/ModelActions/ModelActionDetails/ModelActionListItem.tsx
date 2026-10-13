@@ -7,7 +7,7 @@ import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteMod
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Box, Flex, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -57,15 +57,8 @@ function QueryActionCardContent({ action }: QueryActionCardContentProps) {
 
 function ImplicitActionCardContent() {
   return (
-    <Flex
-      align="center"
-      p="lg"
-      c="text-secondary"
-      bg="background_page-tertiary"
-      fw={400}
-      bdrs="xs"
-    >
-      <div>{t`Auto tracking schema`}</div>
+    <Flex align="center" p="lg" bg="background_page-tertiary" bdrs="xs">
+      <Text c="text-secondary">{t`Auto tracking schema`}</Text>
     </Flex>
   );
 }
@@ -115,15 +108,7 @@ export function ModelActionListItem({
           >
             {action.name}
           </Box>
-          <Box
-            component="span"
-            display="block"
-            mt="xxs"
-            fz="sm"
-            fw={700}
-            lh="0.875rem"
-            c="text-secondary"
-          >
+          <Text mt="xxs" size="sm" fw={700} lh="0.875rem" c="text-secondary">
             {action.type === "implicit" && (
               <span className={S.dotSeparated}>{t`Basic action`}</span>
             )}
@@ -135,7 +120,7 @@ export function ModelActionListItem({
                 {t`Created by ${action.creator.common_name}`}
               </span>
             )}
-          </Box>
+          </Text>
         </div>
         <Menu position="bottom-end">
           <Menu.Target>

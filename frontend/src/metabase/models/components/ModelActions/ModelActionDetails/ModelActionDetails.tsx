@@ -19,6 +19,7 @@ import {
   Icon,
   Menu,
   Stack,
+  Text,
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -31,7 +32,6 @@ import {
 } from "metabase-lib/v1/actions/utils";
 import type { Database, WritebackAction } from "metabase-types/api";
 
-import S from "./ModelActionDetails.module.css";
 import { ModelActionListItem } from "./ModelActionListItem";
 import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
@@ -98,7 +98,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
       const actionUrl = Urls.action(model.card(), action.id);
 
       return (
-        <li key={action.id} className={S.itemSpacing} aria-label={action.name}>
+        <li key={action.id} aria-label={action.name}>
           <ModelActionListItem
             action={action}
             actionUrl={actionUrl}
@@ -163,14 +163,15 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
         </Alert>
       )}
       {actions.length > 0 ? (
-        <Box
+        <Stack
           component="ul"
-          className={S.responsiveWidth}
+          gap="2.25rem"
+          w={{ base: "100%", md: "70%" }}
           mt="lg"
           aria-label={t`Action list`}
         >
           {actionsSorted.map(renderActionListItem)}
-        </Box>
+        </Stack>
       ) : (
         <NoActionsState
           hasCreateButton={canWrite && supportsImplicitActions}
@@ -199,14 +200,11 @@ function NoActionsState({
         lh="normal"
         c="text-primary"
       >{t`No actions have been created yet.`}</Title>
-      <Box
+      <Text
         component="p"
-        fz="md"
-        fw={400}
-        lh="1.18rem"
         mt="sm"
         c="text-secondary"
-      >{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</Box>
+      >{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</Text>
       {hasCreateButton && (
         <Box mt="lg">
           <Button
