@@ -4211,7 +4211,6 @@
            audit-app
            dependencies
            driver
-           events
            lib
            lib.be
            lib.legacy-mbql

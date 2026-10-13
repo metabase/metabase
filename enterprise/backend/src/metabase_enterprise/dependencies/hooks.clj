@@ -33,35 +33,43 @@
           (reset! trigger-pending? false)
           (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))))
 
-(def ^:private dependency-columns
-  "The columns of each model that its own dependencies, or those of the entity it is part of, are calculated from."
-  {:model/Card                #{:dataset_query :dimension_mappings :parameters}
-   :model/Dashboard           #{:parameters}
-   :model/DashboardCard       #{:card_id :dashboard_id :visualization_settings}
-   :model/DashboardCardSeries #{:card_id :dashboardcard_id}
-   :model/Document            #{:content_type :document}
-   :model/Measure             #{:definition :table_id}
-   :model/NativeQuerySnippet  #{:content :template_tags}
-   :model/Sandbox             #{:card_id}
-   :model/Segment             #{:definition :table_id}
-   :model/Transform           #{:source}})
+(def ^:private tracked-models
+  "For each model, the `:columns` that dependencies are calculated from, and for models whose rows are parts of an
+  entity, the `:owner-type` of that entity and the `:owner-id` function finding it from a row."
+  {:model/Card                {:columns #{:dataset_query :dimension_mappings :parameters}}
+   :model/Dashboard           {:columns #{:parameters}}
+   :model/DashboardCard       {:columns    #{:card_id :dashboard_id :visualization_settings}
+                               :owner-type :dashboard
+                               :owner-id   :dashboard_id}
+   :model/DashboardCardSeries {:columns    #{:card_id :dashboardcard_id}
+                               :owner-type :dashboard
+                               :owner-id   #(some-> (:dashboardcard_id %) dependencies.db/dashcard-dashboard-id)}
+   :model/Document            {:columns #{:content_type :document}}
+   :model/Measure             {:columns #{:definition :table_id}}
+   :model/NativeQuerySnippet  {:columns #{:content :template_tags}}
+   :model/Sandbox             {:columns #{:card_id}}
+   :model/Segment             {:columns #{:definition :table_id}}
+   :model/Transform           {:columns #{:source :target}}})
 
-(defn- dependency-owner
-  "The `[entity-type id]` whose dependencies the `model` row `instance` is part of, or nil."
-  [model instance]
-  (case model
-    :model/DashboardCard       [:dashboard (:dashboard_id instance)]
-    :model/DashboardCardSeries [:dashboard (some-> (:dashboardcard_id instance) dependencies.db/dashcard-dashboard-id)]
-    (some-> (deps.dependency-types/model->dependency-type model) (vector (:id instance)))))
-
-(defn- own-row?
-  "Whether the `model` row is a tracked entity itself rather than part of one."
+(defn- entity-model?
+  "Whether rows of `model` are tracked entities themselves rather than parts of one."
   [model]
-  (some? (deps.dependency-types/model->dependency-type model)))
+  (not (get-in tracked-models [model :owner-type])))
+
+(defn- owner-type
+  "The dependency type of the entity that rows of `model` are, or are part of."
+  [model]
+  (or (get-in tracked-models [model :owner-type])
+      (deps.dependency-types/model->dependency-type model)))
+
+(defn- owner-id
+  "The id of the entity that the `model` row `instance` is, or is part of, or nil."
+  [model instance]
+  ((get-in tracked-models [model :owner-id] :id) instance))
 
 (defn- owner-changed!
   "Mark the entity `entity-type` `entity-id` for recalculation, and its dependents for re-analysis when it is analyzed."
-  [[entity-type entity-id]]
+  [entity-type entity-id]
   (when entity-id
     (deps.dependency-status/mark-stale! entity-type [entity-id])
     (when (contains? deps.findings/analyzable-entities entity-type)
@@ -70,7 +78,7 @@
 
 (defn- owner-deleted!
   "Mark the dependents of the deleted entity `entity-type` `entity-id` for re-analysis and drop its dependencies."
-  [[entity-type entity-id]]
+  [entity-type entity-id]
   (when (contains? deps.findings/analyzable-entities entity-type)
     (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]}))
   (dependencies.db/delete-dependencies-from! entity-type entity-id)
@@ -90,9 +98,9 @@
   being inserted into for recalculation."
   :feature :dependencies
   [model instance]
-  (logging-failures model #(if (own-row? model)
+  (logging-failures model #(if (entity-model? model)
                              (trigger-jobs!)
-                             (owner-changed! (dependency-owner model instance)))))
+                             (owner-changed! (owner-type model) (owner-id model instance)))))
 
 (defenterprise entity-updated!
   "Mark the entity an updated `model` row is, or was and is now part of, for recalculation when a column its
@@ -100,15 +108,15 @@
   :feature :dependencies
   [model instance]
   (let [changes (t2/changes instance)]
-    (when (some #(contains? changes %) (dependency-columns model))
-      (logging-failures model #(doseq [owner (distinct [(dependency-owner model (t2/original instance))
-                                                        (dependency-owner model instance)])]
-                                 (owner-changed! owner))))))
+    (when (some #(contains? changes %) (get-in tracked-models [model :columns]))
+      (logging-failures model #(doseq [id (distinct [(owner-id model (t2/original instance))
+                                                     (owner-id model instance)])]
+                                 (owner-changed! (owner-type model) id))))))
 
 (defenterprise entity-deleted!
   "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."
   :feature :dependencies
   [model instance]
-  (logging-failures model #(if (own-row? model)
-                             (owner-deleted! (dependency-owner model instance))
-                             (owner-changed! (dependency-owner model instance)))))
+  (logging-failures model #(if (entity-model? model)
+                             (owner-deleted! (owner-type model) (owner-id model instance))
+                             (owner-changed! (owner-type model) (owner-id model instance)))))
