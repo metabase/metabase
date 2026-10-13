@@ -74,8 +74,7 @@
   "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
   keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
   curated content stays visible where the older verified-only filter dropped it (BOT-1536).
-  Measures and segments inherit curation from their published parent table (`root_collection_type` on the index
-  row; the in-place engine approximates it as the parent table being published)."
+  Measures and segments count as curated when their parent table is published into the Library."
   #{"card"
     "dashboard"
     "dataset"
@@ -111,8 +110,8 @@
    ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
    :official-collection 1
    :verified            1
-   ;; :library is a curation signal used when choosing data sources, so it is disabled by default.
-   ;; :data-picker and :metabot enable it at a level that an exact match can override.
+   ;; Library membership is a curation signal for choosing data sources, so :library is off by default.
+   ;; The :data-picker and :metabot contexts turn it on, at a level an exact match can override.
    :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
@@ -162,10 +161,10 @@
    ;; - `search-snowplow.cy.spec.js`
    :metabot
    ;; Metabot searches for data sources, so it uses the data picker's library boost.
-   ;; This preserves the preference when library-only retrieval falls back to general search.
+   ;; General search needs the boost too, because library-only retrieval falls back to it.
    {:library             80
-    ;; An exact name match must win, so :exact exceeds the most the other scorers add together:
-    ;; :library (80) plus the semantic-layer type boost (35), with room for the tie-breakers.
+    ;; An exact name match must win.
+    ;; So :exact is larger than the library boost, the largest type boost and the tie-breakers combined.
     :exact               150
     ;; Recency only breaks ties within a tier, so :recency plus :user-recency stays below the narrowest tier gap (1).
     :recency             0.4
@@ -176,15 +175,17 @@
     ;; That score ranks it above dashboards, questions, and models.
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    ;; Favor semantic-layer content over saved questions, and saved questions over models.
-    ;; :data-layer does most of the ranking for tables; the small type boost only keeps a table above a model.
-    ;; The semantic layer edges out a final-layer table (33 + 1), so a metric beats every table on an equal match.
-    ;; List every search model; otherwise [[models-search-order]] supplies its fallback boost.
-    ;; The Agent API and MCP search use this context too, and they also return collections and actions.
+    ;; Semantic-layer content ranks above saved questions, and saved questions above models.
+    ;; Tables are ranked mostly by :data-layer; their small type boost only keeps a table above a model.
+    ;; A metric beats every table on an equal match: the semantic layer leads a final-layer table (33 + 1) by 6,
+    ;; more than :view-count, :bookmarked, :mine and recency add together.
+    ;;
+    ;; Every search model is listed, because [[models-search-order]] supplies a fallback boost for any left out.
+    ;; Collections and actions are here because the Agent API and MCP search use this context and return them.
     :model                10
-    :model/metric         3.5   ; = 35
-    :model/measure        3.5   ; = 35
-    :model/segment        3.5   ; = 35
+    :model/metric         4     ; = 40
+    :model/measure        4     ; = 40
+    :model/segment        4     ; = 40
     :model/dashboard      0.3   ; = 3
     :model/card           0.3   ; = 3
     :model/table          0.1   ; = 1

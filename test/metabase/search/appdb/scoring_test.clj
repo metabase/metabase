@@ -499,6 +499,11 @@
       [{:model "table"  :id 1 :name "foo table"  :data_layer "final"}
        {:model "metric" :id 2 :name "foo metric"}]
       (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))
+  (testing "with Metabot weights, a metric outranks a heavily viewed final-layer table"
+    (with-index-contents
+      [{:model "table"  :id 1 :name "foo table"  :data_layer "final" :view_count 1000}
+       {:model "metric" :id 2 :name "foo metric" :view_count 0}]
+      (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))
   (testing "with Metabot weights, a table outranks a model even without a data-layer score"
     (with-index-contents
       [{:model "dataset" :id 1 :name "foo model"}
