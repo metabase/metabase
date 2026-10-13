@@ -341,7 +341,7 @@ function SidebarShowFilterMenu({
         >
           <Icon
             name="filter"
-            c={showHidden ? "core-white" : "text-secondary"}
+            c={showHidden ? "core-white_constant" : "text-secondary"}
           />
         </ActionIcon>
       </Menu.Target>

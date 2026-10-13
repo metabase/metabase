@@ -7,6 +7,7 @@ import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { Box, Flex } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { WHITELABEL_KEY_TO_COLOR_KEY } from "metabase/ui/colors/constants/whitelabel-colors";
 
 import S from "./BrandColorSettings.module.css";
 import type { ColorOption } from "./types";
@@ -81,7 +82,10 @@ const BrandColorTable = ({
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
-            originalColor={color(option.tokenName, colorPalette)}
+            originalColor={color(
+              WHITELABEL_KEY_TO_COLOR_KEY[option.name],
+              colorPalette,
+            )}
             option={option}
             onChange={onChange}
           />

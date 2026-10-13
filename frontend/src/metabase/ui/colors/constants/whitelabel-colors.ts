@@ -15,11 +15,13 @@ export const WHITELABEL_KEY_TO_COLOR_KEY = {
   summarize: "core-summarize",
 } as const satisfies Record<string, MetabaseColorKey>;
 
-export type WhitelabelColorKey =
-  (typeof WHITELABEL_KEY_TO_COLOR_KEY)[keyof typeof WHITELABEL_KEY_TO_COLOR_KEY];
+export type WhitelabelSettingKey = keyof typeof WHITELABEL_KEY_TO_COLOR_KEY;
 
-const TOKEN_BY_SETTING_KEY: Partial<Record<string, WhitelabelColorKey>> =
-  WHITELABEL_KEY_TO_COLOR_KEY;
+export type WhitelabelColorKey =
+  (typeof WHITELABEL_KEY_TO_COLOR_KEY)[WhitelabelSettingKey];
+
+const isWhitelabelSettingKey = (key: string): key is WhitelabelSettingKey =>
+  Object.hasOwn(WHITELABEL_KEY_TO_COLOR_KEY, key);
 
 export function mapWhitelabelColorsToTokens<T>(
   colors: Record<string, T> | null | undefined,
@@ -30,7 +32,7 @@ export function mapWhitelabelColorsToTokens<T>(
 
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
-      TOKEN_BY_SETTING_KEY[key] ?? key,
+      isWhitelabelSettingKey(key) ? WHITELABEL_KEY_TO_COLOR_KEY[key] : key,
       value,
     ]),
   );

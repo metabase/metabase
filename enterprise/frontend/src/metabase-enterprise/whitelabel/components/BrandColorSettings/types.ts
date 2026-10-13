@@ -1,11 +1,8 @@
-import type { MetabaseColorKey } from "metabase/ui/colors/types";
+import type { WhitelabelSettingKey } from "metabase/ui/colors/constants/whitelabel-colors";
 
 export interface ColorOption {
   /** Key the color is stored under in the `application-colors` setting. */
-  name: string;
-
-  /** Token the setting's value feeds, used to show the current default. */
-  tokenName: MetabaseColorKey;
+  name: WhitelabelSettingKey;
 
   description: string;
 }
