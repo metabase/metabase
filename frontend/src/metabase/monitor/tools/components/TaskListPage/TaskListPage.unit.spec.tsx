@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupDatabasesEndpoints,
+  setupTaskCountsEndpoint,
   setupTasksEndpoints,
   setupUniqueTasksEndpoint,
 } from "__support__/server-mocks";
@@ -24,6 +25,8 @@ import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
+import { TasksSectionLayout } from "../../routes";
+
 import { TaskListPage } from "./TaskListPage";
 
 interface SetupOpts {
@@ -41,6 +44,7 @@ const setup = ({
   }),
   tasksResponse = createMockTasksResponse(),
 }: SetupOpts = {}) => {
+  setupTaskCountsEndpoint({ tasks: tasksResponse.total, runs: 0 });
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -52,8 +56,10 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} element={<TaskListPage />}>
-      <Route path=":taskId" />
+    <Route element={<TasksSectionLayout />}>
+      <Route path={PATHNAME} element={<TaskListPage />}>
+        <Route path=":taskId" />
+      </Route>
     </Route>,
     {
       initialRoute: `${location.pathname}${location.search}`,
