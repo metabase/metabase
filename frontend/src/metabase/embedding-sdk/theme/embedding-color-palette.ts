@@ -28,9 +28,9 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   ColorName[]
 > = {
   brand: ["core-brand"],
-  "brand-hover": ["background-hover", "background_surface-hover"],
-  "brand-hover-light": ["background-hover", "background_surface-hover"],
-  border: ["border", "border-neutral"],
+  "brand-hover": ["background_surface-hover"],
+  "brand-hover-light": ["background_surface-hover"],
+  border: ["border-neutral"],
   filter: ["core-filter"],
   summarize: ["core-summarize"],
   "text-primary": [
@@ -40,30 +40,27 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
     "button_label-subtle-neutral-default",
   ],
   "text-secondary": ["text-secondary"],
-  "text-tertiary": ["text-tertiary", "text-disabled"],
+  "text-tertiary": ["text-disabled"],
   background: [
-    "background-primary",
     "background_page-primary",
     "background_surface-primary",
     "button-default-neutral-default",
   ],
   "background-secondary": [
-    "background-secondary",
-    "background-tertiary",
     "background_page-secondary",
     "background_page-tertiary",
   ],
   "background-hover": [],
-  "background-disabled": ["background-disabled", "background_surface-disabled"],
-  "background-light": ["background-secondary", "background_page-secondary"],
-  shadow: ["shadow", "shadow-default"],
-  positive: ["success", "feedback-positive", "feedback-positive-strong"],
-  negative: ["danger", "feedback-negative", "feedback-negative-strong"],
-  "text-white": ["text-primary-inverse", "white", "core-white"],
-  error: ["error", "feedback-negative"],
-  "background-error": ["background-error", "background_surface-error"],
-  "text-hover": ["text-hover", "text-brand-hover"],
-  focus: ["focus", "input-focus"],
+  "background-disabled": ["background_surface-disabled"],
+  "background-light": ["background_page-secondary"],
+  shadow: ["shadow-default"],
+  positive: ["feedback-positive", "feedback-positive-strong"],
+  negative: ["feedback-negative", "feedback-negative-strong"],
+  "text-white": ["text-primary-inverse", "core-white"],
+  error: ["feedback-negative"],
+  "background-error": ["background_surface-error"],
+  "text-hover": ["text-brand-hover"],
+  focus: ["input-focus"],
 };
 
 /**
@@ -80,10 +77,7 @@ export const SDK_MISSING_COLORS_FALLBACK: Partial<
  * These colors must never be changed.
  * For example, the blue Metabase brand color.
  **/
-export const SDK_UNCHANGEABLE_COLORS: ColorName[] = [
-  "metabase-brand",
-  "core-metabase_brand",
-];
+export const SDK_UNCHANGEABLE_COLORS: ColorName[] = ["core-metabase_brand"];
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof NonNullable<MetabaseComponentTheme["tooltip"]>,

@@ -17,7 +17,6 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   pulse: (palette) => color("accent4", palette),
   "text-primary": (palette) => color("text-primary", palette),
   "text-secondary": (palette) => color("text-secondary", palette),
-  "text-tertiary": (palette) => color("text-tertiary", palette),
   background: (palette) => color("core-white", palette),
   "background-disbaled": (palette) => color("accent-gray", palette),
   focus: (palette) => getFocusColor("core-brand", palette),

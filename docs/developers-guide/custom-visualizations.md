@@ -360,7 +360,7 @@ For layout math (like fitting labels or sizing axes), use the `renderingContext`
 
 To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-core-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
+Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("core-brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 

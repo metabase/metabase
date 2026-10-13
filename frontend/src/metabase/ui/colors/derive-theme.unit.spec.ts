@@ -172,7 +172,10 @@ describe("deriveFullMetabaseTheme", () => {
     it("keeps the dynamic brand ramp when an embedding theme sets a brand color", () => {
       const derived = deriveFullMetabaseTheme({
         colorScheme: "light",
-        embeddingThemeOverride: { version: 2, colors: { brand: "#00ff00" } },
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { "core-brand": "#00ff00" },
+        },
       });
 
       expect(derived.colors["text-brand"]).toBe(

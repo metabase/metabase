@@ -48,11 +48,7 @@ export function deriveFullMetabaseTheme({
   // with a hand-picked `ocean` ramp
   const shouldKeepBrandRampDynamic =
     forceDynamicBrandRamp ||
-    Boolean(
-      embeddingColors?.["core-brand"] ??
-      embeddingColors?.brand ??
-      whitelabelColors?.brand,
-    );
+    Boolean(embeddingColors?.["core-brand"] ?? whitelabelColors?.brand);
 
   const baseColors = getBaseColorsForThemeDefinitionOnly();
 
