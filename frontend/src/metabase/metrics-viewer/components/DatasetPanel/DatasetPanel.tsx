@@ -9,12 +9,14 @@ import { useLocation, useNavigate } from "metabase/router";
 import { Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { QuestionSummary } from "../../pages/QuestionSummaryPage/QuestionSummaryPage";
+import { DatasetExplorer } from "./DatasetExplorer";
 
 export function DatasetPanel({
   serializedDataset,
+  returnTo,
 }: {
   serializedDataset: string;
+  returnTo: string | null;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,10 +43,10 @@ export function DatasetPanel({
       {({ question, loading, error }) => (
         <LoadingAndErrorWrapper loading={loading} error={error} noWrapper>
           {question ? (
-            <QuestionSummary
+            <DatasetExplorer
               key={loadDataset}
-              variant="dataset"
               initialQuestion={restoreSummaryParameters(question)}
+              returnTo={returnTo}
               onChange={handleChange}
             />
           ) : (

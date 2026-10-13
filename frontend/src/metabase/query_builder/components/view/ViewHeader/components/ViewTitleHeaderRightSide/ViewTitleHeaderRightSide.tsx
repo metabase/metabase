@@ -23,7 +23,6 @@ import type { Dataset } from "metabase-types/api";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
-import { ExploreSummaryButton } from "../ExploreSummaryButton";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
@@ -82,15 +81,12 @@ export function ViewTitleHeaderRightSide({
   isRunnable,
   isRunning,
   isNativeEditorOpen,
-  isShowingSummarySidebar,
   isDirty,
   isResultDirty,
   isActionListVisible,
   runQuestionQuery,
   cancelQuery,
   onOpenModal,
-  editSummary,
-  onCloseSummary,
   setQueryBuilderMode,
   areFiltersExpanded,
   onExpandFilters,
@@ -183,16 +179,7 @@ export function ViewTitleHeaderRightSide({
         queryBuilderMode,
         isObjectDetail,
         isActionListVisible,
-      }) && (
-        <>
-          <QuestionSummarizeWidget
-            isShowingSummarySidebar={isShowingSummarySidebar}
-            editSummary={editSummary}
-            onCloseSummary={onCloseSummary}
-          />
-          <ExploreSummaryButton question={question} />
-        </>
-      )}
+      }) && <QuestionSummarizeWidget question={question} />}
       {QuestionNotebookButton.shouldRender({
         question,
         isActionListVisible,

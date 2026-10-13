@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -19,16 +18,7 @@ import {
 } from "metabase/metrics-viewer/context";
 import { useViewerState } from "metabase/metrics-viewer/hooks";
 import { useLocation } from "metabase/router";
-import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Center, Flex, Group, Icon, Stack } from "metabase/ui";
 
 import { QuestionSummaryPage } from "../QuestionSummaryPage/QuestionSummaryPage";
 
@@ -36,6 +26,11 @@ import S from "./MetricsViewerPage.module.css";
 
 export function MetricsViewerPage() {
   const location = useLocation();
+  const dataset = new URLSearchParams(location.search).get("dataset");
+  if (dataset) {
+    const returnTo = getQuestionReturnUrl(location.search);
+    return <DatasetPanel serializedDataset={dataset} returnTo={returnTo} />;
+  }
   return new URLSearchParams(location.search).get("mode") === "question" ? (
     <QuestionSummaryPage />
   ) : (
@@ -46,8 +41,7 @@ export function MetricsViewerPage() {
 function SavedMetricsViewerPage() {
   const location = useLocation();
   const returnTo = getQuestionReturnUrl(location.search);
-  const dataset = new URLSearchParams(location.search).get("dataset");
-  const viewerState = useViewerState(dataset ? "table" : undefined);
+  const viewerState = useViewerState();
 
   if (!viewerState.initialLoadComplete) {
     return (
@@ -59,21 +53,14 @@ function SavedMetricsViewerPage() {
 
   return (
     <MetricsViewerProvider value={viewerState}>
-      <MetricsViewerPageBody returnTo={returnTo} dataset={dataset} />
+      <MetricsViewerPageBody returnTo={returnTo} />
     </MetricsViewerProvider>
   );
 }
 
-function MetricsViewerPageBody({
-  returnTo,
-  dataset,
-}: {
-  returnTo: string | null;
-  dataset: string | null;
-}) {
+function MetricsViewerPageBody({ returnTo }: { returnTo: string | null }) {
   const { definitions, activeDimensionBreakout, isSidebarOpen } =
     useMetricsViewerContext();
-  const [showDataset, setShowDataset] = useState(true);
 
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(
@@ -87,7 +74,7 @@ function MetricsViewerPageBody({
 
   return (
     <Stack px="xl" h="100%" gap={0} className={S.root}>
-      {(returnTo || dataset) && (
+      {returnTo && (
         <Group pt="md" justify="space-between">
           {returnTo && (
             <Button
@@ -96,64 +83,37 @@ function MetricsViewerPageBody({
               leftSection={<Icon name="arrow_left" aria-hidden />}
             >{t`Back to table`}</Button>
           )}
-          {dataset && (
-            <Button onClick={() => setShowDataset((value) => !value)}>
-              {showDataset ? t`Hide dataset` : t`Show dataset`}
-            </Button>
-          )}
         </Group>
       )}
       <Box pt="lg" flex="0 0 auto">
         <MetricSearchPanel />
-        {dataset && (
-          <Text
-            size="sm"
-            c="text-secondary"
-            mt="sm"
-          >{t`Add metrics or formulas above to explore alongside your dataset. Dataset filters and metric filters are independent.`}</Text>
-        )}
       </Box>
       <Flex flex="1 1 auto" mih={0} gap="lg" pt="lg" className={S.workspace}>
-        {dataset && (
-          <Stack
-            data-testid="explorer-dataset"
-            flex={1}
-            miw={0}
-            mih={0}
-            pb="md"
-            style={{ display: showDataset ? undefined : "none" }}
-          >
-            <DatasetPanel serializedDataset={dataset} />
+        <Flex flex={1} miw={0} mih={0} data-testid="explorer-metrics">
+          <Stack gap={0} flex={1} mih={0} miw={0}>
+            <Flex
+              direction="column"
+              pb="xl"
+              flex={1}
+              miw={0}
+              className={S.content}
+            >
+              {!hasDefinitions ? (
+                <MetricsViewerEmptyState />
+              ) : activeDimensionBreakout ? (
+                <MetricsViewerDimensionBreakoutContent />
+              ) : hasLoadedDefinitions ? (
+                <MetricsViewerNoDimensionBreakoutEmptyState />
+              ) : null}
+            </Flex>
           </Stack>
-        )}
-        {(!dataset || hasDefinitions || !showDataset) && (
-          <Flex flex={1} miw={0} mih={0} data-testid="explorer-metrics">
-            <Stack gap={0} flex={1} mih={0} miw={0}>
-              {dataset && <Text fw="bold" mb="sm">{t`Metrics`}</Text>}
-              <Flex
-                direction="column"
-                pb="xl"
-                flex={1}
-                miw={0}
-                className={S.content}
-              >
-                {!hasDefinitions ? (
-                  <MetricsViewerEmptyState />
-                ) : activeDimensionBreakout ? (
-                  <MetricsViewerDimensionBreakoutContent />
-                ) : hasLoadedDefinitions ? (
-                  <MetricsViewerNoDimensionBreakoutEmptyState />
-                ) : null}
-              </Flex>
-            </Stack>
-            {showBreakoutLegend && <BreakoutLegend />}
-            {showDimensionPickerSidebar && (
-              <DimensionPickerSidebar
-                activeDimensionBreakout={activeDimensionBreakout}
-              />
-            )}
-          </Flex>
-        )}
+          {showBreakoutLegend && <BreakoutLegend />}
+          {showDimensionPickerSidebar && (
+            <DimensionPickerSidebar
+              activeDimensionBreakout={activeDimensionBreakout}
+            />
+          )}
+        </Flex>
       </Flex>
     </Stack>
   );

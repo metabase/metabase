@@ -362,12 +362,16 @@ describe("ViewTitleHeader", () => {
         });
 
         it("offers to summarize query results", () => {
-          const { editSummary } = setup({
-            card,
-            queryBuilderMode: "view",
-          });
-          fireEvent.click(screen.getByText("Summarize"));
-          expect(editSummary).toHaveBeenCalled();
+          setup({ card, queryBuilderMode: "view" });
+          expect(
+            screen.getByRole("link", { name: "Summarize" }),
+          ).toHaveAttribute(
+            "href",
+            expect.stringContaining("/explore?dataset="),
+          );
+          expect(
+            screen.queryByRole("link", { name: /^Explore$/ }),
+          ).not.toBeInTheDocument();
         });
 
         it("allows to open notebook editor", () => {
