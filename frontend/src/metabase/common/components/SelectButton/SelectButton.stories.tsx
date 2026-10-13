@@ -21,14 +21,24 @@ export const Default = {
   },
 };
 
-export const Highlighted = {
+export const WithValue = {
+  render: Template,
+
+  args: {
+    children: "Some value is selected",
+    hasValue: true,
+    fullWidth: false,
+  },
+};
+
+export const Disabled = {
   render: Template,
 
   args: {
     children: "Select an option",
-    hasValue: true,
+    hasValue: false,
     fullWidth: false,
-    highlighted: true,
+    disabled: true,
   },
 };
 

@@ -41,7 +41,7 @@ export function MappedFieldPicker({
 
   const selectedField = field && selectedFieldId ? field : null;
 
-  const selectButtonRef = useRef<HTMLButtonElement>();
+  const selectButtonRef = useRef<HTMLButtonElement>(null);
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();
@@ -71,12 +71,13 @@ export function MappedFieldPicker({
             },
             className,
           ),
-          icon: MappedFieldPickerS.StyledSelectIcon,
+          icon: selectedField
+            ? MappedFieldPickerS.StyledSelectIconOnBrand
+            : undefined,
         }}
         hasValue={!!selectedField}
         tabIndex={tabIndex}
-        // Unjustified type cast. FIXME
-        ref={selectButtonRef as any}
+        ref={selectButtonRef}
         onClear={() => onChange(null)}
       >
         <span className={MappedFieldPickerS.StyledSelectButtonContent}>

@@ -28,7 +28,7 @@ type ParameterTargetWidgetProps = {
 };
 
 const defaultChildren = ({ selected, placeholder }: TriggerRenderProps) => (
-  <SelectButton hasValue={!!selected} className="border-med">
+  <SelectButton hasValue={!!selected}>
     {selected ? selected.name : placeholder || "Select a target"}
   </SelectButton>
 );

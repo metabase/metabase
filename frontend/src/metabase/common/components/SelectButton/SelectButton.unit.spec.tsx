@@ -27,10 +27,27 @@ describe("SelectButton", () => {
     expect(screen.getByRole("button")).not.toHaveFocus();
   });
 
+  it("should display a chevron", () => {
+    render(<SelectButton>{title}</SelectButton>);
+
+    expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
+  });
+
   describe("clear behavior", () => {
     it("should not display clear icon when the value is selected, but onClear prop is not provided", () => {
       render(<SelectButton hasValue>{title}</SelectButton>);
       expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
+    });
+
+    it("should display the clear icon beside the chevron", () => {
+      render(
+        <SelectButton hasValue onClear={jest.fn()}>
+          {title}
+        </SelectButton>,
+      );
+
+      expect(screen.getByLabelText("close icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
     });
 
     it("should not display clear icon when the value is not selected", () => {
