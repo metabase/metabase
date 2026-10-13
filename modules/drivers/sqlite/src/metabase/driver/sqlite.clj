@@ -15,12 +15,14 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]])
   (:import
+   (java.net MalformedURLException URL)
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.temporal Temporal)))
@@ -73,15 +75,59 @@
   [_]
   :sunday)
 
+(def ^:private protected-connection-properties
+  "Connection properties the driver sets itself for safety. Compared case-insensitively and without any namespace: the
+  client reads a property by its name alone, so `:foo/enable_load_extension` and `:ENABLE_LOAD_EXTENSION` are
+  `enable_load_extension` to it, and the JSON request decoder keeps such keys."
+  #{"limit_attached" "enable_load_extension" "open_mode"})
+
+(defn- protected-property-key? [k]
+  (contains? protected-connection-properties
+             (u/lower-case-en (if (instance? clojure.lang.Named k) (name k) (str k)))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
       :or   {db "sqlite.db"}
       :as   details}]
   (merge {:subprotocol "sqlite"
           :subname     db}
-         (dissoc details :db)
+         ;; a detail that names a property set below, in any spelling, would otherwise sit beside the forced value and
+         ;; the client would keep whichever it read last
+         (into {} (remove (comp protected-property-key? key)) (dissoc details :db))
          ;; disallow "FDW" (connecting to other SQLite databases on the local filesystem) -- see https://github.com/metabase/metaboat/issues/152
-         {:limit_attached 0}))
+         {:limit_attached 0
+          ;; `load_extension()` runs native code from a file on the Metabase host. Set here, the property also wins over
+          ;; an `enable_load_extension=true` written into the database path.
+          :enable_load_extension "false"}))
+
+(defn- url-hosts
+  "The hosts `java.net.URL` would contact to read `s`, or nil when `s` is not a URL it accepts. Parsed by `URL` itself
+  rather than by a pattern: it ignores leading and trailing whitespace and a `url:` prefix, and it takes the host after
+  the last `@` of the authority, so any other reading of the string can name a different host than the one fetched."
+  [^String s]
+  (when-let [^URL url (try (URL. s) (catch MalformedURLException _ nil))]
+    (if (= "jar" (.getProtocol url))
+      ;; `jar:<url>!/<entry>` fetches the jar from the nested URL
+      (url-hosts (first (str/split (.getPath url) #"!/" 2)))
+      (let [host (str/replace (.getHost url) #"^\[(.*)\]$" "$1")]
+        ;; a `file:` URL naming no host, or this one, is a local file; one naming another machine is fetched from it
+        (when-not (or (str/blank? host)
+                      (and (= "file" (.getProtocol url))
+                           (#{"localhost" "~"} (u/lower-case-en host))))
+          [host])))))
+
+(defmethod driver/connection-parameter-hosts :sqlite
+  [driver {:keys [db] :as details}]
+  ;; Two things in `:db` have the client fetch the database file from a URL, and no SSH tunnel carries either, so they
+  ;; are reported here, where they are checked whether or not a tunnel is in use, rather than as a connection host:
+  ;;   - `:resource:<url>`, which SQLite-JDBC reads from that URL (after trying the classpath);
+  ;;   - a `:db` that is itself a URL, which the file check in [[can-connect?]] opens with `io/input-stream`.
+  (let [db       (when (string? db) db)
+        resource (some-> db (str/trim) (->> (re-find #"(?i)^:resource:(.*)$")) second)]
+    (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
+          cat
+          [(some-> resource url-hosts)
+           (some-> db url-hosts)])))
 
 (defmethod driver/describe-table-indexes :sqlite
   [driver database table]
