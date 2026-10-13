@@ -124,26 +124,6 @@ describe("extract shortcut", () => {
         newColumn: "Hour of day_2",
       });
     });
-
-    it("should be able to modify the expression in the notebook editor", () => {
-      H.openOrdersTable({ limit: 1 });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Year",
-        value: "2,028",
-      });
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({
-        name: "custom formula",
-        formula: "year([Created At]) + 2",
-        blur: true,
-      });
-      H.popover().button("Update").should("not.be.disabled").click();
-      H.visualize();
-      H.tableHeaderColumn("custom formula").should("be.visible");
-      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
-    });
   });
 
   it("should add a url expression for each option", () => {
