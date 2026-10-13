@@ -3884,6 +3884,7 @@
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{api
            app-db
+           batch-processing
            collections
            database-routing
            documents

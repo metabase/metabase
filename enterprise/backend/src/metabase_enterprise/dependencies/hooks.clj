@@ -7,30 +7,30 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase.app-db.core :as mdb]
+   [metabase.batch-processing.core :as grouper]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private trigger-delay-ms
-  "How long writes are collected before the jobs are triggered for all of them."
-  1000)
+(defn- trigger-jobs!*
+  "Trigger the backfill and entity-check jobs once for a batch of writes."
+  [_writes]
+  (try
+    (task.backfill/trigger-backfill-job!)
+    (task.entity-check/trigger-entity-check-job!)
+    (catch Exception e
+      (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))
 
-(defonce ^:private trigger-pending? (atom false))
+(def ^:private trigger-jobs-queue
+  (delay (grouper/start! #'trigger-jobs!* :capacity 500 :interval 1000)))
 
 (defn- trigger-jobs!
-  "Trigger the backfill and entity-check jobs once for every write made within the next second."
+  "Have the backfill and entity-check jobs triggered for this write, once it commits, together with the others in its
+  batch."
   []
-  (when (compare-and-set! trigger-pending? false true)
-    (future
-      (try
-        (Thread/sleep (long trigger-delay-ms))
-        (reset! trigger-pending? false)
-        (task.backfill/trigger-backfill-job!)
-        (task.entity-check/trigger-entity-check-job!)
-        (catch Exception e
-          (reset! trigger-pending? false)
-          (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))))
+  (mdb/do-after-commit #(grouper/submit! @trigger-jobs-queue :ok)))
 
 (defn- owner-created!
   "Have the jobs pick up a created entity, which has no id before the insert and no status or findings yet."

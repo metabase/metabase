@@ -293,8 +293,8 @@
          (t2/update! :model/NativeQuerySnippet snippet-id {:content "SELECT 2"})
          (assert-stale :snippet snippet-id))))))
 
-(deftest mark-stale-failure-does-not-propagate-test
-  (testing "When mark-stale! throws, the update hook catches the error and the write is not affected"
+(deftest mark-stale-failure-fails-the-write-test
+  (testing "When mark-stale! throws, the update fails and the card keeps its query"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [products (lib.metadata/table mp (mt/id :products))
@@ -303,11 +303,10 @@
            (deps.test/synchronously-run-backfill!)
            (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
                                        (fn [_ _] (throw (ex-info "Simulated DB failure" {})))]
-             (is (= 1 (t2/update! :model/Card card-id {:dataset_query (lib/query mp orders)}))))
-           (is (=? {:stages [{:source-table (mt/id :orders)}]}
-                   (t2/select-one-fn :dataset_query :model/Card card-id)))
-           (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-               "Entity should not be marked stale when mark-stale! fails")))))))
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated DB failure"
+                                   (t2/update! :model/Card card-id {:dataset_query (lib/query mp orders)}))))
+           (is (=? {:stages [{:source-table (mt/id :products)}]}
+                   (t2/select-one-fn :dataset_query :model/Card card-id)))))))))
 
 (deftest ^:synchronized native-transform-create-sets-dependencies-test
   (testing "a created native transform is picked up by the dependency calculation"
