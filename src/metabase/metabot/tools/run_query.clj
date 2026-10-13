@@ -98,17 +98,40 @@
   [message]
   (ex-info message {:agent-error? true}))
 
-(defn- notebook-available?
-  "Whether the session offers construct_notebook_query. A profile without it gets values only through SQL, so what
-   run_query tells the model must not point at the notebook builder."
-  []
-  (shared/tool-available? "construct_notebook_query"))
+(def ^:private notebook-query-hint
+  "Ends every refusal the model can recover from by building a notebook query instead."
+  "To get values, build the question with construct_notebook_query, then run that query with run_query.")
 
-(defn- viewed-saved-question-query
-  "A notebook query over the saved question or model the user is viewing whose id is `query-id`, or nil.
-   A viewed saved question arrives as its id alone, so the conversation holds no query for it. Only run_query reads
-   it this way: the chart, link and save tools still take a query the conversation holds. Running it as a
-   source-card query keeps the question's own permissions and the checks on SQL that Metabot saved."
+(def ^:private sql-query-hint
+  "Ends a refusal the model can recover from by writing SQL, where the tool runs SQL only."
+  "To get values, write the question as SQL with create_sql_query, then run that query with run_query.")
+
+(def ^:private no-values-hint
+  "Ends a refusal the model can't recover from, where the tool runs SQL only: SQL was its way to rows."
+  "Tell the user you can't read its results.")
+
+(def ^:private sql-card-hint
+  "Ends a refusal of a notebook query for the SQL question it reads. Rebuilding the query over the same question
+   would be refused again, so the hint points away from it."
+  "To get values, build the question from tables with construct_notebook_query instead.")
+
+(defn- recovery-hint
+  "Ends a refusal of a query the model could ask for another way. With `allow-non-sql?` the tool is the one offered
+   beside the notebook builder, so the hint names it. Without, the way is SQL where Metabot may run SQL, and
+   otherwise there is none."
+  [allow-non-sql?]
+  (cond
+    allow-non-sql?                 notebook-query-hint
+    (scope/sql-execution-allowed?) sql-query-hint
+    :else                          no-values-hint))
+
+(defn- viewed-saved-question
+  "`{:query :saved-card}` for the saved question or model the user is viewing whose id is `query-id`, or nil:
+   a notebook query over it, and the question itself.
+   The conversation holds no query under a saved question's id. The client sends the query on screen with the item,
+   and that query is not what runs: the saved question is, as a source-card query, which keeps the question's own
+   permissions and the checks on SQL that Metabot saved. Only run_query reads it this way: the chart, link and save
+   tools still take a query the conversation holds."
   [query-id]
   (when-let [card-id (some (fn [{:keys [id type]}]
                              (when (and (= query-id (str id))
@@ -120,26 +143,35 @@
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
       (when (some-> card mi/can-read?)
-        {:lib/type :mbql/query
-         :database (:database_id card)
-         :stages   [{:lib/type    :mbql.stage/mbql
-                     :source-card card-id}]}))))
+        {:saved-card card
+         :query      {:lib/type :mbql/query
+                      :database (:database_id card)
+                      :stages   [{:lib/type    :mbql.stage/mbql
+                                  :source-card card-id}]}}))))
 
 (defn- stored-query
-  "The query `query-id` names: one the conversation holds, or with `allow-non-sql?` a saved question the user is
-   viewing."
+  "`{:query :saved-card}` for the query `query-id` names: one the conversation holds, or with `allow-non-sql?` a
+   saved question the user is viewing, which is then `:saved-card`."
   [query-id allow-non-sql?]
   (let [queries (shared/current-queries-state)]
-    (or (get queries query-id)
+    (or (when-let [query (get queries query-id)]
+          {:query query})
         (when allow-non-sql?
-          (viewed-saved-question-query query-id))
+          (viewed-saved-question query-id))
         (throw (refusal (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "]. "
-                             (if (notebook-available?)
+                             (cond
+                               allow-non-sql?
                                (str "Only a saved question or model the user is viewing runs by its own id: to run "
                                     "another, build a notebook query with it as the source-card using "
                                     "construct_notebook_query, then run that query.")
+
+                               (scope/sql-execution-allowed?)
                                (str "A saved question or model has no query id: to run one, write SQL that reads it "
-                                    "using create_sql_query, then run that query."))))))))
+                                    "using create_sql_query, then run that query.")
+
+                               :else
+                               (str "A saved question or model has no query id, and run_query can't run SQL here. "
+                                    no-values-hint))))))))
 
 (defn- shared-conversation-refusal
   []
@@ -171,23 +203,6 @@
                   (some? conversation-id)
                   (some? api/*current-user-id*)
                   (not (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))))))
-
-(def ^:private notebook-query-hint
-  "Ends every refusal the model can recover from by building a notebook query instead."
-  "To get values, build the question with construct_notebook_query, then run that query with run_query.")
-
-(def ^:private sql-query-hint
-  "Ends a refusal the model can recover from by writing SQL, in a session without the notebook builder."
-  "To get values, write the question as SQL with create_sql_query, then run that query with run_query.")
-
-(def ^:private no-values-hint
-  "Ends a refusal the model can't recover from, in a session without the notebook builder: SQL was its way to rows."
-  "Tell the user you can't read its results.")
-
-(def ^:private sql-card-hint
-  "Ends a refusal of a notebook query for the SQL question it reads. Rebuilding the query over the same question
-   would be refused again, so the hint points away from it."
-  "To get values, build the question from tables with construct_notebook_query instead.")
 
 (defn- database-not-found
   [query-id]
@@ -238,21 +253,21 @@
 (defn- check-sql-runnable!
   "Refuse a SQL query unless Metabot may run SQL for the current user ([[scope/sql-execution-allowed?]]) and the user
    may run SQL against `database-id`.
-   With `sql-card?` the refusal is worded for a notebook query that reads a SQL question Metabot saved."
-  [query-id database-id sql-card?]
+   With `sql-card?` the refusal is worded for a notebook query that reads a SQL question Metabot saved.
+   Without `allow-non-sql?` SQL was the only way to rows, so the refusal names no other."
+  [query-id database-id sql-card? allow-non-sql?]
   ;; These are the checks MCP's `execute_sql` makes, in the same order, so with SQL execution off every SQL query
   ;; gets the same refusal, whatever its database. The QP permissions middleware checks again inside `process-query`;
   ;; checking here first lets the model read why a run was refused.
   ;; An unreadable database reads exactly like a missing one, so a refusal never shows which database ids exist. The
   ;; permission refusal is reachable only for a database the user can already read, so its own message gives
   ;; nothing away.
-  (let [notebook? (notebook-available?)
-        hint      (cond
-                    (not notebook?) no-values-hint
-                    sql-card?       sql-card-hint
-                    :else           notebook-query-hint)]
+  (let [hint (cond
+               (not allow-non-sql?) no-values-hint
+               sql-card?            sql-card-hint
+               :else                notebook-query-hint)]
     (when-not (scope/sql-execution-allowed?)
-      (throw (refusal (str (if notebook?
+      (throw (refusal (str (if allow-non-sql?
                              "run_query only runs notebook queries, and this one "
                              "run_query can't run SQL here, and this one ")
                            (if sql-card? "reads a saved question that holds SQL you wrote" "is a SQL query")
@@ -305,9 +320,8 @@
 
 (defn- not-read-only-select
   "The refusal for `sql`, which is not a single read-only SELECT statement for `driver`."
-  [query-id sql-card? driver sql]
-  (let [problem   (some-> (read-only-problem driver sql) (str " "))
-        notebook? (notebook-available?)]
+  [query-id sql-card? driver sql allow-non-sql?]
+  (let [problem (some-> (read-only-problem driver sql) (str " "))]
     (refusal (if sql-card?
                (str "run_query only runs a single read-only SELECT statement, and query " query-id
                     " reads a saved question whose SQL is not one. " problem
@@ -315,18 +329,18 @@
                (str "run_query only runs a single read-only SELECT statement, and query " query-id " is not one. "
                     problem
                     "Rewrite it as one SELECT that changes and locks nothing."
-                    (when notebook? (str " " notebook-query-hint)))))))
+                    (when allow-non-sql? (str " " notebook-query-hint)))))))
 
 (defn- check-read-only-select!
   "Refuse `query` unless the SQL it compiles to is a single read-only SELECT statement in its database's dialect
    ([[sql-tools/read-only-select?]]). Metabot may run SQL, never write: SQL that does not parse, or a native query
    that is not SQL at all, is refused too. Returns the checked SQL."
-  [query-id query sql-card?]
+  [query-id query sql-card? allow-non-sql?]
   (let [sql    (compiled-sql query)
         driver (driver.u/database->driver (:database query))]
     (when-not (and (string? sql)
                    (sql-tools/read-only-select? driver sql))
-      (throw (not-read-only-select query-id sql-card? driver sql)))
+      (throw (not-read-only-select query-id sql-card? driver sql allow-non-sql?)))
     sql))
 
 (defn- no-permission-message
@@ -363,11 +377,12 @@
    it is serialized.
    A notebook query that reads a SQL question Metabot saved ([[metabot-sql-card?]]) is a SQL query here too, marked
    `:sql-card?`.
-   Permission to run it is left to the QP, which refuses a query the current user may not run."
-  [query-id query]
+   Permission to run it is left to the QP, which refuses a query the current user may not run.
+   `allow-non-sql?` words the refusals: see [[recovery-hint]]."
+  [query-id query allow-non-sql?]
   (let [native? (native-query? query)]
     (when native?
-      (check-sql-runnable! query-id (raw-database-id query) false))
+      (check-sql-runnable! query-id (raw-database-id query) false allow-non-sql?))
     (let [normalized  (lib-be/normalize-query query)
           inline-sql? (or native? (boolean (and (seq normalized) (lib/any-native-stage? normalized))))]
       ;; Normalizing recovers to an empty map from any failure, a missing database or a malformed query alike.
@@ -375,12 +390,11 @@
       ;; read the same.
       (when (empty? normalized)
         (throw (if (readable-database? (raw-database-id query))
-                 (refusal (str "Query " query-id " could not be read. "
-                               (if (notebook-available?) notebook-query-hint sql-query-hint)))
+                 (refusal (str "Query " query-id " could not be read. " (recovery-hint allow-non-sql?)))
                  (database-not-found query-id))))
       ;; Normalizing can surface a native stage under a spelling [[native-query?]] does not follow.
       (when (and inline-sql? (not native?))
-        (check-sql-runnable! query-id (:database normalized) false))
+        (check-sql-runnable! query-id (:database normalized) false allow-non-sql?))
       ;; A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that
       ;; Metabot saved itself, which would otherwise be a way around every check here. A question keeps the mark
       ;; of its Metabot origin until someone edits its query or display.
@@ -393,17 +407,17 @@
         (when (and (or inline-sql? sql-card?) (not-every? #(some-> % mi/can-read?) cards))
           (throw (refusal (no-permission-message query-id))))
         (when sql-card?
-          (check-sql-runnable! query-id (:database normalized) true))
+          (check-sql-runnable! query-id (:database normalized) true allow-non-sql?))
         {:query       serialized
          :sql-card?   sql-card?
          :checked-sql (when (or inline-sql? sql-card?)
-                        (check-read-only-select! query-id serialized sql-card?))}))))
+                        (check-read-only-select! query-id serialized sql-card? allow-non-sql?))}))))
 
 (defn- execute-page!
   "Run `query` for one page of rows. With `checked-sql`, the driver runs only that SQL or other SQL that is itself a
    read-only SELECT: the QP compiles the query again, and a snippet or card it references may have changed since
    `checked-sql` was compiled from it."
-  [query-id {:keys [query checked-sql sql-card?]} row-limit]
+  [query-id {:keys [query checked-sql sql-card?]} row-limit allow-non-sql?]
   (if-not checked-sql
     (query-execution/execute-page! query row-limit :metabot)
     (let [execute qp.pipeline/*execute*
@@ -423,7 +437,7 @@
           ;; The QP reports an exception from the driver step as a failed run, which would reach the model as
           ;; quoted database error text instead of as this tool's refusal.
           (throw (if-let [[driver sql] @refused]
-                   (not-read-only-select query-id sql-card? driver sql)
+                   (not-read-only-select query-id sql-card? driver sql allow-non-sql?)
                    e)))))))
 
 (defn- plain-decimal-text
@@ -519,8 +533,10 @@
 
 (defn- result-output
   "`{:output :returned :truncated?}`: the text the model reads for a page of rows, the number of rows that text
-   shows, and whether the query has more rows than it shows."
-  [query-id {:keys [cols rows truncated?]}]
+   shows, and whether the query has more rows than it shows.
+   With `saved-card`, the saved question that ran under its own id, the text says so and how to link to it: its id
+   is no query the conversation holds, so a query link to it would open nothing."
+  [query-id {:keys [cols rows truncated?]} saved-card]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
         truncated?            (or truncated? (< shown (count rows)))
@@ -540,6 +556,10 @@
                   "</query_results>"
                   (when (< (count shown-cols) (count cols))
                     (format "Only the first %d of %d columns are shown." (count shown-cols) (count cols)))
+                  (when-let [{:keys [id type]} saved-card]
+                    (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen"
+                                 " are not applied. Link to it as `metabase://%s/%d`, not as a query.")
+                            (name type) id (name type) id))
                   (cond
                     none-fit?
                     (str "The query returned rows, but one row is longer than the output limit."
@@ -557,11 +577,14 @@
     (when-not (metabot.settings/metabot-query-execution-enabled?)
       (throw (refusal "Query execution is turned off for Metabot.")))
     (check-private-conversation!)
-    (let [runnable (runnable-query query_id (stored-query query_id allow-non-sql?))]
+    (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
+          runnable                   (runnable-query query_id query allow-non-sql?)]
       (when-not (or allow-non-sql? (:checked-sql runnable))
-        (throw (refusal (str "You may only run SQL queries, and query " query_id " is not one. " sql-query-hint))))
-      (let [page                                 (execute-page! query_id runnable (or row_limit default-row-limit))
-            {:keys [output returned truncated?]} (result-output query_id page)]
+        (throw (refusal (str "You may only run SQL queries, and query " query_id " is not one. "
+                             (recovery-hint allow-non-sql?)))))
+      (let [page                                 (execute-page! query_id runnable (or row_limit default-row-limit)
+                                                                allow-non-sql?)
+            {:keys [output returned truncated?]} (result-output query_id page saved-card)]
         {:output            output
          :structured-output {:query-id   query_id
                              :returned   returned
@@ -609,7 +632,7 @@
   run-sql-query-tool
   "Run a SQL query you already have and read its first rows (default 20, max 200).
   Use it when the answer needs actual values: a number, the top item, whether a filter matches anything.
-  `query_id` is the id of a SQL query you built, or of a SQL query the user is viewing.
+  `query_id` is the id of a SQL query you built, or of an unsaved SQL query the user is viewing.
   A saved question or model has no query id: write SQL that reads it with create_sql_query and run that.
   A SQL query runs only where SQL execution is on, and only when it is a single read-only SELECT statement;
   otherwise it is refused.
