@@ -718,6 +718,10 @@ describe("getDependencyGroupTypeInfo", () => {
     },
     { groupType: "model", expected: { label: "Model", color: "core-brand" } },
     {
+      groupType: "action",
+      expected: { label: "Data action", color: "text-secondary" },
+    },
+    {
       groupType: "metric",
       expected: { label: "Metric", color: "core-summarize" },
     },

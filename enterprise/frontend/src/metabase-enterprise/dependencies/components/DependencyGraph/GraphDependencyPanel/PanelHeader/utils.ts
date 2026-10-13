@@ -36,6 +36,6 @@ export function getHeaderLabel(
     case "measure":
       return t`Measures that use ${nodeLabel}`;
     case "action":
-      return t`Actions that use ${nodeLabel}`;
+      return t`Data actions that use ${nodeLabel}`;
   }
 }

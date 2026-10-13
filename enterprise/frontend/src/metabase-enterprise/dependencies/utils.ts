@@ -606,7 +606,7 @@ export function getDependencyGroupTypeInfo(
     case "measure":
       return { label: t`Measure`, color: "core-summarize" };
     case "action":
-      return { label: t`Action`, color: "text-secondary" };
+      return { label: t`Data action`, color: "text-secondary" };
   }
 }
 
@@ -745,9 +745,9 @@ export function getDependentGroupLabel({
         count,
       );
     case "action":
-      return c("{0} is the number of actions").ngettext(
-        msgid`${count} action`,
-        `${count} actions`,
+      return c("{0} is the number of data actions").ngettext(
+        msgid`${count} data action`,
+        `${count} data actions`,
         count,
       );
     default:

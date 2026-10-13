@@ -94,9 +94,9 @@ export function getDependentGroupLabel({
         count,
       );
     case "action":
-      return c("{0} is the number of actions").ngettext(
-        msgid`${count} action`,
-        `${count} actions`,
+      return c("{0} is the number of data actions").ngettext(
+        msgid`${count} data action`,
+        `${count} data actions`,
         count,
       );
   }
