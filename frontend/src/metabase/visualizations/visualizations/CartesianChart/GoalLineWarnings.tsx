@@ -112,7 +112,7 @@ export function GoalLineWarnings({
           }
           top={y + (fontSize - GOAL_WARNING_ICON_SIZE) / 2}
         >
-          <GoalWarningIcon errors={errors} />
+          <GoalWarningIcon errors={errors} source="goal" />
         </Box>
       ))}
     </>

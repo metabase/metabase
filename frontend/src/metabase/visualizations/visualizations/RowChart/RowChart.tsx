@@ -298,7 +298,7 @@ const RowChartVisualization = ({
             goal={goal}
             goalAdornment={
               isQueryBuilder && goalErrors.length > 0 ? (
-                <GoalWarningIcon errors={goalErrors} />
+                <GoalWarningIcon errors={goalErrors} source="goal" />
               ) : undefined
             }
             theme={theme}
