@@ -660,13 +660,14 @@
     (let [running  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
           cut-off  (test-util/parts->aisdk-chunks
-                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+                    [{:type :tool-input :id "call-2" :function "convert-currency"
+                      :arguments {:amount 100, :from "EUR", :to "USD"}}])
           streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
       (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
                 (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
         (testing "and a warning names the call that never ran"
-          (is (=? [{:level :warn :message #".*call-2.*get-time.*"}] (messages))))))))
+          (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 
