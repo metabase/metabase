@@ -3,7 +3,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { createWritableDb } from "./db_tasks";
 
 const DB_TYPES = ["postgres", "mysql"] as const;
-const MAX_ATTEMPTS = 60;
+const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 2000;
 
 async function createWithRetry(type: (typeof DB_TYPES)[number]) {

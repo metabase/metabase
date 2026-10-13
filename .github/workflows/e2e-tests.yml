@@ -32,7 +32,7 @@ jobs:
     needs: gate
     if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
+    timeout-minutes: 15  
     env:
       MB_EDITION: ee
       CYPRESS_VIDEO: "false"
@@ -85,8 +85,6 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
-      - uses: ./.github/actions/resolve-job-id
-
       - name: Generate database snapshots
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -109,6 +107,9 @@ jobs:
     needs:
       - e2e-matrix-builder
       - e2e-snapshots
+    # No status function, so a skipped or failed matrix builder keeps this out: the strategy below
+    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so.
+    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
