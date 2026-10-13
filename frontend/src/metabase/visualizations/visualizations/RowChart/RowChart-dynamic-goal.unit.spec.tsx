@@ -203,6 +203,21 @@ describe("row chart dynamic goal", () => {
     expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
   });
 
+  it("draws the goal line at 0 with a warning in the query builder when the dataset reports the reference as failed", async () => {
+    setup({ referencedEntities: FAILED, isQueryBuilder: true });
+
+    const goalLine = await findGoalLine();
+
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
+      0,
+    );
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+
+    await userEvent.hover(within(goalLine).getByLabelText("Goal warning"));
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
+  });
+
   it("draws the goal line at 0 without a warning outside the query builder", async () => {
     setup({ referencedEntities: FAILED });
 

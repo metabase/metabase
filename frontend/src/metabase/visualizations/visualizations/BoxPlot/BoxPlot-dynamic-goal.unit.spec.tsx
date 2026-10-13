@@ -111,6 +111,19 @@ describe("box plot dynamic goal", () => {
     expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
   });
 
+  it("draws the goal line at 0 with a warning in the query builder when the dataset reports the reference as failed", async () => {
+    await setup(createSeries(FAILED), { isQueryBuilder: true });
+
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
+    expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+
+    await userEvent
+      .setup({ advanceTimers: jest.advanceTimersByTime })
+      .hover(screen.getByLabelText("Goal warning"));
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
+  });
+
   it("draws the goal line at 0 without a warning outside the query builder", async () => {
     await setup(createSeries(FAILED));
 
