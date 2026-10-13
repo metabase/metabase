@@ -90,8 +90,8 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  ;; The `:table_collection_*` / `:table_is_published` render terms exist only to feed the measure and segment
-  ;; specs' `:root-collection-type` function and their reindex hooks; the response has no use for them.
+  ;; The `:table_collection_*` and `:table_is_published` render terms only feed the measure and segment specs'
+  ;; `:root-collection-type` function and their reindex hooks, so they stay out of the response.
   #{:dataset_query
     :document
     :exploration_id

@@ -275,10 +275,9 @@
                   :table_display_name        :table.display_name
                   :table_schema              :table.schema
                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Publishing is a user setting, so both columns read the table's user settings first, as
-                  ;; `metabase.warehouse-schema-overlay.core/table-query` does.
-                  ;; Listing them here also makes a table that moves into or out of the Library reindex its
-                  ;; segments.
+                  ;; Publishing is a user setting, so the published state and collection come from the table's
+                  ;; user settings when they are set, as in `metabase.warehouse-schema-overlay.core/table-query`.
+                  ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
                   :table-collection-id       [:case
                                               [:not= :settings.is_published nil] :settings.collection_id
                                               :else :table.collection_id]

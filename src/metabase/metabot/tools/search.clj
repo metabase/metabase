@@ -88,8 +88,8 @@
                         :can_write can_write))
 
       ("measure" "segment")
-      ;; Measures and segments hang off a table rather than a collection, so surface the base table the
-      ;; index row already carries. `:portable_entity_id` is attached by [[enrich-with-portable-entity-ids]].
+      ;; Measures and segments belong to a table, not a collection, so they carry the base table from the index row.
+      ;; Their `:portable_entity_id` comes later, from [[enrich-with-portable-entity-ids]].
       (-> common-fields
           (merge {:database_id       (:database_id result)
                   :base_table_id     (:table_id result)
@@ -140,8 +140,8 @@
                                  (m/assoc-some :database_name db-name))))))))
 
 (def ^:private entity-id-lookups
-  "Pairs of the entity types that share an ID space, and the function that maps a seq of those IDs to a map of ID
-  to entity ID."
+  "Each pair holds the entity types that share an ID space and the function that looks up their entity IDs.
+  The function takes a seq of IDs and returns a map of ID to entity ID."
   [[#{"metric" "model" "question"} metabot.db/card-entity-ids]
    [#{"measure"}                   metabot.db/measure-entity-ids]
    [#{"segment"}                   metabot.db/segment-entity-ids]])
