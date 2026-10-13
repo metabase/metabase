@@ -381,9 +381,9 @@
       (json/decode+kw raw)
       (catch Exception e
         (log/warn "Failed to parse tool arguments as JSON, passing raw string"
-                  {:tool    (:toolName (first chunks))
-                   :error   (.getMessage e)
-                   :raw-len (count raw)})
+                  {:tool-call-id (:toolCallId (first chunks))
+                   :error        (.getMessage e)
+                   :raw-len      (count raw)})
         ;; Return a map with a sentinel key so the tool sees an error via schema validation
         ;; rather than a cryptic JSON parse stacktrace.
         {:_raw_arguments raw}))))

@@ -1960,9 +1960,10 @@
                                              :cacheReadTokens     800}
                         :model "test-model" :id "msg-1"}
                        {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
-                        :arguments {}}])]
+                        :arguments {:tz "UTC"}}])]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (constantly (concat (butlast chunks) [{:type :error :errorText "Overloaded"}]))]
+                                    (constantly (concat (drop-last 2 chunks)
+                                                        [{:type :error :errorText "Overloaded"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
@@ -2001,6 +2002,7 @@
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
                 (is (some #(str/includes? (:message %) "call-3 unknown") logs))
+                (is (some #(str/includes? (:message %) ":tool-call-id call-3") logs))
                 (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
                     "a name the model made up never reaches analytics, spans or logs")))))))))
 
