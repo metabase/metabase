@@ -4,6 +4,7 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -993,6 +994,53 @@
     :dashboard-question
     (:type card)))
 
+(defn- check-data-app-card
+  "Throws unless `card`, when it is in a data app's collection, is what a pull of the app accepts: a question or
+  metric that is not archived, public or embedded, reading no card outside the collection. The next export writes
+  the card into the app's files, and every pull refuses a file that says otherwise."
+  [{:keys [collection_id] :as card}]
+  (when (and (some? collection_id)
+             (perms/data-app-collection? collection_id))
+    ;; a new card without a type is a question, the column's default
+    (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
+              (:archived card)
+              (:public_uuid card)
+              (:enable_embedding card)
+              (:embedding_params card)
+              (:embedding_type card))
+      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
+                      {:status-code 400})))
+    (let [card-ids (into #{}
+                         (keep (fn [path]
+                                 (let [{:keys [model id]} (last path)]
+                                   (when (= "Card" model) id))))
+                         (serdes/serialization-dependencies "Card" card))
+          outside  (when (seq card-ids)
+                     (queries.db/card-ids-outside-collection card-ids collection_id))]
+      (when (seq outside)
+        (throw (ex-info (str "A card in a data app's collection can read only the app's own cards, not card "
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
+(defn data-app-card-reader
+  "The ID of a card in the data app's collection `collection-id` that reads the card with `card-id`, if one does."
+  [collection-id card-id]
+  (when (and (some? collection-id)
+             (perms/data-app-collection? collection-id))
+    (some (fn [other]
+            (when (some #(= {:model "Card" :id card-id} (select-keys (last %) [:model :id]))
+                        (serdes/serialization-dependencies "Card" other))
+              (:id other)))
+          (queries.db/other-cards-in-collection collection-id card-id))))
+
+(defn- check-data-app-card-stays
+  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it."
+  [id from]
+  ;; the next export would write the reader into a file every pull refuses
+  (when-let [reader (data-app-card-reader from id)]
+    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t leave the collection." reader)
+                    {:status-code 400}))))
+
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
@@ -1008,7 +1056,8 @@
         pre-insert
         populate-query-fields
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))))
+    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -1077,6 +1126,8 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
+    (when (contains? changes :collection_id)
+      (check-data-app-card-stays (:id card) (:collection_id original)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1086,6 +1137,8 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
+        ;; after the query's columns are set again: `source_card_id` is one of the references it reads
+        (doto check-data-app-card)
         (clear-metabot-origin changes)
         (pre-update changes)
         (move-model-actions original)
@@ -1834,7 +1887,8 @@
   ^:allow-subquery {:select [:report_card.id
                              [(h2x/literal "Card") :model]
                              [:report_card.name :name]
-                             :last_used_at]
+                             :last_used_at
+                             :report_card.collection_id]
                     :from :report_card
                     :left-join [:moderation_review [:and
                                                     [:= :moderation_review.moderated_item_id :report_card.id]
@@ -1859,7 +1913,4 @@
                               [:= :report_card.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
                               [:= :report_card.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_card.collection_id nil])
-                             [:in :report_card.collection_id (-> args :collection-ids)]]]})
+                            (staleness/collection-filter :report_card.collection_id args)]})

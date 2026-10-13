@@ -523,11 +523,11 @@ describe("SettingsGroupMappingSection", () => {
       screen.getByRole("button", { name: "Remove mapping and delete group" }),
     );
 
-    expect(
-      await screen.findByText(
-        "Mapping deleted, but its deleted group could not be removed from the other mappings",
-      ),
-    ).toBeInTheDocument();
+    const toast = await screen.findByTestId("toast-undo");
+    expect(toast).toHaveTextContent(
+      "Mapping deleted, but its deleted group could not be removed from the other mappings",
+    );
+    expect(toast).toHaveAttribute("data-variant", "warning");
     expect(
       screen.queryByText("Error saving group mapping"),
     ).not.toBeInTheDocument();

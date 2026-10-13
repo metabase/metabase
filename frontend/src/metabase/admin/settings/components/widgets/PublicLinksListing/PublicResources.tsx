@@ -8,6 +8,7 @@ import {
   useListPublicCardsQuery,
   useListPublicDashboardsQuery,
 } from "metabase/api";
+import { PublicLinksListing } from "metabase/common/components/PublicLinksListing/PublicLinksListing";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -16,8 +17,6 @@ import type {
   GetPublicCard,
   GetPublicDashboard,
 } from "metabase-types/api";
-
-import { PublicLinksListing } from "./PublicLinksListing";
 
 export const PublicLinksDashboardListing = () => {
   const query = useListPublicDashboardsQuery();

@@ -10,7 +10,11 @@ import {
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
-import type { Channel, ChannelSpec } from "metabase-types/api";
+import type {
+  Channel,
+  ChannelSpec,
+  PulseChannelDetails,
+} from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";
@@ -21,10 +25,7 @@ const ALLOWED_PREFIXES = [CHANNEL_PREFIX, USER_PREFIX];
 interface SlackChannelFieldProps {
   channel: Channel;
   channelSpec: ChannelSpec;
-  onChannelPropertyChange: (
-    key: string,
-    value: Record<string, string | boolean>,
-  ) => void;
+  onChannelPropertyChange: (key: string, value: PulseChannelDetails) => void;
 }
 
 export const SlackChannelField = ({

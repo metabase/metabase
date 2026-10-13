@@ -1256,3 +1256,25 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+(deftest native-form-requires-native-query-perms-test
+  (testing "POST /api/dataset only returns the compiled query in `:native_form` to users with native query perms"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (doseq [[create-queries expected] {:query-builder-and-native some?
+                                         :query-builder            nil?}]
+        (testing (format "with %s" create-queries)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries create-queries)
+          (let [response (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues {:limit 1}))]
+            (is (= "completed" (:status response)))
+            (is (expected (get-in response [:data :native_form])))))))))
+
+(deftest card-query-native-form-requires-native-query-perms-test
+  (testing "POST /api/card/:id/query doesn't return the compiled query to users without native query perms"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+        (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))]
+          (is (= "completed" (:status response)))
+          (is (nil? (get-in response [:data :native_form]))))))))

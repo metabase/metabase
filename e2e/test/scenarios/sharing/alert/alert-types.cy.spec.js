@@ -109,7 +109,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
     it("should not be possible to create goal based alert for a multi-series question", () => {
       H.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
-      cy.findByTestId("chart-container").should("contain", "Goal");
+      H.goalLineMarker().should("be.visible");
 
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
