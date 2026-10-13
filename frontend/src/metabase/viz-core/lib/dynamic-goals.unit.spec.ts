@@ -443,7 +443,7 @@ describe("resolveOpenEndedGoalSegments", () => {
     ]);
   });
 
-  it("drops a segment whose set bound failed to resolve instead of treating it as open", () => {
+  it("treats a bound that failed to resolve as unset", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: createMockFailedReferencedEntitiesResults(),
@@ -463,7 +463,9 @@ describe("resolveOpenEndedGoalSegments", () => {
       },
     ]);
 
-    expect(segments).toEqual([]);
+    expect(segments).toEqual([
+      { min: null, max: 100, color: "red", label: undefined },
+    ]);
   });
 
   it("drops a segment whose set bound is still unanswered", () => {

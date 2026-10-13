@@ -253,15 +253,11 @@ export function resolveOpenEndedGoalSegments(
   getColor: ColorGetter = color,
 ): ResolvedOpenEndedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
+    // a bound that can't resolve counts as unset
     const min = resolveGoalValue(data, segment.min).value;
     const max = resolveGoalValue(data, segment.max).value;
-    // a set bound that failed to resolve must not pass as one left empty
-    const hasUnresolvedBound =
-      (segment.min != null && min == null) ||
-      (segment.max != null && max == null);
-    const hasBound = min != null || max != null;
 
-    if (hasUnresolvedBound || !hasBound) {
+    if (min == null && max == null) {
       return [];
     }
 
