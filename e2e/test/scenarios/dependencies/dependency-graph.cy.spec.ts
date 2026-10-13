@@ -18,6 +18,7 @@ import type {
   NativeQuerySnippetId,
   SegmentId,
   TableId,
+  WritebackActionId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -56,6 +57,10 @@ const SEGMENT_BASED_MODEL_NAME = "Segment-based model";
 const SEGMENT_BASED_MEASURE_NAME = "Segment-based measure";
 const SEGMENT_BASED_METRIC_NAME = "Segment-based metric";
 const SEGMENT_BASED_SEGMENT_NAME = "Segment-based segment";
+const DATA_ACTIONS_FOLDER_NAME = "Data actions folder";
+const TABLE_BASED_ACTION_NAME = "Table-based data action";
+const SNIPPET_BASED_ACTION_NAME = "Snippet-based data action";
+const DATA_ACTIONS_ROOT_NAME = "Data actions";
 const ROOT_COLLECTION_NAME = "Our analytics";
 const FIRST_COLLECTION_NAME = "First collection";
 const DASHBOARD_NAME = "Dashboard";
@@ -112,9 +117,11 @@ describe("scenarios > dependencies > dependency graph", () => {
     function testEntityPicker({
       path,
       itemIcon,
+      isSearchable = true,
     }: {
       path: (string | RegExp)[];
       itemIcon: IconName;
+      isSearchable?: boolean;
     }) {
       const itemName = path[path.length - 1];
       const itemLevel = path.length - 1;
@@ -136,6 +143,10 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByLabelText("Close").click();
       });
       H.DependencyGraph.entryButton().icon("close").click();
+
+      if (!isSearchable) {
+        return;
+      }
 
       cy.log(`verify that "${itemName}" can be found via search"`);
       H.DependencyGraph.entrySearchInput().click();
@@ -159,6 +170,10 @@ describe("scenarios > dependencies > dependency graph", () => {
         createTableBasedMetric({ tableId });
         createTableBasedTransform({ tableName: TABLE_NAME });
       });
+      createEmptySnippet();
+      createDataActionsFolder().then(({ body: folder }) =>
+        createTableBasedAction({ collectionId: folder.id }),
+      );
       visitGraph();
 
       testEntitySearch({
@@ -217,6 +232,20 @@ describe("scenarios > dependencies > dependency graph", () => {
         path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
       });
+      testEntityPicker({
+        path: ["SQL Snippets", EMPTY_SNIPPET_NAME],
+        itemIcon: "snippet",
+        isSearchable: false,
+      });
+      testEntityPicker({
+        path: [
+          DATA_ACTIONS_ROOT_NAME,
+          DATA_ACTIONS_FOLDER_NAME,
+          TABLE_BASED_ACTION_NAME,
+        ],
+        itemIcon: "bolt",
+        isSearchable: false,
+      });
     });
   });
 
@@ -262,6 +291,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         );
         createTableBasedSegment({ tableId });
         createTableBasedMeasure({ tableId });
+        createTableBasedAction();
         visitGraphForEntity(tableId, "table");
       });
 
@@ -338,6 +368,12 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_DISPLAY_NAME,
         groupTitle: "1 measure",
         dependentItemTitle: TABLE_BASED_MEASURE_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 data action",
+        dependentItemTitle: TABLE_BASED_ACTION_NAME,
+        dependentItemLocation: DATA_ACTIONS_ROOT_NAME,
       });
 
       cy.log("transform dependents");
@@ -542,6 +578,11 @@ describe("scenarios > dependencies > dependency graph", () => {
           snippetName: snippet.name,
         });
         createSnippetBasedSnippet({ snippetName: snippet.name });
+        createSnippetBasedAction({
+          tableName: TABLE_NAME,
+          snippetId: snippet.id,
+          snippetName: snippet.name,
+        });
         visitGraphForEntity(snippet.id, "snippet");
       });
       verifyPanelNavigation({
@@ -563,6 +604,51 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: EMPTY_SNIPPET_NAME,
         groupTitle: "1 snippet",
         dependentItemTitle: SNIPPET_BASED_SNIPPET_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: EMPTY_SNIPPET_NAME,
+        groupTitle: "1 data action",
+        dependentItemTitle: SNIPPET_BASED_ACTION_NAME,
+      });
+    });
+
+    it("should display the dependencies and parameters of a data action", () => {
+      createDataActionsFolder().then(({ body: folder }) =>
+        createTableBasedAction({ collectionId: folder.id }).then(
+          ({ body: action }) => {
+            H.waitForBackfillComplete();
+            cy.visit(`/data-studio/actions/${action.id}`);
+          },
+        ),
+      );
+
+      cy.log("open the dependencies tab of the data action");
+      cy.findByRole("link", { name: "Dependencies" }).click();
+      H.DependencyGraph.graph().within(() => {
+        cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
+        cy.findByLabelText(TABLE_BASED_ACTION_NAME).should("be.visible");
+      });
+
+      cy.log("the info panel shows the data action's folder and parameters");
+      H.DependencyGraph.graph()
+        .findByLabelText(TABLE_BASED_ACTION_NAME)
+        .findByText(TABLE_BASED_ACTION_NAME)
+        .click();
+      H.DependencyGraph.infoPanel().within(() => {
+        cy.findByText(DATA_ACTIONS_FOLDER_NAME).should("be.visible");
+        cy.findByText("Parameters").should("be.visible");
+        cy.findByText("Team ID").should("be.visible");
+      });
+
+      cy.log("navigate from the table to the data action");
+      getScoreboardTableId().then((tableId) =>
+        visitGraphForEntity(tableId, "table"),
+      );
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 data action",
+        dependentItemTitle: TABLE_BASED_ACTION_NAME,
+        dependentItemLocation: DATA_ACTIONS_FOLDER_NAME,
       });
     });
   });
@@ -636,6 +722,11 @@ function verifyCardDependentsNavigation({
     itemTitle,
     groupTitle: "1 snippet",
     dependentItemTitle: names.snippet,
+  });
+  verifyPanelNavigation({
+    itemTitle,
+    groupTitle: "1 data action",
+    dependentItemTitle: names.action,
   });
 }
 
@@ -781,6 +872,7 @@ function getCardBasedDependentNames(namePrefix: string) {
     metric: `${namePrefix} metric`,
     transform: `${namePrefix} transform`,
     snippet: `${namePrefix} snippet`,
+    action: `${namePrefix} data action`,
   };
 }
 
@@ -828,6 +920,7 @@ function createCardBasedDependents({
     name: names.snippet,
     content: `{{#${cardId}}}`,
   });
+  createCardBasedAction({ name: names.action, cardId });
 }
 
 function createCardBasedCard({
@@ -1088,6 +1181,117 @@ function createSnippetBasedTransform({
       database: WRITABLE_DB_ID,
       schema: "public",
       name: TRANSFORM_TABLE_NAME,
+    },
+  });
+}
+
+function createDataActionsFolder() {
+  return cy.request<{ id: CollectionId }>("POST", "/api/collection", {
+    name: DATA_ACTIONS_FOLDER_NAME,
+    namespace: "data-actions",
+  });
+}
+
+function createDataAction({
+  name,
+  query,
+  templateTags = {},
+  parameters = [],
+  collectionId = null,
+}: {
+  name: string;
+  query: string;
+  templateTags?: Record<string, unknown>;
+  parameters?: unknown[];
+  collectionId?: CollectionId | null;
+}) {
+  H.setActionsEnabledForDB(WRITABLE_DB_ID);
+  return cy.request<{ id: WritebackActionId }>("POST", "/api/action", {
+    name,
+    type: "query",
+    database_id: WRITABLE_DB_ID,
+    collection_id: collectionId,
+    dataset_query: {
+      database: WRITABLE_DB_ID,
+      type: "native",
+      native: { query, "template-tags": templateTags },
+    },
+    parameters,
+  });
+}
+
+function createTableBasedAction({
+  collectionId = null,
+}: { collectionId?: CollectionId | null } = {}) {
+  return createDataAction({
+    name: TABLE_BASED_ACTION_NAME,
+    query: `DELETE FROM ${TABLE_NAME} WHERE id = {{team_id}}`,
+    templateTags: {
+      team_id: {
+        id: "team-id-tag",
+        name: "team_id",
+        "display-name": "Team ID",
+        type: "number",
+        required: true,
+      },
+    },
+    parameters: [
+      {
+        id: "team-id-tag",
+        slug: "team_id",
+        name: "Team ID",
+        type: "number/=",
+        target: ["variable", ["template-tag", "team_id"]],
+        required: true,
+      },
+    ],
+    collectionId,
+  });
+}
+
+function createSnippetBasedAction({
+  tableName,
+  snippetId,
+  snippetName,
+}: {
+  tableName: string;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
+  return createDataAction({
+    name: SNIPPET_BASED_ACTION_NAME,
+    query: `DELETE FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+    templateTags: {
+      [`snippet:${snippetName}`]: {
+        id: "snippet-tag",
+        name: `snippet:${snippetName}`,
+        "display-name": `snippet:${snippetName}`,
+        type: "snippet",
+        "snippet-id": snippetId,
+        "snippet-name": snippetName,
+      },
+    },
+  });
+}
+
+function createCardBasedAction({
+  name,
+  cardId,
+}: {
+  name: string;
+  cardId: CardId;
+}) {
+  return createDataAction({
+    name,
+    query: `DELETE FROM ${TABLE_NAME} WHERE id IN (SELECT id FROM {{#${cardId}}})`,
+    templateTags: {
+      [`#${cardId}`]: {
+        id: "card-tag",
+        name: `#${cardId}`,
+        "display-name": `#${cardId}`,
+        type: "card",
+        "card-id": cardId,
+      },
     },
   });
 }
