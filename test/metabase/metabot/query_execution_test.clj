@@ -2,6 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer [deftest is testing]]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -60,7 +61,8 @@
 
 (deftest execute-page-request-cancellation-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [request-chan (a/promise-chan)
+    (let [query        (venues-query 3)
+          request-chan (a/promise-chan)
           seen!        (fn [request-canceled-chan during-query]
                          (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query]
                                                                         (let [query-chan qp.pipeline/*canceled-chan*
@@ -69,7 +71,8 @@
                                                                           (some-> query-chan a/close!)
                                                                           {:status :completed
                                                                            :data   {:cols [] :rows [[seen]]}}))]
-                           (-> (query-execution/execute-page! (venues-query 3) 3 :agent request-canceled-chan)
+                           (-> (query-execution/execute-page! query 3 :agent
+                                                              {:request-canceled-chan request-canceled-chan})
                                :rows
                                ffirst)))
           canceled     (fn [query-chan]
@@ -86,8 +89,9 @@
 
 (deftest execute-page-canceled-run-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [failure #(try
-                     (query-execution/execute-page! (venues-query 3) 3 :agent %)
+    (let [query   (venues-query 3)
+          failure #(try
+                     (query-execution/execute-page! query 3 :agent {:request-canceled-chan %})
                      (catch clojure.lang.ExceptionInfo e
                        (ex-data e)))]
       (testing "a request canceled while the driver runs the query reaches the driver, and the run reads as canceled"
@@ -108,3 +112,33 @@
                                             nil)]
             (is (=? {:error :query-canceled} (failure (doto (a/promise-chan) (a/>!! :canceled)))))
             (is (false? @ran?))))))))
+
+(deftest execute-page-time-limit-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query      (venues-query 3)
+          driver-saw (atom nil)
+          failure    (fn [run]
+                       (reset! driver-saw nil)
+                       ;; A driver stops when its channel says so, and responds with nothing.
+                       (binding [qp.pipeline/*execute* (fn [_driver _query _respond]
+                                                         (reset! driver-saw (first (a/alts!! [qp.pipeline/*canceled-chan*
+                                                                                              (a/timeout 5000)])))
+                                                         nil)]
+                         (try
+                           (run)
+                           (catch clojure.lang.ExceptionInfo e
+                             (ex-data e)))))]
+      (testing "a run that reaches its time limit is stopped, and reads as timed out"
+        (is (=? {:error :query-timed-out}
+                (failure #(query-execution/execute-page! query 3 :agent {:timeout-ms 200}))))
+        (is (some? @driver-saw)))
+      (testing "the database query timeout still applies when it is the shorter"
+        (binding [driver.settings/*query-timeout-ms* 200]
+          (is (=? {:error :query-timed-out}
+                  (failure #(query-execution/execute-page! query 3 :agent {:timeout-ms 60000}))))
+          (is (some? @driver-saw))))
+      (testing "a caller that sets no limit gets the database query timeout, reported as any failed query is"
+        (binding [driver.settings/*query-timeout-ms* 200]
+          (is (=? {:error :query-failed}
+                  (failure #(query-execution/execute-page! query 3 :agent))))
+          (is (some? @driver-saw)))))))

@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [metabase.api.common :as api]
+   [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
@@ -19,26 +20,6 @@
    The QP strips some of these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
 
-(defn- do-with-request-cancellation
-  "Call `thunk` with the QP's cancellation channel fed from `request-chan`, when there is one.
-   `request-chan` must be a promise channel, so that every query of the request and every poll sees its value.
-   Each query gets a channel of its own. The QP closes its channel when a query ends and writes to it when one times
-   out, and on a channel shared by the turn either would cancel every later query."
-  [request-chan thunk]
-  (if request-chan
-    (let [query-chan (a/promise-chan)
-          done-chan  (a/promise-chan)]
-      (a/go
-        (let [[value port] (a/alts! [request-chan done-chan])]
-          (when (and (= port request-chan) (some? value))
-            (a/>! query-chan ::request-canceled))))
-      (try
-        (binding [qp.pipeline/*canceled-chan* query-chan]
-          (thunk))
-        (finally
-          (a/close! done-chan))))
-    (thunk)))
-
 (defn- request-canceled?
   [request-chan]
   (some? (some-> request-chan a/poll!)))
@@ -50,39 +31,55 @@
            {:agent-error? true
             :error        :query-canceled}))
 
+(defn- query-timed-out
+  "An agent error for a query that was stopped at its time limit."
+  [timeout-ms]
+  (ex-info (tru "Query timed out: it did not finish within {0} seconds. A narrower query may finish in time."
+                (quot timeout-ms 1000))
+           {:agent-error? true
+            :error        :query-timed-out}))
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
-   under `context`. A value on `request-canceled-chan`, when there is one, cancels the run."
-  [serialized-query row-limit context request-canceled-chan]
-  (let [query  (-> (select-keys serialized-query query-passthrough-keys)
-                   (assoc :middleware {:js-int-to-string? true})
-                   qp/userland-query-with-default-constraints
-                   (assoc :constraints {:max-results           row-limit
-                                        :max-results-bare-rows row-limit}
-                          :info        {:executed-by api/*current-user-id*
-                                        :context     context}))
-        ;; A canceled run comes back from the QP as a failure, as nothing, or as an exception, depending on how far
-        ;; it got. Each is reported as a cancellation, so a stored tool result never reads as a broken query.
-        result (try
-                 (when (request-canceled? request-canceled-chan)
-                   (throw (query-canceled)))
-                 (do-with-request-cancellation request-canceled-chan #(qp/process-query query))
-                 (catch Throwable e
-                   (throw (if (request-canceled? request-canceled-chan)
-                            (query-canceled)
-                            e))))]
+   under `context`. A value on `request-canceled-chan` cancels the run, and so does running for `timeout-ms`. Both
+   are optional, and the database query timeout applies when it is the shorter."
+  [serialized-query row-limit context {:keys [request-canceled-chan timeout-ms]}]
+  (let [query      (-> (select-keys serialized-query query-passthrough-keys)
+                       (assoc :middleware {:js-int-to-string? true})
+                       qp/userland-query-with-default-constraints
+                       (assoc :constraints {:max-results           row-limit
+                                            :max-results-bare-rows row-limit}
+                              :info        {:executed-by api/*current-user-id*
+                                            :context     context}))
+        timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
+        timer      (u/start-timer)
+        ;; A run that was stopped comes back from the QP as a failure, as nothing, or as an exception, depending on
+        ;; how far it got. Each is reported as what stopped it, so a stored tool result never reads as a broken
+        ;; query. The QP stops a query no sooner than the limit, so a run that lasted that long was stopped by it.
+        stopped    #(cond
+                      (request-canceled? request-canceled-chan)   (query-canceled)
+                      (some-> timeout-ms (<= (u/since-ms timer))) (query-timed-out timeout-ms))
+        result     (try
+                     (when (request-canceled? request-canceled-chan)
+                       (throw (query-canceled)))
+                     ;; Each query gets a channel of its own. The QP closes its channel when a query ends and writes
+                     ;; to it when one times out, and on a channel shared by the turn either would cancel every
+                     ;; later query.
+                     (binding [driver.settings/*query-timeout-ms* (or timeout-ms driver.settings/*query-timeout-ms*)]
+                       (qp.pipeline/do-with-own-canceled-chan request-canceled-chan #(qp/process-query query)))
+                     (catch Throwable e
+                       (throw (or (stopped) e))))]
     (when-not (= (:status result) :completed)
-      (throw (if (request-canceled? request-canceled-chan)
-               (query-canceled)
-               (ex-info (if-let [error (:error result)]
-                          (tru "Query failed: {0}" error)
-                          (tru "Query failed: unknown error"))
-                        {:agent-error?       true
-                         :error              :query-failed
-                         :query-error        (:error result)
-                         ;; The QP's own refusal, as opposed to an error from the database.
-                         :permissions-error? (= :missing-required-permissions (:error_type result))}))))
+      (throw (or (stopped)
+                 (ex-info (if-let [error (:error result)]
+                            (tru "Query failed: {0}" error)
+                            (tru "Query failed: unknown error"))
+                          {:agent-error?       true
+                           :error              :query-failed
+                           :query-error        (:error result)
+                           ;; The QP's own refusal, as opposed to an error from the database.
+                           :permissions-error? (= :missing-required-permissions (:error_type result))}))))
     result))
 
 (defn execute-page!
@@ -92,14 +89,18 @@
    A run that doesn't complete throws an agent error whose message carries the QP's error text.
    Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
    `:permissions-error?` when the QP refused the query because the current user may not run it.
-   With `request-canceled-chan`, a channel that receives a value when the request being served is canceled, the
-   query is canceled with it."
+
+   Two options stop a run early, each with an agent error of its own:
+   - `:request-canceled-chan`, a promise channel that receives a value when the request being served is canceled.
+     The error is `:query-canceled`.
+   - `:timeout-ms`, a time limit for the run. The database query timeout still applies when it is shorter.
+     The error is `:query-timed-out`."
   ([serialized-query row-limit context]
    (execute-page! serialized-query row-limit context nil))
-  ([serialized-query row-limit context request-canceled-chan]
+  ([serialized-query row-limit context options]
    ;; Fetch one row past the limit so truncation is observed rather than inferred from a full page.
    ;; Dropping the probe row keeps `(last rows)` a real page boundary.
-   (let [result     (execute! serialized-query (inc row-limit) context request-canceled-chan)
+   (let [result     (execute! serialized-query (inc row-limit) context options)
          all-rows   (vec (get-in result [:data :rows]))
          truncated? (> (count all-rows) row-limit)
          rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
