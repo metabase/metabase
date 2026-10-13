@@ -2977,18 +2977,13 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest log-an-error-if-contains-undefined-setting-test
-  (testing "should log an error message if database contains undefined settings"
+(deftest hide-undefined-setting-test
+  (testing "undefined settings are hidden from the response without logging an error"
     (mt/with-temp [:model/Database {db-id :id} {:settings {:undefined-setting true}}]
       (mt/with-log-messages-for-level [messages :error]
-        (testing "does not includes undefined keys by default"
-          (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
-                              :undefined-setting))))
-        (is (= (str "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
-                    " Error: Unknown setting: :undefined-setting")
-               (-> (messages)
-                   first
-                   :message)))))))
+        (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                            :undefined-setting)))
+        (is (not-any? #(str/includes? (:message %) "undefined-setting") (messages)))))))
 
 (deftest autocomplete-suggestions-do-not-include-dashboard-cards
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
