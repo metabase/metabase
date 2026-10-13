@@ -723,6 +723,35 @@
                                "the metric's base table as its source and the metric in `aggregation`, then run that "
                                "query with run_query.")}
                  (run-viewing! [{:type item-type, :id metric-card}] (str metric-card))))))
+      (testing "a viewed metric built on a model names that model as the source, when the user can read it"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {open :id}         {}
+                         :model/Collection {hidden :id}       {}
+                         :model/Card       {open-model :id
+                                            entity-id  :entity_id} {:collection_id open
+                                                                    :dataset_query (venues-sql)
+                                                                    :type          :model}
+                         :model/Card       {hidden-model :id} {:collection_id hidden
+                                                               :dataset_query (venues-sql)
+                                                               :type          :model}
+                         :model/Card       {on-open :id}      {:collection_id open
+                                                               :dataset_query (assoc-in (card-query open-model)
+                                                                                        [:query :aggregation] [[:count]])
+                                                               :type          :metric}
+                         :model/Card       {on-hidden :id}    {:collection_id open
+                                                               :dataset_query (assoc-in (card-query hidden-model)
+                                                                                        [:query :aggregation] [[:count]])
+                                                               :type          :metric}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) open)
+            (is (= {:output (str "Query id " on-open " is a metric the user is viewing, and a metric does not run by its id. "
+                                 "To get its values, build a notebook query with construct_notebook_query that has the "
+                                 "model it is built on as the `source-card`, whose portable entity id is " entity-id
+                                 ", and the metric in `aggregation`, then run that query with run_query.")}
+                   (run-viewing! [{:type "metric", :id on-open}] (str on-open))))
+            (testing "and offers no way to its values when they can't"
+              (is (= {:output (str "Query id " on-hidden " is a metric the user is viewing, and a metric does not run by "
+                                   "its id. Tell the user you can't read its results.")}
+                     (run-viewing! [{:type "metric", :id on-hidden}] (str on-hidden))))))))
       (testing "a viewed metric the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection {hidden :id}        {}

@@ -115,11 +115,6 @@
    would be refused again, so the hint points away from it."
   "To get values, build the question from tables with construct_notebook_query instead.")
 
-(def ^:private metric-hint
-  "Ends the refusal of a metric's id. A metric is an aggregation, not a source, so no query over it would run."
-  (str "To get its values, build a notebook query with construct_notebook_query that has the metric's base table as "
-       "its source and the metric in `aggregation`, then run that query with run_query."))
-
 (defn- recovery-hint
   "Ends a refusal of a query the model could ask for another way. With `allow-non-sql?` the tool is the one offered
    beside the notebook builder, so the hint names it. Without, the way is SQL where Metabot may run SQL, and
@@ -129,6 +124,25 @@
     allow-non-sql?                 notebook-query-hint
     (scope/sql-execution-allowed?) sql-query-hint
     :else                          no-values-hint))
+
+(defn- metric-refusal
+  "Refuses the id of `metric`, a metric the user is viewing and can read. A metric is an aggregation, not a source,
+   so the refusal names what to aggregate over: the model or question the metric is built on, or else its base
+   table. A metric built on a question the user can't read has neither to offer."
+  [query-id metric]
+  (let [source-card (some-> (:source_card_id metric) metabot.db/card)
+        source      (cond
+                      (some-> source-card mi/can-read?)
+                      (format "the %s it is built on as the `source-card`, whose portable entity id is %s,"
+                              (name (:type source-card)) (:entity_id source-card))
+
+                      (and (nil? (:source_card_id metric)) (:table_id metric))
+                      "the metric's base table as its source")]
+    (refusal (str "Query id " query-id " is a metric the user is viewing, and a metric does not run by its id. "
+                  (if source
+                    (str "To get its values, build a notebook query with construct_notebook_query that has " source
+                         " and the metric in `aggregation`, then run that query with run_query.")
+                    no-values-hint)))))
 
 (defn- viewed-saved-question
   "`{:query :saved-card}` for the saved question or model the user is viewing whose id is `query-id`, or nil:
@@ -151,8 +165,7 @@
     (let [card (metabot.db/card card-id)]
       (when (some-> card mi/can-read?)
         (when (= :metric (:type card))
-          (throw (refusal (str "Query id " query-id " is a metric the user is viewing, and a metric does not run by "
-                               "its id. " metric-hint))))
+          (throw (metric-refusal query-id card)))
         {:saved-card card
          :query      {:lib/type :mbql/query
                       :database (:database_id card)
