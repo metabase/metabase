@@ -19,6 +19,16 @@
 ;; a test outlive it without this — leaking dirty state into every later test.
 (use-fixtures :each rs.test/clean-object)
 
+(deftest collection-editable-reads-a-collection-once-test
+  (testing "given a collection's ID, one query answers both whether a data app owns it and whether it is remote-synced"
+    (mt/with-temp [:model/Collection collection {}]
+      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (let [queries (fn [collection-or-id]
+                        (t2/with-call-count [call-count]
+                          (is (true? (core/collection-editable? collection-or-id)))
+                          (call-count)))]
+          (is (= 1 (- (queries (:id collection)) (queries collection)))))))))
+
 ;; bulk-set-remote-sync tests
 
 (deftest bulk-set-remote-sync-enables-single-collection-test

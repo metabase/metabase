@@ -8,7 +8,6 @@
    [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -331,28 +330,17 @@
   (some #(str/starts-with? (last (str/split % #"/")) stem) (resource-files mock)))
 
 (deftest an-apps-collection-is-read-only-test
-  (testing "only a pull changes an app's collection: an admin can't write it, its cards or its actions, whatever the
-            sync mode"
+  (testing "an admin can't write an app's collection, its cards or its actions, whatever the sync mode"
     (with-data-apps-sync
       (data-apps.tu/do-with-sources!
        (fn [{:keys [action-id]}]
-         (let [resources  (fn [card-name]
-                            (data-apps.tu/build-resources
-                             shop-collection-name shop-collection-eid
-                             [{:entity_id question-eid :name card-name :query (venues-query)}]
-                             [action-id]))
-               src        (test-helpers/versioned-source :trees {"v0" (shop-tree (resources "VenuesList"))
-                                                                 "v1" (shop-tree (resources "Renamed by a pull"))}
-                                                         :current "v0")
-               mp         (mt/metadata-provider)
-               venues-q   (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))
-               new-card   (fn [collection-id & {:as more}]
-                            (merge {:name                   "New"
-                                    :display                "table"
-                                    :visualization_settings {}
-                                    :collection_id          collection-id
-                                    :dataset_query          venues-q}
-                                   more))]
+         (let [resources (data-apps.tu/build-resources
+                          shop-collection-name shop-collection-eid
+                          [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                          [action-id])
+               src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
+               mp        (mt/metadata-provider)
+               venues-q  (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
            (is (= :success (:status (import-at! src "v0" :force? true))))
            (let [collection-id (shop-collection-id)
                  card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
@@ -371,7 +359,12 @@
                                    (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:dashboard_id dashboard-id})
                                    (mt/user-http-request :crowberto :post 403 "card/collections" {:card_ids [mover-id] :collection_id collection-id}))
                                  (mt/user-http-request :crowberto :delete 403 (str "card/" card-id))
-                                 (mt/user-http-request :crowberto :post 403 "card" (new-card collection-id))
+                                 (mt/user-http-request :crowberto :post 403 "card"
+                                                       {:name                   "New"
+                                                        :display                "table"
+                                                        :visualization_settings {}
+                                                        :collection_id          collection-id
+                                                        :dataset_query          venues-q})
                                  (mt/with-actions-enabled
                                    (mt/user-http-request :crowberto :put 403 (str "action/" copy-id) {:name "Renamed"})))]
              (testing "on a read-write instance"
@@ -383,16 +376,44 @@
              (testing "without remote sync"
                (mt/with-temporary-setting-values [remote-sync-url nil]
                  (read-only!)))
-             (is (=? {:collection_id      collection-id
-                      :name               "VenuesList"
-                      :description        nil}
-                     (t2/select-one :model/Card :id card-id)))
-             (testing "a copy elsewhere is a card like any other"
-               (is (=? {:collection_id nil}
-                       (mt/user-http-request :crowberto :post 200 "card" (new-card nil :source_card_id card-id)))))
-             (testing "a pull still changes it"
-               (is (= :success (:status (import-at! src "v1"))))
-               (is (= "Renamed by a pull" (t2/select-one-fn :name :model/Card :id card-id)))))))))))
+             (is (=? {:collection_id collection-id :name "VenuesList" :description nil}
+                     (t2/select-one :model/Card :id card-id))))))))))
+
+(deftest a-copy-of-an-apps-card-elsewhere-is-a-card-like-any-other-test
+  (testing "copying a card out of an app's collection needs only read access to it"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")
+            mp  (mt/metadata-provider)]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (is (=? {:collection_id nil}
+                (mt/user-http-request :crowberto :post 200 "card"
+                                      {:name                   "Copy"
+                                       :display                "table"
+                                       :visualization_settings {}
+                                       :dataset_query          (lib/->legacy-MBQL
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+                                       :source_card_id         (t2/select-one-pk :model/Card :entity_id question-eid)})))))))
+
+(deftest a-pull-changes-a-card-in-an-apps-collection-test
+  (testing "the permissions that refuse every write to an app's collection don't stop a pull"
+    (with-data-apps-sync
+      (let [resources (fn [card-name]
+                        (data-apps.tu/build-resources shop-collection-name shop-collection-eid
+                                                      [{:entity_id question-eid :name card-name :query (venues-query)}]
+                                                      []))
+            src       (test-helpers/versioned-source :trees {"v0" (shop-tree (resources "VenuesList"))
+                                                             "v1" (shop-tree (resources "Renamed on read-write"))
+                                                             "v2" (shop-tree (resources "Renamed on read-only"))}
+                                                     :current "v0")
+            card-name #(t2/select-one-fn :name :model/Card :entity_id question-eid)]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (testing "on a read-write instance"
+          (is (= :success (:status (import-at! src "v1"))))
+          (is (= "Renamed on read-write" (card-name))))
+        (testing "on a read-only instance"
+          (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-url "https://example.com/repo.git"]
+            (is (= :success (:status (import-at! src "v2"))))
+            (is (= "Renamed on read-only" (card-name)))))))))
 
 (deftest an-apps-collection-holds-only-what-a-pull-accepts-test
   (testing "what the resource validator would refuse on a pull can't be saved into an app's collection, by a write the
@@ -1024,18 +1045,16 @@
         (is (str/includes? (:message result) "must be a question or metric"))
         (is (str/includes? (:message result) card-file))))))
 
-(deftest an-export-whose-table-record-fails-still-records-the-export-test
-  (testing "the commit is pushed before the tables are recorded, so a failure there must not undo the record of it"
+(deftest an-export-leaves-the-tables-an-app-reads-alone-test
+  (testing "only a pull changes an app's cards, so a pull records the tables they read and an export leaves the record
+            as it is"
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (mt/user-http-request :crowberto :put 200 "apps/shop" {:bundle "B2"})
-        (is (seq (remote-sync.object/dirty-rows)))
-        (mt/with-dynamic-fn-redefs [data-apps/record-table-dependencies! (fn [] (throw (ex-info "the tables can't be recorded" {})))]
-          (let [result (export! mock)]
-            (is (= :success (:status result)) (:message result))))
-        (testing "the export is recorded: the rows are synced"
-          (is (empty? (remote-sync.object/dirty-rows))))))))
+        (t2/update! :model/DataApp :name "shop" {:table_ids [(mt/id :checkins)]})
+        (is (= :success (:status (export! mock))))
+        (is (= [(mt/id :checkins)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
 
 (defn- generated-app-tree
   "The repo files of the `shop` app as `/api/apps/generate` writes them: its manifest and collection, a question

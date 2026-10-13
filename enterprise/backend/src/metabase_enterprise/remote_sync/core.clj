@@ -35,13 +35,13 @@
   remote-sync-type is :read-only. Always returns true on OSS."
   :feature :none
   [collection]
-  (and (not (spec/data-apps-namespace-collection?
-             {:namespace (if (and (map? collection) (contains? collection :namespace))
-                           (:namespace collection)
-                           ;; the root collection has no ID, and is no app's
-                           (some-> (u/id collection) remote-sync.db/collection-namespace))}))
-       (or (= (settings/remote-sync-type) :read-write)
-           (not (collections/remote-synced-collection? collection)))))
+  (let [collection (if (and (map? collection) (contains? collection :namespace))
+                     collection
+                     ;; the root collection has no ID, and is neither an app's nor remote-synced
+                     (some-> (u/id collection) remote-sync.db/collection-sync-columns))]
+    (and (not (spec/data-apps-namespace-collection? collection))
+         (or (= (settings/remote-sync-type) :read-write)
+             (not (collections/remote-synced-collection? collection))))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
