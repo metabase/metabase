@@ -134,7 +134,7 @@ those.
 | `hooks.cjs` | The runner itself: the transform, module resolution, the jsdom window, the jest globals, and the reset between spec files. |
 | `jest-config.cjs` | Reads the module mapping, the module roots, the setup files and the projects from `jest.config.js`. |
 | `reporters.cjs` | The three kinds of output. |
-| `durations.json` | The time that each spec file took, used to run the slowest files first on a machine with no times of its own. |
+| `durations.json` | The time that each spec file took, used for the estimate in the progress line on a machine with no times of its own. |
 | `ci-files.txt`, `ci-measure.sh` | Used by the CI job that compares the two runners. |
 
 `frontend/test/harness-between-files.js` is next to the jest setup files. It

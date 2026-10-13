@@ -40,11 +40,7 @@ measure() {
   tail -5 "$log"
 }
 
-# Experiment: the same suite in four queue orders. The first run also measures
-# the times that the later orders sort by, and the last run repeats the first
-# to show how much the machine drifts over the job.
-round=0
-for order in list slowest warm light-last list; do
-  round=$((round + 1))
-  NT_ORDER=$order measure "$round" "harness, $order"
-done
+measure 1 jest
+measure 1 "harness, isolated"
+measure 2 "harness, isolated"
+measure 3 "harness, isolated"
