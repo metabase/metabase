@@ -5,7 +5,9 @@ import {
   useListActionsQuery,
   useListCollectionsQuery,
 } from "metabase/api";
+import { isRootCollection } from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
+import type { Collection } from "metabase-types/api";
 
 import { buildActiveActionTree, buildArchivedActionTree } from "./utils";
 
@@ -20,6 +22,7 @@ export function useBuildActionTree({
 }: ActionTreeOptions = {}): {
   isLoading: boolean;
   tree: TreeItem[];
+  rootCollection?: Collection;
   error?: unknown;
 } {
   const {
@@ -56,6 +59,7 @@ export function useBuildActionTree({
     return {
       isLoading: false,
       error,
+      rootCollection: collections.find(isRootCollection),
       tree: archived
         ? buildArchivedActionTree(collections, actions, activeCollections ?? [])
         : buildActiveActionTree(collections, actions, canCreateActions),

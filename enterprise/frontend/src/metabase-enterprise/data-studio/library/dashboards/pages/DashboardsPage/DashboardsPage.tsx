@@ -31,8 +31,6 @@ import { NewDashboardMenu } from "./NewDashboardMenu";
 const ITEM_MODELS: CollectionItemModel[] = ["dashboard", "collection"];
 const SEARCH_MODELS: LibrarySearchModel[] = ["dashboard"];
 const NO_ITEMS: TreeItem[] = [];
-// The Dashboards collection's folders and dashboards are the top-level rows
-const NO_DEFAULT_EXPANDED_IDS: string[] = [];
 
 export function DashboardsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,7 +84,6 @@ export function DashboardsPage() {
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={t`No dashboards yet`}
-      defaultExpandedIds={NO_DEFAULT_EXPANDED_IDS}
       defaultMoveCollectionIds={defaultMoveCollectionIds}
       emptyState={getEmptyState(libraryCollections)}
       createMenu={
@@ -97,6 +94,11 @@ export function DashboardsPage() {
           />
         )
       }
+      pageMenu={{
+        label: t`Dashboard options`,
+        permissionsCollection: dashboardCollection,
+        onOpenModal: setCollectionModal,
+      }}
       renderRowMenu={renderRowMenu}
       isChildrenLoading={isChildrenLoading}
       onRowsChange={watchRows}

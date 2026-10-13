@@ -402,20 +402,24 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify SQL snippets tab empty state");
       H.DataStudio.nav().findByRole("link", { name: "SQL snippets" }).click();
-      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
       H.DataStudio.Library.emptyStateRow(
         "Reusable bits of code that save your time",
       ).should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findAllByTestId("collection-name")
+        .should("not.exist");
       H.DataStudio.Library.libraryPage()
         .findByRole("link", { name: "New snippet" })
         .should("be.visible");
 
       cy.log("Verify Data actions tab empty state");
       H.DataStudio.nav().findByRole("link", { name: "Data actions" }).click();
-      H.DataStudio.Library.collectionItem("Data actions").should("be.visible");
       H.DataStudio.Library.emptyStateRow("Queries that change data").should(
         "be.visible",
       );
+      H.DataStudio.Library.libraryPage()
+        .findAllByTestId("collection-name")
+        .should("not.exist");
     });
 
     describe("read-only mode", () => {

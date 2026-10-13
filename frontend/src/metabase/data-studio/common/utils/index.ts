@@ -7,6 +7,10 @@ import type {
   TreeItem,
 } from "../types";
 
+export {
+  buildCollectionTreeChildren,
+  buildCollectionTreeNode,
+} from "./build-collection-tree";
 export { createEmptyStateItem } from "./create-empty-space-item";
 export { filterTreeByName } from "./filter-tree-by-name";
 export { getDatasetQueryPreviewUrl } from "./get-dataset-query-preview-url";

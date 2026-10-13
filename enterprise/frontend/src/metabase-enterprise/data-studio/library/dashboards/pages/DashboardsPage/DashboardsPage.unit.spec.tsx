@@ -34,6 +34,7 @@ const SALES_FOLDER = createMockCollectionItem({
   id: 3,
   model: "collection",
   name: "Sales",
+  type: "library-dashboards",
   here: ["dashboard"],
 });
 
@@ -250,6 +251,34 @@ describe("DashboardsPage", () => {
       String(archiveCalls[0].options.body),
     );
     expect(archiveBody).toEqual({ archived: true });
+  });
+
+  it("selects every top-level row with Select all, and clears them on a second click", async () => {
+    setup();
+    const dashboardRow = await screen.findByRole("row", {
+      name: /Revenue overview/,
+    });
+    const selectAll = screen.getByRole("checkbox", { name: "Select all" });
+
+    await userEvent.click(
+      within(dashboardRow).getByRole("checkbox", { name: "Select row" }),
+    );
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(selectAll).toBePartiallyChecked();
+
+    await userEvent.click(selectAll);
+    expect(await screen.findByText("2 items selected")).toBeInTheDocument();
+    expect(selectAll).toBeChecked();
+    expect(
+      within(screen.getByRole("row", { name: /Sales/ })).getByRole("checkbox"),
+    ).toBeChecked();
+
+    await userEvent.click(selectAll);
+    await waitFor(() =>
+      expect(screen.queryByText("2 items selected")).not.toBeInTheDocument(),
+    );
+    expect(selectAll).not.toBeChecked();
+    expect(selectAll).not.toBePartiallyChecked();
   });
 
   it("clears the selection when the search changes", async () => {
