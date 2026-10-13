@@ -2,20 +2,21 @@ import { search } from "@inquirer/prompts";
 import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
-import type { Settings } from "metabase-types/api/settings";
+import type { Engine } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
 import { CLI_SHOWN_DB_ENGINES, SAMPLE_DB_ID } from "../constants/database";
 import { addDatabaseConnection } from "../utils/add-database-connection";
 import { askForDatabaseConnectionInfo } from "../utils/ask-for-db-connection-info";
-import { fetchInstanceSettings } from "../utils/fetch-instance-settings";
+import { fetchEngines } from "../utils/fetch-engines";
 
 export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
-  const settings = await fetchInstanceSettings({
+  const engines = await fetchEngines({
     instanceUrl: state.instanceUrl ?? "",
+    cookie: state.cookie ?? "",
   });
 
-  if (!settings || !settings.engines) {
+  if (!engines) {
     return [{ type: "error", message: "Aborted." }, state];
   }
 
@@ -23,7 +24,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
     return [{ type: "success" }, { ...state, databaseId: SAMPLE_DB_ID }];
   }
 
-  const engineChoices = getEngineChoices(settings);
+  const engineChoices = getEngineChoices(engines);
 
   while (true) {
     const engineKey = await search({
@@ -42,7 +43,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
       return [{ type: "error", message: "Invalid engine key." }, state];
     }
 
-    const engine = settings.engines[engineKey];
+    const engine = engines[engineKey];
     const engineName = engine["driver-name"];
 
     const spinner = ora("Adding database connection…");
@@ -66,7 +67,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
 
       spinner.succeed();
 
-      return [{ type: "done" }, { ...state, settings, databaseId }];
+      return [{ type: "done" }, { ...state, databaseId }];
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
 
@@ -75,7 +76,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async (state) => {
   }
 };
 
-const getEngineChoices = (settings: Settings) =>
-  Object.entries(settings.engines)
+const getEngineChoices = (engines: Record<string, Engine>) =>
+  Object.entries(engines)
     .map(([key, engine]) => ({ name: engine["driver-name"], value: key }))
     .filter((engine) => CLI_SHOWN_DB_ENGINES.includes(engine.value));

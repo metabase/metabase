@@ -7,7 +7,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
 const MAX_CARDS = 5;
@@ -29,7 +29,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     );
   });
 
-  it("should display a back to the dashboard button when navigating to a question", () => {
+  it("should display a back to the dashboard button when navigating to a question and keep the selected tab", () => {
     const dashboardName = "Orders in a dashboard";
     const backButtonLabel = `Back to ${dashboardName}`;
 
@@ -60,7 +60,34 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
     H.appBar().findByText("Our analytics").click();
     cy.findByTestId("collection-table").findByText("Orders").click();
+    H.queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
     cy.findByLabelText(backButtonLabel).should("not.exist");
+
+    cy.log("should return to the dashboard with the same tab selected");
+    cy.intercept("GET", "/api/card/*").as("card");
+    H.visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    // Add card to second tab
+    cy.icon("pencil").click();
+    H.openQuestionsSidebar();
+    H.sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+    H.saveDashboard();
+
+    H.getDashboardCard().within(() => {
+      cy.findByText("Orders, Count").click();
+      cy.wait("@card");
+    });
+
+    H.queryBuilderHeader()
+      .findByLabelText("Back to Orders in a dashboard")
+      .click();
+
+    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
   });
 
   it("should expand the native editor when editing a question from a dashboard", () => {
@@ -77,24 +104,6 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       .findByText("This question is written in SQL.")
       .should("be.visible");
     H.NativeEditor.get().should("not.exist");
-  });
-
-  it("should display a back to the dashboard button in table x-ray dashboards", () => {
-    const cardTitle = "Total transactions";
-    cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
-    cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
-
-    H.getDashboardCards()
-      .filter(`:contains("${cardTitle}")`)
-      .findByText(cardTitle)
-      .click();
-    cy.wait("@dataset");
-
-    H.queryBuilderHeader()
-      .findByLabelText(/Back to .*Orders.*/)
-      .click();
-
-    H.getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
   });
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
@@ -208,32 +217,6 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard(1).findByText(PERMISSION_ERROR);
     cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
-  });
-
-  it("should return to dashboard with specific tab selected", () => {
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    // Add card to second tab
-    cy.icon("pencil").click();
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    H.saveDashboard();
-
-    H.getDashboardCard().within(() => {
-      cy.findByText("Orders, Count").click();
-      cy.wait("@card");
-    });
-
-    H.queryBuilderHeader()
-      .findByLabelText("Back to Orders in a dashboard")
-      .click();
-
-    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
   });
 });
 
@@ -509,3 +492,187 @@ const createDashboardWithPermissionError = () => {
     });
   });
 };
+
+describe("issue 31766", () => {
+  function saveUpdatedQuestion() {
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+
+    cy.findByText("Save").click();
+    cy.findByTestId("save-question-modal").within((modal) => {
+      cy.findByText("Save").click();
+    });
+  }
+
+  function assertQuestionIsUpdatedWithoutError() {
+    cy.wait("@updateQuestion");
+    H.modal().should("not.exist");
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not corrupt dashboard data (metabase#31766)", () => {
+    const questionDetails = {
+      name: "Orders",
+      query: { "source-table": ORDERS_ID, limit: 5 },
+    };
+
+    const dashboardDetails = { name: "Orders in a dashboard" };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+      cardDetails: { size_x: 16, size_y: 8 },
+    }).then(({ body: { dashboard_id, question_id, id: dashcard_id } }) => {
+      const textCard = H.getTextCardDetails({
+        row: 0,
+        size_x: 24,
+        size_y: 1,
+        text: "top",
+      });
+      const questionCard = {
+        row: 2,
+        size_x: 16,
+        size_y: 6,
+        id: dashcard_id,
+        card_id: question_id,
+      };
+
+      H.updateDashboardCards({ dashboard_id, cards: [textCard, questionCard] });
+
+      H.visitDashboard(dashboard_id);
+      H.editDashboard();
+    });
+
+    // update text card
+    cy.findByTestId("editing-dashboard-text-preview").type(1);
+
+    H.saveDashboard();
+
+    // visit question
+    cy.findAllByTestId("dashcard").eq(1).findByText("Orders").click();
+
+    cy.log("Update viz settings");
+
+    cy.findByTestId("view-footer")
+      .findByRole("button", { name: "Visualization" })
+      .click();
+    cy.findByTestId("Detail-button").click();
+
+    saveUpdatedQuestion();
+
+    assertQuestionIsUpdatedWithoutError();
+  });
+});
+
+describe("issue 34382", () => {
+  const createDashboardWithCards = () => {
+    const getParameterMapping = ({ card_id }, parameters) => ({
+      parameter_mappings: parameters.map((parameter) => ({
+        card_id,
+        parameter_id: parameter.id,
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      })),
+    });
+
+    const questionDetails = {
+      name: "Products",
+      query: { "source-table": PRODUCTS_ID },
+    };
+
+    const questionDashcardDetails = {
+      row: 0,
+      col: 0,
+      size_x: 8,
+      size_y: 8,
+      visualization_settings: {},
+    };
+    const filterDetails = {
+      name: "Product Category",
+      slug: "category",
+      id: "96917421",
+      type: "category",
+    };
+
+    const dashboardDetails = {
+      name: "Products in a dashboard",
+      auto_apply_filters: false,
+      parameters: [filterDetails],
+    };
+
+    H.createDashboard(dashboardDetails).then(
+      ({ body: { id: dashboard_id } }) => {
+        H.createQuestion(questionDetails).then(
+          ({ body: { id: question_id } }) => {
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
+                {
+                  id: -1,
+                  card_id: question_id,
+                  ...questionDashcardDetails,
+                  ...getParameterMapping({ card_id: question_id }, [
+                    filterDetails,
+                  ]),
+                },
+              ],
+            });
+          },
+        );
+
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+  };
+
+  function addFilterValue(value) {
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText(value).click();
+      cy.findByRole("button", { name: "Add filter" }).click();
+    });
+  }
+
+  function applyFilter() {
+    cy.findByRole("button", { name: "Apply" }).click();
+    cy.wait("@dashcardQuery");
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)", () => {
+    createDashboardWithCards();
+    H.visitDashboard("@dashboardId");
+
+    addFilterValue("Gizmo");
+    applyFilter();
+
+    cy.log("Navigate to Products question");
+    H.getDashboardCard().findByText("Products").click();
+
+    cy.log("Navigate back to dashboard");
+    H.queryBuilderHeader()
+      .findByLabelText("Back to Products in a dashboard")
+      .click();
+
+    cy.location("search").should("eq", "?category=Gizmo");
+    H.filterWidget().contains("Gizmo");
+
+    H.getDashboardCard().within(() => {
+      // only products with category "Gizmo" are filtered
+      cy.findByTestId("table-body")
+        .findAllByRole("gridcell")
+        .eq(3)
+        .should("contain", "Gizmo");
+      cy.findByTestId("table-body").should("not.contain", "Doohickey");
+    });
+  });
+});

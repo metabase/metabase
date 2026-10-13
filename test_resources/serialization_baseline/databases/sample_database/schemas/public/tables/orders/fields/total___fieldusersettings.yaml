@@ -1,0 +1,9 @@
+field_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+- TOTAL
+created_at: '2025-06-13T12:52:06.383265Z'
+description: Total order amount including tax
+serdes/meta:
+- model: FieldUserSettings

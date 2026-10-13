@@ -23,6 +23,7 @@
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
@@ -84,9 +85,13 @@
                    [:user_id            [:= (mt/user->id :rasta)]]
                    [:device_id          ms/UUIDString]
                    [:device_description ms/NonBlankString]
-                   [:ip_address         ms/NonBlankString]
-                   [:active             [:= true]]]
-                  (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
+                   [:ip_address         ms/NonBlankString]]
+                  (t2/select-one :model/LoginHistory
+                                 :user_id    (mt/user->id :rasta)
+                                 :session_id (t2/select-one-fn :id :model/Session
+                                                               :key_hashed (session/hash-session-key (:id response))))))
+      (is (true? (:active (first (login-history.db/login-history-for-user (mt/user->id :rasta)))))
+          "the login just made is the newest, and its session is live"))))
 
 (deftest login-remember-me-sets-max-age-test
   (testing "POST /api/session - 'remember me' checkbox sets Max-Age attribute on session cookie"
@@ -236,25 +241,33 @@
       (test.users/clear-cached-session-tokens!)
       (let [session-key        (client/authenticate (test.users/user->credentials :rasta))
             session-key-hashed (session/hash-session-key session-key)
-            login-history-id (t2/select-one-pk :model/LoginHistory :session_id (t2/select-one-pk :model/Session :key_hashed session-key-hashed))]
+            session-id         (t2/select-one-pk :model/Session :key_hashed session-key-hashed)
+            login-history-id   (t2/select-one-pk :model/LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
-        ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
+        ;; Ok, calling the logout endpoint should end the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
         (client/client session-key :delete 204 "session")
-        ;; check whether it's still there -- should be GONE
-        (is (= nil
-               (t2/select-one :model/Session :key_hashed session-key-hashed)))
-        (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
+        (testing "the session is ended, attributed to the user, and its key destroyed — but the row is kept"
+          (is (nil? (t2/select-one :model/Session :key_hashed session-key-hashed)))
+          (is (=? {:end_reason       "logout"
+                   :ended_by_user_id (mt/user->id :rasta)
+                   :ended_at         some?
+                   :key_hashed       nil}
+                  (t2/select-one :model/Session :id session-id))))
+        (testing "the old cookie no longer authenticates"
+          (is (= "Unauthenticated" (client/client session-key :get 401 "user/current"))))
+        (testing "LoginHistory item should still exist, but read as no longer active"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]
                        [:timestamp          (ms/InstanceOfClass java.time.OffsetDateTime)]
                        [:user_id            [:= (mt/user->id :rasta)]]
                        [:device_id          ms/UUIDString]
                        [:device_description ms/NonBlankString]
-                       [:ip_address         ms/NonBlankString]
-                       [:active             [:= false]]]
-                      (t2/select-one :model/LoginHistory :id login-history-id))))))))
+                       [:ip_address         ms/NonBlankString]]
+                      (t2/select-one :model/LoginHistory :id login-history-id)))
+          (is (false? (:active (first (login-history.db/login-history-for-user (mt/user->id :rasta)))))
+              "the newest login of the user is the one just logged out"))))))
 
 (deftest login-survives-concurrent-session-delete-test
   (testing (str "POST /api/session - SEC-1208: deleting the user's sessions (as a password change does) between the"
@@ -547,7 +560,7 @@
                                                                :password "whateverUP12!!"})))))))
 
 (deftest reset-password-from-token-invalidates-sessions-test
-  (testing "POST /api/session/reset_password deletes the user's existing sessions"
+  (testing "POST /api/session/reset_password ends the user's existing sessions"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "password")
       (let [session (auth-identity/create-session-with-auth-tracking!
@@ -559,8 +572,67 @@
         (is (some? (t2/select-one :model/Session :id (:id session)))
             "sanity check: the session exists before the reset")
         (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
-        (is (nil? (t2/select-one :model/Session :id (:id session)))
-            "the pre-existing session should be deleted after resetting the password via token")))))
+        (is (=? {:end_reason "password-change", :ended_by_user_id (:id user), :ended_at some?, :key_hashed nil}
+                (t2/select-one :model/Session :id (:id session)))
+            "the pre-existing session should be ended, by the user, after resetting the password via token")))))
+
+(deftest reset-password-session-is-attributed-to-password-identity-test
+  (testing "POST /api/session/reset_password issues a session belonging to the user's password AuthIdentity"
+    (mt/with-temp [:model/User user {}
+                   ;; the pre-existing session hangs off a different identity, so last_used_at on the
+                   ;; password identity below is nil until the reset itself touches it
+                   :model/AuthIdentity _ {:user_id (:id user) :provider "google" :metadata {:sso_source "google"}}]
+      (auth-identity/set-password! (:id user) "password")
+      (let [stale-session (auth-identity/create-session-with-auth-tracking!
+                           user
+                           {:device_id "reset-attribution-device" :embedded false :token_exchange false
+                            :device_description "Test" :ip_address "127.0.0.1"}
+                           :provider/google)
+            token         (auth-identity/create-password-reset! (:id user))]
+        (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
+        ;; read core_session directly: auth_identity_id is the column session listing joins the provider on
+        (let [password-identity-id (t2/select-one-pk :model/AuthIdentity :user_id (:id user) :provider "password")
+              sessions             (t2/query {:select [:id :auth_identity_id]
+                                              :from   [:core_session]
+                                              :where  [:and [:= :user_id (:id user)] [:= :ended_at nil]]})]
+          (is (=? {:end_reason "password-change", :key_hashed nil}
+                  (t2/select-one :model/Session :id (:id stale-session)))
+              "the session that existed before the reset is revoked")
+          (is (= 1 (count sessions))
+              "only the session the reset just created is live")
+          (is (some? (:auth_identity_id (first sessions)))
+              "the new session is attributed to an auth identity")
+          (is (= password-identity-id (:auth_identity_id (first sessions)))
+              "the new session is attributed to the password identity the reset just wrote")
+          (is (some? (t2/select-one-fn :last_used_at :model/AuthIdentity password-identity-id))
+              "completing the reset counts as a use of the password identity")
+          (is (nil? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+              "the consumed reset identity is still deleted"))))))
+
+(deftest reset-password-refused-when-password-login-disabled-test
+  (testing "POST /api/session/reset_password refuses, and changes nothing, when password login is disabled"
+    (ldap.test/with-ldap-server!
+      (mt/with-temp [:model/User user {}]
+        (auth-identity/set-password! (:id user) "password")
+        (let [session     (auth-identity/create-session-with-auth-tracking!
+                           user
+                           {:device_id "reset-disabled-device" :embedded false :token_exchange false
+                            :device_description "Test" :ip_address "127.0.0.1"}
+                           :provider/password)
+              credentials (t2/select-one-fn :credentials :model/AuthIdentity
+                                            :user_id (:id user) :provider "password")
+              token       (auth-identity/create-password-reset! (:id user))]
+          (mt/with-premium-features #{:disable-password-login}
+            (mt/with-temporary-setting-values [enable-password-login false]
+              (is (= "Password login is disabled for this instance."
+                     (mt/client :post 400 "session/reset_password" {:token token :password "whateverUP12!!"})))
+              (is (= credentials
+                     (t2/select-one-fn :credentials :model/AuthIdentity :user_id (:id user) :provider "password"))
+                  "the password is unchanged: the stored credential is still the same hash")
+              (is (some? (t2/select-one :model/Session :id (:id session)))
+                  "the user's existing sessions are not revoked")
+              (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+                  "the reset token is not consumed"))))))))
 
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
@@ -714,13 +786,21 @@
       (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
         (fetch-illustration :login-page-illustration-custom 404)))))
 
+(defsetting test-session-api-i18n-setting
+  "Public setting whose value nests a deferred-tru, so the locale header has something to translate."
+  :encryption :no
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] {:display-name (deferred-tru "Connection String")})
+  :doc        false)
+
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
-                   :engines :h2 :details-fields first :display-name)))))))
+                   :test-session-api-i18n-setting :display-name)))))))
 
 (deftest properties-skip-sensitive-test
   (testing "GET /session/properties"

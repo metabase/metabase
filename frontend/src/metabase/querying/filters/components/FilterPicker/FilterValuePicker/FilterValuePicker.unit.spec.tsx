@@ -45,6 +45,34 @@ import {
   StringFilterValuePicker,
 } from "./FilterValuePicker";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+let searchDebounce = 0;
+
+jest.mock(
+  "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+  () => ({
+    ...jest.requireActual(
+      "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+    ),
+    get SEARCH_DEBOUNCE() {
+      return searchDebounce;
+    },
+  }),
+);
+
+const withRealSearchDebounce = () => {
+  const actual = jest.requireActual(
+    "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+  );
+  beforeEach(() => {
+    searchDebounce = actual.SEARCH_DEBOUNCE;
+  });
+  afterEach(() => {
+    searchDebounce = 0;
+  });
+};
+
 type EndpointOpts = {
   fieldId?: FieldId;
   searchFieldId?: FieldId;
@@ -735,73 +763,79 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
 
-    it("should allow free-form input without waiting for search results", async () => {
-      const { onChange } = await setupStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-        fieldId,
-        searchValues: {
-          "a@b.com": createMockFieldValues({
-            field_id: fieldId,
-            values: [["testa@b.com"]],
-          }),
-        },
+    // These three assert what happens before the debounced search fires, so
+    // they need the real delay.
+    describe("before the search runs", () => {
+      withRealSearchDebounce();
+
+      it("should allow free-form input without waiting for search results", async () => {
+        const { onChange } = await setupStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: [],
+          fieldId,
+          searchValues: {
+            "a@b.com": createMockFieldValues({
+              field_id: fieldId,
+              values: [["testa@b.com"]],
+            }),
+          },
+        });
+
+        await userEvent.type(
+          screen.getByPlaceholderText("Search by Email"),
+          "a@b.com",
+        );
+        expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
       });
 
-      await userEvent.type(
-        screen.getByPlaceholderText("Search by Email"),
-        "a@b.com",
-      );
-      expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
-    });
+      it("should not be able to create duplicates with free-form input", async () => {
+        const { onChange } = await setupStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: ["a@b.com"],
+          fieldId,
+          searchValues: {
+            "a@b.com": createMockFieldValues({
+              field_id: fieldId,
+              values: [["testa@b.com"]],
+            }),
+          },
+        });
 
-    it("should not be able to create duplicates with free-form input", async () => {
-      const { onChange } = await setupStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: ["a@b.com"],
-        fieldId,
-        searchValues: {
-          "a@b.com": createMockFieldValues({
-            field_id: fieldId,
-            values: [["testa@b.com"]],
-          }),
-        },
+        const input = screen.getByRole("combobox", { name: "Filter value" });
+        await userEvent.type(input, "a@b.com");
+        // blurring commits the typed value; wrap it so the resulting state
+        // updates in MultiAutocomplete are flushed inside act()
+        act(() => {
+          input.blur();
+        });
+        expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
       });
 
-      const input = screen.getByRole("combobox", { name: "Filter value" });
-      await userEvent.type(input, "a@b.com");
-      // blurring commits the typed value; wrap it so the resulting state
-      // updates in MultiAutocomplete are flushed inside act()
-      act(() => {
-        input.blur();
-      });
-      expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
-    });
+      it("should not show free-form input in search results", async () => {
+        const { onChange } = await setupStringPicker({
+          query,
+          stageIndex,
+          column,
+          values: ["a@b.com"],
+          fieldId,
+          searchValues: {
+            "a@b": createMockFieldValues({
+              field_id: fieldId,
+              values: [["a@b.com"]],
+            }),
+          },
+        });
 
-    it("should not show free-form input in search results", async () => {
-      const { onChange } = await setupStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: ["a@b.com"],
-        fieldId,
-        searchValues: {
-          "a@b": createMockFieldValues({
-            field_id: fieldId,
-            values: [["a@b.com"]],
-          }),
-        },
+        await userEvent.type(
+          screen.getByRole("combobox", { name: "Filter value" }),
+          "a@b",
+        );
+        expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
       });
-
-      await userEvent.type(
-        screen.getByRole("combobox", { name: "Filter value" }),
-        "a@b",
-      );
-      expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
 
     it("should trim clipboard data", async () => {

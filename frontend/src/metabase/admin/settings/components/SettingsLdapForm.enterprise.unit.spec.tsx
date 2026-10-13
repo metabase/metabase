@@ -48,7 +48,7 @@ const setup = async (
 
 describe("SettingsLdapForm (EE)", () => {
   describe("user provisioning", () => {
-    it("sits right above the attributes", async () => {
+    it("sits right below the server settings", async () => {
       await setup();
 
       const cardTitles = screen
@@ -56,57 +56,29 @@ describe("SettingsLdapForm (EE)", () => {
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
         "Server settings",
-        "User schema",
         "User provisioning",
+        "User schema",
         "Attributes",
         "Group mapping",
       ]);
     });
 
-    it("stays disabled until LDAP is configured", async () => {
+    it("does not promise to reactivate accounts, which LDAP sign-in never does", async () => {
+      await setup();
+
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toHaveAccessibleDescription(
+        /create accounts for new users/,
+      );
+      expect(toggle).not.toHaveAccessibleDescription(/reactivate/);
+    });
+
+    it("stays editable before LDAP is configured", async () => {
       await setup({ "ldap-host": null, "ldap-configured?": false });
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
-      expect(
-        screen.getByRole("switch", { name: "Group mapping" }),
-      ).toBeDisabled();
-    });
-
-    it("comes alive once the host and user search base are saved", async () => {
-      await setup({
-        "ldap-host": "ldap.example.test",
-        "ldap-configured?": true,
-      });
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
-    });
-
-    it("locks the switch to the value set through an env var", async () => {
-      await setup(
-        {
-          "ldap-host": "ldap.example.test",
-          "ldap-configured?": true,
-          "ldap-user-provisioning-enabled?": true,
-        },
-        {
-          settingDefinitions: [
-            {
-              key: "ldap-user-provisioning-enabled?",
-              is_env_setting: true,
-              env_name: "MB_LDAP_USER_PROVISIONING_ENABLED",
-            },
-          ],
-        },
-      );
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
-      expect(toggle).toBeChecked();
-      expect(toggle).toHaveAccessibleDescription(
-        /Using MB_LDAP_USER_PROVISIONING_ENABLED/,
-      );
+      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
     it("saves right away without touching the page form", async () => {
@@ -117,7 +89,7 @@ describe("SettingsLdapForm (EE)", () => {
         "ldap-user-provisioning-enabled?": true,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
+      await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
       expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);
@@ -152,6 +124,28 @@ describe("SettingsLdapForm (EE)", () => {
       });
       expect(filterInput).toHaveValue("");
       expect(filterInput).toHaveAttribute("placeholder", "(member={dn})");
+    });
+
+    it("rejects an unbalanced membership filter", async () => {
+      await setup(
+        { "ldap-configured?": true, "ldap-group-sync": true },
+        {
+          settingDefinitions: [
+            { key: "ldap-group-membership-filter", default: "(member={dn})" },
+          ],
+        },
+      );
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /Group membership filter/ }),
+        "(objectClass=group",
+      );
+      await userEvent.tab();
+
+      expect(
+        await screen.findByText("Check your parentheses"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
     it("is saved with the page form", async () => {
@@ -211,6 +205,7 @@ describe("SettingsLdapForm (EE)", () => {
       const [{ url, body }] = await findRequests("PUT");
       expect(url).toMatch(/api\/ldap\/settings/);
       expect(body["ldap-host"]).toBe("ldap.example.test.internal");
+      expect(body).not.toHaveProperty("ldap-group-membership-filter");
     });
   });
 });

@@ -16,7 +16,8 @@
                           "remote-synced"
                           "library"
                           "library-models"
-                          "library-metrics"])
+                          "library-metrics"
+                          "library-dashboards"])
 
 (mr/def ::CardType [:enum "model" "question" "metric"])
 
@@ -31,7 +32,8 @@
                                "indexed-entity"
                                "document"
                                "exploration"
-                               "table"])
+                               "table"
+                               "action"])
 
 (mr/def ::Collection
   [:map

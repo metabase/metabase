@@ -46,7 +46,7 @@ describe("formatDateTimeRangeWithUnit", () => {
             );
 
             if (verboseOutput) {
-              // eslint-disable-next-line jest/no-conditional-expect
+              // eslint-disable-next-line jest-js/no-conditional-expect
               expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
                 verboseOutput,
               );

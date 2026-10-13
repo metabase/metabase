@@ -1,4 +1,75 @@
 {
   "printWidth": 80,
-  "trailingComma": "all"
+  "trailingComma": "all",
+  "sortImports": {
+    "customGroups": [
+      {
+        "groupName": "internal-pre-metabase",
+        "elementNamePattern": [
+          "__support__",
+          "__support__/**",
+          "assets",
+          "assets/**",
+          "build-configs",
+          "build-configs/**",
+          "cljs",
+          "cljs/**",
+          "docs",
+          "docs/**",
+          "e2e",
+          "e2e/**",
+          "ee-overrides",
+          "ee-overrides/**",
+          "ee-plugins",
+          "ee-plugins/**",
+          "embedding",
+          "embedding/**",
+          "embedding-sdk-bundle",
+          "embedding-sdk-bundle/**",
+          "embedding-sdk-package",
+          "embedding-sdk-package/**",
+          "embedding-sdk-shared",
+          "embedding-sdk-shared/**",
+          "img",
+          "img/**"
+        ]
+      },
+      {
+        "groupName": "metabase-core",
+        "elementNamePattern": ["metabase", "metabase/**"]
+      },
+      {
+        "groupName": "metabase-scoped",
+        "elementNamePattern": ["metabase-*/**", "metabase-*"]
+      },
+      {
+        "groupName": "internal-post-metabase",
+        "elementNamePattern": [
+          "sdk-ee-plugins",
+          "sdk-ee-plugins/**",
+          "sdk-iframe-embedding-ee-plugins",
+          "sdk-iframe-embedding-ee-plugins/**",
+          "sdk-iframe-embedding-script-ee-plugins",
+          "sdk-iframe-embedding-script-ee-plugins/**"
+        ]
+      }
+    ],
+    "groups": [
+      ["value-builtin", "type-builtin"],
+      ["value-external", "type-external"],
+      "internal-pre-metabase",
+      { "newlinesBetween": false },
+      "metabase-core",
+      { "newlinesBetween": false },
+      "metabase-scoped",
+      { "newlinesBetween": false },
+      "internal-post-metabase",
+      ["value-parent", "type-parent"],
+      ["value-sibling", "type-sibling"],
+      ["value-index", "type-index"]
+    ],
+    "newlinesBetween": true,
+    "order": "asc",
+    "ignoreCase": false
+  }
 }

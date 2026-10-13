@@ -150,6 +150,7 @@
      explorations.contextual-interestingness
      custom-viz-plugin
      dashboards
+     data-apps
      documents
      api.eid-translation
      embedding
@@ -319,7 +320,8 @@
 (defn- write-explorer!
   "Write the HTML explorer to `output`, or to stdout, and exit."
   [modules-config {:keys [output no-stats]}]
-  (let [html (module-explorer/page (module-explorer/explorer-data modules-config {:stats? (not no-stats)}))]
+  (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
+        html (module-explorer/page data)]
     (if output
       (do (spit output html)
           (println (c/green (str "Wrote " output))))

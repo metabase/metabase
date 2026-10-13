@@ -52,25 +52,6 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
-  it("keeps a data app's permission group out of the admin Groups list", () => {
-    // Provisioning a data app draft creates its permission group as a side effect.
-    cy.request("POST", "/api/apps/orders-app/draft").then(({ body }) => {
-      const dataAppGroupId = body.permission_group_id;
-
-      // The groups API does not return data-app groups.
-      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-        const ids = groups.map((group: { id: number }) => group.id);
-        expect(ids).not.to.include(dataAppGroupId);
-      });
-
-      cy.visit("/admin/people/groups");
-      cy.findByTestId("admin-panel").within(() => {
-        cy.findByText("All Users").should("be.visible");
-        cy.findByText("Data App: orders-app").should("not.exist");
-      });
-    });
-  });
-
   it("dismisses the promo banner and keeps it hidden across a reload", () => {
     cy.intercept("GET", "/api/apps/repo-status", { configured: true });
     cy.intercept("GET", "/api/apps", []);
@@ -101,10 +82,11 @@ describe("scenarios > data apps > admin management", () => {
   describe("outdated apps", () => {
     // Only a bump of the supported version makes a real app outdated, so the flag
     // the API computes is patched onto a real app's responses instead.
-    const OUTDATED_APP = "orders-app";
+    const OUTDATED_APP = "good";
 
     function markAppOutdated() {
-      cy.request<DataApp>("POST", `/api/apps/${OUTDATED_APP}/draft`)
+      H.pullExampleDataApps();
+      cy.request<DataApp>("GET", `/api/apps/${OUTDATED_APP}`)
         .its("body.display_name")
         .as("outdatedAppName");
 
@@ -127,7 +109,7 @@ describe("scenarios > data apps > admin management", () => {
       );
     }
 
-    it("badges an outdated app, refuses to open it, and still lets an admin manage its users", () => {
+    it("badges an outdated app and refuses to open it", () => {
       markAppOutdated();
 
       cy.visit("/admin/settings/apps");
@@ -139,21 +121,8 @@ describe("scenarios > data apps > admin management", () => {
             cy.findByText("Outdated").should("be.visible");
             cy.findByText(displayName).should("be.visible");
             cy.findByRole("link", { name: displayName }).should("not.exist");
-            cy.findByRole("button", {
-              name: `Actions for ${displayName}`,
-            }).click();
           });
       });
-
-      H.popover().findByText("Manage user access").click();
-
-      cy.location("pathname").should(
-        "eq",
-        `/admin/settings/apps/${OUTDATED_APP}/users`,
-      );
-      H.main()
-        .findByRole("heading", { name: "Manage access to this app" })
-        .should("be.visible");
 
       H.openDataApp(OUTDATED_APP);
       H.main().findByText("This data app is outdated").should("be.visible");

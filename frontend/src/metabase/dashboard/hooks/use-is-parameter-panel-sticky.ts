@@ -37,11 +37,13 @@ export function useIsParameterPanelSticky({
       threshold: 0, // We only need to know when sentinel is out of view
     };
 
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsStickyStateChanging(true);
+    const observer = new IntersectionObserver((entries) => {
+      // Entries queue up oldest-first (e.g. during a window resize), so only the
+      // last one reflects the current state
+      const entry = entries[entries.length - 1];
 
-      // If sentinel is not intersecting viewport, sticky element is stuck
-      setIsSticky(!entry.isIntersecting);
+      setIsStickyStateChanging(true);
+      setIsSticky(isScrolledPastTop(entry));
 
       requestAnimationFrame(() => {
         setIsStickyStateChanging(false);
@@ -60,4 +62,16 @@ export function useIsParameterPanelSticky({
     isSticky,
     isStickyStateChanging,
   } as const;
+}
+
+// The sentinel also leaves the viewport when it's below the fold (e.g. in a short
+// window), but the sticky element is only stuck once the sentinel has scrolled up
+// past the top.
+function isScrolledPastTop(entry: IntersectionObserverEntry) {
+  if (entry.isIntersecting) {
+    return false;
+  }
+
+  const viewportBottom = entry.rootBounds?.bottom ?? window.innerHeight;
+  return entry.boundingClientRect.top < viewportBottom;
 }

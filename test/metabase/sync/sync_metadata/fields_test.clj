@@ -546,6 +546,27 @@
                                                               {:from [(warehouse-schema-overlay/field-query)]})))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
 
+(deftest hiding-a-case-variant-table-leaves-the-other-tables-fields-alone-test
+  (testing "hiding one of two tables whose names differ only in case does not move its columns onto the other"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "hidden_case_variant_table_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hidden_case_variant_table_test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["CREATE TABLE \"Foo\" (a INT, b INT);"
+                           "CREATE TABLE \"foo\" (x INT, y INT);"]]
+          (jdbc/execute! spec [statement]))
+        (doseq [[hidden visible expected] [["foo" "Foo" {"a" true, "b" true}]
+                                           ["Foo" "foo" {"x" true, "y" true}]]]
+          (testing (format "hiding %s" hidden)
+            (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+              (sync-metadata/sync-db-metadata! database)
+              (let [table-id       #(t2/select-one-pk :model/Table :db_id (u/the-id database) :name %)
+                    active-by-name #(t2/select-fn->fn :name :active :model/Field :table_id (table-id %))]
+                (is (= expected (active-by-name visible)))
+                (mt/user-http-request :crowberto :put 200 (format "table/%d" (table-id hidden)) {:visibility_type "hidden"})
+                (sync-metadata/sync-db-metadata! database)
+                (is (= expected (active-by-name visible)))))))))))
+
 (deftest user-set-fks-are-preserved-by-sync-test
   (testing "Check that sync-table! doesn't remove user-set FKs during normal sync operations"
     (with-test-db

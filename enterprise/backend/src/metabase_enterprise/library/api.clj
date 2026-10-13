@@ -23,13 +23,15 @@
    _query
    _body]
   (api/check-data-studio-access)
-  (api/check-400 (not (collections/library-collection)) "Library already exists")
+  (api/check-400 (not (collections/library-collection)) "Semantic layer already exists")
   (collections/create-library-collection!))
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
-        below-card-types (library.db/card-types-in-collections descendent-ids)
-        below-tables? (library.db/published-table-in-collections? descendent-ids)]
+        ;; Library questions are only ever dashboard questions, which aren't collection items
+        below-card-types (disj (library.db/card-types-in-collections descendent-ids) :question)
+        below-tables? (library.db/published-table-in-collections? descendent-ids)
+        below-dashboards? (library.db/dashboard-in-collections? descendent-ids)]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}
@@ -37,6 +39,7 @@
                     (contains? below-card-types :model)
                     (-> (disj :model) (conj :dataset))
                     below-tables? (conj :table)
+                    below-dashboards? (conj :dashboard)
                     true sort
                     true ((partial map name))))))
 

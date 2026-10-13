@@ -2,9 +2,12 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { memo, useCallback, useRef, useState } from "react";
 
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/common/components/Link";
+import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
-import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
 import type {
   DataPermissionValue,
@@ -16,15 +19,7 @@ import type {
 } from "../../types";
 import { PermissionsSelect } from "../PermissionsSelect";
 
-import {
-  ColumnName,
-  EntityNameLink,
-  HintIcon,
-  PermissionTableHeaderCell,
-  PermissionsTableCell,
-  PermissionsTableRoot,
-  PermissionsTableRow,
-} from "./PermissionsTable.styled";
+import S from "./PermissionsTable.module.css";
 
 export type PermissionsTableProps = Pick<
   PermissionEditorType,
@@ -163,13 +158,19 @@ export function PermissionsTable({
 
   return (
     <>
-      <PermissionsTableRoot data-testid="permission-table">
+      <Box
+        component="table"
+        className={cx(S.table, CS.overflowAuto)}
+        mah="100%"
+        miw="max-content"
+        data-testid="permission-table"
+      >
         <thead>
           <tr>
             {columns.map(({ name, hint }) => {
               return (
-                <PermissionTableHeaderCell key={name}>
-                  <ColumnName>
+                <th key={name} className={cx(S.cell, S.headerCell)}>
+                  <Label display="inline" m={0}>
                     {name}{" "}
                     {hint && (
                       <Tooltip
@@ -177,17 +178,23 @@ export function PermissionsTable({
                         closeDelay={100}
                         classNames={{ tooltip: CS.pointerEventsAuto }}
                       >
-                        <HintIcon />
+                        <Icon
+                          className={CS.cursorPointer}
+                          name="info"
+                          size={16}
+                          ml="xs"
+                          c="text-disabled"
+                        />
                       </Tooltip>
                     )}
-                  </ColumnName>
-                </PermissionTableHeaderCell>
+                  </Label>
+                </th>
               );
             })}
           </tr>
         </thead>
         {tableContent}
-      </PermissionsTableRoot>
+      </Box>
       {!hasItems && emptyState}
       <ConfirmModal
         opened={confirmations?.length > 0}
@@ -217,23 +224,38 @@ const EntityRow = memo(function EntityRow({
   onSelect,
   onAction,
 }: EntityRowProps) {
+  const isEmbeddingHub = isEmbeddingHubPermissions();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
       {typeof entity.hint === "string" && (
         <Tooltip label={entity.hint}>
-          <HintIcon />
+          <Icon
+            className={CS.cursorPointer}
+            name="info"
+            size={16}
+            ml="xs"
+            c="text-disabled"
+          />
         </Tooltip>
       )}
     </span>
   );
   return (
-    <PermissionsTableRow aria-label={`${entity.name} permissions`}>
-      <PermissionsTableCell>
+    <tr className={S.row} aria-label={`${entity.name} permissions`}>
+      <td className={S.cell}>
         {entity.canSelect ? (
-          <EntityNameLink onClick={() => onSelect?.(entity)}>
+          <Link
+            className={S.entityNameLink}
+            onClick={() => onSelect?.(entity)}
+            // The hub overrides the link's default admin purple with its own
+            // blue, both colors the design system already owns.
+            style={
+              isEmbeddingHub ? { color: "var(--mb-color-brand)" } : undefined
+            }
+          >
             {entityName}
-          </EntityNameLink>
+          </Link>
         ) : (
           <Flex gap="xxs" fw="bold">
             {entityName}
@@ -241,11 +263,11 @@ const EntityRow = memo(function EntityRow({
           </Flex>
         )}
         {entity.callout && <Text c="text-secondary">{entity.callout}</Text>}
-      </PermissionsTableCell>
+      </td>
 
       {entity.permissions?.map((permission, index) => {
         return (
-          <PermissionsTableCell key={permission.type ?? String(index)}>
+          <td key={permission.type ?? String(index)} className={S.cell}>
             <PermissionsSelect
               {...permission}
               onChange={(value, toggleState) =>
@@ -253,9 +275,9 @@ const EntityRow = memo(function EntityRow({
               }
               onAction={(action) => onAction?.(action, entity)}
             />
-          </PermissionsTableCell>
+          </td>
         );
       })}
-    </PermissionsTableRow>
+    </tr>
   );
 });

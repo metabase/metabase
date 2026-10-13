@@ -365,6 +365,18 @@
     stage-number :- :int]
    (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
 
+(mu/defn aggregation-column :- ::lib.metadata.calculation/column-metadata-with-source
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, with the name its result column
+  gets before the stage deduplicates its column names."
+  [query              :- ::lib.schema/query
+   stage-number       :- :int
+   aggregation-clause :- ::lib.schema.aggregation/aggregation]
+  (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation-clause)]
+    (-> metadata
+        (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
+        (assoc :lib/source      :source/aggregations
+               :lib/source-uuid (lib.options/uuid aggregation-clause)))))
+
 (mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get metadata about the aggregations in a given stage of a query."
   ([query :- ::lib.schema/query]
@@ -373,12 +385,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
-            (into [] (map (fn [aggregation]
-                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
-                              (-> metadata
-                                  (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
-                                  (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
+            (into [] (map #(aggregation-column query stage-number %))))))
 
 (mr/def ::operator-with-columns
   [:merge

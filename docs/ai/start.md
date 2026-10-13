@@ -22,7 +22,7 @@ What data Metabase sends to AI providers and MCP clients, and what Metabase coll
 
 ## [AI usage controls](./usage-controls.md)
 
-Control who can use Metabot, and set token and message limits.
+Control who can use Metabot, which MCP tools each group can use, and set token and message limits.
 
 ## [AI customization](./customization.md)
 
@@ -39,6 +39,10 @@ A REST API for building headless, agentic BI applications on top of Metabase's s
 ## [MCP server](./mcp.md)
 
 Connect MCP-compatible AI clients to your Metabase.
+
+## [MCP server tools](./mcp-tools.md)
+
+The tools an AI client can call through the MCP server, and the permission each one needs.
 
 ## [Metabot in Slack](./metabot-slack.md)
 

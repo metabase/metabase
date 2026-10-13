@@ -1,4 +1,11 @@
-name: Good App
-description: A well-formed app that syncs cleanly
 version: 1
+name: Good App
+slug: good
+description: A well-formed app that syncs cleanly
 path: ./index.js
+collection: goodAppCollection0000
+entity_id: Ioxf30LzIQCGwbCNtaG62
+serdes/meta:
+- model: DataApp
+  id: Ioxf30LzIQCGwbCNtaG62
+  label: good

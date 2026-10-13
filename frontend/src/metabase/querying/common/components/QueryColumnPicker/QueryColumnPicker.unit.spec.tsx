@@ -30,7 +30,6 @@ function createQueryWithBreakout() {
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "ORDERS",
           },
         ],
       },

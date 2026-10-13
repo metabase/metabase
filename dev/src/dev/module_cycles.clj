@@ -1,71 +1,22 @@
 (ns dev.module-cycles
   "Named cyclic clusters of the module require graph.
 
-  The file at [[clusters-file]] names each cluster by an anchor module: the cluster holding it carries the name.
+  The file at [[cycle-names/clusters-file]] names each cluster by an anchor module.
+  The cluster holding the anchor carries the name.
   Membership is computed, never recorded, so a cluster can grow or shrink without an edit.
   Every cluster must hold exactly one anchor.
   Two anchors in one cluster mean two named clusters merged.
   A cluster without one is a new cycle or the unnamed half of a split.
   An anchor in no cluster names a cycle that is gone."
   (:require
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
+   [dev.module-cycle-names :as cycle-names]
+   [dev.module-graph :as module-graph]
    [hooks.common.modules :as modules]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(def clusters-file
-  "The file of cluster names, relative to the repo root."
-  ".clj-kondo/config/modules/cycle-clusters.edn")
-
-;;;; =============================================================================
-;;;; Reading the names
-;;;; =============================================================================
-
-(defn- read-form
-  "The one EDN form in the file at `path`. Throws when the file is empty or holds a second form."
-  [path]
-  (with-open [reader (java.io.PushbackReader. (io/reader path))]
-    (let [eof  (Object.)
-          form (edn/read {:eof eof} reader)]
-      (when (identical? eof form)
-        (throw (ex-info (str path " is empty; expected a map of cluster name to anchor module")
-                        {:file path})))
-      (when-not (identical? eof (edn/read {:eof eof} reader))
-        (throw (ex-info (str path " holds more than one form; expected one map")
-                        {:file path})))
-      form)))
-
-(defn validate-anchors
-  "Return `anchors` if it maps simple-symbol names to module symbols, no module anchoring two; throw otherwise."
-  [anchors]
-  (when-not (map? anchors)
-    (throw (ex-info (str clusters-file " must hold a map of cluster name to anchor module, not " (pr-str anchors))
-                    {:anchors anchors})))
-  (doseq [[cluster-name anchor] anchors]
-    (when-not (simple-symbol? cluster-name)
-      (throw (ex-info (format "%s is not a cluster name; names are simple symbols" (pr-str cluster-name))
-                      {:cluster cluster-name})))
-    (when-not (symbol? anchor)
-      (throw (ex-info (format "%s must be anchored by a module symbol, not %s" cluster-name (pr-str anchor))
-                      {:cluster cluster-name, :anchor anchor}))))
-  (doseq [[anchor names] (group-by val anchors)
-          :when (< 1 (count names))]
-    (throw (ex-info (format "%s anchors more than one cluster: %s" anchor (str/join ", " (sort (map key names))))
-                    {:anchor anchor, :clusters (sort (map key names))})))
-  anchors)
-
-(defn read-anchors
-  "Parsed and validated contents of the file at `path`, [[clusters-file]] by default."
-  ([]
-   (read-anchors clusters-file))
-  ([path]
-   (when-not (.exists (io/file path))
-     (throw (ex-info (str path " is missing") {:file path})))
-   (validate-anchors (read-form path))))
 
 ;;;; =============================================================================
 ;;;; Finding problems
@@ -154,7 +105,7 @@
   - `:anchor-left`, a name whose anchor is in no cycle: `:name`, `:anchor`
   - `:undeclared-anchor`, a name anchored on a module not among `modules`: `:name`, `:anchor`"
   [graph modules anchors]
-  (let [components   (deps-graph/cyclic-components graph)
+  (let [components   (module-graph/cyclic-components graph)
         clusters     (map (juxt identity (names-in modules anchors)) components)
         in-any       (into #{} cat components)
         undeclared   (into #{} (remove modules) (vals anchors))
@@ -212,7 +163,7 @@
     (str "  If instead only an anchor moved, and the cluster it left is still a cycle, anchor that name on a module"
          " still in it.")
     (str "  Only if there is truly no way around it: remove all but one of the names from "
-         clusters-file " and explain why in the PR.")]))
+         cycle-names/clusters-file " and explain why in the PR.")]))
 
 (defn- unnamed-lines [{:keys [cluster requires proposal]}]
   (concat
@@ -225,7 +176,7 @@
          " the name-module-cycle skill in .claude/skills/name-module-cycle.")
     (if-let [{:keys [name anchor]} proposal]
       (format "  Then add a line like `%s %s` to %s. Any declared member can be the anchor." name anchor
-              clusters-file)
+              cycle-names/clusters-file)
       (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet. Add an entry with a :team"
            " for each, run `./bin/mage fix-modules-config` to fill in the rest, then anchor the name on one of them."))
     "  If this is a brand new cycle instead, break it rather than naming it."]))
@@ -234,12 +185,13 @@
   [(format "%s is anchored on %s, which is no longer in any cycle." cluster-name anchor)
    (str "  If the rest of the cluster is still a cycle, reported above without a name, keep the name and anchor it"
         " on one of its modules instead.")
-   (format "  Otherwise the cycle is gone. Nice work. Remove its line from %s to retire the name." clusters-file)])
+   (format "  Otherwise the cycle is gone. Nice work. Remove its line from %s to retire the name."
+           cycle-names/clusters-file)])
 
 (defn- undeclared-anchor-lines [{cluster-name :name, :keys [anchor]}]
   [(format (str "%s is anchored on %s, which is not a declared module. Declare it in"
                 " .clj-kondo/config/modules/config.edn, or anchor the name on a declared module in %s.")
-           cluster-name anchor clusters-file)])
+           cluster-name anchor cycle-names/clusters-file)])
 
 (defn message
   "The failure message for one of the [[problems]]."
@@ -262,10 +214,10 @@
     {:config  config
      :graph   (deps-graph/module-dependencies (deps-graph/dependencies (modules/build-prefix->module config)))
      :modules (set (keys config))
-     :anchors (read-anchors)}))
+     :anchors (cycle-names/read-anchors)}))
 
 (defn report
-  "The failure messages for the [[problems]] between the current tree's module require graph and [[clusters-file]]."
+  "The failure messages for the [[problems]] between the current tree's module graph and [[cycle-names/clusters-file]]."
   []
   (let [{:keys [graph modules anchors]} (repository)]
     (mapv message (problems graph modules anchors))))
@@ -277,7 +229,7 @@
   (let [{:keys [config graph modules anchors]} (repository)
         named-in     (names-in modules anchors)
         ;; Unnamed clusters first: they are the ones someone is here to name.
-        clusters     (sort-by #(boolean (seq (named-in %))) (deps-graph/cyclic-components graph))
+        clusters     (sort-by #(boolean (seq (named-in %))) (module-graph/cyclic-components graph))
         placeholders (proposals graph modules anchors (remove (comp seq named-in) clusters))]
     (doseq [cluster clusters
             :let    [named (named-in cluster)]]

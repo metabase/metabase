@@ -551,8 +551,6 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: HeLFZSVb4Jm25p4tWfVP9
-  label: string_functions
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question
