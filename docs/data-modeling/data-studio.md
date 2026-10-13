@@ -30,7 +30,7 @@ The first time you open Data Studio, you'll land on the **Guide**: a quick tour 
 
 ### Library
 
-- **[Semantic layer](semantic-layer/library.md)**\*: A curated space for your organization's most trusted analytics content—tables, metrics, and SQL snippets that your data team recommends.
+- **[Semantic layer](semantic-layer/library.md)**\*: A curated space for your organization's most trusted analytics content—tables, metrics, dashboards, and SQL snippets that your data team recommends.
 - **[Glossary](./semantic-layer/glossary.md)**: Define terms relevant to your business, both for people and agents trying to understand your data.
 
 ### Tools
