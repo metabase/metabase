@@ -54,6 +54,13 @@
                                                         :y_values     []
                                                         :display_name "Count"}}}})))))
 
+(deftest ^:parallel analyze-chart-tool-all-nil-values-test
+  (testing "a series whose x-values or y-values are all nil is rejected like an empty one"
+    (doseq [k [:x_values :y_values]]
+      (testing (str k)
+        (is (= {:output "Series \"Count\" has no data points to analyze."}
+               (analyze "c1" (assoc-in (numeric-series-config) ["c1" :series "Count" k] [nil nil nil nil]))))))))
+
 (deftest ^:parallel analyze-chart-tool-non-numeric-y-values-test
   (testing "a series with non-numeric y-values is rejected"
     (is (= {:output (str "Series \"Count\" has non-numeric y-values. "

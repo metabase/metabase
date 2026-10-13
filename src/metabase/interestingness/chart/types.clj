@@ -26,8 +26,8 @@
   [:map {:closed true}
    [:x ::column-metadata]
    [:y ::column-metadata]
-   [:x_values [:sequential ::axis-value]]
-   [:y_values [:sequential number?]]
+   [:x_values [:sequential [:maybe ::axis-value]]]
+   [:y_values [:sequential [:maybe number?]]]
    [:display_name :string]
    [:chart_type {:optional true} [:maybe :string]]
    [:stacked {:optional true} [:maybe :boolean]]])

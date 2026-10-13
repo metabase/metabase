@@ -56,6 +56,14 @@
      (when (seq downsampled)
        {:downsampled-series downsampled})]))
 
+(defn- drop-nil-points
+  "Drop the points of `series-config` whose x or y value is nil."
+  [{:keys [x_values y_values] :as series-config}]
+  (let [points (filter (fn [[x y]] (and (some? x) (some? y))) (map vector x_values y_values))]
+    (assoc series-config
+           :x_values (mapv first points)
+           :y_values (mapv second points))))
+
 ;;; ----------------------------------------------- Chart Type Detection ---------------------------------------------
 
 (def ^:private explicit-display-types
@@ -138,7 +146,7 @@
 (mu/defn compute-chart-stats :- ::stats.types/chart-stats
   "Compute statistics for a chart based on its detected type.
 
-  Applies data limits before computation:
+  Drops points with a nil x or y value, then applies data limits before computation:
   - Each series is downsampled to at most [[max-data-points-per-series]] points
   - Correlation computation is limited to [[max-series-for-correlations]] series
 
@@ -149,7 +157,7 @@
   [chart-config :- ::stats.types/chart-config
    opts         :- ::stats.types/options]
   (let [chart-type                   (detect-chart-type chart-config)
-        [limited-series limits-info] (apply-data-limits (:series chart-config))
+        [limited-series limits-info] (apply-data-limits (update-vals (:series chart-config) drop-nil-points))
         too-many-series?             (> (count limited-series) max-series-for-correlations)
         opts                         (cond-> opts
                                        too-many-series? (assoc :max-correlation-series max-series-for-correlations))

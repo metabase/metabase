@@ -61,8 +61,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   (when (empty? series)
     (throw (ex-info "This chart has no series data to analyze."
                     {:agent-error? true, :type ::malformed-chart-config})))
-  (doseq [[series-name {:keys [y_values]}] series]
-    (when (empty? y_values)
+  (doseq [[series-name {:keys [x_values y_values]}] series]
+    (when (or (every? nil? x_values) (every? nil? y_values))
       (throw (ex-info (format "Series \"%s\" has no data points to analyze." series-name)
                       {:agent-error? true, :type ::malformed-chart-config, :series series-name})))
     (when (non-numeric-y-value? y_values)
