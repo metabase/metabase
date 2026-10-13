@@ -642,13 +642,17 @@
 
 (defn- check-jwt-bearer-request!
   "Throw `ex-info` carrying the RFC 6749 `:error` and `:error-description` when the JWT bearer grant request `body` is
-  refused whatever its assertion says: the grant is off, there is no assertion, `scopes` holds a scope the MCP endpoint
-  does not accept, or the `resource` is not the MCP endpoint."
+  refused whatever its assertion says: the grant or the MCP server is off, there is no assertion, `scopes` holds a
+  scope the MCP endpoint does not accept, or the `resource` is not the MCP endpoint."
   [{:keys [assertion resource]} scopes]
   (cond
     (not (oauth-server/jwt-bearer-grant-enabled?))
     (throw (ex-info "JWT authentication is not enabled"
                     {:error "unsupported_grant_type", :error-description "JWT authentication is not enabled."}))
+
+    (not (mcp/mcp-enabled?))
+    (throw (ex-info "the MCP server is not enabled"
+                    {:error "unsupported_grant_type", :error-description "The MCP server is not enabled."}))
 
     (str/blank? assertion)
     (throw (ex-info "no assertion was sent"

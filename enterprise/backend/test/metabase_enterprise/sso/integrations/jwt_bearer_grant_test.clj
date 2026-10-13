@@ -183,13 +183,25 @@
 
 (deftest exchange-unsupported-test
   (with-jwt-bearer-setup!
-    (let [params {:assertion (assertion {:email "rasta@metabase.com"})}]
+    (let [email   "jwt-bearer-unsupported@metabase.com"
+          refused (fn []
+                    (is (=? {:error "unsupported_grant_type"}
+                            (:body (token-response 400 {:assertion (assertion {:email email})}))))
+                    (is (not (t2/exists? :model/User :email email)))
+                    (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))
+                    (is (not (t2/exists? :model/AuditLog :topic "mcp-token-issued"))))]
       (testing "without the sso-jwt feature"
         (mt/with-premium-features #{}
-          (is (=? {:error "unsupported_grant_type"} (:body (token-response 400 params))))))
+          (refused)))
       (testing "with JWT authentication off"
         (mt/with-temporary-setting-values [jwt-enabled false]
-          (is (=? {:error "unsupported_grant_type"} (:body (token-response 400 params)))))))))
+          (refused)))
+      (testing "with the MCP server off"
+        (mt/with-temporary-setting-values [mcp-enabled? false]
+          (refused)))
+      (testing "with AI features off"
+        (mt/with-temporary-setting-values [ai-features-enabled? false]
+          (refused))))))
 
 (deftest token-drives-mcp-test
   (testing "the token drives MCP as the user the JWT names, and the usage and audit rows land on that user"
