@@ -1,5 +1,5 @@
 (ns metabase.sql-parsing.core
-  "Stateless SQL parsing via sqlglot (Python) and GraalVM Polyglot.
+  "Stateless SQL parsing via GraalPy or Java SQLGlot.
 
   This module provides dialect-aware SQL parsing with no Metabase dependencies.
   All functions take strings and return strings/simple data structures.
@@ -11,7 +11,7 @@
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
-  GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
+  GraalPy or Java implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
   owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]

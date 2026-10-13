@@ -230,7 +230,7 @@
   [sql :- :string
    from-dialect :- [:maybe :string]
    to-dialect :- [:maybe :string]]
-  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+  (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
 
 (defn validate-executable-stmt
