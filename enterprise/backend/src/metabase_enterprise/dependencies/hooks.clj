@@ -19,9 +19,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- trigger-jobs!*
-  "Trigger the backfill and entity-check jobs once for a batch of writes."
-  [_writes]
+(defn- trigger-jobs-now!
+  "Trigger the backfill and entity-check jobs, logging rather than throwing a failure."
+  []
   (try
     (task.backfill/trigger-backfill-job!)
     (task.entity-check/trigger-entity-check-job!)
@@ -29,7 +29,7 @@
       (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))
 
 (def ^:private trigger-jobs-queue
-  (delay (grouper/start! #'trigger-jobs!* :capacity 500 :interval 1000)))
+  (delay (grouper/start! (fn [_writes] (trigger-jobs-now!)) :capacity 500 :interval 1000)))
 
 (defn- trigger-jobs!
   "Have the backfill and entity-check jobs triggered for this write, once it commits, together with the others in its
@@ -206,5 +206,4 @@
   "Restart the backfill and entity-check jobs, which stop while the dependencies feature is disabled."
   :feature :dependencies
   []
-  (task.backfill/trigger-backfill-job!)
-  (task.entity-check/trigger-entity-check-job!))
+  (trigger-jobs-now!))
