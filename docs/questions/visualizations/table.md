@@ -49,13 +49,13 @@ To change the width of a column, you can click and drag the edges of the column'
 
 ## Stripe rows
 
-To make wide tables easier to read across, you can shade every other row.
+To make wide tables easier to read, you can shade every other row.
 
 1. Click the **gear** icon in the bottom left to open visualization settings.
 2. Switch to the **Display** tab.
 3. Toggle on **Striped rows**.
 
-Striped rows also apply when the table is sent in a [dashboard subscription or alert](../../dashboards/subscriptions.md). Any [conditional formatting](#conditional-table-formatting) colors take precedence over the stripe.
+Striped rows also apply when the table is sent in a [dashboard subscription or alert](../../dashboards/subscriptions.md). Any [conditional formatting](#conditional-table-formatting) colors take precedence over the striped row effect.
 
 ## Freeze columns or rows
 
