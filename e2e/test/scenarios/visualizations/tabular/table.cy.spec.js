@@ -12,7 +12,6 @@ describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/field/*/search/*").as("findSuggestions");
   });
 
   function joinTable(table) {
@@ -436,6 +435,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
+    cy.intercept("GET", "/api/field/*/search/*").as("findSuggestions");
     H.openPeopleTable();
     H.tableHeaderClick("Password");
 
@@ -694,6 +694,35 @@ describe("scenarios > visualizations > table", () => {
       H.tableInteractive().should("be.visible");
       cy.findByTestId("visualization-root").icon("warning").should("not.exist");
     });
+  });
+
+  it("should preserve DOM elements for visible rows during scrolling", () => {
+    H.openOrdersTable();
+
+    const targetDatasetIndex = 15;
+    const firstRowSelector = '[role=row][data-dataset-index="0"]';
+
+    H.tableInteractiveBody().find(firstRowSelector).should("exist");
+    H.tableInteractiveBody()
+      .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
+      .then(($row) => {
+        const originalElement = $row[0];
+
+        H.tableInteractiveScrollContainer().then(($container) => {
+          const currentScroll = $container[0].scrollTop;
+          $container[0].scrollTop =
+            currentScroll + 36 * (targetDatasetIndex - 1);
+        });
+
+        H.tableInteractiveBody().find(firstRowSelector).should("not.exist");
+        H.tableInteractiveBody()
+          .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
+          .should("exist")
+          .then(($rowAfterScroll) => {
+            // Row has always been visible so it should use the same html node
+            expect($rowAfterScroll[0]).to.equal(originalElement);
+          });
+      });
   });
 });
 
@@ -1428,35 +1457,6 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
 
     // And you should find the result
     cy.findByRole("gridcell", { name: "6:34:00.000 PM" });
-  });
-
-  it("should preserve DOM elements for visible rows during scrolling", () => {
-    H.openOrdersTable();
-
-    const targetDatasetIndex = 15;
-    const firstRowSelector = '[role=row][data-dataset-index="0"]';
-
-    H.tableInteractiveBody().find(firstRowSelector).should("exist");
-    H.tableInteractiveBody()
-      .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
-      .then(($row) => {
-        const originalElement = $row[0];
-
-        H.tableInteractiveScrollContainer().then(($container) => {
-          const currentScroll = $container[0].scrollTop;
-          $container[0].scrollTop =
-            currentScroll + 36 * (targetDatasetIndex - 1);
-        });
-
-        H.tableInteractiveBody().find(firstRowSelector).should("not.exist");
-        H.tableInteractiveBody()
-          .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
-          .should("exist")
-          .then(($rowAfterScroll) => {
-            // Row has always been visible so it should use the same html node
-            expect($rowAfterScroll[0]).to.equal(originalElement);
-          });
-      });
   });
 });
 
