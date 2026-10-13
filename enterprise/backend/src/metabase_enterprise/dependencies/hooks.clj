@@ -32,18 +32,6 @@
           (reset! trigger-pending? false)
           (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))))
 
-(defn- owner-type
-  "The dependency type of the entity that rows of `model` are, or with `owner-model` are part of."
-  [model {:keys [owner-model]}]
-  (deps.dependency-types/model->dependency-type (or owner-model model)))
-
-(defn- owner-id
-  "The id of the entity that the row `instance` is, or the `owner-id` of the entity it is part of."
-  [instance {:keys [owner-model owner-id]}]
-  (if owner-model
-    owner-id
-    (:id instance)))
-
 (defn- owner-created!
   "Have the jobs pick up a created entity, which has no id before the insert and no status or findings yet."
   []
@@ -68,24 +56,25 @@
   (trigger-jobs!))
 
 (defenterprise entity-inserted!
-  "Have the jobs pick up an inserted entity, which has no status or findings yet, or mark the entity a `model` row is
-  being inserted into for recalculation."
+  "Have the jobs pick up an inserted entity, or mark the entity a `model` row is being inserted into for recalculation."
   :feature :dependencies
-  [model instance opts]
-  (if (:owner-model opts)
-    (owner-changed! (owner-type model opts) (owner-id instance opts))
+  [_model _instance {:keys [owner-model owner-id]}]
+  (if owner-model
+    (owner-changed! (deps.dependency-types/model->dependency-type owner-model) owner-id)
     (owner-created!)))
 
 (defenterprise entity-updated!
   "Mark the entity an updated `model` row is, or is part of, for recalculation."
   :feature :dependencies
-  [model instance opts]
-  (owner-changed! (owner-type model opts) (owner-id instance opts)))
+  [model instance {:keys [owner-model owner-id]}]
+  (if owner-model
+    (owner-changed! (deps.dependency-types/model->dependency-type owner-model) owner-id)
+    (owner-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
 (defenterprise entity-deleted!
   "Drop the dependencies of a deleted entity, or mark the entity a `model` row is deleted from for recalculation."
   :feature :dependencies
-  [model instance opts]
-  (if (:owner-model opts)
-    (owner-changed! (owner-type model opts) (owner-id instance opts))
-    (owner-deleted! (owner-type model opts) (owner-id instance opts))))
+  [model instance {:keys [owner-model owner-id]}]
+  (if owner-model
+    (owner-changed! (deps.dependency-types/model->dependency-type owner-model) owner-id)
+    (owner-deleted! (deps.dependency-types/model->dependency-type model) (:id instance))))
