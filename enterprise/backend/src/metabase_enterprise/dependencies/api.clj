@@ -338,9 +338,10 @@
                  (t2/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
     (:segment :measure) (t2/hydrate entities :creator [:table :db])
-    :action (-> entities
-                (t2/hydrate :creator [:collection :is_personal])
-                (->> (map collection.root/hydrate-root-collection)))))
+    :action (let [roots {true  (collection.root/hydrated-root-collection :data-actions)
+                         false (collection.root/hydrated-root-collection)}]
+              (->> (t2/hydrate entities :creator [:collection :is_personal])
+                   (map #(collection.root/hydrate-root-collection % (roots (nil? (:model_id %)))))))))
 
 (defn- fetch-and-hydrate-nodes
   "Fetches and hydrates entities for the given nodes.

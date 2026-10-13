@@ -934,6 +934,19 @@
                        :model/Action {unreadable-id :id} {:type          :query
                                                           :name          "Delete venue"
                                                           :collection_id (:id unreadable-collection)}
+                       :model/Action {root-id :id} {:type :query
+                                                    :name "Archive venue"}
+                       :model/QueryAction _ {:action_id     root-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                  (str "DELETE FROM venues WHERE id IN "
+                                                                                       "(SELECT id FROM {{#" model-id "}})"))
+                                                                (lib/with-template-tags
+                                                                  {(str "#" model-id) {:id           "model-tag"
+                                                                                       :type         :card
+                                                                                       :name         (str "#" model-id)
+                                                                                       :display-name "Venues model"
+                                                                                       :card-id      model-id}}))}
                        :model/QueryAction _ {:action_id     unreadable-id
                                              :database_id   (mt/id)
                                              :dataset_query (-> (lib/native-query (mt/metadata-provider)
@@ -956,7 +969,8 @@
                                     (map (juxt :type :id (comp :name :data) (comp (juxt :name :namespace) :collection :data)))
                                     set))]
               (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]
-                       ["action" unreadable-id "Delete venue" [(:name unreadable-collection) "data-actions"]]}
+                       ["action" unreadable-id "Delete venue" [(:name unreadable-collection) "data-actions"]]
+                       ["action" root-id "Archive venue" ["Data actions" "data-actions"]]}
                      (dependents :crowberto)))
               (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]}
                      (dependents :rasta))))))))))

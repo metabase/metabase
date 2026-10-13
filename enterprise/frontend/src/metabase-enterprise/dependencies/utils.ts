@@ -1,6 +1,9 @@
 import { c, msgid, ngettext, t } from "ttag";
 
-import { getCollectionPathAsArray } from "metabase/common/collections/utils";
+import {
+  getCollectionPathAsArray,
+  isRootCollection,
+} from "metabase/common/collections/utils";
 import * as Urls from "metabase/urls";
 import type { NamedUser } from "metabase/utils/user";
 import { visualizations } from "metabase/viz-core";
@@ -354,7 +357,11 @@ export function getNodeLocationInfo(
 function getDataActionLocationInfo(
   collection: Collection | null | undefined,
 ): NodeLocationInfo {
-  if (collection?.namespace === "data-actions") {
+  if (
+    collection != null &&
+    collection.namespace === "data-actions" &&
+    !isRootCollection(collection)
+  ) {
     return {
       icon: "collection",
       links: [

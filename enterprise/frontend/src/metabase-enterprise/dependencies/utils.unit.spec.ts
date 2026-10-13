@@ -488,15 +488,29 @@ describe("getNodeLocationInfo", () => {
     });
   });
 
-  it("should link an action outside a data actions folder to the Data Studio actions root", () => {
-    const node = createMockActionDependencyNode({
-      data: createMockActionDependencyNodeData({ collection: null }),
-    });
-    expect(getNodeLocationInfo(node)).toEqual({
-      icon: "collection",
-      links: [{ label: "Data actions", url: "/data-studio/actions" }],
-    });
-  });
+  it.each([
+    { name: "without a collection", collection: null },
+    {
+      name: "in the data actions root",
+      collection: createMockCollection({
+        id: "root",
+        name: "Data actions",
+        namespace: "data-actions",
+        location: undefined,
+      }),
+    },
+  ])(
+    "should link an action $name to the Data Studio actions root",
+    ({ collection }) => {
+      const node = createMockActionDependencyNode({
+        data: createMockActionDependencyNodeData({ collection }),
+      });
+      expect(getNodeLocationInfo(node)).toEqual({
+        icon: "collection",
+        links: [{ label: "Data actions", url: "/data-studio/actions" }],
+      });
+    },
+  );
 
   it("should return null for an action of a model", () => {
     const node = createMockActionDependencyNode({
