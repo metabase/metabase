@@ -1,5 +1,6 @@
 import type {
   OmniPickerCollectionItem,
+  OmniPickerCollectionItemValue,
   OmniPickerItem,
   OmniPickerQuestionItem,
   OmniPickerTableItem,
@@ -99,6 +100,29 @@ export function getDashboardPickerItem(
   return { id: node.id, model: "dashboard", name: node.data.name };
 }
 
+export function getSnippetPickerItem(
+  node: DependencyNode,
+): OmniPickerCollectionItemValue | undefined {
+  if (node.type !== "snippet") {
+    return;
+  }
+  return { id: node.id, model: "snippet", namespace: "snippets" };
+}
+
+export function getActionPickerItem(
+  node: DependencyNode,
+): OmniPickerCollectionItemValue | undefined {
+  if (node.type !== "action") {
+    return;
+  }
+  const isDataAction = node.data.model_id == null;
+  return {
+    id: node.id,
+    model: "action",
+    namespace: isDataAction ? "data-actions" : null,
+  };
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): OmniPickerValue | undefined {
@@ -108,7 +132,9 @@ export function getEntryPickerItem(
     getQuestionPickerItem(node) ??
     getModelPickerItem(node) ??
     getMetricPickerItem(node) ??
-    getDashboardPickerItem(node)
+    getDashboardPickerItem(node) ??
+    getSnippetPickerItem(node) ??
+    getActionPickerItem(node)
   );
 }
 
@@ -121,6 +147,10 @@ export function getEntryPickerValue(
     item.model === "schema"
   ) {
     return;
+  }
+
+  if (item.model === "snippet" || item.model === "action") {
+    return { id: item.id, type: item.model };
   }
 
   // Unjustified type cast. FIXME
