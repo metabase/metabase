@@ -14,6 +14,11 @@ import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
 
+export type DependencyCountsResponse = {
+  breaking: number;
+  unreferenced: number;
+};
+
 export type DependencyId = number;
 
 export const DEPENDENCY_TYPES = [

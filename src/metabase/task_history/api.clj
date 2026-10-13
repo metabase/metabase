@@ -188,6 +188,15 @@
      :started-at-start  start
      :started-at-end    end}))
 
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:tasks ms/IntGreaterThanOrEqualToZero]
+                                           [:runs ms/IntGreaterThanOrEqualToZero]]
+  "Count all retained task history rows and task runs for the Monitor tabs."
+  [_route-params _query-params _body _request]
+  (perms/check-has-application-permission :monitoring)
+  {:tasks (task-history/total nil)
+   :runs (task-history.db/task-run-count (run-filters nil))})
+
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
   [_

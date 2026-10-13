@@ -310,6 +310,17 @@
                        :sort_column       sort_column
                        :sort_direction    sort_direction}))
 
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:all ms/IntGreaterThanOrEqualToZero]
+                                           [:failing ms/IntGreaterThanOrEqualToZero]
+                                           [:ownerless ms/IntGreaterThanOrEqualToZero]]
+  "Count active alerts in the All, Failing, and Ownerless Monitor tabs."
+  [_route-params _query-params _body _request]
+  (api/check-superuser)
+  {:all       (notification.db/admin-notifications-count {:active true})
+   :failing   (notification.db/admin-notifications-count {:active true :last_check_status :failing})
+   :ownerless (notification.db/admin-notifications-count {:active true :creatorless true})})
+
 ;; ---------------------------------------------------------------------------
 ;; Detail endpoint helpers
 ;; ---------------------------------------------------------------------------

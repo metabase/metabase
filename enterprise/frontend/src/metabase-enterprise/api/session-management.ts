@@ -1,6 +1,7 @@
 import type {
   RevokeSessionsRequest,
   RevokeSessionsResponse,
+  SessionCountsResponse,
   SessionListParams,
   SessionListResponse,
 } from "metabase-types/api";
@@ -18,6 +19,14 @@ export const sessionManagementApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (response) =>
         response ? provideSessionListTags(response.data) : [],
+    }),
+
+    sessionCounts: builder.query<SessionCountsResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/session-management/counts",
+      }),
+      providesTags: [listTag("session")],
     }),
 
     revokeSessions: builder.mutation<
@@ -39,4 +48,5 @@ export const {
   useListSessionsQuery,
   useLazyListSessionsQuery,
   useRevokeSessionsMutation,
+  useSessionCountsQuery,
 } = sessionManagementApi;
