@@ -88,11 +88,13 @@
 (defn- render-scope-list
   "Render the requested OAuth scopes as a hiccup list of checkboxes named `granted_scope`, so the user sees exactly
    what they're granting and picks which of it to grant. `scopes` is a vector of
-   `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
-   in order.
+   `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>
+   :turned-off? <bool>}` maps, rendered in order.
 
    Every scope starts ticked. A `:locked?` scope is also disabled and labelled as always granted; every other scope can
-   be unticked. A `:full-access?` scope carries the full-access warning in its own row.
+   be unticked. A `:full-access?` scope carries the full-access warning in its own row. A `:turned-off?` scope is
+   labelled as turned off by an admin but stays ticked: granting it costs nothing, and lets its tools work as soon as
+   the admin turns them back on, with no reconnect.
 
    Shows the human description and the raw scope string: the description is readable, the raw string
    is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
@@ -101,7 +103,7 @@
   [scopes client-name]
   (when (seq scopes)
     [:ul.scopes
-     (for [{:keys [scope description full-access? locked?]} scopes]
+     (for [{:keys [scope description full-access? locked? turned-off?]} scopes]
        [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
         [:label
          [:input {:type "checkbox" :name "granted_scope" :value scope :checked true :disabled locked?}]
@@ -109,8 +111,9 @@
           (if full-access? [:strong description] [:span description])
           (when (not= description scope)
             [:span.raw scope])]
-         (when locked?
-           [:span.always "Always granted"])]
+         (cond
+           locked?     [:span.always "Always granted"]
+           turned-off? [:span.always "Turned off by an admin"])]
         (when full-access?
           (full-access-warning client-name))])]))
 

@@ -198,6 +198,19 @@
                    (vals @tools*)))
     (mcp.perms/tool-allowed? policy tool)))
 
+(defn scopes-with-no-allowed-tool
+  "The scopes, of `scopes`, whose every tool the current user's groups deny. A scope that gates no registered tool is
+   never in the result, since there is nothing for the groups to deny."
+  [scopes]
+  (let [policy (mcp.perms/policy-for-current-user)
+        tools  (remove app-only? (vals @tools*))]
+    (into #{}
+          (filter (fn [scope]
+                    (let [gated (filter #(= scope (:scope %)) tools)]
+                      (and (seq gated)
+                           (not-any? #(tool-allowed? policy %) gated)))))
+          scopes)))
+
 (defn tool-catalog
   "Every registered tool an admin can allow or deny, as `{:name :scope :description :default_access}`, sorted by
    scope then name; `:description` is the first sentence of the tool's own and `:default_access` is `\"allowed\"` or

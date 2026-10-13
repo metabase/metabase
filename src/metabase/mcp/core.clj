@@ -3,6 +3,7 @@
    rather than reaching into internal namespaces like [[metabase.mcp.settings]]."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
@@ -77,6 +78,16 @@
     (condp #(str/starts-with? %2 %1) raw-origin
       "vscode-webview://" (vscode-webview-enabled?)
       false)))
+
+(defn scopes-turned-off-for-current-user
+  "The scopes, of `scopes`, that would let the current user do nothing today: an admin denies every tool they gate to
+   the user's groups, or, for `agent:sql:run`, has turned raw SQL off with `mcp-execute-sql-enabled`. A grant of one
+   still takes effect the moment the admin turns its tools back on."
+  [scopes]
+  (cond-> (registry/scopes-with-no-allowed-tool scopes)
+    (and (some #{"agent:sql:run"} scopes)
+         (not (agent-api.settings/mcp-execute-sql-enabled)))
+    (conj "agent:sql:run")))
 
 (defn all-scopes
   "All supported OAuth scopes, as a sorted set: those declared on agent-api endpoints via defendpoint metadata, plus
