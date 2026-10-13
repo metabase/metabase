@@ -400,46 +400,17 @@ export function restoreParametersAndReferences(
   parameterIds: ParameterId[],
 ) {
   const restoredIds = new Set(parameterIds);
-  const originalById = new Map(
-    originalParameters.map((parameter) => [parameter.id, parameter]),
+  const parametersToRestore = originalParameters.filter(({ id }) =>
+    restoredIds.has(id),
   );
 
   updateParameters(dispatch, getState, (parameters) => {
-    const withRestoredReferences = parameters.map((current) => {
-      const removedReferences = (
-        originalById.get(current.id)?.filteringParameters ?? []
-      ).filter((id) => restoredIds.has(id));
-      return removedReferences.length > 0
-        ? {
-            ...current,
-            filteringParameters: [
-              ...(current.filteringParameters ?? []),
-              ...removedReferences,
-            ],
-          }
-        : current;
-    });
-
-    const nextParameters = originalParameters.reduce<Parameter[]>(
-      (result, original, index) => {
-        const isAlreadyPresent = result.some(({ id }) => id === original.id);
-        if (!restoredIds.has(original.id) || isAlreadyPresent) {
-          return result;
-        }
-        const previousPresentParameter = originalParameters
-          .slice(0, index)
-          .reverse()
-          .find((previous) => result.some(({ id }) => id === previous.id));
-        const insertAt = previousPresentParameter
-          ? result.findIndex(({ id }) => id === previousPresentParameter.id) + 1
-          : 0;
-        return [
-          ...result.slice(0, insertAt),
-          original,
-          ...result.slice(insertAt),
-        ];
-      },
-      withRestoredReferences,
+    const nextParameters = parametersToRestore.reduce(
+      (result, parameter) =>
+        insertAfterOriginalPredecessor(result, parameter, originalParameters),
+      parameters.map((parameter) =>
+        restoreReferences(parameter, originalParameters, restoredIds),
+      ),
     );
 
     const nextIds = new Set(nextParameters.map(({ id }) => id));
@@ -454,6 +425,66 @@ export function restoreParametersAndReferences(
         : parameter,
     );
   });
+}
+
+/**
+ * Returns `parameters` with `parameter` inserted right after the nearest
+ * parameter that came before it in `originalParameters` and is still present,
+ * or at the start if there is none. Unchanged if `parameter` is already there.
+ */
+function insertAfterOriginalPredecessor(
+  parameters: Parameter[],
+  parameter: Parameter,
+  originalParameters: Parameter[],
+): Parameter[] {
+  const isPresent = (id: ParameterId) =>
+    parameters.some((current) => current.id === id);
+  if (isPresent(parameter.id)) {
+    return parameters;
+  }
+
+  const originalIndex = originalParameters.findIndex(
+    ({ id }) => id === parameter.id,
+  );
+  const predecessor = originalParameters
+    .slice(0, Math.max(originalIndex, 0))
+    .reverse()
+    .find(({ id }) => isPresent(id));
+  const insertAt = predecessor
+    ? parameters.findIndex(({ id }) => id === predecessor.id) + 1
+    : 0;
+
+  return [
+    ...parameters.slice(0, insertAt),
+    parameter,
+    ...parameters.slice(insertAt),
+  ];
+}
+
+/**
+ * Returns `parameter` with the references to `restoredIds` it had in
+ * `originalParameters` added back to its current ones.
+ */
+function restoreReferences(
+  parameter: Parameter,
+  originalParameters: Parameter[],
+  restoredIds: Set<ParameterId>,
+): Parameter {
+  const original = originalParameters.find(({ id }) => id === parameter.id);
+  const removedReferences = (original?.filteringParameters ?? []).filter((id) =>
+    restoredIds.has(id),
+  );
+  if (removedReferences.length === 0) {
+    return parameter;
+  }
+
+  return {
+    ...parameter,
+    filteringParameters: [
+      ...(parameter.filteringParameters ?? []),
+      ...removedReferences,
+    ],
+  };
 }
 
 export const removeParameter = createThunkAction(
