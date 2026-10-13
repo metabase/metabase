@@ -130,6 +130,11 @@ function mapMysqlValues(parsedValues: RegexFields) {
       objectToString(parsedValues.params, ["ssl"]),
     ],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 

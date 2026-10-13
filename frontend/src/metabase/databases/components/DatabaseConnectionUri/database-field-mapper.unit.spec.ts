@@ -1,14 +1,56 @@
+import { getSubmitValues } from "metabase/databases/utils/schema";
 import { checkNotNull } from "metabase/utils/types";
+import type { EngineKey } from "metabase-types/api";
+import {
+  createMockDatabaseData,
+  createMockEngine,
+} from "metabase-types/api/mocks";
 
 import { mapDatabaseValues } from "./database-field-mapper";
 import { parseConnectionUriRegex } from "./parse-connection-regex";
 
-function mapConnectionString(connectionString: string, engineKey: "redshift") {
+function mapConnectionString(
+  connectionString: string,
+  engineKey: EngineKey,
+): Map<string, string | boolean | undefined> {
   const parsedValues = checkNotNull(
     parseConnectionUriRegex(connectionString, engineKey),
   );
   return mapDatabaseValues(parsedValues, engineKey);
 }
+
+describe("mapDatabaseValues - mysql", () => {
+  it("should preserve public key retrieval in submitted connection details", () => {
+    const fieldsMap = mapConnectionString(
+      "jdbc:mysql://metabase:password@localhost:3304/sample?allowPublicKeyRetrieval=true",
+      "mysql",
+    );
+    const engine = createMockEngine({
+      "details-fields": [
+        {
+          name: "additional-options",
+          "visible-if": { "advanced-options": true },
+        },
+      ],
+    });
+    const submitted = getSubmitValues(
+      engine,
+      createMockDatabaseData({
+        name: "sample",
+        engine: "mysql",
+        details: {
+          "advanced-options": fieldsMap.get("details.advanced-options"),
+          "additional-options": fieldsMap.get("details.additional-options"),
+        },
+      }),
+      true,
+    );
+
+    expect(submitted.details?.["additional-options"]).toBe(
+      "allowPublicKeyRetrieval=true",
+    );
+  });
+});
 
 describe("mapDatabaseValues - redshift", () => {
   it("should map UID and PWD to dedicated fields and keep unmapped params in additional options", () => {
