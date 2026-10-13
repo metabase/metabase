@@ -272,7 +272,7 @@ function GaugeComponent({
             top={svgTop + (arcCenterY + y) * svgScale}
             style={{ transform: "translate(-50%, -50%)" }}
           >
-            <GoalWarningIcon errors={errors} />
+            <GoalWarningIcon errors={errors} source="color-ranges" />
           </Box>
         );
       })}

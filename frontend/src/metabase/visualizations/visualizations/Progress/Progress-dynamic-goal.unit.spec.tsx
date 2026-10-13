@@ -131,7 +131,10 @@ describe("progress chart dynamic goal", () => {
     });
 
     await userEvent.hover(await screen.findByLabelText("Goal warning"));
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't get the goal value"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("boom")).toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 

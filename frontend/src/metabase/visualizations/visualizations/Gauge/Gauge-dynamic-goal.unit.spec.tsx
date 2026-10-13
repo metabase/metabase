@@ -76,7 +76,10 @@ describe("gauge dynamic goal", () => {
     expect(screen.queryByText("100")).not.toBeInTheDocument();
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't get some color range values"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("boom")).toBeInTheDocument();
   });
 
   it("renders the ranges that resolve without a warning outside the query builder", async () => {

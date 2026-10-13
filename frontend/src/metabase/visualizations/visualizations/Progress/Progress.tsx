@@ -227,7 +227,7 @@ function ProgressComponent(props: VisualizationProps) {
           <span className={CS.floatLeft}>0</span>
           <Flex className={CS.floatRight} align="center" gap="xs">
             {isQueryBuilder && goalErrors.length > 0 && (
-              <GoalWarningIcon errors={goalErrors} />
+              <GoalWarningIcon errors={goalErrors} source="goal" />
             )}
             {hasValidGoal
               ? t`Goal ${formatValue(goal, columnSettings)}`
