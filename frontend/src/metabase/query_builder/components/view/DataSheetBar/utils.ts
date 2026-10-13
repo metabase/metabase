@@ -3,6 +3,19 @@ import type Question from "metabase-lib/v1/Question";
 
 import { getDataLabel } from "../SummarySheet/utils";
 
+const DEFAULT_COLUMN_NAME_MAX_LENGTH = 40;
+
+/** A readable default name for a formula: `[Price] / 2` becomes "Price / 2". */
+export function getDefaultColumnName(source: string): string {
+  const name = source
+    .replace(/\[([^\]]*)\]?/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  return name.length > DEFAULT_COLUMN_NAME_MAX_LENGTH
+    ? `${name.slice(0, DEFAULT_COLUMN_NAME_MAX_LENGTH - 1).trimEnd()}…`
+    : name;
+}
+
 /** "Sample Database / Orders": the database and the table (or saved question) the data tab shows. */
 export function getDataPath(question: Question): string {
   const databaseName = question.database()?.displayName();

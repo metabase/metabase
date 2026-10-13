@@ -18,6 +18,8 @@ import type {
   MetabotStateContext,
   RegenerateSuggestedMetabotPromptsResponse,
   SaveMetabotEntityRequest,
+  SuggestCustomColumnNameRequest,
+  SuggestCustomColumnNameResponse,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
@@ -165,6 +167,16 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    suggestCustomColumnName: builder.mutation<
+      SuggestCustomColumnNameResponse,
+      SuggestCustomColumnNameRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/metabot/column-name",
+        body,
+      }),
+    }),
     updateMetabotSlackSettings: builder.mutation<
       { ok: boolean },
       MetabotSlackSettings
@@ -203,5 +215,6 @@ export const {
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
+  useSuggestCustomColumnNameMutation,
   useGetUserMetabotPermissionsQuery,
 } = metabotApi;
