@@ -21,6 +21,7 @@
 
 (defn- do-with-request-cancellation
   "Call `thunk` with the QP's cancellation channel fed from `request-chan`, when there is one.
+   `request-chan` must be a promise channel, so that every query of the request and every poll sees its value.
    Each query gets a channel of its own. The QP closes its channel when a query ends and writes to it when one times
    out, and on a channel shared by the turn either would cancel every later query."
   [request-chan thunk]
@@ -38,6 +39,17 @@
           (a/close! done-chan))))
     (thunk)))
 
+(defn- request-canceled?
+  [request-chan]
+  (some? (some-> request-chan a/poll!)))
+
+(defn- query-canceled
+  "An agent error for a query that did not finish because the request it served was canceled."
+  []
+  (ex-info (tru "Query canceled: the request ended before the query finished.")
+           {:agent-error? true
+            :error        :query-canceled}))
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
@@ -50,16 +62,27 @@
                                         :max-results-bare-rows row-limit}
                           :info        {:executed-by api/*current-user-id*
                                         :context     context}))
-        result (do-with-request-cancellation request-canceled-chan #(qp/process-query query))]
+        ;; A canceled run comes back from the QP as a failure, as nothing, or as an exception, depending on how far
+        ;; it got. Each is reported as a cancellation, so a stored tool result never reads as a broken query.
+        result (try
+                 (when (request-canceled? request-canceled-chan)
+                   (throw (query-canceled)))
+                 (do-with-request-cancellation request-canceled-chan #(qp/process-query query))
+                 (catch Throwable e
+                   (throw (if (request-canceled? request-canceled-chan)
+                            (query-canceled)
+                            e))))]
     (when-not (= (:status result) :completed)
-      (throw (ex-info (if-let [error (:error result)]
-                        (tru "Query failed: {0}" error)
-                        (tru "Query failed: unknown error"))
-                      {:agent-error?       true
-                       :error              :query-failed
-                       :query-error        (:error result)
-                       ;; The QP's own refusal, as opposed to an error from the database.
-                       :permissions-error? (= :missing-required-permissions (:error_type result))})))
+      (throw (if (request-canceled? request-canceled-chan)
+               (query-canceled)
+               (ex-info (if-let [error (:error result)]
+                          (tru "Query failed: {0}" error)
+                          (tru "Query failed: unknown error"))
+                        {:agent-error?       true
+                         :error              :query-failed
+                         :query-error        (:error result)
+                         ;; The QP's own refusal, as opposed to an error from the database.
+                         :permissions-error? (= :missing-required-permissions (:error_type result))}))))
     result))
 
 (defn execute-page!

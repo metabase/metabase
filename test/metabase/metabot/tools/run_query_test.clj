@@ -877,16 +877,9 @@
                                                     {:query_id (str card-id)})))))))))
 
 (deftest run-query-follows-request-cancellation-test
-  (testing "the query runs on a cancellation channel fed from the one the turn was given"
-    (let [request-chan (a/promise-chan)]
-      (a/>!! request-chan :canceled)
-      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-        (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query]
-                                                       {:status :completed
-                                                        :data   {:cols [{:display_name "Canceled"}]
-                                                                 :rows [[(some? (first (a/alts!! [qp.pipeline/*canceled-chan*
-                                                                                                  (a/timeout 5000)])))]]}})]
-          (is (=? {:output #"(?s).*\| true \|.*"}
-                  (call-tool-in-conversation! {:state                 {:queries {"q1" (venues-count)}}
-                                               :request-canceled-chan request-chan}
-                                              {:query_id "q1"}))))))))
+  (testing "a turn whose request is canceled runs nothing, and tells the model so in place of a query failure"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (=? {:output #"Query canceled.*"}
+              (call-tool-in-conversation! {:state                 {:queries {"q1" (venues-count)}}
+                                           :request-canceled-chan (doto (a/promise-chan) (a/>!! :canceled))}
+                                          {:query_id "q1"}))))))

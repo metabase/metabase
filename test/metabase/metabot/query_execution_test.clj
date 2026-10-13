@@ -82,6 +82,29 @@
       (testing "a canceled request cancels the query that is running"
         (is (some? (seen! request-chan (fn [query-chan]
                                          (a/>!! request-chan :canceled)
-                                         (canceled query-chan))))))
-      (testing "and every query after it"
-        (is (some? (seen! request-chan canceled)))))))
+                                         (canceled query-chan)))))))))
+
+(deftest execute-page-canceled-run-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [failure #(try
+                     (query-execution/execute-page! (venues-query 3) 3 :agent %)
+                     (catch clojure.lang.ExceptionInfo e
+                       (ex-data e)))]
+      (testing "a request canceled while the driver runs the query reaches the driver, and the run reads as canceled"
+        (let [request-chan (a/promise-chan)
+              driver-saw   (atom nil)]
+          (binding [qp.pipeline/*execute* (fn [_driver _query _respond]
+                                            (a/>!! request-chan :canceled)
+                                            ;; A driver stops when its channel says so, and responds with nothing.
+                                            (reset! driver-saw (first (a/alts!! [qp.pipeline/*canceled-chan*
+                                                                                 (a/timeout 5000)])))
+                                            nil)]
+            (is (=? {:error :query-canceled} (failure request-chan)))
+            (is (some? @driver-saw)))))
+      (testing "a request that is already canceled runs nothing"
+        (let [ran? (atom false)]
+          (binding [qp.pipeline/*execute* (fn [_driver _query _respond]
+                                            (reset! ran? true)
+                                            nil)]
+            (is (=? {:error :query-canceled} (failure (doto (a/promise-chan) (a/>!! :canceled)))))
+            (is (false? @ran?))))))))
