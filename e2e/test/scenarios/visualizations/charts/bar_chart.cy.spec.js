@@ -533,6 +533,13 @@ describe("scenarios > visualizations > bar chart", () => {
           visualization_settings: { "stackable.stack_type": "stacked" },
         });
 
+        cy.findAllByTestId("legend-item")
+          .findByText("Doohickey")
+          .should("be.visible");
+        cy.findByTestId("development-watermark").should(
+          devMode ? "exist" : "not.exist",
+        );
+
         cy.findAllByTestId("legend-item").findByText("Doohickey").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Products").click();

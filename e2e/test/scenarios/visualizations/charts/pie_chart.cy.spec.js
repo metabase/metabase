@@ -321,6 +321,9 @@ describe("scenarios > visualizations > pie chart", () => {
         ],
         ["Doohickey", "Gadget", "Gizmo", "Widget"],
       );
+      cy.findByTestId("development-watermark").should(
+        devMode ? "exist" : "not.exist",
+      );
 
       H.echartsContainer().within(() => {
         cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
