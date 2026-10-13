@@ -24,8 +24,6 @@
    ;; Probed 2026-10-06: the model accepts thinkingLevel LOW. The title call completes.
    ;; Max output: 65,536 tokens.
    ;; https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-8-flash
-   ;; TODO (Paolo 2026-10-07) -- If PR #82436 adds per-model max-output data, move 65,536 there.
-   ;; If that PR keeps a flat cap, delete this note. https://github.com/metabase/metabase/pull/82436
    "google/gemini-3.8-flash" {:context-window 1048576}})
 
 (defn reasoning-model?

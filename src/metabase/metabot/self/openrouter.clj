@@ -84,8 +84,6 @@
    ;; `reasoning.encrypted`. The adapter does not replay `reasoning.encrypted`, and the 4-round
    ;; tool turn worked without it on 2026-10-06.
    ;; Max output: 65,536 tokens (`max_completion_tokens`, https://openrouter.ai/api/v1/models).
-   ;; TODO (Paolo 2026-10-07) -- If PR #82436 adds per-model max-output data, move 65,536 there.
-   ;; If that PR keeps a flat cap, delete this note. https://github.com/metabase/metabase/pull/82436
    "google/gemini-3.8-flash"         {:display-name "Gemini 3.8 Flash"        :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
    ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
