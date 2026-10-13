@@ -6,7 +6,9 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.experiment :as experiment]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defsetting analytics-uuid
   (deferred-tru
@@ -119,6 +121,64 @@
   :visibility :admin
   :export?    true
   :feature    :audit-app)
+
+(def sdk-react-18-hosts-max
+  "The most hosts that [[sdk-react-18-hosts]] keeps."
+  50)
+
+(def ^:private sdk-react-18-hosts-days 4)
+
+(defn- utc-today []
+  (t/local-date (t/instant) (t/zone-id "UTC")))
+
+(defn- recent-sdk-react-18-hosts
+  [hosts today]
+  (let [oldest (str (t/minus today (t/days (dec sdk-react-18-hosts-days))))]
+    (->> hosts
+         (filter #(>= (compare (:last_seen %) oldest) 0))
+         (sort-by :last_seen #(compare %2 %1))
+         (take sdk-react-18-hosts-max)
+         vec)))
+
+(defn- sdk-react-18-hosts-getter []
+  (recent-sdk-react-18-hosts (setting/get-value-of-type :json :sdk-react-18-hosts) (utc-today)))
+
+(defsetting sdk-react-18-hosts
+  (deferred-tru
+   (str "Host apps that used the React embedding SDK with React 18 in the last 4 days, newest first. "
+        "The hostname is null when the host app did not send it."))
+  :type               :json
+  :encryption         :no
+  :visibility         :admin
+  :setter             :none
+  ;; a write does not make every server reload all settings, and a read always goes to the DB
+  :cache?             false
+  :export?            false
+  :doc                false
+  :audit              :never
+  ;; read only by the Embedding hub, by key, so the settings payloads do not read the DB for it
+  :include-in-list?   false
+  :can-read-from-env? false
+  :getter             #'sdk-react-18-hosts-getter)
+
+(mu/defn record-sdk-react-18-host! :- :nil
+  "Saves that `hostname` used the React embedding SDK with React 18 today. Never throws."
+  [hostname :- [:maybe :string]]
+  (try
+    (let [today     (utc-today)
+          last-seen (str today)
+          stored    (sdk-react-18-hosts)]
+      ;; another server can have saved it already today
+      (when-not (some #(and (= (:hostname %) hostname) (= (:last_seen %) last-seen)) stored)
+        (setting/set! :sdk-react-18-hosts
+                      (recent-sdk-react-18-hosts
+                       (cons {:hostname hostname, :last_seen last-seen}
+                             (remove #(= (:hostname %) hostname) stored))
+                       today)
+                      :bypass-read-only? true)))
+    (catch Exception e
+      (log/warn e "Failed to save a host that uses the React embedding SDK with React 18")))
+  nil)
 
 (defsetting experiments-enabled
   (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")

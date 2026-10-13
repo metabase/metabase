@@ -10,6 +10,7 @@ export {
   useGetSettingsQuery,
   useGetVersionInfoQuery,
   useLazyGetSettingsQuery,
+  useListSdkReact18HostsQuery,
   useListTimezonesQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,

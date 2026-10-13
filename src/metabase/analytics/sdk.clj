@@ -10,11 +10,14 @@
   and TODO: send it out in `summarize-execution`."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.config.core :as config]
    [metabase.request.current :as request.current]
    [metabase.request.user-agent :as request.user-agent]
+   [metabase.util :as u]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -263,3 +266,60 @@
                                            response
                                            {:status 500})))
                    (raise response)))))))
+
+(def ^:private loopback-hosts #{"localhost" "127.0.0.1" "[::1]"})
+
+;; The hosts this server already saved in the current hour. Clearing it every hour means a host lost to two writes
+;; at the same time is saved again in the next hour.
+(defonce ^:private react-18-hosts-this-hour (atom {:hour nil, :hosts #{}}))
+
+(defn- first-this-hour?
+  "Return true (and remember `hostname` for `hour`) the first time this server sees `hostname` in `hour`, otherwise
+  false."
+  [hostname hour]
+  (let [[before after] (swap-vals! react-18-hosts-this-hour
+                                   (fn [state]
+                                     (let [hosts (if (= hour (:hour state)) (:hosts state) #{})]
+                                       (if (or (contains? hosts hostname)
+                                               (>= (count hosts) analytics.settings/sdk-react-18-hosts-max))
+                                         state
+                                         {:hour hour, :hosts (conj hosts hostname)}))))]
+    (not (identical? before after))))
+
+(defn- react-18-sdk-request? [{:keys [headers]}]
+  (and (= (get headers "x-metabase-client") "embedding-sdk-react")
+       (some-> (get headers "x-metabase-client-react-version") (str/starts-with? "18."))))
+
+(defn- record-react-18-sdk-host? [{:keys [headers request-method uri metabase-user-id]} {:keys [status]}]
+  (and (= request-method :get)
+       (int? status)
+       (<= 200 status 299)
+       (not= (get headers "x-metabase-embedded-preview") "true")
+       ;; `/api/embed/` endpoints validate the guest token before they return a 2xx
+       (or (some? metabase-user-id)
+           (str/starts-with? uri "/api/embed/"))))
+
+(defn- maybe-record-react-18-sdk-host! [request response]
+  (when (record-react-18-sdk-host? request response)
+    (let [hostname (some-> (extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))
+                           u/lower-case-en)]
+      (when (and (not (contains? loopback-hosts hostname))
+                 (first-this-hour? hostname (t/truncate-to (t/instant) :hours)))
+        (u.jvm/in-virtual-thread*
+         (analytics.settings/record-sdk-react-18-host! hostname))))))
+
+(defn wrap-record-react-18-sdk-host
+  "Ring middleware that saves the host apps that use the React embedding SDK with React 18, so admins can update them
+  before Metabase 66 drops React 18. It must run after authentication, because it trusts `:metabase-user-id`."
+  [handler]
+  (fn [request respond raise]
+    (if-not (react-18-sdk-request? request)
+      (handler request respond raise)
+      (handler request
+               (fn [response]
+                 (try
+                   (maybe-record-react-18-sdk-host! request response)
+                   (catch Throwable e
+                     (log/warn e "Failed to record a host that uses the React embedding SDK with React 18")))
+                 (respond response))
+               raise))))

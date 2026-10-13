@@ -49,7 +49,8 @@
   with-auth-method! get-auth-method
   with-client! get-client
   get-route
-  with-version! get-version]
+  with-version! get-version
+  wrap-record-react-18-sdk-host]
  [metabase.analytics.settings
   anon-tracking-enabled
   anon-tracking-enabled!
