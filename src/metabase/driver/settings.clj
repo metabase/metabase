@@ -232,26 +232,25 @@
   Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
   false)
 
-(def ^:private allowed-sqlite-paths
-  "The exact `:db` path strings SQLite is always permitted to open -- just the bundled Sample Database, registered by
-  the sample-data module. On a hosted instance, SQLite may open nothing else; on self-hosted, a path here is exempt
+(def ^:private sqlite-sample-database-path
+  "The exact `:db` path string of the bundled Sample Database, registered by the sample-data module when it extracts
+  the file, or nil before then. On a hosted instance, SQLite may open no other file; on self-hosted, this one is exempt
   from the `readable-paths` and `writable-paths` allowlists. Exact-string match is enough: a stored Database row
   carries the registered string verbatim, so a match can only name the Sample Database file itself."
-  (atom #{}))
+  (atom nil))
 
-(defn register-allowed-sqlite-path!
-  "Record `path` as a SQLite file the driver's path checks will permit to be opened. Called by the sample-data module
-  for the bundled Sample Database."
+(defn register-sqlite-sample-database-path!
+  "Record `path` as the bundled Sample Database's file, replacing any path recorded before. Called by the sample-data
+  module each time it extracts the file."
   [path]
-  (when path
-    (swap! allowed-sqlite-paths conj path)))
+  (reset! sqlite-sample-database-path path))
 
-(defn sqlite-path-allowed?
-  "Whether `db` (a SQLite `:db` connection detail) names a file the driver's path checks permit -- i.e. the bundled
-  Sample Database registered via [[register-allowed-sqlite-path!]]."
+(defn sqlite-sample-database-path?
+  "Whether `db` (a SQLite `:db` connection detail) is exactly the path registered via
+  [[register-sqlite-sample-database-path!]]."
   [db]
   (boolean (and (string? db)
-                (contains? @allowed-sqlite-paths db))))
+                (= db @sqlite-sample-database-path))))
 
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)

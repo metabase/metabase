@@ -18,7 +18,6 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -149,16 +148,16 @@
     (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
                     {:status-code 400})))
   (doseq [path (db-local-files db)]
-    (system/ensure-readable-path! path)
+    (driver-api/ensure-readable-path! path)
     (when-not read-only?
-      (system/ensure-writable-path! path))))
+      (driver-api/ensure-writable-path! path))))
 
 (defn- sample-database?
   "Whether `details` open the bundled Sample Database the way Metabase does: read-only, at the exact path the
   sample-data module registered."
   [{:keys [db read-only?]}]
   (boolean (and read-only?
-                (driver.settings/sqlite-path-allowed? db))))
+                (driver.settings/sqlite-sample-database-path? db))))
 
 (defmethod driver/validate-db-details! :sqlite
   [_driver details]
