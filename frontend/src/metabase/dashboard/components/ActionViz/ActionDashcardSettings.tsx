@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -13,7 +12,6 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import S from "./ActionDashcardSettings.module.css";
 import {
   ActionParameterMappingForm,
   getTargetKey,
@@ -70,18 +68,14 @@ export function ActionDashcardSettings({
     });
 
   return (
+    // The dialog is a flex column, so a zero minimum lets the panel shrink to the dialog cap
     <Flex
       className={CS.overflowHidden}
-      h="80vh"
+      mih={0}
       miw="50rem"
       data-testid="action-dashcard-settings"
     >
-      <Box
-        className={cx(CS.overflowYAuto, S.scrollFade)}
-        w="20rem"
-        pl="xxl"
-        py="xxl"
-      >
+      <Box className={CS.overflowYAuto} w="20rem" pl="xxl" py="xxl">
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />
       </Box>

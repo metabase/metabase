@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { FormikHelpers } from "formik";
 import { startTransition, useCallback, useEffect, useState } from "react";
 
@@ -16,9 +15,9 @@ import {
 } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
 import {
-  Box,
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+  Paper,
   Title,
 } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
@@ -33,7 +32,6 @@ import type {
 } from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
-import S from "./ActionVizForm.module.css";
 import { shouldShowConfirmation } from "./utils";
 
 export interface ActionFormProps {
@@ -196,10 +194,12 @@ export function ActionVizForm({
   }
 
   return (
-    <Box
-      className={cx(S.border, CS.overflowYAuto)}
+    <Paper
+      className={CS.overflowYAuto}
       p="xl"
-      bg="background_page-primary"
+      radius="sm"
+      shadow="none"
+      withBorder
     >
       <Title order={4} size="h5" lh="normal" mb="xl">
         {title}
@@ -211,6 +211,6 @@ export function ActionVizForm({
         onSubmit={onSubmit}
         onSubmitSuccess={handleSubmitSuccess}
       />
-    </Box>
+    </Paper>
   );
 }
