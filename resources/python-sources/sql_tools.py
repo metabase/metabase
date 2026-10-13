@@ -1934,6 +1934,8 @@ _SQL_EXECUTING_FUNCTIONS = frozenset(
         "openquery", "openrowset", "opendatasource",
         # BigQuery federated query
         "external_query",
+        # Snowflake: run a SQL string as a table function
+        "to_query",
     }
 )
 

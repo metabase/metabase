@@ -385,7 +385,8 @@
       :postgres  "SELECT * FROM dblink('dbname=x', 'DELETE FROM t RETURNING id') AS r(id int)"
       :sqlserver "SELECT * FROM OPENQUERY(loop, 'DELETE FROM t')"
       :sqlserver "SELECT * FROM OPENROWSET('P', 's', 'DELETE FROM t')"
-      :bigquery  "SELECT * FROM EXTERNAL_QUERY('c', 'DELETE FROM t')"))
+      :bigquery  "SELECT * FROM EXTERNAL_QUERY('c', 'DELETE FROM t')"
+      :snowflake "SELECT * FROM TABLE(TO_QUERY('SELECT seq.NEXTVAL'))"))
   (testing "an ordinary read is still read-only"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
       :postgres "SELECT id, name FROM t WHERE id = 5"
