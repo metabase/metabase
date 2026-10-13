@@ -2,7 +2,7 @@ import { startCompletion } from "@codemirror/autocomplete";
 import { EditorSelection, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import cx from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -179,6 +179,13 @@ export function TableFormulaBar({
 
   const isDirty = source.trim() !== appliedSource.trim();
 
+  // CodeMirror reconfigures the editor whenever `onChange` changes, and the
+  // help tooltip sets state on every editor update, so this must stay stable.
+  const handleSourceChange = useCallback((value: string) => {
+    setSource(value);
+    setError(null);
+  }, []);
+
   const handleAppend = (operator: BlockOperator, fn: BlockFunction | null) => {
     const doc = getDoc().trimEnd();
     if (fn) {
@@ -204,10 +211,7 @@ export function TableFormulaBar({
             indentWithTab={false}
             autoCorrect="off"
             data-testid="table-formula-editor"
-            onChange={(value) => {
-              setSource(value);
-              setError(null);
-            }}
+            onChange={handleSourceChange}
           />
         </Box>
         <AddBlockMenu onAppend={handleAppend} />
