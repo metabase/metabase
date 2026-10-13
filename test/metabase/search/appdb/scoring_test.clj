@@ -393,10 +393,11 @@
                        :model/Segment _ {:name "foo segment lib"   :table_id (:id lib-tbl)}
                        :model/Segment _ {:name "foo segment plain" :table_id (:id plain-tbl)}]
           (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
-            (is (= [true true false false]
-                   (map #(str/ends-with? (:name %) " lib") results)))
-            (is (= [true true false false]
-                   (map :curated results)))
+            (is (=? [{:name #".* lib",   :curated true}
+                     {:name #".* lib",   :curated true}
+                     {:name #".* plain", :curated false}
+                     {:name #".* plain", :curated false}]
+                    results))
             (testing "the ingestion-only table collection columns stay out of the response"
               (is (not-any? #(contains? % :table_collection_id) results)))
             (testing "the curated filter keeps the library ones"
@@ -492,9 +493,9 @@
        {:model "card"    :id 2 :name "foo question"}
        {:model "measure" :id 3 :name "foo measure"}
        {:model "segment" :id 4 :name "foo segment"}]
-      (let [ids (map second (search-results* "foo" :context :metabot))]
-        (is (= #{3 4} (set (take 2 ids))))
-        (is (= [2 1] (drop 2 ids)))))))
+      (let [[semantic-layer others] (split-at 2 (map second (search-results* "foo" :context :metabot)))]
+        (is (= [#{3 4} [2 1]]
+               [(set semantic-layer) others]))))))
 
 (deftest metabot-library-weight-test
   (testing "with Metabot weights, library membership outranks type weights"

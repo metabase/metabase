@@ -395,8 +395,7 @@
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest ^:parallel postprocess-search-result-measure-segment-test
-  (testing "measure and segment results carry their base table straight off the index row, and none of the
-            collection-housed fields"
+  (testing "measure and segment results carry their base table from the index row, and no collection fields"
     (doseq [model ["measure" "segment"]]
       (is (= {:id                5
               :type              model
@@ -699,8 +698,7 @@
               (is (not (contains? dash-res :portable_entity_id))))))))))
 
 (deftest measure-segment-search-test
-  (testing "measure and segment hits carry a portable entity id and their base table's portable FK, the same
-            affordances a metric hit gets"
+  (testing "measure and segment hits carry a portable entity id and their base table's portable FK, as metrics do"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Measure

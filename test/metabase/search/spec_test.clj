@@ -130,6 +130,25 @@
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
            (#'search.spec/search-model-hooks (search.spec/spec "collection"))]))))
 
+(deftest ^:parallel measure-parent-table-hooks-test
+  (testing "a measure is reindexed when its parent table, or that table's collection, changes"
+    (is (= #:model{:Table      #{{:search-model "measure"
+                                  :fields       #{:collection_id
+                                                  :db_id
+                                                  :description
+                                                  :display_name
+                                                  :is_published
+                                                  :name
+                                                  :schema}
+                                  :where        [:= :updated.id :this.table_id]}}
+                   :Collection #{{:search-model "measure"
+                                  :fields       #{:location :type}
+                                  :where        [:and
+                                                 [:= :table.is_published true]
+                                                 [:= :updated.id :table.collection_id]]}}}
+           (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/spec "measure"))])
+                        [:model/Table :model/Collection])))))
+
 (deftest ^:parallel search-models-to-update-test
   (is (= #{}
          (search.spec/search-models-to-update (t2/instance :model/Database {}))))

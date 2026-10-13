@@ -185,8 +185,9 @@
                (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true))))))
     (testing "and matches nothing without the :library feature"
       (mt/with-premium-features #{}
-        (is (= (:where (#'search.in-place.filter/build-optional-filter-query :curated "measure" {} true))
-               (:where (#'search.in-place.filter/build-optional-filter-query :verified "dashboard" {} true))))))))
+        (doseq [model ["measure" "segment"]]
+          (is (= [:= [:inline 0] [:inline 1]]
+                 (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true)))))))))
 
 (deftest in-place-curated-table-filter-counts-authoritative-test
   (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
@@ -195,8 +196,7 @@
       (is (some #{"authoritative"} (tree-seq coll? seq where))))))
 
 (deftest in-place-curated-measure-segment-search-test
-  (testing "the in-place engine's curated search keeps measures and segments whose parent table is published into
-            the Library and drops the rest"
+  (testing "the in-place curated search keeps only measures and segments whose parent table is in the Library"
     (search.tu/with-legacy-search
       (mt/with-premium-features #{:library}
         (collections.tu/with-library [{data :data}]
