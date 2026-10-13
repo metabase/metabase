@@ -165,7 +165,8 @@ work on the runner.
 | `NT_HOOK_TIMEOUT` | 8000 | Time limit of a hook, in milliseconds. |
 | `NT_MAX_RSS_MB` | 1500 | A worker above this resident size is replaced after its current file. |
 | `NT_HEAP_MB` | 1536 | Heap limit of a worker. |
+| `NT_SEMI_SPACE_MB` | 64 | Size of the young generation of a worker's heap. |
 | `NT_FAILURES`, `NT_FAILURE_DETAIL` | not set | Files that failures are appended to, one line or one block each. |
-| `NT_FILE_LOG` | not set | Prints a line for each spec file with its worker, time and memory. |
+| `NT_FILE_LOG` | not set | Prints a line for each spec file with its worker, time, memory and garbage collection time. |
 | `NT_IDLE_LOG` | not set | A file that gets, for each test, its time and the part of it spent idle. |
 | `NT_FRAME_MS` | 1 | Interval of the animation frame clock, in milliseconds. |
