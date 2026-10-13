@@ -102,7 +102,7 @@ You can set up questions to run periodically and notify you if the results are i
 
 ## Viewing events on your chart
 
-If your results are a time series, you can display events along the x-axis. When you save the question, Metabase keeps the events you turned on and shows them wherever the question appears, including on dashboards. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
+If your results are a time series, you can [display events along the x-axis](../exploration-and-organization/events-and-timelines.md).
 
 ## Deleting a question
 

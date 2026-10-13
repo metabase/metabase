@@ -256,7 +256,11 @@ To edit a card's:
 
 ## Showing events on dashboard cards
 
-Time series cards show the [events](../exploration-and-organization/events-and-timelines.md) their question was saved with, like launches or outages. To toggle events for a card, click on the card's **three-dot menu** (**...**) and select **Events**. To toggle events for all time series cards on the current tab, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**.
+Time series cards can show [events](../exploration-and-organization/events-and-timelines.md) saved to the question.
+
+**To toggle events for a card**, click on the card's **three-dot menu** (**...**) and select **Events**. 
+
+**To toggle events for all time series cards on the current tab**, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**.
 
 Toggling events on a dashboard only applies to your session. To change what everyone sees, edit the question's events and save the question. See [Events on dashboards](../exploration-and-organization/events-and-timelines.md#events-on-dashboards).
 

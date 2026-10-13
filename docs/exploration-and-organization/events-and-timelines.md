@@ -67,8 +67,9 @@ To hide events on a question:
 
 1. Click on the **calendar** icon in the bottom right.
 2. Uncheck the timeline or event.
+3. To keep the event hidden on reloads, save the question.
 
-Your selections reset on reload unless you save the question. To keep events hidden on this question, save the question after unchecking them. To hide a timeline and its events everywhere, [archive the timeline](#archiving-timelines).
+To hide a timeline and its events everywhere, [archive the timeline](#archiving-timelines).
 
 ## Events on dashboards
 
@@ -90,7 +91,7 @@ Exporting a dashboard to PDF captures the page as you're viewing it, so the PDF 
 
 _Dashboards_ shared via a [public link](../embedding/public-links.md), static embedding, interactive embedding, or the embedded analytics SDK show the events each question was saved with. Public and statically embedded _questions_, SDK questions, and dashboard subscriptions don't show events.
 
-- **Public links and static embeds** show a question's saved events to anyone viewing the dashboard, even people who can't access the timeline's collection. Only people who can view a timeline can add a question that uses it to a shared dashboard.
+- **Public links and guest embeds** show a question's saved events to anyone viewing the dashboard, even people who can't access the timeline's collection. Only people who can view a timeline can add a question that uses the timeline to a shared dashboard.
 - **Interactive embedding and the SDK** only show events from timelines the viewer has access to.
 
 ## Edit an event
