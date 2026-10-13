@@ -16,6 +16,11 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(deftest ^:parallel group-display-name-preserves-stored-name-test
+  (let [group {:magic_group_type perms-group/all-users-magic-group-type :name "Stored group name"}]
+    (is (= "Stored group name" (perms-group/group-display-name group false)))
+    (is (= "All internal users" (perms-group/group-display-name group true)))))
+
 (deftest admin-root-entry-test
   (testing "Check that the root entry for Admin was created"
     (is (t2/exists? :model/Permissions :group_id (u/the-id (perms-group/admin)), :object "/"))))

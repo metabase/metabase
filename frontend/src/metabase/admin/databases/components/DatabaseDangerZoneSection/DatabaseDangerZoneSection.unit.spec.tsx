@@ -120,6 +120,28 @@ describe("DatabaseDangerZoneSection", () => {
         ).not.toBeInTheDocument();
       });
     });
+
+    it("is hidden for stub databases", () => {
+      setup({ database: createMockDatabase({ is_stub: true }) });
+
+      expect(
+        screen.queryByText(/Discard saved field values/i),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Remove this database/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("is hidden for stub databases when the user is not an admin", () => {
+    setup({
+      database: createMockDatabase({ is_stub: true }),
+      isAdmin: false,
+    });
+
+    expect(
+      screen.queryByTestId("database-danger-zone-section"),
+    ).not.toBeInTheDocument();
   });
 
   describe("remove database", () => {

@@ -320,7 +320,8 @@
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
   Context windows are from the per-model cards at https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html"
-  {"anthropic.claude-fable-5"    {:display-name "Claude Fable 5"        :context-window 1000000}
+  {"anthropic.claude-fable-5-1"  {:display-name "Claude Fable 5.1"      :context-window 1000000}
+   "anthropic.claude-fable-5"    {:display-name "Claude Fable 5"        :context-window 1000000}
    "anthropic.claude-opus-5-5"   {:display-name "Claude Opus 5.5"       :context-window 1000000}
    "anthropic.claude-opus-5"     {:display-name "Claude Opus 5"         :context-window 1000000}
    "anthropic.claude-opus-4-8"   {:display-name "Claude Opus 4.8"       :context-window 1000000}
@@ -401,14 +402,7 @@
   (case (model-family model)
     :anthropic (claude/reasoning-model? model)
     :runtime   (claude/reasoning-model? (runtime-base-model model))
-    ;; The mantle's Responses surface accepts the reasoning request fields and
-    ;; the GPT models do reason (at a per-model default effort: gpt-5.4 "none",
-    ;; gpt-5.5 "medium"), but it never streams reasoning summaries — `summary`
-    ;; comes back empty at every effort/summary combination — so nothing will
-    ;; ever render. The request deliberately keeps its reasoning fields (see
-    ;; [[openai/openai-request-body]]): where the model reasons by default they
-    ;; buy encrypted-content replay across tool calls.
-    :openai    false
+    :openai    (openai/reasoning-model? model)
     nil        false))
 
 (mu/defn streams-reasoning? :- :boolean
@@ -423,6 +417,16 @@
   and left alone."
   [body]
   (dissoc body :cache_control))
+
+(defn ->mantle-openai-body
+  "Adapt a canonical OpenAI Responses request body for the mantle endpoint.
+
+  A body without `max_output_tokens` gets [[core/chat-max-output-tokens]]."
+  [body]
+  ;; Unlike OpenAI direct, an unset cap costs quota here: mantle's quota check counts "the value of `max_tokens` (or
+  ;; the model-specific maximum if `max_tokens` is not set)"
+  ;; (https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-mantle.html).
+  (update body :max_output_tokens #(or % core/chat-max-output-tokens)))
 
 (mu/defn bedrock-raw
   "Perform a streaming request to Bedrock: the mantle endpoint for a mantle catalog ID, `bedrock-runtime` for a
@@ -445,7 +449,7 @@
                                     (claude/claude-request-body (assoc opts :model (runtime-base-model model))))
                       :read-stream runtime-events}
           :openai    {:path    "/openai/v1/responses"
-                      :req     (openai/openai-request-body opts)})]
+                      :req     (->mantle-openai-body (openai/openai-request-body opts))})]
     (adapter/stream! (if (= :runtime family) runtime-provider provider) opts
                      {:path        path
                       :body        req

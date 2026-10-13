@@ -564,6 +564,7 @@
    [:semantic-version       {:optional true} [:or
                                               [:sequential :int]
                                               [:map {:closed true} [:major :int] [:minor :int]]]]
+   [:single-node            {:optional true} :boolean]
    [:tables-classified      {:optional true} :int]
    [:throwable              {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
    [:timezone-id            {:optional true} [:maybe :string]]

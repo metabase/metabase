@@ -137,6 +137,29 @@
                      {:model "anthropic/claude-haiku-4-5"}]
                     @captured-opts))))))))
 
+(deftest example-questions-surface-incomplete-structured-output-test
+  (testing "a generation truncated before its tool call surfaces the incomplete finish reason to the caller"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type :start :id "msg-1"}
+                                                           {:type :text :id "t1" :text "Here are some quest"}
+                                                           {:type              :usage
+                                                            :model             "m"
+                                                            :usage             {:promptTokens 1 :completionTokens 2}
+                                                            :finish-reason     "length"
+                                                            :raw-finish-reason "max_tokens"}]))]
+        (mt/with-log-level [metabase.metabot.example-question-generator :fatal]
+          (let [e (try
+                    (native-generator/generate-example-questions
+                     {:tables  [{:name "Orders" :fields [{:name "total" :type "number"}]}]
+                      :metrics []})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (instance? clojure.lang.ExceptionInfo e))
+            (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+            (is (= "length" (:finish-reason (ex-data e))))))))))
+
 (deftest template-cache-test
   (testing "template is cached after first load"
     (native-generator/clear-template-cache!)

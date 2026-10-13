@@ -16,7 +16,7 @@ import {
   act,
   renderWithProviders,
   waitFor,
-  waitForLoaderToBeRemoved,
+  waitForDashboardToLoad,
 } from "__support__/ui";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { Route } from "metabase/router";
@@ -80,7 +80,7 @@ async function setup({ hash = "" }: { hash?: string } = {}) {
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  await waitForDashboardToLoad();
 
   const getTargetDashcard = () =>
     checkNotNull(

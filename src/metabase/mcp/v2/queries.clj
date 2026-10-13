@@ -192,8 +192,8 @@
    refusal sentence, naming what the instance refused.
 
    The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and
-   `question_write` / `transform_write` storing agent-authored native SQL — so a switch an admin
-   turned off is not reachable by a second route to the same capability.
+   `question_write` storing agent-authored native SQL — so a switch an admin turned off is not reachable by a second
+   route to the same capability.
 
    It deliberately does not cover running SQL that already exists as a saved, permission-checked
    artifact: `run_saved_question` executes a stored native card without consulting it, as does

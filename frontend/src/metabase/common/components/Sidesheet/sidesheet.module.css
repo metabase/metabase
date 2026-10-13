@@ -23,6 +23,13 @@
   }
 }
 
+.SidesheetHeader {
+  /* Modal headers top-align the title against a 24px close button; ours is larger */
+  &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    align-items: center;
+  }
+}
+
 .SidesheetCloseButton {
   /* Modal.module.css uses !important for the close color and icon size. */
   color: var(--mb-color-text-primary) !important;

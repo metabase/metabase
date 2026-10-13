@@ -18,6 +18,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -140,7 +141,7 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true
+  `(mt/with-temporary-setting-values [~'enable-embedding-modular true
                                       ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))
@@ -1265,7 +1266,7 @@
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
     (binding [custom-values/*max-rows* 5]
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (with-new-secret-key!
           (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
             (t2/update! :model/Card (:id field-filter-card)
@@ -1420,29 +1421,28 @@
 
 (deftest card-param-values-native-card-without-parameters-test
   (testing "a native card described only by its template tags, with an empty locked value, still serves values"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
-      (with-new-secret-key!
-        (mt/with-temp
-          [:model/Card card {:enable_embedding true
-                             :embedding_params {:total "locked" :state "enabled"}
-                             :dataset_query
-                             {:database (mt/id)
-                              :type     :native
-                              :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
-                                         :template-tags {"total" {:id           "t1"
-                                                                  :name         "total"
-                                                                  :display-name "Total"
-                                                                  :type         :dimension
-                                                                  :widget-type  :number/>=
-                                                                  :dimension    [:field (mt/id :orders :total) nil]}
-                                                         "state" {:id           "s1"
-                                                                  :name         "state"
-                                                                  :display-name "State"
-                                                                  :type         :dimension
-                                                                  :widget-type  :string/=
-                                                                  :dimension    [:field (mt/id :people :state) nil]}}}}}]
-          (let [token (card-token card {:params {:total []}})]
-            (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token)))))))))))
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp
+        [:model/Card card {:enable_embedding true
+                           :embedding_params {:total "locked" :state "enabled"}
+                           :dataset_query
+                           {:database (mt/id)
+                            :type     :native
+                            :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
+                                       :template-tags {"total" {:id           "t1"
+                                                                :name         "total"
+                                                                :display-name "Total"
+                                                                :type         :dimension
+                                                                :widget-type  :number/>=
+                                                                :dimension    [:field (mt/id :orders :total) nil]}
+                                                       "state" {:id           "s1"
+                                                                :name         "state"
+                                                                :display-name "State"
+                                                                :type         :dimension
+                                                                :widget-type  :string/=
+                                                                :dimension    [:field (mt/id :people :state) nil]}}}}}]
+        (let [token (card-token card {:params {:total []}})]
+          (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -1639,7 +1639,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding-static false]
+          (mt/with-temporary-setting-values [enable-embedding-modular false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1672,6 +1672,43 @@
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key! (pivot-card-query-url card ""))))))))))))
 
+(deftest embed-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/embed/pivot/card/:token/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true
+                               :name             "EMBED ERROR LEAK CARD NAME CANARY"
+                               :display          :pivot
+                               :dataset_query    {:database (mt/id)
+                                                  :type     :native
+                                                  :native   {:query "SELECT * FROM no_such_table -- EMBED_ERROR_LEAK_SQL_CANARY"}}}]
+          ;; Both pivot flows fail with the same H2 "table not found" root cause, but H2 embeds the
+          ;; compiled SQL in its error message and the compiled SQL has different Metabase-added
+          ;; comments per path. The parity signature compares message text, so it flags this as a
+          ;; divergence even though the user-visible outcome is identical.
+          (api.pivots/without-pivot-parity-check
+           (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
+                 body-str              (pr-str body)]
+             (is (= 500 status))
+             (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
+                    body))
+             (is (not (str/includes? body-str "CANARY")))
+             (is (not (str/includes? body-str ":trace"))))))))))
+
+(deftest embed-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/embed/card/:token/query"
+    (testing "an exception that escapes the QP entirely is still reduced to the generic embedding error"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true, :name "EMBED ERROR LEAK CARD NAME CANARY"}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info "Boom EMBED_ERROR_LEAK_SQL_CANARY" {:query query})))]
+            (let [{:keys [status body]} (client/client-full-response :get (card-query-url card ""))]
+              (is (= 500 status))
+              (is (= {:status "failed", :error "An error occurred while running the query."}
+                     body))
+              (is (not (str/includes? (pr-str body) "CANARY"))))))))))
+
 (defn- pivot-dashcard-url
   ([dashcard] (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
   ([dashcard dashboard-id & [additional-token-keys]]
@@ -1701,7 +1738,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding-static false]
+    (mt/with-temporary-setting-values [enable-embedding-modular false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)

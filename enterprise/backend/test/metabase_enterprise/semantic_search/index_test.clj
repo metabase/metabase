@@ -798,10 +798,10 @@
                     (is (= [readable-id] (map :id result)))))))))
         (testing "memoizes permission check per collection_id across docs"
           (let [calls       (atom 0)
-                real-helper perms/can-read-via-parent-collection?]
-            (with-redefs [perms/can-read-via-parent-collection? (fn [& args]
-                                                                  (swap! calls inc)
-                                                                  (apply real-helper args))]
+                real-helper (mt/original-fn #'perms/can-read-via-parent-collection?)]
+            (mt/with-dynamic-fn-redefs [perms/can-read-via-parent-collection? (fn [& args]
+                                                                                (swap! calls inc)
+                                                                                (apply real-helper args))]
               (binding [api/*current-user-permissions-set* (atom #{"/"})]
                 (#'semantic.index/filter-read-permitted
                  (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
@@ -872,21 +872,21 @@
     ;; inside `specifications` loads the model namespaces that populate them.
     ;; If the order flips, cold start caches an empty set for the JVM lifetime. Both the t2-model registry
     ;; (dashboard) and the search-model registry (indexed-entity) must be covered.
-    (let [real-specs          (var-get #'search/specifications)
-          real-t2-registry    perms/collection-id-only-read-models
-          real-search-registry perms/collection-based-visibility-search-models
-          specs-loaded?       (atom false)]
-      (with-redefs [search/specifications (fn []
-                                            (reset! specs-loaded? true)
-                                            (real-specs))
-                    perms/collection-id-only-read-models (fn []
-                                                           (if @specs-loaded?
-                                                             (real-t2-registry)
-                                                             #{}))
-                    perms/collection-based-visibility-search-models (fn []
-                                                                      (if @specs-loaded?
-                                                                        (real-search-registry)
-                                                                        {}))]
+    (let [real-specs           (mt/original-fn #'search/specifications)
+          real-t2-registry     (mt/original-fn #'perms/collection-id-only-read-models)
+          real-search-registry (mt/original-fn #'perms/collection-based-visibility-search-models)
+          specs-loaded?        (atom false)]
+      (mt/with-dynamic-fn-redefs [search/specifications (fn []
+                                                          (reset! specs-loaded? true)
+                                                          (real-specs))
+                                  perms/collection-id-only-read-models (fn []
+                                                                         (if @specs-loaded?
+                                                                           (real-t2-registry)
+                                                                           #{}))
+                                  perms/collection-based-visibility-search-models (fn []
+                                                                                    (if @specs-loaded?
+                                                                                      (real-search-registry)
+                                                                                      {}))]
         (let [result (#'semantic.index/compute-collection-id-only-search-models)]
           (is (contains? result "dashboard") "keyword-form registry populated")
           (is (contains? result "indexed-entity") "search-model registry populated"))))))

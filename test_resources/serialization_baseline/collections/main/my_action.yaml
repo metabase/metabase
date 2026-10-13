@@ -10,6 +10,4 @@ parameters: []
 query: []
 type: implicit
 serdes/meta:
-- id: aCtiOn00ExAmPlEx00001
-  label: my_action
-  model: Action
+- model: Action

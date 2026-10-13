@@ -332,6 +332,7 @@ export const tokenFeatures = [
   "audit_app",
   "cache_granular_controls",
   "cloud_custom_smtp",
+  "content_diagnostics",
   "content_translation",
   "content_verification",
   "custom-viz",
@@ -381,6 +382,7 @@ export const tokenFeatures = [
   "library",
   "library_retrieval",
   "support-users",
+  "session-management",
   "tenants",
   "writable_connection",
   "admin_security_center",
@@ -463,10 +465,10 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
-  "enable-embedding-static": boolean;
+  "enable-embedding-modular": boolean;
   "enable-embedding-sdk": boolean;
-  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
+  "enable-embedding-sidecar": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
@@ -517,8 +519,7 @@ interface AdminSettings {
   "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "show-sdk-embed-terms": boolean | null;
-  "show-simple-embed-terms": boolean | null;
+  "show-modular-embed-terms": boolean | null;
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
@@ -556,6 +557,9 @@ interface SettingsManagerSettings {
   "llm-bedrock-session-token"?: string | null;
   "llm-vllm-api-base-url"?: string | null;
   "llm-vllm-api-key"?: string | null;
+  "llm-ollama-api-base-url"?: string | null;
+  "llm-ollama-api-key"?: string | null;
+  "llm-ollama-request-timeout-ms"?: number | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -850,6 +854,7 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
   "llm-mini-model"?: string | null;
+  "ee-embedding-provider"?: string | null;
   "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-proxy-configured?"?: boolean | null;

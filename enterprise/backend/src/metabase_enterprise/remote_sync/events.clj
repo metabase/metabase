@@ -37,12 +37,24 @@
      :status            "create"
      :status_changed_at timestamp}))
 
-(defn enable-library-tracking!
-  "Mark all existing snippets, snippets-namespace collections, and glossary entries as 'create' for initial sync."
+(defn- data-action-collections
+  "The `:id` and `:name` of the data actions Collections."
   []
-  (let [timestamp (t/offset-date-time)
+  (remote-sync.db/collections-with-names-in-namespace (name collections/data-actions-ns)))
+
+(defn- library-actions
+  "The Actions without a model in the data actions root or a data actions Collection."
+  [data-action-collection-ids]
+  (remote-sync.db/actions-without-model-in (vec data-action-collection-ids)))
+
+(defn enable-library-tracking!
+  "Mark all existing snippets, data actions, their namespaces' collections, and glossary entries as 'create' for
+  initial sync."
+  []
+  (let [timestamp               (t/offset-date-time)
+        data-action-collections (data-action-collections)
         rows      (concat
-                   (for [coll (remote-sync.db/snippet-collections)]
+                   (for [coll (concat (remote-sync.db/snippet-collections) data-action-collections)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
@@ -53,6 +65,13 @@
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
                       :model_collection_id (:collection_id snippet)
+                      :status              "create"
+                      :status_changed_at   timestamp})
+                   (for [action (library-actions (map :id data-action-collections))]
+                     {:model_type          "Action"
+                      :model_id            (:id action)
+                      :model_name          (:name action)
+                      :model_collection_id (:collection_id action)
                       :status              "create"
                       :status_changed_at   timestamp})
                    (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
@@ -88,14 +107,35 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
-(defn disable-library-tracking!
-  "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
+(defn backfill-data-app-tracking!
+  "Insert a 'create' ledger row for every published DataApp that has none, returning the number of rows inserted."
   []
-  (let [snippet-coll-ids (remote-sync.db/snippet-collection-ids)]
+  (let [data-app-spec (spec/spec-for-model-key :model/DataApp)
+        tracked       (remote-sync.db/tracked-model-ids "DataApp")
+        timestamp     (t/offset-date-time)
+        rows          (for [app (remote-sync.db/instances-where :model/DataApp (:conditions data-app-spec))
+                            :when (not (contains? tracked (:id app)))]
+                        (merge {:model_type        "DataApp"
+                                :model_id          (:id app)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields data-app-spec app)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn disable-library-tracking!
+  "Remove all snippet, data action, their namespaces' collection, and glossary tracking entries."
+  []
+  (let [data-action-coll-ids (into #{} (map :id) (data-action-collections))
+        coll-ids             (into (remote-sync.db/snippet-collection-ids) data-action-coll-ids)
+        action-ids           (into #{} (map :id) (library-actions data-action-coll-ids))]
     (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
     (remote-sync.db/delete-rsos-of-type! "Glossary")
-    (when (seq snippet-coll-ids)
-      (remote-sync.db/delete-rsos-of-models! "Collection" snippet-coll-ids))))
+    (when (seq coll-ids)
+      (remote-sync.db/delete-rsos-of-models! "Collection" coll-ids))
+    (when (seq action-ids)
+      (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -176,11 +216,14 @@
     (let [model-type (:model-type model-spec)
           existing   (remote-sync.db/lock-rso model-type model-id)]
       (cond
+        (and (not existing)
+             (contains? #{"removed" "delete"} status))
+        nil
+
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
         ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
         (and (not existing)
-             (not (contains? #{"removed" "delete"} status))
              (not (still-eligible? model-spec model-id)))
         nil
 

@@ -13,12 +13,5 @@ semantic_type: type/Latitude
 position: 11
 database_position: 11
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: LATITUDE
-  model: Field
+- model: Field
 database_indexed: false

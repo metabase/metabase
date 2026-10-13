@@ -616,7 +616,7 @@ describe("Tenants - management", () => {
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
-    cy.findByRole("switch", { name: /model actions/i }).click({ force: true });
+    cy.findByRole("switch", { name: /data actions/i }).click({ force: true });
     cy.findByRole("switch", { name: /database routing/i }).click({
       force: true,
     });
