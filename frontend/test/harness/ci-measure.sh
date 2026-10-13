@@ -40,7 +40,15 @@ measure() {
   tail -5 "$log"
 }
 
-measure 1 jest
-measure 1 "harness, isolated"
-measure 2 "harness, isolated"
-measure 3 "harness, isolated"
+# Experiment: the fastest specs first. The first run only warms the caches.
+ALL=$LIST
+round=0
+for order in warm list fastest list fastest; do
+  round=$((round + 1))
+  LIST=$ALL
+  if [ -f "frontend/test/harness/ci-files.$order.txt" ]; then
+    LIST=$(mktemp)
+    while read -r file; do [ -f "$file" ] && echo "$file"; done < "frontend/test/harness/ci-files.$order.txt" > "$LIST"
+  fi
+  measure "$round" "harness, $order"
+done
