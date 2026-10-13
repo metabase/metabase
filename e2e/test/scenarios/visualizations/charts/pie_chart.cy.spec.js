@@ -534,7 +534,7 @@ describe("scenarios > visualizations > pie chart", () => {
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
 
-    cy.log("dashcard click behavior on the first row of a pie (metabase#15250)");
+    cy.log("dashcard click behavior on the first pie row (metabase#15250)");
     H.getDashboardCard(1).within(() => {
       H.pieSliceWithColor("#88BF4D")
         .first()
