@@ -32,7 +32,7 @@ jobs:
     needs: gate
     if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15  
+    timeout-minutes: 15
     env:
       MB_EDITION: ee
       CYPRESS_VIDEO: "false"
