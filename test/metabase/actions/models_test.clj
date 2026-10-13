@@ -230,19 +230,25 @@
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"
-      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}
+                     :model/Collection {app-id :id}  {:namespace "data-apps"}]
         (mt/with-model-cleanup [:model/Action]
-          (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                         {:type          :query
-                                                          :name          "No model"
-                                                          :collection_id coll-id
-                                                          :database_id   (mt/id)
-                                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+          (let [insert!   (fn [collection-id]
+                            (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                           {:type          :query
+                                                            :name          "No model"
+                                                            :collection_id collection-id
+                                                            :database_id   (mt/id)
+                                                            :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})))
+                action-id (insert! coll-id)]
             (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)}
                     (action/select-action :id action-id)))
             (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
             (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
-                    (action/select-action :id action-id)))))))))
+                    (action/select-action :id action-id)))
+            (testing "a data app collection takes one too"
+              (is (=? {:model_id nil :collection_id app-id}
+                      (action/select-action :id (insert! app-id)))))))))))
 
 (deftest implicit-action-requires-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
