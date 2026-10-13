@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -507,8 +508,11 @@
             (driver.u/features :h2 (t2/select-one :model/Database :id (:id db)))
             (is (= 1 (count (entries-for-db))))
             (let [stamp-before (:stamp (feature-cache-entry (:id db)))]
-              (dotimes [_ 3]
-                (t2/update! :model/Database (:id db) {:description (mt/random-name)})
+              (dotimes [i 3]
+                ;; explicit, increasing updated_at: with-temp stamps rows from the JVM clock and t2/update! from the
+                ;; app DB's now(), so the two can compare out of order in tests
+                (t2/update! :model/Database (:id db) {:description (mt/random-name)
+                                                      :updated_at  (t/plus (t/offset-date-time) (t/minutes (inc i)))})
                 (driver.u/features :h2 (t2/select-one :model/Database :id (:id db))))
               (is (= 1 (count (entries-for-db))))
               (testing "and the stamp tracked the row's updated_at"
@@ -589,6 +593,71 @@
           (driver.u/features :h2 (t2/select-one :model/Database :id (:id db)))
           (is (some? (feature-cache-entry (:id db))))
           (events/publish-event! :event/database-update {:object  (t2/select-one :model/Database :id (:id db))
+                                                         :user-id (mt/user->id :crowberto)})
+          (is (nil? (feature-cache-entry (:id db))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-stamp-test
+  (testing "a newer row replaces the entry; older and unstamped callers are served the newer entry"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (let [answer  (atom true)
+                checks  (atom 0)
+                row     (t2/select-one :model/Database :id (:id db))
+                newer   (assoc row :updated_at (t/plus (:updated_at row) (t/minutes 1)))
+                lib-db  (lib.metadata/database (lib-be/application-database-metadata-provider (:id db)))]
+            (driver.u/invalidate-features-cache! (:id db))
+            (with-redefs [driver/features           #{:left-join}
+                          driver/database-supports? (fn [_ _ _] (swap! checks inc) @answer)]
+              (is (true? (driver.u/supports? :h2 :left-join row)))
+              (reset! answer false)
+              (testing "a newer row recomputes, and the answer flips"
+                (is (false? (driver.u/supports? :h2 :left-join newer))))
+              (let [checks-so-far @checks]
+                (testing "an older row is served the newer entry without recomputing"
+                  (is (false? (driver.u/supports? :h2 :left-join row))))
+                (testing "an unstamped caller accepts the hit"
+                  (is (false? (driver.u/supports? :h2 :left-join lib-db))))
+                (is (= checks-so-far @checks)))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-routed-answers-test
+  (testing "a routed database answers with its router's features, not its own"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database routed {:router_database_id (:id router)}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (with-redefs [driver/features           #{:left-join}
+                        ;; only the router supports it
+                        driver/database-supports? (fn [_ _ database] (= (:id database) (:id router)))]
+            (is (true? (driver.u/supports? :h2 :left-join (t2/select-one :model/Database :id (:id routed))))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id router))
+            (driver.u/invalidate-features-cache! (:id routed))))))))
+
+(deftest feature-set-cache-unstamped-miss-test
+  (testing "a miss for an unstamped caller loads the row, so the entry gets a real stamp"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (let [lib-db (lib.metadata/database (lib-be/application-database-metadata-provider (:id db)))]
+            (driver.u/invalidate-features-cache! (:id db))
+            (driver.u/supports? :h2 :left-join lib-db)
+            (is (some? (:stamp (feature-cache-entry (:id db))))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-delete-eviction-test
+  (testing ":event/database-delete evicts the database's cache entry"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (driver.u/features :h2 (t2/select-one :model/Database :id (:id db)))
+          (is (some? (feature-cache-entry (:id db))))
+          (events/publish-event! :event/database-delete {:object  (t2/select-one :model/Database :id (:id db))
                                                          :user-id (mt/user->id :crowberto)})
           (is (nil? (feature-cache-entry (:id db))))
           (finally

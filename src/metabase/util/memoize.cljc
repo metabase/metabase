@@ -134,9 +134,9 @@
 (defn register-monitored-cache!
   "Register a named cache for size telemetry. `count-fn` is a 0-arg fn returning the cache's current entry count.
 
-  Cache owners call this at load time; the (enterprise) memoize monitor reads the registry and exports each cache's
-  size as a metric, without needing to depend on the owning namespace. Registering a name again replaces the previous
-  `count-fn`, so it is safe under namespace reload."
+  Cache owners call this at load time; telemetry reads the registry through [[monitored-caches]], so it doesn't need to
+  depend on the owning namespace. Registering a name again replaces the previous `count-fn`, so it is safe under
+  namespace reload."
   [cache-name count-fn]
   (swap! cache-registry assoc cache-name count-fn)
   nil)

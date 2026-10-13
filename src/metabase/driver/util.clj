@@ -392,8 +392,8 @@
       (features* driver database))))
 
 (defn- compute-feature-set
-  "Ask `driver` about every feature in [[driver/features]] for `database`. This is the only place
-  feature support is actually computed; everything else reads the cache."
+  "Ask `driver` about every feature in [[driver/features]] for `database`, bounding each check with its own timeout.
+  This fills the cache."
   [driver database]
   (intern-feature-set (features* driver (some-> database ensure-lib-database))))
 
@@ -415,7 +415,7 @@
   ;; {[app-db-uid router-db-id] {:stamp <updated-at>, :features {driver #{feature}}}}
   (atom {}))
 
-(u.memo/register-monitored-cache! "metabase.driver.util/db-feature-sets" #(count @db-feature-sets))
+(u.memo/register-monitored-cache! (str `db-feature-sets) #(count @db-feature-sets))
 
 (defn invalidate-features-cache!
   "Evict the cached feature set(s) for the Database with `database-id`. Called from the
@@ -438,21 +438,22 @@
       (when-not (:lib/type database)
         (:updated_at database))))
 
-(defn- entry-feature-set
-  "The feature set for `driver` in cache `entry`, if the entry is valid against `stamp`. A `nil`
-  stamp means the caller has no freshness information and trusts the entry."
-  [entry driver stamp]
-  (when (and entry (or (nil? stamp) (= stamp (:stamp entry))))
-    (get (:features entry) driver)))
+(defn- newer?
+  "Is `stamp` newer than `current`? A missing stamp is never newer; anything is newer than a missing one."
+  [stamp current]
+  (and (some? stamp)
+       (or (nil? current) (pos? (compare stamp current)))))
 
-(defn- store-feature-set! [cache-key driver stamp features]
+(defn- store-feature-set!
+  "Store `driver`'s `features` for `cache-key` as of `stamp`, and return `features`. Never regresses an entry: a newer
+  stamp replaces it, the same stamp adds this driver's set, and an older stamp leaves it alone."
+  [cache-key stamp driver features]
   (swap! db-feature-sets update cache-key
          (fn [entry]
-           (if (and entry (or (nil? stamp) (= stamp (:stamp entry))))
-             ;; same generation (or no freshness info): add this driver's set, keep the stamp
-             (assoc-in entry [:features driver] features)
-             ;; new generation: replace the whole entry
-             {:stamp stamp, :features {driver features}})))
+           (cond
+             (or (nil? entry) (newer? stamp (:stamp entry))) {:stamp stamp, :features {driver features}}
+             (= stamp (:stamp entry))                       (assoc-in entry [:features driver] features)
+             :else                                          entry)))
   features)
 
 (defn- cached-feature-set
@@ -461,23 +462,30 @@
   [driver database]
   (let [router-id (database-router-id database)
         db-id     (or router-id (:id database))
-        own-row?  (= db-id (:id database))
         cache-key [(mdb/unique-identifier) db-id]
-        stamp     (when own-row? (database-stamp database))]
-    (or (entry-feature-set (get @db-feature-sets cache-key) driver stamp)
-        (if own-row?
-          (store-feature-set! cache-key driver stamp (compute-feature-set driver database))
-          ;; mirror-initiated miss: the router's row is the authoritative input, so fetch it (there is no
-          ;; MetadataProvider in scope on this path).
-          (if-let [router-row (driver.db/database db-id)]
-            ;; that select's own after-select `:features` hydration usually just warmed the
-            ;; cache; re-read rather than compute twice.
-            (or (entry-feature-set (get @db-feature-sets cache-key) driver nil)
-                (store-feature-set! cache-key driver (database-stamp router-row)
-                                    (compute-feature-set driver router-row)))
-            ;; dangling router id: answer from the row in hand, don't cache it under the
-            ;; router's key
-            (compute-feature-set driver database))))))
+        ;; only a database's own row says how fresh its entry is; a routed database's row says nothing about its
+        ;; router's features
+        stamp     (when-not router-id (database-stamp database))
+        entry     (get @db-feature-sets cache-key)]
+    (cond
+      ;; hit, and the caller has nothing newer (an unstamped caller accepts the hit)
+      (and entry (not (newer? stamp (:stamp entry))))
+      (or (get (:features entry) driver)
+          ;; same database asked about another driver (an engine change in flight): add its set under this stamp
+          (store-feature-set! cache-key (:stamp entry) driver (compute-feature-set driver database)))
+
+      ;; the caller has its own row, newer than the entry (or there is no entry): compute from it and store
+      stamp
+      (store-feature-set! cache-key stamp driver (compute-feature-set driver database))
+
+      ;; a miss for an unstamped caller or a routed database: load the row so the entry gets a real stamp. Loading it
+      ;; hydrates `:features`, which usually fills the entry; re-read rather than compute twice.
+      :else
+      (if-let [row (driver.db/database db-id)]
+        (or (get (:features (get @db-feature-sets cache-key)) driver)
+            (store-feature-set! cache-key (database-stamp row) driver (compute-feature-set driver row)))
+        ;; no such row: answer from the map in hand, don't cache it
+        (compute-feature-set driver database)))))
 
 (defn- use-cache? [database]
   (and *memoize-supports?*
@@ -489,9 +497,8 @@
   `supports?` is used in so many critical places in the app, and we don't want a single driver to crash the app if it
   throws an exception, or delay the user if it takes a long time to execute.
 
-  Feature support is cached per database (see [[db-feature-sets]]): all of a database's features
-  are computed in one sweep and cached as a single set, and this answers by looking the feature
-  up in that set. A mirror database reads its router's entry."
+  Feature support is cached per database: all of a database's features are computed in one sweep and cached
+  together, and a routed database answers with its router's features."
   [driver   :- :keyword
    feature  :- :keyword
    database :- [:maybe ::warehouses.schema/database-or-metadata]]

@@ -16,7 +16,7 @@
   [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`), whose backing cache is reachable
   through the memoized function's metadata; and caches whose owners self-register a count fn
   with [[metabase.util.memoize/register-monitored-cache!]] (the inverted option for modules this namespace should not
-  depend on, e.g. `metabase.driver.util/db-feature-sets`)."
+  depend on)."
   (:require
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.analytics-interface.core :as analytics.interface]
