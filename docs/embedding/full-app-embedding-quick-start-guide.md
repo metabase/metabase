@@ -45,9 +45,7 @@ If you're embedding Metabase in a different domain, you may need to [set the ses
 
 #### Enable authentication with JWT
 
-In the Embedding hub sidebar, click **Authentication**.
-
-On the card that says **JWT**, click the **Set up** button (you may have to scroll down to view the JWT card).
+In the Embedding hub sidebar, click **Authentication**. The page opens to the JWT settings.
 
 #### Set JWT identity provider URI
 
@@ -171,7 +169,7 @@ In Metabase, click the **grid** icon and go to **Admin** > **People** > **Groups
 
 You'll map this string in the `groups` key to a Metabase group, so that when the person signs in via SSO, Metabase automatically assigns them to the appropriate Metabase group.
 
-Go to **Admin** > **Settings** > **Authentication** > **JWT**.
+Go to **Embedding hub** > **Authentication**.
 
 In the **Group mapping** section, select **Automatic**. Metabase adds people to the Metabase groups whose names match the group names in their JWT. If your `groups` array and your Metabase group both use `Customer Acme`, Metabase maps them for you.
 

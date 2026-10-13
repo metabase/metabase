@@ -36,7 +36,7 @@ To embed a dashboard in your app using the SDK, you'll need to:
 
 ## 1. Enable the SDK in Metabase
 
-In Metabase, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Security**. Toggle on **Modular embedding and SDK for React**.
+In Metabase, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Security**. Toggle on **Modular embedding React SDK**.
 
 ## 2. Create an API key in Metabase
 

@@ -127,7 +127,7 @@ From any Metabase page, click the **grid** icon in the upper right and select **
 
 Turn on:
 
-- Modular embedding and SDK for React
+- Modular embedding React SDK
 
 Otherwise, this whole thing is hopeless.
 

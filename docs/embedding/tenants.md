@@ -105,11 +105,11 @@ You can create and manage your tenants exclusively through Metabase UI, or, if t
 1. Go to **Embedding hub > Tenancy**.
 2. Under **Enable multi-tenant user strategy**, click **Enable multi-tenancy**.
 
-Once it's on, the **gear** icon in the upper right of the Tenancy page lets you switch strategies. You can also do this from **Admin settings > People**.
+Once it's on, the **gear** icon on the **Tenants** tab lets you switch strategies. You can also do this from **Admin settings > People**.
 
 ![Edit tenant strategy](./images/edit-tenant-strategy.png)
 
-Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get additional settings in the Embedding hub's **Tenancy** and **Permissions** pages.
+Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get additional settings in the Embedding hub's **Tenancy**, **Permissions**, and **Authentication** pages.
 
 If you have an existing permissions and collection setup that you'd like to translate to use tenants, see [Changing tenant strategy](#changing-tenant-strategy).
 
@@ -197,8 +197,8 @@ To create a tenant attribute manually using the Metabase UI:
 
 1. Go to **Embedding hub > Tenancy**.
 2. Select the **Tenants** tab.
-3. Click on **three dots** next to the tenant.
-4. Input the attribute key and value.
+3. Click on **three dots** next to the tenant and select **Edit tenant**.
+4. Under **Default attributes**, input the attribute key and value.
 
 You can also assign tenant attributes automatically through JWT claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
 
