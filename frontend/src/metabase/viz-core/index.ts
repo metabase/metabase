@@ -503,6 +503,7 @@ export type {
   GoalData,
   GoalRefError,
   GoalValueResult,
+  ReferencedEntityKind,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "./types/dynamic-goals";
