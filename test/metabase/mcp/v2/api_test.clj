@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
@@ -1258,23 +1259,24 @@
                        "no transport-internal marker leaks into a batch element")))))))))))
 
 (deftest rest-scopes-reach-no-mcp-tool-or-resource-test
-  (testing "GHY-4940: REST scopes gate REST endpoints only. A token holding every scope a REST endpoint declares, and
-            no MCP scope, is refused by every MCP tool and every MCP data resource. UI shells carry no data and are
-            read by any token, so they are not checked."
+  (testing "GHY-4940: REST scopes gate REST endpoints only. A token holding every scope that is not an MCP scope (every
+            registered scope and every scope a REST endpoint declares) is refused by every MCP tool and every MCP data
+            resource. UI shells carry no data and are read by any token, so they are not checked."
     (require 'metabase.api-routes.routes)
     (when config/ee-available?
       (require 'metabase-enterprise.api-routes.routes))
-    (let [rest-scopes (into (sorted-set)
-                            (for [nmspace          (all-ns)
-                                  [_ {:keys [form]}] (api.macros/ns-routes nmspace)
-                                  :let             [scope (get-in form [:metadata :scope])]
-                                  :when            (string? scope)]
-                              scope))]
-      (testing "the token holds REST scopes and no MCP scope"
-        (is (seq rest-scopes))
-        (is (not-any? (set mcp.paths/v2-surface-scopes) rest-scopes)))
+    (let [endpoint-scopes (for [nmspace          (all-ns)
+                                [_ {:keys [form]}] (api.macros/ns-routes nmspace)
+                                :let             [scope (get-in form [:metadata :scope])]
+                                :when            (string? scope)]
+                            scope)
+          ;; mb:full is left out: the session middleware maps it to the unrestricted sentinel, which MCP accepts.
+          non-mcp-scopes  (into (sorted-set)
+                                (remove (conj (set mcp.paths/v2-surface-scopes) "mb:full"))
+                                (concat endpoint-scopes (map :scope (api-scope/all-scopes))))]
+      (is (seq non-mcp-scopes))
       (do-with-bearer-token!
-       rest-scopes
+       non-mcp-scopes
        (fn [headers]
          (let [session-id (-> (client/client-full-response :post 200 endpoint
                                                            {:request-options {:headers headers}}
