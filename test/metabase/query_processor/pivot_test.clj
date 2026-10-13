@@ -1612,7 +1612,8 @@
                               (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))
                   results (qp.pivot/run-pivot-query query)]
               (testing "all four grouping sets present and emitted in rollups-first (DESC) order"
-                (is (= [3 2 1 0] (into [] (comp (map #(nth % 2)) (distinct))
+                ;; `long` on each `pivot-grouping` so drivers that return it as BigDecimal (e.g. Oracle) compare equal.
+                (is (= [3 2 1 0] (into [] (comp (map #(long (nth % 2))) (distinct))
                                        (mt/rows results))))))))))))
 
 (deftest ^:parallel filters-query-test
