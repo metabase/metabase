@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { CompileError } from "metabase/querying/expressions";
 import { compileExpression } from "metabase/querying/expressions/compile-expression";
 import { diagnoseExpression } from "metabase/querying/expressions/diagnostics/expression";
+import { resolver as defaultResolver } from "metabase/querying/expressions/resolver";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -13,6 +14,16 @@ export function tableFormulaColumns(query: Lib.Query) {
       !info.isFromJoin && !info.isImplicitlyJoinable && !info.isAggregation
     );
   });
+}
+
+/** Saved metrics and measures a formula can reference, such as `[Revenue]`. */
+export function tableFormulaReferences(
+  query: Lib.Query,
+): (Lib.MetricMetadata | Lib.MeasureMetadata)[] {
+  return [
+    ...Lib.availableMetrics(query, -1),
+    ...Lib.availableMeasures(query, -1),
+  ];
 }
 
 /** Matches a typed column reference by name or display name, ignoring case. */
@@ -57,21 +68,29 @@ export function applyTableFormula(
     stageIndex: -1,
     expressionMode: "aggregation" as const,
     availableColumns,
-    availableMetrics: [],
+    availableMetrics: Lib.availableMetrics(query, -1),
   };
+  const resolveReference = defaultResolver(options);
   const result = compileExpression({
     ...options,
     source,
     resolver: (type, name, node) => {
       const column = findFormulaColumn(query, availableColumns, name);
+      if (type === "aggregation") {
+        try {
+          return resolveReference(type, name, node);
+        } catch (error) {
+          if (column) {
+            throw new CompileError(
+              t`Use an aggregation such as SUM(${name}).`,
+              node,
+            );
+          }
+          throw error;
+        }
+      }
       if (!column) {
         throw new CompileError(t`Unknown column: ${name}`, node);
-      }
-      if (type === "aggregation") {
-        throw new CompileError(
-          t`Use an aggregation such as SUM(${name}).`,
-          node,
-        );
       }
       return column;
     },

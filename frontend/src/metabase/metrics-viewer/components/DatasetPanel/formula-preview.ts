@@ -139,6 +139,36 @@ class CallBlockWidget extends WidgetType {
   }
 }
 
+/** A saved metric or measure referenced on its own, such as `[Revenue]`. */
+class ReferenceBlockWidget extends WidgetType {
+  constructor(readonly label: string) {
+    super();
+  }
+
+  eq(other: ReferenceBlockWidget) {
+    return this.label === other.label;
+  }
+
+  toDOM() {
+    const block = document.createElement("span");
+    block.className = `${S.block} ${S.blockReference}`;
+    block.dataset.formulaReference = "true";
+    block.setAttribute("role", "group");
+    block.setAttribute("aria-label", this.label);
+    block.textContent = this.label;
+    return block;
+  }
+}
+
+function isInsideCall(node: SyntaxNode) {
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (parent.name === "CallExpression") {
+      return true;
+    }
+  }
+  return false;
+}
+
 const operatorMark = Decoration.mark({ class: S.operator });
 const numberMark = Decoration.mark({ class: S.number });
 
@@ -181,6 +211,18 @@ function buildDecorations(view: EditorView): DecorationSet {
           );
           return false;
         }
+      }
+      if (ref.name === "Field" && !isInsideCall(ref.node)) {
+        const isEditing = view.hasFocus && head >= ref.from && head <= ref.to;
+        if (!isEditing) {
+          const widget = new ReferenceBlockWidget(
+            getColumnLabel(state.doc.sliceString(ref.from, ref.to)),
+          );
+          decorations.push(
+            Decoration.replace({ widget }).range(ref.from, ref.to),
+          );
+        }
+        return false;
       }
       if (ref.name === "Number") {
         decorations.push(numberMark.range(ref.from, ref.to));

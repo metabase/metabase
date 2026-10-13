@@ -29,7 +29,7 @@ function setup({ doc }: SetupOpts) {
     view.destroy();
     parent.remove();
   };
-  return { view, blocks, onBlockClick, cleanup };
+  return { view, parent, blocks, onBlockClick, cleanup };
 }
 
 function getPart(block: HTMLElement | undefined, text: string) {
@@ -49,6 +49,20 @@ describe("formulaPreview", () => {
       "Sum Price",
       "Count",
     ]);
+    cleanup();
+  });
+
+  it("shows a bare metric reference as a chip, but not columns inside calls", () => {
+    const { parent, view, cleanup } = setup({
+      doc: "[Revenue] / Sum([Price] * 2)",
+    });
+    const chips = Array.from(
+      parent.querySelectorAll<HTMLElement>("[data-formula-reference]"),
+    );
+    expect(chips.map((chip) => chip.getAttribute("aria-label"))).toEqual([
+      "Revenue",
+    ]);
+    expect(view.contentDOM).toHaveTextContent("Sum([Price] * 2)");
     cleanup();
   });
 

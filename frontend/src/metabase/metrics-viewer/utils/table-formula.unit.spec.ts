@@ -2,15 +2,72 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/query/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import { createMockCard } from "metabase-types/api/mocks";
 import {
+  createMockCard,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createOrdersTable,
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { applyTableFormula, initializeTableSummary } from "./table-formula";
+import {
+  applyTableFormula,
+  initializeTableSummary,
+  tableFormulaReferences,
+} from "./table-formula";
+
+const PRODUCT_METRIC_ID = 101;
+const ORDER_METRIC_ID = 102;
+
+function createMetricsMetadata() {
+  return createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [
+          createProductsTable({
+            metrics: [
+              createMockCard({
+                id: PRODUCT_METRIC_ID,
+                name: "Average product price",
+                type: "metric",
+                table_id: PRODUCTS_ID,
+                dataset_query: createMockStructuredDatasetQuery({
+                  query: {
+                    "source-table": PRODUCTS_ID,
+                    aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+                  },
+                }),
+              }),
+            ],
+          }),
+          createOrdersTable({
+            metrics: [
+              createMockCard({
+                id: ORDER_METRIC_ID,
+                name: "Order revenue",
+                type: "metric",
+                table_id: ORDERS_ID,
+                dataset_query: createMockStructuredDatasetQuery({
+                  query: {
+                    "source-table": ORDERS_ID,
+                    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+                  },
+                }),
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
 
 function setup() {
   return new Question(
@@ -83,6 +140,33 @@ describe("table formulas", () => {
       expect(applyTableFormula(setup().query(), source).error).toBeTruthy();
     },
   );
+
+  it("accepts saved metrics from the same table, alone or in arithmetic", () => {
+    const query = new Question(setup().card(), createMetricsMetadata()).query();
+    expect(tableFormulaReferences(query)).toHaveLength(1);
+
+    const result = applyTableFormula(
+      query,
+      "[Average product price] / Sum(Price)",
+    );
+    expect(result.error).toBeNull();
+    expect(result.query && Lib.toLegacyQuery(result.query)).toMatchObject({
+      query: {
+        aggregation: [
+          [
+            "/",
+            ["metric", PRODUCT_METRIC_ID],
+            ["sum", ["field", PRODUCTS.PRICE, expect.anything()]],
+          ],
+        ],
+      },
+    });
+  });
+
+  it("rejects saved metrics from other tables", () => {
+    const query = new Question(setup().card(), createMetricsMetadata()).query();
+    expect(applyTableFormula(query, "[Order revenue]").error).toBeTruthy();
+  });
 
   it("replaces the previous calculation without stacking aggregations", () => {
     const query = initializeTableSummary(setup()).query();

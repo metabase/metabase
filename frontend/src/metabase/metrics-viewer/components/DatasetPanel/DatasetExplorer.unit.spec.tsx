@@ -143,6 +143,61 @@ describe("DatasetExplorer", () => {
     });
   });
 
+  it("adds a calculation and removes another one", async () => {
+    const { onChange } = setup();
+    await screen.findByDisplayValue("Sum([Price])");
+    expect(
+      screen.queryByRole("button", { name: "Remove calculation" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add calculation" }),
+    );
+    const editors = screen.getAllByTestId("table-formula-editor");
+    expect(editors).toHaveLength(2);
+    await userEvent.type(editors[1], "COUNT()");
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    expect(getLastQuery(onChange)).toMatchObject({
+      query: {
+        aggregation: [
+          ["sum", ["field", PRODUCTS.PRICE, expect.anything()]],
+          ["count"],
+        ],
+      },
+    });
+    expect(await screen.findByDisplayValue("Count()")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add calculation" }),
+    ).toBeInTheDocument();
+
+    const removeButtons = screen.getAllByRole("button", {
+      name: "Remove calculation",
+    });
+    expect(removeButtons).toHaveLength(2);
+    await userEvent.click(removeButtons[0]);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(getLastQuery(onChange)).toMatchObject({
+      query: { aggregation: [["count"]] },
+    });
+  });
+
+  it("discards an empty draft calculation", async () => {
+    const { onChange } = setup();
+    await screen.findByDisplayValue("Sum([Price])");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add calculation" }),
+    );
+    expect(screen.getAllByTestId("table-formula-editor")).toHaveLength(2);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove calculation" }),
+    );
+    expect(screen.getAllByTestId("table-formula-editor")).toHaveLength(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("groups and changes the chart from the bottom controls", async () => {
     const { onChange } = setup();
     await screen.findByDisplayValue("Sum([Price])");

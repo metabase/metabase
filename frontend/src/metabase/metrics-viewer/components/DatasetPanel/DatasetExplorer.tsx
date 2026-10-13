@@ -62,7 +62,9 @@ export function DatasetExplorer({
   const [question, setQuestion] = useState(() =>
     initializeTableSummary(initialQuestion),
   );
+  const [isAddingCalculation, setIsAddingCalculation] = useState(false);
   const query = question.query();
+  const aggregations = Lib.aggregations(query, -1);
   const canRun = Lib.canRun(query, question.type());
   const { result, error, isRunning, refresh, cancel } = useSummaryResult(
     question,
@@ -84,14 +86,41 @@ export function DatasetExplorer({
         onQueryChange={updateQuery}
       />
       <Box className={S.formulaPanel}>
-        {Lib.aggregations(query, -1).map((_, index) => (
+        {aggregations.map((aggregation, index) => (
           <TableFormulaBar
             key={index}
             query={query}
             aggregationIndex={index}
             onChange={updateQuery}
+            onRemove={
+              aggregations.length > 1
+                ? () => updateQuery(Lib.removeClause(query, -1, aggregation))
+                : undefined
+            }
           />
         ))}
+        {isAddingCalculation ? (
+          <TableFormulaBar
+            query={query}
+            aggregationIndex={aggregations.length}
+            autoFocus
+            onChange={(nextQuery) => {
+              setIsAddingCalculation(false);
+              updateQuery(nextQuery);
+            }}
+            onRemove={() => setIsAddingCalculation(false)}
+          />
+        ) : (
+          <UnstyledButton
+            className={S.addCalculation}
+            onClick={() => setIsAddingCalculation(true)}
+          >
+            <Group gap="sm" wrap="nowrap">
+              <Icon name="add" aria-hidden />
+              <Text c="inherit">{t`Add calculation`}</Text>
+            </Group>
+          </UnstyledButton>
+        )}
         <FilterPanel
           className={S.filters}
           query={query}

@@ -21,12 +21,13 @@ import * as Lib from "metabase-lib";
 import {
   BLOCK_FUNCTIONS,
   BLOCK_OPERATORS,
-  type BlockFunction,
   type BlockOperator,
   type FormulaEdit,
+  type FormulaReference,
   applyFormulaEdit,
   getCallSource,
   getColumnEdit,
+  getFormulaReferences,
   getFunctionDisplayName,
   getFunctionEdit,
 } from "../../utils/formula-blocks";
@@ -42,16 +43,22 @@ import { type BlockClick, formulaPreview } from "./formula-preview";
 
 /**
  * Edits one aggregation as a typed formula. Finished calls render as blocks
- * whose function and column can be swapped from a menu.
+ * whose function and column can be swapped from a menu. When the aggregation
+ * doesn't exist yet, committing the formula adds it, and Escape calls
+ * `onRemove` to discard the draft.
  */
 export function TableFormulaBar({
   query,
   onChange,
+  onRemove,
   aggregationIndex = 0,
+  autoFocus = false,
 }: {
   query: Lib.Query;
   aggregationIndex?: number;
+  autoFocus?: boolean;
   onChange: (query: Lib.Query) => void;
+  onRemove?: () => void;
 }) {
   const editorRef = useRef<CodeMirrorRef>(null);
   const [source, setSource] = useState("");
@@ -59,6 +66,11 @@ export function TableFormulaBar({
   const [error, setError] = useState<string | null>(null);
   const [blockClick, setBlockClick] = useState<BlockClick | null>(null);
   const availableColumns = useMemo(() => tableFormulaColumns(query), [query]);
+  const availableMetrics = useMemo(
+    () => Lib.availableMetrics(query, -1),
+    [query],
+  );
+  const references = useMemo(() => getFormulaReferences(query), [query]);
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -111,6 +123,10 @@ export function TableFormulaBar({
     setSource(appliedSource);
     setError(null);
     editorRef.current?.view?.contentDOM.blur();
+    const isDraft = !Lib.aggregations(query, -1)[aggregationIndex];
+    if (isDraft) {
+      onRemove?.();
+    }
   };
 
   const focusAt = (pos: number) => {
@@ -172,7 +188,7 @@ export function TableFormulaBar({
     query,
     stageIndex: -1,
     availableColumns,
-    availableMetrics: [],
+    availableMetrics,
     database,
     extensions: [helpTooltip, editorBehavior],
   });
@@ -186,15 +202,15 @@ export function TableFormulaBar({
     setError(null);
   }, []);
 
-  const handleAppend = (operator: BlockOperator, fn: BlockFunction | null) => {
+  const handleAppend = (operator: BlockOperator, insert: string | null) => {
     const doc = getDoc().trimEnd();
-    if (fn) {
-      commit(`${doc} ${operator} ${getCallSource(query, fn)}`);
+    const prefix = doc ? `${doc} ${operator} ` : "";
+    if (insert) {
+      commit(`${prefix}${insert}`);
       return;
     }
-    const next = `${doc} ${operator} `;
-    setSource(next);
-    requestAnimationFrame(() => focusAt(next.length));
+    setSource(prefix);
+    requestAnimationFrame(() => focusAt(prefix.length));
   };
 
   return (
@@ -210,11 +226,16 @@ export function TableFormulaBar({
             placeholder={t`Type a formula like Sum([Price]), or use + to add a block`}
             indentWithTab={false}
             autoCorrect="off"
+            autoFocus={autoFocus}
             data-testid="table-formula-editor"
             onChange={handleSourceChange}
           />
         </Box>
-        <AddBlockMenu onAppend={handleAppend} />
+        <AddBlockMenu
+          query={query}
+          references={references}
+          onAppend={handleAppend}
+        />
         {isDirty && (
           <Button
             size="compact-sm"
@@ -223,6 +244,17 @@ export function TableFormulaBar({
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => commit(getDoc())}
           >{t`Run`}</Button>
+        )}
+        {onRemove && (
+          <ActionIcon
+            variant="subtle"
+            c="text-secondary"
+            aria-label={t`Remove calculation`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onRemove}
+          >
+            <Icon name="close" aria-hidden />
+          </ActionIcon>
         )}
       </Flex>
       {error && (
@@ -260,9 +292,13 @@ export function TableFormulaBar({
 }
 
 function AddBlockMenu({
+  query,
+  references,
   onAppend,
 }: {
-  onAppend: (operator: BlockOperator, fn: BlockFunction | null) => void;
+  query: Lib.Query;
+  references: readonly FormulaReference[];
+  onAppend: (operator: BlockOperator, insert: string | null) => void;
 }) {
   return (
     <Menu position="bottom-end">
@@ -292,10 +328,28 @@ function AddBlockMenu({
             </Menu.Sub.Target>
             <Menu.Sub.Dropdown>
               {BLOCK_FUNCTIONS.map((fn) => (
-                <Menu.Item key={fn} onClick={() => onAppend(operator, fn)}>
+                <Menu.Item
+                  key={fn}
+                  onClick={() => onAppend(operator, getCallSource(query, fn))}
+                >
                   {getFunctionDisplayName(fn)}
                 </Menu.Item>
               ))}
+              {references.length > 0 && (
+                <>
+                  <Menu.Divider />
+                  <Menu.Label>{t`Metrics`}</Menu.Label>
+                  {references.map((reference) => (
+                    <Menu.Item
+                      key={reference.source}
+                      leftSection={<Icon name="metric" aria-hidden />}
+                      onClick={() => onAppend(operator, reference.source)}
+                    >
+                      {reference.name}
+                    </Menu.Item>
+                  ))}
+                </>
+              )}
               <Menu.Divider />
               <Menu.Item
                 leftSection={<Icon name="pencil" aria-hidden />}

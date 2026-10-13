@@ -87,6 +87,13 @@
   }
 }
 
+.blockReference {
+  padding: 0 0.5rem;
+  font-weight: 700;
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background_surface-brand-subtle);
+}
+
 .operator {
   display: inline-block;
   min-width: 1.25rem;

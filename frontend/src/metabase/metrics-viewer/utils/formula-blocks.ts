@@ -2,7 +2,11 @@ import { getClauseDefinition } from "metabase/querying/expressions";
 import { formatIdentifier } from "metabase/querying/expressions/identifier";
 import * as Lib from "metabase-lib";
 
-import { findFormulaColumn, tableFormulaColumns } from "./table-formula";
+import {
+  findFormulaColumn,
+  tableFormulaColumns,
+  tableFormulaReferences,
+} from "./table-formula";
 
 /** Aggregations offered by a block's function picker, in menu order. */
 export const BLOCK_FUNCTIONS = [
@@ -111,6 +115,18 @@ export function getCallSource(query: Lib.Query, fn: BlockFunction): string {
   const column =
     fn === "count" ? undefined : getColumnForFunction(query, fn, undefined);
   return `${getFunctionDisplayName(fn)}(${formatColumnReference(query, column)})`;
+}
+
+export type FormulaReference = { name: string; source: string };
+
+/** Saved metrics and measures with the formula text that references them. */
+export function getFormulaReferences(query: Lib.Query): FormulaReference[] {
+  return tableFormulaReferences(query).map((reference) => {
+    const { displayName } = Lib.isMetricMetadata(reference)
+      ? Lib.displayInfo(query, -1, reference)
+      : Lib.displayInfo(query, -1, reference);
+    return { name: displayName, source: formatIdentifier(displayName) };
+  });
 }
 
 /** Rewrites a call to use `fn`, keeping its column when `fn` accepts it. */
