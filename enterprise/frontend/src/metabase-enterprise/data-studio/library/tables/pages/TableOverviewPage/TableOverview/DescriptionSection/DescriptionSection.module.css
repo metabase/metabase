@@ -31,18 +31,12 @@
 .textStyleInput {
   padding: 0;
   border: 0;
-  background: transparent;
   height: 1rem;
   min-height: 1rem;
   cursor: pointer;
 
   &[data-expanded="true"] {
     cursor: text;
-  }
-
-  &[data-disabled] {
-    background: transparent;
-    cursor: not-allowed;
   }
 }
 

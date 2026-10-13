@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import {
   Box,
   Icon,
+  Loader,
   MultiSelect,
   type MultiSelectProps,
   Stack,
@@ -93,7 +94,7 @@ const argTypes = {
     control: { type: "json" },
   },
   size: {
-    options: ["xs", "md"],
+    options: ["md", "lg"],
     control: { type: "inline-radio" },
   },
   label: {
@@ -145,7 +146,7 @@ export default {
 
 export const Default = {};
 
-const OVERVIEW_SIZES = ["md", "xs"] as const;
+const OVERVIEW_SIZES = ["md", "lg"] as const;
 
 const OVERVIEW_VALUE = [dataWithLabels[0].value, dataWithLabels[1].value];
 
@@ -201,6 +202,33 @@ const OVERVIEW_STATES = [
     id: "disabled-filled",
     label: "Disabled, filled",
     props: { disabled: true, defaultValue: OVERVIEW_VALUE },
+  },
+  {
+    id: "clearable",
+    label: "With clear button",
+    props: { clearable: true, defaultValue: OVERVIEW_VALUE },
+  },
+  {
+    id: "clearable-focused",
+    label: "With clear button, focused",
+    props: { clearable: true, defaultValue: OVERVIEW_VALUE },
+    focus: true,
+  },
+  // TODO: use the `loading` prop instead of a Loader in `rightSection` after upgrading Mantine
+  {
+    id: "loading-focused-empty",
+    label: "Loading + Focused, empty",
+    props: { rightSection: <Loader size="xs" /> },
+    focus: true,
+  },
+  {
+    id: "loading-focused-filled",
+    label: "Loading + Focused, filled",
+    props: {
+      rightSection: <Loader size="xs" />,
+      defaultValue: OVERVIEW_VALUE,
+    },
+    focus: true,
   },
 ] satisfies OverviewRow[];
 
@@ -400,109 +428,109 @@ export const CreatableMd = {
   },
 };
 
-export const EmptyXs = {
+export const EmptyLg = {
   render: VariantTemplate,
-  name: "Empty, xs",
+  name: "Empty, lg",
   args: {
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const AsteriskXs = {
+export const AsteriskLg = {
   render: VariantTemplate,
-  name: "Asterisk, xs",
+  name: "Asterisk, lg",
   args: {
     ...AsteriskMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const ClearableXs = {
+export const ClearableLg = {
   render: VariantTemplate,
-  name: "Clearable, xs",
+  name: "Clearable, lg",
   args: {
     ...ClearableMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const DescriptionXs = {
+export const DescriptionLg = {
   render: VariantTemplate,
-  name: "Description, xs",
+  name: "Description, lg",
   args: {
     ...DescriptionMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const DisabledXs = {
+export const DisabledLg = {
   render: VariantTemplate,
-  name: "Disabled, xs",
+  name: "Disabled, lg",
   args: {
     ...DisabledMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const ErrorXs = {
+export const ErrorLg = {
   render: VariantTemplate,
-  name: "Error, xs",
+  name: "Error, lg",
   args: {
     ...ErrorMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const ReadOnlyXs = {
+export const ReadOnlyLg = {
   render: VariantTemplate,
-  name: "Read only, xs",
+  name: "Read only, lg",
   args: {
     ...ReadOnlyMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const IconsXs = {
+export const IconsLg = {
   render: VariantTemplate,
-  name: "Icons, xs",
+  name: "Icons, lg",
   args: {
     ...IconsMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const GroupsXs = {
+export const GroupsLg = {
   render: VariantTemplate,
-  name: "Groups, xs",
+  name: "Groups, lg",
   args: {
     ...GroupsMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const LargeSetsXs = {
+export const LargeSetsLg = {
   render: VariantTemplate,
-  name: "Large sets, xs",
+  name: "Large sets, lg",
   args: {
     ...LargeSetsMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const SearchableXs = {
+export const SearchableLg = {
   render: VariantTemplate,
-  name: "Searchable, xs",
+  name: "Searchable, lg",
   args: {
     ...SearchableMd.args,
-    size: "xs",
+    size: "lg",
   },
 };
 
-export const CreatableXs = {
+export const CreatableLg = {
   render: VariantTemplate,
-  name: "Creatable, xs",
+  name: "Creatable, lg",
   args: {
     ...CreatableMd.args,
-    size: "xs",
+    size: "lg",
   },
 };

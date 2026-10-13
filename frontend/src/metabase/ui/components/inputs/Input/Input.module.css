@@ -8,6 +8,7 @@
   --input-height-sm: rem(24px);
   --input-height-md: rem(32px);
   --input-height-lg: rem(40px);
+  --input-border-width: 0.5px;
   --inset-inline-end: 0;
 
   line-height: 1rem;
@@ -19,6 +20,18 @@
     var(--input-margin-bottom, 0px),
     calc(var(--mantine-spacing-xxs) / 2)
   );
+
+  /*
+   * Vertical padding of multiline inputs (Textarea, PillsInput, MultiSelect):
+   * 6px at md, 10px at lg. The design measures from the outer edge, so the
+   * border comes out of it.
+   */
+  &[data-multiline] {
+    --input-padding-y-md: calc(
+      var(--mantine-spacing-xs) - var(--input-border-width)
+    );
+    --input-padding-y-lg: calc(rem(10px) - var(--input-border-width));
+  }
 }
 
 .input {
@@ -36,7 +49,7 @@
   }
 
   &:not([data-variant="unstyled"]) {
-    border: 0.5px solid var(--input-border-color);
+    border: var(--input-border-width) solid var(--input-border-color);
     background-color: var(--mb-color-input-background);
     box-shadow: var(--input-ring);
 

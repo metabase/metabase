@@ -1,5 +1,4 @@
 .SelectRoot {
-  border-color: var(--mb-color-border-neutral);
   padding: 0;
 
   & > div {
@@ -8,15 +7,9 @@
 }
 
 .SelectWrapper {
-  color: var(--mb-color-text-primary);
-
   &[data-disabled] {
     opacity: 1;
     pointer-events: auto;
-  }
-
-  svg[data-error] {
-    color: var(--mb-color-feedback-negative);
   }
 
   &:has([data-position]) {
@@ -24,50 +17,13 @@
       padding-right: var(--input-right-section-width);
     }
   }
-
-  &[data-size="xs"]:has([data-combined-clear-section]) {
-    .SelectInput {
-      padding-right: 2.5625rem;
-    }
-  }
-
-  &[data-size="sm"]:has([data-combined-clear-section]) {
-    .SelectInput {
-      padding-right: 3.125rem;
-    }
-  }
-
-  &[data-size="md"]:has([data-combined-clear-section]) {
-    .SelectInput {
-      padding-right: 3.75rem;
-    }
-  }
-
-  &[data-size="lg"]:has([data-combined-clear-section]) {
-    .SelectInput {
-      padding-right: 4.5rem;
-    }
-  }
-
-  &[data-size="xl"]:has([data-combined-clear-section]) {
-    .SelectInput {
-      padding-right: 5.5625rem;
-    }
-  }
 }
 
 .SelectInput {
-  color: var(--mb-color-text-primary);
   text-overflow: ellipsis;
-  background-color: var(--mb-color-background_page-primary);
 
   &[data-disabled] {
     opacity: 1;
-    color: var(--mb-color-text-disabled);
-  }
-
-  &::placeholder {
-    color: var(--mb-color-text-disabled);
   }
 
   [data-position="right"] {
@@ -84,12 +40,12 @@
 }
 
 .SelectInputSection {
-  color: var(--mb-color-text-primary);
+  [data-disabled] & {
+    color: var(--mb-color-icon-disabled);
+  }
 
   svg {
     color: inherit;
-    width: 1rem !important;
-    height: 1rem !important;
 
     &:not([data-combobox-chevron]) path {
       d: path(
@@ -98,12 +54,21 @@
     }
   }
 
-  [data-disabled] & {
-    opacity: 1;
-    color: var(--mb-color-text-disabled);
+  /* With a value and a clear button, the clear button replaces the chevron.
+     TODO: replace with `clearSectionMode="clear"` after upgrading Mantine */
+  &:has([data-combined-clear-section]) {
+    /* Mantine widens the section for the clear button + chevron pair (60px at md) */
+    --section-size: var(--input-right-section-size) !important;
+  }
 
-    &::placeholder {
-      color: var(--mb-color-text-disabled);
+  [data-combined-clear-section] {
+    /* Mantine sets `padding-inline-end` as an inline style on this wrapper (10px at md)
+       to offset the clear button + chevron pair from the edge. With the chevron hidden,
+       it would push the clear button off-center. */
+    padding-inline-end: 0 !important;
+
+    [data-combobox-chevron] {
+      display: none;
     }
   }
 }
@@ -173,12 +138,8 @@
   border-color: var(--mb-color-border-neutral);
 }
 
-.SelectError {
-  &::first-letter {
-    text-transform: capitalize;
-  }
-}
-
 .SelectClearButton {
+  --cb-icon-size: var(--input-section-icon-size);
+
   color: var(--mb-color-text-primary) !important;
 }

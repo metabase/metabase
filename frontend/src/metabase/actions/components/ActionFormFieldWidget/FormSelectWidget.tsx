@@ -39,7 +39,7 @@ export const FormSelectWidget = forwardRef(function FormSelectWidget(
       htmlFor={id}
       optional={optional}
     >
-      <FormSelect ref={ref} id={id} size="sm" data={data} {...props} />
+      <FormSelect ref={ref} id={id} data={data} {...props} />
     </FormField>
   );
 });
