@@ -1257,24 +1257,19 @@
                    (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
                        "no transport-internal marker leaks into a batch element")))))))))))
 
-(defn- rest-endpoint-scopes
-  "Every scope string a loaded REST endpoint declares in its defendpoint `:scope`."
-  []
-  (require 'metabase.api-routes.routes)
-  (when config/ee-available?
-    (require 'metabase-enterprise.api-routes.routes))
-  (into (sorted-set)
-        (for [nmspace          (all-ns)
-              [_ {:keys [form]}] (api.macros/ns-routes nmspace)
-              :let             [scope (get-in form [:metadata :scope])]
-              :when            (string? scope)]
-          scope)))
-
 (deftest rest-scopes-reach-no-mcp-tool-or-resource-test
   (testing "GHY-4940: REST scopes gate REST endpoints only. A token holding every scope a REST endpoint declares, and
             no MCP scope, is refused by every MCP tool and every MCP data resource. UI shells carry no data and are
             read by any token, so they are not checked."
-    (let [rest-scopes (rest-endpoint-scopes)]
+    (require 'metabase.api-routes.routes)
+    (when config/ee-available?
+      (require 'metabase-enterprise.api-routes.routes))
+    (let [rest-scopes (into (sorted-set)
+                            (for [nmspace          (all-ns)
+                                  [_ {:keys [form]}] (api.macros/ns-routes nmspace)
+                                  :let             [scope (get-in form [:metadata :scope])]
+                                  :when            (string? scope)]
+                              scope))]
       (testing "the token holds REST scopes and no MCP scope"
         (is (seq rest-scopes))
         (is (not-any? (set mcp.paths/v2-surface-scopes) rest-scopes)))
