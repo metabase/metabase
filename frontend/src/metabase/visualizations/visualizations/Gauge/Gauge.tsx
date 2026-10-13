@@ -7,7 +7,10 @@ import CS from "metabase/css/core/index.css";
 import { Box } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
-import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
@@ -259,9 +262,11 @@ function GaugeComponent({
         </svg>
       </div>
       {warnings.map(({ value, errors }, index) => {
+        // labels grow outward from the label radius, so the icon's inner edge sits there too
         const [x, y] = valuePosition(
           value,
-          OUTER_RADIUS * LABEL_OFFSET_PERCENT,
+          OUTER_RADIUS * LABEL_OFFSET_PERCENT +
+            GOAL_WARNING_ICON_SIZE / 2 / svgScale,
         );
 
         return (
@@ -272,7 +277,7 @@ function GaugeComponent({
             top={svgTop + (arcCenterY + y) * svgScale}
             style={{ transform: "translate(-50%, -50%)" }}
           >
-            <GoalWarningIcon errors={errors} />
+            <GoalWarningIcon errors={errors} source="color-ranges" />
           </Box>
         );
       })}

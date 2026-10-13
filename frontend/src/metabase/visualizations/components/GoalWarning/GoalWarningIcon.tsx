@@ -1,28 +1,34 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Icon, List, Stack, Text, Tooltip } from "metabase/ui";
 import { type GoalRefError, getGoalErrorMessage } from "metabase/viz-core";
 
-export const GOAL_WARNING_ICON_SIZE = 12;
+export const GOAL_WARNING_ICON_SIZE = 16;
 const TOOLTIP_MAX_WIDTH = 300;
+
+type GoalWarningSource = "goal" | "color-ranges";
 
 type GoalWarningIconProps = {
   errors: GoalRefError[];
+  source: GoalWarningSource;
 };
 
-export function GoalWarningIcon({ errors }: GoalWarningIconProps) {
-  const messages = _.uniq(errors.map((error) => getGoalErrorMessage(error)));
-
+export function GoalWarningIcon({ errors, source }: GoalWarningIconProps) {
   return (
     <Tooltip
       label={
-        <Stack gap="xs">
-          {messages.map((message) => (
-            <Text key={message} c="inherit" fz="inherit">
-              {message}
-            </Text>
-          ))}
+        <Stack gap={0}>
+          <Text c="inherit" fz="inherit">
+            {getGoalWarningTitle(source)}
+          </Text>
+          <List fz="inherit">
+            {errors.map((error, index) => (
+              <List.Item c="inherit" key={index}>
+                {getGoalErrorMessage(error)}
+              </List.Item>
+            ))}
+          </List>
         </Stack>
       }
       maw={TOOLTIP_MAX_WIDTH}
@@ -38,3 +44,9 @@ export function GoalWarningIcon({ errors }: GoalWarningIconProps) {
     </Tooltip>
   );
 }
+
+const getGoalWarningTitle = (source: GoalWarningSource) =>
+  match(source)
+    .with("goal", () => t`Couldn't get the goal value`)
+    .with("color-ranges", () => t`Couldn't get some color range values`)
+    .exhaustive();

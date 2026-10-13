@@ -13,8 +13,8 @@ export type GaugeWarning = {
 
 /**
  * Places a warning halfway between the known bounds around each run of
- * consecutive bounds that failed to resolve. `boundResults` follow the order of
- * `getGoalSegmentBounds`.
+ * consecutive bounds that failed to resolve, merging warnings that land on the
+ * same spot of the arc. `boundResults` follow the order of `getGoalSegmentBounds`.
  */
 export function getGaugeWarnings(
   boundResults: GoalValueResult[],
@@ -49,7 +49,24 @@ export function getGaugeWarnings(
     { warnings: [], previousValue: rangeMin, pendingErrors: [] },
   );
 
-  return [...warnings, ...toWarning(previousValue, rangeMax, pendingErrors)];
+  const clampToRange = (value: number) =>
+    Math.min(Math.max(value, rangeMin), rangeMax);
+
+  return mergeWarningsWithSameValue(
+    [...warnings, ...toWarning(previousValue, rangeMax, pendingErrors)].map(
+      (warning) => ({ ...warning, value: clampToRange(warning.value) }),
+    ),
+  );
+}
+
+function mergeWarningsWithSameValue(warnings: GaugeWarning[]): GaugeWarning[] {
+  const errorsByValue = new Map<number, GoalRefError[]>();
+
+  warnings.forEach(({ value, errors }) => {
+    errorsByValue.set(value, [...(errorsByValue.get(value) ?? []), ...errors]);
+  });
+
+  return Array.from(errorsByValue, ([value, errors]) => ({ value, errors }));
 }
 
 export function getSegmentsRange(

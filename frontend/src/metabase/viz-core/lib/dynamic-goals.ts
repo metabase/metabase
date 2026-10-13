@@ -5,7 +5,6 @@ import { color } from "metabase/ui/colors";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   CardId,
-  CardType,
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalSegment,
@@ -29,6 +28,7 @@ import type {
   GoalData,
   GoalRefError,
   GoalValueResult,
+  ReferencedEntityKind,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "../types";
@@ -186,11 +186,9 @@ export function isDynamicGoalSetting(
   return getDynamicGoalSettingKeys(display).includes(key);
 }
 
-type GoalSourceKind = CardType | "measure";
-
 export const getGoalErrorMessage = (
   { reason, message }: GoalRefError,
-  sourceKind?: GoalSourceKind,
+  sourceKind?: ReferencedEntityKind,
 ) =>
   match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
@@ -199,7 +197,7 @@ export const getGoalErrorMessage = (
     .with("not-a-number", () => t`This value isn't a number`)
     .exhaustive();
 
-const getTooManyRowsMessage = (sourceKind: GoalSourceKind | undefined) =>
+const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
   match(sourceKind)
     .with(
       "question",

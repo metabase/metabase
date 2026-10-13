@@ -463,7 +463,10 @@ describe("Scalar conditional colors", () => {
     );
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't get some color range values"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("boom")).toHaveLength(2);
   });
 
   it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {

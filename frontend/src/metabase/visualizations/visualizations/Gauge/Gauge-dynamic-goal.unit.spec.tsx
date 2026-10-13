@@ -76,7 +76,28 @@ describe("gauge dynamic goal", () => {
     expect(screen.queryByText("100")).not.toBeInTheDocument();
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't get some color range values"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("boom")).toHaveLength(2);
+  });
+
+  it("lists only its own range's errors in each warning", async () => {
+    setup(
+      [
+        { min: 0, max: 10, color: "red" },
+        { min: GOAL_REF, max: 75, color: "yellow" },
+        { min: 75, max: GOAL_REF, color: "green" },
+        { min: 80, max: 100, color: "blue" },
+      ],
+      { isQueryBuilder: true },
+    );
+
+    const [warning] = await screen.findAllByLabelText("Goal warning");
+    expect(screen.getAllByLabelText("Goal warning")).toHaveLength(2);
+
+    await userEvent.hover(warning);
+    expect(await screen.findAllByRole("listitem")).toHaveLength(1);
   });
 
   it("renders the ranges that resolve without a warning outside the query builder", async () => {

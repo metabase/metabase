@@ -209,7 +209,7 @@ function ScalarComponent(
         </ScalarValueContainer>
         {isQueryBuilder && goalErrors.length > 0 && (
           <Box pos="absolute" top={0} left="100%" ml="xs">
-            <GoalWarningIcon errors={goalErrors} />
+            <GoalWarningIcon errors={goalErrors} source="color-ranges" />
           </Box>
         )}
       </Box>
