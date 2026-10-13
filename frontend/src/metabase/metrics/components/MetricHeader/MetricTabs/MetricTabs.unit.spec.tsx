@@ -153,14 +153,29 @@ describe("MetricTabs", () => {
     });
   });
 
-  it("marks About as the current page for a slugged metric URL (#83344)", async () => {
-    setup({ card: { id: 9 }, initialRoute: "/metric/9-revenue" });
+  it.each([
+    ["About", "/metric/9-revenue"],
+    ["Overview", "/metric/9-revenue/overview"],
+    ["Definition", "/metric/9-revenue/query"],
+    ["Dimensions", "/metric/9-revenue/dimensions"],
+    ["History", "/metric/9-revenue/history"],
+    ["Dependencies", "/metric/9-revenue/dependencies"],
+  ])(
+    "marks %s as the current tab for a slugged metric URL (#83344)",
+    async (label, initialRoute) => {
+      setup({ card: { id: 9 }, initialRoute, role: "admin" });
 
-    expect(await screen.findByRole("link", { name: "About" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
+      expect(await screen.findByRole("link", { name: label })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(
+        screen
+          .getAllByRole("link")
+          .filter((link) => link.getAttribute("aria-current") === "page"),
+      ).toHaveLength(1);
+    },
+  );
 
   it.each(["/metric/9-revenue/query", "/metric/90-revenue"])(
     "does not mark About as current at %s (#83344)",
