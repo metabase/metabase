@@ -43,7 +43,7 @@ measure() {
 # Experiment: the same suite under several garbage collector settings. The
 # last run repeats the first to show how much the machine drifts over the job.
 round=0
-for arm in "base NT_ARM=base" "semi64 NT_SEMI_SPACE_MB=64" "semi128 NT_SEMI_SPACE_MB=128" "semi64single NT_SEMI_SPACE_MB=64 NT_NODE_EXTRA=--single-threaded-gc" "semi64 NT_SEMI_SPACE_MB=64" "base NT_ARM=base"; do
+for arm in "base NT_ARM=base" "semi64 NT_SEMI_SPACE_MB=64" "base NT_ARM=base" "semi64 NT_SEMI_SPACE_MB=64" "base NT_ARM=base" "semi64 NT_SEMI_SPACE_MB=64"; do
   round=$((round + 1))
   # shellcheck disable=SC2163,SC2086
   export ${arm#* }
