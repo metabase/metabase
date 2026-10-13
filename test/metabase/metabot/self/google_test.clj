@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google :as google]
@@ -860,6 +861,29 @@
                     {:status  status
                      :headers {"content-type" "application/json"}
                      :body    body}))))
+
+(def ^:private context-overflow-body
+  "Google's 400 for an input over the model's context window, probed 2026-10-13 on gemini-3.5-flash
+  (https://github.com/metabase/metabase/pull/83989)."
+  (json/encode {:error {:code    400
+                        :message "The input token count exceeds the maximum number of tokens allowed 1048576."
+                        :status  "INVALID_ARGUMENT"}}))
+
+(deftest google-context-overflow-is-full-test
+  (testing "Google's 400 for an input over the context window makes the conversation \"full\""
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 400 context-overflow-body)]
+        (let [e (try
+                  (into [] (google {:model "google/gemini-3.5-flash"
+                                    :input [{:role :user :content "hi"}]}))
+                  (catch clojure.lang.ExceptionInfo e
+                    e))]
+          (is (=? {:status 400} (ex-data e)))
+          (is (= self.core/context-full-error-code
+                 (:error-code (self/context-overflow-error e)))))))))
 
 (deftest list-models-anthropic-empty-body-probe-test
   (testing "an anthropic model is probed by posting an empty body to its own streamRawPredict route"

@@ -2852,8 +2852,14 @@
                     :error {:type "invalid_request_error" :message "prompt is too long: 208310 tokens > 200000 maximum"}}
       ;; https://docs.z.ai/api-reference/api-code
       "zai"        {:error {:code "1261" :message "Prompt too long"}}
+      ;; probed 2026-10-13 on Vertex, gemini-3.5-flash
+      "google"     {:error {:code    400
+                            :message "The input token count exceeds the maximum number of tokens allowed 1048576."
+                            :status  "INVALID_ARGUMENT"}}
       "openrouter" (openrouter-relayed-error-body
-                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}}")))
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}}"))))
+
+(deftest context-overflow-error-other-failure-test
   (testing "any other failure is not a \"full\" error"
     (are [status body]
          (nil? (self/context-overflow-error (provider-api-error! "openrouter" status body)))
@@ -2862,8 +2868,16 @@
       400 (openrouter-relayed-error-body
            "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tools.0: Input should be a valid dictionary\"}}")
       400 anthropic-credit-balance-body
+      ;; Gemini's INVALID_ARGUMENT for a bad `maxOutputTokens`, probed 2026-10-13 on Vertex, gemini-3.5-flash
+      400 {:error {:code    400
+                   :message (str "Unable to submit request because it has a maxOutputTokens value of 70000 but the "
+                                 "supported range is from 1 (inclusive) to 65537 (exclusive). Update the value and "
+                                 "try again.")
+                   :status  "INVALID_ARGUMENT"}}
       429 {:error {:code 429 :message "This endpoint's maximum context length is 200000 tokens."}}
-      500 {:error {:code 500 :message "This endpoint's maximum context length is 200000 tokens."}}))
+      500 {:error {:code 500 :message "This endpoint's maximum context length is 200000 tokens."}})))
+
+(deftest context-overflow-error-not-api-error-test
   (testing "an exception that is not a provider API error"
     (is (nil? (self/context-overflow-error
                (ex-info "boom" {:status 400

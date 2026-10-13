@@ -385,8 +385,14 @@
   \"Input token length too long\" and \"prompt tokens + max_tokens exceeds the model specification\"
   (https://platform.kimi.ai/docs/api/errors), Anthropic \"prompt is too long\"
   (https://platform.claude.com/docs/en/build-with-claude/context-windows). Probed 2026-10-13: OpenRouter relays an
-  upstream overflow as that upstream's own text, \"prompt is too long: 250027 tokens > 200000 maximum\"."
-  #"maximum context length|exceeded model token limit|token length too long|exceeds the model specification|prompt is too long")
+  upstream overflow as that upstream's own text, \"prompt is too long: 250027 tokens > 200000 maximum\". Gemini on
+  Vertex: \"The input token count exceeds the maximum number of tokens allowed 1048576.\" with `INVALID_ARGUMENT`."
+  (re-pattern (str/join "|" ["maximum context length"                    ; OpenRouter, DeepSeek, Mistral
+                             "exceeded model token limit"                ; Moonshot
+                             "token length too long"                     ; Moonshot
+                             "exceeds the model specification"           ; Moonshot
+                             "prompt is too long"                        ; Anthropic; OpenRouter relaying it
+                             "input token count exceeds the maximum"]))) ; Gemini
 
 (defn- context-overflow-object?
   "True when a provider's `error` object says the prompt does not fit the model's context window.
