@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useAdminListNotificationsQuery,
+  useAdminNotificationCountsQuery,
   useBulkNotificationActionMutation,
   useLazyAdminListNotificationsQuery,
 } from "metabase/api";
@@ -13,8 +13,8 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { DebouncedSearchInput } from "metabase/common/components/DebouncedSearchInput";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { getTabCount } from "metabase/common/components/PillTabNavigation";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
@@ -48,7 +48,7 @@ import {
   SORT_COLUMN_VALUES,
 } from "./constants";
 import type { RouteParams } from "./types";
-import { buildListParams, getTabCount, urlStateConfig } from "./utils";
+import { buildListParams, urlStateConfig } from "./utils";
 
 export const NotificationsAdminPage = () => {
   const location = useLocation();
@@ -76,38 +76,10 @@ export const NotificationsAdminPage = () => {
   );
   const selectedCount = selectedNotifications.length;
 
-  const {
-    currentData: allCountData,
-    error: allCountError,
-    isFetching: isAllCountFetching,
-  } = useAdminListNotificationsQuery({
-    limit: 1,
-    offset: 0,
-    active: urlState.active ?? undefined,
-  });
-  const {
-    currentData: failingData,
-    error: failingError,
-    isFetching: isFailingFetching,
-  } = useAdminListNotificationsQuery({
-    limit: 1,
-    offset: 0,
-    active: urlState.active ?? undefined,
-    last_check_status: "failing",
-  });
-  const {
-    currentData: ownerlessData,
-    error: ownerlessError,
-    isFetching: isOwnerlessFetching,
-  } = useAdminListNotificationsQuery({
-    limit: 1,
-    offset: 0,
-    active: urlState.active ?? undefined,
-    creatorless: true,
-  });
-  const allCount = allCountData?.total ?? 0;
-  const failingCount = failingData?.total ?? 0;
-  const ownerlessCount = ownerlessData?.total ?? 0;
+  const { currentData: counts, isError: isCountsError } =
+    useAdminNotificationCountsQuery(undefined, {
+      refetchOnMountOrArgChange: true,
+    });
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
@@ -276,18 +248,18 @@ export const NotificationsAdminPage = () => {
   );
 
   const isSidebarOpen = notificationId !== undefined;
-  const countError = failingError ?? ownerlessError;
-  const allTabCount = getTabCount(isAllCountFetching, allCountError, allCount);
-  const failingTabCount = getTabCount(
-    isFailingFetching,
-    failingError,
-    failingCount,
-  );
-  const ownerlessTabCount = getTabCount(
-    isOwnerlessFetching,
-    ownerlessError,
-    ownerlessCount,
-  );
+  const allTabCount = getTabCount({
+    value: counts?.all,
+    isError: isCountsError,
+  });
+  const failingTabCount = getTabCount({
+    value: counts?.failing,
+    isError: isCountsError,
+  });
+  const ownerlessTabCount = getTabCount({
+    value: counts?.ownerless,
+    isError: isCountsError,
+  });
 
   const { prevNotificationId, nextNotificationId, notificationSummary } =
     useMemo(() => {
@@ -315,10 +287,6 @@ export const NotificationsAdminPage = () => {
         notificationSummary: notifications[index],
       };
     }, [notificationId, notifications]);
-
-  if (countError) {
-    return <LoadingAndErrorWrapper error={countError} />;
-  }
 
   return (
     <>
