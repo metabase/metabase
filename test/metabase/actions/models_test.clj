@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
@@ -249,6 +250,29 @@
             (testing "a data app collection takes one too"
               (is (=? {:model_id nil :collection_id app-id}
                       (action/select-action :id (insert! app-id)))))))))))
+
+(deftest action-in-a-data-apps-collection-is-read-only-test
+  (testing "Nobody writes an action in a collection of the data apps namespace, administrators included"
+    (mt/with-temp [:model/Collection {app-id :id}  {:namespace "data-apps"}
+                   :model/Collection {coll-id :id} {:namespace "data-actions"}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [action-in (fn [collection-id]
+                          (lib/normalize ::actions.schema/action.for-insert
+                                         {:type          :query
+                                          :name          "No model"
+                                          :collection_id collection-id
+                                          :database_id   (mt/id)
+                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
+              action    (action/select-action :id (action/insert! (action-in app-id)))
+              elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
+          (mt/with-test-user :crowberto
+            (is (false? (mi/can-write? action)))
+            (is (false? (mi/can-write? :model/Action (:id action))))
+            (is (false? (:can_write (t2/hydrate action :can_write))))
+            (testing "nor creates one there, or moves one in"
+              (is (false? (mi/can-create? :model/Action (action-in app-id))))
+              (is (true? (mi/can-write? elsewhere)))
+              (is (false? (mi/can-update? elsewhere {:collection_id app-id}))))))))))
 
 (deftest implicit-action-requires-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

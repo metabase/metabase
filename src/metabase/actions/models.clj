@@ -233,13 +233,22 @@
     :else
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)))
 
+(defmethod mi/can-write? :model/Action
+  ([action]
+   (and (not (collection/data-apps-collection? (or (:collection action) (:collection_id action))))
+        (mi/current-user-has-full-permissions? :write action)))
+  ([_model pk]
+   (mi/can-write? (first (actions.db/actions-with-id pk)))))
+
 (defn- collection-writable?
   "Whether the current user can write the Collection `action` goes in."
   [{model-id :model_id, :as action}]
   (let [action (assoc action :collection_id (effective-collection-id action))]
     (if model-id
       ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
-      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
+      ;; unlike the branch above, which asks the collection's `can-write?`, this one reads the permissions directly
+      (and (not (collection/data-apps-collection? (:collection_id action)))
+           (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write))))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
