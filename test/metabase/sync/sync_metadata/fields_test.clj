@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
@@ -692,3 +693,27 @@
             (is (= :PHI (mirror)))))
         (finally
           (t2/delete! :model/Database (mt/id)))))))
+
+(deftest per-table-field-sync-failure-levels-test
+  (testing "a failure syncing one table's fields is logged by kind (GHY-4945, GHY-4946)"
+    (let [run (fn [e]
+                (let [attempted (atom 0)]
+                  (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
+                                              (fn [& _] (swap! attempted inc) (throw e))]
+                    (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
+                      (let [threw? (try (sync-fields/sync-fields! (mt/db)) false
+                                        (catch Throwable _ true))]
+                        {:attempted @attempted
+                         :threw?    threw?
+                         :levels    (into #{} (map :level) (messages))})))))]
+      (testing "a missing grant is the customer's to fix: WARN, and the other tables are still synced"
+        (is (=? {:attempted #(> % 1), :threw? false, :levels #{:warn}}
+                (run (java.sql.SQLException. "SELECT command denied to user 'mb'@'localhost' for table 'orders'"
+                                             "42000" (int 1142))))))
+      (testing "an unreachable warehouse aborts the step after the first table"
+        (is (=? {:attempted 1, :threw? true}
+                (run (ex-info "Unable to connect to the database" {}
+                              (com.mchange.v2.resourcepool.CannotAcquireResourceException. "x"))))))
+      (testing "anything else might be a Metabase bug: ERROR"
+        (is (=? {:attempted #(> % 1), :threw? false, :levels #{:error}}
+                (run (ex-info "boom" {}))))))))
