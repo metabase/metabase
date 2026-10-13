@@ -31,3 +31,23 @@
   (testing "a failure specific to one table is skipped, and the rest are still described"
     (is (=? {:attempted #(> % 1), :threw? false}
             (tables-attempted (SQLException. "permission denied for table"))))))
+
+(defn- sql-exception
+  ([message state] (sql-exception message state 0))
+  ([message state code] (SQLException. ^String message ^String state (int code))))
+
+(deftest log-if-error-levels-test
+  (testing "the sync step logs every failure; fetch-metadata adds an ERROR only for what might be a Metabase bug (GHY-4946)"
+    (doseq [[expected e] [[:error (SQLException. "syntax error at or near \"FROM\"" "42601")]
+                          [:debug (ex-info "Unable to connect to the database" {} (CannotAcquireResourceException. "x"))]
+                          [:debug (sql-exception "password authentication failed for user \"mb\"" "28P01")]
+                          [:debug (sql-exception "permission denied for table orders" "42501")]
+                          [:debug (sql-exception "SELECT command denied to user 'mb'@'localhost' for table 'orders'" "42000" 1142)]
+                          [:error (sql-exception "You have an error in your SQL syntax" "42000" 1064)]
+                          [:debug (ex-info "Error executing query" {} (sql-exception "ERROR: user mapping not found for \"mb\"" "42704"))]]]
+      (testing (ex-message e)
+        (is (= [expected]
+               ;; `log-if-error` is a macro, so it logs under the namespace it's expanded in
+               (mt/with-log-messages-for-level [messages [metabase.sync.fetch-metadata-test :debug]]
+                 (is (thrown? Throwable (fetch-metadata/log-if-error "test" (throw e))))
+                 (mapv :level (messages)))))))))
