@@ -220,6 +220,7 @@
        - Authentication data (credentials, tokens, etc.)
        - :device-info - Device information for session tracking
        - :redirect-url - Optional redirect URL after login
+       - :session/skip? - Optional; when true, the login creates no session
 
    Returns:
      Map with one of three result types:
@@ -304,6 +305,7 @@
    [:server-name {:optional true} [:maybe :string]]
    [:server-port {:optional true} [:maybe :int]]
    [:session/provider {:optional true} [:maybe :keyword]]
+   [:session/skip? {:optional true} [:maybe :boolean]]
    [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
    [:state {:optional true} [:maybe :string]]
    [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
@@ -420,7 +422,8 @@
     (cond-> $
       (and (true? (:success? $))
            (:user $)
-           (not (:mfa/pending? $))) (create-session! provider))
+           (not (:mfa/pending? $))
+           (not (:session/skip? $))) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
                     :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 
