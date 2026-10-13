@@ -499,17 +499,21 @@ describe("getGoalErrorMessage", () => {
     );
   });
 
-  it.each([
-    ["column-not-found", "This column no longer exists"],
-    ["not-a-number", "This value isn't a number"],
-  ] as const)(
-    "explains %s regardless of the server message",
-    (reason, text) => {
-      expect(getGoalErrorMessage({ ...REF, reason, message: "boom" })).toBe(
-        text,
-      );
-    },
-  );
+  it("explains a missing column regardless of the server message", () => {
+    expect(
+      getGoalErrorMessage({
+        ...REF,
+        reason: "column-not-found",
+        message: "boom",
+      }),
+    ).toBe("This column no longer exists");
+  });
+
+  it("explains a non-numeric value regardless of the server message", () => {
+    expect(
+      getGoalErrorMessage({ ...REF, reason: "not-a-number", message: "boom" }),
+    ).toBe("This value isn't a number");
+  });
 });
 
 function gaugeCard(visualization_settings: VisualizationSettings): GoalCard {
