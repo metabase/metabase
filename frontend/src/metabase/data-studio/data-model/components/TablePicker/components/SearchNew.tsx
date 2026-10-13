@@ -145,7 +145,7 @@ export function SearchNew({
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
   }, [allowedDatabaseIds, tables]);
 
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingTables || isFetchingTables || isLoadingDatabases;
 
   const resultTree = useMemo(
     () => buildResultTree(filteredTables),
@@ -173,7 +173,7 @@ export function SearchNew({
   if (isLoading) {
     return (
       <Flex justify="center" align="center" p="xl">
-        <Loader />
+        <Loader data-testid="loading-indicator" />
       </Flex>
     );
   }
