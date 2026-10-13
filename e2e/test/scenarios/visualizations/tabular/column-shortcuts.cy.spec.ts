@@ -386,7 +386,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.popover()
       .findByTestId("combine-example")
       .should("contain", "email@example.com12345");
-    selectColumn(1, "Name");
+    selectColumn(0, "Name");
 
     H.popover().within(() => {
       cy.findByText("Separated by (empty)").click();
