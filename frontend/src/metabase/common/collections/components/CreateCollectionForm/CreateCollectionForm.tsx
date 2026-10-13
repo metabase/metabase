@@ -24,7 +24,7 @@ import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
-import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
+import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelField";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
