@@ -153,8 +153,7 @@
   `[metric|measure|segment, {}, <entity_id>]` clause without a follow-up `read_resource` round-trip."
   [results]
   ;; The search index doesn't carry `entity_id`, so each lookup is one query for all the types that share it.
-  (let [type->id->eid (into {}
-                            (for [[types ids->eids] entity-id-lookups
+  (let [type->id->eid (u/for-map [[types ids->eids] entity-id-lookups
                                   :let [ids (->> results
                                                  (filter (comp types :type))
                                                  (remove :portable_entity_id)
@@ -163,7 +162,7 @@
                                   :when (seq ids)
                                   :let [id->eid (ids->eids ids)]
                                   type types]
-                              [type id->eid]))]
+                        [type id->eid])]
     (cond->> results
       (seq type->id->eid) (mapv (fn [{:keys [id type] :as r}]
                                   (if-let [eid (get-in type->id->eid [type id])]
