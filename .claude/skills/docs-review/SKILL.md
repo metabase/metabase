@@ -2,6 +2,14 @@
 name: docs-review
 description: Review documentation changes for compliance with the Metabase writing style guide. Use when reviewing pull requests, files, or diffs containing documentation markdown files.
 allowed-tools: Read, Grep, Bash, Glob
+metadata:
+  metareview:
+    title: Docs review
+    kind: agent
+    rule: Documentation changed
+    watches: ["docs/**/*.md"]
+    icon: book
+    color: yellow
 ---
 
 # Documentation Review Skill
