@@ -26,6 +26,7 @@ import type {
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
+import { DataSheetBar } from "../../DataSheetBar";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
@@ -87,8 +88,11 @@ interface ViewMainContainerProps {
   showLeftSidebar: boolean;
   showRightSidebar: boolean;
   isLiveResizable: boolean;
-  /** False when the footer content is rendered by the bottom sheet tab bar instead. */
-  isFooterVisible?: boolean;
+  /**
+   * The data tab of the sheet layout: the result sits in an inset card under a
+   * search/formula bar, and the footer content moves to the sheet tab bar.
+   */
+  isDataSheet?: boolean;
   parameters: UiParameter[];
 
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
@@ -105,7 +109,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     setParameterValue,
     isLiveResizable,
     updateQuestion,
-    isFooterVisible = true,
+    isDataSheet = false,
   } = props;
 
   const visualizationResultProps = useVisualizationResultQBProps();
@@ -128,6 +132,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       component="main"
       className={cx(ViewMainContainerS.QueryBuilderMain, {
         [ViewMainContainerS.isSidebarOpen]: isSidebarOpen,
+        [ViewMainContainerS.isDataSheet]: isDataSheet,
       })}
       data-testid="query-builder-main"
       ref={mainRef}
@@ -143,9 +148,14 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           commitImmediately
         />
       )}
+      {isDataSheet && (
+        <DataSheetBar question={question} updateQuestion={updateQuestion} />
+      )}
 
       <DebouncedFrame
-        className={ViewMainContainerS.StyledDebouncedFrame}
+        className={cx(ViewMainContainerS.StyledDebouncedFrame, {
+          [ViewMainContainerS.DataSheetCard]: isDataSheet,
+        })}
         enabled={!isLiveResizable}
         resetKey={props.isRunning}
       >
@@ -166,7 +176,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-        {isFooterVisible && <ViewFooter className={CS.flexNoShrink} />}
+        {!isDataSheet && <ViewFooter className={CS.flexNoShrink} />}
       </Box>
     </Box>
   );
