@@ -54,7 +54,7 @@ export function usePublishedTableMeasurePage(
     });
 
     if (error) {
-      sendToast({ icon: "warning", message: t`Failed to remove measure` });
+      sendToast({ variant: "negative", message: t`Failed to remove measure` });
     } else {
       sendToast({ icon: "check", message: t`Measure removed` });
       navigate(Urls.dataStudioTableMeasures(tableId));

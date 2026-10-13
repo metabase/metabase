@@ -5,7 +5,8 @@ import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type { Undo } from "metabase/redux/store/undo";
+import type { Undo, UndoVariant } from "metabase/redux/store/undo";
+import type { IconName } from "metabase-types/api";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -14,9 +15,24 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
+function getDefaultIcon(variant: UndoVariant | undefined): IconName {
+  switch (variant) {
+    case "negative":
+      return "warning";
+    case "warning":
+      return "warning_triangle_filled";
+    default:
+      return "check_filled";
+  }
+}
+
 export const addUndo = createThunkAction(ADD_UNDO, (undo: Partial<Undo>) => {
   return (dispatch, getState) => {
-    const { icon = "check_filled", timeout = 5000, canDismiss = true } = undo;
+    const {
+      icon = getDefaultIcon(undo.variant),
+      timeout = 5000,
+      canDismiss = true,
+    } = undo;
     const id = undo.id ?? nextUndoId++;
     // if we're overwriting an existing undo, clear its timeout
     const currentUndo = getUndo(getState(), id);

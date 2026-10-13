@@ -121,8 +121,7 @@ export const BaseSMTPConnectionForm = ({
     const result = await deleteMutation();
     if (result.error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           result.error,
           t`Error clearing email settings`,
@@ -149,8 +148,7 @@ export const BaseSMTPConnectionForm = ({
         onClose();
       } catch (error) {
         sendToast({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: getErrorMessage(error, t`Error updating email settings`),
         });
 

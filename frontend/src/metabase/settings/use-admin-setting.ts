@@ -65,8 +65,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 
         sendToast({
           message,
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
         });
       } else {
         sendToast({ message: t`Changes saved` });
@@ -97,8 +96,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 
         sendToast({
           message,
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
         });
       } else {
         sendToast({ message: t`Changes saved`, icon: "check_filled" });
@@ -162,8 +160,7 @@ export const useAdminSettings = <
 
           sendToast({
             message,
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
           });
         } else {
           sendToast({ message: t`Changes saved`, icon: "check_filled" });
