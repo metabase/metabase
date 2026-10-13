@@ -1189,7 +1189,9 @@ describe("scenarios > dashboard > tracking", () => {
     // confirm it saves the state after saving and refreshing
     H.saveDashboard();
     cy.reload();
-    H.getDashboardCard(0).findByText("Top: Example Input").should("be.visible");
+    H.getDashboardCard(0)
+      .findByText("Top: contains Example Input")
+      .should("be.visible");
     H.getDashboardCard(1).findByText("Bottom").should("be.visible");
     H.assertDashboardFullWidth();
 
