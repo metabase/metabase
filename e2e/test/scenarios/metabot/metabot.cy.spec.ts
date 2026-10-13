@@ -92,6 +92,7 @@ describe("Metabot UI", () => {
     H.updateSetting("metabot-enabled?", false);
     cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
     cy.url().should("eq", Cypress.config().baseUrl + "/");
+    cy.wait("@xrayCandidates");
     H.assertChatVisibility("not.visible");
     cy.get("@agentReq.all").should("have.length", 0);
 
@@ -190,7 +191,24 @@ describe("Metabot in full-app embedding", () => {
   });
 
   it("should show the metabot button only when embedded-metabot-enabled? is true", () => {
+    cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
+      "getUserPermissions",
+    );
+
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
+
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
+
+    cy.wait("@getUserPermissions");
+    H.appBar().icon("metabot").should("be.visible");
+
     H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+    cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
+      "getUserPermissionsWhenDisabled",
+    );
 
     H.visitFullAppEmbeddingUrl({
       url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
@@ -202,15 +220,7 @@ describe("Metabot in full-app embedding", () => {
 
     cy.log("Assert metabot buttons are not rendered");
     H.appBar().icon("metabot").should("not.exist");
-
-    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
-
-    H.visitFullAppEmbeddingUrl({
-      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
-      qs: {},
-    });
-
-    H.appBar().icon("metabot").should("be.visible");
+    cy.get("@getUserPermissionsWhenDisabled.all").should("have.length", 0);
   });
 });
 

@@ -583,32 +583,7 @@ describe("AI Controls > Tenant usage limits", () => {
   });
 
   it("should update tenant limits and apply them to tenant users", () => {
-    cy.visit("/admin/metabot/usage-controls/ai-usage-limits");
-
-    cy.findByRole("tab", { name: "Specific tenants" }).click();
-
-    cy.findByTestId("tenant-limits-tab").should("be.visible");
-    cy.findByTestId("tenant-limits-tab")
-      .findByText("Test Corp")
-      .should("be.visible");
-    cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
-    cy.wait("@updateTenantLimit").then(({ request, response }) => {
-      expect(request.url).to.match(
-        new RegExp(`/api/ee/ai-controls/usage/tenant/${tenantId}$`),
-      );
-      expect(request.body).to.deep.equal({ max_usage: 10 });
-      expect(response?.statusCode).to.eq(200);
-    });
-
     cy.log("no tenant limit: the user gets an LLM response");
-    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
-      max_usage: null,
-    });
-    // Clear the backend limit-check cache so the new null limit is seen immediately,
-    cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
-      user_id: tenantUserId,
-    });
-
     signInAsTenantUser();
 
     cy.visit("/");
@@ -620,11 +595,25 @@ describe("AI Controls > Tenant usage limits", () => {
     H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
     H.lastChatMessage().should("not.contain.text", DEFAULT_QUOTA_MESSAGE);
 
-    cy.log("tenant limit set to 0: the user gets the quota-reached message");
+    cy.log(
+      "tenant limit set to 0 in the UI: the user gets the quota-reached message",
+    );
     cy.signInAsAdmin();
-    // Set tenant limit to 0 — any usage will immediately exceed it
-    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
-      max_usage: 0,
+    cy.visit("/admin/metabot/usage-controls/ai-usage-limits");
+
+    cy.findByRole("tab", { name: "Specific tenants" }).click();
+
+    cy.findByTestId("tenant-limits-tab").should("be.visible");
+    cy.findByTestId("tenant-limits-tab")
+      .findByText("Test Corp")
+      .should("be.visible");
+    cy.findByLabelText("Max total monthly tokens for Test Corp").type("0");
+    cy.wait("@updateTenantLimit").then(({ request, response }) => {
+      expect(request.url).to.match(
+        new RegExp(`/api/ee/ai-controls/usage/tenant/${tenantId}$`),
+      );
+      expect(request.body).to.deep.equal({ max_usage: 0 });
+      expect(response?.statusCode).to.eq(200);
     });
     // Clear the backend limit-check cache so the new limit is seen immediately,
     cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
