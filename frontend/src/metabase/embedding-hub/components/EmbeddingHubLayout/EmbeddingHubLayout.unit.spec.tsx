@@ -1,5 +1,6 @@
 import {
   setupPropertiesEndpoints,
+  setupSdkReact18HostsEndpoint,
   setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -45,6 +46,7 @@ function setup({
   const tokenFeatures = createMockTokenFeatures();
 
   setupSettingsEndpoints([]);
+  setupSdkReact18HostsEndpoint([]);
   setupPropertiesEndpoints(
     createMockSettings({ "token-features": tokenFeatures }),
   );
