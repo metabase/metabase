@@ -60,7 +60,6 @@
   select-action
   select-actions
   select-actions-for-ids
-  select-actions-for-models
   update!]
  [metabase.actions.events
   publish-action-success!]

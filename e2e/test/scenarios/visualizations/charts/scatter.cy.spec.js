@@ -136,9 +136,9 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization");
-    cy.findAllByText("79").should("not.exist");
+    H.cartesianChartCircle().should("have.length", 49);
+    H.getValueLabels().should("not.exist");
+    H.echartsContainer().findByText("79").should("not.exist");
   });
 
   it("should respect circle size in a visualization (metabase#22929)", () => {
@@ -227,11 +227,58 @@ select 10 as size, 2 as x, 5 as y`,
     stabilizeScatterChart();
     H.cartesianChartCircle().first().realHover();
 
-    H.assertEChartsTooltipNotContain(columnsToRemove);
     H.assertEChartsTooltip({
       header: "15.69",
       rows: allTooltipRows.slice(0, 2),
     });
+    H.assertEChartsTooltipNotContain(columnsToRemove);
+  });
+
+  it("should render scatter plot with native query data (metabase#55880)", () => {
+    H.visitQuestionAdhoc({
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select * from (
+  select 1415 x, 1 y
+  union all select 20, 2
+  union all select 900, 3
+  union all select 115, 4
+) as subquery
+where x < {{param}}`,
+          "template-tags": {
+            param: {
+              type: "number",
+              name: "param",
+              id: "144103a1-ebd4-4477-a7fa-f08cfd808d5e",
+              "display-name": "Param",
+              required: true,
+              default: "30",
+            },
+          },
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+    });
+
+    // Renders a scatter chart with numeric x-axis
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
+    H.echartsContainer().findByText("20");
+
+    H.saveQuestion("55880");
+
+    // Change filter value so values include numbers that can be parsed as valid dates
+    cy.findByPlaceholderText("Param").clear().type("1500");
+    H.runNativeQuery();
+
+    // Still renders a scatter chart with numeric x-axis
+    H.echartsContainer().findByText("1,500");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
   });
 });
 

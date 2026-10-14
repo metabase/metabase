@@ -12,6 +12,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -29,8 +30,9 @@
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
-  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
-  [:enum "collections" "question"])
+  Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
+  with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  [:enum "collections" "question" "dashboard"])
 
 ;;;; transforms
 
@@ -99,9 +101,12 @@
 
 ;;;; serialization
 
-;; nested in Timeline
+(defmethod serdes/generate-path "TimelineEvent" [_ event]
+  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
+   (serdes/infer-self-path "TimelineEvent" event)])
+
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :icon :name :time_matters :timezone]
+  {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
    :skip      []
    :transform {:created_at  (serdes/date)
                :creator_id  (serdes/fk :model/User)

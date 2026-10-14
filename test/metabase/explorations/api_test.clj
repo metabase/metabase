@@ -1683,8 +1683,8 @@
         (let [doc (t2/select-one :model/Document :id doc-id)]
           ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
           ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
-          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                                      queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u
@@ -1723,7 +1723,7 @@
               doc       (t2/select-one :model/Document :id doc-id)
               ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
               ;; the real create-card! / stored_result write path.
-              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+              result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
                           (eqr/create-ephemeral-card-for-exploration-queries!
                            [qid] doc-id (:collection_id doc) u
                            {:display "bar" :visualization-settings {}}))
@@ -2877,7 +2877,7 @@
   create hold no data perms, and `create-card!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -2940,8 +2940,8 @@
         ;; "checked them all" are distinguishable.
         (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
         (let [checked (atom [])]
-          (with-redefs [query-perms/check-run-permissions-for-query
-                        (fn [q] (swap! checked conj q) nil)]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
+                                      (fn [q] (swap! checked conj q) nil)]
             (eqr/create-ephemeral-card-for-exploration-queries!
              query-ids document-id (:collection_id doc) u
              {:display "bar" :visualization-settings {}}))

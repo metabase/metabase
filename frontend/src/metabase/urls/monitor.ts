@@ -90,6 +90,14 @@ export function monitorNotificationDetail(id: number) {
   return `${monitorNotifications()}/${id}`;
 }
 
+export function monitorSessions() {
+  return `${ROOT_URL}/sessions`;
+}
+
+export function monitorSessionDetail(sessionId: string) {
+  return `${monitorSessions()}/${sessionId}`;
+}
+
 export function monitorAiAuditing() {
   return `${ROOT_URL}/ai-auditing`;
 }
@@ -133,4 +141,16 @@ export function monitorAiAuditingCliUsage() {
 
 export function monitorAiAuditingCliCalls() {
   return `${monitorAiAuditingCli()}/calls`;
+}
+
+export function monitorApiKeyUsage() {
+  return `${ROOT_URL}/api-key-usage`;
+}
+
+export function monitorApiKeyUsageOverview() {
+  return `${monitorApiKeyUsage()}/usage`;
+}
+
+export function monitorApiKeyUsageEvents() {
+  return `${monitorApiKeyUsage()}/events`;
 }

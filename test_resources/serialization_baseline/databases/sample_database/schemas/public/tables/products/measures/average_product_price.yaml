@@ -21,6 +21,4 @@ definition:
 entity_id: mSrAvgProdPrice00008x
 name: Average Product Price
 serdes/meta:
-- id: mSrAvgProdPrice00008x
-  label: average_product_price
-  model: Measure
+- model: Measure

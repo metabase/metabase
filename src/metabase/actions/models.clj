@@ -1,5 +1,6 @@
 (ns metabase.actions.models
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
@@ -16,6 +17,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -104,16 +106,37 @@
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
 
-;; A data app's resource collection holds the copies of the actions the app runs.
+;; A data app's resource collection holds the copies of the actions the app runs, and actions without a model live in
+;; the data actions namespace.
 (defmethod collection/allowed-namespaces :model/Action
   [_]
-  (conj collection/default-allowed-namespaces collection/data-apps-ns))
+  (conj collection/default-allowed-namespaces collection/data-apps-ns collection/data-actions-ns))
+
+(def ^:private model-less-namespaces
+  "The Collection namespaces an Action without a model may go in, besides the data actions root."
+  #{collection/data-actions-ns collection/data-apps-ns})
+
+(defn- collection-namespace
+  "The namespace of the Collection with `collection-id` as a keyword, or nil."
+  [collection-id]
+  (some-> collection-id actions.db/collection-namespace keyword))
+
+(defn- check-model-less-collection
+  "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection."
+  [{model-id :model_id, collection-id :collection_id}]
+  (when (and (nil? model-id)
+             collection-id
+             (not (contains? model-less-namespaces (collection-namespace collection-id))))
+    (let [msg (tru "An action without a model can only go in a data actions or data app collection.")]
+      (throw (ex-info msg {:status-code 400
+                           :errors      {:collection_id msg}})))))
 
 (defn- check-collection-content
-  "Throws unless an Action may go in the Collection with `collection-id`."
-  [collection-id]
+  "Throws unless `action` may go in its Collection."
+  [{collection-id :collection_id, :as action}]
   (collection/check-collection-namespace :model/Action collection-id)
-  (collection/check-allowed-content :action collection-id))
+  (collection/check-allowed-content :action collection-id)
+  (check-model-less-collection action))
 
 (defn- set-model-collection
   "`action` with the `:collection_id` of its model Card."
@@ -126,7 +149,7 @@
              model-id set-model-collection)
     (when (implicit? action)
       (check-implicit-action-model model-id))
-    (check-collection-content (:collection_id <>))))
+    (check-collection-content <>)))
 
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
@@ -137,8 +160,15 @@
       (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
-      (when (contains? (t2/changes <>) :collection_id)
-        (check-collection-content (:collection_id <>))))))
+      (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
+        (check-collection-content <>))
+      (let [in-data-app? (and (some? (:collection_id <>)) (perms/data-app-collection? (:collection_id <>)))]
+        ;; an export leaves out an archived action, and the next pull would then delete it from every instance
+        (when (and in-data-app? (changed? :archived) (:archived <>))
+          (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
+        ;; an export writes the link into the action's file, which every pull then refuses
+        (when (and in-data-app? (changed? :public_uuid) (:public_uuid <>))
+          (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -187,12 +217,29 @@
       (when collection-id
         (api/check-404 (actions.db/collection-exists? collection-id))))))
 
+(defmethod mi/perms-objects-set :model/Action
+  [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]
+  (cond
+    model-id
+    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
+
+    (and (= read-or-write :write)
+         (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
+    #{"___no-remote-sync-access"}
+
+    (nil? collection-id)
+    (perms/perms-objects-set-for-parent-collection collection/data-actions-ns nil read-or-write)
+
+    :else
+    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)))
+
 (defn- collection-writable?
   "Whether the current user can write the Collection `action` goes in."
-  [action]
-  ((get-method mi/can-create? :perms/use-parent-collection-perms)
-   :model/Action
-   (assoc action :collection_id (effective-collection-id action))))
+  [{model-id :model_id, :as action}]
+  (let [action (assoc action :collection_id (effective-collection-id action))]
+    (if model-id
+      ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
+      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
@@ -212,9 +259,34 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
+(defn- query-card-ids
+  "The IDs of the Cards the native `query` reads through card template tags."
+  [query]
+  (into #{}
+        (keep (fn [path]
+                (let [{:keys [model id]} (last path)]
+                  (when (= "Card" model) id))))
+        (serdes/mbql-deps true query)))
+
+(defn- check-data-app-action-query
+  "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
+  while the collection is a data app's."
+  [collection-id query]
+  ;; the next export writes the action into the app's files, and a pull refuses one that reads a card outside
+  (when (and (some? collection-id)
+             (perms/data-app-collection? collection-id))
+    (let [card-ids (query-card-ids query)
+          outside  (when (seq card-ids)
+                     (actions.db/card-ids-outside-collection card-ids collection-id))]
+      (when (seq outside)
+        (throw (ex-info (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
 ;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (mu/defn- insert*! :- ::actions.schema/id
   [action-data :- ::actions.schema/action.for-insert]
+  (check-data-app-action-query (:collection_id action-data) (:dataset_query action-data))
   (t2/with-transaction [_conn]
     (let [action (actions.db/insert-action! (select-keys action-data action-columns))
           row    (-> (apply dissoc action-data action-columns)
@@ -235,6 +307,12 @@
    existing-action          :- ::actions.schema/action]
   (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
                   (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
+    (check-data-app-action-query (if (contains? updates :collection_id)
+                                   (:collection_id updates)
+                                   (:collection_id existing-action))
+                                 (if (contains? updates :dataset_query)
+                                   (:dataset_query updates)
+                                   (:dataset_query existing-action)))
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))
@@ -493,15 +571,6 @@
    action-ids   :- [:sequential ::lib.schema.id/action]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
 
-(mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
-  "Find the unarchived Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
-   [[select-actions]] does.
-
-   Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential ::queries.schema/card]]
-   model-ids    :- [:sequential ms/PositiveInt]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
-
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is interpreted by [[select-actions-matching-options]]."
@@ -581,6 +650,14 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false, :archived_directly false}})
 
+(defmethod serdes/storage-path "Action" [{:keys [model_id collection_id] :as action} ctx]
+  (if (and (nil? model_id)
+           (or (nil? collection_id)
+               (= collection/data-actions-ns
+                  (some-> (actions.db/collection-namespace-with-entity-id collection_id) keyword))))
+    (serdes/storage-default-collection-path action ctx (name collection/data-actions-ns))
+    (serdes/storage-default-collection-path action ctx)))
+
 (defmethod serdes/load-one! "Action" [ingested maybe-local]
   (when-not (= "http" (some-> (:type ingested) name))
     (serdes/default-load-one! ingested maybe-local)))
@@ -628,7 +705,7 @@
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
                   :model-name :model.name}
-   :where        [:= :collection.namespace nil]
+   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
                   :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})

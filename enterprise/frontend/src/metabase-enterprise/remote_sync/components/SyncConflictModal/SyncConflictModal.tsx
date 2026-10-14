@@ -9,7 +9,7 @@ import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
-import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
+import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/hooks/use-get-library-collection";
 import {
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,

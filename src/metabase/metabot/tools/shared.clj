@@ -19,8 +19,8 @@
   nil)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *metabot-id*
-  "The resolved metabot ID for the current agent session. Bound during the agent loop
+(def ^:dynamic *metabot*
+  "The resolved Metabot row for the current agent session. Bound during the agent loop
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 

@@ -17,9 +17,7 @@ parameters:
   slug: date_range
   type: date/range
 serdes/meta:
-- id: 8xFV0XmZs2olbGKXWenfS
-  label: series_and_parameter_mappings
-  model: Dashboard
+- model: Dashboard
 dashcards:
 - entity_id: WNjyHH5uA36yKp9D7X7bw
   card_id: dShCrdMnthlyOrdrs0001
@@ -62,11 +60,6 @@ dashcards:
     graph.show_values: true
     graph.x_axis.title_text: Month
     graph.y_axis.title_text: Revenue
-  serdes/meta:
-  - id: 8xFV0XmZs2olbGKXWenfS
-    model: Dashboard
-  - id: WNjyHH5uA36yKp9D7X7bw
-    model: DashboardCard
 - entity_id: MyNhSS9N9C8B373tSlfaX
   card_id: dShCrdNatveOrders0005
   created_at: '2026-04-02T02:59:02.778668Z'
@@ -85,11 +78,6 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
-  serdes/meta:
-  - id: 8xFV0XmZs2olbGKXWenfS
-    model: Dashboard
-  - id: MyNhSS9N9C8B373tSlfaX
-    model: DashboardCard
 - entity_id: f9pAJKJNxCtrS93uIN7F4
   card_id: dShCrdTtlRevScalr0006
   created_at: '2026-04-02T02:59:02.778668Z'
@@ -103,10 +91,5 @@ dashcards:
   visualization_settings:
     column_settings: null
     scalar.field: Total Revenue
-  serdes/meta:
-  - id: 8xFV0XmZs2olbGKXWenfS
-    model: Dashboard
-  - id: f9pAJKJNxCtrS93uIN7F4
-    model: DashboardCard
 tabs: []
 width: fixed

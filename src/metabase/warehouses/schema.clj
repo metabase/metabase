@@ -27,7 +27,8 @@
    [:semantic-version {:optional true} [:or
                                         [:sequential :int]
                                         [:map {:closed true} [:major :int] [:minor :int]]]]
-   [:cloud            {:optional true} :boolean]])
+   [:cloud            {:optional true} :boolean]
+   [:single-node      {:optional true} :boolean]])
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."

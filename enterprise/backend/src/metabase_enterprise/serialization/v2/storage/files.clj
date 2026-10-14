@@ -13,9 +13,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- yaml-file ^File [root-dir resolved]
-  (apply io/file root-dir (concat (drop-last resolved) [(str (last resolved) ".yaml")])))
-
 (defn file-writer
   "Create a filesystem storage backend rooted at `root-dir`."
   [root-dir]
@@ -23,7 +20,7 @@
     (reify protocols/ExportWriter
       (store-entity! [_ entity]
         (let [resolved (storage.util/resolve-storage-path ctx entity)
-              f        (yaml-file root-dir resolved)]
+              ^File f  (io/file root-dir (storage.util/yaml-file-path resolved))]
           (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
                                :file (str (.relativize (Path/of (str root-dir) (make-array String 0))
                                                        (.toPath f)))})
