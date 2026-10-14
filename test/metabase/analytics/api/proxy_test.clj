@@ -8,6 +8,7 @@
    [clj-http.fake :as fake]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [diehard.bulkhead :as dh.bh]
    [metabase.analytics.api.proxy :as analytics.api.proxy]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -59,6 +60,12 @@
   [& body]
   `(with-redefs [analytics.api.proxy/throttler
                  (throttle/make-throttler :analytics-proxy :attempts-threshold 1)]
+     ~@body))
+
+(defmacro ^:private with-forward-capacity
+  "Pin the relay's bulkhead to `n` concurrent forwards. `0` leaves no permit, so every request is shed."
+  [n & body]
+  `(with-redefs [analytics.api.proxy/forward-bulkhead (dh.bh/bulkhead {:concurrency ~n})]
      ~@body))
 
 (deftest anonymous-public-route-test
@@ -142,3 +149,18 @@
           (client/client :post 400 "analytics-proxy" opts {:schema "" :data []})
           (is (=? throttled-response
                   (client/client-full-response :post 429 "analytics-proxy" opts sample-payload))))))))
+(deftest sheds-forward-without-bulkhead-permit-test
+  (testing "a request that cannot take a bulkhead permit is shed with a 503 and never reaches the collector"
+    (let [captured (atom nil)]
+      (with-forward-capacity 0
+        (with-collector captured {:status 200 :headers {} :body "{}"}
+          (is (=? {:status 503}
+                  (client/client-full-response :post 503 "analytics-proxy" sample-payload)))))
+      (is (nil? @captured) "shedding must happen before the outbound call, not after it"))))
+
+(deftest releases-bulkhead-permit-after-forward-test
+  (testing "each forward hands its permit back, so a single-permit bulkhead still serves serial requests"
+    (with-forward-capacity 1
+      (with-collector {:status 200 :headers {} :body "{}"}
+        (dotimes [_ 3]
+          (is (= {} (client/client :post 200 "analytics-proxy" sample-payload))))))))
