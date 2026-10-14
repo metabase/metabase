@@ -323,7 +323,7 @@
                                   (throw (ex-info "The vLLM server answered with text instead of calling a tool."
                                                   {:api-error true :status-code 400})))]
       (mt/with-temporary-setting-values [llm-providers []]
-        (is (=? {:message "The vLLM server answered with text instead of calling a tool."}
+        (is (=? "The vLLM server answered with text instead of calling a tool."
                 (mt/user-http-request :crowberto :post 400 "llm/providers"
                                       {:type   "vllm"
                                        :config {:base-url "http://vllm.internal:8000/v1"}})))
@@ -336,9 +336,9 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (is (= (str "Could not reach the vLLM server at http://vllm.internal:8000/v1. "
                     "Check that it is running and that the base URL is correct.")
-               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                               {:type   "vllm"
-                                                :config {:base-url "http://vllm.internal:8000/v1"}}))))
+               (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                     {:type   "vllm"
+                                      :config {:base-url "http://vllm.internal:8000/v1"}})))
         (is (= [] (llm.provider/connections)))))))
 
 (deftest models-listing-does-not-probe-test
@@ -472,7 +472,7 @@
 (deftest create-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]
-      (is (=? {:message "Anthropic API key expired or invalid"}
+      (is (=? "Anthropic API key expired or invalid"
               (mt/user-http-request :crowberto :post 400 "llm/providers"
                                     {:type "anthropic" :config {:api-key "sk-ant-nope"}})))
       (is (= [] (llm.provider/connections))))))
@@ -801,7 +801,7 @@
 (deftest update-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]
-      (is (=? {:message "Anthropic API key expired or invalid"}
+      (is (=? "Anthropic API key expired or invalid"
               (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
                                     {:config {:api-key "sk-ant-rotated"}})))
       (is (= {:api-key "sk-ant-stored"} (stored-config "anthropic"))))))
