@@ -20,7 +20,6 @@ type TabConfig = {
   label: string;
 };
 
-/** Session population navigation with counts independent of table filters. */
 export const SessionsTabs = ({ tab, onChange }: SessionsTabsProps) => {
   const { currentData: counts, isError } = useGetSessionCountsQuery(undefined, {
     refetchOnMountOrArgChange: true,

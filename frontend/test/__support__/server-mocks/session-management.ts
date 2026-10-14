@@ -8,7 +8,6 @@ import type {
 } from "metabase-types/api";
 import { createMockRevokeSessionsResponse } from "metabase-types/api/mocks";
 
-/** Mock the default session populations independently of list filters. */
 export function setupSessionCountsEndpoint(
   response: SessionCountsResponse = { active: 0, ended: 0 },
   options?: UserRouteConfig,
@@ -16,7 +15,6 @@ export function setupSessionCountsEndpoint(
   fetchMock.get("path:/api/ee/session-management/counts", response, options);
 }
 
-/** Mock a failed session count request without failing the list endpoint. */
 export function setupSessionCountsErrorEndpoint() {
   fetchMock.get("path:/api/ee/session-management/counts", { status: 500 });
 }

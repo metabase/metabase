@@ -9,7 +9,6 @@ import type {
   TaskRunExtended,
 } from "metabase-types/api";
 
-/** Mock the default task populations independently of list filters. */
 export function setupTaskCountsEndpoint(
   response: TaskCountsResponse = { tasks: 0, runs: 0 },
   options?: UserRouteConfig,
@@ -17,7 +16,6 @@ export function setupTaskCountsEndpoint(
   fetchMock.get("path:/api/task/counts", response, options);
 }
 
-/** Mock a failed task count request without failing the list endpoint. */
 export function setupTaskCountsErrorEndpoint() {
   fetchMock.get("path:/api/task/counts", { status: 500 });
 }

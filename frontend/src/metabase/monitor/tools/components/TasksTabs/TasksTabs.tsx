@@ -16,7 +16,6 @@ type TasksTabsProps = {
   children: ReactNode;
 };
 
-/** Task navigation reads section counts without fetching on each tab mount. */
 export const TasksTabs = ({ children }: TasksTabsProps) => {
   const { currentData: counts, isError } =
     taskApi.endpoints.getTaskCounts.useQueryState(undefined);
