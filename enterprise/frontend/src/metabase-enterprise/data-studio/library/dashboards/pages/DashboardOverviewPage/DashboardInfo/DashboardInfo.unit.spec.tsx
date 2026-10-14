@@ -21,6 +21,7 @@ import {
 } from "__support__/ui";
 import { selectCacheStrategy } from "metabase/admin/performance/components/test-utils";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { reinitialize } from "metabase/plugins";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -53,6 +54,8 @@ function setup({
     "remote-sync-enabled": isRemoteSyncReadOnly,
     "remote-sync-type": isRemoteSyncReadOnly ? "read-only" : undefined,
   });
+  // A plugin enabled by an earlier test stays enabled until it is reset
+  reinitialize();
   setupEnterpriseOnlyPlugin("caching");
   setupEnterpriseOnlyPlugin("remote_sync");
   if (hasCacheConfigError) {
