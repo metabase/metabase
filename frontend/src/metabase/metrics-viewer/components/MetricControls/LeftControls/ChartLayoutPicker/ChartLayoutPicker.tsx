@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { trackStackedSeriesEnabled } from "metabase/metrics-viewer/analytics";
-import { Icon, SegmentedControl, Tooltip } from "metabase/ui";
+import { SegmentedControl } from "metabase/ui";
 
 type ChartLayout = "default" | "stack";
 
@@ -29,20 +29,14 @@ export function ChartLayoutPicker({
         {
           value: "default",
           ariaLabel: t`Default layout`,
-          icon: (
-            <Tooltip label={t`Default layout`}>
-              <Icon name="chart_layout_default" />
-            </Tooltip>
-          ),
+          icon: "chart_layout_default",
+          withTooltip: true,
         },
         {
           value: "stack",
           ariaLabel: t`Stack layout`,
-          icon: (
-            <Tooltip label={t`Stack layout`}>
-              <Icon name="chart_layout_stack" />
-            </Tooltip>
-          ),
+          icon: "chart_layout_stack",
+          withTooltip: true,
         },
       ]}
       value={isStacked ? "stack" : "default"}
