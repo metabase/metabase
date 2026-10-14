@@ -24,6 +24,7 @@ When you add an action to a [dashboard button](../../../dashboards/actions.md), 
 - **Turn on data actions for the database.** Only an admin can turn on the **Data actions** toggle. See [Enabling actions for a database](./introduction.md#enabling-actions-for-a-database). Actions are only available for PostgreSQL and MySQL.
 - **Get native query permission.** To create or edit a data action, you need [native query editing](../../../permissions/data.md#query-builder-and-native-create-queries-permission) permission on the database.
 - **Get access to Data Studio.** Data Studio is open to admins and people in the [Data Analysts](../../../people-and-groups/managing.md#data-analysts) group.
+- **Get access to a folder.** By default, only admins can see data actions. See [Data action permissions](#data-action-permissions).
 
 ## Create a data action
 
@@ -41,7 +42,7 @@ To open a data action, go to **Data Studio** > **Data actions** and click the ac
 
 ### Definition
 
-The **Definition** tab shows the action's SQL. To change the SQL, click **Edit definition**. You need edit access to the action and native query permission on its database.
+The **Definition** tab shows the action's SQL. To change the SQL, click **Edit definition**. You need Curate access to the action's folder, native query permission on its database, and actions turned on for the database.
 
 ### Fields
 
@@ -60,7 +61,7 @@ If actions are turned off for the action's database, the **Run** button is disab
 On the **Settings** tab, you can:
 
 - **Make the action public.** Under **Public sharing**, turn on **Make public** to get a **Public link**. Anyone with the link can fill out the form and run the action, without signing in. Only admins can make an action public, and [public sharing](../../../embedding/public-links.md) must be on. See [Make public](./custom.md#make-public).
-- **Set a success message.** Under **Success message**, enter the message that the public form shows after the action runs. See [Set a success message](./custom.md#set-a-success-message).
+- **Set a success message.** Under **Success message**, enter the message that Metabase shows after the action runs, on the public form and on the **Run** tab. See [Set a success message](./custom.md#set-a-success-message).
 
 ## Organize data actions in folders
 
@@ -82,8 +83,12 @@ To find archived data actions:
 
 ## Data action permissions
 
-- **To create a data action**, you need native query permission on the database, and edit access to the folder.
-- **To run a data action**, you need view access to the action's folder. A data action that isn't in a folder uses the permissions of the **Data actions** root. Running a data action also needs actions turned on for its database.
+By default, only admins can see, create, and run data actions. Data Analysts don't get access automatically. To let other people use data actions, an admin gives their groups access to the **Data actions** root or to a folder.
+
+- **Curate access** to a folder lets people create, edit, move, and archive the data actions in it. To create an action or change its SQL, people also need native query permission on the database.
+- **View access** to a folder lets people see and run the data actions in it.
+- A data action that isn't in a folder uses the permissions of the **Data actions** root.
+- To run a data action, actions must be turned on for its database.
 
 ### Set permissions on data action folders
 
@@ -91,7 +96,9 @@ To find archived data actions:
 
 Admins can set permissions on a folder: click the **three-dot** menu next to the folder and select **Change permissions**. To set permissions on the **Data actions** root, click the **three-dot** menu next to **Data actions** at the top of the tree and select **Change permissions**.
 
-Data action folder permissions work like [snippet folder permissions](../../../permissions/snippets.md).
+The permission levels are the same as for [collections](../../../permissions/collections.md#collection-permission-levels): **Curate**, **View**, and **No access**. To apply the change to sub-folders, turn on **Also change sub-folders**.
+
+If your plan doesn't include folder permissions, only admins can use data actions in Data Studio. Anyone with the public link can still run a public action.
 
 ## Data actions sync with the Library
 

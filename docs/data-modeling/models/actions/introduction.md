@@ -35,7 +35,7 @@ For actions to work, you'll first need to do the following two things:
 
 ## Who can use actions
 
-- **To create or edit an action**, a person must be in a group with [Native query editing](../../../permissions/data.md) privileges for the relevant database.
+- **To create or edit an action**, a person must be in a group with [Native query editing](../../../permissions/data.md) privileges for the relevant database. To create a [data action](./data-actions.md), people also need Curate access to the action's folder.
 - **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action). To run a [data action](./data-actions.md), you need view access to the action's folder.
 
 ## Types of actions
