@@ -192,8 +192,10 @@
                      ;; is a valid recorded version. The default-window rule itself is covered in metabase.app-db.liquibase-test.
                      (mdb/migrate! (mdb/data-source) :down-force version)
                      ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
+                     ;; The rollback ends with a version-tracking marker row, which is not a changeset to restart from.
                      (reset! restart-id (t2/select-one-pk (liquibase/changelog-table-name conn)
-                                                          {:order-by [[:orderexecuted :desc]]}))))))]
+                                                          {:where    [:not= :filename "legacy-version-tracking"]
+                                                           :order-by [[:orderexecuted :desc]]}))))))]
         (f migrate))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 

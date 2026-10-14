@@ -196,7 +196,8 @@
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
       (let [get-last-id (fn []
                           (-> {:datasource (mdb/app-db)}
-                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              ;; skip the version-tracking marker each run and rollback ends with
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG WHERE filename <> 'legacy-version-tracking' ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
         (migrate!)

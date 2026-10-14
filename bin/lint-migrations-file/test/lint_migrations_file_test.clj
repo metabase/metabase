@@ -276,11 +276,13 @@
                           (validate-file (io/file "migrations/2026/20261012_glossary_entity_id.yaml")
                                          (mock-change-set :id "v65.2026-10-12T12:00:00"))))))
 
-(deftest ^:parallel year-dir-version-less-ids-test
+(deftest ^:parallel year-dir-allows-version-less-ids-test
   (testing "year-based directories allow version-less changeset IDs"
     (is (= :ok
            (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
-                          (mock-change-set :id "aeiagus09e")))))
+                          (mock-change-set :id "aeiagus09e"))))))
+
+(deftest ^:parallel versioned-dirs-reject-version-less-ids-test
   (testing "version-numbered directories still reject version-less changeset IDs"
     (is (thrown?
          clojure.lang.ExceptionInfo
@@ -289,13 +291,17 @@
     (testing "but still accept properly prefixed IDs"
       (is (= :ok
              (validate-file (io/file "migrations/060/20260616_workspaces.yaml")
-                            (mock-change-set :id "v60.aeiagus09e"))))))
+                            (mock-change-set :id "v60.aeiagus09e")))))))
+
+(deftest ^:parallel year-dir-accepts-valid-version-less-ids-test
   (testing "year-based directories accept lowercase alphanumeric/underscore IDs with at least one letter"
     (doseq [good-id ["aeiagus09e" "workspaces_init" "a1234567"]]
       (is (= :ok
              (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                             (mock-change-set :id good-id)))
-          good-id)))
+          good-id))))
+
+(deftest ^:parallel year-dir-rejects-invalid-version-less-ids-test
   (testing "year-based directories reject invalid version-less IDs"
     (doseq [bad-id ["foo-bar"             ; dash
                     "v60.aeiagus09e"      ; version-prefixed
@@ -310,7 +316,9 @@
            #"invalid changeset IDs"
            (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                           (mock-change-set :id bad-id)))
-          bad-id)))
+          bad-id))))
+
+(deftest ^:parallel year-dir-rejects-non-string-ids-test
   (testing "an unquoted YAML id that parses as a number or boolean gets the validation error, not a ClassCastException"
     (doseq [bad-id [20260703 true]]
       (is (thrown-with-msg?
@@ -318,7 +326,9 @@
            #"invalid changeset IDs"
            (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                           (mock-change-set :id bad-id)))
-          (pr-str bad-id))))
+          (pr-str bad-id)))))
+
+(deftest ^:parallel year-dir-rejects-date-like-ids-test
   (testing "year-based directories reject the ISO date/timestamp ids the versioned changesets used"
     (doseq [bad-id ["2026-02-09T12:00:00"   ; the old `vNN.` id body
                     "2026-02-09t12:00:00"
@@ -335,7 +345,9 @@
         (is (= :ok
                (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                               (mock-change-set :id good-id)))
-            good-id))))
+            good-id)))))
+
+(deftest ^:parallel year-dir-requires-rollback-test
   (testing "year-based directory migrations still require rollback for non-auto-rollback change types"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -343,7 +355,6 @@
          (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                         (update (mock-change-set :id "aeiagus09e" :changes [{:sql {:sql "select 1"}}])
                                 :changeSet dissoc :rollback))))))
-
 (deftest ^:parallel year-dir-prevent-bare-types-test
   ;; Regression: the bare-type checks filter changesets through changeset-version+id, which only parses `vNN.` ids --
   ;; version-less year-dir ids returned nil and were silently EXEMPT from the boolean/datetime checks.
