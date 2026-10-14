@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.search.permissions :as search.permissions]))
 
-(deftest sandboxed-impersonated-or-routed-user?-test
+(deftest ^:parallel sandboxed-impersonated-or-routed-user?-test
   (let [ctx {:is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? false}]
     (testing "all three flags false: not restricted"
       (is (not (search.permissions/sandboxed-impersonated-or-routed-user? ctx))))
