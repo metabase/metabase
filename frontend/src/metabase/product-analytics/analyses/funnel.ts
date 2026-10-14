@@ -110,6 +110,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
   "funnel.allow_retry": {
     getTitle: () => t`Allow retrying a step`,
     getSection: () => "advanced",
+    inline: true,
     widget: "toggle",
     getDefault: () => false,
     isValid: (value) => isBoolean(value),

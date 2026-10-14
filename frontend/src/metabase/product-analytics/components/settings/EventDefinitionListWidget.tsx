@@ -129,20 +129,20 @@ export const EventDefinitionListWidget = ({
           )}
         />
       </Stack>
-      <ListRow>
-        {isAdding ? (
-          editor
-        ) : (
+      {isAdding ? (
+        <ListRow>{editor}</ListRow>
+      ) : (
+        <Box>
           <Button
-            variant="subtle"
+            variant="light"
             leftSection={<Icon name="add" />}
             disabled={tableQuery === undefined}
             onClick={() => setEditingIndex(value.length)}
           >
             {addLabel}
           </Button>
-        )}
-      </ListRow>
+        </Box>
+      )}
     </Stack>
   );
 };

@@ -54,7 +54,7 @@ export type PathsSettings = CommonSettings & {
   "paths.included": EventDefinition[];
   "paths.session_gap_minutes": number;
   "paths.merge_repeats": boolean;
-  "paths.collapse_noise": boolean;
+  "paths.hide_noisy_events": boolean;
   "paths.max_nodes": number;
   "paths.min_volume": number;
   "paths.edge_metric": NonNullable<OutputSpec["pathsEdgeMetric"]>;

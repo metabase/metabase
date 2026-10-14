@@ -75,7 +75,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           ],
           sessionGapMinutes: 30,
           mergeRepeats: true,
-          collapseNoise: true,
+          hideNoisyEvents: false,
           maxNodes: 8,
           minVolume: 5,
         },
