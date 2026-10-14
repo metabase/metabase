@@ -13,7 +13,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- venues-query
   [limit]
@@ -153,26 +154,48 @@
 
 (deftest execute-page-time-limit-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [query      (venues-query 3)
-          driver-saw (atom nil)
-          failure    (fn [run]
-                       (reset! driver-saw nil)
-                       (binding [qp.pipeline/*execute* (waiting-execute (constantly nil) driver-saw)]
-                         (try
-                           (run)
-                           (catch clojure.lang.ExceptionInfo e
-                             (ex-data e)))))]
+    (let [query          (venues-query 3)
+          driver-saw     (atom nil)
+          limit-ms       (atom nil)
+          ;; The query timeout the driver ran under, which a connection pool it opened would keep.
+          driver-timeout (atom nil)
+          failure        (fn [run]
+                           (reset! driver-saw nil)
+                           (reset! limit-ms nil)
+                           (let [stop!   (atom nil)
+                                 before! (fn []
+                                           (reset! driver-timeout driver.settings/*query-timeout-ms*)
+                                           (some-> @stop! (apply [])))]
+                             ;; The limit fires once the driver is waiting, not on a clock started before
+                             ;; preprocessing, so on a slow runner it still stops the query in flight.
+                             (mt/with-dynamic-fn-redefs [query-execution/schedule-time-limit!
+                                                         (fn [timeout-ms stop-query!]
+                                                           (reset! limit-ms timeout-ms)
+                                                           (reset! stop! stop-query!)
+                                                           ((mt/original-fn #'query-execution/schedule-time-limit!)
+                                                            (u/hours->ms 1)
+                                                            (constantly nil)))]
+                               (binding [qp.pipeline/*execute* (waiting-execute before! driver-saw)]
+                                 (try
+                                   (run)
+                                   (catch clojure.lang.ExceptionInfo e
+                                     (ex-data e)))))))]
       (testing "a run that reaches its time limit is stopped, and reads as timed out"
         (is (=? {:error :query-timed-out}
-                (failure #(query-execution/execute-page! query 3 :agent {:timeout-ms 200}))))
-        (is (some? @driver-saw)))
+                (failure #(query-execution/execute-page! query 3 :agent {:timeout-ms 60000}))))
+        (is (= 60000 @limit-ms))
+        (is (some? @driver-saw))
+        (testing "without shortening the database query timeout, which a connection pool opened by the run would keep"
+          (is (= driver.settings/*query-timeout-ms* @driver-timeout))))
       (testing "the database query timeout still applies when it is the shorter"
-        (binding [driver.settings/*query-timeout-ms* 200]
+        (binding [driver.settings/*query-timeout-ms* 30000]
           (is (=? {:error :query-timed-out}
                   (failure #(query-execution/execute-page! query 3 :agent {:timeout-ms 60000}))))
+          (is (= 30000 @limit-ms))
           (is (some? @driver-saw))))
       (testing "a caller that sets no limit gets the database query timeout, reported as any failed query is"
+        ;; The QP's own timer, which may stop the run before or after it reaches the driver.
         (binding [driver.settings/*query-timeout-ms* 200]
           (is (=? {:error :query-failed}
                   (failure #(query-execution/execute-page! query 3 :agent))))
-          (is (some? @driver-saw)))))))
+          (is (nil? @limit-ms)))))))
