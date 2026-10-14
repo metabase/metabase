@@ -603,7 +603,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
