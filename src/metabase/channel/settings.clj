@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.startup.core :as startup]
    [metabase.util.http :as u.http]
@@ -283,6 +284,11 @@
                   (throw (ex-info (tru "Cannot enable smtp-override when it is not configured.") {:status-code 400})))
                 (setting/set-value-of-type! :boolean :smtp-override-enabled new-value)))
 
+(defn smtp-override-active?
+  "Whether email goes out through the custom SMTP server instead of the primary one."
+  []
+  (and (smtp-override-enabled) (premium-features/is-hosted?)))
+
 (defsetting email-max-recipients-per-second
   (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
                 Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
@@ -306,7 +312,7 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     #(boolean (email-smtp-host))
+  :getter     #(boolean (if (smtp-override-active?) (email-smtp-host-override) (email-smtp-host)))
   :doc        false)
 
 (defsetting surveys-enabled
