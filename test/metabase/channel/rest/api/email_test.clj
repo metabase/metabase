@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email :as email]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.util :as tu]))
@@ -53,6 +54,20 @@
       (mt/with-temporary-setting-values [email-smtp-host nil]
         (is (= "SMTP host is not set."
                (mt/user-http-request :crowberto :post 400 "email/test")))))))
+
+(deftest test-email-through-smtp-override-test
+  (testing "POST /api/email/test sends through the custom SMTP server when it is the only one configured"
+    (mt/with-premium-features [:cloud-custom-smtp]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+        (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil]
+          (let [sent-hosts (atom [])]
+            (mt/with-dynamic-fn-redefs [email/send-email! (fn [smtp-settings _] (swap! sent-hosts conj (:host smtp-settings)))]
+              (mt/with-temporary-setting-values [email-smtp-host          nil
+                                                 email-smtp-host-override "cloud.metabase.com"
+                                                 smtp-override-enabled    true]
+                (is (= {:ok true}
+                       (mt/user-http-request :crowberto :post 200 "email/test")))
+                (is (= ["cloud.metabase.com"] @sent-hosts))))))))))
 
 (deftest update-email-settings-test
   ;; There is a lot of overlap with the /api/email/override test, but enough differences that we keep them separate.
