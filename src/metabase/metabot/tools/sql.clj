@@ -65,6 +65,17 @@
    instruction-text
    "</instructions>"))
 
+(defn- query-success-result
+  "A SQL tool's success result for `structured`, with any reference warnings in `validation-result` added to `instr`."
+  [structured instr validation-result data-part & {:keys [preamble?]}]
+  (let [instr (instructions/with-sql-reference-warnings instr (:warnings validation-result))]
+    (metabot.tools.u/non-terminal-when-warned
+     {:output            (format-query-output structured instr {:preamble? preamble?})
+      :structured-output structured
+      :instructions      instr
+      :data-parts        [data-part]}
+     validation-result)))
+
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
@@ -95,15 +106,14 @@
           {:keys [valid? dialect error-message]} validation-result
           {:keys [query-id query]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)]
-          {:output (format-query-output structured instr {:preamble? true})
-           :structured-output structured
-           :instructions instr
-           :data-parts [(streaming/viz-part {:entity-id (str (random-uuid))
-                                             :query-id  query-id
-                                             :query     (links/->legacy-mbql query)
-                                             :title     title})]})
+        (query-success-result (assoc action-result :result-type :query)
+                              (instructions/query-created-instructions-for query-id)
+                              validation-result
+                              (streaming/viz-part {:entity-id (str (random-uuid))
+                                                   :query-id  query-id
+                                                   :query     (links/->legacy-mbql query)
+                                                   :title     title})
+                              {:preamble? true})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
@@ -127,12 +137,11 @@
               {:keys [valid? dialect error-message]} validation-result
               {:keys [query-content]} action-result]
           (if valid?
-            (let [structured (assoc action-result :result-type :query)
-                  instr      instructions/query-loaded-in-editor-instructions]
-              {:output (format-query-output structured instr {:preamble? true})
-               :structured-output structured
-               :instructions instr
-               :data-parts [(code-edit-part buffer-id query-content)]})
+            (query-success-result (assoc action-result :result-type :query)
+                                  instructions/query-loaded-in-editor-instructions
+                                  validation-result
+                                  (code-edit-part buffer-id query-content)
+                                  {:preamble? true})
             (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
               {:output (format-validation-error-output instr)
                :instructions instr})))))
@@ -170,18 +179,16 @@
           {:keys [valid? error-message dialect]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured (assoc action-result :result-type :query)
-              buffer-id  (first-code-editor-buffer-id)
-              instr      (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))]
-          {:output (format-query-output structured instr)
-           :structured-output structured
-           :instructions instr
-           :data-parts [(if buffer-id
-                          (code-edit-part buffer-id query-content)
-                          (streaming/viz-part {:entity-id (str (random-uuid))
-                                               :query-id  query-id
-                                               :query     (links/->legacy-mbql query)
-                                               :title     title}))]})
+        (let [buffer-id (first-code-editor-buffer-id)]
+          (query-success-result (assoc action-result :result-type :query)
+                                (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))
+                                validation-result
+                                (if buffer-id
+                                  (code-edit-part buffer-id query-content)
+                                  (streaming/viz-part {:entity-id (str (random-uuid))
+                                                       :query-id  query-id
+                                                       :query     (links/->legacy-mbql query)
+                                                       :title     title}))))
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))
@@ -216,18 +223,16 @@
           {:keys [valid? dialect error-message]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured (assoc action-result :result-type :query)
-              buffer-id  (first-code-editor-buffer-id)
-              instr      (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))]
-          {:output (format-query-output structured instr)
-           :structured-output structured
-           :instructions instr
-           :data-parts [(if buffer-id
-                          (code-edit-part buffer-id query-content)
-                          (streaming/viz-part {:entity-id (str (random-uuid))
-                                               :query-id  query-id
-                                               :query     (links/->legacy-mbql query)
-                                               :title     title}))]})
+        (let [buffer-id (first-code-editor-buffer-id)]
+          (query-success-result (assoc action-result :result-type :query)
+                                (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))
+                                validation-result
+                                (if buffer-id
+                                  (code-edit-part buffer-id query-content)
+                                  (streaming/viz-part {:entity-id (str (random-uuid))
+                                                       :query-id  query-id
+                                                       :query     (links/->legacy-mbql query)
+                                                       :title     title}))))
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
            :instructions instr})))

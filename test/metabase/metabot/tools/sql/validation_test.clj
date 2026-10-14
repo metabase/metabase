@@ -2,8 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
+   [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.model-persistence.core :as model-persistence]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 ;;;; contains-template-tags?
 
@@ -180,3 +187,185 @@
       (testing sql
         (is (= "ok" (:status (sql-parsing/validate-query
                               dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
+
+;;;; validate-database-sql
+
+(defn- thrown-agent-error
+  "Call `thunk`, returning the message and ex-data of the ExceptionInfo it throws, or nil if it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      {:message (ex-message e) :data (ex-data e)})))
+
+(defn- missing-card-message [card-id]
+  (str "Card " card-id " does not exist, is from a different Database, or can't be read by you."))
+
+(defn- venues-model []
+  (let [mp (mt/metadata-provider)]
+    {:type          :model
+     :database_id   (mt/id)
+     :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}))
+
+(deftest validate-database-sql-template-tags-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card               {card-id :id} (venues-model)
+                     :model/NativeQuerySnippet _             {:name "no_such_column" :content "customer_name = 1"}]
+        (let [validate #(metabot.tools.sql.validation/validate-database-sql (mt/id) %)
+              from-v   (str " FROM {{#" card-id "}} AS v")]
+          (testing "a column the referenced model doesn't have is reported as a warning, not an error"
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`customer_name`")]}
+                    (validate (str "SELECT v.customer_name" from-v)))))
+          (testing "variables get dummy values, so the check still runs"
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`customer_name`")]}
+                    (validate (str "SELECT v.customer_name" from-v " WHERE v.id = {{venue_id}}")))))
+          (testing "snippets are expanded before the check"
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`customer_name`")]}
+                    (validate "SELECT name FROM venues WHERE {{snippet: no_such_column}}"))))
+          (testing "a table that doesn't exist is reported under its name"
+            (is (=? {:valid?   true
+                     :warnings (partial some #(str/includes? % "Table or alias `public.no_such_table`"))}
+                    (validate "SELECT * FROM public.no_such_table WHERE id = {{id}}"))))
+          (testing "a reference to a card that doesn't exist is an agent error"
+            (is (=? {:message (missing-card-message Integer/MAX_VALUE)
+                     :data    {:agent-error? true :card-ids [Integer/MAX_VALUE] :snippet-names []}}
+                    (thrown-agent-error #(validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))))))
+          (testing "a reference to a snippet that doesn't exist is an agent error"
+            (is (=? {:message "Snippet \"nope\" does not exist, or you don't have permission to read it."
+                     :data    {:agent-error? true :card-ids [] :snippet-names ["nope"]}}
+                    (thrown-agent-error #(validate "SELECT * FROM venues WHERE {{snippet: nope}}")))))
+          (testing "missing cards and snippets are reported together"
+            (is (=? {:data {:card-ids [Integer/MAX_VALUE] :snippet-names ["nope"]}}
+                    (thrown-agent-error
+                     #(validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v WHERE {{snippet: nope}}"))))))
+          (testing "SQL without template tags is validated as before, with no reference check"
+            (is (=? {:valid? true :transpiled-sql #(str/includes? % "customer_name")}
+                    (validate "SELECT customer_name FROM venues"))))
+          (testing "`[[` without `{{` is not a template-tag reference"
+            (is (= {:valid? true :dialect "postgres" :transpiled-sql "SELECT ARRAY[[1, 2]]"}
+                   (validate "SELECT ARRAY[[1, 2]]")))))))))
+
+(deftest validate-database-sql-unreadable-card-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       {card-id :id} (assoc (venues-model) :collection_id coll-id)]
+        (testing "a card the current user can't read counts as missing"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:message (missing-card-message card-id)
+                     :data    {:agent-error? true :card-ids [card-id]}}
+                    (thrown-agent-error #(metabot.tools.sql.validation/validate-database-sql
+                                          (mt/id) (str "SELECT v.name FROM {{#" card-id "}} AS v")))))))))))
+
+(deftest validate-database-sql-other-database-card-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {other-db-id :id} {:engine :postgres}
+                     :model/Card     {card-id :id}     {:database_id   other-db-id
+                                                        :dataset_query {:database other-db-id
+                                                                        :type     :native
+                                                                        :native   {:query "SELECT 1 AS x"}}}]
+        (testing "a card from another database counts as missing"
+          (is (=? {:message (missing-card-message card-id)
+                   :data    {:agent-error? true :card-ids [card-id] :snippet-names []}}
+                  (thrown-agent-error #(metabot.tools.sql.validation/validate-database-sql
+                                        (mt/id) (str "SELECT * FROM {{#" card-id "}} AS v"))))))))))
+
+(deftest validate-database-sql-existing-tags-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp       (mt/metadata-provider)
+            validate (fn [stored-query sql]
+                       (metabot.tools.sql.validation/validate-database-sql
+                        (mt/id) sql (lib/template-tags stored-query)))]
+        (testing "a stored query's table tags skip the check, since the table isn't known until the query runs"
+          (let [stored (-> (lib/native-query mp "SELECT name FROM {{t}}")
+                           (lib/with-template-tags [{:type         :table
+                                                     :name         "t"
+                                                     :display-name "T"
+                                                     :id           (str (random-uuid))
+                                                     :table-id     (mt/id :venues)}]))]
+            (is (= {:valid? true :dialect "postgres" :transpiled-sql "SELECT no_such_column FROM {{t}}"}
+                   (validate stored "SELECT no_such_column FROM {{t}}")))))
+        (testing "a stored query's field filters compile as field filters"
+          (let [category (lib.metadata/field mp (mt/id :venues :category_id))
+                stored   (-> (lib/native-query mp "SELECT name FROM venues WHERE {{cat}}")
+                             (lib/with-template-tags [{:type         :dimension
+                                                       :name         "cat"
+                                                       :display-name "Cat"
+                                                       :id           (str (random-uuid))
+                                                       :dimension    (lib/ref category)
+                                                       :widget-type  :number/=}]))]
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`no_such_column`")]}
+                    (validate stored "SELECT no_such_column FROM venues WHERE {{cat}}")))))
+        (testing "a snippet renamed since the stored query was written is still found"
+          (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "old_name" :content "id = 1"}]
+            (let [sql    "SELECT name FROM venues WHERE {{snippet: old_name}}"
+                  stored (lib/native-query mp sql)]
+              (t2/update! :model/NativeQuerySnippet snippet-id {:name "new_name"})
+              (is (=? {:data {:snippet-names ["old_name"]}}
+                      (thrown-agent-error #(metabot.tools.sql.validation/validate-database-sql (mt/id) sql)))
+                  "without the stored tags the old name doesn't resolve")
+              (is (= {:valid? true :dialect "postgres" :transpiled-sql sql}
+                     (validate stored sql))))))))))
+
+(deftest validate-database-sql-persisted-model-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+        (testing "persisted models are checked against their query, not their unsynced cache table"
+          (let [substitution-allowed (atom [])
+                compile*             (mt/original-fn #'qp.compile/compile-with-inline-parameters)]
+            (mt/with-dynamic-fn-redefs [qp.compile/compile-with-inline-parameters
+                                        (fn [query]
+                                          (swap! substitution-allowed conj
+                                                 (model-persistence/allow-persisted-substitution?))
+                                          (compile* query))]
+              (metabot.tools.sql.validation/validate-database-sql
+               (mt/id) (str "SELECT v.name FROM {{#" card-id "}} AS v")))
+            (is (= [false] @substitution-allowed))))))))
+
+(deftest validate-database-sql-metrics-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id}   (venues-model)
+                     :model/Card {broken-id :id} {:database_id   (mt/id)
+                                                  :dataset_query (lib/native-query
+                                                                  (mt/metadata-provider)
+                                                                  (str "SELECT * FROM {{#" Integer/MAX_VALUE "}}"))}]
+        (let [validate #(metabot.tools.sql.validation/validate-database-sql (mt/id) %)
+              checks   (fn [system status]
+                         (mt/metric-value system :metabase-metabot/sql-reference-checks {:status status}))]
+          (mt/with-prometheus-system! [_ system]
+            (testing "a query whose references resolve has no warnings"
+              (let [sql (str "SELECT v.name FROM {{#" card-id "}} AS v")]
+                (is (= {:valid? true :dialect "postgres" :transpiled-sql sql}
+                       (validate sql)))
+                (is (== 1 (checks system "ran"))))))
+          (mt/with-prometheus-system! [_ system]
+            (testing "an existing card that fails to compile skips the check instead of failing the query"
+              (let [sql (str "SELECT * FROM {{#" broken-id "}} AS b")]
+                (is (= {:valid? true :dialect "postgres" :transpiled-sql sql}
+                       (validate sql)))
+                (is (== 1 (checks system "skipped")))
+                (is (== 0 (checks system "ran"))))))
+          (mt/with-prometheus-system! [_ system]
+            (testing "a checker that throws fails the check instead of the query"
+              (let [sql (str "SELECT v.name FROM {{#" card-id "}} AS v")]
+                (with-redefs [driver/validate-native-query-fields (fn [& _] (throw (ex-info "boom" {})))]
+                  (is (= {:valid? true :dialect "postgres" :transpiled-sql sql}
+                         (validate sql))))
+                (is (== 1 (checks system "failed")))))))))))
+
+(deftest error->warning-test
+  (testing "duplicate output columns aren't reported: Metabase deduplicates their names"
+    (is (nil? (#'metabot.tools.sql.validation/error->warning {:type :duplicate-column :name "id"}))))
+  (testing "unresolved table names are reported as a table or alias"
+    (is (= "Table or alias `public.nope` was not found."
+           (#'metabot.tools.sql.validation/error->warning {:type :missing-table-alias :name "public.nope"})))))
