@@ -603,7 +603,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
@@ -1456,6 +1455,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
+           collections
            events
            lib
            lib.be
@@ -1472,7 +1472,10 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Measure}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   metabot
   {:team    "Metabot"
@@ -2550,6 +2553,7 @@
    :module-exports #{segments.rest}
    :api  #{metabase.segments.schema}
    :uses #{api
+           collections
            lib
            lib.be
            lib.schema
@@ -2563,7 +2567,10 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Segment}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   segments.rest
   {:team "Graphy"
@@ -3043,7 +3050,8 @@
                     :model/TableIndex
                     :model/Transform
                     :model/TransformRun}
-   :uses #{database-routing
+   :uses #{app-db
+           database-routing
            driver
            events
            lib

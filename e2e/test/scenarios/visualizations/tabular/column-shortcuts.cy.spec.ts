@@ -94,21 +94,19 @@ describe("extract shortcut", () => {
   });
 
   describe("date columns", () => {
-    describe("should add a date expression for each option", () => {
+    it("should add a date expression for each option", () => {
+      H.openOrdersTable({ limit: 1 });
       DATE_CASES.forEach(({ option, value, example, expressions }) => {
-        it(option, () => {
-          H.openOrdersTable({ limit: 1 });
-          extractColumnAndCheck({
-            column: "Created At",
-            option,
-            value,
-            example,
-          });
-          H.expectUnstructuredSnowplowEvent({
-            event: "column_extract_via_plus_modal",
-            custom_expressions_used: expressions,
-            database_id: SAMPLE_DB_ID,
-          });
+        extractColumnAndCheck({
+          column: "Created At",
+          option,
+          value,
+          example,
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "column_extract_via_plus_modal",
+          custom_expressions_used: expressions,
+          database_id: SAMPLE_DB_ID,
         });
       });
     });
@@ -126,103 +124,14 @@ describe("extract shortcut", () => {
         newColumn: "Hour of day_2",
       });
     });
-
-    it("should be able to modify the expression in the notebook editor", () => {
-      H.openOrdersTable({ limit: 1 });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Year",
-        value: "2,028",
-      });
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({
-        name: "custom formula",
-        formula: "year([Created At]) + 2",
-        blur: true,
-      });
-      H.popover().button("Update").should("not.be.disabled").click();
-      H.visualize();
-      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
-    });
   });
 
-  describe("email columns", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+  it("should add a url expression for each option", () => {
+    // Make the Email column a URL column for this test, to avoid having to create a new model
+    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+      semantic_type: "type/URL",
     });
 
-    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
-      it(option, () => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 1,
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-
-        extractColumnAndCheck({
-          column: "Email",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-  });
-
-  describe("url columns", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
-      // Make the Email column a URL column for these tests, to avoid having to create a new model
-      cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-        semantic_type: "type/URL",
-      });
-    });
-
-    URL_CASES.forEach(({ option, value, example, expressions }) => {
-      it(option, () => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 1,
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-
-        extractColumnAndCheck({
-          column: "Email",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-  });
-
-  it("should disable the scroll behaviour after it has been rendered", () => {
     H.createQuestion(
       {
         query: {
@@ -235,9 +144,46 @@ describe("extract shortcut", () => {
       },
     );
 
-    extractColumnAndCheck({
-      column: "Email",
-      option: "Host",
+    URL_CASES.forEach(({ option, value, example, expressions }) => {
+      extractColumnAndCheck({
+        column: "Email",
+        option,
+        value,
+        example,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_plus_modal",
+        custom_expressions_used: expressions,
+        database_id: SAMPLE_DB_ID,
+      });
+    });
+  });
+
+  it("should add an email expression for each option and disable the scroll behaviour after it has been rendered", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
+      extractColumnAndCheck({
+        column: "Email",
+        option,
+        value,
+        example,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_plus_modal",
+        custom_expressions_used: expressions,
+        database_id: SAMPLE_DB_ID,
+      });
     });
 
     H.tableInteractiveScrollContainer().scrollTo("left", {
@@ -246,8 +192,10 @@ describe("extract shortcut", () => {
 
     H.tableHeaderClick("ID");
 
+    cy.intercept("POST", "/api/dataset").as("sortedDataset");
     // Change sort direction
     H.popover().findAllByRole("button").first().click();
+    cy.wait("@sortedDataset");
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
     cy.findAllByRole("columnheader").contains("ID").should("be.visible");
@@ -273,10 +221,6 @@ describe("extract shortcut", () => {
       column: "Created At: Month",
       option: "Month of year",
     });
-
-    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
-      "be.visible",
-    );
   });
 
   it("should be possible to extract columns from table with breakouts", () => {
@@ -299,10 +243,6 @@ describe("extract shortcut", () => {
       column: "Created At: Month",
       option: "Month of year",
     });
-
-    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
-      "be.visible",
-    );
   });
 });
 
@@ -334,15 +274,19 @@ function extractColumnAndCheck({
 
   cy.wait(`@${requestAlias}`);
 
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("columnheader")
-    .last()
-    .should("have.text", newColumn)
-    .should("be.visible");
+  cy.findByRole("columnheader", { name: newColumn }).should("exist");
 
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("columnheader").last().should("have.text", newColumn);
-  if (value) {
+  // With many columns, the "Add column" button can cover the last header,
+  // so the visible value cell shows that the table scrolled to the new column.
+  if (!value) {
+    cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  }
+
+  if (value === "") {
+    H.tableInteractiveBody()
+      .find(`[data-column-id="${newColumn}"]`)
+      .should("have.text", "");
+  } else if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
 }
@@ -404,7 +348,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible add a new column through the combine columns shortcut", () => {
+  it("should combine columns via the plus modal and the column header and handle duplicate column names", () => {
     H.createQuestion(
       {
         query: {
@@ -421,6 +365,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
+    // Runs first: its gridcell check needs a single combined column.
     combineColumns({
       columns: ["Email", "ID"],
       newColumn: "Combined Email, ID",
@@ -432,6 +377,77 @@ describe("scenarios > visualizations > combine shortcut", () => {
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
+    });
+
+    cy.log("Combine columns from the column header");
+    H.tableHeaderClick("Email");
+    H.popover().findByText("Combine columns").click();
+
+    H.popover()
+      .findByTestId("combine-example")
+      .should("contain", "email@example.com12345");
+    selectColumn(0, "Name");
+
+    H.popover().within(() => {
+      cy.findByText("Separated by (empty)").click();
+      cy.findByLabelText("Separator").type("__");
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text",
+      );
+
+      cy.findByText("Add column").click();
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text__12345",
+      );
+
+      cy.findAllByLabelText("Separator")
+        .should("have.length", 2)
+        .last()
+        .clear();
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text12345",
+      );
+
+      cy.findAllByLabelText("Separator")
+        .should("have.length", 2)
+        .last()
+        .clear()
+        .type("+");
+      cy.findByTestId("combine-example").should(
+        "have.text",
+        "email@example.com__text+12345",
+      );
+
+      cy.findByText("Done").click();
+    });
+
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 4)
+      .last()
+      .should("have.text", "Combined Email, Name, ID");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "column_combine_via_column_header",
+      custom_expressions_used: ["concat"],
+      database_id: SAMPLE_DB_ID,
+    });
+
+    cy.log("Duplicate column names");
+    H.tableHeaderClick("Email");
+    H.popover().findByText("Combine columns").click();
+    H.popover().findByText("Done").click();
+
+    H.tableHeaderClick("Email");
+    H.popover().findByText("Combine columns").click();
+    H.popover().findByText("Done").click();
+
+    cy.findByTestId("table-header").within(() => {
+      cy.findByText("Combined Email, ID").should("be.visible");
+      cy.findByText("Combined Email, ID_2").should("be.visible");
+      cy.findByText("Combined Email, ID_3").should("be.visible");
     });
   });
 

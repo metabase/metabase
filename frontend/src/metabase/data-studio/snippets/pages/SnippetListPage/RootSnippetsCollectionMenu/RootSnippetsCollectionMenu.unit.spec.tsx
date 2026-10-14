@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -9,10 +10,14 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { dataStudioArchivedSnippets } from "metabase/urls";
-import type { EnterpriseSettings } from "metabase-types/api";
+import type { Collection, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -21,13 +26,34 @@ import {
 
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 
+function RootSnippetsCollectionMenuWithModal({
+  collection,
+}: {
+  collection: Collection;
+}) {
+  const [modal, setModal] = useState<CollectionRowModalState>();
+  return (
+    <>
+      <RootSnippetsCollectionMenu
+        collection={collection}
+        onOpenModal={setModal}
+      />
+      <CollectionRowModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
+
 interface SetupOptions {
   isEnterprise?: boolean;
   isSuperuser?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 }
 
-const collection = createMockCollection({ id: "root", name: "SQL Snippets" });
+const collection = createMockCollection({
+  id: "root",
+  name: "SQL Snippets",
+  namespace: "snippets",
+});
 
 const setup = ({
   isEnterprise = true,
@@ -59,7 +85,9 @@ const setup = ({
     <>
       <Route
         path="/"
-        element={<RootSnippetsCollectionMenu collectionId={collection.id} />}
+        element={
+          <RootSnippetsCollectionMenuWithModal collection={collection} />
+        }
       />
       <Route
         path={dataStudioArchivedSnippets()}

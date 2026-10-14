@@ -5,21 +5,13 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
-import { Button } from "metabase/ui";
+import { Box, Button, Flex, Stack, Title } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import {
-  ActionSettingsHeader,
-  ActionSettingsLeft,
-  ActionSettingsRight,
-  ActionSettingsWrapper,
-  ModalActions,
-  ParameterMapperContainer,
-} from "./ActionDashcardSettings.styled";
 import {
   ActionParameterMappingForm,
   getTargetKey,
@@ -76,43 +68,58 @@ export function ActionDashcardSettings({
     });
 
   return (
-    <ActionSettingsWrapper data-testid="action-dashcard-settings">
-      <ActionSettingsLeft>
+    // The dialog is a flex column, so a zero minimum lets the panel shrink to the dialog cap
+    <Flex
+      className={CS.overflowHidden}
+      mih={0}
+      miw="50rem"
+      data-testid="action-dashcard-settings"
+    >
+      <Box className={CS.overflowYAuto} w="20rem" pl="xxl" py="xxl">
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />
-      </ActionSettingsLeft>
-      <ActionSettingsRight>
-        {action ? (
+      </Box>
+      <Stack className={CS.borderLeft} gap={0} flex={1} maw="30rem" pt="xxl">
+        {action && hasParameters && (
           <>
-            {hasParameters && (
-              <>
-                <ActionSettingsHeader>
-                  {t`Where should the values for '${action.name}' come from?`}
-                </ActionSettingsHeader>
-                <ExplainerText />
-              </>
-            )}
-            <ParameterMapperContainer>
-              <ActionParameterMappingForm
-                dashcard={dashcard}
-                dashboard={dashboard}
-                action={action}
-                currentMappings={currentMappings}
-              />
-            </ParameterMapperContainer>
+            <Title order={2} size="h3" lh="normal" pb="sm" px="xxl">
+              {t`Where should the values for '${action.name}' come from?`}
+            </Title>
+            <ExplainerText />
           </>
-        ) : (
-          <ParameterMapperContainer>
-            <EmptyActionState />
-          </ParameterMapperContainer>
         )}
-        <ModalActions>
+        <Stack
+          className={CS.overflowYAuto}
+          gap={0}
+          flex={1}
+          pt="sm"
+          pb="xxl"
+          px="xxl"
+        >
+          {action ? (
+            <ActionParameterMappingForm
+              dashcard={dashcard}
+              dashboard={dashboard}
+              action={action}
+              currentMappings={currentMappings}
+            />
+          ) : (
+            <EmptyActionState />
+          )}
+        </Stack>
+        <Flex
+          className={CS.borderTop}
+          flex="0 0 auto"
+          justify="flex-end"
+          gap="lg"
+          p="lg"
+        >
           <Button variant="filled" onClick={onClose} disabled={isFormInvalid}>
             {t`Done`}
           </Button>
-        </ModalActions>
-      </ActionSettingsRight>
-    </ActionSettingsWrapper>
+        </Flex>
+      </Stack>
+    </Flex>
   );
 }
 

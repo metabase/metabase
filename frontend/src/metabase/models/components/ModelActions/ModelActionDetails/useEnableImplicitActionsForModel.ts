@@ -33,7 +33,7 @@ export function useEnableImplicitActionsForModel(modelId: CardId) {
       }).unwrap();
     } catch (_error) {
       sendToast({
-        icon: "warning",
+        variant: "negative",
         message: t`Failed to create basic actions`,
       });
     }

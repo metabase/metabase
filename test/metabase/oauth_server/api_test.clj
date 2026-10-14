@@ -51,12 +51,13 @@
                      :scopes_supported         sequential?}
                     response))))))))
 
-(deftest protected-resource-metadata-advertises-the-baseline-test
-  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the baseline. Claude
-            Code and the Claude connectors take their first-login scope from `scopes_supported` here; every tool is
-            still listed, and a call needing more is answered with a 403 `insufficient_scope` step-up. The baseline
-            must be accepted by the `:resource` the document names, or the first login is narrowed away; asserted
-            against that `:resource` rather than the URL requested, so the two cannot drift."
+(deftest protected-resource-metadata-advertises-every-v2-scope-test
+  (testing "ENG-11089: every protected-resource endpoint, including the bare one, advertises every v2 scope. Claude
+            Code and the Claude connectors take their first-login scope from `scopes_supported` here, and a manual
+            reconnect from the connector settings asks for exactly this list, so a scope left out is one that client
+            can never be granted. Every advertised scope must be accepted by the `:resource` the document names, or
+            the first login is narrowed away; asserted against that `:resource` rather than the URL requested, so the
+            two cannot drift."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [url [".well-known/oauth-protected-resource"
                    ".well-known/oauth-protected-resource/api/metabase-mcp"
@@ -64,7 +65,8 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+            (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+                     "agent:sql:run" "agent:delivery:write"}
                    (set (:scopes_supported response))))
             (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
                                 (:scopes_supported response))))))))))
@@ -77,7 +79,7 @@
       (let [advertised (set (:scopes_supported (mt/user-http-request :crowberto :get 200
                                                                      ".well-known/oauth-authorization-server")))]
         (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
-                       "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                       "agent:sql:run" "agent:delivery:write"]]
           (testing scope
             (is (contains? advertised scope))))
         (is (= (set (oauth-server/supported-scopes)) advertised))))))
@@ -91,9 +93,10 @@
                  :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))
-        (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
+        (testing "the bare path is the one clients probe, so it advertises the same scopes as the canonical
                   path it names, and none of the retired per-entity agent-API scopes"
-          (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+          (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+                   "agent:sql:run" "agent:delivery:write"}
                  (set (:scopes_supported response))))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
@@ -1489,9 +1492,9 @@
                 "pre-v2 per-entity agent scopes, and `validate-scope` rejects any requested scope absent from that "
                 "snapshot, so a user forced to re-authorize is answered with a 400 `invalid_scope` JSON body "
                 "rendered raw in their browser tab and has no in-product recovery path. "
-                "`WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every dynamically registered "
+                "`WidenDynamicOAuthClientScopesForMcpV2` unions the v2 scopes into every dynamically registered "
                 "client's snapshot so the request validates and reaches consent.")
-    ;; GHY-4543: reading a dynamic client now adds the six v2 scopes whatever the registration setting says, so the
+    ;; GHY-4543: reading a dynamic client now adds the five v2 scopes whatever the registration setting says, so the
     ;; request reaches consent with or without the migration applied. Registration is disabled so only that MCP part
     ;; of the ceiling applies. A static client carrying the same legacy snapshot is the control: it is never widened,
     ;; so it shows what the stored snapshot alone decides.
@@ -1500,7 +1503,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [legacy-scopes ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
               v2-scopes     ["agent:content:read" "agent:content:write" "agent:query:run"
-                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+                             "agent:sql:run" "agent:delivery:write"]
               authorize!    (fn [client-id expected-status]
                               (mt/user-http-request-full-response
                                :crowberto :get expected-status "oauth/authorize"
@@ -1513,11 +1516,11 @@
                               (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html")
                                   "the user sees a consent page, not a JSON error body rendered in their browser tab")
                               (is (str/includes? (:body response) "agent:content:read")
-                                  "and the six v2 scopes are what they are consenting to"))
+                                  "and the five v2 scopes are what they are consenting to"))
               static-id     (:client_id (create-test-client! {:scopes legacy-scopes}))
               dynamic-id    (:client_id (create-test-client! {:scopes            legacy-scopes
                                                               :registration_type "dynamic"}))]
-          (testing "control: the six v2 scopes are refused against the legacy snapshot alone"
+          (testing "control: the five v2 scopes are refused against the legacy snapshot alone"
             (is (= {:error             "invalid_scope"
                     :error_description invalid-request-description}
                    (:body (authorize! static-id 400)))))
@@ -1575,10 +1578,8 @@
         (refused? (authorize "dynamic" false not-mcp))))))
 
 (deftest grant-ceiling-widening-respects-mcp-kill-switch-test
-  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off. `agent:resource:read` is an MCP "
-                "surface scope and also the declared scope of `POST /api/agent/v1/read-resource`, which a separate "
-                "lever (`agent-api-enabled`) gates — so widening onto it with MCP off hands a dynamic client a scope "
-                "its registration never included, and with the agent API on, a live endpoint to spend it at.")
+  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off, so a dynamic client gets no scope "
+                "its registration never included for a surface that no longer serves.")
     (let [authorize (fn [mcp-on?]
                       (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                                          mcp-enabled?                              mcp-on?
@@ -1596,7 +1597,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "agent:resource:read"
+                             :scope         "agent:query:run"
                              :state         "test-state")))))]
       (testing "with MCP enabled a dynamic client is widened onto the MCP scopes and reaches consent"
         (let [response (authorize true)]
@@ -1951,7 +1952,7 @@
 
 (def ^:private v2-scope-set
   #{"agent:content:read" "agent:content:write" "agent:query:run"
-    "agent:sql:run" "agent:delivery:write" "agent:resource:read"})
+    "agent:sql:run" "agent:delivery:write"})
 
 (defn- mcp-resource-uri []
   (str "http://localhost:3000" (mcp/mcp-canonical-path)))
@@ -2032,7 +2033,7 @@
   (some-> (:scope token-response) (str/split #" ") set))
 
 (def ^:private v2-baseline-scope-set
-  #{"agent:content:read" "agent:query:run" "agent:resource:read"})
+  #{"agent:content:read" "agent:query:run"})
 
 (deftest registration-scope-does-not-narrow-step-up-test
   (testing (str "GHY-4543: Claude Code registers with the scope it read from the protected-resource metadata, then "
@@ -2043,7 +2044,7 @@
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run"}
                                          (str/join " " (sort v2-scope-set)))]
           (testing "the step-up request reaches the consent page"
             (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -2080,7 +2081,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [not-mcp                   (first (remove v2-scope-set (oauth-server/default-grant-scopes)))
               {:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run"}
                                          (str/join " " (conj (sort v2-scope-set) not-mcp)))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP resource does not accept")
           (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -2111,13 +2112,13 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (testing "control: the same flow reaches consent for a scope inside the default ceiling"
           (let [response (register-then-authorize-without-resource!
-                          {:scope "agent:content:read agent:query:run agent:resource:read"}
+                          {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
             (is (= 200 (:status response)) (pr-str (:body response)))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
-                            {:scope "agent:content:read agent:query:run agent:resource:read"}
+                            {:scope "agent:content:read agent:query:run"}
                             scope)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
@@ -2139,7 +2140,7 @@
   (str/join " " (sort v2-scope-set)))
 
 (deftest decision-mints-only-chosen-scopes-test
-  (testing (str "GHY-4555: a client requests all six v2 scopes and the user ticks only `agent:content:write`. The "
+  (testing (str "GHY-4555: a client requests all five v2 scopes and the user ticks only `agent:content:write`. The "
                 "token carries that plus the always-granted baseline, and neither the token response nor the stored "
                 "token holds the scopes the user left unticked.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
@@ -2148,7 +2149,7 @@
         (let [client       (register-mcp-client! {})
               consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
               expected     (conj v2-baseline-scope-set "agent:content:write")]
-          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all six")
+          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all five")
           (let [token  (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp
                                                                   ["agent:content:write"] 302))
                 stored (:scopes (oauth-server/resolve-access-token (:access_token token)))]
@@ -2168,7 +2169,7 @@
         (let [client       (register-mcp-client! {})
               consent-resp (get-mcp-consent-page!
                             (:client_id client)
-                            "agent:content:read agent:query:run agent:resource:read agent:content:write")]
+                            "agent:content:read agent:query:run agent:content:write")]
           (doseq [granted [["agent:sql:run"]
                            ["agent:content:write" "agent:delivery:write"]
                            [oauth-server/full-access-scope]
@@ -2221,7 +2222,7 @@
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (testing "all six offered, nothing chosen: the token carries the baseline"
+        (testing "all five offered, nothing chosen: the token carries the baseline"
           (let [client       (register-mcp-client! {})
                 consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
                 token        (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp nil 302))]
@@ -2258,14 +2259,14 @@
      :disabled? (boolean (re-find #"\sdisabled[\s=/>]" tag))}))
 
 (deftest consent-page-scope-order-test
-  (testing (str "GHY-4555: the six v2 scopes are listed least to most harmful whatever order they were requested in, "
+  (testing (str "GHY-4555: the five v2 scopes are listed least to most harmful whatever order they were requested in, "
                 "and any other requested scope follows in request order")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         ;; a registered non-v2 scope: GHY-4542 drops unregistered scopes before the page is rendered
         (let [not-v2    (first-non-mcp-default-scope)
               requested [not-v2 "agent:delivery:write" "agent:sql:run" oauth-server/full-access-scope
-                         "agent:content:write" "agent:query:run" "agent:content:read" "agent:resource:read"]
+                         "agent:content:write" "agent:query:run" "agent:content:read"]
               client-id (:client_id (create-test-client! {:scopes requested}))
               body      (:body (mt/user-http-request-full-response
                                 :crowberto :get 200 "oauth/authorize"
@@ -2274,13 +2275,12 @@
                                 :response_type "code"
                                 :scope         (str/join " " requested)
                                 :state         "test-state"))]
-          (is (= ["agent:resource:read" "agent:content:read" "agent:query:run"
+          (is (= ["agent:content:read" "agent:query:run"
                   "agent:content:write" "agent:sql:run" "agent:delivery:write"
                   not-v2 oauth-server/full-access-scope]
                  (map :scope (consent-checkboxes body))))
           (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts ticked (GHY-4826)"
-            (is (= {"agent:resource:read"          [true true]
-                    "agent:content:read"           [true true]
+            (is (= {"agent:content:read"           [true true]
                     "agent:query:run"              [true true]
                     "agent:content:write"          [true false]
                     "agent:sql:run"                [true false]
@@ -2360,8 +2360,7 @@
   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes (:body response))))
 
 (def ^:private baseline-locked
-  {"agent:resource:read" [true true]
-   "agent:content:read"  [true true]
+  {"agent:content:read"  [true true]
    "agent:query:run"     [true true]})
 
 (deftest consent-page-ignores-held-scopes-test
@@ -2511,7 +2510,7 @@
                                  :state         "test-state"
                                  resource))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP surface does not accept")
-          (testing "the client reaches consent for all six v2 scopes against the MCP resource"
+          (testing "the client reaches consent for all five v2 scopes against the MCP resource"
             (let [response (authorize (str/join " " (sort v2-scope-set)) :resource mcp-uri)]
               (is (= 200 (:status response)) (pr-str (:body response)))
               (is (= v2-scope-set (some-> (extract-hidden-field "scope" (:body response)) (str/split #" ") set)))))

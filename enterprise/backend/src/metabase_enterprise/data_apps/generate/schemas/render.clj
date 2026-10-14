@@ -15,7 +15,8 @@
   structurally in tests."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.generate.schemas.javascript :as schemas.javascript]))
+   [metabase-enterprise.data-apps.generate.schemas.javascript :as schemas.javascript]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -195,13 +196,14 @@
      (conj [:obj ["sourceFieldId" [:lit source-field-id]]]))))
 
 (defn- dimension-group-output-key
-  "Returns the output key for a compacted dimension group.
-
-  Multiple joins to the same table need source-field suffixes to stay distinct."
-  [table-key source-field-id table-key-count]
+  "Returns the output key for a compacted dimension group, suffixed by its foreign key's field key when several joins
+  reach the same table."
+  [table-key source-field-id table-key-count field-key-by-field-id]
   (if (= 1 (get table-key-count table-key))
     table-key
-    (str table-key "Via" source-field-id)))
+    (str table-key "Via" (if-let [field-key (get field-key-by-field-id source-field-id)]
+                           (u/capitalize-first-char field-key)
+                           source-field-id))))
 
 (defn- metric-dimension-table-field
   "Returns table field metadata when a metric dimension can be represented by `pickFields(...)`."
@@ -244,12 +246,18 @@
                 {:dimension-keys  #{}
                  :fields-by-group (array-map)}
                 dimensions)
-        table-key-count (frequencies (map (comp :table-key val) fields-by-group))]
+        table-key-count (frequencies (map (comp :table-key val) fields-by-group))
+        field-key-by-field-id (into {}
+                                    (keep (fn [[[_table-id field-id-or-name] {:keys [field-key]}]]
+                                            (when (integer? field-id-or-name)
+                                              [field-id-or-name field-key])))
+                                    field-key-by-table-and-field)]
     {:dimension-keys dimension-keys
      :fields         (not-empty
                       (reduce-kv (fn [acc _ {:keys [table-key reference field-keys source-field-id]}]
                                    (assoc acc
-                                          (dimension-group-output-key table-key source-field-id table-key-count)
+                                          (dimension-group-output-key table-key source-field-id table-key-count
+                                                                      field-key-by-field-id)
                                           (pick-fields-call reference
                                                             (distinct field-keys)
                                                             source-field-id)))

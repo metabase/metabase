@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { MoveEventModalProps } from "./MoveEventModal";
-import MoveEventModal from "./MoveEventModal";
+import { MoveEventModal } from "./MoveEventModal";
 
 describe("MoveEventModal", () => {
   it("should move an event to a different timeline", async () => {

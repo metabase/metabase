@@ -23,7 +23,7 @@ Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also 
 
 Your client will direct you to an authentication page for your Metabase.
 
-Once authenticated, you can approve or block the tools in your client (not in your Metabase).
+Once authenticated, you can approve or block the tools in your client. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [limit which tools each group can use](./usage-controls.md#mcp-tools-access).
 
 Connected a client before Metabase 0.64? It'll ask you to sign in again after you upgrade.
 
@@ -78,6 +78,8 @@ One of your Metabase admins will still need to have [turned on your Metabase's M
 ## MCP tools
 
 The MCP server gives your agent tools for searching, browsing, querying, and creating content in your Metabase. For the full list and the permission each one needs, see [MCP server tools](./mcp-tools.md).
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can choose which of these tools each group can use. See [MCP tools access](./usage-controls.md#mcp-tools-access).
 
 ## Using the MCP server
 

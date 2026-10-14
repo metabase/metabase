@@ -97,7 +97,7 @@ export const metabotApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("metabot"),
           idTag("metabot", id),
-          idTag("metabot-prompt-suggestions", id),
+          listTag("metabot-prompt-suggestions"),
         ]),
     }),
     getSuggestedMetabotPrompts: builder.query<
@@ -109,9 +109,7 @@ export const metabotApi = Api.injectEndpoints({
         url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions`,
         params,
       }),
-      providesTags: (_, __, { metabot_id }) => [
-        idTag("metabot-prompt-suggestions", metabot_id),
-      ],
+      providesTags: () => [listTag("metabot-prompt-suggestions")],
     }),
     deleteSuggestedMetabotPrompt: builder.mutation<
       void,
@@ -121,10 +119,8 @@ export const metabotApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
       }),
-      invalidatesTags: (_, error, { metabot_id }) =>
-        invalidateTags(error, [
-          idTag("metabot-prompt-suggestions", metabot_id),
-        ]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-prompt-suggestions")]),
     }),
     regenerateSuggestedMetabotPrompts: builder.mutation<
       RegenerateSuggestedMetabotPromptsResponse,
@@ -134,10 +130,8 @@ export const metabotApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/regenerate`,
       }),
-      invalidatesTags: (_, error, metabot_id) =>
-        invalidateTags(error, [
-          idTag("metabot-prompt-suggestions", metabot_id),
-        ]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-prompt-suggestions")]),
     }),
     metabotGenerateContent: builder.query<
       MetabotGenerateContentResponse,

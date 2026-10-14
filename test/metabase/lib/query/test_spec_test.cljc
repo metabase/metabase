@@ -1498,6 +1498,25 @@
       (is (=? [[:field {} "created_year"]]
               (lib/breakouts query 1))))))
 
+(deftest ^:parallel test-query-orders-by-named-implicitly-joined-breakout-test
+  (let [category {:type            :column
+                  :name            "CATEGORY"
+                  :field-id        (meta/id :products :category)
+                  :source-field-id (meta/id :orders :product-id)}
+        query    (fn [order-by]
+                   (lib.query.test-spec/test-query
+                    meta/metadata-provider
+                    {:stages [{:source       {:type :table :id (meta/id :orders)}
+                               :aggregations [{:type :operator :operator :count}]
+                               :breakouts    [{:type :breakout :name "category" :column category}]
+                               :order-bys    [order-by]}]}))]
+    (testing "named breakout on an implicitly joined field is found by its name and foreign key"
+      (is (=? [[:asc {} [:field {:name "category" :source-field (meta/id :orders :product-id)} (meta/id :products :category)]]]
+              (lib/order-bys (query {:type :column :name "category" :source-field-id (meta/id :orders :product-id)})))))
+    (testing "its name alone does not say it is implicitly joined"
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"No column found"
+                            (query {:type :column :name "category"}))))))
+
 (def ^:private two-ids-stage
   {:source {:type :table :id (meta/id :orders)}
    :fields [{:type :column :name "ID" :field-id (meta/id :orders :id)}
