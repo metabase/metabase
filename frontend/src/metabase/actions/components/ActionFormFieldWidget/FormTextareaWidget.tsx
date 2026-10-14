@@ -30,6 +30,7 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
 
   return (
     <FormField
+      mb="lg"
       title={title}
       actions={actions}
       description={description}

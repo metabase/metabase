@@ -27,6 +27,7 @@ import {
   getAdjustedBrushEndEvent,
   getBrushClickObject,
   getEventDimensions,
+  getGoalLineHoverData,
   getSeriesClickData,
   getTooltipModel,
   normalizeDimensionValue,
@@ -855,5 +856,33 @@ describe("getTooltipModel", () => {
       "Doohickey",
       "Gadget",
     ]);
+  });
+});
+
+describe("getGoalLineHoverData", () => {
+  const createMarkerElement = () =>
+    document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+  const settings = createMockVisualizationSettings({
+    "graph.goal_value": 25000,
+    "graph.goal_label": "Goal",
+  });
+
+  it("shows the goal label and formatted value when the marker is hovered", () => {
+    const hoverData = getGoalLineHoverData(
+      settings,
+      createMarkerElement(),
+      (value) => `${value} orders`,
+    );
+
+    expect(hoverData?.data).toEqual([
+      { col: null, key: "Goal", value: "25000 orders" },
+    ]);
+  });
+
+  it("anchors the tooltip to the hovered marker element", () => {
+    const marker = createMarkerElement();
+
+    expect(getGoalLineHoverData(settings, marker)?.element).toBe(marker);
   });
 });
