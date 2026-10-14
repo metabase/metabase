@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.app-db.core :as mdb]
    [metabase.driver.test-util :as driver.tu]
    [metabase.test.util.timezone :as test.tz]
@@ -115,3 +116,21 @@
   "Returns a set of all changeset IDs from all migration files."
   [include-legacy? driver conn]
   (apply concat (map #(liquibase-file->included-ids % driver conn) (all-migration-files include-legacy?))))
+
+(defn in-clauses-with-inline-collections
+  "The `[:in col coll]` clauses of the Honey SQL form `hsql` whose value is an inlined collection rather than a bound
+  parameter or a subquery."
+  [hsql]
+  (let [results (volatile! [])]
+    (walk/postwalk
+     (fn [form]
+       (when (and (vector? form)
+                  (let [[op _ coll] form]
+                    (and (= :in op)
+                         (= 3 (count form))
+                         (coll? coll)
+                         (not (map? coll)))))
+         (vswap! results conj form))
+       form)
+     hsql)
+    @results))

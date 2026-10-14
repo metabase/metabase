@@ -111,6 +111,16 @@
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Card :document_id [:in document-ids] :archived false))
 
+(mu/defn contents-for-documents
+  "The id, content, and content type of the Documents with `document-ids`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Document :id :document :content_type] :id [:in document-ids]))
+
+(mu/defn card-ids-owned-by-documents
+  "The `:id` and `:document_id` of the Cards belonging to the Documents with `document-ids`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Card :id :document_id] :document_id [:in document-ids]))
+
 (mu/defn unarchived-card-in-document-exists?
   "Whether the unarchived Card with `card-id` belongs to the Document with `document-id`."
   [card-id     :- ::lib.schema.id/card

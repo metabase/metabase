@@ -34,6 +34,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.public-sharing.reach :as public-sharing.reach]
    [metabase.pulse.core :as pulse]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
@@ -1793,6 +1794,21 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+
+(defmethod public-sharing.reach/rendered-card-ids :model/Card
+  [_model id->surfaces]
+  ;; A question's anonymous reach includes the questions its filters draw value lists from.
+  (let [cards (queries.db/card-parameters-for-cards (keys id->surfaces))]
+    (public-sharing.reach/edges
+     (into {} (map (fn [{:keys [id]}] [id #{id}])) cards)
+     (into {}
+           (map (fn [{:keys [id parameters embedding_params]}]
+                  [id (public-sharing.reach/value-list-card-ids-by-surface
+                       (get id->surfaces id)
+                       embedding_params
+                       parameters
+                       parameter-card/values-source-card-ids)]))
+           cards))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

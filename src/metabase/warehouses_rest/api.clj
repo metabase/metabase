@@ -21,6 +21,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.public-sharing.reach :as public-sharing.reach]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
@@ -504,21 +505,89 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
+(mr/def ::usage-info
+  [:map {:closed true}
+   [:question
+    {:description "Saved questions on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:dataset
+    {:description "Models on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:metric
+    {:description "Metrics on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:segment
+    {:description "Segments on this database's tables."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:transform
+    {:description "Transforms reading from or writing to this database."}
+    ms/IntGreaterThanOrEqualToZero]])
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/usage_info"
-  "Get usage info for a database.
-  Returns a map with keys are models and values are the number of entities that use this database."
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :get "/:id/usage_info" :- ::usage-info
+  "Get usage info for a database: how many entities of each model are saved against it."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
   (first (warehouses-rest.db/database-usage-counts id)))
+
+(def ^:private max-anonymously-reaching
+  "How many rows `GET /api/database/:id/anonymous-reach` returns."
+  100)
+
+(mr/def ::anonymously-reaching-entity
+  [:map {:closed true}
+   [:id
+    {:description "Id of the published question, dashboard or document."}
+    ms/PositiveInt]
+   [:model
+    {:description "What kind of thing it is, in the same vocabulary search and collection items use."}
+    [:enum "card" "dataset" "metric" "dashboard" "document"]]
+   [:name
+    {:description "Its name, as an admin would recognise it."}
+    :string]
+   [:surfaces
+    {:description (str "The anonymous surfaces through which it reaches this database: a public link, a published"
+                       " guest embed, or both. Never empty.")}
+    [:sequential [:enum "guest-embed" "public-link"]]]
+   [:reaches_indirectly
+    {:optional    true
+     :description (str "Present only where the connection to this database is not self-evident: nothing this entity"
+                       " shows is saved against the database, and it reaches it by running a question's query to"
+                       " fill a filter's value list.")}
+    [:= true]]])
+
+(mr/def ::anonymous-reach
+  [:map {:closed true}
+   [:total
+    {:description "How many published entities reach this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:data
+    {:description (str "The first " max-anonymously-reaching " of those entities by name. `total` says how many there"
+                       " are in all.")}
+    [:sequential ::anonymously-reaching-entity]]])
+
+(defn- present-anonymously-reaching-entity
+  "One row of the anonymous-reach response."
+  [{:keys [id model surfaces indirect?], entity-name :name}]
+  (cond-> {:id       id
+           :model    model
+           :name     entity-name
+           :surfaces (vec (sort (map u/qualified-name surfaces)))}
+    indirect? (assoc :reaches_indirectly true)))
+
+(api.macros/defendpoint :get "/:id/anonymous-reach" :- ::anonymous-reach
+  "The public links and published guest embeds through which anonymous traffic can get data from this database."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (check-database-exists id)
+  (let [reaching (public-sharing.reach/anonymously-reaching id)]
+    {:total (count reaching)
+     :data  (mapv present-anonymously-reaching-entity (take max-anonymously-reaching reaching))}))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

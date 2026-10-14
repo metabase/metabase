@@ -1,0 +1,38 @@
+## Index enable_embedding on report_card and report_dashboard, which the anonymous-reach query filters on.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-08T12:00:00
+      author: johnswanson
+      comment: Index report_card.enable_embedding for the anonymous-reach walk
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_enable_embedding
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_enable_embedding
+            columns:
+              - column:
+                  name: enable_embedding
+
+  - changeSet:
+      id: v65.2026-10-08T12:00:01
+      author: johnswanson
+      comment: Index report_dashboard.enable_embedding for the anonymous-reach walk
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_dashboard
+                indexName: idx_report_dashboard_enable_embedding
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_enable_embedding
+            columns:
+              - column:
+                  name: enable_embedding

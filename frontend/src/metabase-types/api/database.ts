@@ -1,3 +1,4 @@
+import type { CollectionItemModel } from "./collection";
 import type { ScheduleSettings } from "./settings";
 import type { SchemaName, Table } from "./table";
 
@@ -126,6 +127,32 @@ export interface DatabaseUsageInfo {
   metric: number;
   segment: number;
   transform: number;
+}
+
+/** One of the two anonymous surfaces: a public link, or a published guest embed. */
+export type AnonymousSurface = "public-link" | "guest-embed";
+
+export type AnonymouslyReachingModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document"
+>;
+
+/**
+ * A published question, dashboard or document through which anonymous traffic can get data from a
+ * database.
+ */
+export interface AnonymouslyReachingEntity {
+  id: number;
+  model: AnonymouslyReachingModel;
+  name: string;
+  surfaces: AnonymousSurface[];
+  reaches_indirectly?: true;
+}
+
+/** The server caps `data`; `total` says how many there are in all. */
+export interface DatabaseAnonymousReach {
+  total: number;
+  data: AnonymouslyReachingEntity[];
 }
 
 export interface GetDatabaseRequest {
