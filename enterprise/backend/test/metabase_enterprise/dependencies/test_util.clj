@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -15,6 +16,13 @@
   []
   (mt/with-premium-features #{:dependencies}
     (while (#'dependencies.backfill/backfill-dependencies!))))
+
+(defn do-with-immediate-hook-writes
+  "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never
+  commits."
+  [thunk]
+  (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [f] (f))]
+    (thunk)))
 
 (defn mock-card [metadata-provider {:keys [id query details]}]
   (merge {:lib/type        :metadata/card

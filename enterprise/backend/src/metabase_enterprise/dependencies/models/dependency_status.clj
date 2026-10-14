@@ -60,12 +60,14 @@
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal, retry delay elapsed). Defined in terms of
-  [[instances-for-dependency-calculation]] so it stays consistent with what the backfill processes."
+  stale=true, OR version < current (not terminal, retry delay elapsed), or deleted entities whose status the backfill
+  has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
+  the backfill processes."
   []
   (boolean
    (some (fn [entity-type]
-           (seq (instances-for-dependency-calculation entity-type 1)))
+           (or (seq (instances-for-dependency-calculation entity-type 1))
+               (seq (dependencies.db/deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))
 
 (defn record-failure!

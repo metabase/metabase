@@ -621,11 +621,6 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
 
-(mu/defn card-ids-of-database
-  "The IDs of the Cards querying the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Card :database_id db-id))
-
 (mu/defn transform-ids-of-source-database
   "The IDs of the Transforms reading from the Database with `db-id`."
   [db-id :- ::lib.schema.id/database]
@@ -692,10 +687,10 @@
               :to_entity_type to-type :to_entity_id to-id))
 
 (mu/defn delete-dependencies-from!
-  "Delete the Dependencies of the entity `entity-type` `entity-id`, returning the number deleted."
+  "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in entity-ids]))
 
 (mu/defn downstream-table-ids-of-transform
   "The IDs of the Tables that depend on the Transform with `transform-id`."
@@ -724,11 +719,25 @@
    entity-id   :- ms/PositiveInt]
   (t2/select-one :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
 
-(mu/defn delete-dependency-status!
-  "Delete the DependencyStatus of the entity `entity-type` `entity-id`, returning the number deleted."
+(mu/defn delete-dependency-statuses!
+  "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in entity-ids]))
+
+(mu/defn deleted-entity-ids :- [:sequential ms/PositiveInt]
+  "Up to `batch-size` IDs of deleted entities of the type `entity-type` that still have a DependencyStatus."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
+  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
+    (vec (t2/select-fn-vec :entity_id :model/DependencyStatus
+                           {:where [:and
+                                    [:= :dependency_status.entity_type (name entity-type)]
+                                    [:not [:exists ^:allow-subquery
+                                           {:select [1]
+                                            :from   [[table-name :entity]]
+                                            :where  [:= :entity.id :dependency_status.entity_id]}]]]
+                            :limit batch-size}))))
 
 (mu/defn mark-dependency-status-stale!
   "Mark the DependencyStatus of `entity-type` `entity-id` as stale for dependency recalculation, creating it if it

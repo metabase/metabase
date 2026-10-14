@@ -150,6 +150,7 @@
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
            (t2/delete! :model/Dashboard dashboard-id)
+           (deps.test/synchronously-run-backfill!)
            (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))))))
 
 (deftest document-update-sets-correct-dependencies
@@ -202,6 +203,7 @@
                      (into #{} (map #(dissoc % :id)
                                     (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
              (t2/delete! :model/Document document-id)
+             (deps.test/synchronously-run-backfill!)
              (is (empty? (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document))))))))))
 
 (deftest sandbox-update-sets-correct-dependencies
@@ -231,6 +233,7 @@
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
          (t2/delete! :model/Sandbox sandbox-id)
+         (deps.test/synchronously-run-backfill!)
          (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))
 
 (deftest card-marks-pending-on-create-and-stale-on-update-test
@@ -379,10 +382,12 @@
          (t2/delete! :model/Database db-id)
          (is (nil? (t2/select-one :model/Database db-id))
              "the Database row is actually gone")
+         (assert-stale :transform transform-id)
+         (deps.test/synchronously-run-backfill!)
          (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                       :analyzed_entity_type :transform
                                       :analyzed_entity_id transform-id))
-             "after db-delete the transform's finding is marked stale")
+             "after db-delete the backfill marks the transform's finding stale")
          (testing "and re-running the entity-check job flips :result false so the transform shows on broken-diagnostics"
            (#'task.entity-check/check-entities!)
            (let [{:keys [stale result]} (t2/select-one :model/AnalysisFinding
@@ -513,6 +518,7 @@
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "deleting segment removes all dependencies"
            (t2/delete! :model/Segment segment-id)
+           (deps.test/synchronously-run-backfill!)
            (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
 
 (deftest card-with-segment-dependencies
@@ -573,6 +579,7 @@
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "deleting measure removes all dependencies"
              (t2/delete! :model/Measure measure-id)
+             (deps.test/synchronously-run-backfill!)
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 
 (deftest measure-with-measure-dependencies
@@ -691,6 +698,8 @@
            (deps.findings/upsert-analysis! parent-card)
            (deps.findings/upsert-analysis! child-card)
            (deps.findings/upsert-analysis! other-card)
+           (deps.dependency-status/upsert-status! :card child-card-id)
+           (deps.dependency-status/upsert-status! :card other-card-id)
            (testing "Checking that the initial analyses exist"
              (assert-has-analyses
               {:card {parent-card-id old-version
@@ -698,6 +707,7 @@
                       other-card-id old-version}}))
            (testing "changing the card query marks its finding and its dependents' stale, not unrelated ones"
              (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
+             (deps.test/synchronously-run-backfill!)
              (assert-has-analyses
               {:card {parent-card-id old-version
                       child-card-id -1
@@ -724,7 +734,9 @@
                                            :to_entity_type :card :to_entity_id parent-id}]
          (deps.findings/upsert-analysis! parent)
          (deps.findings/upsert-analysis! child)
+         (deps.dependency-status/upsert-status! :card child-id)
          (t2/update! :model/Card parent-id {:dataset_query (lib/native-query mp "select * from orders")})
+         (deps.test/synchronously-run-backfill!)
          (testing "Parent card should be marked stale"
            (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card
@@ -807,6 +819,7 @@
            (assert-has-analyses {:transform {transform-id old-version}})
            (t2/update! :model/Transform transform-id {:source {:type :query
                                                                :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
+           (deps.test/synchronously-run-backfill!)
            (testing "Transform should be marked stale"
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :transform
@@ -897,8 +910,10 @@
                                              :to_entity_type :segment :to_entity_id segment-id}]
            (deps.findings/upsert-analysis! segment)
            (deps.findings/upsert-analysis! card)
+           (deps.dependency-status/upsert-status! :card card-id)
            (assert-has-analyses {:card {card-id old-version} :segment {segment-id old-version}})
            (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
+           (deps.test/synchronously-run-backfill!)
            (testing "Segment should be marked stale"
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :segment :analyzed_entity_id segment-id))))
@@ -924,13 +939,14 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! other-card)
            (assert-has-analyses {:card {card-id old-version other-card-id old-version}})
-           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
-             (testing "Card depending on updated table should be marked stale"
-               (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                            :analyzed_entity_type :card :analyzed_entity_id card-id))))
-             (testing "Card not depending on updated table should not be stale"
-               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                             :analyzed_entity_type :card :analyzed_entity_id other-card-id)))))))))))
+           (deps.test/do-with-immediate-hook-writes
+            #(mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
+               (testing "Card depending on updated table should be marked stale"
+                 (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                              :analyzed_entity_type :card :analyzed_entity_id card-id))))
+               (testing "Card not depending on updated table should not be stale"
+                 (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                               :analyzed_entity_type :card :analyzed_entity_id other-card-id))))))))))))
 
 (deftest ^:synchronized table-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -959,13 +975,14 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! other-card)
            (assert-has-analyses {:card {card-id old-version other-card-id old-version}})
-           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
-             (testing "Card depending on the table whose field was updated should be stale"
-               (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                            :analyzed_entity_type :card :analyzed_entity_id card-id))))
-             (testing "Card not depending on that table should not be stale"
-               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                             :analyzed_entity_type :card :analyzed_entity_id other-card-id)))))))))))
+           (deps.test/do-with-immediate-hook-writes
+            #(mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
+               (testing "Card depending on the table whose field was updated should be stale"
+                 (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                              :analyzed_entity_type :card :analyzed_entity_id card-id))))
+               (testing "Card not depending on that table should not be stale"
+                 (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                               :analyzed_entity_type :card :analyzed_entity_id other-card-id))))))))))))
 
 (deftest ^:synchronized field-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!

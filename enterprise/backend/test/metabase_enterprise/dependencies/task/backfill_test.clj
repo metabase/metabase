@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.task.backfill-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.backfill-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -458,7 +459,10 @@
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
-      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args]
+                                                        (when (some #(str/includes? (str %) "dependency-backfill") args)
+                                                          (swap! scheduled conj args))
+                                                        nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
             (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))

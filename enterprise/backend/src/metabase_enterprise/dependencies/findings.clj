@@ -162,7 +162,7 @@
 
   This only *analyzes* (each [[upsert-analysis!]] clears that entity's stale flag); it does NOT propagate staleness to
   dependents. Propagation happens up front when an entity changes (see [[mark-entity-and-transitive-dependents-stale!]] and the
-  event handlers), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
+  backfill job), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
   termination even when the dependency graph has cycles."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]

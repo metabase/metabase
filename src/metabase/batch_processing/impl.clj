@@ -110,6 +110,8 @@
    sdk-tracked-row
    id+timestamp
    [:map {:closed true}
+    [:table-id ms/PositiveInt]]
+   [:map {:closed true}
     [:user-id      ms/PositiveInt]
     [:dashboard-id ms/PositiveInt]
     [:parameters   [:sequential :metabase.parameters.schema/parameter-with-stored-value]]]

@@ -5,7 +5,6 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.metadata-update :as deps.metadata-update]
-   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
@@ -28,32 +27,34 @@
     (catch Throwable e
       (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))
 
-(def ^:private trigger-jobs-queue
-  (delay (grouper/start! (fn [_writes] (trigger-jobs-now!)) :capacity 500 :interval 1000)))
+(defn- process-writes!
+  "Mark the dependents of the Tables changed by `writes` for re-analysis, then trigger the jobs."
+  [writes]
+  (when-let [table-ids (not-empty (into #{} (keep :table-id) writes))]
+    (deps.findings/mark-transitive-dependents-stale! {:table table-ids}))
+  (trigger-jobs-now!))
+
+(def ^:private writes-queue
+  (delay (grouper/start! process-writes! :capacity 500 :interval 1000)))
+
+(defn- submit-after-commit!
+  "Submit `write` to the batch processed once the current transaction commits."
+  [write]
+  (mdb/do-after-commit #(grouper/submit! @writes-queue write)))
 
 (defn- trigger-jobs!
   "Have the backfill and entity-check jobs triggered for this write, once it commits, together with the others in its
   batch."
   []
-  (mdb/do-after-commit #(grouper/submit! @trigger-jobs-queue :ok)))
+  (submit-after-commit! :ok))
 
 (defn- mark-changed!
-  "Mark the entity `entity-type` `entity-id` for recalculation, and it and its dependents for re-analysis."
+  "Mark the entity `entity-type` `entity-id` for recalculation; the backfill job marks it and its dependents for
+  re-analysis."
   [entity-type entity-id]
   (when entity-id
     (deps.dependency-status/mark-stale! entity-type [entity-id])
-    (if (contains? deps.findings/analyzable-entities entity-type)
-      (deps.findings/mark-entity-and-transitive-dependents-stale! entity-type entity-id)
-      (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]}))
     (trigger-jobs!)))
-
-(defn- mark-deleted!
-  "Mark the dependents of the deleted entity `entity-type` `entity-id` for re-analysis and drop its dependencies."
-  [entity-type entity-id]
-  (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]})
-  (dependencies.db/delete-dependencies-from! entity-type entity-id)
-  (dependencies.db/delete-dependency-status! entity-type entity-id)
-  (trigger-jobs!))
 
 (defn- changed?
   "Whether the Toucan update of `instance` changes any of `columns`."
@@ -93,14 +94,11 @@
     (trigger-jobs!))
   (defmethod before-delete* model
     [model instance]
-    (mark-deleted! (deps.dependency-types/model->dependency-type model) (:id instance))))
+    (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
 (defmethod before-update* :model/Card
   [model card]
-  (mark-entity-changed! model card #{:dataset_query :dimension_mappings :parameters})
-  (when (changed? card #{:result_metadata :type})
-    (when (deps.findings/mark-transitive-dependents-stale! {:card [(:id card)]})
-      (trigger-jobs!)))
+  (mark-entity-changed! model card #{:dataset_query :dimension_mappings :parameters :result_metadata :type})
   (when (and (changed? card #{:dataset_query :result_metadata :type})
              (not mi/*deserializing?*))
     (let [card-id       (:id card)
@@ -150,56 +148,52 @@
   [_model tab]
   (mark-changed! :dashboard (:dashboard_id tab)))
 
-(defn- mark-tables-changed!
-  "Mark the dependents of the Tables with `table-ids` for re-analysis."
-  [table-ids]
-  (when (deps.findings/mark-transitive-dependents-stale! {:table (filterv some? table-ids)})
-    (trigger-jobs!)))
+(defn- mark-table-changed!
+  "Mark the dependents of the Table with `table-id` for re-analysis once the current transaction commits."
+  [table-id]
+  (when table-id
+    (submit-after-commit! {:table-id table-id})))
 
 (defmethod before-insert* :model/TableUserSettings
   [_model settings]
-  (mark-tables-changed! [(:table_id settings)]))
+  (mark-table-changed! (:table_id settings)))
 
 (defmethod before-update* :model/TableUserSettings
   [_model settings]
-  (mark-tables-changed! [(:table_id settings)]))
+  (mark-table-changed! (:table_id settings)))
 
 (defmethod before-delete* :model/TableUserSettings
   [_model settings]
-  (mark-tables-changed! [(:table_id settings)]))
+  (mark-table-changed! (:table_id settings)))
 
 (defmethod before-insert* :model/FieldUserSettings
   [_model settings]
-  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
+  (mark-table-changed! (dependencies.db/field-table-id (:field_id settings))))
 
 (defmethod before-update* :model/FieldUserSettings
   [_model settings]
-  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
+  (mark-table-changed! (dependencies.db/field-table-id (:field_id settings))))
 
 (defmethod before-delete* :model/FieldUserSettings
   [_model settings]
-  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
+  (mark-table-changed! (dependencies.db/field-table-id (:field_id settings))))
 
 (defmethod before-insert* :model/Dimension
   [_model dimension]
-  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
+  (mark-table-changed! (dependencies.db/field-table-id (:field_id dimension))))
 
 (defmethod before-update* :model/Dimension
   [_model dimension]
-  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
+  (mark-table-changed! (dependencies.db/field-table-id (:field_id dimension))))
 
 (defmethod before-delete* :model/Dimension
   [_model dimension]
-  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id dimension))]))
+  (mark-table-changed! (dependencies.db/field-table-id (:field_id dimension))))
 
 (defmethod before-delete* :model/Database
   [_model database]
-  (doseq [card-id (dependencies.db/card-ids-of-database (:id database))]
-    (mark-deleted! :card card-id))
-  (when-let [transform-ids (not-empty (dependencies.db/transform-ids-of-source-database (:id database)))]
-    (deps.analysis-finding/mark-stale! :transform transform-ids)
-    (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
-    (trigger-jobs!)))
+  (doseq [transform-id (dependencies.db/transform-ids-of-source-database (:id database))]
+    (mark-changed! :transform transform-id)))
 
 (defenterprise before-insert
   "Mark what inserting the `model` row `instance` affects for recalculation."
@@ -223,7 +217,9 @@
   "Mark the dependents of the Tables of the Database with `database-id` that changed since they were analyzed."
   :feature :dependencies
   [database-id]
-  (mark-tables-changed! (dependencies.db/table-ids-with-outdated-findings database-id)))
+  (when (deps.findings/mark-transitive-dependents-stale!
+         {:table (dependencies.db/table-ids-with-outdated-findings database-id)})
+    (trigger-jobs!)))
 
 (defenterprise after-transform-run
   "Make the output Table with `table-id` depend on the transform with `transform-id`, and mark the transform's
