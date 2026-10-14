@@ -213,9 +213,10 @@
   (let [result
         ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
+        ;; This query gets its own cancellation channel too: finishing closes it, and the outer query has yet to run.
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
           (request/as-admin
-            (qp/process-query query)))]
+            (qp.pipeline/do-with-own-canceled-chan #(qp/process-query query))))]
     (when-not (= (:status result) :completed)
       (throw (ex-info "Error running query to determine metadata"
                       {:query query, :result result})))
