@@ -1416,14 +1416,14 @@
         (is (= big (lib/raw-native-query (run true))))))))
 
 (deftest ^:parallel impersonated-refusal-preserves-reason-and-names-array-test
-  (testing "the cannot-validate refusal carries its :reason and names ARRAY as well as VALUES/IN"
+  (testing "the unchecked-SQL refusal carries its :reason and names ARRAY as well as VALUES/IN"
     (let [stripped (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join "," (range 2500)) "])")
           e        (try (driver.sql/validate-impersonated-query*
                          :postgres (lib/native-query meta/metadata-provider stripped))
                         nil
                         (catch clojure.lang.ExceptionInfo ex ex))]
       (is (some? e) "an oversized ARRAY literal must be refused")
-      (is (= :too-large (:reason (ex-data e))) "the underlying :reason is preserved for operators")
+      (is (= "large-literal-list" (:reason (ex-data e))) "the underlying :reason is preserved for operators")
       (is (re-find #"(?i)ARRAY" (ex-message e)) "the message names ARRAY, which also triggers stripping"))))
 
 (deftest impersonated-native-single-statement-enforced-for-all-drivers-test
