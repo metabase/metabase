@@ -19,6 +19,7 @@ import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import {
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
+  STRICT_MODE_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -53,7 +54,8 @@ export const RemoteSyncSettingsForm = ({
 }: RemoteSyncSettingsFormProps) => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY) ?? false;
+  const isStrictMode = useSetting(STRICT_MODE_KEY) ?? false;
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -105,9 +107,9 @@ export const RemoteSyncSettingsForm = ({
                   <BranchSwitcherSection dirty={dirtyEntities} />
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
-                {(isRemoteSyncEnabled || isReadWrite) && !isModalVariant && (
-                  <CollectionsToSyncSection />
-                )}
+                {(isRemoteSyncEnabled || isReadWrite) &&
+                  !isModalVariant &&
+                  !isStrictMode && <CollectionsToSyncSection />}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />

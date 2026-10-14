@@ -434,9 +434,11 @@ width: fixed
     (t2/update! :model/Collection id {:is_remote_synced synced?})))
 
 (defn- restore-transforms-setting
-  "Test fixture that restores `remote-sync-transforms`, which an import enables and never disables."
+  "Test fixture that restores `remote-sync-transforms`, which an import enables and never disables, and
+  `remote-sync-strict-mode`, which remote sync startup sets."
   [f]
-  (tu/with-temporary-setting-values [remote-sync-transforms false]
+  (tu/with-temporary-setting-values [remote-sync-transforms  false
+                                     remote-sync-strict-mode nil]
     (f)))
 
 (def ^:private default-mock-entity-ids
@@ -462,14 +464,26 @@ width: fixed
     (finally
       (delete-default-mock-content!))))
 
+(defn- clean-created-library
+  "Test fixture that deletes the Library when the test created it, as enabling remote sync in strict mode does."
+  [f]
+  (let [existed? (some? (collection/library-collection))]
+    (try
+      (f)
+      (finally
+        (when-not existed?
+          (t2/delete! :model/Collection :entity_id [:in (vec collection/library-root-entity-ids)]))))))
+
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
-  TransformTag, PythonLibrary), and the default mock source's content are clean, and transforms sync is off."
-  (t/compose-fixtures restore-transforms-setting
-                      (t/compose-fixtures clean-default-mock-content
-                                          (t/compose-fixtures clean-object
-                                                              (t/compose-fixtures clean-task-table
-                                                                                  clean-optional-feature-models)))))
+  TransformTag, PythonLibrary), the default mock source's content, and a Library the test created are clean, and
+  transforms sync and strict mode are restored."
+  (t/join-fixtures [restore-transforms-setting
+                    clean-created-library
+                    clean-default-mock-content
+                    clean-object
+                    clean-task-table
+                    clean-optional-feature-models]))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a

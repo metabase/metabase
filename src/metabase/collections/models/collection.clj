@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
@@ -319,6 +320,13 @@
     (run! grant-library-collection-permissions! [library data metrics])
     (insert-library-dashboards-collection! library)
     library))
+
+(defn ensure-library-collection!
+  "The Library collection, created when it doesn't exist yet."
+  []
+  (cluster-lock/with-cluster-lock ::ensure-library-collection
+    (or (library-collection)
+        (create-library-collection!))))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 

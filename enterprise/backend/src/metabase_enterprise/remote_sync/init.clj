@@ -44,6 +44,7 @@
 (defn- remote-sync-init []
   ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
   (remote-sync.task/supersede-stale-tasks!)
+  (remote-sync.core/init-strict-mode!)
   (if (settings/remote-sync-enabled)
     (let [first-import? (not (collection/has-remote-synced-collection?))]
       (remote-sync.core/enable-library-and-transforms-sync!)

@@ -587,6 +587,17 @@
   [file-path :- :string]
   (t2/select-one :model/RemoteSyncObject :file_path file-path))
 
+(mu/defn other-remote-synced-collection-exists?
+  "Whether a remote-synced Collection exists whose type isn't one of `excluded-types` and whose namespace isn't one of
+  `excluded-namespaces`."
+  [excluded-types      :- [:sequential :string]
+   excluded-namespaces :- [:sequential :string]]
+  (t2/exists? :model/Collection
+              {:where [:and
+                       [:= :is_remote_synced true]
+                       [:or [:= :type nil] [:not-in :type excluded-types]]
+                       [:or [:= :namespace nil] [:not-in :namespace excluded-namespaces]]]}))
+
 (mu/defn remote-synced-collection-ids-with-entity-ids
   "The IDs of the remote-synced Collections with `entity-ids`."
   [entity-ids :- [:set :string]]

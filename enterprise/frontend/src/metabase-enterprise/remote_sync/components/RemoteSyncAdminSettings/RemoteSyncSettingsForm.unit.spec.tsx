@@ -868,6 +868,21 @@ describe("RemoteSyncSettingsForm", () => {
       expect(screen.getByText("Collections to sync")).toBeInTheDocument();
     });
 
+    it("should not display collections section in strict mode", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncStrictMode: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+
     it("should not display collections section in modal variant when read-write mode is selected", async () => {
       setup({
         remoteSyncEnabled: false,

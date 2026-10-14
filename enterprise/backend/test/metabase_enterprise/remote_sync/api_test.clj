@@ -2447,3 +2447,17 @@
                      :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
         (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
+
+(deftest settings-switch-to-strict-mode-test
+  (testing "PUT /api/ee/remote-sync/settings turns on strict mode once no other collection is synced"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-type :read-write
+                                       remote-sync-branch "main"
+                                       remote-sync-strict-mode false]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  impl/finish-remote-config! (constantly nil)]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/" :is_remote_synced true}]
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:remote-sync-auto-import true})
+          (is (false? (settings/remote-sync-strict-mode)) "another collection is still synced")
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id false}})
+          (is (true? (settings/remote-sync-strict-mode))))))))

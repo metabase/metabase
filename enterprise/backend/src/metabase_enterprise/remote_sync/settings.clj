@@ -133,6 +133,18 @@
   :default false
   :on-change sync-transform-tracking-on-change)
 
+(defsetting remote-sync-strict-mode
+  (deferred-tru "Whether remote sync always syncs the Library and transforms and hides the choice of other collections. Set when remote sync starts without a value, and can only be turned off with an environment variable.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no)
+
+(defn strict-mode-set-by-env?
+  "Whether an environment variable sets [[remote-sync-strict-mode]]."
+  []
+  (= :env (setting/get-raw-value-source :remote-sync-strict-mode)))
+
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
   :type :integer

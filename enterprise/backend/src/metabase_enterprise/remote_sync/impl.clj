@@ -1761,8 +1761,9 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
-  Turns on Library and transforms sync (see [[remote-sync.core/enable-library-and-transforms-sync!]]), then imports
-  the remote collection if you are in read-only mode.
+  In strict mode, sets up the Library and transforms sync (see
+  [[remote-sync.core/enable-library-and-transforms-sync!]]), then imports the remote collection if you are in read-only
+  mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
   []
