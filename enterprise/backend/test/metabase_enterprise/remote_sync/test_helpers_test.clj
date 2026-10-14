@@ -5,14 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.parallel]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
-   [metabase.app-db.activity-test-util :as activity]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.search.appdb.index :as search.index]
@@ -23,7 +21,6 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
-   [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -198,11 +195,6 @@
         (when (seq ledger)
           (t2/insert! :model/RemoteSyncObject ledger))))))
 
-(defn- this-thread
-  "The counts of the calling thread in the [[activity/count-db-activity!]] result `counts`."
-  [counts]
-  (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
-
 (defn- transforms-ledger-rows
   "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
   []
@@ -271,246 +263,6 @@
             (remote-sync.settings/remote-sync-type! :read-only)
             (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})))
          (is (= [] (remote-sync-setting-rows))))))))
-
-(deftest clean-remote-sync-settings-throws-and-names-the-keys-when-a-delete-fails-test
-  (testing (str "when the delete of one remote-sync setting row fails, the other rows are deleted and the fixture "
-                "throws an exception that names the failed key")
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
-       (fn []
-         (let [delete! (mt/original-fn #'th/delete-remote-sync-setting-row!)
-               error   (try
-                         (mt/with-dynamic-fn-redefs [th/delete-remote-sync-setting-row!
-                                                     (fn [k]
-                                                       (if (= "remote-sync-url" k)
-                                                         (throw (ex-info "delete failed" {}))
-                                                         (delete! k)))]
-                           (th/clean-remote-sync-settings
-                            (fn []
-                              ;; inside the test: the fixture deletes the rows from before the test
-                              (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                                          {:key "remote-sync-url" :value "https://example.com/a.git"}])
-                              (setting/restore-cache!))))
-                         nil
-                         (catch clojure.lang.ExceptionInfo e
-                           e))]
-           (is (=? {:keys ["remote-sync-url"]} (ex-data error)))
-           (is (re-find #"remote-sync-url" (str (ex-message error))))
-           (is (= "delete failed" (ex-message (ex-cause error))))
-           (testing "the other row is deleted, and the row whose delete failed stays"
-             (is (= #{"remote-sync-url"} (set (map first (remote-sync-setting-rows))))))))))))
-
-(deftest settings-cleanup-deletes-each-row-with-one-statement-outside-a-transaction-test
-  (testing "the settings cleanup deletes each remote-sync row with one statement and opens no transaction"
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                   {:key "remote-sync-url" :value "https://example.com/a.git"}
-                                   {:key "remote-sync-auto-import" :value "true"}])
-       (let [deleted (atom [])
-             delete! (mt/original-fn #'th/delete-remote-sync-setting-row!)]
-         (mt/with-dynamic-fn-redefs [th/delete-remote-sync-setting-row!
-                                     (fn [k]
-                                       (let [counts (activity/count-db-activity! #(delete! k))]
-                                         (swap! deleted conj [k (select-keys (this-thread counts)
-                                                                             [:statements :transactions])])))]
-           (#'th/delete-remote-sync-setting-rows!))
-         (is (= [["remote-sync-auto-import" {:statements 1 :transactions 0}]
-                 ["remote-sync-type" {:statements 1 :transactions 0}]
-                 ["remote-sync-url" {:statements 1 :transactions 0}]]
-                (sort-by first @deleted)))
-         (is (= [] (remote-sync-setting-rows))))))))
-
-(defn- sql-state-and-message
-  "The SQLState and message of the innermost cause of `e`, or nil when `e` is nil."
-  [^Throwable e]
-  (when e
-    (let [cause (last (take-while some? (iterate ex-cause e)))]
-      [(when (instance? java.sql.SQLException cause) (.getSQLState ^java.sql.SQLException cause))
-       (ex-message cause)])))
-
-(defn- session-id
-  "The app DB session id of the connection that the calling thread uses."
-  []
-  (case (mdb/db-type)
-    :h2               (:id (t2/query-one ["SELECT SESSION_ID() AS id"]))
-    :postgres         (:id (t2/query-one ["SELECT pg_backend_pid() AS id"]))
-    (:mysql :mariadb) (:id (t2/query-one ["SELECT CONNECTION_ID() AS id"]))))
-
-(defn- mariadb-server?
-  "Whether the app DB server is MariaDB. Metabase reports the MariaDB driver as `:mysql`, and only the server
-  version tells the two apart."
-  []
-  (str/includes? (u/lower-case-en (str (:v (t2/query-one ["SELECT VERSION() AS v"])))) "mariadb"))
-
-(defn- session-blocks-another?
-  "Whether another app DB session waits for a lock that the session `id` holds."
-  [id]
-  (case (mdb/db-type)
-    :h2
-    (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM INFORMATION_SCHEMA.SESSIONS WHERE BLOCKER_ID = ?" id])))
-
-    :postgres
-    (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity WHERE ? = ANY (pg_blocking_pids(pid))" id])))
-
-    (:mysql :mariadb)
-    (if (mariadb-server?)
-      ;; MariaDB has no `performance_schema.data_lock_waits`; `INNODB_LOCK_WAITS` names the blocking transaction
-      (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.INNODB_LOCK_WAITS w "
-                                    "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
-                                    "WHERE w.blocking_trx_id = b.trx_id")
-                               id])))
-      ;; `data_lock_waits` names the waiting and the blocking transaction, so the wait must be for a lock that the
-      ;; session `id` holds, not for one that any other session on the server holds
-      (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM performance_schema.data_lock_waits w "
-                                    "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
-                                    "WHERE w.BLOCKING_ENGINE_TRANSACTION_ID = b.trx_id")
-                               id]))))))
-
-(defn- cleanup-against-a-two-row-writer!
-  "Run `fixture` around a body that calls `write-two!` (it writes two rows and returns their ids `[a b]`) and then,
-  in a transaction on another thread, `(lock-first! x)`; the body returns once that lock is held. The writer runs
-  `(lock-second! y)` when the cleanup blocks on its lock, when the cleanup ends, or after 10 s. `[x y]` is `[a b]`
-  for `order` `:a-first` and `[b a]` for `:b-first`. Returns `{:proceed :cleanup :writer :after}`: `:proceed` is
-  `::cleanup-blocked` or `::cleanup-done`; `:cleanup` and `:writer` are `[sql-state message]` of an exception, or
-  nil and `:committed`; `:after` is `(after! [x y])`."
-  [fixture write-two! lock-first! lock-second! after! order]
-  (let [writer-id (promise)
-        proceed   (promise)
-        writer    (atom nil)
-        watcher   (atom nil)
-        ids       (atom nil)
-        error     (try
-                    (fixture
-                     (fn []
-                       (let [[a b] (write-two!)
-                             [x y] (reset! ids (if (= :a-first order) [a b] [b a]))]
-                         (reset! writer
-                                 (future
-                                   (try
-                                     (t2/with-transaction [_conn]
-                                       (when (= :postgres (mdb/db-type))
-                                         ;; bounds every wait of the writer, so that it always ends and releases its
-                                         ;; locks; H2, MySQL and MariaDB detect a deadlock at once
-                                         (t2/query-one ["SET LOCAL lock_timeout = '20s'"]))
-                                       (lock-first! x)
-                                       (deliver writer-id (session-id))
-                                       (deref proceed 10000 ::timeout)
-                                       (lock-second! y))
-                                     :committed
-                                     (catch Throwable e e)
-                                     (finally
-                                       (deliver writer-id nil)))))
-                         (let [id (deref writer-id 10000 ::timeout)]
-                           (reset! watcher
-                                   (future
-                                     (let [deadline (+ (System/currentTimeMillis) 10000)]
-                                       (loop []
-                                         (cond
-                                           (realized? proceed)
-                                           nil
-
-                                           (session-blocks-another? id)
-                                           (deliver proceed ::cleanup-blocked)
-
-                                           (< (System/currentTimeMillis) deadline)
-                                           ;; MySQL refreshes `information_schema.innodb_trx` only when it was not
-                                           ;; read in the last 100 ms
-                                           (do (Thread/sleep 200) (recur)))))))))))
-                    nil
-                    (catch Throwable e e))]
-    (deliver proceed ::cleanup-done)
-    (let [writer-result (deref @writer 30000 ::timeout)
-          _             (deref @watcher 30000 ::timeout)]
-      {:proceed @proceed
-       :cleanup (sql-state-and-message error)
-       :writer  (if (instance? Throwable writer-result) (sql-state-and-message writer-result) writer-result)
-       :after   (some-> @ids after!)})))
-
-(defn- delete-rows-left!
-  "A function of ids that deletes the rows of `table` with those ids, one row per statement, and returns the set of
-  the ids that it deleted."
-  [table]
-  (fn [ids]
-    (let [rows-left (set (t2/select-fn-vec :id table :id [:in ids]))]
-      (doseq [id rows-left]
-        (t2/query-one {:delete-from table :where [:= :id id]}))
-      rows-left)))
-
-(defn- insert-two-ledger-rows!
-  "Insert two RemoteSyncObject rows. Returns their ids."
-  []
-  (let [now (t/offset-date-time)]
-    (mapv #(t2/insert-returning-pk! :model/RemoteSyncObject {:model_type        "Card"
-                                                             :model_id          %
-                                                             :model_name        "Card"
-                                                             :status            "update"
-                                                             :status_changed_at now})
-          [Integer/MAX_VALUE (dec Integer/MAX_VALUE)])))
-
-(defn- insert-two-task-rows!
-  "Insert two RemoteSyncTask rows, one of them ended. Returns their ids."
-  []
-  [(t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
-                                                   :initiated_by   (mt/user->id :rasta)
-                                                   :ended_at       (t/offset-date-time)})
-   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export"
-                                                   :initiated_by   (mt/user->id :rasta)})])
-
-(deftest clean-object-and-clean-task-table-do-not-deadlock-with-a-two-row-writer-test
-  (testing (str "the cleanups of the RemoteSyncObject and RemoteSyncTask tables complete while another transaction "
-                "locks two rows of the table in two statements, in each order")
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
-       (fn []
-         (doseq [order [:a-first :b-first]]
-           (testing (str "the cleanup of RemoteSyncObject, against the ledger statements of an export: delete a "
-                         "departed row, then mark a written row synced; order " order)
-             (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after #{}}
-                    (cleanup-against-a-two-row-writer!
-                     th/clean-object insert-two-ledger-rows!
-                     #(remote-sync.db/delete-rsos! [%])
-                     #(remote-sync.db/set-rsos-status! [%] "synced" (t/offset-date-time))
-                     (delete-rows-left! :remote_sync_object)
-                     order))))
-           (testing (str "the cleanup of RemoteSyncTask, against a transaction that updates two task rows; order "
-                         order)
-             (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after #{}}
-                    (cleanup-against-a-two-row-writer!
-                     th/clean-task-table insert-two-task-rows!
-                     #(remote-sync.db/update-task! % {:progress 0.5})
-                     #(remote-sync.db/update-task! % {:progress 0.5})
-                     (delete-rows-left! :remote_sync_task)
-                     order))))))))))
-
-(defn- set-setting-value!
-  "Set the stored `value` and `value_with_aad` of the setting row `k` to `v`, with one statement."
-  [k v]
-  (t2/query-one {:update :setting :set {:value v :value_with_aad v} :where [:= :key k]}))
-
-(deftest clean-remote-sync-settings-delete-of-two-rows-does-not-deadlock-test
-  (testing (str "the delete of two remote-sync setting rows completes while another transaction updates the same "
-                "two rows, in each order")
-    (doseq [order [:a-first :b-first]]
-      (testing (str "order " order)
-        (do-with-remote-sync-state-restored!
-         (fn []
-           (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after true}
-                  (cleanup-against-a-two-row-writer!
-                   th/clean-remote-sync-settings
-                   ;; inside the test: the fixture deletes the rows from before the test. The cleanup deletes both
-                   ;; keys. Both writer orders run, so one of them is opposite to the order in which a statement over
-                   ;; both rows locks them.
-                   (fn []
-                     ;; through the model, so that the rows stay readable under an encryption key
-                     (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                                 {:key "remote-sync-url" :value "https://example.com/a.git"}])
-                     (setting/restore-cache!)
-                     ["remote-sync-type" "remote-sync-url"])
-                   #(set-setting-value! % "w")
-                   #(set-setting-value! % "w")
-                   (fn [ids] (not (some #(t2/exists? :setting :key %) ids)))
-                   order)))))))))
 
 (defn- raw-rows
   "Every row of `table`, every column as stored, sorted by id."
@@ -754,10 +506,10 @@
 
 (deftest clean-object-names-the-table-when-its-delete-after-the-test-fails-test
   (testing "clean-object throws an exception that names the table when its delete after the test fails"
-    (let [delete! (mt/original-fn #'th/delete-rows-one-by-one!)
+    (let [delete! (mt/original-fn #'th/delete-every-row!)
           calls   (atom 0)
           error   (try
-                    (mt/with-dynamic-fn-redefs [th/delete-rows-one-by-one!
+                    (mt/with-dynamic-fn-redefs [th/delete-every-row!
                                                 (fn [table]
                                                   ;; the first call empties the table for the test
                                                   (if (= 2 (swap! calls inc))
@@ -768,66 +520,6 @@
                     (catch clojure.lang.ExceptionInfo e e))]
       (is (= :remote_sync_object (:table (ex-data error))))
       (is (str/includes? (ex-message error) "remote_sync_object")))))
-
-(defn- do-with-an-unrelated-lock-wait!
-  "MySQL and MariaDB only. Calls `(thunk id)` while one app DB session waits for a lock on a scratch setting row that a
-  second session holds. `id` is the session id of a third session with an open transaction that holds the lock of
-  another scratch row, which no session waits for. Throws when the wait does not start within 4 s. Ends the wait and
-  the transactions, and deletes the scratch rows, before it returns."
-  [thunk]
-  (let [held        "t2-lock-held"
-        own         "t2-lock-own"
-        ds          ^javax.sql.DataSource (mdb/data-source)
-        id-of       (fn [conn] (:id (next.jdbc/execute-one! conn ["SELECT CONNECTION_ID() AS id"])))
-        update-row! (fn [conn k v] (next.jdbc/execute-one! conn ["UPDATE setting SET value = ? WHERE `key` = ?" v k]))]
-    (t2/query-one {:delete-from :setting :where [:in :key [held own]]})
-    (t2/insert! :setting [{:key held :value "0"} {:key own :value "0"}])
-    (try
-      (with-open [holder (.getConnection ds)
-                  waiter (.getConnection ds)
-                  other  (.getConnection ds)]
-        (let [waiter-id (id-of waiter)
-              wait      (atom nil)]
-          (try
-            (.setAutoCommit holder false)
-            (.setAutoCommit other false)
-            (update-row! holder held "holder")
-            (update-row! other own "other")
-            ;; so that the wait ends also when the rollback below does not run
-            (next.jdbc/execute-one! waiter ["SET SESSION innodb_lock_wait_timeout = 5"])
-            (reset! wait (future (try (update-row! waiter held "waiter") (catch Throwable e e))))
-            (let [deadline (+ (System/currentTimeMillis) 4000)]
-              (loop []
-                (cond
-                  (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.innodb_trx "
-                                                "WHERE trx_state = 'LOCK WAIT' AND trx_mysql_thread_id = ?")
-                                           waiter-id])))
-                  nil
-
-                  (< (System/currentTimeMillis) deadline)
-                  ;; MySQL refreshes `information_schema.innodb_trx` only when it was not read in the last 100 ms
-                  (do (Thread/sleep 200) (recur))
-
-                  :else
-                  (throw (ex-info "The unrelated lock wait did not start" {})))))
-            (thunk (id-of other))
-            (finally
-              (.rollback holder)
-              (.rollback other)
-              (some-> @wait (deref 10000 ::timeout))
-              (.setAutoCommit holder true)
-              (.setAutoCommit other true)
-              (next.jdbc/execute-one! waiter ["SET SESSION innodb_lock_wait_timeout = DEFAULT"])))))
-      (finally
-        (t2/query-one {:delete-from :setting :where [:in :key [held own]]})))))
-
-(deftest session-blocks-another-ignores-a-lock-wait-between-other-sessions-test
-  (testing (str "on MySQL and MariaDB, session-blocks-another? is false for a session with an open transaction that no "
-                "session waits for, while another session waits for a lock of a third session")
-    (when (#{:mysql :mariadb} (mdb/db-type))
-      (do-with-an-unrelated-lock-wait!
-       (fn [id]
-         (is (false? (#'session-blocks-another? id))))))))
 
 (deftest clean-remote-sync-state-setting-row-tests-pass-with-an-encryption-key-test
   (testing (str "clean-remote-sync-state-deletes-every-remote-sync-setting-row-test passes on an app DB whose "

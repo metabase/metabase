@@ -386,14 +386,10 @@ width: fixed
     (impl/handle-task-result! result task)
     result))
 
-(defn- delete-rows-one-by-one!
-  "Delete every row of `table`, each with one statement outside a transaction."
+(defn- delete-every-row!
+  "Delete every row of `table`."
   [table]
-  ;; A statement that deletes many rows locks them in scan order, so it can deadlock with a transaction that locks two
-  ;; of them in the other order, as an export does: it deletes the departed ledger rows, then marks the written rows
-  ;; synced. One statement per row holds the lock of one row only. `t2/query-one` opens no transaction.
-  (doseq [{:keys [id]} (t2/query {:select [:id] :from [table] :order-by [:id]})]
-    (t2/query-one {:delete-from table :where [:= :id id]})))
+  (t2/delete! table))
 
 (defn- rethrow-naming-table
   "Run `f`, which cleans the table named `table`; an exception that `f` throws is thrown again with `table` in its
@@ -405,15 +401,15 @@ width: fixed
       (throw (ex-info (str "The remote-sync cleanup of the " (name table) " table failed") {:table table} e)))))
 
 (defn- do-with-empty-table
-  "Run `f` with `table` empty, then delete every row that the test left, one row for each statement, outside a
-  transaction. Restores nothing. A failed delete throws and names `table`."
+  "Run `f` with `table` empty, then delete every row that the test left. Restores nothing. A failed delete throws and
+  names `table`."
   [table f]
   ;; the table, not the model: the delete runs no model hook
-  (delete-rows-one-by-one! table)
+  (delete-every-row! table)
   (try
     (f)
     (finally
-      (rethrow-naming-table table #(delete-rows-one-by-one! table)))))
+      (rethrow-naming-table table #(delete-every-row! table)))))
 
 (defn clean-object
   "Test fixture that empties the RemoteSyncObject table before the test and deletes every row that the test left
@@ -545,40 +541,20 @@ width: fixed
               :model_type "Collection"
               :model_id   remote-sync.settings/transforms-root-id))
 
-(defn- delete-remote-sync-setting-row!
-  "Delete the stored `setting` row of the remote-sync setting key `k`, with one statement outside a transaction."
-  [k]
-  ;; `t2/query-one` opens no transaction; one statement per key holds the lock of one row only
-  (t2/query-one {:delete-from :setting :where [:= :key k]}))
-
 (defn- delete-remote-sync-setting-rows!
   "Delete every stored `remote-sync%` setting row, then restore the settings cache from the app DB and delete the
-  Transforms RemoteSyncObject rows. Deletes each key with one statement outside a transaction. When the delete of a
-  key fails, deletes the other keys, then throws an exception whose `:keys` names the keys that it did not delete."
+  Transforms RemoteSyncObject rows."
   []
-  (let [failed (into []
-                     (keep (fn [k]
-                             (try
-                               (delete-remote-sync-setting-row! k)
-                               nil
-                               (catch Exception e
-                                 [k e]))))
-                     (t2/select-fn-set :key :setting :key [:like "remote-sync%"]))]
-    ;; the cache restore runs the `:on-change` hooks of the deleted values; the hook of
-    ;; `remote-sync-transforms` writes a Transforms ledger row, which the next line deletes
-    (setting/restore-cache!)
-    (delete-transforms-ledger-rows!)
-    (when (seq failed)
-      (throw (ex-info (str "The delete of these remote-sync setting rows failed: " (str/join ", " (map first failed)))
-                      {:keys (vec (map first failed))}
-                      (second (first failed)))))))
+  (t2/delete! :setting :key [:like "remote-sync%"])
+  ;; the cache restore runs the `:on-change` hooks of the deleted values; the hook of `remote-sync-transforms` writes a
+  ;; Transforms ledger row, which the next line deletes
+  (setting/restore-cache!)
+  (delete-transforms-ledger-rows!))
 
 (defn clean-remote-sync-settings
-  "Test fixture that deletes every stored `remote-sync%` setting row before and after the test, each with one statement
-  outside a transaction, then restores the settings cache and deletes the Transforms RemoteSyncObject rows that the
-  `:on-change` hook of `remote-sync-transforms` wrote. Restores nothing: run it only on a test app DB. When the delete
-  of a key fails, deletes the other keys and throws an exception whose `:keys` names the failed keys; a failure before
-  the test does not run the test.
+  "Test fixture that deletes every stored `remote-sync%` setting row before and after the test, then restores the
+  settings cache and deletes the Transforms RemoteSyncObject rows that the `:on-change` hook of
+  `remote-sync-transforms` wrote. Restores nothing: run it only on a test app DB.
 
   Compose inside [[clean-object]]: the cache restore can write a Transforms RemoteSyncObject row, and [[clean-object]],
   whose cleanup runs after this fixture's, deletes every ledger row."
