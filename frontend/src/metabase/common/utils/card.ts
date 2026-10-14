@@ -113,7 +113,7 @@ export function getMetricSeriesWithDefaultDisplay(
 
   const query = Lib.fromJsQuery(metadataProvider, metricSeries.json_query);
   const { display, settings = {} } = Lib.defaultDisplay(
-    query,
+    Lib.dropEmptyStages(query),
     metricSeries.data.cols,
   );
 
