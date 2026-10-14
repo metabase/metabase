@@ -1,12 +1,18 @@
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, Dashboard, Database } from "metabase-types/api";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDashboardCard,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 
 import {
   dashboardUsesRoutingEnabledDatabases,
   findDatabaseByName,
+  getDashboardDatabaseIds,
   hasDbRoutingEnabled,
   questionUsesRoutingEnabledDatabase,
+  refusesAnonymousAccess,
 } from "./database";
 
 describe("database routing utility functions", () => {
@@ -102,6 +108,62 @@ describe("database routing utility functions", () => {
           mockDatabases,
         ),
       ).toBe(expected);
+    });
+  });
+
+  describe("refusesAnonymousAccess", () => {
+    it.each([
+      ["routing off", { router_user_attribute: null }, false],
+      [
+        "routing on and anonymous access not granted",
+        { router_user_attribute: "department" },
+        true,
+      ],
+      [
+        "routing on and anonymous access granted",
+        {
+          router_user_attribute: "department",
+          router_anonymous_access_granted: true,
+        },
+        false,
+      ],
+    ])("returns %s with %s", (_, database, expected) => {
+      expect(refusesAnonymousAccess(database)).toBe(expected);
+    });
+  });
+
+  describe("getDashboardDatabaseIds", () => {
+    it("returns nothing for a dashboard with no cards", () => {
+      expect(getDashboardDatabaseIds({ dashcards: [] })).toEqual([]);
+    });
+
+    it("reads the databases of its cards and of their series", () => {
+      const dashboard = {
+        dashcards: [
+          createMockDashboardCard({
+            card: createMockCard({ id: 1, database_id: 1 }),
+            series: [createMockCard({ id: 2, database_id: 2 })],
+          }),
+          createMockDashboardCard({
+            card: createMockCard({ id: 3, database_id: 3 }),
+          }),
+        ],
+      };
+
+      expect(getDashboardDatabaseIds(dashboard)).toEqual([1, 2, 3]);
+    });
+
+    it("skips cards with no database, such as text cards", () => {
+      const dashboard = {
+        dashcards: [
+          createMockDashboardCard({ card: createMockCard({ id: 1 }) }),
+          createMockDashboardCard({
+            card: createMockCard({ id: 2, database_id: 2 }),
+          }),
+        ],
+      };
+
+      expect(getDashboardDatabaseIds(dashboard)).toEqual([2]);
     });
   });
 });

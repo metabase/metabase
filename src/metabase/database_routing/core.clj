@@ -61,3 +61,10 @@
   metabase-enterprise.database-routing.models
   [_db-or-id]
   false)
+
+(defenterprise refuses-anonymous-access?
+  "OSS version, always false: with no routing feature there is no router database, so nothing restricts anonymous
+  access."
+  metabase-enterprise.database-routing.models
+  [_database-id]
+  false)

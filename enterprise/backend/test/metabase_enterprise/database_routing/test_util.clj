@@ -16,6 +16,7 @@
    [metabase-enterprise.database-routing.e2e-test :refer [execute-statement! with-routing-setup!]]
    [metabase-enterprise.test :as met]
    [metabase.driver.settings :as driver.settings]
+   [metabase.permissions.core :as perms]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -115,6 +116,42 @@
   "What a refused query looks like to an anonymous viewer: the shared public-sharing execution helpers replace the text
   of any error type not marked safe for embeds, so the refusal is reported as a plain query failure."
   {:status "failed", :error "An error occurred while running the query.", :error_type "qp"})
+
+(def plain-refusal-message
+  "What the query-time refusal says to a viewer who may not manage the routed database, on the paths that return its
+  message rather than replacing it."
+  "This database does not allow anonymous access.")
+
+(defn manager-refusal-message
+  "What the query-time refusal says instead to a viewer who may manage the routed database `database-name`. See
+  [[metabase-enterprise.database-routing.common/refuse-anonymous-access!]]."
+  [database-name]
+  (format (str "%s has database routing enabled and does not allow anonymous access, so a public link or guest embed"
+               " on it returns no data.")
+          database-name))
+
+(defn query-failure-for-manager
+  "[[generic-query-failure]] with [[manager-refusal-message]] in place of its message, marked curated."
+  [database-name]
+  (assoc generic-query-failure
+         :error (manager-refusal-message database-name)
+         :error_is_curated true))
+
+(defn configuration-disclosures
+  "The strings a refusal must never show a viewer who may not manage the router database `database-name`: the database
+  itself, the feature, and the setting."
+  [database-name]
+  [database-name "routing" "anonymous_access_granted"])
+
+(defn do-as-database-manager!
+  "Give every user manage-database permission on the router database `db-id` and call `f`.
+
+  Without `:advanced-permissions`, `current-user-can-write-db?` falls back to the open-source superuser check, so the
+  grant would be a no-op and anything `f` asserts would pass on the superuser path instead."
+  [db-id f]
+  (mt/with-additional-premium-features #{:advanced-permissions}
+    (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+    (f)))
 
 ;;; ------------------------------------------------ Guest embedding -------------------------------------------------
 
