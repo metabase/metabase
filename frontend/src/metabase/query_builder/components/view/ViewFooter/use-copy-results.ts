@@ -231,7 +231,8 @@ export const useCopyResults = ({
     } catch (error) {
       dispatch(
         addUndo({
-          icon: "warning",
+          variant:
+            error instanceof ResultsTooLargeError ? "warning" : "negative",
           message:
             error instanceof ResultsTooLargeError
               ? getTooLargeReason()

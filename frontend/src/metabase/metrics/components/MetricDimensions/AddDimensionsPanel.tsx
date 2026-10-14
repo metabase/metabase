@@ -77,7 +77,12 @@ export function AddDimensionsPanel({
       trackMetricDimensionAdded(metricId, dimension.id, "success");
     } catch {
       trackMetricDimensionAdded(metricId, dimension.id, "failure");
-      dispatch(addUndo({ message: t`Couldn't add ${dimension.display_name}` }));
+      dispatch(
+        addUndo({
+          message: t`Couldn't add ${dimension.display_name}`,
+          variant: "negative",
+        }),
+      );
     }
   };
 

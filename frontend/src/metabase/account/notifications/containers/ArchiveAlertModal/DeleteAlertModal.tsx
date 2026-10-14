@@ -46,8 +46,7 @@ export const DeleteAlertModal = ({
 
     if (result.error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: t`An error occurred`,
       });
       return;

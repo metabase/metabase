@@ -926,8 +926,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
     if (error || !detail) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: t`Sorry, we couldn't load that conversation.`,
         }),
       );
