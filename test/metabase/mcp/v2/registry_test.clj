@@ -427,6 +427,14 @@
           (testing tool-name
             (is (contains? mutating tool-name))))))))
 
+(deftest delivery-tools-are-open-world-test
+  (testing "delivery tools are open-world: they send to email addresses and Slack channels outside Metabase"
+    (let [delivery (filter #(= "agent:delivery:write" (:scope %)) (@#'registry/manifest))]
+      (is (seq delivery))
+      (doseq [{tool-name :name :keys [annotations]} delivery]
+        (testing tool-name
+          (is (true? (:openWorldHint annotations))))))))
+
 (deftest mutating-tools-gate-on-a-write-scope-test
   (testing "every mutating tool gates on one of the write scopes, so a token can be granted read
             access without also being able to change anything"
