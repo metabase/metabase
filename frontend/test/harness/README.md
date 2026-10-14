@@ -29,6 +29,9 @@ that the runner tests against the path of each spec.
 | `--no-confirm` | Does not run a failed spec file a second time. |
 | `--reporter human\|agent\|json` | Selects the output. |
 | `--ignore-projects <a,b>` | Leaves out the specs of these jest projects. |
+| `--shard <i>/<n>` | Runs part i of n equal parts of the spec files. |
+| `--junit-file <file>` | Writes a JUnit report, with the names that jest-junit gives the tests. |
+| `--json-file <file>` | Writes a summary of the results, in the shape of `jest --json`. |
 
 `it.only`, `describe.only`, `it.skip`, `it.todo`, `it.failing` and `it.each`
 work as they do in jest.
@@ -107,6 +110,22 @@ editor to that address, and resume. A `debugger` statement in the spec or in
 the code stops there. Tests and hooks have no time limit in this mode. Waits in
 Testing Library keep their own limit.
 
+## In CI
+
+The `fe-tests-unit` job in `.github/workflows/frontend.yml` runs this runner, in
+two shards, on each pull request and on each push to a merge target. The steps
+after it were written for jest: the result check, the report to ci-conductor
+and the quarantine gate. They read the two files that `--json-file` and
+`--junit-file` write. The quarantine list knows a test by its file and its
+full name, and the runner writes both as jest-junit does.
+
+The job also reads `JEST_TEST_PATHS_FILE`, the list of spec files that the test
+plan selects for a pull request.
+
+The `fe-tests-unit-jest` job runs the same specs under jest on each push to a
+merge target, and not on a pull request. A test that passes in one job and
+fails in the other is a difference between the two runners.
+
 ## How it differs from jest
 
 | | jest | This runner |
@@ -135,7 +154,7 @@ those.
 | `jest-config.cjs` | Reads the module mapping, the module roots, the setup files and the projects from `jest.config.js`. |
 | `reporters.cjs` | The three kinds of output. |
 | `durations.json` | The time that each spec file took, used for the estimate in the progress line on a machine with no times of its own. |
-| `ci-files.txt`, `ci-measure.sh` | Used by the CI job that compares the two runners. |
+| `ci-results.cjs` | The JUnit report and the JSON summary that the CI job reads. |
 
 `frontend/test/harness-between-files.js` is next to the jest setup files. It
 resets the state that this repository keeps inside packages that stay loaded:
