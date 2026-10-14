@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
 
 import { commonSettings } from "./common-settings";
@@ -32,7 +33,6 @@ const DISPLAYS: readonly CohortsSettings["cohorts.display"][] = [
   "percent",
   "counts",
 ];
-const INTEGER_PROPS = { options: { isInteger: true, isNonNegative: true } };
 
 const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
@@ -70,11 +70,10 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   "cohorts.horizon": {
     getTitle: () => t`Periods to follow`,
     getSection: () => "setup",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: (_context, settings) =>
       settings.granularity === "month" ? 6 : 8,
     isValid: (value) => isPositiveInteger(value),
-    getProps: () => INTEGER_PROPS,
     readDependencies: ["granularity"],
   },
   "cohorts.display": {
@@ -106,12 +105,11 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   "cohorts.start_periods": {
     getTitle: () => t`Cohorts to show`,
     getSection: () => "advanced",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: () => 8,
     isValid: (value) => isPositiveInteger(value),
     getHidden: (_context, settings) =>
       settings["cohorts.row_mode"] !== "started",
-    getProps: () => INTEGER_PROPS,
     readDependencies: ["cohorts.row_mode"],
   },
 };
