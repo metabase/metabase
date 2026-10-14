@@ -3,13 +3,26 @@
 ## to a default visualization. The import now validates the bundle and sets active/error itself. Rows left in
 ## "pending" by the old import carry the bundle, hash and manifest exported from an active plugin, so activate
 ## them; a bundle that turns out unusable fails at serve time and can be replaced by an admin.
+##
+## The exception is a row with no bundle at all: a dev-only plugin, served from a dev server URL that the export
+## drops. There is nothing to serve, so mark it as an error the same way the import now does.
 
 databaseChangeLog:
   - changeSet:
       id: v63.m2tnuz
       author: chodorowicz
-      comment: Activate custom_viz_plugin rows left in the "pending" status by older serialization imports
+      comment: Resolve custom_viz_plugin rows left in the "pending" status by older serialization imports
       changes:
+        - update:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: status
+                  value: error
+              - column:
+                  name: error_message
+                  value: Bundle is empty
+            where: status = 'pending' AND bundle IS NULL
         - update:
             tableName: custom_viz_plugin
             columns:
