@@ -42,7 +42,7 @@
   Use this for a query that runs while another is in progress, or for each of several queries one channel cancels.
 
   The outer channel is `outer-chan`, or the current [[*canceled-chan*]] when none is passed.
-  - If there is one, `thunk` runs with [[*canceled-chan*]] bound to a new channel, which is canceled whenever the outer one is.
+  - If there is one, `thunk` runs with [[*canceled-chan*]] bound to a new channel, canceled whenever the outer one is.
   - If there is none, there is nothing to protect, and `thunk` runs with the binding unchanged.
 
   The outer channel must keep its value for every reader, as a promise channel does."
