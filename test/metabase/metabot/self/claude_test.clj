@@ -630,6 +630,7 @@
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-fable-5"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-8"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-haiku-5-5"})))
         (testing "bedrock vendor prefix is stripped"
           (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"}))))
         (testing "the dotted display-name spelling of the minor version parses the same
@@ -652,9 +653,9 @@
   (let [schema {:type "object" :properties {:answer {:type "string"}}}
         tools  [(metabot.tu/get-time-tool)]
         body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
-    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names"
+    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names and on Haiku"
       (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"
-                     "claude-fable-5" "claude-mythos-5"]]
+                     "claude-fable-5" "claude-mythos-5" "claude-haiku-5-5" "anthropic.claude-haiku-5-5"]]
         (testing model
           (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
                   (body {:model model :schema schema :max-tokens 512})))
@@ -851,7 +852,7 @@
 (deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
     (doseq [id ["claude-fable-5" "claude-opus-5-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5-5" "claude-sonnet-5"
-                "claude-haiku-4-5-20251001"]]
+                "claude-haiku-5-5" "claude-haiku-4-5-20251001"]]
       (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
@@ -877,11 +878,12 @@
                    "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1" "claude-opus-4-20250514"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
-  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
+  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, Haiku 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
                    "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
                    "claude-fable-5" "claude-fable-5-1" "claude-mythos-5-1"
+                   "claude-haiku-5-5" "anthropic.claude-haiku-5-5"
                    ;; an Azure deployment name without a version
                    "claude-fable-prod"]]
       (is (false? (#'claude/model-supports-temperature? model))
