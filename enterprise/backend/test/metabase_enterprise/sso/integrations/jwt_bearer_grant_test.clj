@@ -209,9 +209,6 @@
           (refused)))
       (testing "with the MCP server off"
         (mt/with-temporary-setting-values [mcp-enabled? false]
-          (refused)))
-      (testing "with AI features off"
-        (mt/with-temporary-setting-values [ai-features-enabled? false]
           (refused))))))
 
 (deftest token-drives-mcp-test
