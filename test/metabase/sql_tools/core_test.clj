@@ -305,7 +305,7 @@
           thrown (try (sql-tools/is-single-stmt-of-type? :postgres huge "read")
                       (catch clojure.lang.ExceptionInfo e e))]
       (is (instance? clojure.lang.ExceptionInfo thrown))
-      (is (= sql-tools/cannot-validate-error-type (:type (ex-data thrown))))
+      (is (= sql-tools/cannot-validate-sql (:type (ex-data thrown))))
       (is (= :too-large (:reason (ex-data thrown)))))))
 
 (deftest ^:parallel read-only-select?-test

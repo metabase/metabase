@@ -100,18 +100,18 @@
 ;; CPython). We strip them on the JVM side before passing SQL to Python, because GraalPy is too
 ;; slow at character-by-character string scanning over multi-MB inputs.
 
-(def ^:private ^:const strip-threshold
+(def ^:private ^:const literal-list-strip-threshold
   "Strip VALUES clauses with more than this many tuples, and IN lists / ARRAY literals with at
    least this many commas. Tuned for the fail-soft *analysis* callers, which run in bulk background
    passes over stored queries: over-stripping is free there (they never need the literal values), so a
    low cutoff — far below the thousands of items where GraalPy actually OOMs — is the safe default."
   100)
 
-(def ^:private ^:const impersonation-strip-threshold
+(def ^:private ^:const impersonation-literal-list-strip-threshold
   "The threshold the `\"read\"` and `\"write\"` path of [[is-single-stmt-of-type?]] uses instead of
-   [[strip-threshold]]. It validates one interactive query rather than sweeping stored queries in the
-   background, and refusing here breaks a documented idiom (`IN ({{number_var}})` inlines its values as
-   literals before validation), so the cutoff is set far higher — purely as an OOM ceiling. Measured
+   [[literal-list-strip-threshold]]. It validates one interactive query rather than sweeping stored
+   queries in the background, and refusing here breaks a documented idiom (`IN ({{number_var}})` inlines
+   its values as literals before validation), so the cutoff is set far higher — purely as an OOM ceiling. Measured
    GraalPy cost is ~0.18 ms and ~0.08 MB of transient heap per literal item, so 2000 caps a worst-case
    accepted query near a third of a second and ~160 MB while leaving the idiom (dozens–hundreds of
    values) ample headroom."
@@ -296,7 +296,7 @@
    tuples become a single-row NULL tuple (preserving the column count from the first tuple), and simple
    IN lists / ARRAY literals — numbers, single-quoted strings, and VALUES-style tuples of them — with at
    least `threshold` commas become `IN (NULL)` / `ARRAY[NULL]`. All surrounding SQL structure is preserved.
-   `threshold` defaults to [[strip-threshold]] (the analysis default).
+   `threshold` defaults to [[literal-list-strip-threshold]] (the analysis default).
 
    This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
    On any error, returns the original SQL unchanged so parsing can proceed normally.
@@ -305,10 +305,10 @@
    columns), so edge cases like keyword-shaped text inside string literals or comments are deliberately not
    guarded against. A caller that needs its answer to hold for the string it goes on to run must NOT use
    the rewrite: the impersonation validator [[is-single-stmt-of-type?]] parses the original SQL and calls
-   this only with the much higher [[impersonation-strip-threshold]], refusing outright when a list exceeds
-   it rather than answering about a rewrite — those same unguarded edge cases are what make a rewrite
-   unsound to reason about."
-  (^String [^String sql] (strip-large-literal-lists sql strip-threshold))
+   this only with the much higher [[impersonation-literal-list-strip-threshold]], refusing outright when a
+   list exceeds it rather than answering about a rewrite — those same unguarded edge cases are what make a
+   rewrite unsound to reason about."
+  (^String [^String sql] (strip-large-literal-lists sql literal-list-strip-threshold))
   (^String [^String sql ^long threshold]
    (try
      (strip-large-literal-lists* sql threshold)
@@ -600,7 +600,7 @@
   "The longest SQL, in characters, that the \"read-only\" check parses."
   (* 16 1024))
 
-(def cannot-validate-error-type
+(def cannot-validate-sql
   "`:type` on the `ex-info` [[is-single-stmt-of-type?]] throws when it cannot vouch that the string that
   will execute is a single statement of the requested type. Connection impersonation relies on that
   guarantee, so a caller that catches this MUST refuse the query — it may translate the error into a
@@ -608,7 +608,7 @@
 
   Only the `\"read\"` and `\"write\"` types throw; `\"read-only\"` reports the same conditions as a
   `:reason` in its verdict."
-  ::cannot-validate)
+  ::cannot-validate-sql)
 
 (defn- read-only-verdict
   "The fail-soft `\"read-only\"` check: SQL that is too long, or that holds a literal list too large to
@@ -635,31 +635,34 @@
   validated.
 
   `\"read\"` and `\"write\"` back connection impersonation, which must refuse anything it cannot vouch
-  for: they throw an `ex-info` tagged [[cannot-validate-error-type]] when `dialect` is `nil` or a literal
-  list exceeds [[impersonation-strip-threshold]], and callers MUST refuse the query in that case (see
-  [[cannot-validate-error-type]]).
+  for: they throw an `ex-info` tagged [[cannot-validate-sql]] when `dialect` is `nil` or a literal list
+  exceeds [[impersonation-literal-list-strip-threshold]], and callers MUST refuse the query in that case
+  (see [[cannot-validate-sql]]).
 
-  `\"read-only\"` is fail-soft instead — it never throws, and reports SQL it would not parse (too long,
-  or holding a literal list over [[strip-threshold]]) as `:allowed-stmt-type? false` with a `:reason`."
+  `\"read-only\"` is fail-soft instead — it never throws, and reports SQL it would not parse (too long, or
+  holding a literal list over [[literal-list-strip-threshold]]) as `:allowed-stmt-type? false` with a
+  `:reason`."
   [dialect sql stmt-type]
   (if (= stmt-type "read-only")
     (read-only-verdict dialect sql)
     (do
+      ;; A `nil` dialect is the one value that does *not* fail downstream: SQLGlot reads it as "use the generic
+      ;; dialect" and hands back a confident verdict plus a generically-regenerated `:sql` string, which we would
+      ;; then execute. (An unsupported dialect *string* raises, and comes back as `{:error ...}`.) Refuse instead.
       (when (nil? dialect)
         (throw (ex-info "Cannot validate a single-statement query without a known SQL dialect."
-                        {:type cannot-validate-error-type, :reason :unknown-dialect})))
-      (let [stripped-sql (strip-large-literal-lists sql impersonation-strip-threshold)]
-        ;; Stripping runs only as a size guard here: if it collapsed a list, that list is over the impersonation
-        ;; ceiling and parsing it could OOM the shared JVM, so refuse — the ceiling is purely an availability
-        ;; limit, set far above any real query. Below the ceiling `stripped-sql` is `sql`, so we validate exactly
-        ;; the string that will execute, which lets a large-but-legitimate literal list (e.g. the values a
-        ;; Number variable inlines for `IN ({{ids}})`) validate normally (#74284).
-        (when (not= sql stripped-sql)
-          (throw (ex-info (str "Cannot validate a native query with a VALUES/IN/ARRAY literal list this"
-                               " large on an impersonated database.")
-                          {:type cannot-validate-error-type, :reason :too-large})))
-        (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
-            (perf/update-keys (comp keyword u/->kebab-case-en)))))))
+                        {:type cannot-validate-sql, :reason :unknown-dialect})))
+      ;; Stripping runs only as a size guard here: if it would collapse a list, that list is over the
+      ;; impersonation ceiling and parsing it could OOM the shared JVM, so refuse — the ceiling is purely an
+      ;; availability limit, set far above any real query. Below the ceiling nothing is stripped, so we parse
+      ;; exactly the string that will execute, which lets a large-but-legitimate literal list (e.g. the values
+      ;; a Number variable inlines for `IN ({{ids}})`) validate normally (#74284).
+      (when (not= sql (strip-large-literal-lists sql impersonation-literal-list-strip-threshold))
+        (throw (ex-info (str "Cannot validate a native query with a VALUES/IN/ARRAY literal list this"
+                             " large on an impersonated database.")
+                        {:type cannot-validate-sql, :reason :too-large})))
+      (-> (protocol/single-stmt-of-type (parser) dialect sql stmt-type)
+          (perf/update-keys (comp keyword u/->kebab-case-en))))))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")
