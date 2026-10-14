@@ -140,7 +140,8 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
+  (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
+                "curated nlq swaps search for the library tool")
     (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
@@ -148,14 +149,24 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
+      (is (= fallback (conj embedding "run_query")))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
         (is (contains? tools "search"))
         (is (contains? tools "construct_notebook_query"))))))
+
+(deftest run-query-offered-in-nlq-profiles-test
+  (testing "with query execution on, an NLQ user gets run_query in both NLQ profiles and not in embedding"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes {:permission/metabot     :yes
+                                                                              :permission/metabot-nlq :yes})]
+        (is (= {:nlq true, :nlq-fallback true, :embedding_next false}
+               (into {}
+                     (for [profile-id [:nlq :nlq-fallback :embedding_next]]
+                       [profile-id (contains? (profiles/get-tools-for-profile profile-id []) "run_query")]))))))))
 
 (deftest internal-sql-profile-test
   (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]

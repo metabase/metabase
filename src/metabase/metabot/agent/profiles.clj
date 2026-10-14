@@ -105,6 +105,10 @@
                       {:profile (:name profile) :unknown-terminal-tools unknown}))))
   (swap! *profiles assoc (:name profile) profile))
 
+;; TODO (Chris 2026-10-14) -- Offer run_query here too. It runs as the signed-in user, so sandboxing and impersonation
+;; apply, but result rows are the embedding customer's end users' data and go to the LLM provider. Embedded Metabot
+;; first needs its own query execution setting, so an admin can turn results on for their staff without turning them
+;; on in every embed.
 (register-profile!
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
@@ -191,6 +195,7 @@
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/run-query-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool
                     #'tools/save-entity-tool]})
@@ -202,6 +207,7 @@
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/run-query-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool
                     #'tools/save-entity-tool]})
