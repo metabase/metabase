@@ -2,6 +2,7 @@
   "Tests for the cost helpers. Not ^:parallel: [[cost/measure!]] uses the JVM-wide JDBC counter."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.cost-test-util :as cost]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -35,6 +36,27 @@
             into-empty    (cost/measure! #(new-card! 1))
             into-nonempty (cost/measure! #(new-card! 2))]
         (is (= [1 1] [(:rows-rewritten into-empty) (:rows-rewritten into-nonempty)]))))))
+
+(defn- insert-card!
+  "Insert an MBQL card on `venues` into collection `coll` with the extra columns `extra`; return its id."
+  [coll extra]
+  (let [mp (mt/metadata-provider)]
+    (t2/insert-returning-pk! :model/Card
+                             (merge {:name                   "Cost card"
+                                     :collection_id          coll
+                                     :creator_id             (mt/user->id :rasta)
+                                     :display                :table
+                                     :visualization_settings {}
+                                     :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                                    extra))))
+
+(deftest rows-rewritten-with-future-updated-at-test
+  (testing ":rows-rewritten counts an update of a card while another card has a later updated_at"
+    (mt/with-model-cleanup [:model/Card :model/Collection]
+      (let [coll  (t2/insert-returning-pk! :model/Collection {:name "Cost" :location "/"})
+            _     (insert-card! coll {:updated_at (t/plus (t/offset-date-time) (t/days 1))})
+            other (insert-card! coll {})]
+        (is (= 1 (:rows-rewritten (cost/measure! #(t2/update! :model/Card other {:description "changed"})))))))))
 
 (deftest metadata-inferences-test
   (testing ":metadata-inferences counts inferences on the calling thread and on a future, and not on a raw Thread"

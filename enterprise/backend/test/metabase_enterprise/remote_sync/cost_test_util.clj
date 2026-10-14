@@ -31,20 +31,19 @@
 (defn- counting [counter real]
   (fn [& args] (swap! counter inc) (apply real args)))
 
-(defn- max-updated-at []
-  {:card      (t2/select-one-fn :m :model/Card {:select [[:%max.updated_at :m]]})
-   :dashboard (t2/select-one-fn :m :model/Dashboard {:select [[:%max.updated_at :m]]})})
+(defn- updated-at-snapshot
+  "The `updated_at` of each Card and Dashboard row, under `[table id]`."
+  []
+  ;; through the table name, so that no model hook runs on the selected rows
+  (into {}
+        (for [table                   (map t2/table-name [:model/Card :model/Dashboard])
+              {:keys [id updated_at]} (t2/select [table :id :updated_at])]
+          [[table id] updated_at])))
 
-(defn- rewritten-since
-  "The cards and dashboards with an `updated_at` later than the values of [[max-updated-at]]. A nil value is an empty
-  table, so all of its rows count."
-  [{:keys [card dashboard]}]
-  (letfn [(newer [model latest]
-            (if latest
-              (t2/count model :updated_at [:> latest])
-              (t2/count model)))]
-    (+ (newer :model/Card card)
-       (newer :model/Dashboard dashboard))))
+(defn- rows-rewritten
+  "The number of rows of the [[updated-at-snapshot]] `after` that are not in `before` or whose `updated_at` changed."
+  [before after]
+  (count (remove (fn [[k updated-at]] (= updated-at (get before k))) after)))
 
 (defn measure!
   "Run `thunk` and return its result under `:result`, with every JDBC-level count from
@@ -54,20 +53,18 @@
   - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing) on the calling thread and on the
                            threads that receive its bindings (`future`, `bound-fn`, `in-virtual-thread*`); not on a
                            raw `Thread`.
-  - `:rows-rewritten`      Card and Dashboard rows, from any writer, whose `updated_at` is later than the latest
-                           value before the thunk. The models' timestamp hook sets `updated_at`, so a table-level
-                           update or a change only to `last_viewed_at` is not counted."
+  - `:rows-rewritten`      Card and Dashboard rows, from any writer, that are new after the thunk or whose
+                           `updated_at` changed during it. An update that does not set `updated_at` (raw SQL, or a
+                           Dashboard change only to `last_viewed_at`) is not counted."
   [thunk]
   (let [inferences (atom 0)
-        before     (max-updated-at)]
-    ;; so that an `updated_at` written during the thunk is strictly later than `before`
-    (Thread/sleep 5)
+        before     (updated-at-snapshot)]
     (mt/with-dynamic-fn-redefs [card.metadata/infer-metadata
                                 (counting inferences (mt/original-fn #'card.metadata/infer-metadata))]
       (let [counts (activity/count-db-activity! thunk)]
         (assoc counts
                :metadata-inferences @inferences
-               :rows-rewritten      (rewritten-since before))))))
+               :rows-rewritten      (rows-rewritten before (updated-at-snapshot)))))))
 
 (def ^:private cost-keys
   (into activity/count-keys [:metadata-inferences :rows-rewritten]))
@@ -91,7 +88,7 @@
   positive and `:cards` is 0 (a dashcard needs a card to show)."
   [{:keys [cards dashboards dashcards] :or {dashboards 0 dashcards 0}} f]
   (when (and (pos? dashcards) (zero? cards))
-    (throw (ex-info "do-with-content! needs a card for each dashboard card" {:cards cards :dashcards dashcards})))
+    (throw (ex-info "do-with-content! needs at least one card when :dashcards is positive" {:cards cards :dashcards dashcards})))
   (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
     (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
       (let [mp       (mt/metadata-provider)

@@ -9,6 +9,7 @@
    [metabase.settings.models.setting.cache-test :as setting.cache-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
@@ -22,8 +23,7 @@
   (t2/query-one ["SELECT 1 AS one"]))
 
 (defn- this-thread
-  "Counts made by the calling thread only, all zero when it made no app-DB call. The totals are JVM-wide and can pick
-  up background app-DB work, so exact assertions use the per-thread counts."
+  "The counts of the calling thread, all zero when it made no app-DB call."
   [counts]
   (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
 
@@ -115,6 +115,14 @@
 (deftest connection-checked-out-before-the-count-test
   (testing "inside a default mt/with-temp, the counter throws"
     (mt/with-temp [:model/Collection _ {}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already holds an app-DB connection"
+                            (activity/with-db-activity! (select-1!))))))
+  (testing "and a later count runs"
+    (is (= :ran (:result (activity/count-db-activity! (constantly :ran)))))))
+
+(deftest current-connectable-bound-to-the-application-db-test
+  (testing "with toucan's current connectable bound to the application DB, as liquibase binds it, the counter throws"
+    (binding [t2.conn/*current-connectable* (mdb/app-db)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already holds an app-DB connection"
                             (activity/with-db-activity! (select-1!))))))
   (testing "and a later count runs"

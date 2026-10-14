@@ -21,19 +21,19 @@
 
 (def count-keys
   "The count keys of a [[count-db-activity!]] result, in order."
-  [;; statement executions: each method in `execute-methods`; a batch counts once
+  [;; calls of the methods in `execute-methods`; a batch counts once
    :statements
    ;; `prepareStatement`, `prepareCall` and `createStatement` calls
    :prepares
-   ;; connections that the data source hands out
+   ;; `getConnection` calls on the data source
    :checkouts
-   ;; connections closed (returned to the pool). On Postgres each one also sends `DISCARD ALL`
-   ;; (`metabase.app-db.connection-pool-setup`), which H2 never shows
+   ;; `close` calls on a connection, also a second `close` of one connection. On Postgres a check-in to the pool
+   ;; also sends `DISCARD ALL`, which H2 never shows
    :checkins
-   ;; `setAutoCommit false` calls: transaction starts (a Postgres `BEGIN`)
+   ;; `setAutoCommit false` calls: one for each outermost `t2/with-transaction` (a Postgres `BEGIN`)
    :transactions
-   ;; `setSavepoint` calls. Metabase sets one at the start of each transaction scope, the top-level one included
-   ;; (`metabase.app-db.connection/do-transaction`), so a plain transaction is BEGIN + SAVEPOINT + COMMIT on Postgres
+   ;; `setSavepoint` calls. Metabase sets one at the start of each transaction scope, the top-level one included, so a
+   ;; plain transaction is BEGIN + SAVEPOINT + COMMIT on Postgres
    :savepoints
    ;; `releaseSavepoint` calls (a nested scope that succeeded)
    :releases
@@ -119,8 +119,9 @@
 (defn count-db-activity!
   "Run `thunk` with app-DB activity counted JVM-wide. Returns the total of each [[count-keys]] key across threads, the
   same counts per thread under `:by-thread {thread-id counts}`, the thunk's value under `:result`, and its wall time
-  under `:elapsed-ms`. Throws in a `^:parallel` test. Throws, having sent nothing, when the calling thread holds an
-  app-DB connection already, or when another count runs.
+  under `:elapsed-ms`. Throws in a `^:parallel` test. Throws, having sent nothing, when the calling thread has bound
+  toucan's current connectable (for example to the connection of a default `mt/with-temp`), or when another count
+  runs.
 
   Just before the count, and not counted, forces the settings-cache check (`setting/restore-cache-if-needed!`), so a
   setting read in `thunk` sends no check while the check's throttle holds. Limits:
@@ -132,17 +133,17 @@
   If the calling thread has bound `*application-db*` (for example inside `mt/with-empty-h2-app-db!`), that bound
   value is counted too, for the calling thread and for threads that convey its bindings. Then the totals can add two
   different databases (the bound one and the root one); assert exactly on `:by-thread`. A binding that `thunk`
-  itself makes is not counted. A thread whose work runs after this returns, conveyed or not, is not reported."
+  itself makes is not counted."
   [thunk]
   ;; hawk's `assert-test-is-not-parallel` only reports an error and the test would go on; the count replaces the
   ;; JVM-wide root app DB, so stop the test here
   (when mb.hawk.parallel/*parallel?*
     (throw (ex-info "count-db-activity! is not allowed inside a parallel test." {})))
-  (when (instance? Connection t2.conn/*current-connectable*)
+  (when (some? t2.conn/*current-connectable*)
     (throw (ex-info (str "The calling thread already holds an app-DB connection (for example inside a default "
                          "mt/with-temp), and the counter cannot see work on it. Start the count outside the "
                          "transaction, or bind `metabase.test.util.thread-local/*thread-local*` false.")
-                    {:connection t2.conn/*current-connectable*})))
+                    {:connection-class (class t2.conn/*current-connectable*)})))
   (when-not (compare-and-set! counting? false true)
     (throw (ex-info "Another app-DB count runs now; counts cannot overlap" {})))
   (let [app-db-var #'mdb.connection/*application-db*
