@@ -566,6 +566,11 @@
   [file-path :- :string]
   (t2/select-one :model/RemoteSyncObject :file_path file-path))
 
+(mu/defn transform-exists?
+  "Whether any Transform exists."
+  []
+  (t2/exists? :model/Transform))
+
 (mu/defn rso-exists?
   "Whether the entity `model-type` `model-id` has a RemoteSyncObject."
   [model-type :- :string

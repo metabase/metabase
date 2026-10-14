@@ -36,7 +36,7 @@
 (defn- snapshot-has-transforms?
   "Checks if the snapshot contains any Transform, PythonLibrary entities,
    non-built-in TransformTags, or transforms-namespace collections.
-   Used to auto-enable/disable remote-sync-transforms setting during import.
+   Used to auto-enable the remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
    then also checks if any Collection entities have namespace=transforms.
@@ -371,7 +371,7 @@
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
-  runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
+  runs `load-metabase!`, enables the `remote-sync-transforms` setting when the snapshot has transforms,
   deletes synced content not present in the snapshot, and refreshes the RemoteSyncObject table.
 
   Shared by [[import!]] (the pull path) and the post-merge reconcile in [[export!]] (where a clean merge
@@ -414,10 +414,6 @@
         (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
-    (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
-      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as sync-object]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -213,16 +214,45 @@
 (deftest transform-tracking-keeps-tracked-root-test
   (testing "Re-applying an enabled transforms setting, as every settings cache load does, keeps a synced root synced"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (settings/sync-transform-tracking! true)
-      (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
-                  {:status "synced"})
-      (settings/sync-transform-tracking! true)
-      (is (= "synced" (transforms-root-status)))
-      (testing "and disabling then re-enabling marks it again"
-        (settings/sync-transform-tracking! false)
-        (is (= "delete" (transforms-root-status)))
+      (mt/with-temp [:model/Transform _ {:name "Existing Transform"}]
         (settings/sync-transform-tracking! true)
-        (is (= "create" (transforms-root-status)))))))
+        (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
+                    {:status "synced"})
+        (settings/sync-transform-tracking! true)
+        (is (= "synced" (transforms-root-status)))
+        (testing "and disabling then re-enabling marks it again"
+          (settings/sync-transform-tracking! false)
+          (is (= "delete" (transforms-root-status)))
+          (settings/sync-transform-tracking! true)
+          (is (= "create" (transforms-root-status))))))))
+
+(deftest transform-tracking-without-transforms-test
+  (testing "Enabling transforms sync without any transforms leaves nothing to push"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-dynamic-fn-redefs [remote-sync.db/transform-exists? (constantly false)]
+        (settings/sync-transform-tracking! true)
+        (is (nil? (transforms-root-status)))
+        (is (not (sync-object/dirty?)))
+        (testing "and drops a pending removal when re-enabled"
+          (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id
+                                               :model_name "Transforms" :status "delete"
+                                               :status_changed_at (t/offset-date-time)})
+          (settings/sync-transform-tracking! true)
+          (is (nil? (transforms-root-status))))))))
+
+(deftest transform-tracking-disable-with-tracked-transforms-test
+  (testing "Disabling transforms sync marks the root deleted when transforms are tracked without a root"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "Tracked Transform"}]
+        (t2/insert! :model/RemoteSyncObject {:model_type "Transform" :model_id transform-id
+                                             :model_name "Tracked Transform" :status "synced"
+                                             :status_changed_at (t/offset-date-time)})
+        (settings/sync-transform-tracking! false)
+        (is (= "delete" (transforms-root-status)))))
+    (testing "and does nothing when nothing was tracked"
+      (t2/delete! :model/RemoteSyncObject)
+      (settings/sync-transform-tracking! false)
+      (is (nil? (transforms-root-status))))))
 
 (deftest transform-tracking-read-only-test
   (testing "A read-only instance never tracks the Transforms root, so it never reports it as unsaved"

@@ -114,9 +114,10 @@
                                :status_changed_at (t/offset-date-time)}))
 
 (defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled, 'delete'
-  when disabled after being tracked, left alone when already in that state (the settings cache also calls this on
-  every load), and absent on a read-only instance, which has nothing to publish."
+  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled with
+  transforms to publish, 'delete' when disabled after transforms were tracked, left alone when already in that state
+  (the settings cache also calls this on every load), and absent on a read-only instance, which has nothing to
+  publish."
   [enabled?]
   (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
     (cond
@@ -126,9 +127,13 @@
 
       enabled?
       (when-not (#{"create" "synced"} status)
-        (replace-transforms-root-rso! "create"))
+        (if (remote-sync.db/transform-exists?)
+          (replace-transforms-root-rso! "create")
+          (when status
+            (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))))
 
-      (and status (not= "delete" status))
+      (and (not= "delete" status)
+           (or status (remote-sync.db/rso-of-type-exists? "Transform")))
       (replace-transforms-root-rso! "delete"))))
 
 (defn- sync-transform-tracking-on-change
