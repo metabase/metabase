@@ -1,6 +1,7 @@
 import { scaleLinear } from "@visx/scale";
 
 import type { GoalStyle } from "../../../types/style";
+import { GOAL_WARNING_WIDTH } from "../../VerticalGoalLine/goal-warning";
 
 import { getGoalLinePadding, getRowChartGoal } from "./layout";
 
@@ -9,11 +10,14 @@ const GOAL_STYLE: GoalStyle = {
   label: { size: 13, family: "Lato", weight: 400, color: "black" },
 };
 
-const LABEL_WIDTH = 40;
-
-// the goal sits 50px from the right edge of the plot
-const X_SCALE = scaleLinear({ domain: [0, 100], range: [0, 500] });
-const GOAL = { label: "Target", value: 90 };
+const PLOT_WIDTH = 500;
+const X_SCALE = scaleLinear({
+  domain: [0, PLOT_WIDTH],
+  range: [0, PLOT_WIDTH],
+});
+const GOAL = { label: "Target", value: 450 };
+const SPACE_RIGHT_OF_GOAL = PLOT_WIDTH - GOAL.value;
+const LABEL_WIDTH = SPACE_RIGHT_OF_GOAL - GOAL_WARNING_WIDTH / 2;
 
 const measureTextWidth = () => LABEL_WIDTH;
 
