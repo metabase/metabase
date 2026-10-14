@@ -97,6 +97,7 @@
    :uses #{analytics
            api
            collections
+           database-routing
            driver
            events
            lib
