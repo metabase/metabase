@@ -71,6 +71,12 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :anonymous_access_granted :model/DatabaseRouter :database_id [:in database-ids]))
 
+(mu/defn router-anonymous-access-granted?
+  "Whether the router of the Database with `database-id` has been granted anonymous access. False when `database-id`
+  is not a router database."
+  [database-id :- ::lib.schema.id/database]
+  (boolean (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id database-id)))
+
 (mu/defn insert-router!
   "Insert a DatabaseRouter for the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
