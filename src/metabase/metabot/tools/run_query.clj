@@ -223,7 +223,7 @@
               space?     (whitespace-code-point? code-point)]
           (if (and space? after-space?)
             (recur next-i true)
-            (let [escaped ^String (if space? " " (escaped-code-point code-point))]
+            (let [^String escaped (if space? " " (escaped-code-point code-point))]
               (if (> (+ (.length sb) (.length escaped)) max-cell-chars)
                 (str sb "...")
                 (do (.append sb escaped)
