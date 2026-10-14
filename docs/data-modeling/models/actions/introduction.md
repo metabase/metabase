@@ -35,8 +35,10 @@ For actions to work, you'll first need to do the following two things:
 
 ## Who can use actions
 
-- **To create or edit an action**, a person must be in a group with [Native query editing](../../../permissions/data.md) privileges for the relevant database. To create a [data action](./data-actions.md), people also need Curate access to the action's folder.
-- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action). To run a [data action](./data-actions.md), you need view access to the action's folder.
+- **To create or edit an action**, a person must be in a group with [Native query editing](../../../permissions/data.md) privileges for the relevant database.
+- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action).
+
+For data actions, folder permissions also apply. See [Data action permissions](./data-actions.md#data-action-permissions).
 
 ## Types of actions
 
@@ -52,7 +54,7 @@ There are multiple ways to run actions:
 - [From the model details page](../../../data-modeling/models/models.md#model-details) by clicking the **run** button.
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../../../dashboards/actions.md).
-- From the **Run** tab of a [data action](./data-actions.md#run) in Data Studio.
+- From the **Run** tab of a [data action](./data-actions.md#edit-and-run-a-data-action) in Data Studio.
 
 ## Auditing actions
 
