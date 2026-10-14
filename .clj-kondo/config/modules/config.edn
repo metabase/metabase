@@ -125,6 +125,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
+                    :model/DatabaseRouter
                     :model/Field
                     :model/QueryExecution
                     :model/Table

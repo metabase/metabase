@@ -74,3 +74,66 @@
           (mt/with-temp [:model/Database db {:initial_sync_status "complete"}]
             (is (= [:permissions/no-writable-table] (disabled-reasons db)))
             (is (false? (can-configure-data-editing-for-db? db)))))))))
+
+(defn- enable-actions!
+  "Attempt to turn on `database-enable-actions` for `db-id` through the API an admin actually uses, returning the
+  response body."
+  [expected-status db-id]
+  (mt/user-http-request :crowberto :put expected-status (str "database/" db-id)
+                        {:settings {:database-enable-actions true}}))
+
+(defn- actions-enabled-in-app-db? [db-id]
+  (boolean (:database-enable-actions (t2/select-one-fn :settings :model/Database db-id))))
+
+(deftest database-enable-actions-refused-with-database-routing-test
+  (testing "PUT /api/database/:id refuses to enable actions on a database involved in routing"
+    ;; The refusal's own reasons are not asserted here: an API error response carries only its message, because
+    ;; ex-data keys are opt-in (see [[metabase.util.api-error]]). The reasons the admin panel shows come from
+    ;; `GET /api/database/:id/settings-available`, which the next test covers for each of these three states.
+    ;; a router whose destinations have not been added yet, which is the state enabling routing leaves behind
+    (testing "on a router database"
+      (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                     :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}]
+        (is (re-find #"is not enabled for this database" (enable-actions! 400 db-id)))
+        (is (false? (actions-enabled-in-app-db? db-id)))))
+    (testing "on a router database that has destinations"
+      (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                     :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}
+                     :model/Database      _           {:engine :h2 :router_database_id db-id}]
+        (is (re-find #"is not enabled for this database" (enable-actions! 400 db-id)))
+        (is (false? (actions-enabled-in-app-db? db-id)))))
+    (testing "on a destination database of a router"
+      (mt/with-temp [:model/Database      {router-db-id :id} {:engine :h2}
+                     :model/DatabaseRouter _                 {:database_id router-db-id :user_attribute "db_name"}
+                     :model/Database      {dest-db-id :id}   {:engine :h2 :router_database_id router-db-id}]
+        (is (re-find #"is not enabled for this database" (enable-actions! 400 dest-db-id)))
+        (is (false? (actions-enabled-in-app-db? dest-db-id)))))
+    (testing "but a database with no routing is left alone"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (is (true? (get-in (enable-actions! 200 db-id) [:settings :database-enable-actions])))))))
+
+(defn- actions-disabled-reasons
+  "What `GET /api/database/:id/settings-available` reports about `database-enable-actions` for `db-id`: the path the
+  admin panel reads the refusal's explanation from."
+  [db-id]
+  (get-in (mt/user-http-request :crowberto :get 200 (str "database/" db-id "/settings-available"))
+          [:settings :database-enable-actions]))
+
+(deftest database-enable-actions-reports-routing-as-a-disabled-reason-test
+  (testing "GET /api/database/:id/settings-available names database routing, and says why"
+    (let [refused {:enabled false
+                   :reasons [{:key     "setting/database-routing"
+                              :type    "error"
+                              :message "Actions are not supported with database routing."}]}]
+      (testing "on a router database"
+        (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                       :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}]
+          (is (=? refused (actions-disabled-reasons db-id)))))
+      (testing "on a router database that has destinations"
+        (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                       :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}
+                       :model/Database      _           {:engine :h2 :router_database_id db-id}]
+          (is (=? refused (actions-disabled-reasons db-id)))))
+      ;; A destination database is not addressable through this endpoint, so the refusal on one is asserted only
+      ;; through the PUT above.
+      )))
