@@ -12,6 +12,7 @@ const path = require("node:path");
 const { root, projectOf, isProjectSource, mappedDirectories } = require("./jest-config.cjs");
 const { createPool, estimateDuration, fastCores } = require("./pool.cjs");
 const { createReporter, reporterNames } = require("./reporters.cjs");
+const { createCiResults } = require("./ci-results.cjs");
 
 const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
 
@@ -26,6 +27,9 @@ const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
   --debug                   one worker that waits for a debugger, with no time limits
   --no-confirm              do not run a failed spec file again, alone, to see if it still fails
   --ignore-projects <a,b>   leave out the specs of these jest projects
+  --shard <i>/<n>           run part i of n equal parts of the spec files
+  --junit-file <file>       write a JUnit report, as jest-junit does
+  --json-file <file>        write a summary of the results, as jest --json does
   -h, --help                show this text
 `;
 
@@ -46,11 +50,22 @@ const parse = (argv) => {
     else if (argument === "-u" || argument === "--update-snapshots") options.updateSnapshots = true;
     else if (argument === "--ignore-projects") options.ignoredProjects = argv[(index += 1)].split(",");
     else if (argument.startsWith("--ignore-projects=")) options.ignoredProjects = argument.slice("--ignore-projects=".length).split(",");
+    else if (argument === "--shard") options.shard = argv[(index += 1)];
+    else if (argument.startsWith("--shard=")) options.shard = argument.slice("--shard=".length);
+    else if (argument === "--junit-file") options.junitFile = argv[(index += 1)];
+    else if (argument.startsWith("--junit-file=")) options.junitFile = argument.slice("--junit-file=".length);
+    else if (argument === "--json-file") options.jsonFile = argv[(index += 1)];
+    else if (argument.startsWith("--json-file=")) options.jsonFile = argument.slice("--json-file=".length);
     else if (argument === "-h" || argument === "--help") { process.stdout.write(USAGE); process.exit(0); }
     else if (argument.startsWith("-")) { process.stderr.write(`Unknown option ${argument}\n\n${USAGE}`); process.exit(2); }
     else options.patterns.push(argument);
   }
   if (!reporterNames.includes(options.reporter)) { process.stderr.write(`--reporter is one of ${reporterNames.join(", ")}\n`); process.exit(2); }
+  if (options.shard !== undefined) {
+    const [part, parts] = options.shard.split("/").map(Number);
+    if (!(Number.isInteger(part) && Number.isInteger(parts) && part >= 1 && part <= parts)) { process.stderr.write(`--shard needs two numbers such as 1/2\n`); process.exit(2); }
+    options.shard = { part, parts };
+  }
   if (options.workers !== undefined && !(options.workers >= 1)) { process.stderr.write(`--workers needs a number of 1 or more\n`); process.exit(2); }
   // A debugger attaches to one process, and a paused test must not time out.
   if (options.debug) { options.workers = 1; options.confirm = false; }
@@ -65,14 +80,20 @@ const relative = (file) => path.relative(root, file);
 const findSpecs = () => {
   const listed = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 28 }).split("\n");
   const patterns = options.patterns.map((pattern) => new RegExp(pattern));
+  // CI narrows a run to the spec files in this JSON list, as it does for jest.
+  const selected = process.env.JEST_TEST_PATHS_FILE && new Set(JSON.parse(fs.readFileSync(process.env.JEST_TEST_PATHS_FILE, "utf8")).map((file) => path.resolve(file)));
   return listed
     .filter((file) => file !== "" && fs.existsSync(path.join(root, file)))
     .map((file) => path.join(root, file))
     .filter((file) => {
       const project = projectOf(file);
       if (!project || options.ignoredProjects.includes(project.name)) return false;
+      if (selected && !selected.has(file)) return false;
       return patterns.length === 0 || patterns.some((pattern) => pattern.test(file));
-    });
+    })
+    // Every file is in exactly one part, and the parts take about the same time
+    // because neighbours in path order go to different parts.
+    .filter((file, index) => !options.shard || index % options.shard.parts === options.shard.part - 1);
 };
 
 const cacheDir = path.join(root, "node_modules/.cache/test-harness");
@@ -96,6 +117,8 @@ const reporter = createReporter(options.reporter, {
   rerunCommand,
 });
 
+const ciResults = options.junitFile || options.jsonFile ? createCiResults({ root }) : null;
+
 const NO_TIME_LIMIT = String(2 ** 31 - 1);
 const workerEnvironment = {
   ...(options.debug ? { NT_NODE_EXTRA: "--inspect-brk", NT_TIMEOUT: NO_TIME_LIMIT, NT_HOOK_TIMEOUT: NO_TIME_LIMIT, NT_MAX_RSS_MB: NO_TIME_LIMIT } : {}),
@@ -112,6 +135,7 @@ const pool = createPool({
   onFileDone: (done) => {
     loadedBy.set(done.file, new Set(done.loaded));
     reporter.fileDone(done);
+    ciResults?.add(done);
     if (options.bail && done.result.failed > 0) pool.stop();
   },
 });
@@ -144,6 +168,7 @@ const run = async (files) => {
   reporter.start(files);
   await pool.run(files);
   const confirmation = await confirmFailures(reporter.failures());
+  ciResults?.write({ junitFile: options.junitFile, jsonFile: options.jsonFile, passedAlone: confirmation?.passedAlone });
   const failedFiles = reporter.finish(confirmation);
   const failed = confirmation ? confirmation.failedAgain > 0 : failedFiles.length > 0;
   return { failedFiles, failed };
@@ -249,6 +274,12 @@ const watch = async (selected) => {
 (async () => {
   const specs = findSpecs();
   if (specs.length === 0) {
+    // A selection or a shard can be empty, and CI still reads the result files.
+    if (process.env.JEST_TEST_PATHS_FILE || options.shard) {
+      ciResults?.write({ junitFile: options.junitFile, jsonFile: options.jsonFile });
+      process.stdout.write("No spec file is in this selection.\n");
+      return;
+    }
     process.stderr.write(`No spec file matches ${options.patterns.join(" ") || "the jest config"}\n`);
     process.exit(1);
   }

@@ -281,9 +281,9 @@ globalThis.__testHarness.sourceChanged = (files) => {
 };
 
 // --- results --------------------------------------------------------------------
-// What a spec file did, in a form the pool can pass on: counts, and for each
-// failing test its message, stack and what it printed.
-const newFileResult = () => ({ passed: 0, failed: 0, skipped: 0, failures: [] });
+// What a spec file did, in a form the pool can pass on: counts, the tests that
+// passed, and for each failing test its message, stack and what it printed.
+const newFileResult = () => ({ passed: 0, failed: 0, skipped: 0, passedTests: [], failures: [] });
 let fileResult = newFileResult();
 globalThis.__testHarness.takeResult = () => {
   const result = fileResult;
@@ -304,10 +304,14 @@ for (const method of ["log", "info", "warn", "error", "debug"]) {
     testOutput.lines.push(`console.${method}: ${text}`);
   };
 }
-const recordFailure = (test, error, output) => {
+// ancestors and title name a test as jest does. A failure without them is a
+// failure of the file itself, such as one that did not load.
+const recordFailure = (test, error, output, { ancestors, title } = {}) => {
   fileResult.failed += 1;
   fileResult.failures.push({
     test,
+    ancestors,
+    title,
     message: String(error?.message ?? error),
     stack: String(error?.stack ?? ""),
     frames: projectFrames(error?.stack),
@@ -673,9 +677,13 @@ const runSuite = async (suite, t, outer) => {
       }
       const output = testOutput;
       testOutput = null;
-      if (!failure) fileResult.passed += 1;
+      const identity = { ancestors: child.path ?? [], title: child.name };
+      if (!failure) {
+        fileResult.passed += 1;
+        fileResult.passedTests.push(identity);
+      }
       if (failure) {
-        recordFailure([...(child.path ?? []), child.name].join(" > "), failure.error, output);
+        recordFailure([...(child.path ?? []), child.name].join(" > "), failure.error, output, identity);
         if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${currentFile} > ${child.name}\n${String(failure.error?.stack ?? failure.error).slice(0, 40000)}\n`);
         if (process.env.NT_FAILURES) fs.appendFileSync(process.env.NT_FAILURES, `${currentFile}\t${child.name}\t${String(failure.error?.message ?? failure.error).split("\n")[0].slice(0, 200)}\n`);
         throw failure.error;

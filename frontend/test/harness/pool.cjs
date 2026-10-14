@@ -163,7 +163,7 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
         const failures = env.NT_FAILURES ?? process.env.NT_FAILURES;
         if (failures) fs.appendFileSync(failures, `${file}\t(file)\tthe worker exited with code ${code} while this file ran\n`);
         const message = `the worker exited with code ${code} while this file ran`;
-        onFileDone({ file, ms: 0, loaded: [], result: { passed: 0, failed: 1, skipped: 0, failures: [{ test: "(the worker crashed)", message, stack: "", frames: [], output: "" }] } });
+        onFileDone({ file, ms: 0, loaded: [], result: { passed: 0, failed: 1, skipped: 0, passedTests: [], failures: [{ test: "(the worker crashed)", message, stack: "", frames: [], output: "" }] } });
         finished();
       }
       // A worker that dies before it asks for a file would die again on respawn.
