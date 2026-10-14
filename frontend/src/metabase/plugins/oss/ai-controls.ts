@@ -5,12 +5,14 @@ import { definePluginSlot } from "../slot";
 export type AiControlsPlugin = {
   isEnabled: boolean;
   getAiControlsRoutes: () => ReactNode;
+  getMcpToolsAccessRoutes: () => ReactNode;
   getAiControlsNavItems: () => ReactNode;
 };
 
 const getDefaultPluginAiControls = (): AiControlsPlugin => ({
   isEnabled: false,
   getAiControlsRoutes: () => null,
+  getMcpToolsAccessRoutes: () => null,
   getAiControlsNavItems: () => null,
 });
 

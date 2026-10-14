@@ -18,7 +18,7 @@ The allowlist accepts IPv4 addresses and CIDR ranges. Metabase treats a bare IPv
 
 By default, restricting access by IP address is turned off.
 
-To allow Metabase to reach your databases, see [IP addresses to whitelist](./ip-addresses-to-whitelist.md).
+To allow Metabase to reach your databases, see [IP addresses to whitelist](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist).
 
 ## Set up an IP allowlist
 
@@ -53,5 +53,5 @@ In your instance's **IP allowlist** settings:
 
 ## Further reading
 
-- [IP addresses to whitelist](./ip-addresses-to-whitelist.md)
-- [Changing your domain name](./custom-domain.md)
+- [IP addresses to whitelist](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist)
+- [Changing your domain name](https://www.metabase.com/docs/latest/cloud/custom-domain)

@@ -13,7 +13,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :model_id :archived :archived_at :draft])
+  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :model_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -475,15 +475,16 @@
   [namespace-name :- :string]
   (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
 
-(mu/defn collection-namespace :- [:maybe [:or :keyword :string]]
-  "The namespace of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
-
 (mu/defn collection-ids-in-namespace
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
+
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (when collection-id
+    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
 
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."

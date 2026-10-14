@@ -215,7 +215,7 @@
 
 (deftest ^:parallel request-body-supplies-a-default-temperature-test
   (testing "a caller that supplies none gets the adapter default rather than vLLM's own 1.0"
-    (is (= @#'vllm/default-temperature
+    (is (= adapter/default-temperature
            (:temperature (vllm/vllm-request-body {:model "vllm-test"
                                                   :input [{:role :user :content "hi"}]}))))))
 
@@ -457,8 +457,7 @@
                    tc)]
       (testing "index arrives in contiguous runs, not interleaved"
         (is (= [0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1] (mapv :index deltas))))
-      (testing "id arrives on each call's opening delta only — a provider repeating it would lose the
-                arguments, since neither the start branch nor the argument-delta branch would fire"
+      (testing "id arrives on each call's opening delta only, so each id opens exactly one block"
         (is (= [0 1] (keep #(when (:id %) (:index %)) deltas)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -797,7 +796,7 @@
 
 (deftest list-models-fails-closed-on-a-body-that-is-not-a-catalog-test
   (testing "a 2xx whose body carries no model list throws, naming the base URL"
-    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} "<html>404</html>"]]
+    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} 404]]
       (testing (str "body " (pr-str body))
         (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
           (is (thrown-with-msg?
@@ -811,6 +810,28 @@
            clojure.lang.ExceptionInfo
            #"reachable but is not serving any models"
            (vllm/list-models {:credentials credentials :probe? true}))))))
+
+(deftest list-models-fails-closed-on-a-2xx-that-is-not-json-test
+  (testing "a 2xx whose body is not JSON — a proxy's HTML, or a base URL missing /v1 — is a server
+           that answered, so it reads as a bad address rather than an unreachable one. The stub throws
+           what `:as :json` throws: clj-http parses a 2xx whatever its content type."
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (=? {:error-code  :malformed-model-catalog
+               :status-code 400}
+              (try
+                (vllm/list-models {:credentials credentials})
+                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
+           (vllm/list-models {:credentials credentials}))))))
+
+(deftest list-models-keeps-the-parse-error-as-the-cause-test
+  (testing "the parse error travels as the cause, so a log shows whether the body was HTML, empty or cut off"
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (instance? com.fasterxml.jackson.core.JsonProcessingException
+                     (try (vllm/list-models {:credentials credentials})
+                          (catch clojure.lang.ExceptionInfo e (ex-cause e))))))))
 
 (deftest list-models-fails-closed-before-probing-test
   (testing "a malformed catalog throws without issuing a probe request"
@@ -1204,6 +1225,24 @@
                         {:message       {:content "I can record the table name for you." :tool_calls []}
                          :finish_reason "stop"})))))
 
+(deftest preflight-rejects-a-server-that-ignores-tool-choice-test
+  (testing "the forced tool call check asks for nothing a tool would do, so a server that treats `required` as
+           `auto` answers it with text and fails"
+    (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                               (if (re-find #"/models$" (str url))
+                                                 {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                 (let [prompt (-> body str json/decode+kw :messages first :content)]
+                                                   {:status 200
+                                                    :body   {:choices [(if (re-find #"table name" prompt)
+                                                                         {:message       tool-calling-message
+                                                                          :finish_reason "tool_calls"}
+                                                                         {:message       {:content "Hello!" :tool_calls []}
+                                                                          :finish_reason "stop"})]}})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"did not honor a forced tool call"
+           (vllm/list-models {:credentials credentials :probe? true}))))))
+
 (deftest preflight-reports-a-forced-tool-call-that-ran-out-of-budget-test
   (testing "a forced call truncated at the ceiling is named as such, not as a server refusing to honor it"
     (is (thrown-with-msg?
@@ -1244,7 +1283,7 @@
         (is (true? (deref interrupted 10000 :never-cancelled)))))))
 
 (deftest preflight-probe-request-shape-test
-  (testing "both probes ask for the same trivial completion, non-streaming and deterministic — the ceiling
+  (testing "both probes ask for a trivial completion, non-streaming and deterministic — the ceiling
            is the one a forced tool call is guaranteed to be given at request time"
     (let [requests (atom [])]
       (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body] :as req}]

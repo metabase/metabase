@@ -73,7 +73,7 @@ There are two ways to enable Advanced transforms:
 
 - **From your Metabase instance**: you can navigate to a feature requiring advanced transforms (like Python transforms or transform inspector), and follow the prompts to upgrade.
 
-  To enable Advanced transforms from your Metabase instance, you need to be logged into the instance with the same email as a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-managers), because Advanced transform incur an additional charge.
+  To enable Advanced transforms from your Metabase instance, you need to be logged into the instance with the same email as a [Metabase Store admin](https://www.metabase.com/docs/latest/cloud/accounts-and-billing#add-managers), because Advanced transform incur an additional charge.
 
 - **From [Metabase Store](https://store.metabase.com)**:
 

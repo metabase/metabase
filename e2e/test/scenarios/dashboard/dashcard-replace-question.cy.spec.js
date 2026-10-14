@@ -130,19 +130,64 @@ describe("scenarios > dashboard cards > replace question", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should replace a dashboard card question (metabase#36984)", () => {
+  it("should undo the question replace action, then replace a dashboard card question (metabase#36984)", () => {
     visitDashboardAndEdit();
+
+    overwriteDashCardTitle("Custom name");
+    connectDashboardFilter(findTargetDashcard(), {
+      filterName: PARAMETER.UNUSED.name,
+      columnName: "Discount",
+    });
+
+    replaceQuestion(findTargetDashcard(), {
+      nextQuestionName: "Orders",
+    });
+    findTargetDashcard().findByText("Product ID").should("exist");
+
+    // There're two toasts: "Undo replace" and "Auto-connect"
+    H.undoToastList()
+      .should("have.length", 2)
+      .eq(0)
+      .should(($el) => {
+        // we wait for element to take its position after animation
+        expect($el.position().left).to.be.equal(0);
+      })
+      .button("Undo")
+      .click();
+
+    // Ensure we kept viz settings and parameter mapping changes from before
+    findTargetDashcard().within(() => {
+      assertDashCardTitle("Custom name");
+      cy.findByText("18,760").should("exist");
+      cy.findByText("Product ID").should("not.exist");
+    });
+    assertDashboardFilterMapping(findTargetDashcard(), {
+      filterName: PARAMETER.UNUSED.name,
+      expectedColumName: "Orders.Discount",
+    });
+
+    // Ensure changes are persisted
+    H.saveDashboard();
+    findTargetDashcard().within(() => {
+      assertDashCardTitle("Custom name");
+      cy.findByText("18,760").should("exist");
+      cy.findByText("Product ID").should("not.exist");
+    });
+
+    cy.log("metabase#36984");
+    H.editDashboard();
 
     findHeadingDashcard()
       .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Replace")
-      .should("not.exist");
+      .findByLabelText("Duplicate")
+      .should("be.visible");
+    findHeadingDashcard().findByLabelText("Replace").should("not.exist");
 
     // Ensure can replace with a question
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders",
     });
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" }, 2);
     findTargetDashcard().within(() => {
       assertDashCardTitle("Orders");
       cy.findByText("Product ID").should("exist");
@@ -167,54 +212,7 @@ describe("scenarios > dashboard cards > replace question", () => {
     });
   });
 
-  it("should undo the question replace action", () => {
-    visitDashboardAndEdit();
-
-    overwriteDashCardTitle("Custom name");
-    connectDashboardFilter(findTargetDashcard(), {
-      filterName: PARAMETER.UNUSED.name,
-      columnName: "Discount",
-    });
-
-    replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Orders",
-    });
-
-    // There're two toasts: "Undo replace" and "Auto-connect"
-    H.undoToastList()
-      .should("have.length", 2)
-      .eq(0)
-      .should(($el) => {
-        // we wait for element to take its position after animation
-        expect($el.position().left).to.be.equal(0);
-      })
-      .button("Undo")
-      .click();
-
-    // Ensure we kept viz settings and parameter mapping changes from before
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Custom name");
-      cy.findByText("18,760").should("exist");
-      cy.findByText("Ean").should("not.exist");
-      cy.findByText("Rustic Paper Wallet").should("not.exist");
-    });
-    assertDashboardFilterMapping(findTargetDashcard(), {
-      filterName: PARAMETER.UNUSED.name,
-      expectedColumName: "Orders.Discount",
-    });
-
-    // Ensure changes are persisted
-    H.saveDashboard();
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Custom name");
-      cy.findByText("18,760").should("exist");
-      cy.findByText("Ean").should("not.exist");
-      cy.findByText("Rustic Paper Wallet").should("not.exist");
-    });
-  });
-
   it("should handle questions with limited permissions", () => {
-    cy.signInAsAdmin();
     cy.updateCollectionGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
     });

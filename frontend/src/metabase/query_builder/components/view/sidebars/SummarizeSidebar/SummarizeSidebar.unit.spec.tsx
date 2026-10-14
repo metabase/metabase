@@ -11,11 +11,19 @@ import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { SummarizeSidebar } from "./SummarizeSidebar";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -37,13 +45,12 @@ function createSummarizedQuery() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "month",
           },
           {
             type: "column",
-            sourceName: "PRODUCTS",
+            sourceFieldId: ORDERS.PRODUCT_ID,
             name: "CATEGORY",
           },
         ],
@@ -61,13 +68,11 @@ function createQueryWithBreakoutsForSameColumn() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "year",
           },
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "quarter",
           },

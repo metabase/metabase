@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.table :as table]
@@ -387,18 +388,53 @@
             :semantic_type :type/Name
             {:from [(warehouse-schema-overlay/field-query)]}))
 
-(mu/defn unscored-fields-for-database-reducible
-  "Reducible active, visible Fields of the Database with `database-id` without a dimension interestingness score."
+(mr/def ::cursor
+  "A keyset-pagination cursor over Field ids: zero starts before the first Field, since ids are positive."
+  [:int {:min 0}])
+
+(mu/defn- unscored-fields-clause
+  "Honey SQL conditions matching the active, visible Fields of the Database with `database-id` that have no
+  dimension interestingness score. Applied to [[warehouse-schema-overlay/field-query]], so `visibility_type` is the
+  value as users see it."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select :model/Field
-                       {:from  [(warehouse-schema-overlay/field-query)]
-                        :where [:and
-                                [:= :active true]
-                                [:= :dimension_interestingness nil]
-                                [:not-in :visibility_type ["sensitive" "retired"]]
-                                [:in :table_id ^:allow-subquery {:select [:id]
-                                                                 :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                                 :where  [:= :db_id database-id]}]]}))
+  [:and
+   [:= :active true]
+   [:= :dimension_interestingness nil]
+   [:not-in :visibility_type ["sensitive" "retired"]]
+   [:in :table_id ^:allow-subquery {:select [:id]
+                                    :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                    :where  [:= :db_id database-id]}]])
+
+(mu/defn unscored-field-ids-for-database :- [:sequential ::lib.schema.id/field]
+  "The ids of up to `limit` active, visible Fields of the Database with `database-id` without a dimension
+  interestingness score, lowest id first, starting after `after-id`.
+
+  Selecting ids alone keeps the page cheap enough to walk a very large `metabase_field` -- the ordering and the
+  `after-id` bound are served by the primary key, and the caller fetches whole Fields a page at a time through
+  [[fields-for-interestingness-scoring]]."
+  [database-id :- ::lib.schema.id/database
+   after-id    :- ::cursor
+   limit       :- ms/PositiveInt]
+  ;; `select-fn-vec` gives nil rather than an empty vector when nothing matches, which is every call once the
+  ;; backfill has caught up
+  (or (t2/select-fn-vec :id :model/Field
+                        {:select   [:id]
+                         :from     [(warehouse-schema-overlay/field-query)]
+                         :where    [:and (unscored-fields-clause database-id) [:> :id after-id]]
+                         :order-by [[:id :asc]]
+                         :limit    limit})
+      []))
+
+(mu/defn unscored-field-count-for-database :- :int
+  "How many active, visible Fields of the Database with `database-id` have no dimension interestingness score."
+  [database-id :- ::lib.schema.id/database]
+  (t2/count :model/Field {:from  [(warehouse-schema-overlay/field-query)]
+                          :where (unscored-fields-clause database-id)}))
+
+(mu/defn fields-for-interestingness-scoring :- [:sequential (ms/InstanceOf :model/Field)]
+  "The Fields with `field-ids`, as users see them, for interestingness scoring."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn top-level-field-ids-by-name
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."

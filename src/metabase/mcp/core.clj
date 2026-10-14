@@ -8,7 +8,9 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-surface :as mcp.ui-surface]
-   [metabase.mcp.usage :as mcp.usage]))
+   [metabase.mcp.usage :as mcp.usage]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.registry :as registry]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,6 +56,14 @@
   [client-info-name]
   (mcp.settings/inline-ui-enabled-for-client? (mcp.usage/detect-client client-info-name)))
 
+(defn check-execute-sql-allowed!
+  "Throw a 403 unless the current user's groups allow the `execute_sql` tool, for raw SQL reaching the REST API other
+   than through that tool."
+  []
+  (when-let [denial (registry/tool-denial "execute_sql" (message/raw "Running a native (SQL) query"))]
+    ;; Not a teaching error: the message record in its ex-data would turn this REST 403 into a stack trace.
+    (throw (ex-info (message/render denial) {:status-code 403}))))
+
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
@@ -93,6 +103,7 @@
   mcp.paths/v2-surface-scopes)
 
 (defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] a client is told to request when it first connects."
+  "The subset of [[v2-scopes]] that the consent page locks: when a client requests one of these, the user cannot
+   untick it."
   []
   mcp.paths/v2-baseline-scopes)
