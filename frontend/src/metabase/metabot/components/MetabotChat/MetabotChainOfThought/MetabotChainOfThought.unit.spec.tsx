@@ -409,7 +409,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
   });
 
-  it("links measure and segment results through their base table", async () => {
+  it("links measures to the explorer and segments through their base table", async () => {
     setup(
       chain({
         steps: [
@@ -449,7 +449,7 @@ describe("MetabotChainOfThought", () => {
     await userEvent.click(screen.getByText("2 results"));
     expect(
       screen.getByRole("link", { name: /Total revenue/, hidden: true }),
-    ).toHaveAttribute("href", expect.stringContaining("/measures/7"));
+    ).toHaveAttribute("href", "/explore?measureId=7");
     expect(
       screen.getByRole("link", { name: /Big orders/, hidden: true }),
     ).not.toHaveAttribute("href", "/404");
