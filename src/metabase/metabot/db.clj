@@ -281,6 +281,33 @@
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
 
+(mu/defn- other-participant?
+  "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
+  [conversation-id :- :string
+   user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id [:not= user-id]))
+
+(mu/defn- slack-message?
+  "Whether any message in the MetabotConversation with `conversation-id` was sent through Slack."
+  [conversation-id :- :string]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :channel_id [:not= nil]))
+
+(mu/defn conversation-open-to-others?
+  "Whether someone other than the User with `user-id` can read the MetabotConversation with `conversation-id`,
+   now or by joining it later. False for a conversation that does not exist.
+   Superusers can read every conversation and are not counted."
+  [conversation-id :- :string
+   user-id :- ::lib.schema.id/user]
+  (boolean
+   (when-let [{:keys [id user_id slack_thread_ts]} (conversation conversation-id)]
+     ;; Anyone in a Slack thread can join its conversation, so the thread counts before a second person writes.
+     ;; A thread older than the `slack_thread_ts` column shows as Slack only through its messages.
+     ;; Whoever started a conversation can read it even when none of its messages name them.
+     (or (some? slack_thread_ts)
+         (some-> user_id (not= user-id))
+         (other-participant? id user-id)
+         (slack-message? id)))))
+
 (mu/defn message-by-external-id
   "The ID and conversation of the MetabotMessage with `external-id`, or nil."
   [external-id :- :string]
