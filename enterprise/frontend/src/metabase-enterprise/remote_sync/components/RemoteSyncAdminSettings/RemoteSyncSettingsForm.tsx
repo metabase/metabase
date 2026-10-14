@@ -57,7 +57,7 @@ export const RemoteSyncSettingsForm = ({
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const { initialValues, libraryCollection, hasSyncedCollections } =
+  const { initialValues, libraryCollection } =
     useRemoteSyncInitialValues(variant);
   const {
     handleSubmit,
@@ -99,16 +99,13 @@ export const RemoteSyncSettingsForm = ({
                 {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
 
                 <GitSettingsSection />
-                <SyncModeSection
-                  dirty={dirtyEntities}
-                  libraryCollectionId={libraryCollection?.id}
-                />
+                <SyncModeSection dirty={dirtyEntities} />
 
                 {isRemoteSyncEnabled && isReadWrite && !isModalVariant && (
                   <BranchSwitcherSection dirty={dirtyEntities} />
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
-                {hasSyncedCollections && !isModalVariant && (
+                {(isRemoteSyncEnabled || isReadWrite) && !isModalVariant && (
                   <CollectionsToSyncSection />
                 )}
                 {isModalVariant && isReadWrite && (

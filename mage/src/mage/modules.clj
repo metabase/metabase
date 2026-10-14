@@ -170,7 +170,6 @@
      core.initialization-status
      interestingness
      analytics.internal-stats
-     library
      metabot.llm
      session.login-history
      mcp

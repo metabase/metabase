@@ -2,7 +2,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormRadioGroup,
+  FormSubmitButton,
+} from "metabase/forms";
+import { Radio, Stack } from "metabase/ui";
 import type { CollectionSyncPreferences } from "metabase-types/api";
 import { createMockCollectionItem } from "metabase-types/api/mocks";
 
@@ -67,6 +73,39 @@ const setup = ({
 };
 
 // Setup with sync type toggle for testing mode switching behavior
+const setupWithSyncTypeToggle = ({
+  collections = [createMockTenantCollectionItem()],
+  initialSyncMap = {},
+  syncType = "read-write",
+}: SetupOpts = {}) => {
+  setupEndpoints({ collections });
+
+  const onSubmit = jest.fn();
+
+  renderWithProviders(
+    <FormProvider
+      initialValues={{
+        [COLLECTIONS_KEY]: initialSyncMap,
+        [TYPE_KEY]: syncType,
+      }}
+      onSubmit={onSubmit}
+    >
+      <Form>
+        <FormRadioGroup name={TYPE_KEY}>
+          <Stack>
+            <Radio label="Read-only" value="read-only" />
+            <Radio label="Read-write" value="read-write" />
+          </Stack>
+        </FormRadioGroup>
+        <SharedTenantCollectionsList />
+        <FormSubmitButton label="Save" />
+      </Form>
+    </FormProvider>,
+  );
+
+  return { onSubmit };
+};
+
 describe("SharedTenantCollectionsList", () => {
   beforeEach(() => {
     fetchMock.removeRoutes();
@@ -362,6 +401,81 @@ describe("SharedTenantCollectionsList", () => {
 
       await waitFor(() => {
         expect(screen.getByRole("switch")).toBeEnabled();
+      });
+    });
+  });
+
+  describe("mode switching", () => {
+    it("should reset collection sync state to initial values when switching from read-write to read-only", async () => {
+      const { onSubmit } = setupWithSyncTypeToggle({
+        collections: [createMockTenantCollectionItem({ id: 1 })],
+        initialSyncMap: { 1: false },
+        syncType: "read-write",
+      });
+
+      // Wait for the component to render
+      await waitFor(() => {
+        expect(screen.getByRole("switch")).toBeInTheDocument();
+      });
+
+      // Toggle the collection sync on
+      await userEvent.click(screen.getByRole("switch"));
+      expect(screen.getByRole("switch")).toBeChecked();
+
+      // Switch to read-only mode
+      await userEvent.click(screen.getByLabelText("Read-only"));
+
+      // The collection sync should be reset to initial value (false)
+      await waitFor(() => {
+        expect(screen.getByRole("switch")).not.toBeChecked();
+      });
+
+      // Submit and verify the collections were reset
+      await userEvent.click(screen.getByText("Save"));
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            [COLLECTIONS_KEY]: { 1: false },
+            [TYPE_KEY]: "read-only",
+          }),
+          expect.anything(),
+        );
+      });
+    });
+
+    it("should not reset collection sync state when switching from read-only to read-write", async () => {
+      const { onSubmit } = setupWithSyncTypeToggle({
+        collections: [createMockTenantCollectionItem({ id: 1 })],
+        initialSyncMap: { 1: true },
+        syncType: "read-only",
+      });
+
+      // Wait for the component to render
+      await waitFor(() => {
+        expect(screen.getByRole("switch")).toBeInTheDocument();
+      });
+
+      // Verify initial state is checked
+      expect(screen.getByRole("switch")).toBeChecked();
+
+      // Switch to read-write mode
+      await userEvent.click(screen.getByLabelText("Read-write"));
+
+      // The collection sync should remain as is
+      expect(screen.getByRole("switch")).toBeChecked();
+
+      // Submit and verify the collections were not reset
+      await userEvent.click(screen.getByText("Save"));
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            [COLLECTIONS_KEY]: { 1: true },
+            [TYPE_KEY]: "read-write",
+          }),
+          expect.anything(),
+        );
       });
     });
   });

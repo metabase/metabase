@@ -7,9 +7,18 @@ import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 import { SYNC_LIBRARY_PENDING_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
 
-export const LibrarySyncRow = () => {
-  const { values } = useFormikContext<RemoteSyncSettingsFormState>();
+interface LibrarySyncRowProps {
+  isReadOnly: boolean;
+}
+
+export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
+  const { values, setFieldValue } =
+    useFormikContext<RemoteSyncSettingsFormState>();
   const isChecked = values[SYNC_LIBRARY_PENDING_KEY] ?? false;
+
+  const handleToggle = (checked: boolean) => {
+    setFieldValue(SYNC_LIBRARY_PENDING_KEY, checked);
+  };
 
   return (
     <Box p="lg" className={CS.borderRowDivider}>
@@ -21,8 +30,8 @@ export const LibrarySyncRow = () => {
         <Flex align="center" gap="sm">
           <Switch
             checked={isChecked}
-            readOnly
-            disabled
+            onChange={(e) => handleToggle(e.currentTarget.checked)}
+            disabled={isReadOnly}
             aria-label={t`Sync Library`}
           />
           <Text>{t`Sync`}</Text>

@@ -1,5 +1,6 @@
 import { useFormikContext } from "formik";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 
 import { Box, Flex, Loader, Text } from "metabase/ui";
 import type {
@@ -35,11 +36,19 @@ export const CollectionSyncList = ({
   showTransformsRow,
   showLibraryPlaceholder,
 }: CollectionSyncListProps) => {
-  const { values, setFieldValue } =
+  const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
 
   const currentType = values[TYPE_KEY];
   const isReadOnly = currentType === "read-only";
+  const previousType = usePrevious(currentType);
+
+  // Reset collections to initial values when switching from read-write to read-only
+  useEffect(() => {
+    if (previousType === "read-write" && currentType === "read-only") {
+      setFieldValue(COLLECTIONS_KEY, initialValues[COLLECTIONS_KEY] ?? {});
+    }
+  }, [currentType, initialValues, setFieldValue, previousType]);
 
   const handleToggle = useCallback(
     (collection: CollectionItem, checked: boolean) => {
@@ -57,16 +66,20 @@ export const CollectionSyncList = ({
         collection={collection}
         isChecked={syncMap[collection.id] ?? false}
         onToggle={handleToggle}
-        isReadOnly={isReadOnly || collection.type === "library"}
+        isReadOnly={isReadOnly}
       />
     ));
 
     if (showLibraryPlaceholder) {
-      rowsItems.unshift(<LibrarySyncRow key="library-placeholder" />);
+      rowsItems.unshift(
+        <LibrarySyncRow key="library-placeholder" isReadOnly={isReadOnly} />,
+      );
     }
 
     if (showTransformsRow) {
-      const transformsRow = <TransformsSyncRow key="transforms" />;
+      const transformsRow = (
+        <TransformsSyncRow key="transforms" isReadOnly={isReadOnly} />
+      );
       const libraryIndex = collections.findIndex(
         (collection) => collection.type === "library",
       );

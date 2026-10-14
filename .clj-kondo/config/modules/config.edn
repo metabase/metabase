@@ -1355,12 +1355,6 @@
    :api #{metabase.types.core metabase.types.init}
    :uses #{util}}
 
-  library
-  {:team "UX West"
-   :api  #{metabase.library.hooks metabase.library.init}
-   :uses #{premium-features
-           startup}}
-
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api
@@ -2021,7 +2015,6 @@
            analytics.internal-stats
            app-db
            events
-           library
            settings
            startup
            task
@@ -3991,7 +3984,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.library.api}
    :uses #{api
-           app-db
            collections
            lib.schema
            premium-features

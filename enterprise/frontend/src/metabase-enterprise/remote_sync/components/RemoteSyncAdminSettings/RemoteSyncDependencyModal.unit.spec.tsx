@@ -108,12 +108,6 @@ const setupRefusedSave = async ({
         is_remote_synced: false,
         can_write: true,
       }),
-      createMockCollectionItemFromCollection({
-        id: 900,
-        name: "Synced Collection",
-        is_remote_synced: true,
-        can_write: true,
-      }),
     ],
   });
 
