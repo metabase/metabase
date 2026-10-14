@@ -12,7 +12,6 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   EnterpriseSettings,
-  SdkReact18Host,
   SettingDefinition,
   SettingDefinitionMap,
 } from "metabase-types/api";
@@ -67,13 +66,6 @@ export const settingsApi = Api.injectEndpoints({
         url: "/api/setting/available-timezones",
       }),
       keepUnusedDataFor: Infinity,
-    }),
-    // Not in the settings payload, so it is fetched by key.
-    listSdkReact18Hosts: builder.query<SdkReact18Host[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/setting/sdk-react-18-hosts",
-      }),
     }),
     // admin-only endpoint that returns all settings with lots of extra metadata
     getAdminSettingsDetails: builder.query<SettingDefinitionMap, void>({
@@ -197,7 +189,6 @@ export const settingsApi = Api.injectEndpoints({
 export const {
   useGetSettingQuery,
   useListTimezonesQuery,
-  useListSdkReact18HostsQuery,
   useGetVersionInfoQuery,
   useGetAdminSettingsDetailsQuery,
   useGetSessionPropertiesQuery,

@@ -163,11 +163,6 @@ export interface EngineSourceContact {
   address?: string;
 }
 
-export interface SdkReact18Host {
-  hostname: string | null;
-  last_seen: string;
-}
-
 export interface ScheduleSettings {
   schedule_type: ScheduleType;
   schedule_day?: ScheduleDayType | null;

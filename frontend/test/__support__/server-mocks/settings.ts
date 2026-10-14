@@ -8,7 +8,6 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   EnterpriseSettings,
-  SdkReact18Host,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -114,8 +113,4 @@ export function setupGenerateRandomTokenEndpoint(token: string) {
 
 export function setupTimezonesEndpoint(timezones: string[]) {
   fetchMock.get("path:/api/setting/available-timezones", timezones);
-}
-
-export function setupSdkReact18HostsEndpoint(hosts: SdkReact18Host[]) {
-  fetchMock.get("path:/api/setting/sdk-react-18-hosts", hosts);
 }

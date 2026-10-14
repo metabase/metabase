@@ -2,11 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
-   [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.sdk :as sdk]
-   [metabase.analytics.settings :as analytics.settings]
    [metabase.request.current :as request.current]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -403,108 +401,3 @@
               (is (= "embed.example.com" (:embedding_hostname result))))
             (testing "path comes from embed-referrer header, not referer"
               (is (= "/analytics/dash" (:embedding_path result))))))))))
-
-(defn- reset-react-18-hosts-this-hour! []
-  (reset! @#'sdk/react-18-hosts-this-hour {:hour nil, :hosts #{}}))
-
-(defn- react-18-hosts-this-hour []
-  (:hosts @@#'sdk/react-18-hosts-this-hour))
-
-(defn- react-18-sdk-request
-  [{:keys [method uri user-id client react-version referrer preview?]
-    :or   {method        :get
-           uri           "/api/user/current"
-           user-id       1
-           client        "embedding-sdk-react"
-           react-version "18.3.1"
-           referrer      "https://app.example.com/page"}}]
-  (cond-> (ring.mock/request method uri)
-    client        (ring.mock/header "x-metabase-client" client)
-    react-version (ring.mock/header "x-metabase-client-react-version" react-version)
-    referrer      (ring.mock/header "x-metabase-embed-referrer" referrer)
-    preview?      (ring.mock/header "x-metabase-embedded-preview" "true")
-    user-id       (assoc :metabase-user-id user-id)))
-
-(defn- run-react-18-host-mw [request status]
-  (let [handler (analytics.core/wrap-record-react-18-sdk-host
-                 (fn [_ respond _] (respond {:status status})))]
-    (handler request identity identity)))
-
-(deftest record-react-18-sdk-host-test
-  (mt/with-dynamic-fn-redefs [analytics.settings/record-sdk-react-18-host! (constantly nil)]
-    (doseq [[description request-opts status recorded?]
-            [["logged-in user"           {}                                                         200 true]
-             ["valid guest token"        {:user-id nil, :uri "/api/embed/card/token"}               200 true]
-             ["streaming response"       {}                                                         202 true]
-             ["React 19"                 {:react-version "19.1.0"}                                  200 false]
-             ["no React version"         {:react-version nil}                                       200 false]
-             ["EAJS"                     {:client "embedding-simple"}                               200 false]
-             ["embed preview"            {:preview? true}                                           200 false]
-             ["POST"                     {:method :post}                                            200 false]
-             ["OPTIONS on a guest route" {:method :options, :user-id nil, :uri "/api/embed/card/x"} 200 false]
-             ["error"                    {}                                                         500 false]
-             ["anonymous"                {:user-id nil}                                             200 false]
-             ["invalid guest token"      {:user-id nil, :uri "/api/embed/card/token"}               400 false]]]
-      (testing description
-        (reset-react-18-hosts-this-hour!)
-        (is (= {:status status} (run-react-18-host-mw (react-18-sdk-request request-opts) status)))
-        (is (= (if recorded? #{"app.example.com"} #{})
-               (react-18-hosts-this-hour)))))
-    (testing "lowercases the hostname"
-      (reset-react-18-hosts-this-hour!)
-      (run-react-18-host-mw (react-18-sdk-request {:referrer "https://App.Example.COM/page"}) 200)
-      (is (= #{"app.example.com"} (react-18-hosts-this-hour))))
-    (testing "records a host app without a referrer with a nil hostname"
-      (reset-react-18-hosts-this-hour!)
-      (run-react-18-host-mw (react-18-sdk-request {:referrer nil}) 200)
-      (is (= #{nil} (react-18-hosts-this-hour))))
-    (testing "skips localhost"
-      (doseq [referrer ["http://localhost:3000" "http://LOCALHOST:3000" "http://127.0.0.1:3000" "http://[::1]:3000"]]
-        (reset-react-18-hosts-this-hour!)
-        (run-react-18-host-mw (react-18-sdk-request {:referrer referrer}) 200)
-        (is (= #{} (react-18-hosts-this-hour)) referrer)))))
-
-(deftest record-react-18-sdk-host-saves-in-background-test
-  (let [saved (atom [])]
-    (mt/with-dynamic-fn-redefs [analytics.settings/record-sdk-react-18-host! #(swap! saved conj %)]
-      (reset-react-18-hosts-this-hour!)
-      (run-react-18-host-mw (react-18-sdk-request {}) 200)
-      (is (= ["app.example.com"] (u/poll {:thunk #(deref saved), :done? seq}))))))
-
-(deftest first-this-hour-test
-  (let [first-this-hour? #'sdk/first-this-hour?
-        hour             (t/instant "2026-10-13T10:00:00Z")]
-    (reset-react-18-hosts-this-hour!)
-    (testing "true only the first time a host is seen in an hour"
-      (is (true? (first-this-hour? "app.example.com" hour)))
-      (is (false? (first-this-hour? "app.example.com" hour)))
-      (is (true? (first-this-hour? nil hour)))
-      (is (false? (first-this-hour? nil hour))))
-    (testing "a new hour starts over, so a host lost to a concurrent write is saved again"
-      (is (true? (first-this-hour? "app.example.com" (t/plus hour (t/hours 1))))))
-    (testing "stops at the cap"
-      (reset-react-18-hosts-this-hour!)
-      (dotimes [i analytics.settings/sdk-react-18-hosts-max]
-        (first-this-hour? (str "host-" i ".example.com") hour))
-      (is (false? (first-this-hour? "one-more.example.com" hour))))
-    (testing "concurrent requests let a host through once"
-      (reset-react-18-hosts-this-hour!)
-      (is (= 1 (count (filter true? (pmap (fn [_] (first-this-hour? "app.example.com" hour)) (range 20)))))))))
-
-(deftest record-react-18-sdk-host-handler-test
-  (testing "the middleware runs after authentication"
-    (mt/with-temporary-setting-values [sdk-react-18-hosts nil]
-      (reset-react-18-hosts-this-hour!)
-      (let [headers (fn [hostname]
-                      {"x-metabase-client"               "embedding-sdk-react"
-                       "x-metabase-client-react-version" "18.3.1"
-                       "x-metabase-embed-referrer"       (str "https://" hostname "/page")})]
-        (testing "anonymous requests are not recorded"
-          (mt/client :get 401 "user/current" {:request-options {:headers (headers "anonymous.example.com")}})
-          (is (= #{} (react-18-hosts-this-hour))))
-        (testing "logged-in requests are recorded and saved"
-          (mt/user-http-request :rasta :get 200 "user/current"
-                                {:request-options {:headers (headers "app.example.com")}})
-          (is (= #{"app.example.com"} (react-18-hosts-this-hour)))
-          (is (=? [{:hostname "app.example.com"}]
-                  (u/poll {:thunk analytics.settings/sdk-react-18-hosts, :done? seq, :timeout-ms 10000}))))))))
