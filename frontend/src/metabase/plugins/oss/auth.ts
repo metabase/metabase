@@ -54,7 +54,10 @@ export const PLUGIN_IS_PASSWORD_USER = definePluginSlot(
 );
 
 const getDefaultPluginAdminUserFormFields = (): {
-  FormLoginAttributes: ComponentType<{ userId?: UserId | null }>;
+  FormLoginAttributes: ComponentType<{
+    userId?: UserId | null;
+    className?: string;
+  }>;
 } => ({
   FormLoginAttributes: PluginPlaceholder,
 });

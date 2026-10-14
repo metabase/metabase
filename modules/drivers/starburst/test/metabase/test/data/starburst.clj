@@ -30,6 +30,8 @@
 (defmethod driver/database-supports? [:starburst :test/creates-db-on-connect] [_ _ _] true)
 (defmethod driver/database-supports? [:starburst :metabase.query-processor.string-extracts-test/concat-non-string-args] [_ _ _] false)
 (defmethod driver/database-supports? [:starburst :metabase.query-processor.alternative-date-test/yyyymmddhhss-binary-timestamps] [_ _ _] false)
+;; tests for impersonation require creating roles, which trino doesn't support
+(defmethod driver/database-supports? [:starburst :connection-impersonation] [_ _ _] false)
 
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"

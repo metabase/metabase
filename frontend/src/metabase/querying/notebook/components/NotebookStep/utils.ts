@@ -38,7 +38,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     get title() {
       return t`Data`;
     },
-    color: () => "core-brand",
+    color: () => "background_surface-brand-strong",
     Step: DataStep,
     StepHeader: NotebookStepHeader,
   },
@@ -49,7 +49,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "join_left_outer",
     priority: 1,
     compact: true,
-    color: () => "core-brand",
+    color: () => "background_surface-brand-strong",
     Step: JoinStep,
     StepHeader: NotebookStepHeader,
   },
