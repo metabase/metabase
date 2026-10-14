@@ -29,7 +29,6 @@ Supported models:
 | ----------------- | ---------------------------- | ----------------------- |
 | Claude Fable 5    | `claude-fable-5`             | 1,000,000               |
 | Claude Haiku 4.5  | `claude-haiku-4-5-20251001`  | 200,000                 |
-| Claude Opus 4.1   | `claude-opus-4-1-20250805`   | 200,000                 |
 | Claude Opus 4.5   | `claude-opus-4-5-20251101`   | 200,000                 |
 | Claude Opus 4.6   | `claude-opus-4-6`            | 1,000,000               |
 | Claude Opus 4.7   | `claude-opus-4-7`            | 1,000,000               |
@@ -80,7 +79,6 @@ Supported models:
 | ---------------------- | --------------------------------- | ----------------------- |
 | Claude Fable 5         | `anthropic/claude-fable-5`        | 1,000,000               |
 | Claude Haiku 4.5       | `anthropic/claude-haiku-4.5`      | 200,000                 |
-| Claude Opus 4.1        | `anthropic/claude-opus-4.1`       | 200,000                 |
 | Claude Opus 4.5        | `anthropic/claude-opus-4.5`       | 200,000                 |
 | Claude Opus 4.6        | `anthropic/claude-opus-4.6`       | 1,000,000               |
 | Claude Opus 4.7        | `anthropic/claude-opus-4.7`       | 1,000,000               |
