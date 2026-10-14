@@ -84,7 +84,7 @@
         bound   [(oauth-server/mcp-resource-url)]]
     (oidc.store/save-access-token (:token-store provider) token (str user-id) client-id scopes
                                   (+ (System/currentTimeMillis) (* 1000 ttl)) bound)
-    (events/publish-event! :event/mcp-token-issued {:user-id user-id, :details {:scope granted}})
+    (events/publish-event! :event/mcp-jwt-token-issued {:user-id user-id, :details {:scope granted}})
     {:access_token token
      :token_type   "Bearer"
      :expires_in   ttl

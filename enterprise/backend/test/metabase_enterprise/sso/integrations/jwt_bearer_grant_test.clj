@@ -199,7 +199,7 @@
                             (:body (token-response 400 {:assertion (assertion {:email email})}))))
                     (is (not (t2/exists? :model/User :email email)))
                     (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))
-                    (is (not (t2/exists? :model/AuditLog :topic "mcp-token-issued")))
+                    (is (not (t2/exists? :model/AuditLog :topic "mcp-jwt-token-issued")))
                     (is (= ["authorization_code" "refresh_token"] (discovered-grant-types))))]
       (testing "without the sso-jwt feature"
         (mt/with-premium-features #{}
@@ -227,7 +227,7 @@
         (is (=? [{:tool_name "test_echo" :status "success"}]
                 (t2/select :model/McpToolCallLog :user_id user-id)))
         (is (=? {:user_id user-id :details {:scope scope}}
-                (mt/latest-audit-log-entry :mcp-token-issued)))))))
+                (mt/latest-audit-log-entry :mcp-jwt-token-issued)))))))
 
 (deftest token-reach-test
   (with-jwt-bearer-setup!
