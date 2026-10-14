@@ -21,14 +21,16 @@
       (take! [_ handler]
         (a.impl.protocols/take! (if (a.impl.protocols/blockable? handler) never ready) handler)))))
 
-(deftest ^:parallel do-with-own-canceled-chan-test
+(deftest ^:parallel do-with-own-canceled-chan-own-channel-test
   (testing "the inner query runs with a channel of its own, and closing it leaves the outer query cancelable"
     (let [outer-chan (a/promise-chan)]
       (binding [qp.pipeline/*canceled-chan* outer-chan]
         ;; Closing the channel is what a query does when it finishes.
         (is (not= outer-chan (qp.pipeline/do-with-own-canceled-chan #(doto qp.pipeline/*canceled-chan* a/close!))))
         (a/>!! outer-chan ::canceled)
-        (is (= ::canceled (a/poll! outer-chan))))))
+        (is (= ::canceled (a/poll! outer-chan)))))))
+
+(deftest ^:parallel do-with-own-canceled-chan-closes-own-channel-test
   (testing "the inner channel is closed once the inner query returns or throws"
     (let [outer-chan (a/promise-chan)
           own-chan   (atom nil)]
@@ -40,7 +42,9 @@
                     (fn []
                       (reset! own-chan qp.pipeline/*canceled-chan*)
                       (throw (ex-info "boom" {}))))))
-      (is (a.impl.protocols/closed? @own-chan))))
+      (is (a.impl.protocols/closed? @own-chan)))))
+
+(deftest ^:parallel do-with-own-canceled-chan-forwards-cancel-test
   (testing "canceling the outer query cancels the inner one"
     (let [outer-chan (a/promise-chan)]
       (binding [qp.pipeline/*canceled-chan* outer-chan]
@@ -48,9 +52,13 @@
                (qp.pipeline/do-with-own-canceled-chan
                 (fn []
                   (a/>!! outer-chan ::canceled)
-                  (received qp.pipeline/*canceled-chan*))))))))
+                  (received qp.pipeline/*canceled-chan*)))))))))
+
+(deftest ^:parallel do-with-own-canceled-chan-without-outer-channel-test
   (testing "without an outer channel, none is bound"
-    (is (nil? (qp.pipeline/do-with-own-canceled-chan (fn [] qp.pipeline/*canceled-chan*)))))
+    (is (nil? (qp.pipeline/do-with-own-canceled-chan (fn [] qp.pipeline/*canceled-chan*))))))
+
+(deftest ^:parallel do-with-own-canceled-chan-channel-passed-in-test
   (testing "a channel passed in cancels the query in place of the bound one"
     (let [request-chan (a/promise-chan)]
       (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
