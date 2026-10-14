@@ -1,6 +1,9 @@
 import type { ModalProps } from "@mantine/core";
 
-export const NO_ANIMATION_MODAL_PROPS: Partial<ModalProps> = {
+export const NO_ANIMATION_MODAL_PROPS: Pick<
+  ModalProps,
+  "transitionProps" | "styles"
+> = {
   transitionProps: { duration: 0 },
   styles: {
     overlay: { animation: "none" },

@@ -43,7 +43,6 @@ export function MetabotSettingUpModal({
       closeOnEscape={false}
       withCloseButton={false}
       size="30rem"
-      padding="2.5rem"
       mah="80%"
     >
       <Stack align="center" gap="xl" my="4.5rem">

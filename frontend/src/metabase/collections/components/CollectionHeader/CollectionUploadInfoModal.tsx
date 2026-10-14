@@ -18,7 +18,6 @@ export const UploadInfoModal = ({
       opened
       onClose={onClose}
       size="30rem"
-      padding="2rem"
       styles={{ header: { marginBottom: "1rem" } }}
     >
       <Stack gap="lg" align="center" justify="center">
