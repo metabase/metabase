@@ -24,6 +24,13 @@
         (= :off *database-routing-on*)
         nil
 
+        (= :router-if-granted *database-routing-on*)
+        (when-not (database-routing.db/router-anonymous-access-granted? (u/the-id db-or-id))
+          (throw (ex-info (tru "This database does not allow anonymous access.")
+                          {:status-code                  400
+                           :anonymous-access-not-granted true
+                           :router-database-id           (u/the-id db-or-id)})))
+
         is-anonymous-user?
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
                                                                                                 :database-routing-enabled true
@@ -120,7 +127,8 @@
 ;; a Destination Database
 ;;
 ;; `*database-routing-on*` records our intent: `:on` inside a routed query (destinations are expected), `:off` when we
-;; explicitly want the router (e.g. sync), `:unset` otherwise. Concretely:
+;; explicitly want the router (e.g. sync), `:router-if-granted` when we want the router but only where the database
+;; grants anonymous access, `:unset` otherwise. Concretely:
 ;;
 ;; (a) looks like:
 ;; - I am looking at a Router Database,
@@ -130,7 +138,7 @@
 ;;
 ;; (b) looks like:
 ;; - I am looking at a destination Database, and
-;; - `*database-routing-on*` is not `:on` (i.e. `:off` or `:unset`).
+;; - `*database-routing-on*` is not `:on` (i.e. `:off`, `:router-if-granted`, or `:unset`).
 ;; A tenancy boundary, enforced by `check-allowed-access!` below.
 
 (defenterprise with-database-routing-on-fn
@@ -145,6 +153,14 @@
   :feature :database-routing
   [f]
   (binding [*database-routing-on* :off]
+    (f)))
+
+(defenterprise with-database-routing-off-if-granted-fn
+  "Enterprise version. Calls the function with Database Routing prohibited, and a router database reachable only if an
+  admin has granted it anonymous access."
+  :feature :database-routing
+  [f]
+  (binding [*database-routing-on* :router-if-granted]
     (f)))
 
 (defn- is-disallowed-destination-db-access?

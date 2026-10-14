@@ -30,6 +30,20 @@
      (fn []
        ~@body)))
 
+(defenterprise with-database-routing-off-if-granted-fn
+  "OSS version, does nothing"
+  metabase-enterprise.database-routing.common
+  [f]
+  (f))
+
+(defmacro with-database-routing-off-if-granted
+  "Like [[with-database-routing-off]], but a router database is reachable only where an admin has granted it
+  anonymous access; otherwise access to it is an error."
+  [& body]
+  `(with-database-routing-off-if-granted-fn
+     (fn []
+       ~@body)))
+
 (defenterprise check-allowed-access!
   "OSS version, does nothing"
   metabase-enterprise.database-routing.common
