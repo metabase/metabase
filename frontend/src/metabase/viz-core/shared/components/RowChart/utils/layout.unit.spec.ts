@@ -19,8 +19,6 @@ const GOAL = { label: "Target", value: 450 };
 const SPACE_RIGHT_OF_GOAL = PLOT_WIDTH - GOAL.value;
 const LABEL_WIDTH = SPACE_RIGHT_OF_GOAL - GOAL_WARNING_WIDTH / 2;
 
-const measureTextWidth = () => LABEL_WIDTH;
-
 describe("getRowChartGoal", () => {
   it("puts the label on the right when it fits there", () => {
     expect(
@@ -45,3 +43,7 @@ describe("getGoalLinePadding", () => {
     expect(getGoalLinePadding(GOAL_STYLE, true)).toBe(16);
   });
 });
+
+function measureTextWidth() {
+  return LABEL_WIDTH;
+}

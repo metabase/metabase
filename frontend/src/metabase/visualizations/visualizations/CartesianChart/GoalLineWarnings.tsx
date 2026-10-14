@@ -53,7 +53,7 @@ export function GoalLineWarnings({
   });
 
   useEffect(() => {
-    const updateLabelLayouts = () => {
+    function updateLabelLayouts() {
       const goalValue = getGoalLineValue(settings, isNormalized);
       const axisValue =
         goalValue != null ? toEChartsAxisValue(goalValue) : null;
@@ -74,7 +74,7 @@ export function GoalLineWarnings({
       setLabelLayouts((previous) =>
         _.isEqual(previous, next) ? previous : next,
       );
-    };
+    }
 
     updateLabelLayouts();
     chartInstance?.on("finished", updateLabelLayouts);

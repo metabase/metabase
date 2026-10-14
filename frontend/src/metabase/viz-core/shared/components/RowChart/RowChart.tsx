@@ -253,17 +253,15 @@ export const RowChart = <TDatum,>({
     ],
   );
 
-  const rowChartGoal = useMemo(
-    () =>
-      getRowChartGoal(
-        goal,
-        theme.goal,
-        measureTextWidth,
-        paddedXScale,
-        hasGoalWarning,
-      ),
-    [goal, measureTextWidth, theme.goal, paddedXScale, hasGoalWarning],
-  );
+  const rowChartGoal = useMemo(() => {
+    return getRowChartGoal(
+      goal,
+      theme.goal,
+      measureTextWidth,
+      paddedXScale,
+      hasGoalWarning,
+    );
+  }, [goal, measureTextWidth, theme.goal, paddedXScale, hasGoalWarning]);
 
   return (
     <RowChartView

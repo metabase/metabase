@@ -79,10 +79,11 @@ export const getChartMargin = <TDatum>(
   return margin;
 };
 
-export const getGoalLinePadding = (style: GoalStyle, hasWarning: boolean) =>
-  hasWarning
+export function getGoalLinePadding(style: GoalStyle, hasWarning: boolean) {
+  return hasWarning
     ? Math.max(GOAL_LINE_PADDING, Math.ceil(-getGoalWarningY(style.label.size)))
     : GOAL_LINE_PADDING;
+}
 
 export const getMaxYValuesCount = (
   viewportHeight: number,
