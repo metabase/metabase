@@ -85,7 +85,9 @@ export function SyncProgressModal({
       <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
         <Stack mt="lg" gap="lg">
           <Text>{t`An error occurred during sync.`}</Text>
-          {errorMessage && <Text>{errorMessage}</Text>}
+          {errorMessage && (
+            <Text style={{ whiteSpace: "pre-line" }}>{errorMessage}</Text>
+          )}
           {startedBy}
           <Group justify="flex-end">
             <Button
