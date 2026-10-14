@@ -14,15 +14,22 @@ type SetupOpts = {
   configured?: boolean;
   url?: string | null;
   apps?: DataApp[];
+  appsError?: boolean;
 };
 
 const setup = ({
   configured = true,
   url = null,
   apps = [],
+  appsError = false,
 }: SetupOpts = {}) => {
   fetchMock.get("path:/api/apps/repo-status", { configured, url });
-  fetchMock.get("path:/api/apps", apps);
+  fetchMock.get(
+    "path:/api/apps",
+    appsError
+      ? { status: 500, body: { message: "Apps failed to load" } }
+      : apps,
+  );
 
   setupUserAcknowledgementEndpoints({
     key: "data-apps-admin-settings-banner",
@@ -87,6 +94,17 @@ describe("ManageDataAppsPage", () => {
   });
 
   describe("the app list", () => {
+    it("shows an error instead of the list when the apps request fails", async () => {
+      setup({ appsError: true });
+
+      expect(
+        await screen.findByText("Apps failed to load"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Your data apps will appear here"),
+      ).not.toBeInTheDocument();
+    });
+
     it("links an enabled app to its route and shows its path", async () => {
       setup({ apps: [createMockDataApp({ name: "sales" })] });
 

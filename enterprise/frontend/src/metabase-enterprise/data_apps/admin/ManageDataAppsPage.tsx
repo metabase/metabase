@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
-import { Badge, Box, Flex, Group, Loader, Stack, Title } from "metabase/ui";
+import { Badge, Box, Group, Stack, Title } from "metabase/ui";
 import {
   useGetDataAppRepoStatusQuery,
   useListDataAppsQuery,
@@ -33,10 +34,11 @@ const DATA_APP_REPO_QUERY_OPTS = {
 export const ManageDataAppsPage = () => {
   const { data: status, isLoading: isStatusLoading } =
     useGetDataAppRepoStatusQuery(undefined, DATA_APP_REPO_QUERY_OPTS);
-  const { data: apps, isLoading: isAppsLoading } = useListDataAppsQuery(
-    undefined,
-    DATA_APP_REPO_QUERY_OPTS,
-  );
+  const {
+    data: apps = [],
+    isLoading: isAppsLoading,
+    error: appsError,
+  } = useListDataAppsQuery(undefined, DATA_APP_REPO_QUERY_OPTS);
 
   const isConfigured = status?.configured ?? false;
 
@@ -64,23 +66,16 @@ export const ManageDataAppsPage = () => {
         </SettingsSection>
       </Stack>
 
-      {isStatusLoading ? (
-        <Flex justify="center" p="xxl">
-          <Loader />
-        </Flex>
-      ) : (
-        <Stack gap="lg">
-          <Title order={2}>{t`Apps`}</Title>
+      <Stack gap="lg">
+        <Title order={2}>{t`Apps`}</Title>
 
-          {isAppsLoading && (
-            <Flex justify="center" p="xxl">
-              <Loader />
-            </Flex>
-          )}
-
-          {apps?.length === 0 && !isAppsLoading && <DataAppsEmptyState />}
-
-          {apps && apps.length > 0 && (
+        <DelayedLoadingAndErrorWrapper
+          loading={isStatusLoading || isAppsLoading}
+          error={appsError}
+        >
+          {apps.length === 0 ? (
+            <DataAppsEmptyState />
+          ) : (
             <Box
               bd="1px solid var(--mb-color-border)"
               bdrs="sm"
@@ -97,8 +92,8 @@ export const ManageDataAppsPage = () => {
               ))}
             </Box>
           )}
-        </Stack>
-      )}
+        </DelayedLoadingAndErrorWrapper>
+      </Stack>
     </SettingsPageWrapper>
   );
 };
