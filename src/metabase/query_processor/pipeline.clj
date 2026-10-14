@@ -54,7 +54,7 @@
        ;; A cancel that has already arrived is copied now, so the query sees it before it starts.
        (some->> (a/poll! outer-chan) (a/offer! own-chan))
        (a/go
-         ;; Nothing is ever put on `done-chan`, so a value can only come from `outer-chan`.
+         ;; Waits for a cancel on `outer-chan` until the `finally` below closes `done-chan`, which gives nil.
          (when-some [value (first (a/alts! [outer-chan done-chan]))]
            (a/>! own-chan value)))
        (try
