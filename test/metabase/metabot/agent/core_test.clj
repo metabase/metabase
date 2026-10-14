@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -167,25 +168,20 @@
         (is (contains? (tools-registered-for-request! ["feature:query_execution"]) "run_query"))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
+  ;; Reads the tools and system message the turn starts with, where the decision is made, rather than running a
+  ;; turn. The bindings stand in for the ones the agent loop makes.
   (let [rasta   (mt/user->id :rasta)
         offered (fn [conversation-id]
-                  (let [captured (atom nil)]
-                    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                                       llm-metabot-provider test-provider]
-                      (mt/with-dynamic-fn-redefs [self/call-llm
-                                                  (fn [_model system _parts tools _tracking-opts _llm-opts]
-                                                    (reset! captured
-                                                            {:tool?   (contains? tools "run_query")
-                                                             :prompt? (str/includes? (pr-str system)
-                                                                                     "You can see results only")})
-                                                    (mut/mock-llm-response [{:type :text :text "Hello"}]))]
-                        (into [] (agent/run-agent-loop
-                                  {:messages        [{:role :user :content "How many orders?"}]
-                                   :state           {}
-                                   :profile-id      :internal
-                                   :conversation-id conversation-id
-                                   :context         {:capabilities []}}))))
-                    @captured))]
+                  (let [{:keys [tools system-msg]}
+                        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                            scope/all-yes-permissions)]
+                          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                                               :profile-id      :internal
+                                               :conversation-id conversation-id
+                                               :context         {:capabilities []}}))]
+                    {:tool?   (contains? tools "run_query")
+                     :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))]
     (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id rasta}
                    :model/MetabotConversation {thread :id} {:user_id rasta, :slack_thread_ts "1.2"}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
