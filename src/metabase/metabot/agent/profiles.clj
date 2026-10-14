@@ -28,6 +28,11 @@
           (string? (:tool-name (meta v)))
           (some? (:schema (meta v)))))])
 
+(def ^:private required-permission-schema
+  "Schema for the metabot permission that gates a profile. `:permission/metabot` means that only the
+  base metabot check applies."
+  (into [:enum] scope/perm-types))
+
 (def ^:private *profiles
   "Map of profile-id to profile configuration"
   (atom {}))
@@ -52,6 +57,8 @@
 
   Each profile includes:
   - :name - Keyword identifier for the profile (e.g. :internal)
+  - :required-permission - The metabot permission that must be `:yes` for a user to use the profile.
+    It is one of [[scope/perm-types]]. Use `:permission/metabot` when the base check is sufficient.
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
   - :max-iterations - Maximum agent loop iterations
   - :tools - Vector of tool vars (e.g. #'tools/search-tool)
@@ -71,11 +78,13 @@
     Research plan). Keeps feature context out of the generic agent — only the profiles that need it
     opt in.
 
-  Tool vars are validated at registration time to ensure they have required metadata; any
+  The `:required-permission` is validated at registration time, also in prod. Tool vars are validated
+  at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
   refer to tools the profile actually exposes."
   [profile :- [:map {:closed true}
                [:name :keyword]
+               [:required-permission required-permission-schema]
                [:prompt-template :string]
                [:max-iterations :int]
                [:temperature {:optional true} [:maybe number?]]
@@ -88,6 +97,12 @@
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
         tool-names    (set tool-name-seq)]
+    ;; The `mu/defn` schema does not run in prod, so check the permission gate explicitly.
+    (when-not (mr/validate required-permission-schema (:required-permission profile))
+      (throw (ex-info "Profile has a missing or unknown :required-permission"
+                      {:profile             (:name profile)
+                       :required-permission (:required-permission profile)
+                       :valid-permissions   scope/perm-types})))
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
     (when-not (apply distinct? tool-name-seq)
@@ -107,6 +122,7 @@
 
 (register-profile!
  {:name            :embedding_next
+  :required-permission :permission/metabot
   :prompt-template "embedding-next.selmer"
   :max-iterations  15
   :tools           [#'tools/nlq-search-tool
@@ -118,6 +134,7 @@
 
 (register-profile!
  {:name            :internal
+  :required-permission :permission/metabot
   :prompt-template "internal.selmer"
   :max-iterations  15
   :tools           [#'tools/search-tool
@@ -137,6 +154,7 @@
 ;; profile must always end with a tool call rather than free-form assistant text.
 (register-profile!
  {:name                :sql
+  :required-permission :permission/metabot-sql-generation
   :prompt-template     "sql-querying-only.selmer"
   :max-iterations      20
   :required-tool-call? true
@@ -167,6 +185,7 @@
 ;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
 (register-profile!
  {:name            :nlq
+  :required-permission :permission/metabot-nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  15
   :tools           [#'tools/retrieve-library-entities-tool
@@ -178,6 +197,7 @@
 
 (register-profile!
  {:name            :nlq-fallback
+  :required-permission :permission/metabot
   :prompt-template "natural-language-querying-fallback.selmer"
   :max-iterations  15
   :tools           [#'tools/nlq-search-tool
@@ -189,6 +209,7 @@
 
 (register-profile!
  {:name            :document-generate-content
+  :required-permission :permission/metabot-other-tools
   :prompt-template "document-generate-content.selmer"
   :max-iterations  15
   :required-tool-call? true
@@ -204,6 +225,7 @@
 
 (register-profile!
  {:name            :slackbot
+  :required-permission :permission/metabot
   :prompt-template "slackbot.selmer"
   :max-iterations  15
   :tools           [#'tools/search-tool
@@ -216,6 +238,7 @@
 
 (register-profile!
  {:name            :explorations
+  :required-permission :permission/metabot-nlq
   :prompt-template "explorations.selmer"
   :max-iterations  15
   :temperature     0.3
@@ -274,6 +297,12 @@
   "Whether a profile with `profile-id` is registered."
   [profile-id]
   (contains? @*profiles profile-id))
+
+(defn required-permission
+  "The metabot permission that gates the profile with `profile-id`, or nil when no profile is registered
+  with that id. `:permission/metabot` means that only the base metabot check applies."
+  [profile-id]
+  (get-in @*profiles [profile-id :required-permission]))
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.
