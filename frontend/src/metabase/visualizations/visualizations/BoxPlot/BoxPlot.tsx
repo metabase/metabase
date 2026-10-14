@@ -7,7 +7,7 @@ import { assignLazily } from "metabase/utils/merge-lazily";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
@@ -222,8 +222,8 @@ function BoxPlotInner({
           titleMenuItems={titleMenuItems}
         />
       )}
-      {goalStatus !== "resolved" ? (
-        <GoalResolutionState kind="value" status={goalStatus} />
+      {goalStatus === "resolving" ? (
+        <GoalResolvingState />
       ) : (
         <CartesianChartLegendLayout
           isReversed={settings["legend.is_reversed"]}

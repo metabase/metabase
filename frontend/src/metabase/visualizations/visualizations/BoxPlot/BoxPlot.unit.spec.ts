@@ -6,7 +6,6 @@ import type {
 import {
   createMockCard,
   createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import {
@@ -46,7 +45,6 @@ const GOAL_SETTINGS: VisualizationSettings = {
   "graph.show_goal": true,
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("BoxPlot", () => {
   describe("isSensible", () => {
@@ -156,49 +154,12 @@ describe("BoxPlot", () => {
   describe("checkRenderable", () => {
     const { checkRenderable } = BOXPLOT_CHART_DEFINITION;
 
-    it("accepts a static goal value", () => {
-      expect(() =>
-        checkRenderable(createGoalSeries(), {
-          ...GOAL_SETTINGS,
-          "graph.goal_value": 100,
-        }),
-      ).not.toThrow();
-    });
-
-    it("accepts a goal reference that is still resolving", () => {
-      expect(() =>
-        checkRenderable(createGoalSeries(), GOAL_SETTINGS),
-      ).not.toThrow();
-    });
-
-    it("accepts a resolved goal reference", () => {
-      const series = createGoalSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: 250,
-        }),
-      });
-
-      expect(() => checkRenderable(series, GOAL_SETTINGS)).not.toThrow();
-    });
-
-    it("refuses to render when the referenced query failed", () => {
+    it("renders when the referenced query failed", () => {
       const series = createGoalSeries({
         referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
-      expect(() => checkRenderable(series, GOAL_SETTINGS)).toThrow(GOAL_ERROR);
-    });
-
-    it("refuses to render when the referenced value is not a number", () => {
-      const series = createGoalSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: "x",
-        }),
-      });
-
-      expect(() => checkRenderable(series, GOAL_SETTINGS)).toThrow(GOAL_ERROR);
+      expect(() => checkRenderable(series, GOAL_SETTINGS)).not.toThrow();
     });
   });
 });

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
-import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
@@ -147,14 +147,8 @@ function GaugeComponent({
     updateLabelSize();
   });
 
-  if (goalData.status !== "resolved") {
-    return (
-      <GoalResolutionState
-        className={className}
-        kind="segments"
-        status={goalData.status}
-      />
-    );
+  if (goalData.status === "resolving") {
+    return <GoalResolvingState className={className} />;
   }
 
   return (

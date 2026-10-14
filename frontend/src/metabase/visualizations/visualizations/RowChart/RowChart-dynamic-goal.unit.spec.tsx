@@ -48,7 +48,6 @@ const ROWS = [
 const MAX_COUNT = 30;
 const GOAL = 250;
 const GOAL_LABEL = "Target";
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 const SETTINGS: VisualizationSettings = {
   "graph.dimensions": ["category"],
   "graph.metrics": ["count"],
@@ -178,19 +177,28 @@ describe("row chart dynamic goal", () => {
     expect(getGraphicsSymbols("goal line")).toHaveLength(0);
   });
 
-  it("shows the failed message when fetching the reference fails", async () => {
+  it("draws the goal line at 0 when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
     setup();
 
-    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
-    expect(getGraphicsSymbols("bar")).toHaveLength(0);
+    const goalLine = await findGoalLine();
+
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
+      0,
+    );
+    expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length);
   });
 
-  it("refuses to render when the dataset reports the reference as failed", async () => {
+  it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
     setup({ referencedEntities: FAILED });
 
-    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
-    expect(getGraphicsSymbols("bar")).toHaveLength(0);
+    const goalLine = await findGoalLine();
+
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
+      0,
+    );
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });

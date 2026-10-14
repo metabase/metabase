@@ -1,20 +1,12 @@
-import type {
-  DatasetColumn,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { SCALAR_CHART_DEFINITION } from "./definition";
-
-const { checkRenderable } = SCALAR_CHART_DEFINITION;
 
 const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
 
@@ -52,139 +44,6 @@ describe("SCALAR_CHART_DEFINITION", () => {
       );
 
       expect(props?.formatOptions).toEqual({ prefix: "total:" });
-    });
-  });
-
-  describe("checkRenderable", () => {
-    it("accepts static ranges, open-ended ones included", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "scalar.segments": [
-            { min: null, max: 100, color: "red" },
-            { min: 100, max: null, color: "green" },
-          ],
-        }),
-      ).not.toThrow();
-    });
-
-    it("accepts a range that is still resolving", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "scalar.segments": [
-            {
-              min: { type: "card", id: 9, column: "goal" },
-              max: null,
-              color: "red",
-            },
-          ],
-        }),
-      ).not.toThrow();
-    });
-
-    it("accepts a range bound to a column of this question", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "scalar.segments": [{ min: "count", max: null, color: "red" }],
-        }),
-      ).not.toThrow();
-    });
-
-    it("refuses to render a self-column range on an empty result", () => {
-      expect(() =>
-        checkRenderable(createSeries({ rows: [] }), {
-          "scalar.segments": [{ min: "count", max: null, color: "red" }],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("refuses to render a self-column range when the bound's cell is null", () => {
-      expect(() =>
-        checkRenderable(createSeries({ rows: [[null]] }), {
-          "scalar.segments": [{ min: "count", max: null, color: "red" }],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("refuses to render when a range's bound will never resolve", () => {
-      const series = createSeries({
-        referenced_entities: createMockFailedReferencedEntitiesResults(),
-      });
-
-      expect(() =>
-        checkRenderable(series, {
-          "scalar.segments": [
-            { min: null, max: 100, color: "red" },
-            {
-              min: 100,
-              max: { type: "measure", id: 4, column: "goal" },
-              color: "yellow",
-            },
-            {
-              min: { type: "card", id: 9, column: "goal" },
-              max: null,
-              color: "green",
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("ignores the ranges when extra series turn the number into a bar chart", () => {
-      const series = createSeries({
-        referenced_entities: createMockFailedReferencedEntitiesResults(),
-      });
-
-      expect(() =>
-        checkRenderable([...series, ...createSeries()], {
-          "scalar.segments": [
-            {
-              min: { type: "card", id: 9, column: "goal" },
-              max: null,
-              color: "green",
-            },
-          ],
-        }),
-      ).not.toThrow();
-    });
-
-    it("refuses to render when a referenced value is not a number", () => {
-      const series = createSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: "x",
-        }),
-      });
-
-      expect(() =>
-        checkRenderable(series, {
-          "scalar.segments": [
-            {
-              min: { type: "card", id: 9, column: "goal" },
-              max: null,
-              color: "red",
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("refuses to render a range bound to a column the question no longer has", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "scalar.segments": [{ min: "missing", max: null, color: "red" }],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("tolerates malformed persisted segments", () => {
-      // deliberately malformed input
-      const malformedSettings = {
-        "scalar.segments": [null, 5, { min: {}, max: [1], color: "red" }],
-      } as unknown as VisualizationSettings;
-
-      expect(() =>
-        checkRenderable(createSeries(), malformedSettings),
-      ).not.toThrow();
     });
   });
 });

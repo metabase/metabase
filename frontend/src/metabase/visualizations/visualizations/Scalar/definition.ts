@@ -7,7 +7,6 @@ import {
   fieldSetting,
   getDefaultSize,
   getMinSize,
-  validateGoalReferences,
 } from "metabase/viz-core";
 import type {
   DatasetColumn,
@@ -30,11 +29,8 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     return rows.length === 1 && cols.length === 1;
   },
 
-  checkRenderable(series, settings) {
-    // extra series turn the number into a bar chart, which ignores the color ranges
-    if (series.length === 1) {
-      validateGoalReferences(series, settings);
-    }
+  checkRenderable() {
+    // scalar can always be rendered, nothing needed here
   },
 
   settings: {

@@ -40,7 +40,6 @@ const ROWS = [
 ];
 
 const GOAL_LABEL = "Target";
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 const ANSWERED = createMockReferencedEntitiesResults({
   column: "goal",
@@ -101,20 +100,21 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       });
     });
 
-    it("shows the failed message when fetching the reference fails", async () => {
+    it("draws the goal line at 0 when fetching the reference fails", async () => {
       setupCardDataset({ status: 500 });
 
       await setup(createSeries(display));
 
-      expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
-      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+      expect(await screen.findByText(GOAL_LABEL)).toBeInTheDocument();
+      expect(screen.getByText("Jan")).toBeInTheDocument();
     });
 
-    it("refuses to render when the dataset reports the reference as failed", async () => {
+    it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
       await setup(createSeries(display, FAILED));
 
-      expect(screen.getByText(GOAL_ERROR)).toBeInTheDocument();
-      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+      expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
+      expect(screen.getByText("Jan")).toBeInTheDocument();
+      expect(screen.queryByText("250")).not.toBeInTheDocument();
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
   },

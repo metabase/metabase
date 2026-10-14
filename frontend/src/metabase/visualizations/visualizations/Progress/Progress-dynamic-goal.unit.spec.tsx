@@ -27,12 +27,9 @@ beforeAll(() => loadVisualizationComponents(["progress"]));
 
 const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
 const ROWS = [[50]];
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 const SETTINGS: VisualizationSettings = {
   "progress.goal": { type: "card", id: 9, column: "goal" },
 };
-
-const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
   settings?: VisualizationSettings;
@@ -107,19 +104,19 @@ describe("progress chart dynamic goal", () => {
     expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
   });
 
-  it("shows the failed message when fetching the reference fails", async () => {
+  it("measures against a goal of 0 when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
     setup();
 
-    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
-    expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
+    expect(await screen.findByText("Goal 0")).toBeInTheDocument();
+    expect(screen.getByText("50")).toBeInTheDocument();
+    expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
   });
 
-  it("refuses to render when the dataset reports the reference as failed", async () => {
-    setup({ referencedEntities: FAILED });
+  it("measures against a goal of 0 when the dataset reports the reference as failed", async () => {
+    setup({ referencedEntities: createMockFailedReferencedEntitiesResults() });
 
-    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
-    expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
+    expect(await screen.findByText("Goal 0")).toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });

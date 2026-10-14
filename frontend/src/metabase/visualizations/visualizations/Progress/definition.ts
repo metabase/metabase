@@ -7,14 +7,9 @@ import {
   fieldSetting,
   getDefaultSize,
   getMinSize,
-  validateGoalReferences,
 } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import {
-  isGoalForeignColumnRef,
-  isGoalSelfColumnRef,
-  isGoalValue,
-} from "metabase-types/guards";
+import { isGoalSelfColumnRef, isGoalValue } from "metabase-types/guards";
 
 import { findProgressColumn } from "./utils";
 
@@ -27,18 +22,15 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
   isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.filter(isNumeric).length >= 1;
   },
-  checkRenderable: (series, settings) => {
-    const [{ data }] = series;
-
-    if (!data.cols.some(isNumeric)) {
+  checkRenderable: ([
+    {
+      data: { cols },
+    },
+  ]) => {
+    if (!cols.some(isNumeric)) {
       throw new Error(
         t`Progress visualization requires at least one numeric column.`,
       );
-    }
-
-    // a column of this question falls back to 0 instead, see getGoalValue
-    if (isGoalForeignColumnRef(settings["progress.goal"])) {
-      validateGoalReferences(series, settings);
     }
   },
   settings: {
