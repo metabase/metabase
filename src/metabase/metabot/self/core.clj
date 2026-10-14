@@ -8,6 +8,7 @@
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -480,11 +481,13 @@
                                       :function  (:toolName chunk)
                                       :arguments (parse-tool-arguments chunks)}
                                pm (assoc :provider-metadata pm)))
+    ;; No `:error` on the part. A failed call carries its `:error` inside `:result`, which is the one
+    ;; place anything asks — the agent loop, the SSE writer, persistence and telemetry all read it
+    ;; there. A second copy here is what let a failure reach the client as a success.
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
                             :result      (:result chunk)
-                            :error       (:error chunk)
                             :duration-ms (::duration-ms chunk)}
     ;; A group opening with a continuation chunk (:tool-input-delta, :text-delta, ...) has lost its start chunk,
     ;; and with it the data the part needs (a tool call's name), so it cannot be assembled.
@@ -882,10 +885,11 @@
               :tool-output
               (rf result
                   (format-sse-event
-                   (if-let [error (:error part)]
+                   (if-let [error (get-in part [:result :error])]
                      {:type       "tool-output-error"
                       :toolCallId (:id part)
-                      :errorText  (or (:message error) (str error))}
+                      ;; Not `:output`, which is written for the model; see `step-failure-text`.
+                      :errorText  (tools.error/step-failure-text error)}
                      {:type       "tool-output-available"
                       :toolCallId (:id part)
                       :output     (tool-output->wire-output (:result part))})))

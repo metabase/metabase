@@ -25,6 +25,7 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
@@ -310,6 +311,26 @@
   dev/test assertions, which hold that only recovery steps name tools and only ones they declare."
   [text tool-name]
   (str/includes? (str text) (str "`" tool-name "`")))
+
+(defn step-failure-text
+  "A failed call as the text the UI shows for that step, and the conversation stores.
+
+  A third audience, decided the way the other two are — by the class. The model's `:output` is not
+  it: that text is written to be acted on (\"`uris` must be an array of 1 to 5 URI strings\", \"the
+  user was shown the error (:internal)\"), and someone reading their own conversation is not the one
+  acting on it.
+
+  - `:unrecoverable` gets the `:user-message` the tool chose, because this is the failure the user
+    has to act on, and the generic sentence when the tool chose none.
+  - `:validation` and `:recoverable` get the generic sentence. What we told the model about its
+    arguments, and which tool to call instead, is the agent's business; a reader sees that a step did
+    not succeed.
+
+  The code is deliberately absent: it is a keyword from our own namespaces and says nothing to a
+  reader. It goes to the logs and to telemetry, which is where support looks."
+  [{:keys [class user-message]}]
+  (or (when (= class :unrecoverable) (not-empty user-message))
+      (tru "Metabot could not complete this step.")))
 
 (defn recoverable-text
   "A recoverable `error` as the lines the model reads: the message, then each recovery step the

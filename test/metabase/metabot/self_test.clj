@@ -9,6 +9,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.persistence :as persistence]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -28,6 +29,8 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -497,11 +500,12 @@
                    :toolName               "search"
                    :result                 {:data []}
                    ::self.core/duration-ms 1234}]]
+      ;; No `:error` key: a failed call carries its error inside `:result`, and a second copy on
+      ;; the part is what let a failure read as a success downstream.
       (is (= [{:type        :tool-output
                :id          "call-1"
                :function    "search"
                :result      {:data []}
-               :error       nil
                :duration-ms 1234}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
   (testing "streams reasoning deltas and carries provider metadata on the end"
@@ -1116,9 +1120,20 @@
       (is (= {:type "tool-output-available" :toolCallId "call-i" :output ""}
              output-event)
           "no :output key -> empty wire output; internal :instructions/:data-parts never leak")))
-  (testing "tool error becomes tool-output-error"
-    (is (= {:type "tool-output-error" :toolCallId "call-2" :errorText "Tool failed"}
-           (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))
+  (testing (str "a failed call becomes tool-output-error, read from the result and rendered for a "
+                "reader rather than for the model")
+    (is (= {:type "tool-output-error" :toolCallId "call-2"
+            :errorText "Metabot could not complete this step."}
+           (first (sse-events [{:type   :tool-output :id "call-2"
+                                :result {:output "`n` should be an int; received a string."
+                                         :error  {:class :validation :code :invalid-arguments}}}]))))
+    (testing "and an unrecoverable failure shows the message the tool chose for the user"
+      (is (= {:type "tool-output-error" :toolCallId "call-5" :errorText "Ask an admin for access."}
+             (first (sse-events [{:type   :tool-output :id "call-5"
+                                  :result {:output "This call failed and the user was shown the error."
+                                           :error  {:class        :unrecoverable
+                                                    :code         :scope-denied
+                                                    :user-message "Ask an admin for access."}}}]))))))
   (testing ":tool-input-start maps to tool-input-start"
     (is (= {:type "tool-input-start" :toolCallId "call-3" :toolName "search"}
            (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}])))))
@@ -2817,3 +2832,124 @@
       (let [models (self/known-models provider)]
         (is (seq models) provider)
         (is (every? (comp string? :display-name val) models) provider)))))
+
+;;; ===== A failed call stays failed all the way out =====
+
+(defn- throwing-tool
+  "A tool whose one job is to fail with `error-class`."
+  [tool-name thrower]
+  (reify tools.core/Tool
+    (declaration [_] {:name tool-name :description "Fails." :args [:map {:closed true}]})
+    (handle [_ _args _ctx] (thrower))))
+
+(defn- failed-outcome
+  "What the runtime hands back for a failing call of each class, through the real `invoke`."
+  [tool-name thrower]
+  (let [tool    (throwing-tool tool-name thrower)
+        entries (tools.core/entries [tool])]
+    (tools.runtime/invoke entries
+                          {:profile-id :nlq :metabot nil :user-scope #{"*"}
+                           :tool-names (set (keys entries))}
+                          tool-name
+                          {})))
+
+(defn- tool-output-part
+  "The `:tool-output` part the stream assembles for `outcome` — the shape every consumer downstream
+  of the runtime actually reads."
+  [outcome]
+  (->> [{:type :tool-input-start :toolCallId "c1" :toolName "failer"}
+        {:type :tool-input-available :toolCallId "c1" :toolName "failer"}
+        {:type :tool-output-available :toolCallId "c1" :toolName "failer" :result outcome}]
+       (into [] (self.core/aisdk-xf))
+       (filter #(= :tool-output (:type %)))
+       first))
+
+(deftest a-failed-call-is-failed-at-every-consumer-test
+  (testing (str "from `invoke` through the part to the SSE writer and persistence. Nothing spanned "
+                "this before, which is how the error moving into `:result` left three consumers "
+                "still reading it off the part and reporting every failure as a success.")
+    (doseq [[label thrower expected-text]
+            [["recoverable"
+              #(tools.error/throw-recoverable! :metabase.metabot.tools.recoverable.common/not-found
+                                               {:kind :table :id 7})
+              "Metabot could not complete this step."]
+             ["unrecoverable with a :user-message"
+              #(tools.error/unrecoverable! ::nope {:user-message "Ask an admin for access."})
+              "Ask an admin for access."]
+             ["unrecoverable without one"
+              #(tools.error/unrecoverable! ::nope {})
+              "Metabot could not complete this step."]]]
+      (testing label
+        (let [outcome (failed-outcome "failer" thrower)
+              part    (tool-output-part outcome)]
+          (testing "the outcome carries the error inside :result, and only there"
+            (is (some? (:error outcome)))
+            (is (not (contains? part :error))
+                "a second copy on the part is what let a failure read as a success"))
+          (testing "the SSE writer emits tool-output-error with text written for a reader"
+            (let [events (into [] (self.core/parts->aisdk-sse-xf) [part])
+                  body   (apply str events)]
+              (is (str/includes? body "tool-output-error") body)
+              (is (str/includes? body expected-text) body)
+              (testing "and never the model's own text, nor the EDN of the error map"
+                (is (not (str/includes? body "Don't retry")) body)
+                (is (not (str/includes? body ":class")) body))))
+          (testing (str "persistence stores it as a failed step, keeping the MODEL's text: "
+                        "`tool-part->llm-messages` replays `:errorText` to the model, so a generic "
+                        "sentence here would lose the authored failure on every replay")
+            (let [stored (#'persistence/internal-parts->storable
+                          [{:type :tool-input :id "c1" :function "failer" :arguments {}}
+                           part])
+                  entry  (first (filter #(= "tool-failer" (:type %)) stored))]
+              (is (= "output-error" (:state entry)) (pr-str entry))
+              (is (= (:output outcome) (:errorText entry)))
+              (is (nil? (:output entry))
+                  "a failed step stores no :output; its text is the :errorText")
+              (testing "and that text replays to the model verbatim"
+                ;; a pair: the assistant's tool_call, then the `:tool` message the model reads
+                (is (= (:output outcome)
+                       (:content (last (persistence/tool-part->llm-messages entry)))))))))))))
+
+(deftest a-rejected-argument-is-failed-at-every-consumer-test
+  (testing (str "the validation class takes the same path, and its message is the most "
+                "model-facing text there is — it names the argument and the repair")
+    (let [tool    (reify tools.core/Tool
+                    (declaration [_] {:name "strict" :description "Takes an int."
+                                      :args [:map {:closed true} [:n :int]]})
+                    (handle [_ _ _] {:output "unreachable"}))
+          entries (tools.core/entries [tool])
+          outcome (tools.runtime/invoke entries
+                                        {:profile-id :nlq :metabot nil :user-scope #{"*"}
+                                         :tool-names #{"strict"}}
+                                        "strict" {:n "not an int"})
+          part    (tool-output-part outcome)
+          body    (apply str (into [] (self.core/parts->aisdk-sse-xf) [part]))]
+      (is (= :validation (get-in outcome [:error :class])))
+      (is (str/includes? (:output outcome) "`n`") "the model is told which argument")
+      (is (str/includes? body "tool-output-error") body)
+      (is (str/includes? body "Metabot could not complete this step.") body)
+      (testing "and the argument message is not shown to the reader"
+        (is (not (str/includes? body "`n`")) body))
+      (testing "but it is what replays to the model"
+        (let [stored (#'persistence/internal-parts->storable
+                      [{:type :tool-input :id "c1" :function "strict" :arguments {}} part])
+              entry  (first (filter #(= "tool-strict" (:type %)) stored))]
+          (is (str/includes? (:errorText entry) "`n`") (pr-str entry)))))))
+
+(deftest a-successful-call-is-still-successful-test
+  (testing "the same path, with nothing to report"
+    (let [tool    (reify tools.core/Tool
+                    (declaration [_] {:name "fine" :description "Works." :args [:map {:closed true}]})
+                    (handle [_ _ _] {:output "all good"}))
+          entries (tools.core/entries [tool])
+          outcome (tools.runtime/invoke entries
+                                        {:profile-id :nlq :metabot nil :user-scope #{"*"}
+                                         :tool-names #{"fine"}}
+                                        "fine" {})
+          part    (tool-output-part outcome)
+          body    (apply str (into [] (self.core/parts->aisdk-sse-xf) [part]))
+          stored  (#'persistence/internal-parts->storable
+                   [{:type :tool-input :id "c1" :function "failer" :arguments {}} part])]
+      (is (nil? (:error outcome)))
+      (is (str/includes? body "tool-output-available") body)
+      (is (= "output-available" (:state (first (filter #(= "tool-failer" (:type %)) stored))))))))
