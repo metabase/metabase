@@ -1,5 +1,6 @@
 (ns metabase.actions.models
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
@@ -160,7 +161,14 @@
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
       (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
-        (check-collection-content <>)))))
+        (check-collection-content <>))
+      (let [in-data-app? (and (some? (:collection_id <>)) (perms/data-app-collection? (:collection_id <>)))]
+        ;; an export leaves out an archived action, and the next pull would then delete it from every instance
+        (when (and in-data-app? (changed? :archived) (:archived <>))
+          (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
+        ;; an export writes the link into the action's file, which every pull then refuses
+        (when (and in-data-app? (changed? :public_uuid) (:public_uuid <>))
+          (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -251,9 +259,34 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
+(defn- query-card-ids
+  "The IDs of the Cards the native `query` reads through card template tags."
+  [query]
+  (into #{}
+        (keep (fn [path]
+                (let [{:keys [model id]} (last path)]
+                  (when (= "Card" model) id))))
+        (serdes/mbql-deps true query)))
+
+(defn- check-data-app-action-query
+  "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
+  while the collection is a data app's."
+  [collection-id query]
+  ;; the next export writes the action into the app's files, and a pull refuses one that reads a card outside
+  (when (and (some? collection-id)
+             (perms/data-app-collection? collection-id))
+    (let [card-ids (query-card-ids query)
+          outside  (when (seq card-ids)
+                     (actions.db/card-ids-outside-collection card-ids collection-id))]
+      (when (seq outside)
+        (throw (ex-info (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
 ;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (mu/defn- insert*! :- ::actions.schema/id
   [action-data :- ::actions.schema/action.for-insert]
+  (check-data-app-action-query (:collection_id action-data) (:dataset_query action-data))
   (t2/with-transaction [_conn]
     (let [action (actions.db/insert-action! (select-keys action-data action-columns))
           row    (-> (apply dissoc action-data action-columns)
@@ -274,6 +307,12 @@
    existing-action          :- ::actions.schema/action]
   (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
                   (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
+    (check-data-app-action-query (if (contains? updates :collection_id)
+                                   (:collection_id updates)
+                                   (:collection_id existing-action))
+                                 (if (contains? updates :dataset_query)
+                                   (:dataset_query updates)
+                                   (:dataset_query existing-action)))
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))
@@ -666,7 +705,7 @@
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
                   :model-name :model.name}
-   :where        [:= :collection.namespace nil]
+   :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
                   :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})

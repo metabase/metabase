@@ -13,17 +13,14 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
-import {
-  Group,
-  Button as NewButton,
-  Modal as NewModal,
-  Text,
-} from "metabase/ui";
+import { Button as NewButton, Modal as NewModal, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import {
@@ -35,6 +32,7 @@ import { LegacyPermissionsModal } from "../LegacyPermissionsModal/LegacyPermissi
 import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
+import S from "./PermissionsPageLayout.module.css";
 import { PermissionsTabs } from "./PermissionsTabs";
 
 export type PermissionsPageTab =
@@ -96,7 +94,7 @@ export function PermissionsPageLayout({
   const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    navigate(`/admin/permissions/${tab}`);
+    navigate(`${getPermissionsBasePath()}/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
@@ -138,7 +136,11 @@ export function PermissionsPageLayout({
 
         <TabsContainer>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
-          <ToolbarButtonsContainer>
+          <ToolbarButtonsContainer
+            className={
+              isEmbeddingHubPermissions() ? S.hubToolbarButtons : undefined
+            }
+          >
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}
@@ -162,18 +164,17 @@ export function PermissionsPageLayout({
         title="Someone just changed permissions"
         opened={showRefreshModal}
         size="lg"
-        padding="2.5rem"
         withCloseButton={false}
         onClose={() => true}
       >
-        <Text mb="1rem">
+        <Text>
           {t`To edit permissions, you need to start from the latest version. Please refresh the page.`}
         </Text>
-        <Group justify="flex-end">
+        <NewModal.Footer>
           <NewButton onClick={() => location.reload()} variant="filled">
             {t`Refresh the page`}
           </NewButton>
-        </Group>
+        </NewModal.Footer>
       </NewModal>
       <LegacyPermissionsModal
         isOpen={showSplitPermsModal}

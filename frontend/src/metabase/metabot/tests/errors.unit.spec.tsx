@@ -127,6 +127,7 @@ describe("metabot > errors", () => {
     "ai_provider_billing",
     "ai_provider_rate_limit",
     "ai_provider_auth",
+    "ai_provider_unavailable",
   ])("should show the backend message for %s errors", async (errorCode) => {
     setup();
     mockAgentEndpoint({

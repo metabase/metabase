@@ -784,14 +784,26 @@
   [id-str]
   (resolve/entity-id? id-str))
 
+(defn collection-namespace-folder
+  "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
+  The `data-apps` namespace is the `data_apps` folder, spelled like the top-level directory of the apps themselves."
+  [collection-namespace]
+  (case (some-> collection-namespace keyword)
+    :snippets     "snippets"
+    :transforms   "transforms"
+    :data-actions "data-actions"
+    :data-apps    "data_apps"
+    "main"))
+
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
   Returns a vector of maps with `:label` and `:key` for each path segment.
-  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`"
+  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`.
+  The folder is the one of the entity's collection's namespace when it has a collection, `ns-folder` otherwise."
   ([entity ctx]
    (storage-default-collection-path entity ctx "main"))
-  ([entity {:keys [collections]} ns-folder]
-   (into [{:label "collections"} {:label ns-folder}]
+  ([entity {:keys [collections collection-namespace-folders]} ns-folder]
+   (into [{:label "collections"} {:label (get collection-namespace-folders (:collection_id entity) ns-folder)}]
          cat [(get collections (:collection_id entity))
               [{:label (:name entity) :key (:entity_id entity)}]])))
 
@@ -813,6 +825,8 @@
     the collection hierarchy.
   - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
+  - `:collection-namespace-folders` maps collection entity_id to the folder under `collections/` its namespace
+    is written to (see [[collection-namespace-folder]]).
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
@@ -834,6 +848,9 @@
                          (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
+     :collection-namespace-folders (into {}
+                                         (for [{:keys [entity_id namespace]} colls]
+                                           [entity_id (collection-namespace-folder namespace)]))
      :dashboards  dashboards
      :documents   documents
      :unique-name-fns (atom {})}))

@@ -16,6 +16,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai-compatible :as openai-compatible]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.xai :as xai]
@@ -118,6 +119,9 @@
                  :supported-models #'openai/supported-models
                  :context-window   #'openai/context-window-tokens
                  :reasoning?       #'openai/streams-reasoning?}
+   "openai-compatible" {:stream           #'openai-compatible/openai-compatible
+                        :list-models      #'openai-compatible/list-models
+                        :reasoning?       #'openai-compatible/streams-reasoning?}
    "openrouter" {:stream           #'openrouter/openrouter
                  :list-models      #'openrouter/list-models
                  :supported-models #'openrouter/supported-models

@@ -56,7 +56,7 @@ try {
     fs.readFileSync(path.join(installedPackage, "package.json"), "utf8"),
   );
 
-  // Check that both esbuild and typescript modules are installed and can be used
+  // Check that the esbuild module the CLI bundles definition files with is installed and can be used
   execFileSync(
     process.execPath,
     [
@@ -66,26 +66,26 @@ try {
         const sdkRequire = createRequire(${JSON.stringify(path.join(installedPackage, "package.json"))});
 
         sdkRequire("esbuild").transformSync("const value: number = 1", { loader: "ts" });
-        sdkRequire("typescript").transpileModule("const value: number = 1", {});
       `,
     ],
     NPM_COMMAND_OPTIONS,
   );
 
-  // Check that the installed CLI has data apps sync command
-  const output = execFileSync(
-    process.execPath,
-    [
-      path.join(installedPackage, manifest.bin),
-      "data-apps",
-      "sync-resources",
-      "--help",
-    ],
-    NPM_COMMAND_OPTIONS,
-  );
+  for (const command of ["write-resources", "check-resources"]) {
+    const output = execFileSync(
+      process.execPath,
+      [
+        path.join(installedPackage, manifest.bin),
+        "data-apps",
+        command,
+        "--help",
+      ],
+      NPM_COMMAND_OPTIONS,
+    );
 
-  assert.match(output, /Usage: .*sync-resources/);
-  assert.match(output, /--app-root/);
+    assert.match(output, new RegExp(`Usage: .*${command}`));
+    assert.match(output, /--app-root/);
+  }
 
   console.log("SDK package smoke test passed.");
 } finally {

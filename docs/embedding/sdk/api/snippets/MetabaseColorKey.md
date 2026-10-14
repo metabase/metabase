@@ -236,6 +236,7 @@ type MetabaseColorKey =
   | "illustration-tertiary-brand"
   | "input-background"
   | "input-focus"
+  | "modal-border"
   | "modal-overlay"
   | "segmented_control-hover"
   | "segmented_control-pressed"

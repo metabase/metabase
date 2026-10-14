@@ -1,0 +1,4 @@
+/* The panel's shadow is not a theme token */
+.shadow {
+  box-shadow: 0 1px 12px var(--mb-color-shadow-default);
+}

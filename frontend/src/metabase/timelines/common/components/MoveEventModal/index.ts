@@ -1,3 +1,2 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./MoveEventModal";
+export { MoveEventModal } from "./MoveEventModal";
 export type { MoveEventModalProps } from "./MoveEventModal";

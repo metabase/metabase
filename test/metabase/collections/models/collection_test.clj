@@ -479,6 +479,24 @@
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
 
+(deftest visible-collection-ids-root-namespace-test
+  (mt/with-temp [:model/Collection {default-id :id} {}
+                 :model/Collection {data-actions-id :id} {:namespace "data-actions"}]
+    (letfn [(visible-collection-ids* [config]
+              (into #{}
+                    (keep {default-id 'default, data-actions-id 'data-actions, "root" 'root})
+                    (visible-collection-ids (merge {:permission-level :read} config))))]
+      (with-current-user-perms-for-collections! [default-id data-actions-id]
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+          (testing "the default root needs the default root's permission"
+            (is (= '#{root default data-actions} (visible-collection-ids* {}))))
+          (testing "another namespace's root needs that root's permission"
+            (is (= '#{default data-actions} (visible-collection-ids* {:root-namespace :data-actions}))))
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-all-users-permission "/collection/namespace/data-actions/root/read/"
+              (is (= '#{root default data-actions} (visible-collection-ids* {:root-namespace :data-actions})))
+              (is (= '#{default data-actions} (visible-collection-ids* {}))))))))))
+
 (deftest effective-location-path-test
   (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)]
     (testing "valid input"
