@@ -80,7 +80,6 @@ const SELECTABLE_STATES = [
   "disabled",
   "selected",
   "selected-hover",
-  "selected-active",
   "selected-disabled",
 ] as const;
 
@@ -108,7 +107,6 @@ const STATE_LABELS: Record<MatrixState, string> = {
   loading: "loading",
   selected: "selected",
   "selected-hover": "hover (selected)",
-  "selected-active": "pressed (selected)",
   "selected-disabled": "disabled (selected)",
 };
 
