@@ -660,7 +660,7 @@
                     :name                   "progress with dynamic goal"
                     :display                :progress
                     :visualization_settings {:progress.goal goal-ref}}
-          data     {:cols                [{:name "count" :base_type :type/Integer}]
+          data     {:cols                [{:name "count" :display_name "Count" :base_type :type/Integer}]
                     :rows                [[42]]
                     :referenced_entities goal-referenced-entities}]
       (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
@@ -723,32 +723,40 @@
 
 (def ^:private stub-svg "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>")
 
-(defn- render-broken-goal-html
-  "Renders a bar card whose goal references a card that failed, with `graph.show_goal` set to `show-goal`."
+(defn- render-broken-goal
+  "Renders a bar card whose goal references a card that failed, with `graph.show_goal` set to `show-goal`. Returns
+  the HTML and the viz settings the JS renderer got."
   [show-goal]
-  (let [card {:id                     1
-              :name                   "bar with broken goal"
-              :display                :bar
-              :visualization_settings {:graph.dimensions ["x"]
-                                       :graph.metrics    ["y"]
-                                       :graph.show_goal  show-goal
-                                       :graph.goal_value goal-ref}}
-        data {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
-                                    {:name         "y"
-                                     :display_name "Y"
-                                     :base_type    :type/Integer
-                                     :source       :aggregation}]
-              :rows                [["a" 1]]
-              :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}]
-    ;; render-pulse-card-for-display returns the content hiccup directly
-    (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data}))))
+  (let [captured (atom nil)
+        card     {:id                     1
+                  :name                   "bar with broken goal"
+                  :display                :bar
+                  :visualization_settings {:graph.dimensions ["x"]
+                                           :graph.metrics    ["y"]
+                                           :graph.show_goal  show-goal
+                                           :graph.goal_value goal-ref}}
+        data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                        {:name         "y"
+                                         :display_name "Y"
+                                         :base_type    :type/Integer
+                                         :source       :aggregation}]
+                  :rows                [["a" 1]]
+                  :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
+        html     (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                               (reset! captured viz-settings)
+                                                               {:type :svg :content stub-svg})]
+                   ;; render-pulse-card-for-display returns the content hiccup directly
+                   (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data})))]
+    {:html html, :viz-settings @captured}))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
-  (testing "a failed referenced query fails that card's render into the standard error box"
-    (is (str/includes? (render-broken-goal-html true) render-error-box))))
+  (testing "a failed referenced query still renders the chart, with the goal line at 0"
+    (let [{:keys [html viz-settings]} (render-broken-goal true)]
+      (is (not (str/includes? html render-error-box)))
+      (is (= 0 (:graph.goal_value viz-settings))))))
 
 (deftest ^:parallel render-hidden-failed-dynamic-goal-test
-  (testing "but not when the card doesn't show the goal line: nothing renders that value"
-    (binding [js.svg/*javascript-visualization* (fn [_cards-with-data _viz-settings]
-                                                  {:type :svg :content stub-svg})]
-      (is (not (str/includes? (render-broken-goal-html false) render-error-box))))))
+  (testing "a goal line the card doesn't show is left as-is: nothing renders that value"
+    (let [{:keys [html viz-settings]} (render-broken-goal false)]
+      (is (not (str/includes? html render-error-box)))
+      (is (= goal-ref (:graph.goal_value viz-settings))))))

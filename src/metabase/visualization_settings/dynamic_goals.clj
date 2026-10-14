@@ -129,14 +129,41 @@
       (first-row-value data goal-value {:column goal-value})
       goal-value)))
 
+(defn- resolve-or-nil
+  "`(resolve goal-value)`, or nil when it throws `::unresolved-goal`."
+  [resolve goal-value]
+  (try
+    (resolve goal-value)
+    (catch clojure.lang.ExceptionInfo e
+      (when-not (= ::unresolved-goal (:type (ex-data e)))
+        (throw e)))))
+
+(defn resolve-segments
+  "Resolve every segment's `:min`/`:max` with `resolve-bound` (one of the resolvers above). A bound that can't
+  resolve becomes nil, as if it was never set."
+  [segments resolve-bound]
+  (mapv (fn [segment]
+          (cond-> segment
+            (some? (:min segment)) (update :min #(resolve-or-nil resolve-bound %))
+            (some? (:max segment)) (update :max #(resolve-or-nil resolve-bound %))))
+        segments))
+
 (defn resolve-dynamic-goals
-  "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution. A goal
-  the chart doesn't show is left as-is, so a failed reference behind it can't break the render. Toggles
-  are read from `effective-settings`, which defaults to `viz-settings`: resolving one half of a
-  card+dashcard pair has to consult the merge, since either half can flip `graph.show_goal`."
+  "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution, best-effort so the
+  chart still renders: a goal value that can't resolve falls back to 0, and a segment bound that can't resolve
+  becomes nil. A goal the chart doesn't show is left as-is. Toggles are read from `effective-settings`, which
+  defaults to `viz-settings`: resolving one half of a card+dashcard pair has to consult the merge, since either half
+  can flip `graph.show_goal`."
   ([viz-settings referenced-entities]
    (resolve-dynamic-goals viz-settings referenced-entities viz-settings))
   ([viz-settings referenced-entities effective-settings]
-   (update-values-in viz-settings
-                     (shown-goal-settings effective-settings)
-                     #(resolve-goal-value % referenced-entities))))
+   (let [resolve #(resolve-goal-value % referenced-entities)]
+     (reduce-kv
+      (fn [viz setting kind]
+        (if (nil? (get viz setting))
+          viz
+          (case kind
+            :value    (update viz setting #(or (resolve-or-nil resolve %) 0))
+            :segments (update viz setting resolve-segments resolve))))
+      viz-settings
+      (shown-goal-settings effective-settings)))))

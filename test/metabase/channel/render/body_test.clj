@@ -409,19 +409,18 @@
       "42%"
       ""
       nil))
-  (testing "a bound that can't resolve fails the render"
-    (are [segments] (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
-                                      (scalar-style (scalar-results segments)))
+  (testing "a bound that can't resolve counts as unset, leaving the range open-ended on that side"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) segment-color)
       [{:min 0 :max "nope" :color segment-color}]
-      [{:min 0 :max {:id 1 :type "card" :column "count"} :color segment-color}]))
-  (testing "a self-column bound fails the render when its cell is null or the result has no rows"
-    (are [results] (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal \(not-a-number\): column count"
-                                     (scalar-style results))
+      [{:min 0 :max {:id 1 :type "card" :column "count"} :color segment-color}])
+    (is (str/includes? (scalar-style (assoc (scalar-results [{:min 0 :max "target" :color segment-color}])
+                                            :rows [[42 nil]]))
+                       segment-color)))
+  (testing "a segment left with no bounds colors nothing"
+    (are [results] (not (str/includes? (scalar-style results) segment-color))
+      (scalar-results [{:min "nope" :color segment-color}])
       (scalar-results [{:min "count" :color segment-color}] nil)
-      (assoc (scalar-results [{:min "count" :color segment-color}]) :rows []))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal \(not-a-number\): column target"
-                          (scalar-style (assoc (scalar-results [{:min 0 :max "target" :color segment-color}])
-                                               :rows [[42 nil]]))))))
+      (assoc (scalar-results [{:min "count" :color segment-color}]) :rows []))))
 
 (deftest ^:parallel scalar-test-5
   (testing "Includes raw text"

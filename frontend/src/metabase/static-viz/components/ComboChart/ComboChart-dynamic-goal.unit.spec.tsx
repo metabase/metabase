@@ -53,18 +53,20 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       expect(svg).toContain(">250<");
     });
 
-    it("throws for a reference the dataset has not answered", () => {
-      expect(() => toSvg(createSeries(display))).toThrow(
-        "Couldn't load the value this chart's goal depends on.",
-      );
+    it("draws the goal line at 0 for a reference the dataset has not answered", () => {
+      const svg = toSvg(createSeries(display));
+
+      expect(svg).toContain(GOAL_LABEL);
+      expect(svg).not.toContain(">250<");
     });
 
-    it("throws for a reference whose query failed", () => {
-      expect(() =>
-        toSvg(
-          createSeries(display, createMockFailedReferencedEntitiesResults()),
-        ),
-      ).toThrow("Couldn't load the value this chart's goal depends on.");
+    it("draws the goal line at 0 for a reference the dataset reports as failed", () => {
+      const svg = toSvg(
+        createSeries(display, createMockFailedReferencedEntitiesResults()),
+      );
+
+      expect(svg).toContain(GOAL_LABEL);
+      expect(svg).not.toContain(">250<");
     });
   },
 );

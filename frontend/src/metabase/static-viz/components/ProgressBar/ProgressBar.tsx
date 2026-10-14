@@ -9,15 +9,10 @@ import {
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
-  getForeignGoalRefs,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
 } from "metabase/visualizations/visualizations/Progress/utils";
-import {
-  getUnresolvedGoalMessage,
-  hasUnresolvedGoalValues,
-} from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
 import Watermark from "../../watermark.svg?component";
@@ -59,10 +54,6 @@ export const ProgressBar = ({
     const valueField = settings["progress.value"];
     const { cols, rows } = seriesData;
     const goalSetting = settings["progress.goal"];
-
-    if (hasUnresolvedGoalValues(seriesData, getForeignGoalRefs(goalSetting))) {
-      throw new Error(getUnresolvedGoalMessage("value"));
-    }
 
     const column = findProgressColumn(cols, valueField);
     const columnIndex = column
