@@ -1,6 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSignedJwtForResource, updateSetting } from "e2e/support/helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
+import type {
+  NavigatedEntityParameterChangePayload,
+  NavigationId,
+} from "embedding-sdk-bundle/types/navigation";
+import type { MetabaseDashboardElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { Parameter } from "metabase-types/api";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -50,6 +55,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
         parameters: [TARGET_DASHBOARD_FILTER],
       }).then(({ body: targetDashboard }) => {
         cy.wrap(targetDashboard.id).as("targetDashboardId");
+        cy.wrap(targetDashboard.entity_id).as("targetDashboardEntityId");
 
         H.createQuestion({
           name: "Orders for Target Dashboard",
@@ -196,6 +202,103 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
+    });
+
+    it("should report and control the parameters of a navigated dashboard through the custom element", () => {
+      const onNavigatedEntityParametersChange = cy
+        .stub()
+        .as("onNavigatedEntityParametersChange");
+
+      cy.get<number>("@startingDashboardId").then((startingDashboardId) => {
+        H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript({})}
+          <metabase-dashboard dashboard-id="${startingDashboardId}" drills enable-entity-navigation />
+        `);
+      });
+
+      cy.window().then((win) => {
+        cy.get("metabase-dashboard").then(([dashboardElement]) => {
+          dashboardElement.addEventListener(
+            "navigated-entity-parameters-change",
+            (event) => {
+              if (event instanceof win.CustomEvent) {
+                const payload: unknown = event.detail;
+                onNavigatedEntityParametersChange(payload);
+              }
+            },
+          );
+        });
+      });
+
+      cy.wait("@getDashCardQuery");
+
+      cy.log("click on the dashboard link");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Go to Target Dashboard")
+        .should("have.length", 5)
+        .first()
+        .click();
+
+      H.getSimpleEmbedIframeContent()
+        .findByText("Target Dashboard")
+        .should("be.visible");
+
+      cy.log("the navigation reports the initial state of the target");
+      cy.get<string>("@targetDashboardEntityId").then(
+        (targetDashboardEntityId) => {
+          cy.get("@onNavigatedEntityParametersChange").should(
+            "have.been.calledWithMatch",
+            {
+              source: "initial-state",
+              entityType: "dashboard",
+              entityId: targetDashboardEntityId,
+              navigationId: Cypress.sinon.match.string,
+              clickParameters: { [TARGET_DASHBOARD_FILTER.slug]: [1] },
+            },
+          );
+        },
+      );
+
+      cy.get<sinon.SinonStub<[NavigatedEntityParameterChangePayload]>>(
+        "@onNavigatedEntityParametersChange",
+      )
+        .then((stub) => stub.firstCall.args[0].navigationId)
+        .as("navigationId");
+
+      cy.log("the host sets the filter of this visit via the element property");
+      cy.get<NavigationId>("@navigationId").then((navigationId) => {
+        cy.get<MetabaseDashboardElement>("metabase-dashboard").then(
+          ([dashboardElement]) => {
+            dashboardElement.navigatedEntityParameters = {
+              [navigationId]: { [TARGET_DASHBOARD_FILTER.slug]: [2] },
+            };
+          },
+        );
+      });
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-parameters-widget-container")
+        .findByLabelText("ID Filter")
+        .should("contain", "2")
+        .and("not.contain", "1");
+
+      cy.log("the user clears the filter in the iframe");
+      H.getSimpleEmbedIframeContent().within(() => {
+        H.filterWidget({ name: "ID Filter" }).icon("close").click();
+      });
+
+      cy.get<NavigationId>("@navigationId").then((navigationId) => {
+        cy.get("@onNavigatedEntityParametersChange").should(
+          "have.been.calledWithMatch",
+          {
+            source: "manual-change",
+            entityType: "dashboard",
+            navigationId,
+            parameters: { [TARGET_DASHBOARD_FILTER.slug]: null },
+          },
+        );
+      });
     });
 
     it("should navigate to a linked question with parameters when clicking a question link", () => {
