@@ -9,13 +9,11 @@ import {
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Group, Icon, Stack, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { contentDiagnosticsApi } from "metabase-enterprise/api/content-diagnostics";
+import { useGetContentDiagnosticsCountsQuery } from "metabase-enterprise/api/content-diagnostics";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const { currentData: counts, isError } =
-    contentDiagnosticsApi.endpoints.getContentDiagnosticsCounts.useQueryState(
-      undefined,
-    );
+    useGetContentDiagnosticsCountsQuery();
   const tabs: PillTab[] = [
     {
       label: c("Navigation tab for content that hasn't been used recently")

@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupContentDiagnosticsCountsEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListStaleFindingsEndpoint,
   setupUpdateCardEndpointWithError,
@@ -97,6 +98,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router, store } = renderWithProviders(
