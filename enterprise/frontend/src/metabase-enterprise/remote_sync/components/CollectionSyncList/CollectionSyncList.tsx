@@ -6,10 +6,15 @@ import { Box, Flex, Loader, Text } from "metabase/ui";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
-  RemoteSyncConfigurationSettings,
 } from "metabase-types/api";
 
-import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
+import {
+  COLLECTIONS_KEY,
+  SYNC_LIBRARY_PENDING_KEY,
+  TRANSFORMS_KEY,
+  TYPE_KEY,
+} from "../../constants";
+import type { RemoteSyncSettingsFormState } from "../../types";
 import { CollectionSyncRow } from "../CollectionSyncRow";
 import { LibrarySyncRow } from "../LibrarySyncRow";
 import { TransformsSyncRow } from "../TransformsSyncRow";
@@ -37,18 +42,32 @@ export const CollectionSyncList = ({
   showLibraryPlaceholder,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
-    useFormikContext<RemoteSyncConfigurationSettings>();
+    useFormikContext<RemoteSyncSettingsFormState>();
 
   const currentType = values[TYPE_KEY];
   const isReadOnly = currentType === "read-only";
   const previousType = usePrevious(currentType);
 
-  // Reset collections to initial values when switching from read-write to read-only
   useEffect(() => {
     if (previousType === "read-write" && currentType === "read-only") {
       setFieldValue(COLLECTIONS_KEY, initialValues[COLLECTIONS_KEY] ?? {});
+      setFieldValue(TRANSFORMS_KEY, initialValues[TRANSFORMS_KEY]);
+      setFieldValue(
+        SYNC_LIBRARY_PENDING_KEY,
+        initialValues[SYNC_LIBRARY_PENDING_KEY],
+      );
     }
-  }, [currentType, initialValues, setFieldValue, previousType]);
+    if (previousType === "read-only" && currentType === "read-write") {
+      setFieldValue(TRANSFORMS_KEY, true);
+      setFieldValue(SYNC_LIBRARY_PENDING_KEY, true);
+      const libraryCollection = collections.find(
+        (collection) => collection.type === "library",
+      );
+      if (libraryCollection) {
+        setFieldValue(`${COLLECTIONS_KEY}.${libraryCollection.id}`, true);
+      }
+    }
+  }, [collections, currentType, initialValues, setFieldValue, previousType]);
 
   const handleToggle = useCallback(
     (collection: CollectionItem, checked: boolean) => {
@@ -66,20 +85,16 @@ export const CollectionSyncList = ({
         collection={collection}
         isChecked={syncMap[collection.id] ?? false}
         onToggle={handleToggle}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || collection.type === "library"}
       />
     ));
 
     if (showLibraryPlaceholder) {
-      rowsItems.unshift(
-        <LibrarySyncRow key="library-placeholder" isReadOnly={isReadOnly} />,
-      );
+      rowsItems.unshift(<LibrarySyncRow key="library-placeholder" />);
     }
 
     if (showTransformsRow) {
-      const transformsRow = (
-        <TransformsSyncRow key="transforms" isReadOnly={isReadOnly} />
-      );
+      const transformsRow = <TransformsSyncRow key="transforms" />;
       const libraryIndex = collections.findIndex(
         (collection) => collection.type === "library",
       );

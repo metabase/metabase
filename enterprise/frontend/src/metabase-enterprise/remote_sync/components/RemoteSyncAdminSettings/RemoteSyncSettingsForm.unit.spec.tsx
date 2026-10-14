@@ -226,7 +226,7 @@ describe("RemoteSyncSettingsForm", () => {
         expect(libraryToggle).toBeChecked();
       });
 
-      it("should respect existing sync state when remote sync is already enabled", async () => {
+      it("should keep the library synced on a read-write instance even when it is not synced yet", async () => {
         const libraryCollection = createMockLibraryCollection({
           id: 999,
           name: "Library",
@@ -246,30 +246,8 @@ describe("RemoteSyncSettingsForm", () => {
         });
 
         const libraryToggle = screen.getByLabelText("Sync Library");
-        expect(libraryToggle).not.toBeChecked();
-      });
-
-      it("should allow toggling library sync state", async () => {
-        const libraryCollection = createMockLibraryCollection({
-          id: 999,
-          name: "Library",
-        });
-
-        setup({
-          remoteSyncType: "read-write",
-          variant: "settings-modal",
-          libraryCollection,
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText("Content to sync")).toBeInTheDocument();
-        });
-
-        const libraryToggle = screen.getByLabelText("Sync Library");
         expect(libraryToggle).toBeChecked();
-
-        await userEvent.click(libraryToggle);
-        expect(libraryToggle).not.toBeChecked();
+        expect(libraryToggle).toBeDisabled();
       });
     });
 
@@ -305,7 +283,7 @@ describe("RemoteSyncSettingsForm", () => {
         expect(libraryToggle).toBeChecked();
       });
 
-      it("should allow toggling library sync state when library does not exist", async () => {
+      it("should not allow turning off library sync when library does not exist", async () => {
         setup({
           remoteSyncType: "read-write",
           variant: "settings-modal",
@@ -318,9 +296,7 @@ describe("RemoteSyncSettingsForm", () => {
 
         const libraryToggle = screen.getByLabelText("Sync Library");
         expect(libraryToggle).toBeChecked();
-
-        await userEvent.click(libraryToggle);
-        expect(libraryToggle).not.toBeChecked();
+        expect(libraryToggle).toBeDisabled();
       });
     });
 
@@ -385,7 +361,7 @@ describe("RemoteSyncSettingsForm", () => {
         expect(transformsToggle).toBeChecked();
       });
 
-      it("should respect existing sync state when remote sync is already enabled", async () => {
+      it("should keep transforms synced on a read-write instance even when the setting is off", async () => {
         PLUGIN_TRANSFORMS.isEnabled = true;
         const libraryCollection = createMockLibraryCollection({ id: 999 });
 
@@ -403,28 +379,8 @@ describe("RemoteSyncSettingsForm", () => {
         });
 
         const transformsToggle = screen.getByLabelText("Sync Transforms");
-        expect(transformsToggle).not.toBeChecked();
-      });
-
-      it("should allow toggling transforms sync state", async () => {
-        PLUGIN_TRANSFORMS.isEnabled = true;
-        const libraryCollection = createMockLibraryCollection({ id: 999 });
-
-        setup({
-          remoteSyncType: "read-write",
-          variant: "settings-modal",
-          libraryCollection,
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText("Content to sync")).toBeInTheDocument();
-        });
-
-        const transformsToggle = screen.getByLabelText("Sync Transforms");
         expect(transformsToggle).toBeChecked();
-
-        await userEvent.click(transformsToggle);
-        expect(transformsToggle).not.toBeChecked();
+        expect(transformsToggle).toBeDisabled();
       });
     });
   });
@@ -444,6 +400,51 @@ describe("RemoteSyncSettingsForm", () => {
       expect(
         screen.queryByLabelText("Sync Transforms"),
       ).not.toBeInTheDocument();
+    });
+
+    it("should show the actual transforms sync state on a read-only instance", async () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeChecked();
+      });
+
+      const transformsToggle = screen.getByLabelText("Sync Transforms");
+      expect(transformsToggle).not.toBeChecked();
+      expect(transformsToggle).toBeDisabled();
+    });
+
+    it("should turn transforms sync on when switching to read-write and restore it when switching back", async () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeChecked();
+      });
+      expect(screen.getByLabelText("Sync Transforms")).not.toBeChecked();
+
+      await userEvent.click(screen.getByLabelText("Read-write"));
+      await waitFor(() => {
+        expect(screen.getByLabelText("Sync Transforms")).toBeChecked();
+      });
+
+      await userEvent.click(screen.getByLabelText("Read-only"));
+      await waitFor(() => {
+        expect(screen.getByLabelText("Sync Transforms")).not.toBeChecked();
+      });
     });
 
     it("should display transforms row in collections list when transforms feature is enabled", async () => {
@@ -685,6 +686,35 @@ describe("RemoteSyncSettingsForm", () => {
       );
       expect(settingsRequest).toBeDefined();
       expect(settingsRequest?.body).not.toHaveProperty("collections");
+    });
+
+    it("should always send transforms sync as on for a read-write instance", async () => {
+      setup({
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      const urlInput = screen.getByLabelText(/Repository URL/i);
+      await userEvent.clear(urlInput);
+      await userEvent.type(urlInput, "https://github.com/test/other-repo.git");
+      await userEvent.click(
+        screen.getByRole("button", { name: /Save changes/i }),
+      );
+
+      const puts = await findRequests("PUT");
+      const settingsRequest = puts.find((r) =>
+        r.url.includes("/api/ee/remote-sync/settings"),
+      );
+      expect(settingsRequest?.body).toHaveProperty(
+        "remote-sync-transforms",
+        true,
+      );
     });
 
     it("should only send changed collections in request body", async () => {

@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 
 import { useListCollectionItemsQuery } from "metabase/api";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -17,6 +16,7 @@ import {
   SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
   TRANSFORMS_KEY,
+  TYPE_KEY,
 } from "../constants";
 import type {
   RemoteSyncSettingsFormState,
@@ -62,12 +62,13 @@ export const useRemoteSyncInitialValues = (
       settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
 
     const collectionSyncMap: Record<number, boolean> = {};
-    const shouldDefaultToChecked = isModalVariant && !isRemoteSyncEnabled;
+    const isAlwaysSynced =
+      values[TYPE_KEY] === "read-write" ||
+      (isModalVariant && !isRemoteSyncEnabled);
 
     if (libraryCollection) {
-      collectionSyncMap[libraryCollection.id] = shouldDefaultToChecked
-        ? true
-        : (libraryCollection.is_remote_synced ?? false);
+      collectionSyncMap[libraryCollection.id] =
+        isAlwaysSynced || (libraryCollection.is_remote_synced ?? false);
     }
 
     topLevelCollectionsData?.data
@@ -84,11 +85,8 @@ export const useRemoteSyncInitialValues = (
       ...values,
       [TOKEN_KEY]: tokenValue,
       [COLLECTIONS_KEY]: collectionSyncMap,
-      [TRANSFORMS_KEY]:
-        shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
-          ? true
-          : values[TRANSFORMS_KEY],
-      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
+      [TRANSFORMS_KEY]: isAlwaysSynced || values[TRANSFORMS_KEY],
+      [SYNC_LIBRARY_PENDING_KEY]: isAlwaysSynced && !libraryCollection,
     };
   }, [
     settingValues,

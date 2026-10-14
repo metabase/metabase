@@ -7,18 +7,9 @@ import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TRANSFORMS_KEY } from "../../constants";
 
-interface TransformsSyncRowProps {
-  isReadOnly: boolean;
-}
-
-export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
-  const { values, setFieldValue } =
-    useFormikContext<RemoteSyncConfigurationSettings>();
+export const TransformsSyncRow = () => {
+  const { values } = useFormikContext<RemoteSyncConfigurationSettings>();
   const isChecked = values[TRANSFORMS_KEY] ?? false;
-
-  const handleToggle = (checked: boolean) => {
-    setFieldValue(TRANSFORMS_KEY, checked);
-  };
 
   return (
     <Box p="lg" className={CS.borderRowDivider}>
@@ -30,8 +21,8 @@ export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
         <Flex align="center" gap="sm">
           <Switch
             checked={isChecked}
-            onChange={(e) => handleToggle(e.currentTarget.checked)}
-            disabled={isReadOnly}
+            readOnly
+            disabled
             aria-label={t`Sync Transforms`}
           />
           <Text>{t`Sync`}</Text>
