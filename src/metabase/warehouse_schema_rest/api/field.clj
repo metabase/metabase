@@ -182,7 +182,8 @@
                                     {:status-code 400
                                      :base-type (:base_type field)
                                      :coercion-strategy coercion-strategy
-                                     :effective-type effective}))))))
+                                     :effective-type effective
+                                     :response/keys #{:base-type :coercion-strategy :effective-type}}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
     ;; validate that fk_target_field_id is a valid Field in the same database

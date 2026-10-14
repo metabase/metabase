@@ -58,7 +58,7 @@
       (throw (ex-info (str ":parameters must be a sequence of maps with :id and :type keys; "
                            (pr-str (me/humanize error)))
                       {:parameters parameters
-                       :errors     (:errors error)})))))
+                       :errors     (me/humanize error)})))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Parameterized Object and check if its parameters is valid."
@@ -67,7 +67,7 @@
     (when-not (mr/validate schema parameter-mappings)
       (throw (ex-info ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
                       {:parameter_mappings parameter-mappings
-                       :errors             (:errors (mr/explain schema parameter-mappings))})))))
+                       :errors             (me/humanize (mr/explain schema parameter-mappings))})))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*

@@ -83,11 +83,12 @@
         decoded (mc/decode schema external-query mtx/string-transformer)]
     (when-let [error (mr/explain ::lib.schema/external-query decoded)]
       (throw (ex-info (tru "External query has an invalid structure.")
-                      {:status-code 400
-                       :error       :invalid-external-query
-                       :humanized   (mu.humanize/humanize error)
-                       :details     (pr-str (mu.humanize/humanize error))
-                       :schema      ::lib.schema/external-query})))
+                      {:status-code   400
+                       :error         :invalid-external-query
+                       :humanized     (mu.humanize/humanize error)
+                       :details       (pr-str (mu.humanize/humanize error))
+                       :schema        ::lib.schema/external-query
+                       :response/keys #{:humanized :details}})))
     decoded))
 
 (def ^:private known-stage-keys
@@ -118,11 +119,12 @@
                            stage-idx
                            (pr-str (vec unknown))
                            (pr-str (vec (sort known-stage-keys))))
-                      {:status-code  400
-                       :error        :unknown-stage-key
-                       :agent-error? true
-                       :stage-index  stage-idx
-                       :unknown-keys (vec unknown)})))))
+                      {:status-code   400
+                       :error         :unknown-stage-key
+                       :agent-error?  true
+                       :stage-index   stage-idx
+                       :unknown-keys  (vec unknown)
+                       :response/keys #{:unknown-keys}})))))
 
 ;;; ============================================================
 ;;; Repair-pipeline schema (string-keyed portable form)
@@ -231,9 +233,10 @@
   [parsed]
   (when-let [error (mr/explain query-schema parsed)]
     (throw (ex-info (tru "Representations query has an invalid structure.")
-                    {:status-code 400
-                     :error       :invalid-representations-query
-                     :humanized   (mu.humanize/humanize error)
-                     :details     (pr-str (mu.humanize/humanize error))
-                     :schema      ::query})))
+                    {:status-code   400
+                     :error         :invalid-representations-query
+                     :humanized     (mu.humanize/humanize error)
+                     :details       (pr-str (mu.humanize/humanize error))
+                     :schema        ::query
+                     :response/keys #{:humanized :details}})))
   parsed)

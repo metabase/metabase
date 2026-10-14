@@ -1540,7 +1540,8 @@
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
                     {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
@@ -1555,7 +1556,8 @@
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
                     {:remote-synced-models remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -2365,7 +2367,8 @@
           (throw (ex-info msg {:status-code          400
                                :errors               {:collection_id msg}
                                :allowed-namespaces   allowed-namespaces
-                               :collection-namespace collection-namespace})))))))
+                               :collection-namespace collection-namespace
+                               :response/keys        #{:allowed-namespaces :collection-namespace}})))))))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
