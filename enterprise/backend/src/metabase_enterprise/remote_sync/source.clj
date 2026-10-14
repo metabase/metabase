@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.git :as git]
@@ -201,6 +202,12 @@
                   {:path path :content content})))
         (owned-paths snapshot (source.p/list-files snapshot))))
 
+(defn- data-app-file?
+  "Whether `spec` is a file of a data app or of a data app's collection."
+  [{:keys [^String path]}]
+  (or (str/starts-with? path (str data-apps/apps-dir "/"))
+      (str/starts-with? path (str "collections/" (serdes/collection-namespace-folder :data-apps) "/"))))
+
 (defn compute-merge
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
@@ -210,6 +217,9 @@
   - `stream`        - the local state to serialize (ours)
   - `snapshot`      - the current remote tip (theirs)
 
+  Where both sides changed a file that is a data app's in `base-snapshot` or `snapshot`, the remote's version wins
+  rather than conflicting.
+
   `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
   remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` is passed
   through to [[serialize-specs]]."
@@ -217,7 +227,9 @@
   (let [ours   (serialize-specs stream task-id :total total)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (remote-sync.merge/merge-with-casualties base ours theirs)))
+    ;; only an app's repository changes it, and what Metabase writes for an app's files never matches the text its
+    ;; author wrote, so they always read as changed here
+    (remote-sync.merge/merge-with-casualties base ours theirs :theirs-wins? data-app-file?)))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged

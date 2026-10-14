@@ -49,6 +49,25 @@
       (is (= 1 (count (:conflicts result))))
       (is (empty? (:merged result))))))
 
+(deftest ^:parallel theirs-wins-takes-theirs-where-both-sides-changed-test
+  (testing "an entity changed differently on both sides takes theirs when its base or theirs spec satisfies
+            :theirs-wins?, and still conflicts when only ours does"
+    (let [merge-of #(remote-sync.merge/three-way-merge %1 %2 %3 :theirs-wins? (comp #{"collections/app.yaml"} :path))]
+      (testing "edited there and here"
+        (let [result (merge-of [(card "A" "app")] [(card "A" "app" "x: ours\n")] [(card "A" "app" "x: theirs\n")])]
+          (is (empty? (:conflicts result)))
+          (is (= [(card "A" "app" "x: theirs\n")] (:merged result)))
+          (is (= {:added 0 :updated 1 :removed 0} (:summary result)))))
+      (testing "deleted there, edited here"
+        (let [result (merge-of [(card "A" "app")] [(card "A" "app" "x: ours\n")] [])]
+          (is (empty? (:conflicts result)))
+          (is (empty? (:merged result)))
+          (is (= {:added 0 :updated 0 :removed 1} (:summary result)))))
+      (testing "moved in only here"
+        (is (= 1 (count (:conflicts (merge-of [(card "A" "a")]
+                                              [(card "A" "app" "x: ours\n")]
+                                              [(card "A" "a" "x: theirs\n")])))))))))
+
 (deftest ^:parallel glossary-disjoint-edits-merge-clean-test
   (testing "local edits term A's definition and remote edits term B's -> both merged, no conflict"
     (let [base   [(glossary-entry "A" "arr") (glossary-entry "B" "mrr")]

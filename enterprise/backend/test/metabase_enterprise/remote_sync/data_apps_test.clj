@@ -615,6 +615,15 @@
     (impl/handle-task-result! result task)
     result))
 
+(defn- import-merged!
+  "Pull `version` of `src` with `merge`, as an instance with local changes whose last sync was `base-version` does."
+  [src version base-version]
+  (let [task   (new-task! "import")
+        result (impl/import! (source.p/snapshot-at src version) task
+                             :merge? true :base-snapshot (source.p/snapshot-at src base-version))]
+    (impl/handle-task-result! result task)
+    result))
+
 (deftest an-export-that-merges-checks-and-records-like-a-pull-test
   (with-data-apps-sync
     (testing "a remote file that a pull refuses is refused by an export that merges it in"
@@ -791,6 +800,73 @@
           (testing "the hook deletes the collection and what it held"
             (is (not (t2/exists? :model/Collection :id collection-id)))
             (is (not (t2/exists? :model/Card :entity_id question-eid)))))))))
+
+(def ^:private team-collection-eid "teamCollectionEntity0")
+
+(defn- team-tree
+  "The repo files of `Team`, a remote-synced collection that belongs to no app, holding one card."
+  []
+  {"collections/main/team/team.yaml"      (test-helpers/generate-collection-yaml team-collection-eid "Team"
+                                                                                 :is-remote-synced true)
+   "collections/main/team/team_card.yaml" (test-helpers/generate-card-yaml "teamCardEntityId00000" "Team card"
+                                                                           team-collection-eid)})
+
+(defn- do-with-an-app-deleted-there-and-a-change-here!
+  "Pulls `v0`, which holds the `shop` app and `Team`, edits `Team` here, and calls `f` with the source, whose `v1`
+  deleted the app's directory and its collection's files, and the ID of the app's collection."
+  [f]
+  (with-data-apps-sync
+    (let [src (test-helpers/versioned-source :trees {"v0" (merge (shop-tree (question-resources)) (team-tree))
+                                                     "v1" (team-tree)}
+                                             :current "v1")]
+      (is (= :success (:status (import-at! src "v0" :force? true))))
+      (mt/user-http-request :crowberto :put 200
+                            (str "collection/" (t2/select-one-pk :model/Collection :entity_id team-collection-eid))
+                            {:description "edited here"})
+      (f src (shop-collection-id)))))
+
+(defn- app-gone? [collection-id]
+  (not (or (t2/exists? :model/DataApp :name "shop")
+           (t2/exists? :model/Collection :id collection-id)
+           (t2/exists? :model/Card :entity_id question-eid))))
+
+(deftest a-pull-that-merges-deletes-an-app-the-repo-deleted-test
+  (testing "a change here outside any app makes a pull merge; it takes the deletion of an app's files, which Metabase
+            writes differently from their author, and keeps the change to push"
+    (do-with-an-app-deleted-there-and-a-change-here!
+     (fn [src collection-id]
+       (let [result (import-merged! src "v1" "v0")]
+         (is (= :success (:status result)) (pr-str (:conflicts result))))
+       (is (app-gone? collection-id))
+       (is (= "edited here" (t2/select-one-fn :description :model/Collection :entity_id team-collection-eid)))
+       (is (=? [{:model_type "Collection" :status "update"}] (remote-sync.object/dirty-rows)))))))
+
+(deftest a-push-that-merges-deletes-an-app-the-repo-deleted-test
+  (testing "a change here outside any app makes a push merge; it takes the deletion of an app's files, which Metabase
+            writes differently from their author, and pushes the change"
+    (do-with-an-app-deleted-there-and-a-change-here!
+     (fn [src collection-id]
+       (let [result (export-merged! src "v0")]
+         (is (= :success (:status result)) (pr-str (:conflicts result))))
+       (is (app-gone? collection-id))
+       (let [repo  (source.p/snapshot src)
+             files (source.p/list-files repo)
+             tree  (zipmap files (map #(source.p/read-file repo %) files))]
+         (is (empty? (app-files-in tree)))
+         (is (some #(and (str/includes? % (str "entity_id: " team-collection-eid))
+                         (str/includes? % "edited here"))
+                   (vals tree))))))))
+
+(deftest a-merge-that-deletes-an-app-changed-here-leaves-nothing-to-push-test
+  (testing "a pull that merges in the deletion of an app changed here doesn't mark the deleted app as a change to push"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources)) "v1" {"README.md" "x"}}
+                                               :current "v1")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (t2/update! :model/RemoteSyncObject {:model_type "DataApp"} {:status "update"})
+        (is (= :success (:status (import-merged! src "v1" "v0"))))
+        (is (not (t2/exists? :model/DataApp :name "shop")))
+        (is (= [] (map (juxt :model_type :status) (remote-sync.object/dirty-rows))))))))
 
 (deftest deleting-an-apps-directory-without-its-collection-files-still-deletes-the-app-test
   (testing "an author deletes an app's directory but leaves its collection's files: the pull doesn't fail, it deletes
@@ -1040,3 +1116,19 @@
               (is (= :success (:status result)) (:message result))))
           (testing "the export is recorded: the rows are synced"
             (is (empty? (remote-sync.object/dirty-rows)))))))))
+
+(deftest tmp-dump-merge-sides-test
+  (with-data-apps-sync
+    (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources)) "v1" {"README.md" "x"}}
+                                             :current "v1")
+          out "/private/tmp/claude-501/-Users-sanex-WebstormProjects-metabase/fa95552e-1c1c-463c-9d2b-586ae3409a84/scratchpad/merge-sides/"]
+      (import-at! src "v0" :force? true)
+      (let [exportable (requiring-resolve 'metabase-enterprise.remote-sync.spec/exportable-entities)
+            extract    (requiring-resolve 'metabase-enterprise.remote-sync.spec/extract-entities-for-export)
+            compute    (requiring-resolve 'metabase-enterprise.remote-sync.source/compute-merge)
+            {:keys [conflicts]} (compute (extract (exportable)) (source.p/snapshot-at src "v1") (source.p/snapshot-at src "v0") nil)]
+        (.mkdirs (java.io.File. out))
+        (doseq [[i {:keys [base ours]}] (map-indexed vector conflicts)]
+          (spit (str out i ".path") (str (:path base) " | " (:path ours)))
+          (spit (str out i ".base.yaml") (:content base))
+          (spit (str out i ".ours.yaml") (:content ours)))))))

@@ -101,9 +101,18 @@
     (cond-> (or (:name entity) descriptor)
       (and path (not= descriptor path)) (str " (" path ")"))))
 
+(defn- take-theirs
+  "`acc` with `tv`, the remote's side of an entity whose base was `bv`, recorded as a folded-in remote change."
+  [acc bv tv]
+  (-> (cond-> acc tv (update :merged conj tv))
+      (update-in [:summary (cond (nil? bv) :added
+                                 (nil? tv) :removed
+                                 :else     :updated)]
+                 inc)))
+
 (defn- merge-indexed
   "[[three-way-merge]] over sides already indexed by [[index-by-key]]."
-  [b o t]
+  [b o t theirs-wins?]
   (let [all-keys (into #{} (concat (keys b) (keys o) (keys t)))]
     (reduce
      (fn [acc k]
@@ -123,15 +132,15 @@
 
            ;; only theirs changed -> take theirs, and record it as folded-in remote change
            (and theirs-changed? (not ours-changed?))
-           (-> (cond-> acc tv (update :merged conj tv))
-               (update-in [:summary (cond (nil? bv) :added
-                                          (nil? tv) :removed
-                                          :else     :updated)]
-                          inc))
+           (take-theirs acc bv tv)
 
            ;; both changed the same way -> take it (no conflict)
            (same? ov tv)
            (cond-> acc ov (update :merged conj ov))
+
+           ;; both changed differently, but only the remote changes this entity -> take theirs
+           (some theirs-wins? (remove nil? [bv tv]))
+           (take-theirs acc bv tv)
 
            ;; both changed differently -> conflict
            :else
@@ -145,13 +154,17 @@
   `base`, `ours`, `theirs` are each sequences of `{:path :content}` file specs (base/theirs typically read
   from the corresponding git trees, ours freshly serialized from the app DB).
 
+  `:theirs-wins?`, given a `{:path :content}` spec, picks out the entities only the remote changes: when one changed
+  differently on both sides and its `base` or `theirs` spec satisfies it, the merge takes `theirs` rather than
+  reporting a conflict.
+
   Returns a map:
   - `:merged`    - sequence of winning `{:path :content}` specs to write
   - `:conflicts` - sequence of `{:key :ours :theirs :base}` for entities changed differently on both sides
   - `:summary`   - `{:added :updated :removed}` counts of remote-originated changes folded into the result
                    (i.e. changes coming from `theirs` that `ours` did not already have)"
-  [base ours theirs]
-  (merge-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs)))
+  [base ours theirs & {:keys [theirs-wins?] :or {theirs-wins? (constantly false)}}]
+  (merge-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs) theirs-wins?))
 
 (defn- casualties-indexed
   "[[force-push-casualties]] over sides already indexed by [[index-by-key]]."
@@ -185,10 +198,10 @@
 (defn merge-with-casualties
   "[[three-way-merge]] with `:force-push-casualties` (see [[force-push-casualties]]) assoc'd, from one
   indexing pass per side. Indexing parses every document's YAML, so callers that need both use this rather
-  than the two functions separately."
-  [base ours theirs]
+  than the two functions separately. Takes the options of [[three-way-merge]]."
+  [base ours theirs & {:keys [theirs-wins?] :or {theirs-wins? (constantly false)}}]
   (let [b (index-by-key base)
         o (index-by-key ours)
         t (index-by-key theirs)]
-    (assoc (merge-indexed b o t)
+    (assoc (merge-indexed b o t theirs-wins?)
            :force-push-casualties (casualties-indexed b o t))))

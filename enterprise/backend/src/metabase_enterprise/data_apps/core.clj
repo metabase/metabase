@@ -1,8 +1,9 @@
 (ns metabase-enterprise.data-apps.core
-  "What other modules may ask the data-apps module: what the files of an app's collection may hold, and the tables
-  those read."
+  "What other modules may ask the data-apps module: where an app's files live, what the files of its collection may
+  hold, and the tables those read."
   (:require
    [metabase-enterprise.data-apps.access :as data-app.access]
+   [metabase-enterprise.data-apps.config :as data-apps.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resource-tables :as resource-tables]
    [metabase-enterprise.data-apps.resource-validation :as resource-validation]
@@ -11,6 +12,8 @@
    [potemkin :as p]))
 
 (p/import-vars
+ [data-apps.config
+  apps-dir]
  [resource-tables
   record-table-dependencies!]
  [resource-validation

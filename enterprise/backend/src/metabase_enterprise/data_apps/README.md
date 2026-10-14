@@ -67,6 +67,11 @@ export that touches an app, takes the full rather than the incremental path. An 
 also holds its source, which serialization doesn't own, so exports replace only the YAML and
 resource files in `data_apps/`.
 
+A pull or a push made while the instance has unsynced changes merges the repository's changes with
+them. What Metabase writes for an app's files never matches the text their author wrote, so they always
+read as changed here; where the repository changed one too, its version wins rather than conflicting
+(`source/compute-merge`).
+
 An author deletes an app by deleting its directory and its collection's files under
 `collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
 hook deletes the collection with what it holds. A commit that deletes the directory but keeps the

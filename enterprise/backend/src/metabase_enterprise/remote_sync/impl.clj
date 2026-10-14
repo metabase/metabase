@@ -571,13 +571,16 @@
 
 (defn- restore-dirty-objects!
   "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
-  captured row, updates the matching freshly-synced row's status, or re-inserts it when no row exists
-  (e.g. a pending local deletion, whose entity is absent from the merged set)."
+  captured row, updates the matching freshly-synced row's status, or re-inserts it when no row exists and it is a
+  pending local deletion, whose entity is absent from the merged set."
   [dirty-objects timestamp]
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
     (if-let [existing (remote-sync.db/rso model_type model_id)]
       (remote-sync.db/update-rso! (:id existing) {:status status :status_changed_at timestamp})
-      (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
+      ;; a changed entity with no row is one the merge deleted, the remote's deletion of a data app's file winning
+      ;; over the change here, so there is nothing left to push
+      (when (#{"removed" "delete"} status)
+        (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp)))))))
 
 (defn- record-data-app-tables!
   "Record the tables each data app's resources read, after a load or an export, logging a failure: the load's
