@@ -126,18 +126,33 @@
       (is (nil? (export nil)))
       (is (nil? (import nil))))))
 
+(defn- ingested-plugin
+  "What serdes ingests for an export of plugin `identifier` whose bundle bytes are `bundle`."
+  [identifier ^bytes bundle]
+  {:serdes/meta  [{:model "CustomVizPlugin" :id identifier :label identifier}]
+   :identifier   identifier
+   :display_name identifier
+   :manifest     {:name identifier}
+   :bundle_hash  (cv.tu/bundle-hash bundle)
+   :bundle       (codecs/bytes->b64-str bundle)
+   :created_at   "2026-01-01T00:00:00Z"})
+
+(defn- active-plugin-row
+  "Columns of an active, enabled plugin `identifier` backed by `bundle`, for `mt/with-temp`."
+  [identifier ^bytes bundle]
+  {:identifier   identifier
+   :display_name identifier
+   :status       :active
+   :enabled      true
+   :manifest     {:name identifier}
+   :bundle       bundle
+   :bundle_hash  (cv.tu/bundle-hash bundle)})
+
 (deftest load-insert-validates-bundle-test
   (testing "loading an exported plugin with a valid bundle makes it :active"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (let [bundle   (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart"})
-            ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "imported-viz" :label "imported-viz"}]
-                      :identifier   "imported-viz"
-                      :display_name "imported-viz"
-                      :manifest     {:name "imported-viz" :icon "chart"}
-                      :bundle_hash  (cv.tu/bundle-hash bundle)
-                      :bundle       (codecs/bytes->b64-str bundle)
-                      :created_at   "2026-01-01T00:00:00Z"}]
-        (serdes/load-one! ingested nil)
+      (let [bundle (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart"})]
+        (serdes/load-one! (ingested-plugin "imported-viz" bundle) nil)
         (is (=? {:status        :active
                  :error_message nil
                  :enabled       true
@@ -145,54 +160,29 @@
                 (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
   (testing "loading a plugin whose bundle is not a valid archive makes it :error"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (let [ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "broken-viz" :label "broken-viz"}]
-                      :identifier   "broken-viz"
-                      :display_name "broken-viz"
-                      :manifest     {}
-                      :bundle_hash  "deadbeef"
-                      :bundle       (codecs/bytes->b64-str (.getBytes "not a tgz" "UTF-8"))
-                      :created_at   "2026-01-01T00:00:00Z"}]
-        (serdes/load-one! ingested nil)
-        (is (=? {:status        :error
-                 :error_message string?}
-                (t2/select-one :model/CustomVizPlugin :identifier "broken-viz")))))))
+      (serdes/load-one! (ingested-plugin "broken-viz" (.getBytes "not a tgz" "UTF-8")) nil)
+      (is (=? {:status        :error
+               :error_message string?}
+              (t2/select-one :model/CustomVizPlugin :identifier "broken-viz"))))))
 
 (deftest load-update-validates-bundle-test
   (testing "re-importing over an existing plugin re-validates the new bundle"
     (let [old-bundle (cv.tu/valid-bundle-bytes "updated-viz")
           new-bundle (cv.tu/valid-bundle-bytes "updated-viz" {:icon "star"})]
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier    "updated-viz"
-                                                      :display_name  "updated-viz"
-                                                      :status        :error
-                                                      :error_message "stale"
-                                                      :manifest      {:name "updated-viz"}
-                                                      :bundle        old-bundle
-                                                      :bundle_hash   (cv.tu/bundle-hash old-bundle)}]
-        (let [ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "updated-viz" :label "updated-viz"}]
-                        :identifier   "updated-viz"
-                        :display_name "updated-viz"
-                        :manifest     {:name "updated-viz" :icon "star"}
-                        :bundle_hash  (cv.tu/bundle-hash new-bundle)
-                        :bundle       (codecs/bytes->b64-str new-bundle)
-                        :created_at   "2026-01-01T00:00:00Z"}]
-          (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
-          (is (=? {:id            id
-                   :status        :active
-                   :error_message nil
-                   :icon          "star"
-                   :bundle_hash   (cv.tu/bundle-hash new-bundle)}
-                  (t2/select-one :model/CustomVizPlugin :id id))))))))
+      (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "updated-viz" old-bundle)
+                                                            :status        :error
+                                                            :error_message "stale")]
+        (serdes/load-one! (ingested-plugin "updated-viz" new-bundle) (t2/select-one :model/CustomVizPlugin :id id))
+        (is (=? {:id            id
+                 :status        :active
+                 :error_message nil
+                 :icon          "star"
+                 :bundle_hash   (cv.tu/bundle-hash new-bundle)}
+                (t2/select-one :model/CustomVizPlugin :id id)))))))
 
 (deftest load-rejects-bundle-identifier-mismatch-test
   (testing "a bundle whose manifest name differs from the imported identifier lands as :error, never :active"
-    (let [bundle   (cv.tu/valid-bundle-bytes "thumbs-viz")
-          ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "calendar-heatmap-viz" :label "calendar-heatmap-viz"}]
-                    :identifier   "calendar-heatmap-viz"
-                    :display_name "calendar-heatmap-viz"
-                    :manifest     {:name "thumbs-viz"}
-                    :bundle_hash  (cv.tu/bundle-hash bundle)
-                    :bundle       (codecs/bytes->b64-str bundle)
-                    :created_at   "2026-01-01T00:00:00Z"}]
+    (let [ingested (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz"))]
       (testing "on insert"
         (mt/with-model-cleanup [:model/CustomVizPlugin]
           (serdes/load-one! ingested nil)
@@ -201,16 +191,10 @@
                    :error_message #(str/includes? % "does not match")}
                   (t2/select-one :model/CustomVizPlugin :identifier "calendar-heatmap-viz")))))
       (testing "on update over an active plugin"
-        (let [good-bundle (cv.tu/valid-bundle-bytes "calendar-heatmap-viz")]
-          (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "calendar-heatmap-viz"
-                                                          :display_name "calendar-heatmap-viz"
-                                                          :status       :active
-                                                          :enabled      true
-                                                          :manifest     {:name "calendar-heatmap-viz"}
-                                                          :bundle       good-bundle
-                                                          :bundle_hash  (cv.tu/bundle-hash good-bundle)}]
-            (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
-            (is (=? {:id            id
-                     :status        :error
-                     :error_message #(str/includes? % "does not match")}
-                    (t2/select-one :model/CustomVizPlugin :id id)))))))))
+        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "calendar-heatmap-viz"
+                                                                          (cv.tu/valid-bundle-bytes "calendar-heatmap-viz"))]
+          (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
+          (is (=? {:id            id
+                   :status        :error
+                   :error_message #(str/includes? % "does not match")}
+                  (t2/select-one :model/CustomVizPlugin :id id))))))))
