@@ -1,7 +1,6 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin-test
   (:require
    [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
@@ -127,9 +126,6 @@
       (is (nil? (export nil)))
       (is (nil? (import nil))))))
 
-(defn- sha256-hex [^bytes b]
-  (-> b buddy-hash/sha256 codecs/bytes->hex))
-
 (deftest load-insert-validates-bundle-test
   (testing "loading an exported plugin with a valid bundle makes it :active"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
@@ -138,14 +134,14 @@
                       :identifier   "imported-viz"
                       :display_name "imported-viz"
                       :manifest     {:name "imported-viz" :icon "chart"}
-                      :bundle_hash  (sha256-hex bundle)
+                      :bundle_hash  (cv.tu/bundle-hash bundle)
                       :bundle       (codecs/bytes->b64-str bundle)
                       :created_at   "2026-01-01T00:00:00Z"}]
         (serdes/load-one! ingested nil)
         (is (=? {:status        :active
                  :error_message nil
                  :enabled       true
-                 :bundle_hash   (sha256-hex bundle)}
+                 :bundle_hash   (cv.tu/bundle-hash bundle)}
                 (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
   (testing "loading a plugin whose bundle is not a valid archive makes it :error"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
@@ -171,12 +167,12 @@
                                                       :error_message "stale"
                                                       :manifest      {:name "updated-viz"}
                                                       :bundle        old-bundle
-                                                      :bundle_hash   (sha256-hex old-bundle)}]
+                                                      :bundle_hash   (cv.tu/bundle-hash old-bundle)}]
         (let [ingested {:serdes/meta  [{:model "CustomVizPlugin" :id "updated-viz" :label "updated-viz"}]
                         :identifier   "updated-viz"
                         :display_name "updated-viz"
                         :manifest     {:name "updated-viz" :icon "star"}
-                        :bundle_hash  (sha256-hex new-bundle)
+                        :bundle_hash  (cv.tu/bundle-hash new-bundle)
                         :bundle       (codecs/bytes->b64-str new-bundle)
                         :created_at   "2026-01-01T00:00:00Z"}]
           (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
@@ -184,7 +180,7 @@
                    :status        :active
                    :error_message nil
                    :icon          "star"
-                   :bundle_hash   (sha256-hex new-bundle)}
+                   :bundle_hash   (cv.tu/bundle-hash new-bundle)}
                   (t2/select-one :model/CustomVizPlugin :id id))))))))
 
 (deftest load-rejects-bundle-identifier-mismatch-test
@@ -194,7 +190,7 @@
                     :identifier   "calendar-heatmap-viz"
                     :display_name "calendar-heatmap-viz"
                     :manifest     {:name "thumbs-viz"}
-                    :bundle_hash  (sha256-hex bundle)
+                    :bundle_hash  (cv.tu/bundle-hash bundle)
                     :bundle       (codecs/bytes->b64-str bundle)
                     :created_at   "2026-01-01T00:00:00Z"}]
       (testing "on insert"
@@ -212,7 +208,7 @@
                                                           :enabled      true
                                                           :manifest     {:name "calendar-heatmap-viz"}
                                                           :bundle       good-bundle
-                                                          :bundle_hash  (sha256-hex good-bundle)}]
+                                                          :bundle_hash  (cv.tu/bundle-hash good-bundle)}]
             (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
             (is (=? {:id            id
                      :status        :error
