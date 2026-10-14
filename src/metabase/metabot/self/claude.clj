@@ -360,6 +360,7 @@
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :context-window 1000000}
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :context-window  200000}
+   "claude-haiku-5-5"           {:display-name "Claude Haiku 5.5"  :context-window 1000000}
    "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :context-window  200000}})
 
 (mu/defn list-models :- adapter/ModelListing
@@ -407,18 +408,18 @@
   (get-in supported-models [(supported-model-id model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet/fable/mythos model id, or nil.
+  "`[family major minor]` for a Claude opus/sonnet/haiku/fable/mythos model id, or nil.
   The minor version is one or two digits, so a date suffix doesn't read as one: `claude-opus-5-20261005` is 5.0."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|haiku|fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
 (defn- model-current-gen?
-  "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5): no sampling params;
+  "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5, Haiku >=5): no sampling params;
   thinking streams via `display: summarized`."
   [model]
   (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
@@ -426,7 +427,8 @@
         (case family
           ("fable" "mythos") true
           "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
-          "sonnet"           (>= major 5)))))
+          "sonnet"           (>= major 5)
+          "haiku"            (>= major 5)))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter. Sampling params
@@ -436,11 +438,13 @@
 
 (defn- model-supports-forced-tool-choice?
   "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on,
-  Fable and Mythos from 5.1 on: https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported"
+  Fable and Mythos from 5.1 on, and Haiku accepts one:
+  https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported"
   [model]
   (if-let [[family major minor] (claude-model-version model)]
-    (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
-      (or (< major 5) (and (= major 5) (< minor first-rejecting-minor))))
+    (or (= "haiku" family)
+        (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
+          (or (< major 5) (and (= major 5) (< minor first-rejecting-minor)))))
     true))
 
 (def ^:private unforced-structured-output-token-floor
