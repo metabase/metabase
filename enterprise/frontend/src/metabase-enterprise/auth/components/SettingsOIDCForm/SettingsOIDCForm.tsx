@@ -113,16 +113,20 @@ function providerToFormValues(
   };
 }
 
-function formValuesToProvider(
-  values: OIDCFormValues,
-  groupMappings: Record<string, number[]>,
-): Partial<CustomOidcConfig> {
-  const scopes = values.scopes
-    ? values.scopes
+function parseScopes(scopes: string | null): string[] {
+  return scopes
+    ? scopes
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
     : ["openid", "email", "profile"];
+}
+
+function formValuesToProvider(
+  values: OIDCFormValues,
+  groupMappings: Record<string, number[]>,
+): Partial<CustomOidcConfig> {
+  const scopes = parseScopes(values.scopes);
 
   const attributeMap: Record<string, string> = {};
   if (values["attribute-email"]) {
@@ -193,6 +197,7 @@ export function SettingsOIDCForm() {
       const req: OidcCheckRequest = {
         "issuer-uri": values["issuer-uri"],
         "client-id": values["client-id"],
+        scopes: parseScopes(values.scopes),
       };
       if (values["client-secret"]) {
         req["client-secret"] = values["client-secret"];
@@ -231,8 +236,7 @@ export function SettingsOIDCForm() {
 
   const handleSubmit = useCallback(
     async (values: OIDCFormValues) => {
-      // Run the connection check before saving — will throw on failure
-      await runCheck(values);
+      // No need to runCheck separately here, the backend does it before saving the provider.
 
       const providerData = formValuesToProvider(
         values,
@@ -254,7 +258,6 @@ export function SettingsOIDCForm() {
       existingProvider,
       createProvider,
       updateProvider,
-      runCheck,
       groupMappingsRef,
     ],
   );

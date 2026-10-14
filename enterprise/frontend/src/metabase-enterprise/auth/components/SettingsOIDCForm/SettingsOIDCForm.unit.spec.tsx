@@ -247,3 +247,81 @@ describe("SettingsOIDCForm - Group Sync", () => {
     });
   });
 });
+
+const fillRequiredFields = async () => {
+  await userEvent.type(screen.getByLabelText(/^Key/), "okta");
+  await userEvent.type(screen.getByLabelText(/^Login prompt/), "Sign in");
+  await userEvent.type(
+    screen.getByLabelText(/^Issuer URI/),
+    "https://idp.example.test",
+  );
+  await userEvent.type(screen.getByLabelText(/^Client ID/), "client-123");
+  await userEvent.type(
+    screen.getByLabelText(/^Client Secret/),
+    "client-secret-123",
+  );
+};
+
+describe("SettingsOIDCForm", () => {
+  describe("saving", () => {
+    it("does not run a separate connection check when saving a new provider", async () => {
+      await setup();
+      await fillRequiredFields();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save and enable" }),
+      );
+
+      await waitFor(async () => {
+        expect(await findRequests("POST")).toHaveLength(1);
+      });
+      const [{ url }] = await findRequests("POST");
+      expect(url).toMatch(/\/api\/ee\/sso\/oidc$/);
+    });
+
+    it("does not run a separate connection check when saving an existing provider", async () => {
+      await setup({ providers: [EXISTING_PROVIDER] });
+
+      await userEvent.click(screen.getByText("Attribute mapping"));
+      const lastNameInput = screen.getByLabelText("Last name attribute");
+      await userEvent.clear(lastNameInput);
+      await userEvent.type(lastNameInput, "surname");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save changes" }),
+      );
+
+      await waitFor(async () =>
+        expect(await getOidcPutCalls()).toHaveLength(1),
+      );
+      expect(await findRequests("POST")).toHaveLength(0);
+    });
+  });
+
+  describe("connection check", () => {
+    it("sends the scopes from the form to the connection check", async () => {
+      await setup({ providers: [EXISTING_PROVIDER] });
+
+      await userEvent.click(screen.getByText("Optional settings"));
+      const scopesInput = screen.getByLabelText(/^Scopes/);
+      await userEvent.clear(scopesInput);
+      await userEvent.type(
+        scopesInput,
+        "openid, https://graph.microsoft.com/.default",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Check connection" }),
+      );
+
+      await waitFor(async () => {
+        const checks = (await findRequests("POST")).filter(({ url }) =>
+          url.includes("/api/ee/sso/oidc/check"),
+        );
+        expect(checks).toHaveLength(1);
+        expect(checks[0].body.scopes).toEqual([
+          "openid",
+          "https://graph.microsoft.com/.default",
+        ]);
+      });
+    });
+  });
+});
