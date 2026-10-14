@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.system.core :as system]
    [oidc-provider.core :as oidc]))
@@ -15,8 +16,9 @@
   "Build the OAuth discovery document response, or nil if the provider is unavailable."
   []
   (when-let [provider (oauth-server/get-provider)]
-    (let [metadata (-> (oidc/discovery-metadata provider)
-                       (dissoc :jwks_uri :id_token_signing_alg_values_supported))]
+    (let [metadata (cond-> (-> (oidc/discovery-metadata provider)
+                               (dissoc :jwks_uri :id_token_signing_alg_values_supported))
+                     (jwt-bearer/available?) (update :grant_types_supported conj jwt-bearer/grant-type))]
       {:status  200
        :headers {"Content-Type" "application/json"}
        :body    (if (oauth-settings/oauth-server-dynamic-registration-enabled)

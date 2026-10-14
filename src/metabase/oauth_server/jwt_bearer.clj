@@ -20,6 +20,11 @@
 
 (def ^:private client-id "metabase-jwt-bearer")
 
+(defn available?
+  "True when the token endpoint takes the JWT bearer grant, which needs JWT authentication and the MCP server."
+  []
+  (and (oauth-server/jwt-bearer-grant-enabled?) (mcp/mcp-enabled?)))
+
 (defn- check-request!
   "Throws `ex-info` carrying the RFC 6749 `:error` for a request that is refused before its assertion is checked."
   [assertion scopes resource]

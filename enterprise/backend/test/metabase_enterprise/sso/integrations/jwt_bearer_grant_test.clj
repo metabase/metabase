@@ -60,6 +60,10 @@
 (defn- mcp-url []
   (str (system/site-url) "/api/metabase-mcp"))
 
+(defn- discovered-grant-types []
+  (binding [client/*url-prefix* ""]
+    (:grant_types_supported (client/client :get 200 ".well-known/oauth-authorization-server"))))
+
 (deftest exchange-test
   (testing "a JWT exchanges for a token to the MCP endpoint for the user it names, provisioned as JWT login does"
     (with-jwt-bearer-setup!
@@ -181,6 +185,12 @@
         (is (not (t2/exists? :model/User :email email)))
         (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))))))
 
+(deftest discovery-test
+  (testing "discovery lists the grant while the token endpoint takes it"
+    (with-jwt-bearer-setup!
+      (is (= ["authorization_code" "refresh_token" "urn:ietf:params:oauth:grant-type:jwt-bearer"]
+             (discovered-grant-types))))))
+
 (deftest exchange-unsupported-test
   (with-jwt-bearer-setup!
     (let [email   "jwt-bearer-unsupported@metabase.com"
@@ -189,7 +199,8 @@
                             (:body (token-response 400 {:assertion (assertion {:email email})}))))
                     (is (not (t2/exists? :model/User :email email)))
                     (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))
-                    (is (not (t2/exists? :model/AuditLog :topic "mcp-token-issued"))))]
+                    (is (not (t2/exists? :model/AuditLog :topic "mcp-token-issued")))
+                    (is (= ["authorization_code" "refresh_token"] (discovered-grant-types))))]
       (testing "without the sso-jwt feature"
         (mt/with-premium-features #{}
           (refused)))
