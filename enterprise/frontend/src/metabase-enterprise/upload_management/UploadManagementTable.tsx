@@ -211,7 +211,7 @@ const UploadTableRow = ({
             onClick={() => onTrash(item)}
             variant="subtle"
             size="sm"
-            aria-label={t`Delete`}
+            aria-label={t`Delete table`}
           >
             <Icon name="trash" />
           </ActionIcon>
