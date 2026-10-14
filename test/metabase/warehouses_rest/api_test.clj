@@ -1242,7 +1242,10 @@
     (mt/user-http-request :rasta :get 200 "database")
     (call-count)))
 
-(deftest ^:parallel databases-caching
+;; Not ^:parallel: `GET /api/database` lists every Database in the app DB, so Databases that concurrently running
+;; tests create or delete (and any caches they invalidate) can change the query count between the warm-up request
+;; and the counted one.
+(deftest ^:synchronized databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
       (let [baseline (database-list-call-count)]
