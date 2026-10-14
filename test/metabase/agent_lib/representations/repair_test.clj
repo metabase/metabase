@@ -9,6 +9,7 @@
    [metabase.agent-lib.representations.repair :as repair]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.models.serialization.resolve :as resolve]
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
@@ -3491,3 +3492,48 @@
     (let [bug  ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x" {"case-sensitive" false}]
           once (repair/repair trivial-mp bug)]
       (is (= once (repair/repair trivial-mp once))))))
+
+;;; ============================================================
+;;; Pass 5.8 -- a join condition must reference the join's own columns
+;;; ============================================================
+
+(defn- join-condition-error
+  "Repair a one-stage ORDERS query with a join `J` onto `join-table` on `condition`; return the
+  thrown ex-data, or nil."
+  [join-table condition]
+  (try
+    (repair/repair mp-fks
+                   {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "joins"        [{"lib/type"   "mbql/join"
+                                                  "alias"      "J"
+                                                  "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                                 "source-table" ["Sample" "PUBLIC" join-table]}]
+                                                  "conditions" [condition]}]}]})
+    nil
+    (catch clojure.lang.ExceptionInfo e (ex-data e))))
+
+(deftest join-condition-numeric-ref-anchors-only-into-joined-table-test
+  (testing "a numeric field id anchors the condition only when it is a field of the joined table"
+    (is (nil? (binding [resolve/*numeric-ids-allowed?* true]
+                (join-condition-error "PRODUCTS" ["=" {} ["field" {} "PRODUCT_ID"] ["field" {} 200]]))))
+    (is (=? {:error :join-condition-missing-join-alias, :join-alias "J"}
+            (binding [resolve/*numeric-ids-allowed?* true]
+              (join-condition-error "PRODUCTS" ["=" {} ["field" {} "PRODUCT_ID"] ["field" {} 100]]))))))
+
+(deftest join-condition-self-join-portable-ref-does-not-anchor-test
+  (testing "in a self-join a portable ref into the shared table is the stage's own column, so it doesn't anchor"
+    (is (=? {:error :join-condition-missing-join-alias, :join-alias "J"}
+            (join-condition-error "ORDERS" ["=" {} ["field" {} "USER_ID"]
+                                            ["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]])))))
+
+(deftest ^:parallel numerically-used-field-refs-test
+  (let [text-field [:field {} "CATEGORY"]]
+    (testing "a field compared with a number, or under arithmetic, is used numerically"
+      (is (= [text-field] (#'repair/numerically-used-field-refs [:> {} text-field 100])))
+      (is (= [text-field] (#'repair/numerically-used-field-refs [:= {} [:+ {} text-field 1] 3]))))
+    (testing "a field compared with a string, or cast first, is not"
+      (is (empty? (#'repair/numerically-used-field-refs [:= {} text-field "Widget"])))
+      (is (empty? (#'repair/numerically-used-field-refs [:> {} [:integer {} text-field] 100]))))))

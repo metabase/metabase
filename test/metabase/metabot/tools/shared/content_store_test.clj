@@ -258,10 +258,12 @@
                     (measure-by-id        [_ _id]  nil)
                     (segment-by-id        [_ _id]  nil))
           mp      (lib.tu/mock-metadata-provider {:database {:id 1 :name "Sample"}})
+          ;; repair resolves the source card only to type a ref still lacking `base-type`
           query   {"lib/type" "mbql/query"
                    "database" "Sample"
                    "stages"   [{"lib/type"    "mbql.stage/mbql"
-                                "source-card" source-card-entity-id}]}]
+                                "source-card" source-card-entity-id
+                                "fields"      [["field" {} "TOTAL"]]}]}]
       (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
                                                    (is false "api/read-check ran on a refusal repair discards"))]
         (binding [api/*current-user-id*        1
