@@ -205,7 +205,7 @@ describe("useInlineSQLPrompt", () => {
   });
 
   it("replaces the working status with the interruption notice when generation is stopped", async () => {
-    mockAgentEndpoint({ stream: new ReadableStream() });
+    mockAgentEndpoint({ stream: new ReadableStream<Uint8Array>() });
     setup();
 
     const prompt = await startGenerating();
