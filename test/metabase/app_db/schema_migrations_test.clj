@@ -4207,3 +4207,91 @@
       (is (= [] (t2/select :data_app_group_assignment)))
       (migrate!)
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
+
+(deftest db-router-anonymous-access-granted-backfill-test
+  (testing "6m7im9: routers with published guest embeds are granted anonymous access"
+    (impl/test-migrations ["3i2jpz" "6m7im9"] [migrate!]
+      (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Router"
+                                                          :last_name   "Owner"
+                                                          :email       "router-owner@metabase.com"
+                                                          :password    "superstrong"
+                                                          :entity_id   (u/generate-nano-id)
+                                                          :date_joined :%now})
+            db!      (fn [db-name]
+                       (t2/insert-returning-pk! :metabase_database {:details    "{}"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now
+                                                                    :engine     "h2"
+                                                                    :is_sample  false
+                                                                    :name       db-name}))
+            router!  (fn [db-id]
+                       (t2/insert-returning-pk! :db_router {:database_id    db-id
+                                                            :user_attribute "tenant"}))
+            card!    (fn [db-id & {:keys [enable-embedding public-uuid]}]
+                       (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                              :entity_id              (u/generate-nano-id)
+                                                              :type                   "question"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :enable_embedding       (boolean enable-embedding)
+                                                              :public_uuid            public-uuid
+                                                              :archived               false
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            dash!    (fn [& {:keys [enable-embedding]}]
+                       (t2/insert-returning-pk! :report_dashboard {:name             "Dash"
+                                                                   :creator_id       user-id
+                                                                   :parameters       "[]"
+                                                                   :entity_id        (u/generate-nano-id)
+                                                                   :enable_embedding (boolean enable-embedding)
+                                                                   :created_at       :%now
+                                                                   :updated_at       :%now}))
+            dashcard! (fn [dash-id card-id]
+                        (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                        :card_id                card-id
+                                                                        :parameter_mappings     "[]"
+                                                                        :visualization_settings "{}"
+                                                                        :entity_id              (u/generate-nano-id)
+                                                                        :size_x                 4
+                                                                        :size_y                 4
+                                                                        :row                    0
+                                                                        :col                    0
+                                                                        :created_at             :%now
+                                                                        :updated_at             :%now}))
+            series!  (fn [dashcard-id card-id]
+                       (t2/insert! :dashboardcard_series {:dashboardcard_id dashcard-id
+                                                          :card_id          card-id
+                                                          :position         0}))
+            granted? (fn [router-id]
+                       (boolean (t2/select-one-fn :anonymous_access_granted :db_router :id router-id)))
+            embedded-card-db     (db! "embedded-card-router")
+            embedded-card-router (router! embedded-card-db)
+            _                    (card! embedded-card-db :enable-embedding true)
+            dashcard-db     (db! "dashcard-router")
+            dashcard-router (router! dashcard-db)
+            _               (dashcard! (dash! :enable-embedding true) (card! dashcard-db))
+            series-db       (db! "series-router")
+            series-router   (router! series-db)
+            series-dashcard (dashcard! (dash! :enable-embedding true) (card! (db! "series-unrelated")))
+            _               (series! series-dashcard (card! series-db))
+            public-db       (db! "public-link-router")
+            public-router   (router! public-db)
+            _               (card! public-db :public-uuid (str (random-uuid)))
+            elsewhere-db     (db! "elsewhere-router")
+            elsewhere-router (router! elsewhere-db)
+            _                (dashcard! (dash! :enable-embedding true) (card! (db! "elsewhere-other")))
+            plain-db        (db! "plain-db")
+            _               (card! plain-db :enable-embedding true)]
+        (migrate!)
+        (testing "granted"
+          (is (true? (granted? embedded-card-router)))
+          (is (true? (granted? dashcard-router)))
+          (is (true? (granted? series-router))))
+        (testing "left ungranted"
+          (is (false? (granted? public-router)))
+          (is (false? (granted? elsewhere-router))))
+        (testing "a non-routed database gets no router"
+          (is (not (t2/exists? :db_router :database_id plain-db))))))))
