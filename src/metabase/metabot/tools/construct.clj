@@ -883,7 +883,8 @@
         (let [instruction-text (te/lines
                                 "Your query has been created. The user has not been shown it."
                                 ""
-                                "Run it with `run_query` to read its values.")]
+                                (str "To read its values, call `run_query` with `query_id` `"
+                                     (:query-id structured) "`."))]
           {:output            (str "<result>\n" (llm-shape/query->xml (structured->query-data structured)) "\n</result>\n"
                                    "<instructions>\n" instruction-text "\n</instructions>")
            :structured-output (assoc structured :result-type :query)

@@ -211,7 +211,8 @@
                            {:chart?   @chart-created?
                             :shown?   (boolean (seq (:data-parts result)))
                             :query-id (get-in result [:structured-output :query-id])
-                            :run-it?  (boolean (re-find #"run_query" (:output result)))}))))]
+                            :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
+                                                        (:output result)))}))))]
     (testing "with run_query offered, the query is built and the user is shown nothing"
       (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
              (construct! #{"construct_notebook_query" "run_query"}))))
