@@ -30,7 +30,6 @@ export const FormInputWidget = forwardRef(function FormInputWidget(
 
   return (
     <FormField
-      mb="lg"
       title={title}
       description={description}
       actions={actions}

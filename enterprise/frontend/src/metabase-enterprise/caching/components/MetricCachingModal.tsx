@@ -56,6 +56,7 @@ export function MetricCachingModal({
 
   return (
     <Modal
+      density="relaxed"
       opened
       onClose={handleClose}
       title={t`Caching`}

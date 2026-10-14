@@ -40,7 +40,12 @@ export const SaveQuestionModal = ({
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
     >
-      <Modal.Root padding="xxl" {...modalProps} onClose={onClose}>
+      <Modal.Root
+        density="relaxed"
+        padding="xxl"
+        {...modalProps}
+        onClose={onClose}
+      >
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>

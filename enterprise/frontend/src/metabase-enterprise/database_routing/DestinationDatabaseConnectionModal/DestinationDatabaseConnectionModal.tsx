@@ -97,6 +97,7 @@ export const DestinationDatabaseConnectionModal = () => {
 
   return (
     <Modal
+      density="relaxed"
       title={
         addingNewDatabase
           ? t`Add destination database`
