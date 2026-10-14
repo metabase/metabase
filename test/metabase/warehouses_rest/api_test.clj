@@ -1159,27 +1159,36 @@
               (is (= expected-keys
                      (set (keys db)))))))))))
 
+(defn- database-list-call-count
+  "The number of app-db queries a `GET /api/database` by Rasta makes once its caches are warm."
+  []
+  ;; The first request fills caches that outlive it, so only the second one counts.
+  (mt/user-http-request :rasta :get 200 "database")
+  (t2/with-call-count [call-count]
+    (mt/user-http-request :rasta :get 200 "database")
+    (call-count)))
+
 (deftest ^:parallel databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}]
-        (mt/user-http-request :rasta :get 200 "database")
-        (t2/with-call-count [call-count]
-          (mt/user-http-request :rasta :get 200 "database")
-          (is (< (call-count) 10)))))))
+      (let [baseline (database-list-call-count)]
+        (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}]
+          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
+          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
+          (is (<= (database-list-call-count) (+ baseline 2))))))))
 
 (deftest ^:parallel databases-list-test-2
   (testing "GET /api/database"
