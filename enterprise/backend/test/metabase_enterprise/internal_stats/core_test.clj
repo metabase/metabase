@@ -4,6 +4,14 @@
    [metabase-enterprise.internal-stats.core :as sut]
    [metabase.test :as mt]))
 
+(deftest remote-sync-configuration-test
+  (doseq [url [nil "file:///tmp/metering-repo"]
+          transforms? [false true]]
+    (mt/with-temporary-setting-values [remote-sync-url url
+                                       remote-sync-transforms transforms?]
+      (is (= {:enabled? (some? url) :transforms? transforms?}
+             (sut/remote-sync-configuration))))))
+
 (deftest enabled-embedding-static-test
   (testing "true when modular embedding is on and dashboard count is greater than 0"
     (mt/with-temporary-setting-values [enable-embedding-modular true]
