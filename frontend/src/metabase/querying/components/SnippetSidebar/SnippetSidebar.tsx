@@ -196,6 +196,7 @@ class SnippetSidebarInner extends Component<
                     variant="subtle"
                     size="sm"
                     onClick={this.hideSearch}
+                    aria-label={t`Close search`}
                   >
                     <Icon name="close" />
                   </ActionIcon>

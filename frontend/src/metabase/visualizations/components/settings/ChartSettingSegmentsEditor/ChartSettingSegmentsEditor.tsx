@@ -103,6 +103,7 @@ export const ChartSettingSegmentsEditor = ({
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
+                      aria-label={t`Remove segment`}
                     >
                       <Icon name="trash" />
                     </ActionIcon>

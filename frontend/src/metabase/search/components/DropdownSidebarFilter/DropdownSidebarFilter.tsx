@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { EventSandbox } from "metabase/common/components/EventSandbox";
@@ -149,6 +150,7 @@ export const DropdownSidebarFilter = ({
                 size="sm"
                 data-testid="sidebar-filter-dropdown-button"
                 onClick={onClearFilter}
+                aria-label={fieldHasValue ? t`Clear` : label()}
               >
                 <Icon name={getDropdownIcon()} />
               </ActionIcon>

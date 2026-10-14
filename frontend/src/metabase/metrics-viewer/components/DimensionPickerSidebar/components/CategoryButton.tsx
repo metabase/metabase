@@ -47,6 +47,7 @@ export function CategoryButton({
           aria-label={t`Configure ${item.name}`}
           aria-expanded={isExpanded}
           variant="light"
+          selected={isExpanded}
           onClick={onConfigure}
         >
           <Icon name="sliders" />

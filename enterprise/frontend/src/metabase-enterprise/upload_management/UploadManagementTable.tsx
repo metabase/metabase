@@ -207,7 +207,12 @@ const UploadTableRow = ({
       <td>{item.schema}</td>
       <td>
         <Flex align="center" justify="flex-end" py="sm">
-          <ActionIcon onClick={() => onTrash(item)} variant="subtle" size="sm">
+          <ActionIcon
+            onClick={() => onTrash(item)}
+            variant="subtle"
+            size="sm"
+            aria-label={t`Delete`}
+          >
             <Icon name="trash" />
           </ActionIcon>
         </Flex>

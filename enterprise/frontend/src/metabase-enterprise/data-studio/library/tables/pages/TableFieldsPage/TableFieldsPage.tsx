@@ -115,6 +115,7 @@ export function TableFieldsPage() {
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
+                aria-label={t`Close`}
               >
                 <Icon name="close" />
               </ActionIcon>

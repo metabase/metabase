@@ -144,6 +144,7 @@ export const DataAttributeMappingEditor = ({
                     handleChange(removeEntry<ValueType>(entries, index))
                   }
                   data-testid="remove-mapping"
+                  aria-label={t`Remove mapping`}
                 >
                   <Icon name="close" />
                 </ActionIcon>

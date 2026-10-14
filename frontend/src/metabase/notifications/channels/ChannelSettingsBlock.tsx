@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon, Stack, Text } from "metabase/ui";
@@ -29,6 +30,7 @@ export const ChannelSettingsBlock = ({
           size="sm"
           data-testid="remove-channel-button"
           onClick={onRemoveChannel}
+          aria-label={t`Remove`}
         >
           <Icon name="close" />
         </ActionIcon>

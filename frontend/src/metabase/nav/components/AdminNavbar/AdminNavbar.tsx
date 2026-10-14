@@ -147,6 +147,7 @@ const MobileNavbar = ({
       <ActionIcon
         onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="on-dark-secondary"
+        aria-label={t`Toggle navigation`}
       >
         <Icon name="burger" />
       </ActionIcon>

@@ -260,6 +260,7 @@ const ValueInput = ({
           size="sm"
           onClick={onDelete}
           data-testid="remove-mapping"
+          aria-label={t`Remove mapping`}
         >
           <Icon name="close" />
         </ActionIcon>

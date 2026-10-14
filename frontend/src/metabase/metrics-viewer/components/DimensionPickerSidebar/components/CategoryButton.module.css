@@ -43,10 +43,6 @@
       display: inline-flex;
     }
   }
-
-  &.expanded .settingsButton {
-    background-color: var(--mb-color-background_surface-selected);
-  }
 }
 
 .itemIcon {
