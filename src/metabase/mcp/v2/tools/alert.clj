@@ -483,7 +483,7 @@
    :scope          metabot.scope/agent-delivery-write
    ;; `destructiveHint`: an update can replace the recipients.
    ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
-   :annotations    {:readOnlyHint false :destructiveHint true :openWorldHint true}
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
    :args           alert-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write {:create-required [:card_id :schedule]} args)]

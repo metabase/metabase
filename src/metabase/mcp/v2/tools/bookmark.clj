@@ -81,7 +81,7 @@
    :default-access :allowed
    :scope          metabot.scope/agent-content-write
    ;; `destructiveHint`: `bookmarked: false` removes a bookmark.
-   :annotations    {:readOnlyHint false :destructiveHint true :idempotentHint true}
+   :annotations    {:readOnlyHint false, :destructiveHint true, :idempotentHint true}
    :args           bookmark-content-args-schema}
   [{:keys [type id bookmarked]} {:keys [token-scopes]}]
   (let [row            (fetch-item type id)
