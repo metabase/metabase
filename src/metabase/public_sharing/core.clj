@@ -2,8 +2,20 @@
   (:require
    [medley.core :as m]
    [metabase.public-sharing.db :as public-sharing.db]
+   [metabase.public-sharing.reach]
    [metabase.public-sharing.settings :as public-sharing.settings]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(comment metabase.public-sharing.reach/keep-me)
+
+(p/import-vars
+ [metabase.public-sharing.reach
+  anonymously-reaching
+  card-ids-by
+  rendered-cards
+  rendered-card-ids
+  value-list-card-ids-by-surface])
 
 (def public-uuid-prefix-length
   "How many leading characters of a `public_uuid` are copied into the plaintext `public_uuid_prefix` column.

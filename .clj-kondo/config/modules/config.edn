@@ -2073,6 +2073,8 @@
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           embedding
+           lib.schema
            settings
            util}
    :model-imports #{:model/Action
@@ -3363,6 +3365,7 @@
            models
            permissions
            premium-features
+           public-sharing
            queries
            request
            sample-data

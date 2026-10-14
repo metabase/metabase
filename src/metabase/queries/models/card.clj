@@ -1835,6 +1835,21 @@
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
+(defmethod public-sharing/rendered-card-ids :model/Card
+  [_model id->surfaces]
+  ;; A question's anonymous reach includes the questions its filters draw value lists from.
+  (let [cards (queries.db/card-parameters-for-cards (keys id->surfaces))]
+    (public-sharing/rendered-cards
+     (into {} (map (fn [{:keys [id]}] [id #{id}])) cards)
+     (into {}
+           (map (fn [{:keys [id parameters], embedding-params :embedding_params}]
+                  [id (public-sharing/value-list-card-ids-by-surface
+                       (get id->surfaces id)
+                       embedding-params
+                       parameters
+                       parameter-card/values-source-card-ids)]))
+           cards))))
+
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
   (queries.db/cards-for-serdes-reducible collection-set

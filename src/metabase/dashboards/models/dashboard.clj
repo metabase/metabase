@@ -499,6 +499,27 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
+(defmethod public-sharing/rendered-card-ids :model/Dashboard
+  [_model id->surfaces]
+  ;; A dashboard anonymous traffic can open renders the Card of each of its DashboardCards and each Card added to one of
+  ;; those as a series, and runs the query of any Card one of its filters draws its value list from.
+  (let [dashboard-ids (keys id->surfaces)]
+    (public-sharing/rendered-cards
+     (merge-with into
+                 (public-sharing/card-ids-by :dashboard_id :card_id
+                                             (dashboards.db/dashcard-cards-for-dashboards dashboard-ids))
+                 (public-sharing/card-ids-by :dashboard_id :card_id
+                                             (dashboards.db/dashcard-series-cards-for-dashboards dashboard-ids)))
+     (into {}
+           (keep (fn [{:keys [id parameters], embedding-params :embedding_params}]
+                   (when-let [by-surface (not-empty (public-sharing/value-list-card-ids-by-surface
+                                                     (get id->surfaces id)
+                                                     embedding-params
+                                                     parameters
+                                                     queries/values-source-card-ids))]
+                     [id by-surface])))
+           (dashboards.db/parameters-for-dashboards dashboard-ids)))))
+
 (defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
   ;; expects, then reuse the same walk as deserialization.

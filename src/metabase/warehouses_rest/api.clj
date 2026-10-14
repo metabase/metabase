@@ -21,6 +21,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
@@ -505,6 +506,61 @@
   (api/check-superuser)
   (check-database-exists id)
   (first (warehouses-rest.db/database-usage-counts id)))
+
+(def ^:private max-anonymously-reaching
+  "How many rows `GET /api/database/:id/anonymous-reach` returns."
+  100)
+
+(mr/def ::anonymously-reaching-entity
+  [:map {:closed true}
+   [:id
+    {:description "Id of the published question, dashboard or document."}
+    ms/PositiveInt]
+   [:model
+    {:description "What kind of thing it is, in the same vocabulary search and collection items use."}
+    [:enum "card" "dataset" "metric" "dashboard" "document"]]
+   [:name
+    {:description "Its name, as an admin would recognise it."}
+    :string]
+   [:surfaces
+    {:description (str "The anonymous surfaces through which it reaches this database: a public link, a published"
+                       " guest embed, or both. Never empty.")}
+    [:sequential [:enum "guest-embed" "public-link"]]]
+   [:reaches_indirectly
+    {:optional    true
+     :description (str "Present only where the connection to this database is not self-evident: nothing this entity"
+                       " shows is saved against the database, and it reaches it by running a question's query to"
+                       " fill a filter's value list.")}
+    [:= true]]])
+
+(mr/def ::anonymous-reach
+  [:map {:closed true}
+   [:total
+    {:description "How many published entities reach this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:data
+    {:description (str "The first " max-anonymously-reaching " of those entities by name. `total` says how many there"
+                       " are in all.")}
+    [:sequential ::anonymously-reaching-entity]]])
+
+(defn- present-anonymously-reaching-entity
+  "One row of the anonymous-reach response."
+  [{:keys [id model surfaces indirect?], entity-name :name}]
+  (cond-> {:id       id
+           :model    model
+           :name     entity-name
+           :surfaces (vec (sort (map u/qualified-name surfaces)))}
+    indirect? (assoc :reaches_indirectly true)))
+
+(api.macros/defendpoint :get "/:id/anonymous-reach" :- ::anonymous-reach
+  "The public links and published guest embeds through which anonymous traffic can get data from this database."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (check-database-exists id)
+  (let [reaching (public-sharing/anonymously-reaching id)]
+    {:total (count reaching)
+     :data  (mapv present-anonymously-reaching-entity (take max-anonymously-reaching reaching))}))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
