@@ -11,8 +11,6 @@ import {
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
-  // Totals only, as legacy drew them; `getValue` also ignores a value saved as
-  // a bar chart.
   "graph.show_stack_values": {
     getValue: () => "total",
     getHidden: () => true,

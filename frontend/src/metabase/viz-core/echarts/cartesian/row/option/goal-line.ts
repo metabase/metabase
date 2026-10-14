@@ -97,7 +97,7 @@ export function getRowGoalLineSeriesOption(
       );
 
       // Static renders keep the label above the line, flipped left near the
-      // right edge as the legacy renderer did; interactive ones get the marker.
+      // right edge; interactive ones get the marker.
       const endDecoration = renderingContext.isStatic
         ? [
             {

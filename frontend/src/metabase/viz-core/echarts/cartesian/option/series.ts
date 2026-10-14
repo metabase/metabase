@@ -204,8 +204,7 @@ function getShowLabelFn(
   if (!settings || !chartDataDensity) {
     return () => true;
   }
-  // Width-based thinning is the wrong axis for rotated labels; the row fold
-  // already limits density.
+  // Row charts hanle this with row folding
   if (isRowChart) {
     return () => true;
   }
@@ -635,7 +634,6 @@ const buildEChartsBarSeries = (
     xAxisIndex,
     yAxisIndex,
     barGap: 0,
-    // Minimum length along the value axis, whichever way the bars run.
     barMinHeight: 1,
     ...(isRowChart && {
       barCategoryGap: ROW_CHART_STYLE.barCategoryGap,
@@ -946,7 +944,6 @@ function getShowStackedLabelFn(
   if (!settings || !chartDataDensity) {
     return () => true;
   }
-  // See `getShowLabelFn`: width is the wrong axis for rotated totals.
   if (isRowChart) {
     return () => true;
   }

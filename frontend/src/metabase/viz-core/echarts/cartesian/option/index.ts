@@ -123,7 +123,6 @@ const isNonCategoryYAxisOption = (
   axis: YAXisOption,
 ): axis is NonCategoryYAxisOption => axis.type !== "category";
 
-// Generic so each axis variant keeps its own `axisLabel` type.
 const withAxisLabelMargin = <Axis extends { axisLabel?: object }>(
   axis: Axis,
   margin: number,
@@ -343,8 +342,6 @@ export const getCartesianChartOption = (
         ...withAxisLabelMargin(axis, spacing.metricTickMargin),
         position: "bottom",
         nameGap: getXAxisNameGap(ticksDimensions.xTicksHeight, theme),
-        // Metric axes hide their line; rotated it runs along the bottom, where
-        // the legacy renderer drew one.
         axisLine: {
           show: !!settings["graph.y_axis.axis_enabled"],
           lineStyle: {
