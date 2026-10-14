@@ -2,7 +2,7 @@
 // A non-empty report opens the Linear issue or replaces its description; an empty or missing one closes it.
 import { existsSync, readFileSync } from "node:fs";
 
-const TITLE = "Broken links report";
+const TITLE = "metabase/metabase broken links report";
 
 type Issue = { id: string; identifier: string; url: string };
 
