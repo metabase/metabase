@@ -1,7 +1,6 @@
 (ns metabase.metabot.query-execution
   "Run a serialized MBQL query on behalf of an agent and return one bounded page of rows."
   (:require
-   [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.core :as qp]
@@ -19,10 +18,6 @@
    This whitelist, not the query schema, is what the guarantee rests on.
    The QP strips some of these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
-
-(defn- request-canceled?
-  [request-chan]
-  (some? (some-> request-chan a/poll!)))
 
 (defn- query-canceled
   "An agent error for a query that did not finish because the request it served was canceled."
@@ -42,9 +37,11 @@
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
-   under `context`. A value on `request-canceled-chan` cancels the run, and so does running for `timeout-ms`. Both
-   are optional, and the database query timeout applies when it is the shorter."
+   under `context`, stopping it as [[execute-page!]] describes for `options`."
   [serialized-query row-limit context {:keys [request-canceled-chan timeout-ms]}]
+  ;; The cancel reaches the query's own channel asynchronously, so the QP's own check could miss it.
+  (when (qp.pipeline/canceled?* request-canceled-chan)
+    (throw (query-canceled)))
   (let [query      (-> (select-keys serialized-query query-passthrough-keys)
                        (assoc :middleware {:js-int-to-string? true})
                        qp/userland-query-with-default-constraints
@@ -59,11 +56,9 @@
         ;; stopped it, so a stored tool result never reads as a broken query or a complete page. The QP stops a query
         ;; no sooner than the limit, so a run that lasted that long was stopped by it.
         stopped    #(cond
-                      (request-canceled? request-canceled-chan)   (query-canceled)
-                      (some-> timeout-ms (<= (u/since-ms timer))) (query-timed-out timeout-ms))
+                      (qp.pipeline/canceled?* request-canceled-chan) (query-canceled)
+                      (some-> timeout-ms (<= (u/since-ms timer)))   (query-timed-out timeout-ms))
         result     (try
-                     (when (request-canceled? request-canceled-chan)
-                       (throw (query-canceled)))
                      ;; Each query gets a channel of its own. The QP closes its channel when a query ends and writes
                      ;; to it when one times out, and on a channel shared by the turn either would cancel every
                      ;; later query.
