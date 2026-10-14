@@ -36,8 +36,8 @@
   nil)
 
 (defenterprise after-transform-run
-  "Hook for the transform with `transform-id` after a run wrote its output table `table-name` in `schema` of the
-  Database with `db-id`. The OSS implementation is a no-op."
+  "Hook for the transform with `transform-id` after a run wrote its output Table with `table-id`, or nil when the
+  table was not synced. The OSS implementation is a no-op."
   metabase-enterprise.dependencies.hooks
-  [_transform-id _db-id _schema _table-name]
+  [_transform-id _table-id]
   nil)

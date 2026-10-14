@@ -3914,6 +3914,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
+                    :model/DashboardTab
                     :model/Database
                     :model/Dimension
                     :model/Document

@@ -12,6 +12,7 @@
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -24,7 +25,7 @@
   (try
     (task.backfill/trigger-backfill-job!)
     (task.entity-check/trigger-entity-check-job!)
-    (catch Exception e
+    (catch Throwable e
       (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))
 
 (def ^:private trigger-jobs-queue
@@ -36,25 +37,20 @@
   []
   (mdb/do-after-commit #(grouper/submit! @trigger-jobs-queue :ok)))
 
-(defn- mark-created!
-  "Have the jobs pick up a created entity, which has no id before the insert and no status or findings yet."
-  []
-  (trigger-jobs!))
-
 (defn- mark-changed!
-  "Mark the entity `entity-type` `entity-id` for recalculation, and its dependents for re-analysis when it is analyzed."
+  "Mark the entity `entity-type` `entity-id` for recalculation, and it and its dependents for re-analysis."
   [entity-type entity-id]
   (when entity-id
     (deps.dependency-status/mark-stale! entity-type [entity-id])
-    (when (contains? deps.findings/analyzable-entities entity-type)
-      (deps.findings/mark-entity-and-transitive-dependents-stale! entity-type entity-id))
+    (if (contains? deps.findings/analyzable-entities entity-type)
+      (deps.findings/mark-entity-and-transitive-dependents-stale! entity-type entity-id)
+      (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]}))
     (trigger-jobs!)))
 
 (defn- mark-deleted!
   "Mark the dependents of the deleted entity `entity-type` `entity-id` for re-analysis and drop its dependencies."
   [entity-type entity-id]
-  (when (contains? deps.findings/analyzable-entities entity-type)
-    (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]}))
+  (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]})
   (dependencies.db/delete-dependencies-from! entity-type entity-id)
   (dependencies.db/delete-dependency-status! entity-type entity-id)
   (trigger-jobs!))
@@ -94,7 +90,7 @@
                :model/Segment :model/Transform]]
   (defmethod before-insert* model
     [_model _instance]
-    (mark-created!))
+    (trigger-jobs!))
   (defmethod before-delete* model
     [model instance]
     (mark-deleted! (deps.dependency-types/model->dependency-type model) (:id instance))))
@@ -102,9 +98,13 @@
 (defmethod before-update* :model/Card
   [model card]
   (mark-entity-changed! model card #{:dataset_query :dimension_mappings :parameters})
-  (when (changed? card #{:dataset_query :result_metadata :type})
+  (when (changed? card #{:result_metadata :type})
+    (when (deps.findings/mark-transitive-dependents-stale! {:card [(:id card)]})
+      (trigger-jobs!)))
+  (when (and (changed? card #{:dataset_query :result_metadata :type})
+             (not mi/*deserializing?*))
     (let [card-id       (:id card)
-          previous-card (t2/original card)]
+          previous-card (t2/instance :model/Card (t2/original card))]
       (mdb/do-after-commit #(deps.metadata-update/card-updated! card-id previous-card)))))
 
 (defmethod before-update* :model/Dashboard
@@ -159,6 +159,14 @@
     (doseq [dashcard-id (distinct [(:dashboardcard_id (t2/original series)) (:dashboardcard_id series)])]
       (mark-changed! :dashboard (dependencies.db/dashcard-dashboard-id dashcard-id)))))
 
+(defmethod before-delete* :model/DashboardCardSeries
+  [_model series]
+  (mark-changed! :dashboard (dependencies.db/dashcard-dashboard-id (:dashboardcard_id series))))
+
+(defmethod before-delete* :model/DashboardTab
+  [_model tab]
+  (mark-changed! :dashboard (:dashboard_id tab)))
+
 (defn- mark-tables-changed!
   "Mark the dependents of the Tables with `table-ids` for re-analysis."
   [table-ids]
@@ -173,11 +181,19 @@
   [_model settings]
   (mark-tables-changed! [(:table_id settings)]))
 
+(defmethod before-delete* :model/TableUserSettings
+  [_model settings]
+  (mark-tables-changed! [(:table_id settings)]))
+
 (defmethod before-insert* :model/FieldUserSettings
   [_model settings]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
 
 (defmethod before-update* :model/FieldUserSettings
+  [_model settings]
+  (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
+
+(defmethod before-delete* :model/FieldUserSettings
   [_model settings]
   (mark-tables-changed! [(dependencies.db/field-table-id (:field_id settings))]))
 
@@ -195,6 +211,8 @@
 
 (defmethod before-delete* :model/Database
   [_model database]
+  (doseq [card-id (dependencies.db/card-ids-of-database (:id database))]
+    (mark-deleted! :card card-id))
   (when-let [transform-ids (not-empty (dependencies.db/transform-ids-of-source-database (:id database)))]
     (deps.analysis-finding/mark-stale! :transform transform-ids)
     (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
@@ -225,11 +243,11 @@
   (mark-tables-changed! (dependencies.db/table-ids-with-outdated-findings database-id)))
 
 (defenterprise after-transform-run
-  "Make the output table `table-name` in `schema` of the Database with `db-id` depend on the transform with
-  `transform-id`, and mark the transform's dependents for re-analysis."
+  "Make the output Table with `table-id` depend on the transform with `transform-id`, and mark the transform's
+  dependents for re-analysis."
   :feature :dependencies
-  [transform-id db-id schema table-name]
-  (when-let [table-id (dependencies.db/table-id-by-name db-id schema table-name)]
+  [transform-id table-id]
+  (when table-id
     (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
   (when (deps.findings/mark-transitive-dependents-stale! {:transform [transform-id]})
     (trigger-jobs!)))

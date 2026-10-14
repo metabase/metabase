@@ -39,8 +39,10 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
@@ -682,6 +684,13 @@
   [instance]
   (dependencies.hooks/before-update &model instance)
   instance)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
+  "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
+  opens only after them, so dependency marks commit together with the UPDATE and after-commit work sees it."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
 
 (t2/define-before-delete :hook/dependencies
   [instance]

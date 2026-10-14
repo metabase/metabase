@@ -81,12 +81,12 @@
     {:keys [scan], :or {scan :full}} :- [:maybe [:map {:closed true}
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (tracing/with-span :sync "sync.database" {:db/id (:id database)}
-     (let [results (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-                     (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
+     (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+       (let [results (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
                           (keep (partial do-phase! database))
-                          (doall)))]
-       (dependencies.hooks/after-database-sync (:id database))
-       results))))
+                          (doall))]
+         (dependencies.hooks/after-database-sync (:id database))
+         results)))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of

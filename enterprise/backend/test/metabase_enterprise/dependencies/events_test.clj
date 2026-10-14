@@ -14,8 +14,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
-   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (defn- run-with-dependencies-setup! [thunk]
@@ -407,7 +405,7 @@
        (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
          (mt/with-temp [:model/Table     {table-id :id}     {:schema "Other", :db_id (mt/id), :name "test_table"}
                         :model/Transform {transform-id :id} {:target target}]
-           (deps.hooks/after-transform-run transform-id (mt/id) "Other" "test_table")
+           (deps.hooks/after-transform-run transform-id table-id)
            (is (=? [{:from_entity_type :table
                      :from_entity_id table-id,
                      :to_entity_type :transform,
@@ -433,7 +431,7 @@
                         :model/Transform {transform-id :id} {:target target
                                                              :source source}]
            (testing "initial run"
-             (deps.hooks/after-transform-run transform-id (mt/id) "Other" "test_table")
+             (deps.hooks/after-transform-run transform-id table-id)
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -465,7 +463,7 @@
                         :model/Table     {}                              {:schema "Other", :db_id (mt/id), :name "test_table2"}
                         :model/Transform {transform-id :id} {:target target :source source}]
            (testing "initial run"
-             (deps.hooks/after-transform-run transform-id (mt/id) "Other" "test_table")
+             (deps.hooks/after-transform-run transform-id table-id)
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -844,7 +842,7 @@
                                                              :target {:schema "public" :name "sample" :type :table}}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
-           (is (nil? (deps.hooks/after-transform-run transform-id (mt/id) "public" "sample")))))))))
+           (is (nil? (deps.hooks/after-transform-run transform-id nil)))))))))
 
 (deftest ^:synchronized transform-run-marks-dependents-stale-test
   (run-with-dependencies-setup!
@@ -862,7 +860,7 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! transform)
            (deps.findings/upsert-analysis! other-card)
-           (deps.hooks/after-transform-run transform-id (mt/id) "public" "sample")
+           (deps.hooks/after-transform-run transform-id nil)
            (testing "Dependent card should be marked stale"
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :card :analyzed_entity_id card-id))))
@@ -926,15 +924,13 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! other-card)
            (assert-has-analyses {:card {card-id old-version other-card-id old-version}})
-           (let [table (t2/select-one :model/Table :id products-id)]
-             (mt/with-model-cleanup [:model/TableUserSettings]
-               (table-user-settings/upsert-user-settings table {:display_name "Products renamed"})
-               (testing "Card depending on updated table should be marked stale"
-                 (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                              :analyzed_entity_type :card :analyzed_entity_id card-id))))
-               (testing "Card not depending on updated table should not be stale"
-                 (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                               :analyzed_entity_type :card :analyzed_entity_id other-card-id))))))))))))
+           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
+             (testing "Card depending on updated table should be marked stale"
+               (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                            :analyzed_entity_type :card :analyzed_entity_id card-id))))
+             (testing "Card not depending on updated table should not be stale"
+               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                             :analyzed_entity_type :card :analyzed_entity_id other-card-id)))))))))))
 
 (deftest ^:synchronized table-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -945,10 +941,8 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
-           (let [table (t2/select-one :model/Table :id products-id)]
-             (mt/with-model-cleanup [:model/TableUserSettings]
-               (table-user-settings/upsert-user-settings table {:display_name "Products renamed"})
-               (assert-has-analyses {:card {card-id nil}})))))))))
+           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
+             (assert-has-analyses {:card {card-id nil}}))))))))
 
 (deftest ^:synchronized field-metadata-update-triggers-dependent-analysis-test
   (run-with-dependencies-setup!
@@ -965,15 +959,13 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! other-card)
            (assert-has-analyses {:card {card-id old-version other-card-id old-version}})
-           (let [field (t2/select-one :model/Field :id (mt/id :products :category))]
-             (mt/with-model-cleanup [:model/FieldUserSettings]
-               (field-user-settings/upsert-user-settings field {:display_name "Category renamed"})
-               (testing "Card depending on the table whose field was updated should be stale"
-                 (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                              :analyzed_entity_type :card :analyzed_entity_id card-id))))
-               (testing "Card not depending on that table should not be stale"
-                 (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                               :analyzed_entity_type :card :analyzed_entity_id other-card-id))))))))))))
+           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
+             (testing "Card depending on the table whose field was updated should be stale"
+               (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                            :analyzed_entity_type :card :analyzed_entity_id card-id))))
+             (testing "Card not depending on that table should not be stale"
+               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                             :analyzed_entity_type :card :analyzed_entity_id other-card-id)))))))))))
 
 (deftest ^:synchronized field-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -984,10 +976,8 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
-           (let [field (t2/select-one :model/Field :id (mt/id :products :category))]
-             (mt/with-model-cleanup [:model/FieldUserSettings]
-               (field-user-settings/upsert-user-settings field {:display_name "Category renamed"})
-               (assert-has-analyses {:card {card-id nil}})))))))))
+           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
+             (assert-has-analyses {:card {card-id nil}}))))))))
 
 (deftest serdes-load-recalculates-changed-entities-test
   (testing "a serdes load recalculates the dependencies of the entities it changes, and only those"

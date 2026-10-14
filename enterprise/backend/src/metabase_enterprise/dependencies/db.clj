@@ -616,17 +616,15 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
-(mu/defn table-id-by-name
-  "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
-  [db-id      :- ::lib.schema.id/database
-   schema     :- [:maybe :string]
-   table-name :- :string]
-  (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
 (mu/defn transform-sources
   "The `:id` and `:source` of the Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
+
+(mu/defn card-ids-of-database
+  "The IDs of the Cards querying the Database with `db-id`."
+  [db-id :- ::lib.schema.id/database]
+  (t2/select-pks-set :model/Card :database_id db-id))
 
 (mu/defn transform-ids-of-source-database
   "The IDs of the Transforms reading from the Database with `db-id`."
@@ -803,7 +801,9 @@
                              [:or
                               [:is :dependency_status.next_retry_at nil]
                               [:<= :dependency_status.next_retry_at now]]]]
-                :order-by  [[[:case [:= :dependency_status.stale true] [:inline 0] :else [:inline 1]]]]
+                :order-by  [[[:case
+                              [:or [:= :dependency_status.entity_id nil] [:= :dependency_status.stale true]] [:inline 0]
+                              :else [:inline 1]]]]
                 :limit     batch-size})))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
