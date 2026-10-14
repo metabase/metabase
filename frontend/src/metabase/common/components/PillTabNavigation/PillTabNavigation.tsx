@@ -33,7 +33,6 @@ function isTabSelected(tab: PillTab, pathname: string) {
     : (isSelected ?? to === pathname);
 }
 
-/** Renders route links or query-state buttons with optional dataset counts. */
 export function PillTabNavigation({
   tabs,
   "data-testid": testId,

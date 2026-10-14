@@ -7,7 +7,6 @@ export type TabCountState =
   | { status: "error" }
   | { status: "loaded"; value: number };
 
-/** Shows a count or loading placeholder; failed counts render nothing. */
 export function TabCountBadge({ count }: { count: TabCountState }) {
   return match(count)
     .with({ status: "loading" }, () => (

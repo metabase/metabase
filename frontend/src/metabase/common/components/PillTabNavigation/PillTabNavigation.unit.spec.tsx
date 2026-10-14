@@ -26,7 +26,7 @@ function setup({
 }
 
 describe("PillTabNavigation", () => {
-  it("supports a query-state tab action without a fake route", async () => {
+  it("renders a tab with onClick as a button that shows its selection and calls onClick on click and Enter", async () => {
     const onClick = jest.fn<void, []>();
     setup({
       tabs: [{ label: "Failing", onClick, isSelected: true }],
