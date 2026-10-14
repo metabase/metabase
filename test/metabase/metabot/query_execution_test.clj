@@ -126,8 +126,8 @@
           cols  (for [column ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]]
                   {:name column})
           run   (fn [stop! options]
-                  ;; A driver streams rows until its channel says to stop. The QP finishes the rows read so far as a
-                  ;; completed result, so the run must not read as a complete page.
+                  ;; A driver streams rows until its channel says to stop.
+                  ;; The QP returns the rows read so far as a completed result, which must not read as a complete page.
                   (binding [qp.pipeline/*execute* (fn [_driver _query respond]
                                                     (let [rows (atom (for [id [1 2 3]] [id "Venue" 1 0.0 0.0 1]))]
                                                       (respond {:cols cols}

@@ -44,8 +44,7 @@
   (:conversation-id (current-memory)))
 
 (defn request-canceled-chan
-  "A channel that receives a value when the request the current agent turn serves is canceled, or nil when the
-  turn has none."
+  "The channel that receives a value when the current turn's request is canceled, or nil when the turn has none."
   []
   (:request-canceled-chan (current-memory)))
 

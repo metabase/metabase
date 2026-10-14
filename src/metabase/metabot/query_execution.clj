@@ -48,17 +48,17 @@
                                             :context     context}))
         timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
         timer      (u/start-timer)
-        ;; A run that was stopped comes back from the QP as a failure, as nothing, as an exception, or as a completed
-        ;; result holding only the rows read before it stopped, depending on how far it got. Each is reported as what
-        ;; stopped it, so a stored tool result never reads as a broken query or a complete page. The QP stops a query
-        ;; no sooner than the limit, so a run that lasted that long was stopped by it.
+        ;; Depending on how far it got, a stopped run comes back from the QP as a failure, as nothing,
+        ;; as an exception, or as a completed result holding only the rows read before it stopped.
+        ;; Each is reported as what stopped it, so the model never reads it as a broken query or a complete page.
+        ;; The QP stops a query no sooner than the limit, so a run that lasted that long was stopped by it.
         stopped    #(cond
                       (qp.pipeline/canceled?* request-canceled-chan) (query-canceled)
                       (some-> timeout-ms (<= (u/since-ms timer)))   (query-timed-out timeout-ms))
         result     (try
-                     ;; Each query gets a channel of its own. The QP closes its channel when a query ends and writes
-                     ;; to it when one times out, and on a channel shared by the turn either would cancel every
-                     ;; later query.
+                     ;; Each query gets its own channel.
+                     ;; The QP closes it when the query ends and writes to it on a timeout.
+                     ;; On one channel for the whole turn, either would cancel every later query.
                      (binding [driver.settings/*query-timeout-ms* (or timeout-ms driver.settings/*query-timeout-ms*)]
                        (qp.pipeline/do-with-own-canceled-chan request-canceled-chan #(qp/process-query query)))
                      (catch Throwable e

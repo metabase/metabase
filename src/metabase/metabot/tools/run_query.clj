@@ -440,8 +440,8 @@
                         (check-read-only-select! query-id serialized sql-card? allow-non-sql?))}))))
 
 (def ^:private query-timeout-ms
-  "How long one query may run. A query Metabot wrote can be far slower than its author expected, and nothing else
-   ends it before the database query timeout."
+  "How long one query may run."
+  ;; A query Metabot wrote can be far slower than expected, and nothing else ends it before the database query timeout.
   (u/minutes->ms 3))
 
 (defn- run-options

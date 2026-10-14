@@ -737,8 +737,7 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
-            ;; A promise channel that receives a value when the request this turn serves is canceled. A tool that runs a
-            ;; query cancels it with this.
+            ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
         profile-id         (:profile-id opts)

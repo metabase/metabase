@@ -887,8 +887,8 @@
 
 (deftest run-query-time-limit-test
   (testing "a query that runs past the tool's time limit is stopped, and the model is told it timed out"
-    ;; The driver waits until its channel says to stop. With the database timeout shorter than the tool's limit, the
-    ;; run reads as timed out only because the tool passed a limit.
+    ;; The driver waits until its channel says to stop.
+    ;; The database timeout is shorter, so the run reads as timed out only if the tool passed its own limit.
     (binding [qp.pipeline/*execute*              (fn [_driver _query _respond]
                                                    (a/alts!! [qp.pipeline/*canceled-chan* (a/timeout 5000)])
                                                    nil)
