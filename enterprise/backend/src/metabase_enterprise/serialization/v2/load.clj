@@ -9,6 +9,8 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -223,8 +225,9 @@
             (with-retries 3 200
               (fn []
                 (try
-                  (t2/with-transaction [_tx]
-                    (serdes/load-one! ingested local-or-nil))
+                  (binding [mi/*deserializing?* true]
+                    (t2/with-transaction [_tx]
+                      (serdes/load-one! ingested local-or-nil)))
                   (catch Throwable e
                     (serdes/reset-import-cache!)
                     (throw e)))))
@@ -285,17 +288,20 @@
                              :files         file-names}
                             (first ingest-errors)))))
         (log/infof "Starting deserialization, total %s documents" (count contents))
-        (reduce (fn [ctx item]
-                  (try
-                    (load-one! ctx item)
-                    (catch Exception e
-                      (when-not continue-on-error
-                        (throw e))
-                      ;; eschew big and scary stacktrace
-                      (log/warnf (u/strip-error e "Skipping deserialization error"))
-                      (update ctx :errors conj e))))
-                ctx
-                contents))
+        (try
+          (reduce (fn [ctx item]
+                    (try
+                      (load-one! ctx item)
+                      (catch Exception e
+                        (when-not continue-on-error
+                          (throw e))
+                        ;; eschew big and scary stacktrace
+                        (log/warnf (u/strip-error e "Skipping deserialization error"))
+                        (update ctx :errors conj e))))
+                  ctx
+                  contents)
+          (finally
+            (dependencies.hooks/after-serdes-load))))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.

@@ -4,7 +4,6 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.metadata-update :as deps.metadata-update]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
@@ -44,9 +43,10 @@
 
 (defn- trigger-jobs!
   "Have the backfill and entity-check jobs triggered for this write, once it commits, together with the others in its
-  batch."
+  batch, unless a serdes load triggers them once it finishes."
   []
-  (submit-after-commit! :ok))
+  (when-not mi/*deserializing?*
+    (submit-after-commit! :ok)))
 
 (defn- mark-changed!
   "Mark the entity `entity-type` `entity-id` for recalculation; the backfill job marks it and its dependents for
@@ -96,16 +96,8 @@
     [model instance]
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(defmethod before-update* :model/Card
-  [model card]
-  (mark-entity-changed! model card #{:dataset_query :dimension_mappings :parameters :result_metadata :type})
-  (when (and (changed? card #{:dataset_query :result_metadata :type})
-             (not mi/*deserializing?*))
-    (let [card-id       (:id card)
-          previous-card (t2/instance :model/Card (t2/original card))]
-      (mdb/do-after-commit #(deps.metadata-update/card-updated! card-id previous-card)))))
-
-(doseq [[model columns] {:model/Dashboard          #{:parameters}
+(doseq [[model columns] {:model/Card               #{:dataset_query :dimension_mappings :parameters :result_metadata :type}
+                         :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}
                          :model/NativeQuerySnippet #{:content :template_tags}
@@ -230,6 +222,12 @@
     (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
   (when (deps.findings/mark-transitive-dependents-stale! {:transform [transform-id]})
     (trigger-jobs!)))
+
+(defenterprise after-serdes-load
+  "Trigger the backfill and entity-check jobs for what a serdes load marked."
+  :feature :dependencies
+  []
+  (trigger-jobs-now!))
 
 (defenterprise after-premium-token-update
   "Restart the backfill and entity-check jobs, which stop while the dependencies feature is disabled."

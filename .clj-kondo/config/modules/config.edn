@@ -4420,6 +4420,7 @@
            app-db
            appearance
            collections
+           dependencies
            lib
            lib.schema
            logger

@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
-   [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
@@ -130,19 +129,6 @@
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
-
-; dependencies.async/submit! effectively awaits all pending tasks on the executor.
-; Those tasks would be executed regardless; this is just changing the timing to be
-; less problematic for multiple test runs in sequence.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each
-  (fn drained-dependency-async-executor-fixture [t]
-    (try
-      (t)
-      (finally
-        ;; Drain the single-threaded async executor to ensure all pending dependency
-        ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
-        @(dependencies.async/submit! (fn [] nil))))))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"

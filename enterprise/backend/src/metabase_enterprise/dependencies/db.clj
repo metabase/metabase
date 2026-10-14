@@ -12,7 +12,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -589,12 +588,6 @@
   "The `:id` and `:database_id` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
-
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id`, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
 
 (mu/defn tables
   "The Tables with `table-ids`."

@@ -2,12 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.hooks]
-   [metabase-enterprise.dependencies.metadata-update :as deps.metadata-update]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.batch-processing.core :as grouper]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -116,8 +120,7 @@
           (doseq [card-id [card-a card-b]]
             (deps.dependency-status/upsert-status! :card card-id)
             (deps.analysis-finding/upsert-analysis! :card card-id true []))
-          (mt/with-dynamic-fn-redefs [deps.metadata-update/card-updated! (constantly nil)
-                                      deps.dependency-status/mark-stale!
+          (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
                                       (fn [entity-type entity-ids]
                                         (mark-stale! entity-type entity-ids)
                                         (when (= [:card [card-b]] [entity-type entity-ids])
@@ -131,3 +134,28 @@
                                       (t2/update! :model/Card card-b {:dataset_query (lib/limit (card-query card-a) 11)})))]
               (is (= [:committed :committed]
                      [(deref cascade 30000 :timeout) (deref single 30000 :timeout)])))))))))
+
+(deftest serdes-load-triggers-jobs-once-test
+  (testing "a serdes load marks what it writes, nested deletes included, and triggers the jobs once it finishes"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/DependencyStatus]
+        (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (table-query :products)}
+                       :model/Dashboard     {dashboard-id :id} {}
+                       :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}]
+          (let [exported  (ts/extract-one "Dashboard" dashboard-id)
+                submitted (atom [])
+                triggered (atom 0)]
+            (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id card-id
+                                              :row 4 :col 0 :size_x 4 :size_y 4})
+            (deps.dependency-status/upsert-status! :dashboard dashboard-id)
+            (mt/with-dynamic-fn-redefs [grouper/submit!                     (fn [_queue write] (swap! submitted conj write))
+                                        task.backfill/trigger-backfill-job! (fn [] (swap! triggered inc))]
+              (deps.test/do-with-immediate-hook-writes
+               #(serdes/with-cache
+                  (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
+            (testing "deleting the dashboard card missing from the export marks its dashboard"
+              (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
+              (is (stale? :dashboard dashboard-id)))
+            (testing "the load triggers the jobs once, after it finishes"
+              (is (= [] @submitted))
+              (is (= 1 @triggered)))))))))

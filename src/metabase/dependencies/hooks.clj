@@ -28,6 +28,13 @@
   [_database-id]
   nil)
 
+(defenterprise after-serdes-load
+  "Hook for after a serdes load, during which the hooks mark what the load changes without triggering the jobs. The
+  OSS implementation is a no-op."
+  metabase-enterprise.dependencies.hooks
+  []
+  nil)
+
 (defenterprise after-premium-token-update
   "Hook for after the premium token changed, which may have enabled the dependencies feature. The OSS implementation is
   a no-op."

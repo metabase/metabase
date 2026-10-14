@@ -65,7 +65,6 @@
   update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
-  infer-metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
   refresh-metadata
