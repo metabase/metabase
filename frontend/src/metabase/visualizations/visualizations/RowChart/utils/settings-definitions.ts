@@ -2,12 +2,21 @@ import { t } from "ttag";
 
 import {
   GRAPH_GOAL_SETTINGS,
+  TOOLTIP_SETTINGS,
   type VisualizationSettingsDefinitions,
   getDefaultDimensionLabel,
+  getIsXAxisLabelEnabledDefault,
+  getIsYAxisLabelEnabledDefault,
 } from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
+  // Totals only, as legacy drew them; `getValue` also ignores a value saved as
+  // a bar chart.
+  "graph.show_stack_values": {
+    getValue: () => "total",
+    getHidden: () => true,
+  },
   "stackable.stack_type": {
     getSection: () => t`Display`,
     get title() {
@@ -40,6 +49,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   ...GRAPH_GOAL_SETTINGS,
+  ...TOOLTIP_SETTINGS,
   "graph.x_axis.scale": {
     getSection: () => t`Axes`,
     get group() {
@@ -50,6 +60,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     index: 4,
     widget: "select",
+    // Row charts only draw a categorical axis; a time or linear scale saved as
+    // a bar chart would make it continuous and enable brush zoom.
+    isValid: (_series, vizSettings) =>
+      vizSettings["graph.x_axis.scale"] === "ordinal",
     getDefault: () => "ordinal",
     getProps: () => {
       return { options: [{ name: t`Ordinal`, value: "ordinal" }] };
@@ -84,6 +98,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     index: 3,
     widget: "select",
+    // Only show or hide; other viz types use values like "compact" or "rotate-45"
+    // in this setting
+    isValid: (_series, vizSettings) =>
+      typeof vizSettings["graph.x_axis.axis_enabled"] === "boolean",
     getProps: () => ({
       options: [
         {
@@ -180,9 +198,30 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Show label`;
     },
-    inline: true,
-    widget: "toggle",
-    getDefault: () => true,
+    widget: "segmentedControl",
+    getProps: () => ({
+      options: [
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`On`;
+          },
+          value: true,
+        },
+        {
+          get name() {
+            return t`Off`;
+          },
+          value: false,
+        },
+      ],
+    }),
+    getDefault: getIsXAxisLabelEnabledDefault,
   },
   "graph.x_axis.title_text": {
     getSection: () => t`Axes`,
@@ -210,9 +249,30 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     get group() {
       return t`X-axis`;
     },
-    widget: "toggle",
-    inline: true,
-    getDefault: () => true,
+    widget: "segmentedControl",
+    getProps: () => ({
+      options: [
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`On`;
+          },
+          value: true,
+        },
+        {
+          get name() {
+            return t`Off`;
+          },
+          value: false,
+        },
+      ],
+    }),
+    getDefault: getIsYAxisLabelEnabledDefault,
   },
   "graph.y_axis.title_text": {
     getSection: () => t`Axes`,

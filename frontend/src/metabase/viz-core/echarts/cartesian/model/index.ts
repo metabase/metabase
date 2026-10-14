@@ -6,6 +6,7 @@ import {
   getCartesianChartColumns,
   getReferencedColumns,
 } from "../../../lib/graph/columns";
+import { isRowChartSeries } from "../../../lib/series";
 import { getSingleSeriesDimensionsAndMetrics } from "../../../lib/utils";
 import { getAreDimensionsAndMetricsValid } from "../../../shared/settings/cartesian-chart";
 import type {
@@ -121,7 +122,11 @@ export const getChartSeriesModels = (
   const hasMultipleCards = rawSeries.length > 1;
   const sortedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
-    : getSortedSeriesModels(unsortedSeriesModels, settings);
+    : getSortedSeriesModels(
+        unsortedSeriesModels,
+        settings,
+        isRowChartSeries(rawSeries),
+      );
 
   const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
     groupSeriesIntoOther(sortedSeriesModels, settings);
@@ -148,6 +153,7 @@ export const getCartesianChartModel = (
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): CartesianChartModel => {
+  const isRowChart = isRowChartSeries(rawSeries);
   const hasResponsiveTicks =
     renderingContext.cartesianSize != null &&
     renderingContext.cartesianSize !== "fullscreen";
@@ -258,5 +264,6 @@ export const getCartesianChartModel = (
     stackedLabelsFormatters,
     dataDensity,
     groupedSeriesModels,
+    isRowChart,
   };
 };

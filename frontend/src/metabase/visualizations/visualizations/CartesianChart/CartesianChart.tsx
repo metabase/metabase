@@ -24,6 +24,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import {
   type TimelineEventGroup,
   getLegendItems,
+  isRowChartSeries,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -84,7 +85,12 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
 
-  const { timelineEvents } = useTimelineEvents({ ...props, settings });
+  // Row charts don't offer timeline events (UXW-4833).
+  const { timelineEvents } = useTimelineEvents({
+    ...props,
+    settings,
+    skip: isRowChartSeries(rawSeries),
+  });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);

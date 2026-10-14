@@ -7,16 +7,20 @@ import { withCartesianChartSize } from "metabase/static-viz/lib/rendering-contex
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import {
   STATIC_CARTESIAN_CHART_SIZE,
+  STATIC_ROW_CHART_SIZE,
   getChartHeight,
 } from "metabase/static-viz/lib/utils";
 import {
+  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
   getLegendItems,
   getSizeAdjustedSettings,
+  isRowChartSeries,
   registerEChartsModules,
 } from "metabase/viz-core";
+import type { RawSeries } from "metabase-types/api";
 
 import Watermark from "../../watermark.svg?component";
 import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
@@ -27,12 +31,17 @@ const LEGEND_PADDING = 8;
 
 registerEChartsModules();
 
+const getDefaultSize = (rawSeries: RawSeries) =>
+  isRowChartSeries(rawSeries)
+    ? STATIC_ROW_CHART_SIZE
+    : STATIC_CARTESIAN_CHART_SIZE;
+
 export const ComboChart = ({
   rawSeries,
   settings: originalSettings,
   renderingContext: originalRenderingContext,
-  width = STATIC_CARTESIAN_CHART_SIZE.width,
-  height = STATIC_CARTESIAN_CHART_SIZE.height,
+  width = getDefaultSize(rawSeries).width,
+  height = getDefaultSize(rawSeries).height,
   isStorybook = false,
   hasDevWatermark = false,
   fitWithinBounds = false,
@@ -48,14 +57,14 @@ export const ComboChart = ({
     height,
     gridSize,
   });
-  const chartModel = getCartesianChartModel(
+  const baseChartModel = getCartesianChartModel(
     rawSeries,
     settings,
     [],
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
+  const legendItems = getLegendItems(baseChartModel.seriesModels);
   const isReversed = settings["legend.is_reversed"];
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows({
@@ -67,6 +76,11 @@ export const ComboChart = ({
     });
 
   const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  // Fold before layout, off the chart height, as the interactive path does.
+  const chartModel = baseChartModel.isRowChart
+    ? foldRowChartModel(baseChartModel, chartHeight, settings)
+    : baseChartModel;
 
   const chart = init(null, null, {
     renderer: "svg",

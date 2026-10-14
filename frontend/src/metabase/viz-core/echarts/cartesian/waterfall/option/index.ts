@@ -117,7 +117,7 @@ export const buildEChartsWaterfallSeries = (
       chartModel.yAxisScaleTransforms,
       renderingContext,
       chartWidth,
-      labelFormatter,
+      { formatter: labelFormatter },
     ),
     formatter:
       labelFormatter &&
@@ -126,8 +126,7 @@ export const buildEChartsWaterfallSeries = (
         chartModel.yAxisScaleTransforms,
         labelFormatter,
         chartWidth,
-        settings,
-        chartModel.dataDensity,
+        { settings, chartDataDensity: chartModel.dataDensity },
       ),
   });
 

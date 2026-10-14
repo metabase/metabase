@@ -292,4 +292,193 @@ describe("getChartLayout", () => {
       WIDEST_MEASURED_TICK_WIDTH + 24 + CHART_STYLE.padding.x,
     );
   });
+
+  it("reserves row value label room for the drawn label on a log scale", () => {
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      measureText: (text) => text.length * 10,
+    };
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      // log10(1,000,000) and the sign-preserving log10(1,000).
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "A", count: 6 },
+        { [X_AXIS_DATA_KEY]: "B", count: -3 },
+      ],
+      yAxisScaleTransforms: {
+        toEChartsAxisValue: (value) =>
+          typeof value === "number"
+            ? Math.sign(value) * Math.log10(Math.abs(value))
+            : null,
+        fromEChartsAxisValue: (value) =>
+          Math.sign(value) * 10 ** Math.abs(value),
+      },
+      seriesLabelsFormatters: { count: (value) => String(value) },
+    };
+
+    const chartLayout = getChartLayout(
+      rowInput,
+      createMockVisualizationSettings({ "graph.show_values": true }),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    // "1000000" and "-1000", not "6" and "-3".
+    expect(chartLayout.padding.right).toBe(
+      CHART_STYLE.padding.x + 70 + CHART_STYLE.seriesLabels.offset,
+    );
+    expect(chartLayout.negativeDataLabelsWidth).toBe(
+      50 + CHART_STYLE.seriesLabels.offset,
+    );
+  });
+
+  it("reserves no row value label room for a series hidden from the legend", () => {
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      measureText: (text) => text.length * 10,
+    };
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "A", count: 12, sum: 1234567 },
+        { [X_AXIS_DATA_KEY]: "B", count: 34, sum: -7654321 },
+      ],
+      seriesModels: [
+        createMockSeriesModel({ dataKey: "count" }),
+        createMockSeriesModel({ dataKey: "sum", visible: false }),
+      ],
+      seriesLabelsFormatters: {
+        count: (value) => String(value),
+        sum: (value) => String(value),
+      },
+    };
+
+    const chartLayout = getChartLayout(
+      rowInput,
+      createMockVisualizationSettings({ "graph.show_values": true }),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    // Only "34", the widest visible label; nothing for the hidden "sum".
+    expect(chartLayout.padding.right).toBe(
+      CHART_STYLE.padding.x + 20 + CHART_STYLE.seriesLabels.offset,
+    );
+    expect(chartLayout.negativeDataLabelsWidth).toBe(0);
+  });
+
+  it("reserves the metric tick labels' margin below a row chart's plot", () => {
+    const chartContext = getChartContext();
+    const { ticks } = chartContext.theme.cartesian;
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      transformedDataset: [{ [X_AXIS_DATA_KEY]: "A", price: 1500 }],
+    };
+
+    const chartLayout = getChartLayout(
+      rowInput,
+      createMockVisualizationSettings(),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    expect(chartLayout.ticksDimensions.xTicksHeight).toBe(
+      ticks.fontSize + ticks.marginX,
+    );
+  });
+
+  it("reserves the same category title room on a row chart as an upright chart's left axis", () => {
+    const chartContext = getChartContext();
+    const { fontSize, marginY } = chartContext.theme.cartesian.axisTitle;
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      transformedDataset: [{ [X_AXIS_DATA_KEY]: "A", price: 1500 }],
+    };
+    const getLeftPadding = (titleText: string) =>
+      getChartLayout(
+        rowInput,
+        createMockVisualizationSettings({
+          "graph.x_axis.labels_enabled": true,
+          "graph.x_axis.title_text": titleText,
+        }),
+        false,
+        480,
+        274,
+        chartContext,
+      ).padding.left;
+
+    expect(getLeftPadding("Category")).toBe(
+      getLeftPadding("") + fontSize + marginY,
+    );
+  });
+
+  it("measures row category labels as drawn, padded with spaces", () => {
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      measureText: (text) => text.length * 10,
+    };
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      transformedDataset: [{ [X_AXIS_DATA_KEY]: "ABC", price: 1500 }],
+    };
+
+    const chartLayout = getChartLayout(
+      rowInput,
+      createMockVisualizationSettings(),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    // " ABC " is 5 characters wide.
+    expect(chartLayout.ticksDimensions.yTicksWidthLeft).toBe(
+      50 + chartContext.theme.cartesian.ticks.marginY,
+    );
+  });
+
+  it("reserves row goal label room only in static renders, which show the label", () => {
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      transformedDataset: [{ [X_AXIS_DATA_KEY]: "A", price: 1500 }],
+    };
+    const getTopPadding = ({
+      hasGoal,
+      isStatic,
+    }: {
+      hasGoal: boolean;
+      isStatic: boolean;
+    }) =>
+      getChartLayout(
+        rowInput,
+        createMockVisualizationSettings({
+          "graph.show_goal": hasGoal,
+          "graph.goal_value": 1500,
+          "graph.goal_label": "Target",
+        }),
+        false,
+        480,
+        274,
+        { ...getChartContext(), isStatic },
+      ).padding.top;
+
+    expect(getTopPadding({ hasGoal: true, isStatic: false })).toBe(
+      getTopPadding({ hasGoal: false, isStatic: false }),
+    );
+    expect(getTopPadding({ hasGoal: true, isStatic: true })).toBeGreaterThan(
+      getTopPadding({ hasGoal: false, isStatic: true }),
+    );
+  });
 });

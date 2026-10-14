@@ -483,7 +483,7 @@ function findWidestRange(extents: Extent[]): Extent | null {
   return [min, max];
 }
 
-function getYAxisExtent(
+export function getYAxisExtent(
   seriesKeys: DataKey[],
   stackModels: StackModel[],
   dataset: ChartDataset,
