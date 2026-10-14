@@ -67,7 +67,6 @@
                                 :clojure.pprint/pprint                                 2
                                 :clojure.string/lower-case                             2
                                 :clojure.string/upper-case                             1
-                                :clojurewerkz.quartzite.jobs/defjob                    1
                                 :compojure.core/context                                2
                                 :compojure.core/defroutes                              4
                                 :compojure.core/routes                                 2

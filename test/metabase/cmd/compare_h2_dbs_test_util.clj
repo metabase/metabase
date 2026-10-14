@@ -23,7 +23,8 @@
 
 (def ^:private ignored-table-names
   "Set of Table names to skip diffing (e.g. because they're not ones we migrate.)"
-  #{"DATABASECHANGELOG"
+  #{"CORE_SESSION"
+    "DATABASECHANGELOG"
     "QRTZ_BLOB_TRIGGERS"
     "QRTZ_CALENDARS"
     "QRTZ_CRON_TRIGGERS"

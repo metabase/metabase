@@ -53,6 +53,7 @@
 
 .footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: var(--mantine-spacing-md);
@@ -65,6 +66,16 @@
   align-items: center;
   gap: var(--mantine-spacing-xl);
   margin-bottom: var(--mantine-spacing-xxs);
+}
+
+.root[data-density="relaxed"] {
+  .header {
+    padding-bottom: var(--mantine-spacing-xl);
+  }
+
+  .footer {
+    margin-top: var(--mantine-spacing-xl);
+  }
 }
 
 .root[data-layout="centered"] {

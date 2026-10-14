@@ -265,7 +265,7 @@
                  :id        "call-1"
                  :function  "construct_notebook_query"
                  :arguments {:query query}}
-          ;; the stream parser decodes the arguments with keyword keys at every depth
+          ;; the stream parser keywordizes only the top-level argument names
           parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
       (is (=? {:messages [{:role       "assistant"
                            :tool_calls [{:function {:name      "construct_notebook_query"
@@ -280,18 +280,21 @@
                             :id        "call-1"
                             :function  "f"
                             :arguments arguments}]}))]
-    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+    (testing "decoded JSON replays at any depth, with keyword argument names and string keys below them"
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
-        ;; keyword keys, as the stream decodes them
-        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
-        ;; string keys, as replayed history decodes them
-        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
-        ;; both
-        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+        ;; string keys below the argument names, as the stream parser and replayed history decode them
+        {:a {"b" {"c" [{"d" [1 nil true "x" :kw]}]}}}
+        {:a {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}))
+    (testing "a string argument name is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {"a" 1}))))
+    (testing "a keyword key below the argument names is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c 1}]}}))))
     (testing "a value JSON cannot hold is rejected, however deep"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
-                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
+                            (replay {:a {"b" [{"c" (java.time.Instant/now)}]}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests

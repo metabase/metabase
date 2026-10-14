@@ -10,9 +10,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,9 +35,11 @@
       (semantic.health/report-repair-metrics! nil)
       (log/errorf "Failed to complete semantic search index repair: %s" (ex-message e)))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Runs repair-index! to maintain semantic search consistency"}
-  SemanticIndexRepair [_ctx]
+(task/defjob SemanticIndexRepair
+  "Runs repair-index! to maintain semantic search consistency"
+  {:saved-class "metabase_enterprise.semantic_search.task.index_repair.SemanticIndexRepair"
+   :concurrent? false}
+  [_ctx]
   (when (semantic.u/semantic-search-active?)
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
       (repair-index!))))
