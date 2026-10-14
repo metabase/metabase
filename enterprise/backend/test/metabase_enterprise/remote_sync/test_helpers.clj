@@ -567,11 +567,14 @@ width: fixed
    {::shared-fixture true}))
 
 (def clean-remote-sync-state-without-reindex
-  "[[clean-remote-sync-state]] with `search/reindex!` stubbed for the test and for the cleanup."
+  "[[clean-remote-sync-state]] with `search/reindex!` stubbed for the test body only. Its cleanup reindexes search as
+  [[clean-remote-sync-state]] does."
   (with-meta
    (fn [f]
-     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-       (clean-remote-sync-state f)))
+     (clean-remote-sync-state
+      (fn []
+        (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+          (f)))))
    {::shared-fixture true}))
 
 (defn commit-with-temp

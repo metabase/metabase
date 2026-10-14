@@ -10,8 +10,8 @@
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.core :as lib]
-   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -101,68 +101,66 @@
   (testing "content a test imports is gone once the clean-remote-sync-state fixture ends"
     (mt/dataset test-data
       (mt/id) ; the card of the imported files references test-data
-      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-        (let [before (content-ids)]
-          (th/clean-remote-sync-state
-           (fn []
-             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                           :initiated_by   (mt/user->id :rasta)})
-                   src     (th/create-mock-source :initial-files {"main" (new-content-files)})]
-               (is (= :success (:status (impl/import! (source.p/snapshot src) task-id))))
-               (testing "the import adds a card, a dashboard and a collection"
-                 (is (= {:cards 1 :dashboards 1 :collections 1}
-                        (into {} (for [[k ids] (content-ids)]
-                                   [k (count (remove (set (get before k)) ids))]))))))))
-          (is (= before (content-ids))))))))
+      (let [before (content-ids)]
+        (th/clean-remote-sync-state-without-reindex
+         (fn []
+           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                         :initiated_by   (mt/user->id :rasta)})
+                 src     (th/create-mock-source :initial-files {"main" (new-content-files)})]
+             (is (= :success (:status (impl/import! (source.p/snapshot src) task-id))))
+             (testing "the import adds a card, a dashboard and a collection"
+               (is (= {:cards 1 :dashboards 1 :collections 1}
+                      (into {} (for [[k ids] (content-ids)]
+                                 [k (count (remove (set (get before k)) ids))]))))))))
+        (is (= before (content-ids)))))))
 
 (deftest clean-remote-sync-state-removes-collection-contents-test
   (testing "the actions, documents and data apps that a test creates are gone once the clean-remote-sync-state fixture ends"
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (let [ids (atom {})]
-        (try
-          (th/clean-remote-sync-state
-           (fn []
-             (let [coll-id (t2/insert-returning-pk! :model/Collection {:name "Imported" :location "/"})
-                   ;; an action without a model can only go in a Collection of the data actions namespace
-                   acts-id (t2/insert-returning-pk! :model/Collection {:name      "Imported actions"
-                                                                       :location  "/"
-                                                                       :namespace "data-actions"})
-                   ;; this action has no model, so no cascade from a deleted card removes it
-                   act-id  (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                          {:type          :query
-                                                           :name          "No model"
-                                                           :collection_id acts-id
-                                                           :database_id   (mt/id)
-                                                           :dataset_query (mt/native-query {:query "select 1"})}))
-                   doc-id  (t2/insert-returning-pk! :model/Document
-                                                    (merge (mt/with-temp-defaults :model/Document)
-                                                           {:collection_id coll-id
-                                                            :creator_id    (mt/user->id :rasta)}))
-                   app     (t2/insert-returning-instance! :model/DataApp {:name         "imported-app"
-                                                                          :display_name "Imported app"
-                                                                          :bundle_path  "app.js"})]
-               (reset! ids {:collection         coll-id
-                            :actions-collection acts-id
-                            :action             act-id
-                            :document   doc-id
-                            :data-app   (:id app)
-                            :group      (t2/select-one-fn :permission_group_id :model/DataApp :id (:id app))}))))
-          (let [{:keys [collection actions-collection action document data-app]} @ids]
-            (testing "the collections are gone"
-              (is (not (t2/exists? :model/Collection :id [:in [collection actions-collection]]))))
-            (testing "a model-less action in a collection is gone"
-              (is (not (t2/exists? :model/Action :id action))))
-            (testing "a document in the collection is gone"
-              (is (not (t2/exists? :model/Document :id document))))
-            (testing "a data app is gone"
-              (is (not (t2/exists? :model/DataApp :id data-app)))))
-          (finally
-            (let [{:keys [action document data-app group]} @ids]
-              (when action (t2/delete! :model/Action :id action))
-              (when document (t2/delete! :model/Document :id document))
-              (when data-app (t2/delete! :model/DataApp :id data-app))
-              ;; a raw delete of the data app skips the hook that deletes its permission group
-              (when group (t2/delete! :model/PermissionsGroup :id group)))))))))
+    (let [ids (atom {})]
+      (try
+        (th/clean-remote-sync-state-without-reindex
+         (fn []
+           (let [coll-id (t2/insert-returning-pk! :model/Collection {:name "Imported" :location "/"})
+                 ;; an action without a model can only go in a Collection of the data actions namespace
+                 acts-id (t2/insert-returning-pk! :model/Collection {:name      "Imported actions"
+                                                                     :location  "/"
+                                                                     :namespace "data-actions"})
+                 ;; this action has no model, so no cascade from a deleted card removes it
+                 act-id  (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                        {:type          :query
+                                                         :name          "No model"
+                                                         :collection_id acts-id
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "select 1"})}))
+                 doc-id  (t2/insert-returning-pk! :model/Document
+                                                  (merge (mt/with-temp-defaults :model/Document)
+                                                         {:collection_id coll-id
+                                                          :creator_id    (mt/user->id :rasta)}))
+                 app     (t2/insert-returning-instance! :model/DataApp {:name         "imported-app"
+                                                                        :display_name "Imported app"
+                                                                        :bundle_path  "app.js"})]
+             (reset! ids {:collection         coll-id
+                          :actions-collection acts-id
+                          :action             act-id
+                          :document   doc-id
+                          :data-app   (:id app)
+                          :group      (t2/select-one-fn :permission_group_id :model/DataApp :id (:id app))}))))
+        (let [{:keys [collection actions-collection action document data-app]} @ids]
+          (testing "the collections are gone"
+            (is (not (t2/exists? :model/Collection :id [:in [collection actions-collection]]))))
+          (testing "a model-less action in a collection is gone"
+            (is (not (t2/exists? :model/Action :id action))))
+          (testing "a document in the collection is gone"
+            (is (not (t2/exists? :model/Document :id document))))
+          (testing "a data app is gone"
+            (is (not (t2/exists? :model/DataApp :id data-app)))))
+        (finally
+          (let [{:keys [action document data-app group]} @ids]
+            (when action (t2/delete! :model/Action :id action))
+            (when document (t2/delete! :model/Document :id document))
+            (when data-app (t2/delete! :model/DataApp :id data-app))
+            ;; a raw delete of the data app skips the hook that deletes its permission group
+            (when group (t2/delete! :model/PermissionsGroup :id group))))))))
 
 (defn- remote-sync-setting-rows
   "The raw `setting` rows whose key starts with `remote-sync`, as `[key value value_with_aad]`, sorted by key."
@@ -189,51 +187,48 @@
 (deftest clean-remote-sync-state-removes-the-transforms-setting-and-ledger-rows-test
   (testing (str "the remote-sync-transforms value that the test sets, and the Transforms ledger row that its "
                 ":on-change hook writes, do not outlive clean-remote-sync-state")
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (th/clean-remote-sync-state
-       (fn []
-         (remote-sync.settings/remote-sync-transforms! true)
-         (is (seq (transforms-ledger-rows)))))
-      (is (= {:stored nil :ledger []} (transforms-state)))
-      (is (false? (remote-sync.settings/remote-sync-transforms))
-          "the settings cache agrees with the deleted row"))))
+    (th/clean-remote-sync-state-without-reindex
+     (fn []
+       (remote-sync.settings/remote-sync-transforms! true)
+       (is (seq (transforms-ledger-rows)))))
+    (is (= {:stored nil :ledger []} (transforms-state)))
+    (is (false? (remote-sync.settings/remote-sync-transforms))
+        "the settings cache agrees with the deleted row")))
 
 (deftest clean-remote-sync-state-removes-a-stored-transforms-value-before-the-test-test
   (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
                 "ledger row when the settings cache restores it inside the test")
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (t2/query-one {:delete-from :setting :where [:= :key "remote-sync-transforms"]})
-      (setting/restore-cache!)
-      (t2/delete! :model/RemoteSyncObject)
-      ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
-      (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
-      (th/clean-remote-sync-state
-       (fn []
-         (setting/restore-cache!)
-         (is (empty? (transforms-ledger-rows))))))))
+    (t2/query-one {:delete-from :setting :where [:= :key "remote-sync-transforms"]})
+    (setting/restore-cache!)
+    (t2/delete! :model/RemoteSyncObject)
+    ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+    (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
+    (th/clean-remote-sync-state-without-reindex
+     (fn []
+       (setting/restore-cache!)
+       (is (empty? (transforms-ledger-rows)))))))
 
 (deftest clean-remote-sync-state-deletes-every-remote-sync-setting-row-test
   (testing (str "no remote-sync setting row outlives clean-remote-sync-state, also when the test binds settings "
                 "that had no row, and changes or adds rows with no binding")
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (th/clean-remote-sync-state
-       (fn []
-         ;; through the model, so that the rows stay readable under an encryption key
-         (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                     {:key "remote-sync-url" :value "https://example.com/a.git"}])
-         (setting/restore-cache!)
-         (is (seq (remote-sync-setting-rows)))
-         (mt/with-temporary-setting-values [remote-sync-type                :read-only
-                                            remote-sync-auto-import         true
-                                            remote-sync-git-timeout-seconds 5]
-           (is (= [:read-only true 5]
-                  [(remote-sync.settings/remote-sync-type)
-                   (remote-sync.settings/remote-sync-auto-import)
-                   (remote-sync.settings/remote-sync-git-timeout-seconds)])))
-         ;; change a row and add one, with no binding to undo them
-         (remote-sync.settings/remote-sync-type! :read-only)
-         (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})))
-      (is (= [] (remote-sync-setting-rows))))))
+    (th/clean-remote-sync-state-without-reindex
+     (fn []
+       ;; through the model, so that the rows stay readable under an encryption key
+       (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                   {:key "remote-sync-url" :value "https://example.com/a.git"}])
+       (setting/restore-cache!)
+       (is (seq (remote-sync-setting-rows)))
+       (mt/with-temporary-setting-values [remote-sync-type                :read-only
+                                          remote-sync-auto-import         true
+                                          remote-sync-git-timeout-seconds 5]
+         (is (= [:read-only true 5]
+                [(remote-sync.settings/remote-sync-type)
+                 (remote-sync.settings/remote-sync-auto-import)
+                 (remote-sync.settings/remote-sync-git-timeout-seconds)])))
+       ;; change a row and add one, with no binding to undo them
+       (remote-sync.settings/remote-sync-type! :read-only)
+       (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})))
+    (is (= [] (remote-sync-setting-rows)))))
 
 (defn- raw-rows
   "Every row of `table`, every column as stored, sorted by id."
@@ -263,6 +258,8 @@
 
 (deftest clean-remote-sync-state-does-not-reindex-when-the-test-writes-no-content-test
   (testing "clean-remote-sync-state around a test that writes no content does not reindex search"
+    ;; an earlier test can leave documents of deleted rows in the index, and the fixture reindexes for them
+    (#'tu/reindex-search-index!)
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (swap! calls inc) nil)]
         (th/clean-remote-sync-state (fn [])))
@@ -278,12 +275,10 @@
                       @calls)]
       (testing "the test leaves a new Collection"
         (is (= 1 (reindexes #(t2/insert! :model/Collection {:name "New" :location "/"})))))
-      (when (search.index/active-table)
+      (search.tu/with-temp-index-table
         (testing "the test deletes its new Collection, and the index keeps the Collection's document"
           (is (= 1 (reindexes #(t2/delete! :model/Collection
-                                           (t2/insert-returning-pk! :model/Collection {:name "New" :location "/"}))))))
-        ;; the stubbed reindexes left the documents of the deleted Collections in the index
-        (#'tu/reindex-search-index!)))))
+                                           (t2/insert-returning-pk! :model/Collection {:name "New" :location "/"}))))))))))
 
 ;;; ------------------------------------------------ the shared fixture deletes rows from before the test ------------------------------------------------
 
