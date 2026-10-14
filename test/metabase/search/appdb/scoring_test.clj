@@ -525,6 +525,18 @@
        {:model "card"       :id 3 :name "foo question"}]
       (is (= 3 (second (first (search-results* "foo" :context :metabot))))))))
 
+(deftest ^:parallel metabot-relevance-crosses-tier-test
+  (with-index-contents
+    [{:model "table"  :id 1 :name "foo orders" :data_layer "final"}
+     {:model "metric" :id 2 :name "bar metric" :description "mentions foo"}]
+    (case (mdb/db-type)
+      :postgres
+      (testing "with Metabot weights, a final-layer table whose name matches outranks a metric that only mentions the term"
+        (is (= [1 2] (map second (search-results* "foo" :context :metabot)))))
+      :h2
+      ;; TODO text ranking (probably in-memory
+      nil)))
+
 (deftest metabot-library-weight-test
   (testing "with Metabot weights, library membership outranks type weights"
     (search.tu/with-temp-index-table

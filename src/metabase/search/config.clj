@@ -166,9 +166,17 @@
     ;; An exact name match must win.
     ;; So :exact is larger than the library boost, the largest type boost and the tie-breakers combined.
     :exact               150
-    ;; Recency only breaks ties within a tier, so :recency plus :user-recency stays below the narrowest tier gap (1).
-    :recency             0.4
-    :user-recency        0.4
+    ;; Popularity and recency only break ties within a tier.
+    ;; Recency alone (0.4) stays below the narrowest tier gap (1).
+    ;; All of them together (1.9) stay below the gap that keeps a metric over a final-layer table (2).
+    :view-count          0.5
+    :bookmarked          0.5
+    :mine                0.5
+    :recency             0.2
+    :user-recency        0.2
+    ;; Relevance has to be able to cross that gap, or any metric that matches at all outranks a better-matching table.
+    ;; Doubling the default lets a 0.1 difference in cosine distance (2) do it.
+    :semantic-distance   20
     :data-layer          33
     :data-layer/final    1     ; ≈ 33
     ;; New tables use the internal layer by default, so an ordinary table gets this score even if nobody has vetted it.
@@ -177,15 +185,15 @@
     :data-layer/hidden   0.03  ; ≈ 1
     ;; Semantic-layer content ranks above saved questions, and saved questions above models.
     ;; Tables are ranked mostly by :data-layer; their small type boost only keeps a table above a model.
-    ;; A metric beats every table on an equal match: the semantic layer leads a final-layer table (33 + 1) by 6,
-    ;; more than :view-count, :bookmarked, :mine and recency add together.
+    ;; A metric beats every table on an equal match: the semantic layer leads a final-layer table (33 + 1) by 2.
+    ;; That is more than the tie-breakers add together, but small enough that a clearly better match wins.
     ;;
     ;; Every search model is listed, because [[models-search-order]] supplies a fallback boost for any left out.
     ;; Collections and actions are here because the Agent API and MCP search use this context and return them.
     :model                10
-    :model/metric         4     ; = 40
-    :model/measure        4     ; = 40
-    :model/segment        4     ; = 40
+    :model/metric         3.6   ; = 36
+    :model/measure        3.6   ; = 36
+    :model/segment        3.6   ; = 36
     :model/dashboard      0.3   ; = 3
     :model/card           0.3   ; = 3
     :model/table          0.1   ; = 1
