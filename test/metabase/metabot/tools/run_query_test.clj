@@ -26,6 +26,12 @@
     (binding [shared/*memory-atom* (atom memory)]
       (run-query/run-query-tool args))))
 
+(defn- call-tool-in-conversation!
+  "[[call-tool!]] in a conversation of rasta's own."
+  [memory args]
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (call-tool! (assoc memory :conversation-id conversation-id) args)))
+
 (defn- run-tool!
   "Call `run_query` as rasta, in a conversation of rasta's own, with `queries` in conversation state and query
    execution enabled."
@@ -395,9 +401,9 @@
     (mark-saved-by-metabot! [metabot-sql-card])
     (let [run-viewing! (fn [viewing query-id]
                          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-                           (call-tool! {:state   {:queries {}}
-                                        :context {:user_is_viewing viewing}}
-                                       {:query_id query-id})))]
+                           (call-tool-in-conversation! {:state   {:queries {}}
+                                                        :context {:user_is_viewing viewing}}
+                                                       {:query_id query-id})))]
       (testing "a saved question or model the user is viewing runs by its own id"
         (doseq [item-type ["question" "model"]]
           (testing item-type
@@ -706,9 +712,9 @@
     (let [run-viewing! (fn [viewing query-id]
                          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
                                                             metabot-sql-execution-enabled?   false]
-                           (call-tool! {:state   {:queries {}}
-                                        :context {:user_is_viewing viewing}}
-                                       {:query_id query-id})))
+                           (call-tool-in-conversation! {:state   {:queries {}}
+                                                        :context {:user_is_viewing viewing}}
+                                                       {:query_id query-id})))
           unknown-id   {:output #"No query with id -?\d+\. Known query ids: \[\]\. .*"}]
       (testing "a viewed SQL question that Metabot did not save runs with SQL execution off"
         (is (=? {:structured-output {:returned 1}}
@@ -766,6 +772,15 @@
         (doseq [id [0 -5]]
           (is (=? unknown-id (run-viewing! [{:type "question", :id id}] (str id)))))))))
 
+(defn- call-sql-tool-in-conversation!
+  "Call the SQL-only profile's `run_query` as rasta, in a conversation of rasta's own, with `memory` as the agent
+   memory."
+  [memory args]
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (binding [shared/*memory-atom* (atom (assoc memory :conversation-id conversation-id))]
+        (run-query/run-sql-query-tool args)))))
+
 (defn- run-sql-only-tool!
   "Call the SQL-only profile's `run_query`. SQL execution is on unless `sql-execution?` says otherwise."
   ([queries args]
@@ -775,9 +790,7 @@
                                       metabot-sql-execution-enabled?   sql-execution?]
      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
                scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
-       (mt/with-current-user (mt/user->id :rasta)
-         (binding [shared/*memory-atom* (atom {:state {:queries queries}})]
-           (run-query/run-sql-query-tool args)))))))
+       (call-sql-tool-in-conversation! {:state {:queries queries}} args)))))
 
 (deftest run-sql-query-tool-refusals-test
   (testing "the SQL-only tool's refusals point at SQL or at telling the user, never at the notebook builder"
@@ -832,11 +845,9 @@
         run-as   (fn [perms query]
                    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
                                                       metabot-sql-execution-enabled?   true]
-                     (mt/with-current-user (mt/user->id :rasta)
-                       (binding [scope/*current-user-metabot-permissions* perms
-                                 scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)
-                                 shared/*memory-atom*                     (atom {:state {:queries {"q1" query}}})]
-                         (run-query/run-sql-query-tool {:query_id "q1"})))))]
+                     (binding [scope/*current-user-metabot-permissions* perms
+                               scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
+                       (call-sql-tool-in-conversation! {:state {:queries {"q1" query}}} {:query_id "q1"}))))]
     (testing "a user with only Metabot's SQL permission runs a SQL query"
       (is (=? {:structured-output {:returned 1}} (run-as sql-only (venues-sql)))))
     (testing "the same user is refused a query that is not SQL"
@@ -857,11 +868,9 @@
                      scope/all-yes-permissions]]
         (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
                                            metabot-sql-execution-enabled?   true]
-          (mt/with-current-user (mt/user->id :rasta)
-            (binding [scope/*current-user-metabot-permissions* perms
-                      scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)
-                      shared/*memory-atom*                     (atom {:state   {:queries {}}
-                                                                      :context {:user_is_viewing
-                                                                                [{:type "question", :id card-id}]}})]
-              (is (=? {:output #"No query with id \d+\. .*write SQL that reads it using create_sql_query.*"}
-                      (run-query/run-sql-query-tool {:query_id (str card-id)}))))))))))
+          (binding [scope/*current-user-metabot-permissions* perms
+                    scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
+            (is (=? {:output #"No query with id \d+\. .*write SQL that reads it using create_sql_query.*"}
+                    (call-sql-tool-in-conversation! {:state   {:queries {}}
+                                                     :context {:user_is_viewing [{:type "question", :id card-id}]}}
+                                                    {:query_id (str card-id)})))))))))
