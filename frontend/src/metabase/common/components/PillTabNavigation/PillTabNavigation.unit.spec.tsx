@@ -76,6 +76,22 @@ describe("PillTabNavigation", () => {
     ).not.toHaveAccessibleDescription();
   });
 
+  it("formats large counts with digit grouping", () => {
+    setup({
+      tabs: [
+        {
+          label: "Events",
+          to: "/monitor/example/events",
+          count: { status: "loaded", value: 37918 },
+        },
+      ],
+    });
+
+    expect(
+      within(screen.getByRole("link", { name: "Events" })).getByText("37,918"),
+    ).toBeInTheDocument();
+  });
+
   it("shows a placeholder while the count loads without blocking navigation", () => {
     setup({
       tabs: [
