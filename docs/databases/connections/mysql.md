@@ -193,7 +193,7 @@ Set up an additional connection used for write operations. See [Writable connect
 
 ## Data actions
 
-Turn on the **Data actions** toggle to let saved queries write to this database. The toggle allows all [actions](../../data-modeling/models/actions/introduction.md) that use this database to be run: both actions on models and [data actions](../../data-modeling/models/actions/data-actions.md). Actions can read, write, and delete data. Your database user will need write permissions.
+Turn on **Data actions** to let saved queries write to this database: both [actions on models](../../data-modeling/models/actions/introduction.md) and [data actions](../../data-modeling/models/actions/data-actions.md). Actions can read, write, and delete data, so your database user needs write permissions.
 
 ## Model persistence
 

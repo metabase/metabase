@@ -30,7 +30,7 @@ If you're an admin who just wants to edit data in your tables, check out [Editab
 
 For actions to work, you'll first need to do the following two things:
 
-1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. In the **Data actions** section, turn on the **Data actions** toggle. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases. The **Data actions** toggle turns on all actions for the database: both actions on models and [data actions](./data-actions.md) in Data Studio.
+1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. In the **Data actions** section, turn on the **Data actions** toggle. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases. This toggle covers both model actions and [data actions](./data-actions.md).
 2. **For actions on models, create at least one model from that database.** Model actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating them. [Data actions](./data-actions.md) don't need a model.
 
 ## Who can use actions
@@ -44,8 +44,6 @@ There are two types of actions:
 
 - [Basic](./basic.md)
 - [Custom](./custom.md)
-
-[Data actions](./data-actions.md) are custom actions that don't belong to a model. Basic actions always need a model.
 
 ## Running actions
 
@@ -66,7 +64,7 @@ Metabase records every action run in the [Query log](../../../usage-and-performa
 
 Just something to clarify here: actions, even when they belong to models, make their changes to the underlying table that a model queries. Which means that anyone who has access to the underlying table, or to questions or other models based on that table, will be able to see the effects of an action. Tools other than Metabase that are connected to that database will also pick up these changes.
 
-In this sense, models are containers for actions; models are a way to organize actions. In fact, you could (in theory) add a [custom action](./custom.md) to a model that performs some update unrelated to its model's data. For example, you could write a custom action that updates the `Accounts` table, and add that action to a model that only queries an unrelated table (e.g., the `Orders` table). But, you know, maybe don't do that (unless you have a good reason). [Basic actions](./basic.md), however, are only available for models that wrap a single raw table. If an action doesn't need a model at all, make it a [data action](./data-actions.md) and keep it in a folder in Data Studio.
+In this sense, models are containers for actions; models are a way to organize actions. In fact, you could (in theory) add a [custom action](./custom.md) to a model that performs some update unrelated to its model's data. For example, you could write a custom action that updates the `Accounts` table, and add that action to a model that only queries an unrelated table (e.g., the `Orders` table). But, you know, maybe don't do that (unless you have a good reason). [Basic actions](./basic.md), however, are only available for models that wrap a single raw table.
 
 Before using actions in production, consider playing around with actions on some sample data (like the Sample Database included with Metabase) to get a feel for how they work.
 
