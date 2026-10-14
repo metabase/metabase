@@ -301,18 +301,19 @@
         (fails-without-token (run-venues-count-query))))))
 
 (deftest native-sandbox-metadata-query-keeps-cancellation-channel-open-test
-  (testing "Fetching a native sandbox's result metadata runs a query of its own, which must leave the outer query cancelable"
+  (testing "The query that fetches a native sandbox's metadata leaves the outer query cancelable"
     (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
-      (let [canceled-chan (a/promise-chan)
-            execute       qp.pipeline/*execute*
-            open?         (atom [])]
+      (let [canceled-chan   (a/promise-chan)
+            execute         qp.pipeline/*execute*
+            open-at-execute (atom [])]
         (binding [qp.pipeline/*canceled-chan* canceled-chan
                   qp.pipeline/*execute*       (fn [driver query respond]
-                                                (swap! open? conj (not (a.impl.protocols/closed? canceled-chan)))
+                                                (swap! open-at-execute conj
+                                                       (not (a.impl.protocols/closed? canceled-chan)))
                                                 (execute driver query respond))]
           (run-venues-count-query))
         (testing "the channel is open when the metadata query runs, and still open when the outer query does"
-          (is (= [true true] @open?)))))))
+          (is (= [true true] @open-at-execute)))))))
 
 (deftest metric-on-natively-sandboxed-table-test
   (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
