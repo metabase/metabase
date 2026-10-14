@@ -175,7 +175,7 @@
     :recency             0.2
     :user-recency        0.2
     ;; Relevance has to be able to cross that gap, or any metric that matches at all outranks a better-matching table.
-    ;; Doubling the default lets a 0.1 difference in cosine distance (2) do it.
+    ;; The scorer maps cosine distance d to 1 - d/2, so at double the default a 0.2 difference in distance (2) does it.
     :semantic-distance   20
     :data-layer          33
     :data-layer/final    1     ; ≈ 33
