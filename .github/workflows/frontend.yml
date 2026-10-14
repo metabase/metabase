@@ -102,10 +102,11 @@ jobs:
         env:
           JEST_TEST_PATHS_FILE: ${{ steps.unit-selection.outputs.paths-file }}
         # The node:test runner writes its results in jest's formats, so the steps
-        # below read them as they read jest's.
+        # below read them as they read jest's. --no-confirm: a failed test counts
+        # as failed, as under jest, so ci-conductor sees every failure.
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit-harness --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json-file="$UNIT_TEST_RESULTS_FILE" --junit-file="$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
+          bun run test-unit-harness --no-confirm --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json-file="$UNIT_TEST_RESULTS_FILE" --junit-file="$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results

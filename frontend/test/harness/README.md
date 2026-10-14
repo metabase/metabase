@@ -122,6 +122,9 @@ full name, and the runner writes both as jest-junit does.
 The job also reads `JEST_TEST_PATHS_FILE`, the list of spec files that the test
 plan selects for a pull request.
 
+The job runs with `--no-confirm`, so a failed spec file does not run a second
+time. Each failed test fails the job, as under jest, and ci-conductor sees it.
+
 The `fe-tests-unit-jest` job runs the same specs under jest on each push to a
 merge target, and not on a pull request. A test that passes in one job and
 fails in the other is a difference between the two runners.
