@@ -2,13 +2,11 @@ import type { ScaleContinuousNumeric } from "d3-scale";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
+import { GOAL_WARNING_WIDTH } from "../../../../lib/goal-warning";
 import type { Margin } from "../../../types/layout";
 import type { ChartGoal } from "../../../types/settings";
 import type { ChartFont, GoalStyle } from "../../../types/style";
-import {
-  GOAL_WARNING_WIDTH,
-  getGoalWarningY,
-} from "../../VerticalGoalLine/goal-warning";
+import { getGoalWarningY } from "../../VerticalGoalLine/goal-warning";
 import { LABEL_PADDING } from "../constants";
 import type { SeriesData } from "../types";
 

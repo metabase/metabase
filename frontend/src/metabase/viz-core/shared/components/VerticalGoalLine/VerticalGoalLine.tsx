@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import {
   GOAL_WARNING_GAP,
   GOAL_WARNING_ICON_SIZE,
+  GOAL_WARNING_WIDTH,
 } from "../../../lib/goal-warning";
 import type { GoalStyle } from "../../types/style";
 
@@ -50,7 +51,7 @@ export const VerticalGoalLine = ({
           x={
             position === "right"
               ? x + labelWidth + GOAL_WARNING_GAP
-              : x - labelWidth - GOAL_WARNING_GAP - GOAL_WARNING_ICON_SIZE
+              : x - labelWidth - GOAL_WARNING_WIDTH
           }
           y={getGoalWarningY(style.label.size)}
           width={GOAL_WARNING_ICON_SIZE}

@@ -1,7 +1,7 @@
 import { scaleLinear } from "@visx/scale";
 
+import { GOAL_WARNING_WIDTH } from "../../../../lib/goal-warning";
 import type { GoalStyle } from "../../../types/style";
-import { GOAL_WARNING_WIDTH } from "../../VerticalGoalLine/goal-warning";
 
 import { getGoalLinePadding, getRowChartGoal } from "./layout";
 

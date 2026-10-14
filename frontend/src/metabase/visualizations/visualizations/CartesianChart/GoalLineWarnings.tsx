@@ -7,6 +7,7 @@ import {
   type ComputedVisualizationSettings,
   GOAL_WARNING_GAP,
   GOAL_WARNING_ICON_SIZE,
+  GOAL_WARNING_WIDTH,
   type GoalLineParams,
   type GoalRefError,
   type RenderingContext,
@@ -70,7 +71,7 @@ export function GoalLineWarnings({
             pos="absolute"
             left={
               labelAlign === "right"
-                ? x - labelWidth - GOAL_WARNING_GAP - GOAL_WARNING_ICON_SIZE
+                ? x - labelWidth - GOAL_WARNING_WIDTH
                 : x + labelWidth + GOAL_WARNING_GAP
             }
             top={y + (fontSize - GOAL_WARNING_ICON_SIZE) / 2}

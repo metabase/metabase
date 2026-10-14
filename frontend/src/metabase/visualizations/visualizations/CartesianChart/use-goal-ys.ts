@@ -30,7 +30,9 @@ export function useGoalYs({
     chartInstance?.on("finished", updateGoalYs);
 
     return () => {
-      chartInstance?.off("finished", updateGoalYs);
+      if (chartInstance != null && !chartInstance.isDisposed()) {
+        chartInstance.off("finished", updateGoalYs);
+      }
     };
   }, [axisValue, chartInstance, yAxisCount]);
 
