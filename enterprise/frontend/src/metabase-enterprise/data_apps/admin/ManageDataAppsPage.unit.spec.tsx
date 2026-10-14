@@ -1,7 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupUserAcknowledgementEndpoints } from "__support__/server-mocks";
+import {
+  setupDataAppRepoStatusEndpoint,
+  setupDataAppRepoStatusEndpointWithError,
+  setupDeleteDataAppEndpoint,
+  setupListDataAppsEndpoint,
+  setupListDataAppsEndpointWithError,
+  setupUpdateDataAppEndpoint,
+  setupUserAcknowledgementEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
@@ -25,18 +33,17 @@ const setup = ({
   appsError = false,
   statusError = false,
 }: SetupOpts = {}) => {
-  fetchMock.get(
-    "path:/api/apps/repo-status",
-    statusError
-      ? { status: 500, body: { message: "Repo status failed to load" } }
-      : { configured, url },
-  );
-  fetchMock.get(
-    "path:/api/apps",
-    appsError
-      ? { status: 500, body: { message: "Apps failed to load" } }
-      : apps,
-  );
+  if (statusError) {
+    setupDataAppRepoStatusEndpointWithError("Repo status failed to load");
+  } else {
+    setupDataAppRepoStatusEndpoint({ configured, url });
+  }
+
+  if (appsError) {
+    setupListDataAppsEndpointWithError("Apps failed to load");
+  } else {
+    setupListDataAppsEndpoint(apps);
+  }
 
   setupUserAcknowledgementEndpoints({
     key: "data-apps-admin-settings-banner",
@@ -200,9 +207,8 @@ describe("ManageDataAppsPage", () => {
   describe("actions", () => {
     it("disables an app", async () => {
       setup({ apps: [createMockDataApp({ name: "sales" })] });
-      fetchMock.put(
-        "path:/api/apps/sales",
-        createMockDataApp({ enabled: false }),
+      setupUpdateDataAppEndpoint(
+        createMockDataApp({ name: "sales", enabled: false }),
       );
 
       await openActionsMenu("Sales");
@@ -216,7 +222,7 @@ describe("ManageDataAppsPage", () => {
 
     it("re-enables a disabled app", async () => {
       setup({ apps: [createMockDataApp({ name: "sales", enabled: false })] });
-      fetchMock.put("path:/api/apps/sales", createMockDataApp());
+      setupUpdateDataAppEndpoint(createMockDataApp({ name: "sales" }));
 
       await openActionsMenu("Sales");
       await userEvent.click(
@@ -249,7 +255,7 @@ describe("ManageDataAppsPage", () => {
         configured: false,
         apps: [createMockDataApp({ name: "sales" })],
       });
-      fetchMock.delete("path:/api/apps/sales", 204);
+      setupDeleteDataAppEndpoint("sales");
 
       await openActionsMenu("Sales");
       await userEvent.click(
