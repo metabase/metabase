@@ -2,11 +2,8 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { c } from "ttag";
 
-import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
-import { Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";
-
-import S from "./ModalHeader.module.css";
+import { ActionIcon, Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";
 
 export interface ModalHeaderProps {
   title?: ReactNode;
@@ -53,9 +50,9 @@ export const ModalHeader = ({
         </Flex>
         {children && <Box mr="lg">{children}</Box>}
         {onClose && (
-          <IconButtonWrapper className={S.closeButton} onClick={onClose}>
+          <ActionIcon onClick={onClose}>
             <Icon name="close" />
-          </IconButtonWrapper>
+          </ActionIcon>
         )}
       </Flex>
       {pathOptions?.showPath && (

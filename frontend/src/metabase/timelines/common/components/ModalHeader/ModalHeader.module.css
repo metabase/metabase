@@ -1,7 +1,0 @@
-/* Sized to the old EntityMenu trigger so the header didn't jump (CLO-3660) */
-.closeButton {
-  flex: 0 0 auto;
-  width: 2.25rem;
-  height: 2.25rem;
-  color: var(--mb-color-text-disabled);
-}
