@@ -249,6 +249,8 @@ categories:
                 url: "data-modeling/models/actions/basic"
               - name: "Custom actions"
                 url: "data-modeling/models/actions/custom"
+              - name: "Data actions"
+                url: "data-modeling/models/actions/data-actions"
 
   - name: "Embedding"
     url: "embedding/start"

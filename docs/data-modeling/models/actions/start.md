@@ -24,6 +24,10 @@ Metabase will create basic actions that auto-track a model's schema.
 
 Write SQL to create new actions.
 
+## [Data actions](./data-actions.md)
+
+Write SQL actions that don't belong to a model, and manage them in Data Studio.
+
 ## [Actions on dashboards](../../../dashboards/actions.md)
 
 Add actions on dashboards as buttons that you can pass filter values to.

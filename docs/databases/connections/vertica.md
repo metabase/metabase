@@ -45,10 +45,6 @@ The process for adding plugins when running via Docker is similar, but you'll ne
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
-
-There aren't (yet) any model features for Vertica.
-
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

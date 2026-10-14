@@ -18,6 +18,8 @@ Write SQL to update records in your databases.
 2. Visit the model and click on the **info** button.
 3. Click the **Actions** tab.
 
+To write an action without a model, see [Data actions](./data-actions.md).
+
 In the action editor, you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table. See [Example actions](#example-custom-actions).
 
 ## Field types for action variables

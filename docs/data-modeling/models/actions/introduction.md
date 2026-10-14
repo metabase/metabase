@@ -22,7 +22,7 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions must be added to a [model](../../../data-modeling/models/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
+Actions can belong to a [model](../../../data-modeling/models/models.md), or live in Data Studio without a model as [data actions](./data-actions.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
 
 If you're an admin who just wants to edit data in your tables, check out [Editable table data](../../../data-modeling/editable-tables.md).
 
@@ -30,13 +30,13 @@ If you're an admin who just wants to edit data in your tables, check out [Editab
 
 For actions to work, you'll first need to do the following two things:
 
-1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Data actions** option. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases.
-2. **Create at least one model from that database.** Actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating actions.
+1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. In the **Data actions** section, turn on the **Data actions** toggle. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases. The **Data actions** toggle turns on all actions for the database: both actions on models and [data actions](./data-actions.md) in Data Studio.
+2. **For actions on models, create at least one model from that database.** Model actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating them. [Data actions](./data-actions.md) don't need a model.
 
 ## Who can use actions
 
 - **To create or edit an action**, a person must be in a group with [Native query editing](../../../permissions/data.md) privileges for the relevant database.
-- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action).
+- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action). To run a [data action](./data-actions.md), you need view access to the action's folder.
 
 ## Types of actions
 
@@ -45,6 +45,8 @@ There are two types of actions:
 - [Basic](./basic.md)
 - [Custom](./custom.md)
 
+[Data actions](./data-actions.md) are custom actions that don't belong to a model. Basic actions always need a model.
+
 ## Running actions
 
 There are multiple ways to run actions:
@@ -52,6 +54,7 @@ There are multiple ways to run actions:
 - [From the model details page](../../../data-modeling/models/models.md#model-details) by clicking the **run** button.
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../../../dashboards/actions.md).
+- From the **Run** tab of a [data action](./data-actions.md#run) in Data Studio.
 
 ## Auditing actions
 
@@ -61,9 +64,9 @@ Metabase records every action run in the [Query log](../../../usage-and-performa
 
 ## Actions change data in tables, which affect models
 
-Just something to clarify here: actions, even though they are added to models, make their changes to the underlying table that a model queries. Which means that anyone who has access to the underlying table, or to questions or other models based on that table, will be able to see the effects of an action. Tools other than Metabase that are connected to that database will also pick up these changes.
+Just something to clarify here: actions, even when they belong to models, make their changes to the underlying table that a model queries. Which means that anyone who has access to the underlying table, or to questions or other models based on that table, will be able to see the effects of an action. Tools other than Metabase that are connected to that database will also pick up these changes.
 
-In this sense, models are containers for actions; models are a way to organize actions. In fact, you could (in theory) add a [custom action](./custom.md) to a model that performs some update unrelated to its model's data. For example, you could write a custom action that updates the `Accounts` table, and add that action to a model that only queries an unrelated table (e.g., the `Orders` table). But, you know, maybe don't do that (unless you have a good reason). [Basic actions](./basic.md), however, are only available for models that wrap a single raw table.
+In this sense, models are containers for actions; models are a way to organize actions. In fact, you could (in theory) add a [custom action](./custom.md) to a model that performs some update unrelated to its model's data. For example, you could write a custom action that updates the `Accounts` table, and add that action to a model that only queries an unrelated table (e.g., the `Orders` table). But, you know, maybe don't do that (unless you have a good reason). [Basic actions](./basic.md), however, are only available for models that wrap a single raw table. If an action doesn't need a model at all, make it a [data action](./data-actions.md) and keep it in a folder in Data Studio.
 
 Before using actions in production, consider playing around with actions on some sample data (like the Sample Database included with Metabase) to get a feel for how they work.
 
