@@ -1,7 +1,7 @@
 (ns metabase.osi.schema
   "Malli schemas for the osi module."
   (:require
-   [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
