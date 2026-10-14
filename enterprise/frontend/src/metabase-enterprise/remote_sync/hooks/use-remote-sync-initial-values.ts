@@ -37,11 +37,7 @@ export const useRemoteSyncInitialValues = (
     { skip: !isRemoteSyncEnabled },
   );
 
-  // The modal always fetches so its toggles can default to checked.
-  const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip: !isRemoteSyncEnabled && !isModalVariant },
-  );
+  const { data: libraryCollectionData } = useGetLibraryCollectionQuery();
 
   // Library collection endpoint returns { data: null } when not found
   const libraryCollection: LibraryCollection | undefined =
