@@ -47,7 +47,8 @@
   ([outer-chan thunk]
    ;; A query closes [[*canceled-chan*]] when it finishes.
    ;; On a shared channel, a query still running, or a later one, would never hear it was canceled or timed out.
-   (if outer-chan
+   (if-not outer-chan
+     (thunk)
      (let [own-chan  (a/promise-chan)
            done-chan (a/promise-chan)]
        ;; A cancel that has already arrived is copied now, so the query sees it before it starts.
@@ -61,8 +62,7 @@
            (thunk))
          (finally
            (a/close! own-chan)
-           (a/close! done-chan))))
-     (thunk))))
+           (a/close! done-chan)))))))
 
 (defn default-result-handler
   "Default implementation for *result*."
