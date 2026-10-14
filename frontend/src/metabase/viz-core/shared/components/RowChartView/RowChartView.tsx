@@ -15,6 +15,7 @@ import { truncateText } from "../../../lib/text";
 import type { SeriesInfo } from "../../types/data";
 import type { HoveredData } from "../../types/events";
 import type { Margin } from "../../types/layout";
+import type { ChartGoal } from "../../types/settings";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 
@@ -49,6 +50,7 @@ export interface RowChartViewProps<TDatum> {
   hasXAxis?: boolean;
   hasYAxis?: boolean;
   isStacked?: boolean;
+  isStatic?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
   measureTextWidth?: TextWidthMeasurer;
@@ -59,6 +61,10 @@ export interface RowChartViewProps<TDatum> {
   onClick?: (
     event: React.MouseEvent<Element>,
     bar: BarData<TDatum, SeriesInfo>,
+  ) => void;
+  onGoalHover?: (
+    event: React.MouseEvent<Element>,
+    goal: ChartGoal | null,
   ) => void;
 }
 
@@ -82,11 +88,13 @@ const RowChartView = <TDatum,>({
   hasXAxis = true,
   hasYAxis = true,
   isStacked,
+  isStatic,
   style,
   hoveredData,
   measureTextWidth,
   onHover,
   onClick,
+  onGoalHover,
 }: RowChartViewProps<TDatum>) => {
   const innerBarScale = isStacked
     ? null
@@ -218,16 +226,6 @@ const RowChartView = <TDatum,>({
           });
         })}
 
-        {goal && (
-          <VerticalGoalLine
-            x={goalLineX}
-            height={innerHeight}
-            label={goal.label}
-            style={theme.goal}
-            position={goal.position}
-          />
-        )}
-
         <AxisLeft
           label={yLabel ?? ""}
           labelProps={{
@@ -283,6 +281,19 @@ const RowChartView = <TDatum,>({
             textAnchor: "middle",
           })}
         />
+
+        {goal && (
+          <VerticalGoalLine
+            x={goalLineX}
+            height={innerHeight}
+            label={goal.label}
+            style={theme.goal}
+            position={goal.position}
+            isStatic={isStatic}
+            onMarkerMouseEnter={(event) => onGoalHover?.(event, goal)}
+            onMarkerMouseLeave={(event) => onGoalHover?.(event, null)}
+          />
+        )}
       </Group>
     </svg>
   );
