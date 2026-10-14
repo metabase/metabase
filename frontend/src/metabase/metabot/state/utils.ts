@@ -43,19 +43,22 @@ export const isGeneratedCardPart = (
   part.part.data.type === "card";
 
 // The error codes whose server-written message the chat shows as is.
-const SERVER_MESSAGE_ERROR_CODE = P.union(
+const SERVER_MESSAGE_ERROR_CODES = [
   "ai_usage_limit_reached",
   "ai_provider_billing",
   "ai_provider_rate_limit",
   "ai_provider_auth",
   "ai_provider_unavailable",
   CONTEXT_FULL_ERROR_CODE,
-);
+] as const;
 
 export const getServerErrorDisplay = (
   error: MetabotAgentTurnError,
 ): MetabotAgentTurnDisplayError | undefined =>
-  isMatching({ type: SERVER_MESSAGE_ERROR_CODE, message: P.string }, error)
+  isMatching(
+    { type: P.union(...SERVER_MESSAGE_ERROR_CODES), message: P.string },
+    error,
+  )
     ? { type: "message", message: error.message }
     : undefined;
 
