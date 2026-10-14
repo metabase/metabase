@@ -4,11 +4,6 @@
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
    [clojure.test :refer [deftest is testing]]
-   ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
-   ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
-   ;; server boot [[metabase.api-routes.routes]] loads it; the isolated test classpath does not
-   ;; mount the routes, so require it here as that route ns does.
-   [metabase.agent-api.api]
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
