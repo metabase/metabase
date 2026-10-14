@@ -12,6 +12,7 @@
    [clj-http.client :as http]
    [diehard.bulkhead :as dh.bh]
    [diehard.core :as dh]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
@@ -26,32 +27,17 @@
 (def ^:private forward-timeout-ms 5000)
 
 ;; This endpoint is unauthenticated and makes its outbound call inline on the request thread, so an anonymous caller
-;; can hold a request thread per call for as long as the forward takes. Two bounds, because neither does the other's
-;; job: this rate limiter caps how often one source address may call, and [[forward-bulkhead]] caps how many forwards
-;; are in flight at once, which is the thread-holding a rate limit cannot bound.
-;;
-;; 600/min is ~10/s, far above what one browser produces: the SDK sends one request per event with no batching, and
-;; component-mount events are deduped per JS load, so a page load is a handful of requests. The headroom is for the
-;; key rather than the browser — `request/ip-address` takes the last entry of the forwarded-for chain, so one key
-;; can stand for every browser behind a corporate NAT or a multi-hop proxy chain.
-;;
-;; `initial-delay-ms` and `delay-exponent` are lowered from the library defaults (15s, 1.5), which are tuned for
-;; brute-forced logins: past the threshold they black a key out for tens of seconds, and because `throttle/check`
-;; measures the delay from the last *admitted* attempt, a key that keeps calling is admitted once per blackout rather
-;; than shaved back to the threshold. At 1s and exponent 1 an over-limit key degrades smoothly instead, which is what
-;; droppable telemetry wants.
+;; can hold a request thread per call for as long as the forward takes.
 (def ^:private throttler
   (throttle/make-throttler :analytics-proxy
                            :attempts-threshold 600
                            :attempt-ttl-ms     (* 60 1000)
+                           ;; don't punish when throttling, just shed load
                            :initial-delay-ms   1000
                            :delay-exponent     1))
 
 (def ^:private max-concurrent-forwards
-  "Forwards allowed in flight at once. Each one can hold a request thread for as long as `forward-timeout-ms`, and
-  ring-jetty's default pool is 50 threads for the whole instance, so this caps what the relay can take of it. The
-  sibling relay in [[metabase.analytics.api.metaplow-proxy]] has its own bulkhead of the same size, kept separate so
-  that a collector which goes slow starves only its own relay."
+  "Forwards allowed in flight at once."
   8)
 
 (defonce ^:private
@@ -69,7 +55,9 @@
       (handler request respond raise)
       (catch ExceptionInfo e
         (if (u.throttle/throttle-exception? e)
-          (respond (u.throttle/throttle-response e {:error (ex-message e)}))
+          (do
+            (analytics/inc! :metabase-analytics-relay/rejected {:relay :snowplow, :reason :throttled})
+            (respond (u.throttle/throttle-response e {:error (ex-message e)})))
           (raise e))))))
 
 (def ^:private Tp2Payload
@@ -89,11 +77,9 @@
                                :connection-timeout forward-timeout-ms
                                :socket-timeout     forward-timeout-ms
                                :throw-exceptions   false})]
-      ;; Relay status + body unchanged: 2xx clears the tracker's event, non-2xx schedules a retry.
       {:status (:status response)
        :body   (:body response)})
     (catch Exception e
-      ;; 502 is retryable by the tracker; a fake 2xx would silently drop the event.
       (log/errorf "analytics-proxy failed forwarding to %s: %s" collector-url (ex-message e))
       {:status 502 :body nil})))
 
@@ -102,16 +88,13 @@
   [[max-concurrent-forwards]] forwards in flight."
   [thunk]
   (try
-    ;; `max-wait-ms` 0 sheds rather than queues: a caller waiting for a permit would go on holding the request thread
-    ;; this bulkhead exists to protect.
     (dh/with-bulkhead {:bulkhead forward-bulkhead, :max-wait-ms 0}
       (thunk))
     (catch ExceptionInfo e
       (if (:bulkhead (ex-data e))
         (do
+          (analytics/inc! :metabase-analytics-relay/rejected {:relay :snowplow, :reason :shed})
           (log/debug "analytics-proxy shed a forward: too many already in flight")
-          ;; Deliberately not the limiter's 429 — this caller is within its own rate and the instance is simply
-          ;; saturated. 503 is retryable by the tracker, so the event survives in its outbox.
           {:status 503 :body nil})
         (throw e)))))
 
