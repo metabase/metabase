@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
@@ -883,3 +884,14 @@
               (call-tool-in-conversation! {:state                 {:queries {"q1" (venues-count)}}
                                            :request-canceled-chan (doto (a/promise-chan) (a/>!! :canceled))}
                                           {:query_id "q1"}))))))
+
+(deftest run-query-time-limit-test
+  (testing "a query that runs past the tool's time limit is stopped, and the model is told it timed out"
+    ;; The driver waits until its channel says to stop. With the database timeout shorter than the tool's limit, the
+    ;; run reads as timed out only because the tool passed a limit.
+    (binding [qp.pipeline/*execute*              (fn [_driver _query _respond]
+                                                   (a/alts!! [qp.pipeline/*canceled-chan* (a/timeout 5000)])
+                                                   nil)
+              driver.settings/*query-timeout-ms* 200]
+      (is (=? {:output #"Query timed out.*"}
+              (run-tool! {"q1" (venues-count)} {:query_id "q1"}))))))
