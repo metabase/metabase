@@ -4,7 +4,6 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}}}}}
   (:require
    [clojure.core.async :as a]
-   [clojure.core.async.impl.protocols :as a.impl.protocols]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -300,20 +299,29 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
-(deftest native-sandbox-metadata-query-keeps-cancellation-channel-open-test
+(deftest native-sandbox-metadata-query-keeps-outer-query-cancelable-test
   (testing "The query that fetches a native sandbox's metadata leaves the outer query cancelable"
     (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
-      (let [canceled-chan   (a/promise-chan)
-            execute         qp.pipeline/*execute*
-            open-at-execute (atom [])]
+      (let [canceled-chan (a/promise-chan)
+            execute       qp.pipeline/*execute*
+            calls         (atom 0)
+            driver-saw    (atom nil)]
         (binding [qp.pipeline/*canceled-chan* canceled-chan
                   qp.pipeline/*execute*       (fn [driver query respond]
-                                                (swap! open-at-execute conj
-                                                       (not (a.impl.protocols/closed? canceled-chan)))
-                                                (execute driver query respond))]
-          (run-venues-count-query))
-        (testing "the channel is open when the metadata query runs, and still open when the outer query does"
-          (is (= [true true] @open-at-execute)))))))
+                                                (if (= 1 (swap! calls inc))
+                                                  (execute driver query respond)
+                                                  ;; The outer query: cancel the request, and see whether its driver hears it.
+                                                  (do
+                                                    (a/>!! canceled-chan ::canceled)
+                                                    (reset! driver-saw (a/poll! qp.pipeline/*canceled-chan*))
+                                                    nil)))]
+          ;; The canceled outer query returns no rows, which the row helpers reject.
+          (try
+            (run-venues-count-query)
+            (catch Exception _)))
+        (testing "the metadata query runs first, then the outer query, which hears the cancel"
+          (is (= 2 @calls))
+          (is (= ::canceled @driver-saw)))))))
 
 (deftest metric-on-natively-sandboxed-table-test
   (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
