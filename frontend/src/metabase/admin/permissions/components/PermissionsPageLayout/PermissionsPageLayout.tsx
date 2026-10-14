@@ -20,12 +20,7 @@ import { getPermissionsBasePath } from "metabase/common/components/PermissionsBa
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
-import {
-  Group,
-  Button as NewButton,
-  Modal as NewModal,
-  Text,
-} from "metabase/ui";
+import { Button as NewButton, Modal as NewModal, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import {
@@ -169,18 +164,17 @@ export function PermissionsPageLayout({
         title="Someone just changed permissions"
         opened={showRefreshModal}
         size="lg"
-        padding="2.5rem"
         withCloseButton={false}
         onClose={() => true}
       >
-        <Text mb="1rem">
+        <Text>
           {t`To edit permissions, you need to start from the latest version. Please refresh the page.`}
         </Text>
-        <Group justify="flex-end">
+        <NewModal.Footer>
           <NewButton onClick={() => location.reload()} variant="filled">
             {t`Refresh the page`}
           </NewButton>
-        </Group>
+        </NewModal.Footer>
       </NewModal>
       <LegacyPermissionsModal
         isOpen={showSplitPermsModal}

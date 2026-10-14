@@ -1108,7 +1108,10 @@
   the chart it was saved from, so sever the link back to its origin — the conversation
   then stops showing that chart as saved. Only content edits count (query, display, viz
   settings); renames, moves, and archiving keep the link. The Metabot save paths stamp
-  these columns with raw table updates, so stamping never re-enters this hook."
+  these columns with raw table updates, so stamping never re-enters this hook.
+
+  Metabot's `run_query` tool also reads these columns, to tell SQL that Metabot saved from SQL
+  a person has since edited. Changing what clears them changes which saved SQL it will run."
   [card changes]
   (if (and (some (partial contains? changes)
                  [:dataset_query :display :visualization_settings])
