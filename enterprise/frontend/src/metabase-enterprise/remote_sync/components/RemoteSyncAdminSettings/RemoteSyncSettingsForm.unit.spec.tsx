@@ -3,12 +3,22 @@ import userEvent from "@testing-library/user-event";
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollectionItem,
+  createMockCollectionItemFromCollection,
+} from "metabase-types/api/mocks";
 
 import {
   createMockLibraryCollection,
   setup,
 } from "./RemoteSyncSettingsForm.setup.spec";
+
+const SYNCED_COLLECTION = createMockCollectionItemFromCollection({
+  id: 30,
+  name: "Synced Collection",
+  is_remote_synced: true,
+  can_write: true,
+});
 
 describe("RemoteSyncSettingsForm", () => {
   it("should display Git settings section with URL and Token fields", async () => {
@@ -409,6 +419,7 @@ describe("RemoteSyncSettingsForm", () => {
         remoteSyncEnabled: true,
         remoteSyncType: "read-only",
         remoteSyncUrl: "https://github.com/test/repo.git",
+        rootCollectionItems: [SYNCED_COLLECTION],
         remoteSyncTransforms: false,
       });
 
@@ -428,6 +439,7 @@ describe("RemoteSyncSettingsForm", () => {
         remoteSyncEnabled: true,
         remoteSyncType: "read-only",
         remoteSyncUrl: "https://github.com/test/repo.git",
+        rootCollectionItems: [SYNCED_COLLECTION],
         remoteSyncTransforms: false,
       });
 
@@ -454,6 +466,7 @@ describe("RemoteSyncSettingsForm", () => {
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
+        rootCollectionItems: [SYNCED_COLLECTION],
       });
 
       // Wait for the form to be fully rendered with read-write mode
@@ -729,7 +742,7 @@ describe("RemoteSyncSettingsForm", () => {
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
         remoteSyncEnabled: true,
-        rootCollectionItems: [unsyncedCollection],
+        rootCollectionItems: [SYNCED_COLLECTION, unsyncedCollection],
       });
 
       await waitFor(() => {
@@ -915,18 +928,59 @@ describe("RemoteSyncSettingsForm", () => {
   });
 
   describe("collections to sync section", () => {
-    it("should display collections section in admin variant when read-write mode is selected during initial setup", async () => {
+    it("should not display collections section during initial setup", async () => {
       setup({
         remoteSyncEnabled: false,
         remoteSyncType: "read-write",
       });
 
-      // Wait for the form to be fully rendered with read-write mode
       await waitFor(() => {
         expect(screen.getByLabelText("Read-write")).toBeChecked();
       });
 
-      expect(screen.getByText("Collections to sync")).toBeInTheDocument();
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+
+    it("should not display collections section when only the Library is synced", async () => {
+      const libraryCollection = createMockLibraryCollection({
+        id: 999,
+        is_remote_synced: true,
+      });
+
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        libraryCollection,
+        rootCollectionItems: [
+          createMockCollectionItem({
+            id: 999,
+            name: "Library",
+            model: "collection",
+            type: "library",
+            is_remote_synced: true,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+
+    it("should display collections section when an ordinary collection is synced", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        rootCollectionItems: [SYNCED_COLLECTION],
+      });
+
+      expect(
+        await screen.findByText("Collections to sync"),
+      ).toBeInTheDocument();
     });
 
     it("should not display collections section in modal variant when read-write mode is selected", async () => {

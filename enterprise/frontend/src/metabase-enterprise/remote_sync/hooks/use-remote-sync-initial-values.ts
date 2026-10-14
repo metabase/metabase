@@ -94,5 +94,13 @@ export const useRemoteSyncInitialValues = (
     isRemoteSyncEnabled,
   ]);
 
-  return { initialValues, libraryCollection };
+  const hasSyncedCollections = [
+    ...(topLevelCollectionsData?.data ?? []),
+    ...(tenantCollectionsData?.data ?? []),
+  ].some(
+    (collection) =>
+      collection.is_remote_synced && collection.type !== "library",
+  );
+
+  return { initialValues, libraryCollection, hasSyncedCollections };
 };
