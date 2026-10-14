@@ -261,11 +261,11 @@ function BoxPlotInner({
                   ...chartModel,
                   dataset: chartModel.boxDataset,
                 })}
-                panelCount={1}
                 plotLeft={layoutModel.adjustedPadding.left}
                 plotRight={chartSize.width - layoutModel.adjustedPadding.right}
                 renderingContext={renderingContext}
                 settings={settings}
+                yAxisCount={1}
               />
             )}
           </ResponsiveEChartsRenderer>

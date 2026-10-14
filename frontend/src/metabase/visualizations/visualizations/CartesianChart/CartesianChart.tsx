@@ -290,11 +290,11 @@ function CartesianChartInner(props: VisualizationProps) {
                 chartInstance={chartInstance}
                 errors={goalErrors}
                 goalLineParams={getGoalLineParams(chartModel)}
-                panelCount={panelCount}
                 plotLeft={chartLayout.padding.left}
                 plotRight={chartSize.width - chartLayout.padding.right}
                 renderingContext={renderingContext}
                 settings={settings}
+                yAxisCount={panelCount}
               />
             )}
           </ResponsiveEChartsRenderer>

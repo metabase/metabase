@@ -24,23 +24,23 @@ type GoalLineWarningsProps = {
     GoalLineParams,
     "isNormalized" | "labelAlign" | "toEChartsAxisValue"
   >;
-  // split panels draw a goal line in each panel, on its own y-axis
-  panelCount: number;
   plotLeft: number;
   plotRight: number;
   renderingContext: RenderingContext;
   settings: ComputedVisualizationSettings;
+  // split panels draw a goal line in each panel, on its own y-axis
+  yAxisCount: number;
 };
 
 export function GoalLineWarnings({
   chartInstance,
   errors,
   goalLineParams,
-  panelCount,
   plotLeft,
   plotRight,
   renderingContext,
   settings,
+  yAxisCount,
 }: GoalLineWarningsProps) {
   const [labelLayouts, setLabelLayouts] = useState<GoalLineLabelLayout[]>([]);
   const { isNormalized, labelAlign, toEChartsAxisValue } = goalLineParams;
@@ -61,7 +61,7 @@ export function GoalLineWarnings({
       const next =
         chartInstance == null || axisValue == null
           ? []
-          : _.range(panelCount).map((yAxisIndex) =>
+          : _.range(yAxisCount).map((yAxisIndex) =>
               getGoalLineLabelLayout({
                 goalY: chartInstance.convertToPixel({ yAxisIndex }, axisValue),
                 plotLeft,
@@ -87,11 +87,11 @@ export function GoalLineWarnings({
     fontSize,
     isNormalized,
     labelAlign,
-    panelCount,
     plotLeft,
     plotRight,
     settings,
     toEChartsAxisValue,
+    yAxisCount,
   ]);
 
   return (
