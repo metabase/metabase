@@ -21,6 +21,8 @@
   the collector reads it as JSON, so a parse→encode round trip is semantically lossless."
   (:require
    [clj-http.client :as http]
+   [diehard.bulkhead :as dh.bh]
+   [diehard.core :as dh]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.macros :as api.macros]
@@ -40,14 +42,28 @@
 (def ^:private forward-timeout-ms 5000)
 
 ;; This endpoint is unauthenticated and makes its outbound call inline on the request thread, so an anonymous caller
-;; can hold a request thread per call for as long as the forward takes. Same rate as the throttler
-;; on [[metabase.analytics.api.proxy]], the sibling relay, so the two public relays do not differ. Note this bounds
-;; the request *rate* per key, not the number of requests in flight: a caller under the limit can still hold a
-;; worker per admitted request for the length of the forward.
+;; can hold a request thread per call for as long as the forward takes. Same settings as the throttler
+;; on [[metabase.analytics.api.proxy]], the sibling relay, so the two public relays do not differ — see there for why
+;; the threshold is 600 and why `initial-delay-ms` and `delay-exponent` are lowered from the library defaults. This
+;; bounds the request *rate* per key, not the number of requests in flight; [[forward-bulkhead]] bounds that.
 (def ^:private throttler
   (throttle/make-throttler :metaplow-proxy
-                           :attempts-threshold 100
-                           :attempt-ttl-ms     (* 60 1000)))
+                           :attempts-threshold 600
+                           :attempt-ttl-ms     (* 60 1000)
+                           :initial-delay-ms   1000
+                           :delay-exponent     1))
+
+(def ^:private max-concurrent-forwards
+  "Forwards allowed in flight at once. Each one can hold a request thread for as long as `forward-timeout-ms`, and
+  ring-jetty's default pool is 50 threads for the whole instance, so this caps what the relay can take of it. The
+  sibling relay in [[metabase.analytics.api.proxy]] has its own bulkhead of the same size, kept separate so that a
+  collector which goes slow starves only its own relay."
+  8)
+
+(defonce ^:private
+  ^{:doc "Process-wide bulkhead bounding concurrent forwards; see [[max-concurrent-forwards]]."}
+  forward-bulkhead
+  (dh.bh/bulkhead {:concurrency max-concurrent-forwards}))
 
 (defn- +throttle
   "Middleware that answers 429 for a source address over the rate limit, before request validation and the forward."
@@ -123,6 +139,25 @@
       ;; The tracker ignores the response on failure, but a fake 2xx would still be a lie about delivery.
       {:status 502 :body nil})))
 
+(defn- do-with-forward-bulkhead
+  "Run `thunk` holding a [[forward-bulkhead]] permit, answering 503 when the relay already has
+  [[max-concurrent-forwards]] forwards in flight."
+  [thunk]
+  (try
+    ;; `max-wait-ms` 0 sheds rather than queues: a caller waiting for a permit would go on holding the request thread
+    ;; this bulkhead exists to protect.
+    (dh/with-bulkhead {:bulkhead forward-bulkhead, :max-wait-ms 0}
+      (thunk))
+    (catch ExceptionInfo e
+      (if (:bulkhead (ex-data e))
+        (do
+          ;; A shed event is a dropped event, so it belongs on the same counter as the pipeline's own losses.
+          (analytics/inc! :metabase-metaplow/errors {:stage :relay-shed})
+          (log/debug "metaplow-proxy shed a forward: too many already in flight")
+          ;; The same 503 a switched-off instance answers: nothing was relayed, and the tracker treats both alike.
+          {:status 503 :body nil})
+        (throw e)))))
+
 ;; No response schema: the body is an opaque relay of the collector's own response. The tracker reads its `disabled`
 ;; flag and `cache` token straight out of it, so a fabricated schema would be misleading.
 ;;
@@ -140,7 +175,11 @@
     (let [encoded (json/encode body)]
       (if (> (alength (u/string-to-bytes encoded)) max-body-bytes)
         {:status 413 :body nil}
-        (forward! (analytics.settings/metaplow-url) encoded (cache-token))))))
+        ;; `cache-token` reads the current request, so it has to be called on this thread, not inside the forward.
+        (let [token (cache-token)]
+          (do-with-forward-bulkhead
+           (fn []
+             (forward! (analytics.settings/metaplow-url) encoded token))))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "Routes for the public Metabase Track telemetry relay."
