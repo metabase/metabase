@@ -9,118 +9,127 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- do-with-app-reading!
+  "Call `f` with a data app whose resource collection holds a card that reads `table-ids`."
+  [table-ids f]
+  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                 :model/Card card {:collection_id (:resource_collection_id app)}]
+    (mt/with-model-cleanup [:model/Dependency]
+      (when (seq table-ids)
+        (t2/insert! :model/Dependency
+                    (for [table-id table-ids]
+                      {:from_entity_type :card :from_entity_id (:id card)
+                       :to_entity_type :table :to_entity_id table-id})))
+      (f app))))
+
+(defmacro ^{:private true :clj-kondo/lint-as 'clojure.core/let} with-app-reading!
+  "Bind `app-sym` to a data app whose resource collection reads `table-ids`, and run `body`."
+  [[app-sym table-ids] & body]
+  `(do-with-app-reading! ~table-ids (fn [~app-sym] ~@body)))
+
 (deftest group-permission-warnings-exclude-inactive-tables-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues) (mt/id :orders) (mt/id :categories)]}
-                     :model/PermissionsGroup group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (group-access/add-groups! app [(:id group)])
-        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type :hidden}
-            ;; exclude inactive tables, but keep active visible and hidden tables.
-            ;; permissions editor also follow this filtering.
-            (is (=? [{:group_id (:id group)
-                      :missing_tables [{:id (mt/id :categories)} {:id (mt/id :orders)}]}]
-                    (group-access/permission-warnings app)))))))))
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders) (mt/id :categories)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (group-access/add-groups! app [(:id group)])
+          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type :hidden}
+              ;; exclude inactive tables, but keep active visible and hidden tables.
+              ;; permissions editor also follow this filtering.
+              (is (=? [{:group_id (:id group)
+                        :missing_tables [{:id (mt/id :categories)} {:id (mt/id :orders)}]}]
+                      (group-access/permission-warnings app))))))))))
 
 (deftest group-permission-warnings-ignore-apps-with-only-inactive-tables-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues)]}
-                     :model/PermissionsGroup group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (group-access/add-groups! app [(:id group)])
+      (with-app-reading! [app [(mt/id :venues)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (group-access/add-groups! app [(:id group)])
         ; if data apps only references inactive tables, there will be no access warnings
-        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
-          (is (= [] (group-access/permission-warnings app))))))))
+          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+            (is (= [] (group-access/permission-warnings app)))))))))
 
 (deftest group-permission-warnings-ignore-unassigned-groups-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp _app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                          :table_ids [(mt/id :venues) (mt/id :orders)]}
-                     :model/PermissionsGroup group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+      (with-app-reading! [_app [(mt/id :venues) (mt/id :orders)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
 
 (deftest group-permission-warnings-include-inherited-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues) (mt/id :orders)]}
-                     :model/PermissionsGroup group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (group-access/add-groups! app [(:id group)])
-        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
-        (is (=? [{:group_id (:id group)
-                  :missing_tables [{:id (mt/id :orders) :name "Orders" :database_id (mt/id)}]}]
-                (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (group-access/add-groups! app [(:id group)])
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (is (=? [{:group_id (:id group)
+                    :missing_tables [{:id (mt/id :orders) :name "Orders" :database_id (mt/id)}]}]
+                  (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
 
 (deftest group-permission-warnings-preserve-permissions-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues) (mt/id :orders)]}
-                     :model/PermissionsGroup group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (group-access/add-groups! app [(:id group)])
-        (let [before (t2/select :model/DataPermissions)]
-          (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")
-          (is (= before (t2/select :model/DataPermissions))))))))
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (group-access/add-groups! app [(:id group)])
+          (let [before (t2/select :model/DataPermissions)]
+            (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")
+            (is (= before (t2/select :model/DataPermissions)))))))))
 
 (deftest group-permission-warnings-include-direct-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues) (mt/id :orders)]}
-                     :model/PermissionsGroup group {}]
-        (group-access/add-groups! app [(:id group)])
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (perms/set-table-permission! (:id group) (mt/id :venues) :perms/view-data :unrestricted)
-        (perms/set-table-permission! (:id group) (mt/id :orders) :perms/view-data :unrestricted)
-        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (group-access/add-groups! app [(:id group)])
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (perms/set-table-permission! (:id group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (:id group) (mt/id :orders) :perms/view-data :unrestricted)
+          (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
 
 (deftest group-permission-warnings-include-sandbox-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues) (mt/id :orders)]}
-                     :model/PermissionsGroup group {}]
-        (group-access/add-groups! app [(:id group)])
-        (mt/user-http-request :crowberto :put 200 "permissions/graph"
-                              (-> (data-perms.graph/api-graph)
-                                  (assoc-in [:groups (:id group) (mt/id) :view-data]
-                                            {"PUBLIC" {(mt/id :venues) :unrestricted
-                                                       (mt/id :orders) :sandboxed}})
-                                  (assoc :sandboxes [{:group_id (:id group) :table_id (mt/id :orders)}])))
-        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))
-        (mt/user-http-request :crowberto :put 200 "permissions/graph"
-                              (assoc-in (data-perms.graph/api-graph)
-                                        [:groups (:id group) (mt/id) :view-data "PUBLIC" (mt/id :orders)]
-                                        :blocked))
-        (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :orders)}]}]
-                (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (group-access/add-groups! app [(:id group)])
+          (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                (-> (data-perms.graph/api-graph)
+                                    (assoc-in [:groups (:id group) (mt/id) :view-data]
+                                              {"PUBLIC" {(mt/id :venues) :unrestricted
+                                                         (mt/id :orders) :sandboxed}})
+                                    (assoc :sandboxes [{:group_id (:id group) :table_id (mt/id :orders)}])))
+          (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))
+          (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                (assoc-in (data-perms.graph/api-graph)
+                                          [:groups (:id group) (mt/id) :view-data "PUBLIC" (mt/id :orders)]
+                                          :blocked))
+          (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :orders)}]}]
+                  (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
 
 (deftest group-permission-warnings-require-admin-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues) (mt/id :orders)]}
-                     :model/PermissionsGroup group {}]
-        (group-access/add-groups! app [(:id group)])
-        (mt/user-http-request :rasta :get 403 "apps/birds/group-permission-warnings")))))
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (group-access/add-groups! app [(:id group)])
+          (mt/user-http-request :rasta :get 403 "apps/birds/group-permission-warnings"))))))
 
 (deftest group-permission-warnings-without-dependencies-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids []}
-                     :model/PermissionsGroup group {}]
-        (group-access/add-groups! app [(:id group)])
-        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+      (with-app-reading! [app []]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (group-access/add-groups! app [(:id group)])
+          (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
 
 (deftest group-permission-warnings-missing-app-test
   (mt/with-premium-features #{:data-apps}
@@ -129,61 +138,57 @@
 (deftest group-permission-warnings-use-group-access-not-memberships-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues)]}
-                     :model/PermissionsGroup group {}
-                     :model/PermissionsGroup other-group {}]
-        (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-        (perms/set-database-permission! (:id other-group) (mt/id) :perms/view-data :unrestricted)
-        (group-access/add-groups! app [(:id group)])
-        (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
-        (perms/add-user-to-group! (mt/user->id :rasta) (:id other-group))
-        (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
-                (group-access/permission-warnings app)))))))
+      (with-app-reading! [app [(mt/id :venues)]]
+        (mt/with-temp [:model/PermissionsGroup group {}
+                       :model/PermissionsGroup other-group {}]
+          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+          (perms/set-database-permission! (:id other-group) (mt/id) :perms/view-data :unrestricted)
+          (group-access/add-groups! app [(:id group)])
+          (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
+          (perms/add-user-to-group! (mt/user->id :rasta) (:id other-group))
+          (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
+                  (group-access/permission-warnings app))))))))
 
 (deftest group-permission-warnings-include-impersonated-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}
     (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(mt/id :venues)]}
-                     :model/PermissionsGroup group {}]
-        (group-access/add-groups! app [(:id group)])
-        (mt/user-http-request :crowberto :put 200 "permissions/graph"
-                              (-> (data-perms.graph/api-graph)
-                                  (assoc-in [:groups (:id group) (mt/id) :view-data] :impersonated)
-                                  (assoc :impersonations [{:group_id (:id group) :db_id (mt/id)
-                                                           :attribute "role"}])))
-        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))
-        (mt/user-http-request :crowberto :put 200 "permissions/graph"
-                              (assoc-in (data-perms.graph/api-graph)
-                                        [:groups (:id group) (mt/id) :view-data]
-                                        :blocked))
-        (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
-                (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+      (with-app-reading! [app [(mt/id :venues)]]
+        (mt/with-temp [:model/PermissionsGroup group {}]
+          (group-access/add-groups! app [(:id group)])
+          (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                (-> (data-perms.graph/api-graph)
+                                    (assoc-in [:groups (:id group) (mt/id) :view-data] :impersonated)
+                                    (assoc :impersonations [{:group_id (:id group) :db_id (mt/id)
+                                                             :attribute "role"}])))
+          (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))
+          (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                (assoc-in (data-perms.graph/api-graph)
+                                          [:groups (:id group) (mt/id) :view-data]
+                                          :blocked))
+          (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
+                  (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
 
 (deftest group-permission-warning-lookups-are-batched-test
   (mt/with-no-data-perms-for-all-users!
-    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                       :table_ids [(mt/id :venues) (mt/id :orders)]}
-                   :model/PermissionsGroup finches {}
-                   :model/PermissionsGroup owls {}]
-      (group-access/add-groups! app [(:id finches)])
-      (group-access/permission-warnings app)
-      (let [query-count #(t2/with-call-count [calls]
-                           (group-access/permission-warnings app)
-                           (calls))
-            one-group-count (query-count)]
-        (group-access/add-groups! app [(:id owls)])
-        (is (= one-group-count (query-count)))))))
+    (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
+      (mt/with-temp [:model/PermissionsGroup finches {}
+                     :model/PermissionsGroup owls {}]
+        (group-access/add-groups! app [(:id finches)])
+        (group-access/permission-warnings app)
+        (let [query-count #(t2/with-call-count [calls]
+                             (group-access/permission-warnings app)
+                             (calls))
+              one-group-count (query-count)]
+          (group-access/add-groups! app [(:id owls)])
+          (is (= one-group-count (query-count))))))))
 
 (deftest group-permission-warnings-require-feature-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                     :table_ids [(mt/id :venues)]}
-                 :model/PermissionsGroup group {}]
-    (group-access/add-groups! app [(:id group)])
-    (mt/with-premium-features #{}
-      (mt/user-http-request :crowberto :get 402 "apps/birds/group-permission-warnings")
-      (mt/user-http-request :rasta :get 402 "apps/birds/group-permission-warnings"))))
+  (with-app-reading! [app [(mt/id :venues)]]
+    (mt/with-temp [:model/PermissionsGroup group {}]
+      (group-access/add-groups! app [(:id group)])
+      (mt/with-premium-features #{}
+        (mt/user-http-request :crowberto :get 402 "apps/birds/group-permission-warnings")
+        (mt/user-http-request :rasta :get 402 "apps/birds/group-permission-warnings")))))
 
 (deftest group-permission-warning-lookups-exclude-unrelated-permissions-test
   (mt/with-temp [:model/Database other-db {}

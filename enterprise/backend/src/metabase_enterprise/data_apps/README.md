@@ -50,7 +50,7 @@ the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in.
 must stay inside the entity's directory.
 
 `enabled` is admin-owned and never leaves the instance; group assignments also stay local to the
-instance. `table_ids` are server-managed, and `bundle_hash` is recomputed from the bundle on import.
+instance, and `bundle_hash` is recomputed from the bundle on import.
 A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
 An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
@@ -159,7 +159,6 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `generate/schemas/`                    | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |
 | `query_definition.clj`                 | The closed schema of a `defineQuery` definition the serialization accepts.                      |
 | `resource_validation.clj`              | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
-| `resource_tables.clj`                  | The tables an app's resources read, recorded on the app after an import.                        |
 | `access.clj`                           | App access through assigned groups.                                                             |
 | `group_access.clj`                     | Assignment management and collection grant reconciliation.                                      |
 | `models/data_app_group_assignment.clj` | App-to-group assignments.                                                                       |

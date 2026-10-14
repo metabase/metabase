@@ -5,7 +5,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -15,7 +14,6 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.actions.core :as actions]
    [metabase.collections.models.collection :as collection]
-   [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -226,9 +224,7 @@
                (is (=? {:type :query :collection_id collection-id :model_id nil}
                        (t2/select-one :model/Action :entity_id (copy-eid "action" :model/Action action-id)))))
              (testing "the source is untouched"
-               (is (nil? (t2/select-one-fn :collection_id :model/Action :id action-id))))
-             (testing "the app records the tables its resources read"
-               (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))))))
+               (is (nil? (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))))
 
 (deftest pull-updates-and-removes-resources-with-their-files-test
   (with-data-apps-sync
@@ -597,32 +593,6 @@
         (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])))
         (is (not (t2/exists? :model/Collection :entity_id [:in (map data-apps.tu/collection-entity-id ["first" "second"])])))))))
 
-;; a driver that can't name the tables of a native query: `driver/native-query-table-refs` has no method for it
-(driver/register! ::no-table-refs :abstract? true)
-
-(deftest pull-survives-a-query-whose-tables-cant-be-read-test
-  (testing "a native query on a driver that can't name its tables doesn't fail the pull; the app records the rest"
-    (with-data-apps-sync
-      (mt/with-temp [:model/Database _ {:engine ::no-table-refs :name "no-table-refs"}]
-        (let [resources (data-apps.tu/build-resources
-                         shop-collection-name shop-collection-eid
-                         [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
-                          {:entity_id "shopQuestionNative000" :name "Native" :query (venues-query)}]
-                         [])
-              path      (some #(when (str/includes? % "shopQuestionNative000") %) (keys resources))
-              native    (assoc (yaml/parse-string (get resources path))
-                               :database_id "no-table-refs"
-                               :dataset_query {:database "no-table-refs"
-                                               :lib/type "mbql/query"
-                                               :stages   [{:lib/type "mbql.stage/native" :native "{\"find\": \"orders\"}"}]})
-              src       (test-helpers/versioned-source
-                         :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
-                         :current "v0")
-              result    (import-at! src "v0" :force? true)]
-          (is (= :success (:status result)) (:message result))
-          (is (= "v0" (remote-sync.task/last-version)))
-          (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))))
-
 (deftest pull-refuses-a-manifest-that-names-a-collection-it-doesnt-define-test
   (testing "a manifest with no resource files can't claim a collection that is already here"
     (with-data-apps-sync
@@ -685,22 +655,6 @@
           (is (= :error (:status (export-merged! src "v0"))))
           (is (=? {:name "Someone else's" :collection_id elsewhere}
                   (t2/select-one :model/Card :id foreign-id))))))))
-
-(deftest an-export-that-merges-records-the-tables-test
-  (with-data-apps-sync
-    (let [remote (data-apps.tu/build-resources
-                  shop-collection-name shop-collection-eid
-                  [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
-                   {:entity_id "shopQuestionCheckins0" :name "Checkins"
-                    :query {:stages [{:source {:type "table" :id (mt/id :checkins)} :limit 5}]}}]
-                  [])
-          src    (test-helpers/versioned-source
-                  :trees {"v0" (shop-tree (question-resources)) "v1" (shop-tree remote)}
-                  :current "v1")]
-      (is (= :success (:status (import-at! src "v0" :force? true))))
-      (is (= :success (:status (export-merged! src "v0"))))
-      (is (= (sort [(mt/id :venues) (mt/id :checkins)])
-             (t2/select-one-fn :table_ids :model/DataApp :name "shop"))))))
 
 (deftest pull-loads-a-snippet-with-the-card-that-uses-it-test
   (testing "a resource may use a snippet that the same pull brings"
@@ -765,23 +719,6 @@
           (is (=? {:database_id db-id :collection_id (shop-collection-id)}
                   (t2/select-one :model/Card :entity_id question-eid))))))))
 
-(deftest pull-records-the-table-a-native-query-names-test
-  (testing "a native query's table is matched by name whatever its case"
-    (with-data-apps-sync
-      (let [resources (question-resources)
-            path      (some #(when (str/includes? % question-eid) %) (keys resources))
-            parsed    (yaml/parse-string (get resources path))
-            native    (assoc parsed :dataset_query {:database (:database (:dataset_query parsed))
-                                                    :lib/type "mbql/query"
-                                                    :stages   [{:lib/type "mbql.stage/native"
-                                                                :native   "select * from Venues"}]})
-            src       (test-helpers/versioned-source
-                       :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
-                       :current "v0")
-            result    (import-at! src "v0" :force? true)]
-        (is (= :success (:status result)) (:message result))
-        (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
-
 (deftest an-apps-collection-cant-be-moved-to-the-trash-test
   (testing "trashing it would drop the app's resource files on the next export"
     (with-data-apps-sync
@@ -796,25 +733,6 @@
             (let [collection-id (shop-collection-id)]
               (mt/user-http-request :crowberto :delete 204 "apps/shop")
               (is (not (t2/exists? :model/Collection :id collection-id))))))))))
-
-(deftest pull-records-the-table-a-query-action-names-test
-  (testing "the tables an action's SQL names are recorded apart from the tables the questions read"
-    (with-data-apps-sync
-      (let [mp        (mt/metadata-provider)
-            action-id (actions/insert! {:name          "Clear checkins"
-                                        :type          :query
-                                        :database_id   (mt/id)
-                                        :dataset_query (lib/native-query mp "DELETE FROM checkins WHERE id = {{id}}")
-                                        :parameters    [{:id "id" :slug "id" :type :number/=}]})
-            resources (data-apps.tu/build-resources
-                       shop-collection-name shop-collection-eid
-                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
-                       [action-id])
-            src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
-            result    (import-at! src "v0" :force? true)]
-        (is (= :success (:status result)) (:message result))
-        (is (= (sort [(mt/id :venues) (mt/id :checkins)])
-               (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
 
 (deftest an-apps-own-yaml-is-left-alone-test
   (testing "a YAML file in the app's directory that isn't its manifest is the app's own: not loaded, not removed"
@@ -1017,16 +935,6 @@
              (is (= :success (:status (export! mock))))
              (is (= :success (:status (import-at! mock "main" :force? true)))))))))))
 
-(deftest a-pull-whose-table-record-fails-still-loads-test
-  (testing "the tables are recorded after the load's transaction, so a failure there is logged and the pull stands"
-    (with-data-apps-sync
-      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
-        (mt/with-dynamic-fn-redefs [data-apps/record-table-dependencies! (fn [] (throw (ex-info "the tables can't be recorded" {})))]
-          (let [result (import-at! src "v0" :force? true)]
-            (is (= :success (:status result)) (:message result))))
-        (is (t2/exists? :model/DataApp :name "shop"))
-        (is (= "v0" (remote-sync.task/last-version)))))))
-
 (deftest a-refused-pull-names-the-file-whatever-its-name-test
   (testing "a validator failure is reported as what it is when a path has \"branch\" in it, not as a branch error"
     (with-data-apps-sync
@@ -1044,17 +952,6 @@
         (is (= :error (:status result)))
         (is (str/includes? (:message result) "must be a question or metric"))
         (is (str/includes? (:message result) card-file))))))
-
-(deftest an-export-leaves-the-tables-an-app-reads-alone-test
-  (testing "only a pull changes an app's cards, so a pull records the tables they read and an export leaves the record
-            as it is"
-    (with-data-apps-sync
-      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
-        (is (= :success (:status (import-at! mock "main" :force? true))))
-        (mt/user-http-request :crowberto :put 200 "apps/shop" {:bundle "B2"})
-        (t2/update! :model/DataApp :name "shop" {:table_ids [(mt/id :checkins)]})
-        (is (= :success (:status (export! mock))))
-        (is (= [(mt/id :checkins)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
 
 (defn- generated-app-tree
   "The repo files of the `shop` app as `/api/apps/generate` writes them: its manifest and collection, a question

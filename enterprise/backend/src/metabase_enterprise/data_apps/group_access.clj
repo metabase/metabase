@@ -2,7 +2,9 @@
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as resources]
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.api.common :as api]
+   [metabase.graph.core :as graph]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
@@ -68,10 +70,24 @@
        (sort-by (juxt :database_name :schema :name))
        vec))
 
+(defn- resource-table-ids
+  "The IDs of the tables the cards and actions in the resource collection with `collection-id` read, directly or
+  through the cards, measures, segments and snippets they use, as the dependency graph records them."
+  [collection-id]
+  (let [nodes (models.dependency/entities->nodes {:card   (data-apps.db/collection-card-ids collection-id)
+                                                  :action (data-apps.db/collection-action-ids collection-id)})
+        graph (models.dependency/filtered-graph-dependencies nil {:types #{:action :card :measure :segment :snippet}})]
+    (into []
+          (keep (fn [[entity-type entity-id]]
+                  (when (= entity-type :table)
+                    entity-id)))
+          (graph/transitive graph (vec nodes)))))
+
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."
-  [{app-id :id table-ids :table_ids}]
-  (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))]
+  [{app-id :id collection-id :resource_collection_id}]
+  (let [table-ids    (some-> collection-id resource-table-ids)
+        assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))]
     (if (and (seq assigned-ids) (seq table-ids))
       (let [tables       (table-details table-ids)
             all-users-id (:id (perms/all-users-group))

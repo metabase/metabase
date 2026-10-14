@@ -5,7 +5,6 @@
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -14,7 +13,7 @@
 (def non-blob-columns
   "Every DataApp column except the raw bundle blob."
   [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :table_ids :bundle_hash :created_at :updated_at])
+   :resource_collection_id :bundle_hash :created_at :updated_at])
 
 (def ^:private non-blob-model
   (into [:model/DataApp] non-blob-columns))
@@ -151,32 +150,15 @@
     (t2/select [:model/Action :entity_id :collection_id] :entity_id [:in entity-ids])
     []))
 
-(defn table-ids-named
-  "The IDs of the active tables in the database with `database-id` that `refs` (maps of `:schema` and `:table`)
-  name: by name, and by schema when the reference has one, ignoring case."
-  [database-id refs]
-  (if (seq refs)
-    (let [lower  #(some-> % u/lower-case-en)
-          tables (t2/select [:model/Table :id :schema :name] :db_id database-id :active true
-                            {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                             :where [:in [:lower :name] (into [] (keep (comp lower :table)) refs)]})]
-      (into (sorted-set)
-            (for [{:keys [schema table]} refs
-                  {:keys [id] :as named} tables
-                  :when (and (= (lower table) (lower (:name named)))
-                             (or (nil? schema) (= (lower schema) (lower (:schema named)))))]
-              id)))
-    #{}))
-
-(defn collection-dataset-queries
-  "The queries of the cards and of the query actions in the collection with `collection-id`."
+(defn collection-card-ids
+  "The IDs of the cards in the collection with `collection-id`."
   [collection-id]
-  (into (t2/select-fn-vec :dataset_query :model/Card :collection_id collection-id)
-        (t2/select-fn-vec :dataset_query :model/QueryAction
-                          {:select [:qa.*]
-                           :from   [[:query_action :qa]]
-                           :join   [[:action :a] [:= :a.id :qa.action_id]]
-                           :where  [:= :a.collection_id collection-id]})))
+  (t2/select-pks-vec :model/Card :collection_id collection-id))
+
+(defn collection-action-ids
+  "The IDs of the actions in the collection with `collection-id`."
+  [collection-id]
+  (t2/select-pks-vec :model/Action :collection_id collection-id))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
