@@ -47,6 +47,13 @@
                     :body     "Your Metabase emails are working — hooray!"}]}
                  @mt/inbox)))))))
 
+(deftest test-email-without-smtp-server-test
+  (testing "POST /api/email/test refuses to send when no SMTP server is configured"
+    (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil]
+      (mt/with-temporary-setting-values [email-smtp-host nil]
+        (is (= "Wrong host or port"
+               (mt/user-http-request :crowberto :post 400 "email/test")))))))
+
 (deftest update-email-settings-test
   ;; There is a lot of overlap with the /api/email/override test, but enough differences that we keep them separate.
   ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email/override test?"
