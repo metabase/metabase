@@ -163,6 +163,7 @@ export const _SdkQuestion = ({
   clickActionMode,
   navigateToNewCard,
   onDrillThrough,
+  navigatedEntity,
 
   height,
   width,
@@ -226,6 +227,7 @@ export const _SdkQuestion = ({
         clickActionMode={clickActionMode}
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
+        navigatedEntity={navigatedEntity}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (
