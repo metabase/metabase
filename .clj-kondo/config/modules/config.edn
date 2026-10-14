@@ -1441,6 +1441,7 @@
            events
            lib.schema
            mcp
+           metabot.agent-api
            models
            request
            server
