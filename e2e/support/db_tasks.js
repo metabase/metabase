@@ -35,6 +35,15 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
   }
 }
 
+export async function queryWritableDB({ type = "postgres", query }) {
+  await createWritableDb({ type });
+
+  return connectAndQueryDB({
+    connectionConfig: WRITABLE_DB_CONFIG[type],
+    query,
+  });
+}
+
 /**
  * For postgres, drops all schemas except for public, and drops all tables from the public schema.
  *
@@ -71,7 +80,7 @@ export async function resetWritableDb({ type = "postgres" }) {
     }
 
     for (const table of tables) {
-      await dbClient.raw(`DROP TABLE public.${table.name};`);
+      await dbClient.raw(`DROP TABLE IF EXISTS public.${table.name} CASCADE;`);
     }
   } else if (type === "mysql") {
     const { rows: tables } = await dbClient.raw(
