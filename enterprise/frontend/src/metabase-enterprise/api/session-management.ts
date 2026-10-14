@@ -21,7 +21,7 @@ export const sessionManagementApi = EnterpriseApi.injectEndpoints({
         response ? provideSessionListTags(response.data) : [],
     }),
 
-    sessionCounts: builder.query<SessionCountsResponse, void>({
+    getSessionCounts: builder.query<SessionCountsResponse, void>({
       query: () => ({
         method: "GET",
         url: "/api/ee/session-management/counts",
@@ -48,5 +48,5 @@ export const {
   useListSessionsQuery,
   useLazyListSessionsQuery,
   useRevokeSessionsMutation,
-  useSessionCountsQuery,
+  useGetSessionCountsQuery,
 } = sessionManagementApi;

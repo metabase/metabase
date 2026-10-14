@@ -105,7 +105,7 @@ export const notificationApi = Api.injectEndpoints({
         body: _.omit(body, "creator"),
       }),
     }),
-    adminNotificationCounts: builder.query<
+    getAdminNotificationCounts: builder.query<
       AdminNotificationCountsResponse,
       void
     >({
@@ -188,7 +188,7 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
-  useAdminNotificationCountsQuery,
+  useGetAdminNotificationCountsQuery,
   useAdminListNotificationsQuery,
   useLazyAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
