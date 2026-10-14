@@ -11,8 +11,8 @@
   (first (a/alts!! [chan (a/timeout 5000)])))
 
 (defn- poll-only-chan!
-  "A channel holding `value` for [[a/poll!]], whose takes that may wait, as a go block's do, never complete.
-  It stands for a canceled channel that the background forward has not read yet."
+  "A channel that gives `value` to [[a/poll!]] but never to a go block waiting on it.
+  It stands in for an outer channel canceled before [[qp.pipeline/do-with-own-canceled-chan]] forwards its value."
   [value]
   (let [ready (doto (a/promise-chan) (a/>!! value))
         never (a/promise-chan)]
@@ -56,7 +56,7 @@
                   (received qp.pipeline/*canceled-chan*)))))))))
 
 (deftest do-with-own-canceled-chan-already-canceled-test
-  (testing "an outer query canceled already is seen by the inner one before it starts"
+  (testing "the inner query sees a cancel that arrived before it started"
     (is (= ::canceled
            (qp.pipeline/do-with-own-canceled-chan
             (poll-only-chan! ::canceled)

@@ -40,21 +40,20 @@
   "Call `thunk` with [[*canceled-chan*]] bound to a new channel, which is canceled when `outer-chan` is.
   The outer channel defaults to the current [[*canceled-chan*]].
   When there is no outer channel, `thunk` runs with the binding as it is.
-  Use this for a query that runs while another one is in progress, and for each of several queries that one channel
-  can cancel.
-  `outer-chan` must keep its value for every reader, as a promise channel does."
+  Use this for a query that runs while another is in progress, or for each of several queries one channel cancels.
+  The outer channel must keep its value for every reader, as a promise channel does."
   ([thunk]
    (do-with-own-canceled-chan *canceled-chan* thunk))
   ([outer-chan thunk]
-   ;; A query closes [[*canceled-chan*]] when it finishes. On a shared channel, a query in progress or a later one
-   ;; would then never hear that it was canceled or timed out.
+   ;; A query closes [[*canceled-chan*]] when it finishes.
+   ;; On a shared channel, a query still running, or a later one, would never hear it was canceled or timed out.
    (if outer-chan
      (let [own-chan  (a/promise-chan)
            done-chan (a/promise-chan)]
        ;; A cancel that has already arrived is copied now, so the query sees it before it starts.
        (some->> (a/poll! outer-chan) (a/offer! own-chan))
        (a/go
-         ;; Only ever closed, `done-chan` yields nil, so a value can only come from `outer-chan`.
+         ;; Nothing is ever put on `done-chan`, so a value can only come from `outer-chan`.
          (when-some [value (first (a/alts! [outer-chan done-chan]))]
            (a/>! own-chan value)))
        (try

@@ -213,8 +213,7 @@
   (let [result
         ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
-        ;; This query also gets a cancellation channel of its own, because it closes the one it runs with and the
-        ;; outer query has yet to run.
+        ;; This query gets its own cancellation channel too: finishing closes it, and the outer query has yet to run.
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
           (request/as-admin
             (qp.pipeline/do-with-own-canceled-chan #(qp/process-query query))))]
