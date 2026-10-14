@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Modal, Text } from "metabase/ui";
+import type { DatabaseAnonymousReach } from "metabase-types/api";
+
+import { AnonymousReachList } from "./AnonymousReachList";
 
 /** Which question is being put about the anonymous-access grant. */
 export type AnonymousAccessQuestion = "choose" | "revoke";
@@ -11,6 +14,8 @@ type Answer = () => void | Promise<void>;
 interface AnonymousAccessChoiceModalProps {
   /** The question being put, or null when none is. */
   question: AnonymousAccessQuestion | null;
+  /** What the decision is about, so the admin can see it before taking it. */
+  reach: DatabaseAnonymousReach | undefined;
   /** The open question, which has not been decided yet, so its answer goes either way. */
   onChooseGrant: (granted: boolean) => void | Promise<void>;
   onCancelGrantChoice: () => void;
@@ -22,6 +27,7 @@ interface AnonymousAccessChoiceModalProps {
 /** Puts the anonymous-access grant to the admin. The caller applies the answer. */
 export const AnonymousAccessChoiceModal = ({
   question,
+  reach,
   onChooseGrant,
   onCancelGrantChoice,
   onConfirmRevoke,
@@ -34,6 +40,7 @@ export const AnonymousAccessChoiceModal = ({
       <GrantChoiceModal
         key="choose"
         opened={question === "choose"}
+        reach={reach}
         onAnswer={onChooseGrant}
         onCancel={onCancelGrantChoice}
       />
@@ -42,6 +49,7 @@ export const AnonymousAccessChoiceModal = ({
       <RevokeConfirmationModal
         key="revoke"
         opened={question === "revoke"}
+        reach={reach}
         onConfirm={onConfirmRevoke}
         onCancel={onDismissRevoke}
       />
@@ -53,10 +61,12 @@ export const AnonymousAccessChoiceModal = ({
 
 const GrantChoiceModal = ({
   opened,
+  reach,
   onAnswer,
   onCancel,
 }: {
   opened: boolean;
+  reach: DatabaseAnonymousReach | undefined;
   onAnswer: (granted: boolean) => void | Promise<void>;
   onCancel: () => void;
 }) => {
@@ -77,6 +87,11 @@ const GrantChoiceModal = ({
         <Text>
           {t`This database already serves anonymous visitors, through a public link or a published guest embed. They have no user attribute for routing to match on, so without anonymous access their queries stop returning data. Allowing it lets them keep querying this database.`}
         </Text>
+        <AnonymousReachList
+          reach={reach}
+          framing="at-stake"
+          variant="question"
+        />
         <Flex align="center" justify="space-between" gap="lg">
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
           <Flex align="center" gap="lg">
@@ -97,13 +112,18 @@ const GrantChoiceModal = ({
   );
 };
 
-/** Built on `Modal` rather than `ConfirmModal`, which wraps its message in a paragraph. */
+/**
+ * Built on `Modal` rather than `ConfirmModal`, which wraps its message in a paragraph and so cannot
+ * carry the list.
+ */
 const RevokeConfirmationModal = ({
   opened,
+  reach,
   onConfirm,
   onCancel,
 }: {
   opened: boolean;
+  reach: DatabaseAnonymousReach | undefined;
   onConfirm: Answer;
   onCancel: () => void;
 }) => (
@@ -118,6 +138,11 @@ const RevokeConfirmationModal = ({
       <Text>
         {t`This database serves anonymous visitors, through a public link or a published guest embed. They have no user attribute for routing to match on, so without anonymous access their queries stop returning data.`}
       </Text>
+      <AnonymousReachList
+        reach={reach}
+        framing="would-stop"
+        variant="question"
+      />
       <Flex align="center" justify="flex-end" gap="lg">
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         {/* Not disabled in flight as ConfirmModal's is: confirmRevoke drops the question on the
