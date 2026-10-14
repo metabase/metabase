@@ -178,6 +178,8 @@ The token gets all the [permission scopes](#permission-scopes) unless you ask fo
 
 If you have Usage analytics, each token issued this way appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`, but not in the [authorization logs](#authorization-logs).
 
+People who only use headless access show **Never** under **Last Login** in **Admin > People**, but their use shows up in [MCP analytics](#mcp-analytics).
+
 ## Authorization logs
 
 To review which clients have connected, go to **Admin > AI > MCP** and open the **Authorizations** tab. The authorization logs are an audit log of MCP and Agent API client registrations and the authorization decisions people have approved or denied.
