@@ -1860,10 +1860,6 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Segments", () => {
-    beforeEach(() => {
-      H.MetricsViewer.goToViewer();
-    });
-
     it("should apply a segment as a filter to a metric", () => {
       const SEGMENT_NAME = "Big orders";
 
@@ -1879,6 +1875,9 @@ describe("scenarios > metrics > explorer", () => {
           },
         },
       });
+      // Open the viewer only once the segment exists, so it can't load and
+      // cache the segment list before the segment is created.
+      H.MetricsViewer.goToViewer();
 
       addMetric("Count of orders");
 
