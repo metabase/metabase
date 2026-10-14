@@ -43,21 +43,18 @@
 
 ;; This endpoint is unauthenticated and makes its outbound call inline on the request thread, so an anonymous caller
 ;; can hold a request thread per call for as long as the forward takes. Same settings as the throttler
-;; on [[metabase.analytics.api.proxy]], the sibling relay, so the two public relays do not differ — see there for why
-;; the threshold is 600 and why `initial-delay-ms` and `delay-exponent` are lowered from the library defaults. This
-;; bounds the request *rate* per key, not the number of requests in flight; [[forward-bulkhead]] bounds that.
+;; on [[metabase.analytics.api.proxy]], the sibling relay, so the two public relays do not differ. This bounds the
+;; request *rate* per key, not the number of requests in flight; [[forward-bulkhead]] bounds that.
 (def ^:private throttler
   (throttle/make-throttler :metaplow-proxy
                            :attempts-threshold 600
                            :attempt-ttl-ms     (* 60 1000)
+                           ;; don't punish when throttling, just shed load
                            :initial-delay-ms   1000
                            :delay-exponent     1))
 
 (def ^:private max-concurrent-forwards
-  "Forwards allowed in flight at once. Each one can hold a request thread for as long as `forward-timeout-ms`, and
-  ring-jetty's default pool is 50 threads for the whole instance, so this caps what the relay can take of it. The
-  sibling relay in [[metabase.analytics.api.proxy]] has its own bulkhead of the same size, kept separate so that a
-  collector which goes slow starves only its own relay."
+  "Total concurrent forwards allowed in flight at once."
   8)
 
 (defonce ^:private
@@ -82,7 +79,9 @@
           ;; parse as JSON, so a JSON error body would clear the collector's cache token on every throttled send.
           ;; Every other synthesized status in this ns sends no body for the same reason; `Retry-After` carries the
           ;; detail a caller needs.
-          (respond (u.throttle/throttle-response e nil))
+          (do
+            (analytics/inc! :metabase-analytics-relay/rejected {:relay :metaplow, :reason :throttled})
+            (respond (u.throttle/throttle-response e nil)))
           (raise e))))))
 
 (def ^:private max-body-bytes
@@ -144,17 +143,13 @@
   [[max-concurrent-forwards]] forwards in flight."
   [thunk]
   (try
-    ;; `max-wait-ms` 0 sheds rather than queues: a caller waiting for a permit would go on holding the request thread
-    ;; this bulkhead exists to protect.
     (dh/with-bulkhead {:bulkhead forward-bulkhead, :max-wait-ms 0}
       (thunk))
     (catch ExceptionInfo e
       (if (:bulkhead (ex-data e))
         (do
-          ;; A shed event is a dropped event, so it belongs on the same counter as the pipeline's own losses.
-          (analytics/inc! :metabase-metaplow/errors {:stage :relay-shed})
+          (analytics/inc! :metabase-analytics-relay/rejected {:relay :metaplow, :reason :shed})
           (log/debug "metaplow-proxy shed a forward: too many already in flight")
-          ;; The same 503 a switched-off instance answers: nothing was relayed, and the tracker treats both alike.
           {:status 503 :body nil})
         (throw e)))))
 
