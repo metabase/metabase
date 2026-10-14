@@ -22,7 +22,7 @@ type GoalLineWarningsProps = {
   errors: GoalRefError[];
   goalLineParams: Pick<
     GoalLineParams,
-    "isNormalized" | "labelOnLeft" | "toEChartsAxisValue"
+    "isNormalized" | "labelAlign" | "toEChartsAxisValue"
   >;
   // split panels draw a goal line in each panel, on its own y-axis
   panelCount: number;
@@ -43,7 +43,7 @@ export function GoalLineWarnings({
   settings,
 }: GoalLineWarningsProps) {
   const [labelLayouts, setLabelLayouts] = useState<GoalLineLabelLayout[]>([]);
-  const { isNormalized, labelOnLeft, toEChartsAxisValue } = goalLineParams;
+  const { isNormalized, labelAlign, toEChartsAxisValue } = goalLineParams;
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
   const label = settings["graph.goal_label"] ?? "";
   const labelWidth = renderingContext.measureText(label, {
@@ -66,7 +66,7 @@ export function GoalLineWarnings({
                 goalY: chartInstance.convertToPixel({ yAxisIndex }, axisValue),
                 plotLeft,
                 plotRight,
-                labelOnLeft,
+                labelAlign,
                 fontSize,
               }),
             );
@@ -86,7 +86,7 @@ export function GoalLineWarnings({
     chartInstance,
     fontSize,
     isNormalized,
-    labelOnLeft,
+    labelAlign,
     panelCount,
     plotLeft,
     plotRight,
@@ -96,12 +96,12 @@ export function GoalLineWarnings({
 
   return (
     <>
-      {labelLayouts.map(({ x, y, align }, index) => (
+      {labelLayouts.map(({ x, y }, index) => (
         <Box
           key={index}
           pos="absolute"
           left={
-            align === "right"
+            labelAlign === "right"
               ? x - labelWidth - GOAL_WARNING_GAP - GOAL_WARNING_ICON_SIZE
               : x + labelWidth + GOAL_WARNING_GAP
           }

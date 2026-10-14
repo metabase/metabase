@@ -36,7 +36,6 @@ export interface RowChartProps<TDatum> {
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
   goal?: ChartGoal | null;
-  // drawn next to the goal label
   goalWarning?: ReactNode;
   theme: RowChartTheme;
   stackOffset: StackOffset;

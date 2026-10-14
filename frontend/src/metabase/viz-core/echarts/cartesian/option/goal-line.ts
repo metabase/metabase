@@ -32,7 +32,7 @@ export interface GoalLineParams {
   dataset: ChartDataset;
   isNormalized: boolean;
   toEChartsAxisValue: (value: RowValue) => number | null;
-  labelOnLeft: boolean;
+  labelAlign: "left" | "right";
 }
 
 interface GoalLineParamsSource {
@@ -49,12 +49,11 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
     dataset: model.dataset,
     isNormalized: model.leftAxisModel?.isNormalized ?? false,
     toEChartsAxisValue: model.yAxisScaleTransforms.toEChartsAxisValue,
-    labelOnLeft: model.rightAxisModel != null,
+    labelAlign: model.rightAxisModel != null ? "left" : "right",
   };
 }
 
 export type GoalLineLabelLayout = {
-  align: "left" | "right";
   x: number;
   y: number;
 };
@@ -62,25 +61,24 @@ export type GoalLineLabelLayout = {
 export function getGoalLineLabelLayout({
   fontSize,
   goalY,
-  labelOnLeft,
+  labelAlign,
   plotLeft,
   plotRight,
 }: {
   fontSize: number;
   goalY: number;
-  labelOnLeft: boolean;
+  labelAlign: GoalLineParams["labelAlign"];
   plotLeft: number;
   plotRight: number;
 }): GoalLineLabelLayout {
   return {
-    x: labelOnLeft ? plotLeft : plotRight,
+    x: labelAlign === "left" ? plotLeft : plotRight,
     y: goalY - fontSize - CHART_STYLE.goalLine.label.margin,
-    align: labelOnLeft ? "left" : "right",
   };
 }
 
 export function getGoalLineSeriesOption(
-  { dataset, isNormalized, toEChartsAxisValue, labelOnLeft }: GoalLineParams,
+  { dataset, isNormalized, toEChartsAxisValue, labelAlign }: GoalLineParams,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
@@ -133,7 +131,7 @@ export function getGoalLineSeriesOption(
       const labelLayout = getGoalLineLabelLayout({
         fontSize,
         goalY: y,
-        labelOnLeft,
+        labelAlign,
         plotLeft: xStart,
         plotRight: xEnd,
       });
@@ -148,7 +146,7 @@ export function getGoalLineSeriesOption(
           },
         },
         style: {
-          align: labelLayout.align,
+          align: labelAlign,
           text: settings["graph.goal_label"] ?? "",
           fontFamily: renderingContext.fontFamily,
           fontSize,
