@@ -887,6 +887,13 @@ describe("Remote Sync", () => {
   });
 
   describe("shared tenant collections", () => {
+    const configureGitWithoutStrictMode = (
+      syncType: "read-write" | "read-only",
+    ) => {
+      H.configureGitAndPullChanges(syncType);
+      H.updateSetting("remote-sync-strict-mode", false);
+    };
+
     beforeEach(() => {
       setup();
 
@@ -910,7 +917,7 @@ describe("Remote Sync", () => {
           cy.findByText("Collections to sync").should("not.exist");
         });
 
-        H.configureGitAndPullChanges("read-write");
+        configureGitWithoutStrictMode("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
@@ -935,7 +942,7 @@ describe("Remote Sync", () => {
         H.commitToRepo();
         // Wait for the read-only import to finish before creating the tenant collection: racing
         // their two implicit collection-permission revision bumps triggers a primary-key 500.
-        H.configureGitAndPullChanges("read-only");
+        configureGitWithoutStrictMode("read-only");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Read Only Tenant Collection");
@@ -951,7 +958,7 @@ describe("Remote Sync", () => {
       it("should reset collection toggles when switching from read-write to read-nly", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGitAndPullChanges("read-write");
+        configureGitWithoutStrictMode("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Mode Switch Test Collection");
@@ -982,7 +989,7 @@ describe("Remote Sync", () => {
 
     describe("syncing tenant collections", () => {
       it("lists shared tenant collections in settings and can push changes from a synced one", () => {
-        H.configureGitAndPullChanges("read-write");
+        configureGitWithoutStrictMode("read-write");
 
         // A second, unsynced tenant collection so the settings list shows more than one row
         H.createSharedTenantCollection("Second Tenant Collection");
