@@ -61,7 +61,7 @@
     (impl/with-temp-empty-app-db [conn :h2]
       ;; from the start through v46, so the range spans many majors (we assert on two adjacent ones)
       (impl/run-migrations-in-range! conn ["v00.00-000" "v46.00-000"])
-      (let [versions-table versions/databasechangelog-versions-table
+      (let [versions-table (versions/versions-table-name)
             rows           (jdbc/query {:connection conn}
                                        [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])
             major->deps    (-> (group-by #(versions/version->major (:metabase_version %)) rows)

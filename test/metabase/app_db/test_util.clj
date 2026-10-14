@@ -192,5 +192,5 @@
         (versions/record-deployment-version! conn deployment-id (format "x.%d.0.0" major) true)))
     (jdbc/execute! {:connection conn}
                    [(format "DELETE FROM %s WHERE deployment_id NOT IN (SELECT DISTINCT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
-                            versions/databasechangelog-versions-table
+                            (versions/versions-table-name)
                             changelog-table)])))

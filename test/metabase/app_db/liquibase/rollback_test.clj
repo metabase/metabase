@@ -10,7 +10,8 @@
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util :as u])
   (:import
    (liquibase.changelog ChangeSet)))
 
@@ -48,13 +49,13 @@
   "The set of deployment_ids with any version row."
   [conn]
   (set (map :deployment_id (jdbc/query {:connection conn}
-                                       [(format "SELECT DISTINCT deployment_id FROM %s" versions/databasechangelog-versions-table)]))))
+                                       [(format "SELECT DISTINCT deployment_id FROM %s" (versions/versions-table-name))]))))
 
 (defn- versions-recorded
   "Every recorded version string, in insertion order, read on a fresh connection."
   []
   (mapv :metabase_version (jdbc/query {:datasource (mdb/data-source)}
-                                      [(format "SELECT metabase_version FROM %s ORDER BY id" versions/databasechangelog-versions-table)])))
+                                      [(format "SELECT metabase_version FROM %s ORDER BY id" (versions/versions-table-name))])))
 
 (defn- rollback-last-deployment!
   "What `dev.migrate/rollback! :last-deployment` does: roll back everything after the second-newest deployment, in
@@ -286,7 +287,7 @@
             ;; ... which had no version rows at all. The DELETE and all later reads use fresh autocommit connections:
             ;; on MySQL the shared non-autocommit `conn` would leave the DELETE invisible to the migration's own
             ;; connection and serve later reads from a stale REPEATABLE READ snapshot.
-            (jdbc/execute! {:datasource (mdb/data-source)} [(format "DELETE FROM %s" versions/databasechangelog-versions-table)])
+            (jdbc/execute! {:datasource (mdb/data-source)} [(format "DELETE FROM %s" (versions/versions-table-name))])
             (let [pre-major (versions/latest-applied-major-version conn db)]
               (with-redefs [config/mb-version-info (tag (format "v0.%d.0" (inc pre-major)))]
                 (testing "migrate up records both the backfilled pre-upgrade version and the upgrade's own version"
@@ -298,6 +299,32 @@
                       "the upgrade's changeset was rolled back")
                   (is (= [(format "x.%d.0.0" pre-major)] (versions-recorded))
                       "the upgrade's version row was removed"))))))))))
+
+(deftest release-migrate-down-reverses-version-less-ddl-test
+  (testing "the release `migrate down` reverses a version-less changeset's DDL, not just its bookkeeping"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
+          ;; reads use fresh autocommit connections (see migrate-up-backfills-pre-tracking-install-test)
+          (let [spec   {:datasource (mdb/data-source)}
+                table? (fn [table]
+                         (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+                           ;; Liquibase quotes identifiers, so the stored case varies by database
+                           (or (versions/table-exists? table c)
+                               (versions/table-exists? (u/upper-case-en table) c))))]
+            (with-redefs [config/mb-version-info (tag "v0.65.0")]
+              (mdb/migrate! (mdb/data-source) :up))
+            (is (true? (table? "dev_run_a_table")))
+            (mdb.test-util/age-changelog-rows! spec (liquibase/changelog-table-name conn))
+            (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"
+                          config/mb-version-info   (tag "v0.66.0")]
+              (mdb/migrate! (mdb/data-source) :up)
+              (is (true? (table? "dev_run_b_table")))
+              (is (= ["x.65.0" "x.66.0"] (versions-recorded)))
+              (mdb/migrate! (mdb/data-source) :down)
+              (is (false? (table? "dev_run_b_table")) "66's table was dropped")
+              (is (true? (table? "dev_run_a_table")) "65's table survives")
+              (is (= ["x.65.0"] (versions-recorded))))))))))
 
 (deftest legacy-version-tracking-removed-by-rollback-test
   (testing "rolling back several version-less majors (68 -> 66) removes the v67 and v68 markers with their deployments, leaving v66"

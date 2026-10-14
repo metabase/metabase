@@ -205,7 +205,8 @@
   leading `v`. Binaries from before version-less support read the schema's major from the highest `id LIKE 'v%'` and
   roll back by the number in those ids, so a `view_metrics` id would sort above every `vNN.` id there and break both."
   [id]
-  (boolean (and (re-matches #"[a-z0-9_]+" id)
+  (boolean (and (string? id)
+                (re-matches #"[a-z0-9_]+" id)
                 (re-find #"[a-z]" id)
                 (not (str/starts-with? id "v")))))
 
@@ -226,7 +227,7 @@
     (let [ids          (change-set-ids change-log)
           ;; the ISO date/timestamp the versioned ids were built from (`v50.2024-03-18T16:00:00`): checked first so
           ;; the habit gets its own message rather than a generic character-set complaint
-          iso-date-id? (fn [id] (re-find #"\d{4}-\d{2}-\d{2}" id))
+          iso-date-id? (fn [id] (and (string? id) (re-find #"\d{4}-\d{2}-\d{2}" id)))
           dated-ids    (filter iso-date-id? ids)
           bad-ids      (remove valid-version-less-id? ids)]
       (when (seq dated-ids)
@@ -245,7 +246,7 @@
 
     (directory-based-migration-file? file)
     (let [ids     (change-set-ids change-log)
-          bad-ids (remove #(re-matches directory-based-id-format-re %) ids)]
+          bad-ids (remove #(and (string? %) (re-matches directory-based-id-format-re %)) ids)]
       (when (seq bad-ids)
         (throw (validation-error
                 (format "Directory-based migration file contains IDs without v{version}. prefix: %s"

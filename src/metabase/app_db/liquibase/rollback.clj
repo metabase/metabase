@@ -191,7 +191,7 @@
   them) but still need to be cleared from history, along with those deployments' version rows."
   [^Connection conn changelog-table deployment-ids]
   (when (seq deployment-ids)
-    (doseq [table [changelog-table versions/databasechangelog-versions-table]]
+    (doseq [table [changelog-table (versions/versions-table-name)]]
       (jdbc/execute! {:connection conn}
                      (into [(format "DELETE FROM %s WHERE deployment_id IN (%s)"
                                     table
@@ -316,5 +316,5 @@
        (when (nil? major)
          (throw (IllegalArgumentException.
                  (format "%s is not a valid rollback target. Target must be the major version of a recorded deployment (see the %s table)."
-                         (pr-str target) versions/databasechangelog-versions-table))))
+                         (pr-str target) (versions/versions-table-name)))))
        (rollback-to-deployments! conn liquibase (deployments-with-major deployments major) target)))))

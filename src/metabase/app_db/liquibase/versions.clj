@@ -45,9 +45,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def databasechangelog-versions-table
-  "Name of the table that records the Metabase version associated with each Liquibase `deployment_id`."
-  "databasechangelog_version")
+(defn versions-table-name
+  "Name of the table that records the Metabase version associated with each Liquibase `deployment_id`, cased like
+  Liquibase's own `DATABASECHANGELOG` on the application database (upper case on H2 and MySQL, where MySQL table names
+  can be case-sensitive; lower case on Postgres)."
+  ^String []
+  (if (= :postgres (mdb.connection/db-type))
+    "databasechangelog_version"
+    "DATABASECHANGELOG_VERSION"))
 
 ;;; ------------------------------------------------- JDBC helpers --------------------------------------------------
 
@@ -61,11 +66,9 @@
       boolean))
 
 (defn versions-table-exists?
-  "Whether `databasechangelog_version` exists, checked without creating it. Unquoted DDL identifiers are folded to upper
-  case by H2 and to lower case by Postgres, so both spellings are checked."
+  "Whether the [[versions-table-name]] table exists, checked without creating it."
   [^Connection conn]
-  (boolean (or (table-exists? databasechangelog-versions-table conn)
-               (table-exists? (u/upper-case-en databasechangelog-versions-table) conn))))
+  (table-exists? (versions-table-name) conn))
 
 (defn- underlying-connection ^Connection [^Database database]
   (.. database getConnection getUnderlyingConnection))
@@ -116,9 +119,12 @@
   not be parsed -- so log (once) that version tracking is degraded."
   []
   (when (and config/is-prod? (compare-and-set! dev-version-fallback-logged? false true))
-    (log/errorf (str "Could not parse a release version from this build's version tag %s; recording the development "
-                     "version %s instead. Version tracking and downgrade detection will be degraded. This usually "
-                     "means version.properties is missing or malformed.")
+    (log/errorf (str "This build's version tag %s is not a release version (vX.Y.Z), so this instance will run "
+                     "migrations as a development build and record the development version %s for them. An official "
+                     "Metabase release pointed at this application database later will refuse to start "
+                     "(\"Development build detected\") until those deployments are rolled back with the development "
+                     "tooling or the database is rebuilt. This usually means version.properties is missing or "
+                     "malformed, e.g. a build from a git checkout without release tags (vUNKNOWN).")
                 (pr-str (:tag config/mb-version-info)) dev-version))
   dev-version)
 
@@ -255,7 +261,7 @@
   "The version recorded as having run `deployment-id`, or nil when it has no such row."
   [^Connection conn deployment-id]
   (-> (query conn [(format "SELECT metabase_version FROM %s WHERE deployment_id = ? AND ran_migrations = TRUE ORDER BY id LIMIT 1"
-                           databasechangelog-versions-table)
+                           (versions-table-name))
                    deployment-id])
       first
       :metabase_version))
@@ -286,7 +292,7 @@
                                                (changelog-table database))]))
         by-dep    (group-by :deployment_id
                             (query conn [(format "SELECT deployment_id, metabase_version, ran_migrations FROM %s ORDER BY id"
-                                                 databasechangelog-versions-table)]))]
+                                                 (versions-table-name))]))]
     (->> positions
          (sort-by val #(compare %2 %1))
          (mapv (fn [[deployment-id position]]
@@ -398,7 +404,7 @@
   `(deployment_id, metabase_version)` pair where the dialect can express that (see [[ignores-duplicate-rows?]])."
   [deployment-id version ran?]
   (let [insert (format "INSERT INTO %s (deployment_id, metabase_version, ran_migrations, deployed_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)"
-                       databasechangelog-versions-table)
+                       (versions-table-name))
         sql    (case (mdb.connection/db-type)
                  :postgres (str insert " ON CONFLICT DO NOTHING")
                  :mysql    (str/replace-first insert "INSERT INTO" "INSERT IGNORE INTO")
@@ -415,7 +421,7 @@
   (when (and deployment-id version)
     (let [statement    (version-row-statement deployment-id version ran?)
           pair-exists? #(seq (query conn [(format "SELECT 1 FROM %s WHERE deployment_id = ? AND metabase_version = ?"
-                                                  databasechangelog-versions-table)
+                                                  (versions-table-name))
                                           deployment-id version]))]
       (if (ignores-duplicate-rows?)
         (execute! conn statement)
@@ -605,7 +611,7 @@
                  "ran_migrations %s NOT NULL, "
                  "deployed_at %s NOT NULL, "
                  "CONSTRAINT uq_databasechangelog_version UNIQUE (deployment_id, metabase_version))%s")
-            databasechangelog-versions-table id-column bool-type timestamp-type suffix)))
+            (versions-table-name) id-column bool-type timestamp-type suffix)))
 
 (defn- change-set-id [change-set]
   (if (instance? ChangeSet change-set)
@@ -683,10 +689,10 @@
           (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as x.%d.0.0"
                      deployment-id ran-version highest highest)
           (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"
-                                                                     databasechangelog-versions-table)
+                                                                     (versions-table-name))
                                                              deployment-id])
                   :when (> (version->major metabase_version) highest)]
-            (execute! conn [(format "DELETE FROM %s WHERE id = ?" databasechangelog-versions-table) id]))
+            (execute! conn [(format "DELETE FROM %s WHERE id = ?" (versions-table-name)) id]))
           (record-deployment-version! conn deployment-id (format "x.%d.0.0" highest) true))))))
 
 (defn- newest-row-safe-for-old-binaries?
@@ -700,6 +706,23 @@
               (query conn [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)"
                                    changelog changelog)]))))
 
+(defn- create-versions-table-if-missing!
+  "Create the version table unless it exists. Checked first so an already-upgraded database runs no DDL at boot (a
+  Postgres user without CREATE on the schema fails even `CREATE TABLE IF NOT EXISTS`). A CREATE that fails because a
+  concurrent boot created the table first is ignored; on Postgres a savepoint keeps that failure from aborting the
+  caller's transaction."
+  [^Connection conn]
+  (when-not (versions-table-exists? conn)
+    (let [savepoint (when (and (= :postgres (mdb.connection/db-type)) (not (.getAutoCommit conn)))
+                      (.setSavepoint conn))]
+      (try
+        (execute! conn [(table-ddl)])
+        (catch SQLException e
+          (when savepoint
+            (.rollback conn savepoint))
+          (when-not (versions-table-exists? conn)
+            (throw e)))))))
+
 (defn ensure-version-tracking!
   "Bring version tracking up to date for the application database on `conn`: create `databasechangelog_version` if
   it is missing, record versions for deployments that have none (see [[backfill-untracked-deployments!]]), correct
@@ -711,7 +734,7 @@
   back with a failed `migrate` transaction and is redone next time; on MySQL, where it commits implicitly, running it
   first keeps that commit ahead of any migration work."
   [^Connection conn ^Database database]
-  (execute! conn [(table-ddl)])
+  (create-versions-table-if-missing! conn)
   (backfill-untracked-deployments! conn database)
   (repair-old-binary-rollbacks! conn database)
   ;; every run and rollback ends with a marker; this heals a database whatever else left it otherwise
@@ -759,10 +782,10 @@
           (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
                      deployment-id ran major version)
           (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"
-                                                                     databasechangelog-versions-table)
+                                                                     (versions-table-name))
                                                              deployment-id])
                   :when (> (version->major metabase_version) major)]
-            (execute! conn [(format "DELETE FROM %s WHERE id = ?" databasechangelog-versions-table) id]))
+            (execute! conn [(format "DELETE FROM %s WHERE id = ?" (versions-table-name)) id]))
           (record-deployment-version! conn deployment-id version true))))))
 
 (defn version-tracking-sql

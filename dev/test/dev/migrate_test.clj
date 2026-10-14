@@ -19,7 +19,7 @@
                                                           [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))
               versions (fn [] (mapv :metabase_version
                                     (jdbc/query {:datasource (mdb/data-source)}
-                                                [(format "SELECT metabase_version FROM %s ORDER BY id" versions/databasechangelog-versions-table)])))
+                                                [(format "SELECT metabase_version FROM %s ORDER BY id" (versions/versions-table-name))])))
               markers  (fn [] (mapv :id (jdbc/query {:datasource (mdb/data-source)}
                                                     [(format "SELECT id FROM %s WHERE id LIKE '%%legacy-version-tracking'" ct)])))
               deployment-of (fn [id] (:deployment_id (first (jdbc/query {:datasource (mdb/data-source)}

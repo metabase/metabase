@@ -178,10 +178,6 @@
   [app-db changelog-id]
   (app-db.db/changelog-by-id (:db-type app-db) changelog-id))
 
-(def databasechangelog-versions-table
-  "Name of the table that records the Metabase version associated with each Liquibase `deployment_id`"
-  "databasechangelog_version")
-
 (defn unrun-migrations
   "Returns a list of unrun migrations.
 

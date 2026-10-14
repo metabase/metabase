@@ -184,7 +184,7 @@
         (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
         (liquibase/with-liquibase [liquibase conn]
           (let [db             (.getDatabase liquibase)
-                versions-table versions/databasechangelog-versions-table
+                versions-table (versions/versions-table-name)
                 ;; an arbitrary released major to play "this binary's version" -- every recorded version below is
                 ;; fabricated relative to it (999 above it, the dev version further above), so its exact value is irrelevant
                 binary-major   64]
@@ -211,7 +211,7 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
         (liquibase/with-liquibase [_liquibase conn]
-          (let [versions-table versions/databasechangelog-versions-table
+          (let [versions-table (versions/versions-table-name)
                 ;; an arbitrary released major playing the installing binary's version; the newer binaries below are
                 ;; fabricated relative to it, so its exact value is irrelevant
                 latest         64]
@@ -251,7 +251,7 @@
         (testing "version table exists and is populated when read from a separate connection"
           (is (seq (jdbc/query {:datasource (mdb.connection/data-source)}
                                [(format "SELECT deployment_id, metabase_version FROM %s"
-                                        versions/databasechangelog-versions-table)]))))))))
+                                        (versions/versions-table-name))]))))))))
 
 (deftest migrations-sql-includes-version-tracking-test
   (testing "the manual-upgrade SQL (`migrate print`) records the version bookkeeping"
@@ -331,7 +331,7 @@
                                [(format "DELETE FROM %s WHERE id = ?" table) id]))
               (jdbc/execute! db-conn
                              [(format "DELETE FROM %s WHERE deployment_id = 'futuredep'"
-                                      versions/databasechangelog-versions-table)]))))))))
+                                      (versions/versions-table-name))]))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}

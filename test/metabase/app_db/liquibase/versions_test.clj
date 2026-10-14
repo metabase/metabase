@@ -28,7 +28,7 @@
           [deployment_id metabase_version (or (true? ran_migrations) (= 1 ran_migrations))])
         (jdbc/query {:connection conn}
                     [(format "SELECT deployment_id, metabase_version, ran_migrations FROM %s ORDER BY id"
-                             versions/databasechangelog-versions-table)])))
+                             (versions/versions-table-name))])))
 
 (defn- highest-versioned-major
   "The highest `vNN.` major in the changelog file: the major the one-time backfill records once these migrations have
@@ -85,6 +85,12 @@
             "still falls back to the dev version so the instance can run")
         (is (= 1 (count (filter #(re-find #"development version" (:message %)) (messages))))
             "and logs an error explaining the degraded version tracking")
+        (let [message (:message (first (filter #(re-find #"development version" (:message %)) (messages))))]
+          (testing "the message names the bad tag, the version recorded, and what a release binary will do later"
+            (is (re-find #"\"vUNKNOWN\"" message))
+            (is (re-find #"x\.9999\.0\.0" message))
+            (is (re-find #"Development build detected" message))
+            (is (re-find #"version\.properties" message))))
         (versions/current-recorded-version)
         (is (= 1 (count (filter #(re-find #"development version" (:message %)) (messages))))
             "only once per process -- it is consulted several times per boot")))))
@@ -203,7 +209,7 @@
             (is (= [["newer" latest true]] (version-rows conn))))
           (testing "deployed_at is populated for the backfilled row"
             (is (every? :deployed_at (jdbc/query {:connection conn}
-                                                 [(format "SELECT deployed_at FROM %s" versions/databasechangelog-versions-table)]))))
+                                                 [(format "SELECT deployed_at FROM %s" (versions/versions-table-name))]))))
           (testing "ensure is idempotent"
             (versions/ensure-version-tracking! conn db)
             (is (= 1 (count (version-rows conn)))))
@@ -251,11 +257,76 @@
         (liquibase/with-liquibase [liquibase conn]
           (versions/ensure-version-tracking! conn (.getDatabase liquibase)))
         (is (true? (versions/versions-table-exists? conn)))
-        (jdbc/execute! {:connection conn} [(format "DROP TABLE %s" versions/databasechangelog-versions-table)])
+        (jdbc/execute! {:connection conn} [(format "DROP TABLE %s" (versions/versions-table-name))])
         (mt/with-dynamic-fn-redefs [liquibase/migrate-up-if-needed! (fn [& _] (throw (ex-info "boom" {})))]
           (is (thrown-with-msg? Exception #"boom" (mdb/migrate! (mdb/data-source) :up))))
         (mdb/migrate! (mdb/data-source) :up)
         (is (true? (versions/versions-table-exists? conn)))))))
+
+(defn- ddl-statements!
+  "Run `f` with [[versions/ensure-version-tracking!]]'s statements spied on; returns the CREATE TABLE statements run."
+  [f]
+  (let [orig       (dynamic-redefs/original-fn #'versions/execute!)
+        statements (atom [])]
+    (mt/with-dynamic-fn-redefs [versions/execute! (fn [conn [sql :as sql-params]]
+                                                    (when (re-find #"(?i)^\s*CREATE TABLE" sql)
+                                                      (swap! statements conj sql))
+                                                    (orig conn sql-params))]
+      (f))
+    @statements))
+
+(deftest ensure-version-tracking-skips-ddl-when-table-exists-test
+  (testing "once the version table exists, boots run no DDL: a Postgres user without CREATE on the schema can still boot"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)]
+            (is (= 1 (count (ddl-statements! #(versions/ensure-version-tracking! conn db))))
+                "the first call creates the table")
+            (is (= [] (ddl-statements! #(versions/ensure-version-tracking! conn db)))
+                "later calls see it and skip the CREATE")))))))
+
+(deftest ensure-version-tracking-tolerates-losing-create-race-test
+  (testing "a CREATE that fails because a concurrent boot created the table first is not an error"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db     (.getDatabase liquibase)
+                orig   (dynamic-redefs/original-fn #'versions/execute!)
+                checks (atom 0)]
+            ;; the other instance's CREATE lands between our existence check and our own CREATE
+            (orig conn [(#'versions/table-ddl)])
+            (mt/with-dynamic-fn-redefs [versions/versions-table-exists? (fn [_conn] (> (swap! checks inc) 1)) ; stale on the first check only
+                                        versions/execute!               (fn [conn [sql :as sql-params]]
+                                                                          (if (re-find #"(?i)^\s*CREATE TABLE" sql)
+                                                                            (throw (java.sql.SQLException. "duplicate key value violates unique constraint \"pg_type_typname_nsp_index\""))
+                                                                            (orig conn sql-params)))]
+              (is (nil? (versions/ensure-version-tracking! conn db))))
+            (testing "but a CREATE failure with no table behind it still propagates"
+              (mt/with-dynamic-fn-redefs [versions/versions-table-exists? (constantly false)
+                                          versions/execute!               (fn [conn [sql :as sql-params]]
+                                                                            (if (re-find #"(?i)^\s*CREATE TABLE" sql)
+                                                                              (throw (java.sql.SQLException. "permission denied for schema public"))
+                                                                              (orig conn sql-params)))]
+                (is (thrown-with-msg? java.sql.SQLException #"permission denied"
+                                      (versions/ensure-version-tracking! conn db)))))))))))
+
+(deftest versions-table-name-matches-changelog-casing-test
+  (testing "the version table is cased like Liquibase's DATABASECHANGELOG: upper case on H2 and MySQL, lower on Postgres"
+    ;; MySQL table names are case-sensitive on Linux, and other code (the audit app, h2 dump comparisons) looks it up
+    ;; by the same spelling as the changelog table
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase))
+          (let [expected (str (liquibase/changelog-table-name liquibase)
+                              (if (= :postgres driver/*driver*) "_version" "_VERSION"))
+                actual   (->> (jdbc/metadata-result (.getTables (.getMetaData conn) (.getCatalog conn) nil "%"
+                                                                (u/varargs String ["TABLE"])))
+                              (map :table_name)
+                              (filter #(= "databasechangelog_version" (u/lower-case-en %))))]
+            (is (= expected (versions/versions-table-name)))
+            (is (= [expected] actual))))))))
 
 (deftest mysql-ran-migrations-is-bit-test
   (testing "on MySQL/MariaDB ran_migrations is bit(1), like every other boolean column (see general-schema-tests)"
@@ -266,7 +337,7 @@
         (is (= "bit"
                (-> (jdbc/query {:connection conn}
                                ["SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'ran_migrations'"
-                                versions/databasechangelog-versions-table])
+                                (versions/versions-table-name)])
                    first
                    :data_type)))
         (testing "and still reads back as a ran row"
@@ -286,13 +357,13 @@
                  (jdbc/query {:connection conn}
                              [(str "SELECT data_type, datetime_precision FROM information_schema.columns "
                                    "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'deployed_at'")
-                              versions/databasechangelog-versions-table])
+                              (versions/versions-table-name)])
 
                  (:h2 :postgres)
                  (jdbc/query {:connection conn}
                              [(str "SELECT data_type, datetime_precision FROM information_schema.columns "
                                    "WHERE LOWER(table_name) = ? AND LOWER(column_name) = 'deployed_at'")
-                              versions/databasechangelog-versions-table])))]
+                              (u/lower-case-en (versions/versions-table-name))])))]
           (case driver/*driver*
             :h2      (is (= "timestamp with time zone" (some-> data_type u/lower-case-en)))
             :postgres (is (= "timestamp with time zone" data_type))
@@ -404,7 +475,7 @@
             (is (= 63 (versions/previous-recorded-major (deployments) false))))
           (jdbc/execute! {:connection conn}
                          [(format "DELETE FROM %s WHERE metabase_version = 'x.64.0'"
-                                  versions/databasechangelog-versions-table)])
+                                  (versions/versions-table-name))])
           ;; the instance then upgraded directly to 65 -- 64 was never a recorded deployment
           (mdb.test-util/fabricate-history! conn changelog-table
                                             [{:deployment "d65" :ran "x.65.0" :changesets ["c65"]}])

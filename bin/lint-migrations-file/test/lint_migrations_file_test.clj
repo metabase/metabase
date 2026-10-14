@@ -311,6 +311,14 @@
            (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                           (mock-change-set :id bad-id)))
           bad-id)))
+  (testing "an unquoted YAML id that parses as a number or boolean gets the validation error, not a ClassCastException"
+    (doseq [bad-id [20260703 true]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"invalid changeset IDs"
+           (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                          (mock-change-set :id bad-id)))
+          (pr-str bad-id))))
   (testing "year-based directories reject the ISO date/timestamp ids the versioned changesets used"
     (doseq [bad-id ["2026-02-09T12:00:00"   ; the old `vNN.` id body
                     "2026-02-09t12:00:00"
