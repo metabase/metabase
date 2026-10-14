@@ -158,7 +158,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :internal-sql :sql :nlq :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -467,14 +467,21 @@
   "Map from profile-id to the metabot permission that must be `:yes` for a user
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
+   ;; This profile queries in SQL only.
+   :internal-sql              :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 
 (defn- check-metabot-access!
-  "Throw a 403 if the user's metabot permissions do not grant access to the
-  requested profile."
+  "Throw a 400 if `profile-id` is not available on this instance,
+  and a 403 if `perms` do not grant access to it."
   [profile-id perms]
+  ;; The same message and status as an unknown profile,
+  ;; so an eval-only profile refused here looks like one that doesn't exist.
+  ;; The streaming endpoint makes this check too, before it saves the turn.
+  (when-not (profiles/profile-available? profile-id)
+    (throw (ex-info "Unknown profile" {:status-code 400})))
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
     (throw (ex-info (if (= missing :permission/metabot)
                       "You do not have permission to use the AI assistant."
@@ -510,7 +517,8 @@
                          (seed-chart-configs context)
                          (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
-                         (assoc :conversation-id conversation-id)
+                         (assoc :conversation-id conversation-id
+                                :tool-names (set (keys base-tools)))
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)

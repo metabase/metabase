@@ -121,6 +121,14 @@
   :default    true
   :export?    false)
 
+(defsetting metabot-eval-profiles-enabled?
+  (deferred-tru "Whether Metabot accepts the profiles that exist only for evals, such as one that answers only in SQL. Set it only on instances that run evals.")
+  :type       :boolean
+  :visibility :internal
+  :default    false
+  :setter     :none
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider
