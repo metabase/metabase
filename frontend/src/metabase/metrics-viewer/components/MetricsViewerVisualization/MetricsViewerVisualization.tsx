@@ -134,7 +134,6 @@ export function MetricsViewerVisualization({
                   onBrush={onBrush}
                   mode={clickActionsMode}
                   onChangeCardAndRun={noop}
-                  autoAdjustSettings
                   isMetricsViewer
                 />
               </DebouncedFrame>

@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { Button } from "metabase/ui";
 import type { TimelineEvent } from "metabase-types/api";
 
-import ModalFooter from "../ModalFooter";
-import ModalHeader from "../ModalHeader";
+import { ModalFooter } from "../ModalFooter";
+import { ModalHeader } from "../ModalHeader";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;

@@ -678,7 +678,6 @@ export function DashCardVisualization({
           onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
-          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

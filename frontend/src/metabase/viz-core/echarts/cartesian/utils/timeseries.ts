@@ -192,50 +192,133 @@ export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
   return dayjs(0).add(interval.count, interval.unit).valueOf();
 }
 
-// Counts interval boundary crossings within the domain
+export interface TickGrid {
+  unit: TimeSeriesInterval["unit"];
+  step: number;
+}
+
+type SubDayUnit = "hour" | "minute" | "second";
+const SUB_DAY_UNITS: ReadonlySet<TimeSeriesInterval["unit"]> = new Set([
+  "hour",
+  "minute",
+  "second",
+]);
+const isSubDayUnit = (unit: TimeSeriesInterval["unit"]): unit is SubDayUnit =>
+  SUB_DAY_UNITS.has(unit);
+
+/**
+ * The grid of labeled ticks for a tick interval: every `step` boundaries of
+ * `unit`, starting from the first boundary in range (see getGridTickDates).
+ * Quarter grids over finer data step three months from the first month in
+ * range rather than from a calendar quarter; quarterly data starts on quarter
+ * boundaries anyway, so its labels stay calendar quarters. `null` leaves the
+ * ticks to ECharts.
+ */
+export function getTickGrid(
+  { unit, count }: TimeSeriesInterval,
+  dataUnit: TimeSeriesInterval["unit"],
+  isSingleItem: boolean,
+): TickGrid | null {
+  switch (unit) {
+    case "quarter":
+      // With a single point ECharts picks the quarter tick itself.
+      if (isSingleItem) {
+        return null;
+      }
+      return dataUnit === "quarter"
+        ? { unit, step: count }
+        : { unit: "month", step: 3 * count };
+    case "year":
+    case "month":
+    case "week":
+    case "day":
+    case "hour":
+    case "minute":
+    case "second":
+      return { unit, step: count };
+    default:
+      return null;
+  }
+}
+
+// Sub-day grids stay on round clock values (03:00, 06:00… for a 3-hour grid),
+// as every step of those units divides its parent unit evenly.
+function isGridBoundary(
+  date: Dayjs,
+  { unit, step }: TickGrid,
+  weekday: number,
+) {
+  if (unit === "week") {
+    return date.day() === weekday && date.startOf("day").isSame(date);
+  }
+  if (!date.startOf(unit).isSame(date)) {
+    return false;
+  }
+  return isSubDayUnit(unit) ? date.get(unit) % step === 0 : true;
+}
+
+function findFirstBoundary(
+  from: Dayjs,
+  grid: TickGrid,
+  weekday: number,
+  inclusive: boolean,
+) {
+  const step = grid.unit === "week" ? "day" : grid.unit;
+  let boundary = from.startOf(step);
+  while (
+    (inclusive ? boundary.isBefore(from) : !boundary.isAfter(from)) ||
+    !isGridBoundary(boundary, grid, weekday)
+  ) {
+    boundary = boundary.add(1, step);
+  }
+  return boundary;
+}
+
+/**
+ * The dates the axis labels for `grid` between `start` and `end`: the first
+ * boundary in range, then every `step` units from it. Weeks start on
+ * `weekday`, the first data point's weekday, rather than on calendar weeks.
+ */
+export function getGridTickDates(
+  grid: TickGrid,
+  start: Dayjs,
+  end: Dayjs,
+  weekday: number,
+  inclusive: boolean,
+): Dayjs[] {
+  const anchor = findFirstBoundary(start, grid, weekday, inclusive);
+  const ticks: Dayjs[] = [];
+  for (let index = 0; ; index++) {
+    const tick = anchor.add(index * grid.step, grid.unit);
+    if (inclusive ? tick.isAfter(end) : !tick.isBefore(end)) {
+      return ticks;
+    }
+    ticks.push(tick);
+  }
+}
+
+// Counts the ticks the axis will label (see getTicksOptions) without
+// materializing them: candidate intervals far finer than the range (seconds
+// over years) would otherwise allocate millions of dates.
 export function expectedTickCount(
   interval: TimeSeriesInterval,
   xDomain: ContinuousDomain,
+  dataUnit: TimeSeriesInterval["unit"] = interval.unit,
 ): number {
-  const { unit, count } = interval;
+  if (interval.unit === "ms") {
+    return Math.floor((xDomain[1] - xDomain[0]) / interval.count) + 1;
+  }
+  const grid = getTickGrid(interval, dataUnit, false);
+  if (grid == null) {
+    return 0;
+  }
   const start = dayjs.utc(xDomain[0]);
   const end = dayjs.utc(xDomain[1]);
-
-  const startTrunc = start.startOf(unit);
-  const endTrunc = end.startOf(unit);
-
-  const diffUnits = endTrunc.diff(startTrunc, unit);
-
-  let startIdx: number;
-  if (unit === "year") {
-    startIdx = startTrunc.year();
-  } else if (unit === "quarter") {
-    startIdx = startTrunc.quarter() - 1;
-  } else if (unit === "month") {
-    startIdx = startTrunc.month();
-  } else if (unit === "week") {
-    startIdx = startTrunc.week();
-  } else if (unit === "day") {
-    startIdx = startTrunc.day();
-  } else if (unit === "hour") {
-    startIdx = startTrunc.hour();
-  } else if (unit === "minute") {
-    startIdx = startTrunc.minute();
-  } else if (unit === "second") {
-    startIdx = startTrunc.second();
-  } else {
-    startIdx = startTrunc.valueOf();
-  }
-
-  const startAligned = Math.ceil(startIdx / count) * count;
-  const endAligned = Math.floor((startIdx + diffUnits) / count) * count;
-
-  const diffAligned = (endAligned - startAligned) / count;
-
-  if (start.valueOf() === startTrunc.valueOf() || startIdx < startAligned) {
-    return diffAligned + 1;
-  }
-  return diffAligned;
+  const anchor = findFirstBoundary(start, grid, start.day(), true);
+  const stepsInRange = Math.floor(
+    end.diff(anchor, grid.unit, true) / grid.step,
+  );
+  return stepsInRange < 0 ? 0 : stepsInRange + 1;
 }
 
 /// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing
@@ -272,7 +355,11 @@ export function computeTimeseriesTicksInterval(
       interval.unit,
       getFormatter(formatter, xInterval.unit, interval.unit),
     );
-    const intervalTicksCount = expectedTickCount(interval, xDomain);
+    const intervalTicksCount = expectedTickCount(
+      interval,
+      xDomain,
+      xInterval.unit,
+    );
 
     if (intervalTicksCount > maxTickCount) {
       continue;
@@ -313,7 +400,7 @@ function maxTicksForChartWidth(
     chartLayout.outerWidth -
     chartLayout.padding.left -
     chartLayout.padding.right;
-  const TICK_BUFFER_PIXELS = 10;
+  const TICK_BUFFER_PIXELS = 4;
   const representativeDates = getRepresentativeDates(unit).map((date) =>
     getPaddedAxisLabel(formatter(date)),
   );

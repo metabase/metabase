@@ -5,18 +5,20 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Icon, Input, TextInput, type TextInputProps } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import {
+  Box,
+  Divider,
+  Flex,
+  Icon,
+  Input,
+  TextInput,
+  type TextInputProps,
+} from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { IconName } from "metabase-types/api";
 
 import { AdminTreeNode } from "./AdminTreeNode";
-import {
-  EmptyStateContainer,
-  FilterInputContainer,
-  FilterableTreeContainer,
-  FilterableTreeRoot,
-  ItemGroupsDivider,
-} from "./FilterableTree.styled";
 import { searchItems } from "./utils";
 
 interface FilterableTreeProps {
@@ -54,25 +56,25 @@ export const FilterableTree = ({
     setFilter(e.target.value);
 
   return (
-    <FilterableTreeRoot>
-      <FilterInputContainer>
-        <TextInput
-          placeholder={placeholder}
-          value={filter}
-          leftSection={<Icon name="search" />}
-          rightSectionPointerEvents="all"
-          rightSection={
-            filter.length > 0 ? (
-              <Input.ClearButton
-                c="text-secondary"
-                onClick={() => setFilter("")}
-              />
-            ) : null
-          }
-          onChange={handleFilterChange}
-        />
-      </FilterInputContainer>
-      <FilterableTreeContainer>
+    <Flex className={CS.overflowHidden} direction="column">
+      <TextInput
+        py="md"
+        px="xl"
+        placeholder={placeholder}
+        value={filter}
+        leftSection={<Icon name="search" />}
+        rightSectionPointerEvents="all"
+        rightSection={
+          filter.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setFilter("")}
+            />
+          ) : null
+        }
+        onChange={handleFilterChange}
+      />
+      <Box className={CS.overflowAuto}>
         {filteredList && (
           <Tree
             data={filteredList}
@@ -80,12 +82,12 @@ export const FilterableTree = ({
             onSelect={onSelect}
             TreeNode={AdminTreeNode}
             emptyState={
-              <EmptyStateContainer>
+              <Box mt="6.25rem">
                 <EmptyState
                   message={emptyState?.text ?? t`Nothing here`}
                   icon={emptyState?.icon ?? "folder"}
                 />
-              </EmptyStateContainer>
+              </Box>
             }
           />
         )}
@@ -100,11 +102,11 @@ export const FilterableTree = ({
                   onSelect={onSelect}
                   TreeNode={AdminTreeNode}
                 />
-                {!isLastGroup && <ItemGroupsDivider />}
+                {!isLastGroup && <Divider my="lg" mx="xl" />}
               </Fragment>
             );
           })}
-      </FilterableTreeContainer>
-    </FilterableTreeRoot>
+      </Box>
+    </Flex>
   );
 };

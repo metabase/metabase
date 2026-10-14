@@ -73,8 +73,13 @@
       (is (true? (profiles/profile-registered? :embedding_next)))
       (is (true? (profiles/profile-registered? :explorations)))
       (is (false? (profiles/profile-registered? :unknown-profile))))
+    (testing "profile-available? also needs an eval instance for an eval-only profile"
+      (is (= {:internal true, :internal-sql false, :unknown-profile false}
+             (into {} (for [p [:internal :internal-sql :unknown-profile]] [p (boolean (profiles/profile-available? p))]))))
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (true? (boolean (profiles/profile-available? :internal-sql))))))
     (testing "all profiles have required keys"
-      (doseq [profile-id [:embedding_next :internal :sql :nlq :slackbot]]
+      (doseq [profile-id [:embedding_next :internal :internal-sql :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
           (is (= profile-id (:name profile)))
           (is (contains? profile :model))
@@ -140,7 +145,8 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
+  (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
+                "curated nlq swaps search for the library tool")
     (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
@@ -148,14 +154,58 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
+      (is (= fallback (conj embedding "run_query")))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
         (is (contains? tools "search"))
         (is (contains? tools "construct_notebook_query"))))))
+
+(deftest run-query-offered-in-nlq-profiles-test
+  (testing "with query execution on, an NLQ user gets run_query in both NLQ profiles and not in embedding"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes {:permission/metabot     :yes
+                                                                              :permission/metabot-nlq :yes})]
+        (is (= {:nlq true, :nlq-fallback true, :embedding_next false}
+               (into {}
+                     (for [profile-id [:nlq :nlq-fallback :embedding_next]]
+                       [profile-id (contains? (profiles/get-tools-for-profile profile-id []) "run_query")]))))))))
+
+(deftest internal-sql-profile-test
+  (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
+    (testing "internal-sql is internal without the notebook builder"
+      (let [internal     (profiles/get-profile :internal)
+            internal-sql (profiles/get-profile :internal-sql)]
+        (is (= :internal-sql (:name internal-sql)))
+        (is (= (:prompt-template internal) (:prompt-template internal-sql)))
+        (is (= (disj (tool-names internal) "construct_notebook_query")
+               (tool-names internal-sql)))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-scope* api-scope/unrestricted]
+        (testing "with SQL write permission it offers SQL, run_query and load_skill, and no notebook builder"
+          (let [tools (profiles/get-tools-for-profile :internal-sql ["permission:save_questions"
+                                                                     "permission:write_sql_queries"])]
+            (is (= #{"search" "read_resource" "load_skill" "create_sql_query" "run_query"}
+                   (into #{} (filter #{"search" "read_resource" "load_skill" "create_sql_query" "run_query"
+                                       "construct_notebook_query"})
+                         (keys tools))))))
+        (testing "without SQL write permission it offers no SQL tools either"
+          (let [tools (profiles/get-tools-for-profile :internal-sql ["permission:save_questions"])]
+            (is (not (contains? tools "create_sql_query")))
+            (is (not (contains? tools "construct_notebook_query")))))))))
+
+(deftest internal-sql-profile-needs-only-the-sql-permission-test
+  (testing "a user with Metabot's SQL permission and no NLQ permission can write SQL and run it"
+    (let [perms (assoc scope/perm-type-defaults
+                       :permission/metabot                :yes
+                       :permission/metabot-sql-generation :yes)]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (binding [scope/*current-user-metabot-permissions* perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
+          (is (=? {"create_sql_query" some?, "run_query" some?}
+                  (profiles/get-tools-for-profile :internal-sql ["permission:write_sql_queries"]))))))))
 
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"

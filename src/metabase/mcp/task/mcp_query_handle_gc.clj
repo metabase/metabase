@@ -14,9 +14,7 @@
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,9 +29,11 @@
     (log/infof "MCP query handle GC complete. Deleted %d handle(s) older than %d hours."
                (or deleted 0) (long ttl-hours))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete expired MCP query handles"}
-  McpQueryHandleGc [_ctx]
+(task/defjob McpQueryHandleGc
+  "Delete expired MCP query handles"
+  {:saved-class "metabase.mcp.task.mcp_query_handle_gc.McpQueryHandleGc"
+   :concurrent? false}
+  [_ctx]
   (gc-expired-query-handles!))
 
 (defmethod task/init! ::McpQueryHandleGc
