@@ -213,7 +213,6 @@ describe("Table editing", () => {
 
         cy.log("publish the table and verify the tree updates");
         cy.findByRole("button", { name: /Publish/ }).click();
-        H.modal().findByText("Create my semantic layer").click();
         H.modal().findByText("Publish this table").click();
         cy.wait("@publishTables");
         TablePicker.getTable("Orders")
