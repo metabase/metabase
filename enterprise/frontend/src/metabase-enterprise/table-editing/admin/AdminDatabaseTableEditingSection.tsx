@@ -7,10 +7,10 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import Toggle from "metabase/common/components/Toggle";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
 import type {
   Database,
@@ -135,5 +135,5 @@ function getResponseErrorMessageReason(error: unknown): string | undefined {
     return error.data.reasons[0]?.message ?? undefined;
   }
 
-  return getResponseErrorMessage(error);
+  return findErrorMessage(error);
 }

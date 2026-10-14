@@ -9,9 +9,9 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import ActionButton from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
   alertIsValid,
   getAlertTriggerOptions,
@@ -191,7 +191,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
       if (result.error) {
         const errorText =
-          getResponseErrorMessage(result.error) ?? t`An error occurred`;
+          findErrorMessage(result.error) ?? t`An error occurred`;
 
         dispatch(
           addUndo({
@@ -232,7 +232,7 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
+            message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
       }

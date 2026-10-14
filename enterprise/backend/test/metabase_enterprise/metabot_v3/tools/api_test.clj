@@ -1371,13 +1371,11 @@
                                          {:arguments {:path (:path lib1)}
                                           :conversation_id conversation-id}))))
           (testing "With non-existent library path"
-            (is (=? {:allowed-paths ["common.py"]
-                     :message "Invalid library path. Only 'common' is currently supported."
-                     :path "nonexistent.py"}
-                    (mt/user-http-request :rasta :post 400 "ee/metabot-tools/get-transform-python-library-details"
-                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                          {:arguments {:path "nonexistent.py"}
-                                           :conversation_id conversation-id}))))
+            (is (= "Invalid library path. Only 'common' is currently supported."
+                   (mt/user-http-request :rasta :post 400 "ee/metabot-tools/get-transform-python-library-details"
+                                         {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                         {:arguments {:path "nonexistent.py"}
+                                          :conversation_id conversation-id}))))
           (testing "With superuser permissions"
             (is (=? {:structured_output (select-keys lib1 [:source :path :created_at :updated_at])
                      :conversation_id conversation-id}

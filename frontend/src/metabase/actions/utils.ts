@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import * as Errors from "metabase/lib/errors";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -204,7 +205,7 @@ export function getActionExecutionMessage(
 
 export function getActionErrorMessage(error: unknown) {
   return (
-    Errors.getResponseErrorMessage(error) ??
+    findErrorMessage(error) ??
     t`Something went wrong while executing the action`
   );
 }

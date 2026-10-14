@@ -4,6 +4,7 @@ import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
 import {
@@ -13,7 +14,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import {
@@ -208,8 +208,7 @@ export const WebhookForm = ({
         },
         (e) => {
           setTestButtonLabel(t`Test failed`);
-          const message =
-            typeof e === "string" ? e : getResponseErrorMessage(e);
+          const message = findErrorMessage(e);
 
           setFieldError("url", message);
         },

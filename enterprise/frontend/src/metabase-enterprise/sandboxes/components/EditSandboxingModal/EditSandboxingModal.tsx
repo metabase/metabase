@@ -6,6 +6,7 @@ import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import ActionButton from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
@@ -38,9 +39,6 @@ import {
 } from "../AttributeMappingEditor";
 
 import { shouldDisableItem } from "./utils";
-
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const ERROR_MESSAGE = t`An error occurred.`;
 
 const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
@@ -281,10 +279,7 @@ const EditSandboxingModal = ({
         </div>
         {error && (
           <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
-            {typeof error === "string"
-              ? error
-              : // @ts-expect-error provide correct type for error
-                (error.data.message ?? ERROR_MESSAGE)}
+            {getErrorMessage(error, t`An error occurred.`)}
           </div>
         )}
       </div>

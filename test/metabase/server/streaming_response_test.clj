@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [compojure.response]
@@ -235,7 +236,7 @@
   (testing "write-error! includes stacktrace and exception chain when hide-stacktraces is false"
     (mt/with-temporary-setting-values [hide-stacktraces false]
       (with-open [os (java.io.ByteArrayOutputStream.)]
-        (let [exception (ex-info "Test error message" {:custom-data "test-value"})]
+        (let [exception (ex-info "Test error message" {:custom-data "test-value", :query "SELECT secret", :response/keys #{:custom-data}})]
           (#'streaming-response/write-error! os exception :api)
           (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
             (is (= "Test error message" (:cause error-response))
@@ -247,13 +248,15 @@
             (is (contains? error-response :via)
                 "Response should contain :via key")
             (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")))))))
+                "Response should include the listed ex-data")
+            (is (not (str/includes? (pr-str error-response) "SELECT secret"))
+                "Response should not include unlisted ex-data")))))))
 
 (deftest write-error-omits-stacktrace-when-hide-stacktraces-enabled-test
   (testing "write-error! omits stacktrace and exception chain when hide-stacktraces is true"
     (mt/with-temporary-setting-values [hide-stacktraces true]
       (with-open [os (java.io.ByteArrayOutputStream.)]
-        (let [exception (ex-info "Test error message with sensitive info" {:custom-data "test-value"})]
+        (let [exception (ex-info "Test error message with sensitive info" {:custom-data "test-value", :query "SELECT secret", :response/keys #{:custom-data}})]
           (#'streaming-response/write-error! os exception :api)
           (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
             (is (= "Test error message with sensitive info" (:cause error-response))
@@ -265,7 +268,9 @@
             (is (not (contains? error-response :data))
                 "Response should not contain the ex-data either, like the regular exception middleware")
             (is (contains? error-response :_status)
-                "Response should include :_status")))))))
+                "Response should include :_status")
+            (is (not (str/includes? (pr-str error-response) "SELECT secret"))
+                "Response should not include unlisted ex-data")))))))
 
 (deftest write-error-nested-exception-with-stacktraces-disabled-test
   (testing "write-error! includes nested exception details when hide-stacktraces is false"
@@ -355,7 +360,7 @@
           (let [output (String. (.toByteArray baos) "UTF-8")]
             (is (= {:status        "failed"
                     :error         "generic message"
-                    :original-keys ["_status" "cause" "data" "trace" "via"]}
+                    :original-keys ["_status" "cause" "trace" "via"]}
                    (json/decode output true)))
             (is (not (re-find #"SENSITIVE" output))))))
       (testing "for an already-formatted error map"

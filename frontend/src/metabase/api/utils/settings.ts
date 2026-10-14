@@ -80,9 +80,10 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       }
 
       if (response.error) {
-        const message =
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving settings`;
+        const message = getErrorMessage(
+          response.error,
+          t`Error saving settings`,
+        );
 
         sendToast({ message, icon: "warning", toastColor: "danger" });
       } else {
@@ -141,9 +142,10 @@ export const useAdminSettings = <
       }
 
       if (response.error) {
-        const message =
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving settings`;
+        const message = getErrorMessage(
+          response.error,
+          t`Error saving settings`,
+        );
 
         sendToast({ message, icon: "warning", toastColor: "danger" });
       } else {

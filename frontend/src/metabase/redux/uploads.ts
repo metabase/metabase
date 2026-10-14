@@ -2,6 +2,7 @@ import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import Collections from "metabase/entities/collections";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import {
@@ -131,7 +132,7 @@ export const uploadFile = createThunkAction(
         dispatch(
           uploadError({
             id,
-            error: err?.data?.message ?? err?.data,
+            error: findErrorMessage(err) ?? err?.data,
           }),
         );
       }

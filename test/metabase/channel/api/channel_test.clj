@@ -188,7 +188,7 @@
                                  (assoc default-test-channel :details {:return-type  "return-value"
                                                                        :return-value false})))))
 
-  (testing "return the exception message and data if the channel throws an exception"
+  (testing "return the exception message and client-facing data if the channel throws an exception"
     (is (= {:message "Test error"
             :data    {:errors {:email "Invalid email"}}}
            (mt/user-http-request :crowberto :post 400 "channel/test"

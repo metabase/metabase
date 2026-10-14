@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 
 import { useInvalidateCacheConfigsMutation } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { CacheableModel } from "metabase-types/api";
 
-import { isErrorWithMessage, resolveSmoothly } from "../utils";
+import { resolveSmoothly } from "../utils";
 
 export const useInvalidateTarget = (
   targetId: number | null,
@@ -29,11 +30,12 @@ export const useInvalidateTarget = (
         await invalidate;
       }
     } catch (e) {
-      if (isErrorWithMessage(e)) {
+      const message = findErrorMessage(e);
+      if (message) {
         dispatch(
           addUndo({
             icon: "warning",
-            message: e.data.message,
+            message,
             toastColor: "error",
             dismissIconColor: "var(--mb-color-text-primary-inverse)",
           }),

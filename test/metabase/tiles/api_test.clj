@@ -272,12 +272,14 @@
 
 (deftest ^:parallel failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
-    (is (=? {:status "failed"}
-            (mt/user-http-request
-             :rasta :get 400 "tiles/1/1/1"
-             :latField (encoded-lat-field-ref :mbql)
-             :lonField (encoded-lon-field-ref :mbql)
-             :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))))))
+    (let [body (mt/user-http-request
+                :rasta :get 400 "tiles/1/1/1"
+                :latField (encoded-lat-field-ref :mbql)
+                :lonField (encoded-lon-field-ref :mbql)
+                :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))]
+      (is (re-find #"^Error running tiles query" body))
+      (testing "the query processor's error map, which carries the query, stays server-side"
+        (is (string? body))))))
 
 (deftest ad-hoc-query-cannot-write-another-cards-result-metadata-test
   (testing "GET /api/tiles/:zoom/:x/:y takes a whole query as a query-string param, so its :info must come from the server"

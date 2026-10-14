@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { UtilApi } from "metabase/services";
 import type { Log } from "metabase-types/api";
 
@@ -33,7 +34,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       }
     } catch (err: any) {
       console.error(err);
-      const msg = err?.data?.message ?? err.message ?? t`An error occurred.`;
+      const msg = findErrorMessage(err) ?? t`An error occurred.`;
       if (isMountedRef.current) {
         setError(msg);
         isFetchingRef.current = false;
