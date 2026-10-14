@@ -28,8 +28,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -115,13 +114,8 @@
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
       (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+        (when-not (search.ingestion/await-pending-updates! 2000)
+          (log/warn "Returning search results before pending index updates finished.")))
       (let [weights     (search.config/weights search-ctx)
             percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
             scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]

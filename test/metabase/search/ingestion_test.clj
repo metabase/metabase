@@ -15,6 +15,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (deftest extract-model-and-id
@@ -263,3 +264,62 @@
                           first)]
           (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
                   result)))))))
+
+(deftest await-pending-updates-waits-for-in-flight-batch-test
+  (let [test-queue     (queue/delay-queue)
+        listener-name (str (random-uuid))
+        processing    (promise)
+        release-batch (promise)
+        indexed       (atom [])
+        update        ["card" [:= :this.id 1]]
+        later-update  ["card" [:= :this.id 2]]]
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates (atom 0)
+                  search.ingestion/listener-name   listener-name]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines (constantly [:search.engine/appdb])
+         search.ingestion/bulk-ingest! (fn [updates]
+                                         (deliver processing true)
+                                         (deref release-batch 5000 ::timeout)
+                                         (swap! indexed into updates))]
+        (search.ingestion/start-listener!)
+        (try
+          (search.ingestion/ingest-maybe-async! [update] false)
+          (is (true? (deref processing 2000 ::timeout)))
+          (is (empty? test-queue))
+          (is (false? (search.ingestion/await-pending-updates! 10))
+              "An empty queue does not mean the worker finished indexing")
+          (testing "Discarding queued work preserves the running batch"
+            (search.ingestion/ingest-maybe-async! [later-update later-update] false)
+            (search.ingestion/clear-queue!)
+            (is (empty? test-queue))
+            (is (false? (search.ingestion/await-pending-updates! 10))))
+          (deliver release-batch true)
+          (is (true? (search.ingestion/await-pending-updates! 2000)))
+          (is (= [update] @indexed))
+          (testing "New updates remain tracked after clearing the queue"
+            (search.ingestion/ingest-maybe-async! [later-update] false)
+            (is (true? (search.ingestion/await-pending-updates! 2000)))
+            (is (= [update later-update] @indexed)))
+          (finally
+            (deliver release-batch true)
+            (queue/stop-listening! listener-name)))))))
+
+(deftest await-pending-updates-after-ingestion-error-test
+  (let [listener-name (str (random-uuid))
+        attempted     (promise)]
+    (with-redefs [search.ingestion/queue           (queue/delay-queue)
+                  search.ingestion/pending-updates (atom 0)
+                  search.ingestion/listener-name   listener-name]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines (constantly [:search.engine/appdb])
+         search.ingestion/bulk-ingest! (fn [_updates]
+                                         (deliver attempted true)
+                                         (throw (ex-info "Indexing failed" {})))]
+        (search.ingestion/start-listener!)
+        (try
+          (search.ingestion/ingest-maybe-async! [["card" [:= :this.id 1]]] false)
+          (is (true? (search.ingestion/await-pending-updates! 2000)))
+          (is (true? (deref attempted 2000 ::timeout)))
+          (finally
+            (queue/stop-listening! listener-name)))))))
