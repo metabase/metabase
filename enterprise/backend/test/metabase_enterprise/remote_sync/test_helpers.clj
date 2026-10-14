@@ -517,13 +517,6 @@ width: fixed
               (when (or (pos? @deleted) (index-holds-new-content-document? max-ids))
                 (#'tu/reindex-search-index!)))))))))
 
-(defn stored-remote-sync-setting-rows
-  "The raw `setting` rows whose key starts with `remote-sync`, every column as stored."
-  []
-  ;; the table, not `:model/Setting`: its hooks decrypt on select and encrypt on insert, so a round trip through the
-  ;; model can change a row (a row with no `value_with_aad` reads as nil)
-  (t2/select :setting :key [:like "remote-sync%"]))
-
 (defn- delete-transforms-ledger-rows!
   "Delete the Transforms RemoteSyncObject rows, which the `:on-change` hook of `remote-sync-transforms` writes."
   []
