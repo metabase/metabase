@@ -3338,6 +3338,24 @@
           (migrate! :down 62)
           (is (not (column?))))))))
 
+(deftest activate-pending-custom-viz-plugins-test
+  (testing "v63.2026-10-14: custom_viz_plugin rows left in 'pending' by older serialization imports become active"
+    (impl/test-migrations ["v63.2026-10-14T10:00:00" "v63.2026-10-14T10:00:00"] [migrate!]
+      (let [new-plugin! (fn [identifier status]
+                          (t2/insert-returning-pk! :custom_viz_plugin {:identifier   identifier
+                                                                       :display_name identifier
+                                                                       :status       status
+                                                                       :created_at   :%now
+                                                                       :updated_at   :%now}))
+            pending-id  (new-plugin! "pending-viz" "pending")
+            active-id   (new-plugin! "active-viz" "active")
+            error-id    (new-plugin! "error-viz" "error")]
+        (migrate!)
+        (is (= "active" (t2/select-one-fn :status :custom_viz_plugin :id pending-id)))
+        (testing "already resolved rows are untouched"
+          (is (= "active" (t2/select-one-fn :status :custom_viz_plugin :id active-id)))
+          (is (= "error" (t2/select-one-fn :status :custom_viz_plugin :id error-id))))))))
+
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
     (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
@@ -3926,21 +3944,3 @@
         (is (t2/exists? :data_app :id app-id))
         (is (t2/exists? :permissions_group :id ordinary-group))
         (is (empty? (t2/select :data_app_group_assignment)))))))
-
-(deftest activate-pending-custom-viz-plugins-test
-  (testing "v63.2026-10-14: custom_viz_plugin rows left in 'pending' by older serialization imports become active"
-    (impl/test-migrations ["v63.2026-10-14T10:00:00" "v63.2026-10-14T10:00:00"] [migrate!]
-      (let [new-plugin! (fn [identifier status]
-                          (t2/insert-returning-pk! :custom_viz_plugin {:identifier   identifier
-                                                                       :display_name identifier
-                                                                       :status       status
-                                                                       :created_at   :%now
-                                                                       :updated_at   :%now}))
-            pending-id  (new-plugin! "pending-viz" "pending")
-            active-id   (new-plugin! "active-viz" "active")
-            error-id    (new-plugin! "error-viz" "error")]
-        (migrate!)
-        (is (= "active" (t2/select-one-fn :status :custom_viz_plugin :id pending-id)))
-        (testing "already resolved rows are untouched"
-          (is (= "active" (t2/select-one-fn :status :custom_viz_plugin :id active-id)))
-          (is (= "error" (t2/select-one-fn :status :custom_viz_plugin :id error-id))))))))
