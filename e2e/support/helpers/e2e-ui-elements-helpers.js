@@ -174,7 +174,9 @@ function setNavigationSidebarOpen(isOpen, attempt = 0) {
   const MAX_ATTEMPTS = 5;
   navigationSidebar().then(($nav) => {
     if ($nav.is(":visible") !== isOpen) {
-      appBar().findByTestId("sidebar-toggle").click();
+      // Not `appBar()`: its "Navigation bar" label is translated, and the
+      // visit helpers call this in specs that run in other locales.
+      cy.findByTestId("app-bar").findByTestId("sidebar-toggle").click();
     }
   });
   navigationSidebar().then(($nav) => {
