@@ -154,6 +154,9 @@ export interface DataGridTheme {
   /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
   stickyBackgroundColor?: string;
 
+  /** Background color of every other row when striping is enabled. Defaults to a subtle tint of the cell background */
+  stripedBackgroundColor?: string;
+
   cell?: {
     /** Text color default body cells, defaults to `text-primary`. */
     textColor?: string;
