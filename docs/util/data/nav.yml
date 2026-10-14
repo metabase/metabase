@@ -10,6 +10,8 @@ categories:
         pages:
           - name: "Introduction"
             url: "questions/introduction"
+          - name: "GRO-1061 test: missing page"
+            url: "questions/no-such-page-gro-1061"
           - name: "Query builder"
             pages:
               - name: "Editor"
