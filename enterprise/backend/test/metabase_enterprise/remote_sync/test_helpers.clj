@@ -403,11 +403,6 @@ width: fixed
   [f]
   (do-with-empty-table (t2/table-name :model/RemoteSyncObject) f))
 
-(defmacro with-clean-object
-  "Execute `body` with a clean RemoteSyncObject table."
-  [& body]
-  `(clean-object (fn [] ~@body)))
-
 (defn clean-task-table
   "Test fixture that empties the RemoteSyncTask table before the test and deletes every row that the test left
   after it. Restores nothing."

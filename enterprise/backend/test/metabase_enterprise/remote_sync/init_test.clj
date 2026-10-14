@@ -173,12 +173,11 @@
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                      :remote-sync-type sync-type
                                      :remote-sync-branch "main"]
-    (mt/with-model-cleanup [:model/RemoteSyncObject]
-      (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
-        (t2/delete! :model/RemoteSyncObject :model_type "Glossary")
-        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
-                                    remote-sync.object/dirty? (constantly false)]
-          (f entry))))))
+    (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+      (t2/delete! :model/RemoteSyncObject :model_type "Glossary")
+      (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                  remote-sync.object/dirty? (constantly false)]
+        (f entry)))))
 
 (deftest remote-sync-init-backfills-glossary-tracking-test
   (testing "Read-write with a synced Library tracks every untracked glossary entry as 'create', once"
@@ -238,18 +237,17 @@
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                      :remote-sync-type sync-type
                                      :remote-sync-branch "main"]
-    (mt/with-model-cleanup [:model/RemoteSyncObject]
-      (mt/with-temp [:model/Collection {synced-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
-                     :model/Collection {plain-id :id}    {:name "Plain" :location "/"}
-                     :model/Card       {model-id :id}    {:type :model :collection_id synced-id}
-                     :model/Card       {other-id :id}    {:type :model :collection_id plain-id}
-                     :model/Action     {live :id}        {:type :implicit :name "Live" :model_id model-id}
-                     :model/Action     {archived :id}    {:type :implicit :name "Old" :model_id model-id :archived true}
-                     :model/Action     {unsynced :id}    {:type :implicit :name "Elsewhere" :model_id other-id}]
-        (t2/delete! :model/RemoteSyncObject :model_type "Action")
-        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
-                                    remote-sync.object/dirty? (constantly false)]
-          (f {:live live :archived archived :unsynced unsynced}))))))
+    (mt/with-temp [:model/Collection {synced-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Collection {plain-id :id}    {:name "Plain" :location "/"}
+                   :model/Card       {model-id :id}    {:type :model :collection_id synced-id}
+                   :model/Card       {other-id :id}    {:type :model :collection_id plain-id}
+                   :model/Action     {live :id}        {:type :implicit :name "Live" :model_id model-id}
+                   :model/Action     {archived :id}    {:type :implicit :name "Old" :model_id model-id :archived true}
+                   :model/Action     {unsynced :id}    {:type :implicit :name "Elsewhere" :model_id other-id}]
+      (t2/delete! :model/RemoteSyncObject :model_type "Action")
+      (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                  remote-sync.object/dirty? (constantly false)]
+        (f {:live live :archived archived :unsynced unsynced})))))
 
 (defn- action-rso-ids []
   (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type "Action"))

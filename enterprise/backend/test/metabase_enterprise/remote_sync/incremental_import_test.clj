@@ -102,8 +102,8 @@
 
 (defn- do-with-bench!
   "Sets up a remote-synced `Bench` collection with cards A and B, then calls `f` with the V0 tree
-  ({path content}; the two cards' paths carry `card_a` / `card_b` slugs). Cleans up any entities
-  recreated during the differential churn (delete+recreate gives fresh primary keys)."
+  ({path content}; the two cards' paths carry `card_a` / `card_b` slugs). Does not delete the entities
+  that the differential churn recreates with new primary keys; `rs.test/clean-remote-sync-state` does."
   [f]
   ;; with-temp commits (not rollback) via the `commit-with-temp` :each fixture, so the import's progress
   ;; updates on a separate connection don't block on MySQL — see that fixture's docstring.
@@ -111,8 +111,7 @@
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
                    :model/Card _a {:name "Card A" :collection_id coll-id}
                    :model/Card _b {:name "Card B" :collection_id coll-id}]
-      (mt/with-model-cleanup [:model/Card :model/Collection]
-        (f (rs.test/synced-tree))))))
+      (f (rs.test/synced-tree)))))
 
 (defn- path-with [tree slug]
   (some (fn [p] (when (str/includes? p slug) p)) (keys tree)))

@@ -154,9 +154,8 @@
   (testing "A no-op PythonLibrary update keeps it synced (GHY-3933)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/PythonLibrary]
-          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
-            (is (= "synced" (noop-update-status! "PythonLibrary" (:id lib) :event/python-library-update lib)))))))))
+        (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
+          (is (= "synced" (noop-update-status! "PythonLibrary" (:id lib) :event/python-library-update lib))))))))
 
 ;;; ------------------------------------------- edge cases -------------------------------------------
 
@@ -222,21 +221,20 @@
                        :model/Field _field {:name "F" :table_id (:id table) :base_type :type/Integer}
                        :model/TableUserSettings _ {:table_id (:id table) :display_name "curated"}
                        :model/Measure measure {:name "M" :table_id (:id table)}]
-          (mt/with-model-cleanup [:model/RemoteSyncTask]
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-                  rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
-                                [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                                 ["TableUserSettings" (:id table)] ["Measure" (:id measure)]])]
-              (t2/delete! :model/RemoteSyncObject)
-              (doseq [row rows]
-                (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
-                                                                :status_changed_at (t/offset-date-time)})))
-              ;; force? routes through full-export!, which computes + records the content_hash for every flavor
-              (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
-              (doseq [{:keys [model_type model_id] :as row} rows]
-                (is (= (source/row->content-hash row)
-                       (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
-                    (str "written hash should match per-row hash for " model_type))))))))))
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
+                              [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
+                               ["TableUserSettings" (:id table)] ["Measure" (:id measure)]])]
+            (t2/delete! :model/RemoteSyncObject)
+            (doseq [row rows]
+              (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
+                                                              :status_changed_at (t/offset-date-time)})))
+            ;; force? routes through full-export!, which computes + records the content_hash for every flavor
+            (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
+            (doseq [{:keys [model_type model_id] :as row} rows]
+              (is (= (source/row->content-hash row)
+                     (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
+                  (str "written hash should match per-row hash for " model_type)))))))))
 
 (deftest mark-rows-synced!-chunks-rows-test
   (testing "mark-rows-synced! writes every synced row even when they span multiple batches (GHY-3933)"
@@ -288,18 +286,17 @@
    a mock source (recording content_hash baselines), then publishes a no-op event and returns the resulting
    status of [model-type model-id]. `target` is {:model-type :model-id :topic :object :payload}."
   [seeds {:keys [model-type model-id topic object payload]}]
-  (mt/with-model-cleanup [:model/RemoteSyncTask]
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/RemoteSyncObject)
-      (doseq [seed seeds]
-        (t2/insert! :model/RemoteSyncObject (merge {:status "create" :status_changed_at (t/offset-date-time)} seed)))
-      (let [mock-source (test-helpers/create-mock-source)
-            result      (impl/export! (source.p/snapshot mock-source) task-id "Initial export")]
-        (is (= :success (:status result)) (str "export should succeed: " result))
-        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
-            (str model-type " should be synced after export")))
-      (events/publish-event! topic (merge {:object object :user-id (mt/user->id :rasta)} payload))
-      (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))))
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+    (t2/delete! :model/RemoteSyncObject)
+    (doseq [seed seeds]
+      (t2/insert! :model/RemoteSyncObject (merge {:status "create" :status_changed_at (t/offset-date-time)} seed)))
+    (let [mock-source (test-helpers/create-mock-source)
+          result      (impl/export! (source.p/snapshot mock-source) task-id "Initial export")]
+      (is (= :success (:status result)) (str "export should succeed: " result))
+      (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
+          (str model-type " should be synced after export")))
+    (events/publish-event! topic (merge {:object object :user-id (mt/user->id :rasta)} payload))
+    (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))))
 
 (deftest card-export-then-noop-stays-synced-test
   (testing "After a real export, a no-op Card update stays synced (GHY-3933)"
@@ -369,38 +366,36 @@
   (testing "After a real export, a no-op PythonLibrary update stays synced (GHY-3933)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/PythonLibrary]
-          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
-            (is (= "synced"
-                   (export-baseline-then-noop-status!
-                    [{:model_type "PythonLibrary" :model_id (:id lib) :model_name "lib.py"}]
-                    {:model-type "PythonLibrary" :model-id (:id lib) :topic :event/python-library-update :object lib})))))))))
+        (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
+          (is (= "synced"
+                 (export-baseline-then-noop-status!
+                  [{:model_type "PythonLibrary" :model_id (:id lib) :model_name "lib.py"}]
+                  {:model-type "PythonLibrary" :model-id (:id lib) :topic :event/python-library-update :object lib}))))))))
 
 (deftest full-export-records-metadata-and-stays-synced-test
   (testing "A forced full export (real store-and-record! + mark-rows-synced!) writes file_path and
             content_hash, and a subsequent no-op update stays synced (GHY-3933)"
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
-      (mt/with-model-cleanup [:model/RemoteSyncTask]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS" :location "/"}
-                         :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
-                         :model/RemoteSyncObject _ {:model_type "Collection" :model_id (:id coll) :model_name "RS" :status "create" :status_changed_at (t/offset-date-time)}
-                         :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll) :status "create" :status_changed_at (t/offset-date-time)}
-                         ;; a removed/delete row whose entity left the synced set — full export must drop it
-                         :model/RemoteSyncObject leftover {:model_type "Card" :model_id 999999 :model_name "Gone" :status "delete" :status_changed_at (t/offset-date-time)}]
-            ;; force? routes through full-export! -> store-and-record! (no incremental fast-path)
-            (let [mock-source (test-helpers/create-mock-source)
-                  result      (impl/export! (source.p/snapshot mock-source) task-id "Full export" :force? true)]
-              (is (= :success (:status result)) (str "forced full export should succeed: " result))
-              (let [row (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
-                (is (= "synced" (:status row)))
-                (is (some? (:content_hash row)) "content_hash recorded from store-and-record!'s serialization")
-                (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization"))
-              (is (nil? (t2/select-one :model/RemoteSyncObject :id (:id leftover)))
-                  "removed/delete row dropped by full export (as the incremental path does)"))
-            (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-            (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-                "a no-op update after a full export stays synced")))))))
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS" :location "/"}
+                       :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
+                       :model/RemoteSyncObject _ {:model_type "Collection" :model_id (:id coll) :model_name "RS" :status "create" :status_changed_at (t/offset-date-time)}
+                       :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll) :status "create" :status_changed_at (t/offset-date-time)}
+                       ;; a removed/delete row whose entity left the synced set — full export must drop it
+                       :model/RemoteSyncObject leftover {:model_type "Card" :model_id 999999 :model_name "Gone" :status "delete" :status_changed_at (t/offset-date-time)}]
+          ;; force? routes through full-export! -> store-and-record! (no incremental fast-path)
+          (let [mock-source (test-helpers/create-mock-source)
+                result      (impl/export! (source.p/snapshot mock-source) task-id "Full export" :force? true)]
+            (is (= :success (:status result)) (str "forced full export should succeed: " result))
+            (let [row (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
+              (is (= "synced" (:status row)))
+              (is (some? (:content_hash row)) "content_hash recorded from store-and-record!'s serialization")
+              (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization"))
+            (is (nil? (t2/select-one :model/RemoteSyncObject :id (:id leftover)))
+                "removed/delete row dropped by full export (as the incremental path does)"))
+          (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+          (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+              "a no-op update after a full export stays synced"))))))
 
 ;;; ------------------------------------------- import integration -------------------------------------------
 ;;; These import a snapshot from a mock source — which records the content_hash baseline through the actual
@@ -412,18 +407,17 @@
    imported entity with `lookup` (a 0-arg thunk returning the instance), publishes a no-op `topic`, and
    returns the resulting RemoteSyncObject status. `payload-fn` (optional) returns extra event payload."
   [files model-type lookup topic & {:keys [payload-fn]}]
-  (mt/with-model-cleanup [:model/RemoteSyncTask]
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          ms      (test-helpers/create-mock-source :initial-files files)
-          result  (impl/import! (source.p/snapshot ms) task-id :force? true :force-deletion? true)]
-      (is (= :success (:status result)) (str "import should succeed: " result))
-      (let [entity   (lookup)
-            model-id (:id entity)]
-        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
-            (str model-type " should be synced after import"))
-        (events/publish-event! topic (merge {:object entity :user-id (mt/user->id :rasta)}
-                                            (when payload-fn (payload-fn entity))))
-        (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))))))
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+        ms      (test-helpers/create-mock-source :initial-files files)
+        result  (impl/import! (source.p/snapshot ms) task-id :force? true :force-deletion? true)]
+    (is (= :success (:status result)) (str "import should succeed: " result))
+    (let [entity   (lookup)
+          model-id (:id entity)]
+      (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
+          (str model-type " should be synced after import"))
+      (events/publish-event! topic (merge {:object entity :user-id (mt/user->id :rasta)}
+                                          (when payload-fn (payload-fn entity))))
+      (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))))
 
 (deftest glossary-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op Glossary update stays synced"
@@ -450,32 +444,30 @@
   (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/Transform :model/Collection]
-          ;; the transform YAML references the "test-data (h2)" database by name; force it to load so the
-          ;; import resolves the reference regardless of test order.
-          (mt/db)
-          (let [coll-eid "transforms-coll-xxxxx"
-                tr-eid   "test-transform-xxxxxx"
-                files {"main" {"collections/transforms/transforms/transforms.yaml"
-                               (test-helpers/generate-collection-yaml coll-eid "Transforms" :namespace "transforms")
-                               "collections/transforms/transforms/test_transform.yaml"
-                               (test-helpers/generate-transform-yaml tr-eid "Test Transform" :collection-id coll-eid)}}]
-            (is (= "synced"
-                   (import-then-noop-status!
-                    files "Transform"
-                    #(t2/select-one :model/Transform :entity_id tr-eid)
-                    :event/transform-update)))))))))
+        ;; the transform YAML references the "test-data (h2)" database by name; force it to load so the
+        ;; import resolves the reference regardless of test order.
+        (mt/db)
+        (let [coll-eid "transforms-coll-xxxxx"
+              tr-eid   "test-transform-xxxxxx"
+              files {"main" {"collections/transforms/transforms/transforms.yaml"
+                             (test-helpers/generate-collection-yaml coll-eid "Transforms" :namespace "transforms")
+                             "collections/transforms/transforms/test_transform.yaml"
+                             (test-helpers/generate-transform-yaml tr-eid "Test Transform" :collection-id coll-eid)}}]
+          (is (= "synced"
+                 (import-then-noop-status!
+                  files "Transform"
+                  #(t2/select-one :model/Transform :entity_id tr-eid)
+                  :event/transform-update))))))))
 
 (deftest transform-tag-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op TransformTag update stays synced (GHY-3933)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/TransformTag]
-          (let [tag-eid "test-transform-tag-xx"
-                files {"main" {"transforms/transform_tags/test_tag.yaml"
-                               (test-helpers/generate-transform-tag-yaml tag-eid "Test Tag")}}]
-            (is (= "synced"
-                   (import-then-noop-status!
-                    files "TransformTag"
-                    #(t2/select-one :model/TransformTag :entity_id tag-eid)
-                    :event/transform-tag-update)))))))))
+        (let [tag-eid "test-transform-tag-xx"
+              files {"main" {"transforms/transform_tags/test_tag.yaml"
+                             (test-helpers/generate-transform-tag-yaml tag-eid "Test Tag")}}]
+          (is (= "synced"
+                 (import-then-noop-status!
+                  files "TransformTag"
+                  #(t2/select-one :model/TransformTag :entity_id tag-eid)
+                  :event/transform-tag-update))))))))
