@@ -8,8 +8,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :as routes.common]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.database-routing.core :as database-routing]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -960,7 +962,22 @@
 ;; TODO - a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
 ;;`/dashboard` vs `/card`
 
+;;; A public link has no user attributes to route by, so public queries use the router database when it grants anonymous
+;;; access.
+
+(defn- enforce-anonymous-database-routing
+  "Ring middleware that runs a public request with database routing resolved for anonymous access (see above)."
+  [handler]
+  (fn [request respond raise]
+    (database-routing/with-database-routing-off-if-granted
+      (handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +anonymous-database-routing
+  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-anonymous-database-routing))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
-  per-endpoint checks."
-  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))
+  per-endpoint checks, and resolves database routing for anonymous access (see above)."
+  (api.macros/ns-handler *ns*
+                         public-sharing.validation/+public-sharing-enabled
+                         +anonymous-database-routing))

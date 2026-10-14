@@ -24,6 +24,20 @@
   [& body]
   `(do-with-anonymous-router-access (fn [] ~@body)))
 
+(defenterprise with-database-routing-off-if-granted-fn
+  "OSS version, does nothing"
+  metabase-enterprise.database-routing.common
+  [f]
+  (f))
+
+(defmacro with-database-routing-off-if-granted
+  "Runs body so that a router database is reached itself only where an admin has granted it anonymous access;
+  otherwise access to it is an error."
+  [& body]
+  `(with-database-routing-off-if-granted-fn
+     (fn []
+       ~@body)))
+
 (defenterprise-schema check-allowed-access! :- :nil
   "Throws if the Lib metadata `db` of a Database may not be connected to directly; OSS has no destinations, so it does
   nothing."
