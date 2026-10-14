@@ -215,9 +215,10 @@
   (some-> (system/site-url) (str (mcp/mcp-canonical-path))))
 
 (defn mcp-endpoint-resource?
-  "Whether every RFC 8707 indicator in `resources`, a string or a sequence of strings, names the MCP endpoint under the
-  Site URL at one of [[metabase.mcp.core/mcp-endpoint-paths]], compared as [[canonical-resource-uri]]. True when
-  `resources` names none."
+  "True when every RFC 8707 indicator in `resources` names the MCP endpoint, or when `resources` names none.
+
+  `resources` is a string or a sequence of strings. They are compared as [[canonical-resource-uri]] with the Site URL
+  joined to each of [[metabase.mcp.core/mcp-endpoint-paths]]."
   [resources]
   (let [mcp-urls (into #{} (keep #(canonical-resource-uri (str (system/site-url) %))) (mcp/mcp-endpoint-paths))]
     (every? (comp mcp-urls canonical-resource-uri) (cond-> resources (string? resources) vector))))
@@ -301,8 +302,8 @@
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
 
 (defenterprise jwt-bearer-grant-enabled?
-  "Whether the token endpoint takes the JWT bearer grant (RFC 7523), which needs JWT authentication. Always false on
-  OSS."
+  "True when JWT authentication is enabled and configured, which the JWT bearer grant (RFC 7523) needs.
+  Always false on OSS."
   metabase-enterprise.sso.integrations.jwt
   []
   false)

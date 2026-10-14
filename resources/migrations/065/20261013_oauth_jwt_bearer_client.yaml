@@ -1,5 +1,4 @@
-## The OAuth client that JWT bearer grant tokens are issued to. It has no secret, no redirect URIs and no other grant
-## type, so no other flow can use it.
+## Token resolution needs a persisted issuing client, even though the JWT bearer grant authenticates no client.
 
 databaseChangeLog:
   - changeSet:

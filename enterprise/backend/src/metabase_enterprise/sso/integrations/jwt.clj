@@ -42,8 +42,7 @@
   (-> (session-data jwt (assoc request :token-exchange? true)) :session :key))
 
 (defenterprise jwt-bearer-grant-enabled?
-  "Whether the token endpoint takes the JWT bearer grant (RFC 7523): true while JWT authentication is enabled and
-  configured."
+  "True when JWT authentication is enabled and configured, which the JWT bearer grant (RFC 7523) needs."
   :feature :sso-jwt
   []
   (sso-settings/jwt-enabled-and-configured))

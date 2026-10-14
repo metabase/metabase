@@ -109,8 +109,7 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def :event/mcp-token-issued
-  "An access token to the MCP endpoint, issued to the user with `:user-id` by the JWT bearer grant, with the `:scope`
-  it grants."
+  "An MCP access token that the JWT bearer grant issued to the user with `:user-id`, with the `:scope` it grants."
   [:map {:closed true}
    [:user-id ::lib.schema.id/user]
    [:details [:map {:closed true}
