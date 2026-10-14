@@ -212,7 +212,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
       return null;
     case "snippet":
       return {
-        label: t`View this snippet`,
+        label: t`View this SQL snippet`,
         url: Urls.dataStudioSnippet(node.id),
       };
     case "action":
