@@ -612,7 +612,7 @@
              (doseq [coll (concat (get by-type collection/library-collection-type)
                                   (get by-type collection/library-data-collection-type)
                                   (get by-type collection/library-metrics-collection-type))]
-               (when (contains? @#'collection/library-entity-id? (:entity_id coll))
+               (when (contains? collection/library-root-entity-ids (:entity_id coll))
                  (is (true? (:is_library_root coll))
                      (str "System library collection " (:name coll) " should have is_library_root true")))))
            (testing "User-created subcollections do NOT have is_library_root true"

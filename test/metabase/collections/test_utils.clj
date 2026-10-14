@@ -91,7 +91,7 @@
   [& body]
   `(do-with-library-not-synced (fn [] ~@body)))
 
-(defn do-with-library
+(defn do-with-library!
   "Implementation for [[with-library]]."
   [f]
   (if-let [library (collection/library-collection)]
@@ -119,4 +119,4 @@
   Reuses an existing library if one is present; otherwise creates the Library and deletes it afterward."
   {:style/indent 1}
   [[binding] & body]
-  `(do-with-library (fn [~binding] ~@body)))
+  `(do-with-library! (fn [~binding] ~@body)))
