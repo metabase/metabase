@@ -15,6 +15,7 @@ type SetupOpts = {
   url?: string | null;
   apps?: DataApp[];
   appsError?: boolean;
+  statusError?: boolean;
 };
 
 const setup = ({
@@ -22,8 +23,14 @@ const setup = ({
   url = null,
   apps = [],
   appsError = false,
+  statusError = false,
 }: SetupOpts = {}) => {
-  fetchMock.get("path:/api/apps/repo-status", { configured, url });
+  fetchMock.get(
+    "path:/api/apps/repo-status",
+    statusError
+      ? { status: 500, body: { message: "Repo status failed to load" } }
+      : { configured, url },
+  );
   fetchMock.get(
     "path:/api/apps",
     appsError
@@ -99,6 +106,17 @@ describe("ManageDataAppsPage", () => {
 
       expect(
         await screen.findByText("Apps failed to load"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Your data apps will appear here"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows an error instead of the list when the repo status request fails", async () => {
+      setup({ statusError: true });
+
+      expect(
+        await screen.findByText("Repo status failed to load"),
       ).toBeInTheDocument();
       expect(
         screen.queryByText("Your data apps will appear here"),

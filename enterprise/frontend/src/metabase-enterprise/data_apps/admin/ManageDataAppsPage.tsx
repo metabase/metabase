@@ -32,8 +32,11 @@ const DATA_APP_REPO_QUERY_OPTS = {
 } as const;
 
 export const ManageDataAppsPage = () => {
-  const { data: status, isLoading: isStatusLoading } =
-    useGetDataAppRepoStatusQuery(undefined, DATA_APP_REPO_QUERY_OPTS);
+  const {
+    data: status,
+    isLoading: isStatusLoading,
+    error: statusError,
+  } = useGetDataAppRepoStatusQuery(undefined, DATA_APP_REPO_QUERY_OPTS);
   const {
     data: apps = [],
     isLoading: isAppsLoading,
@@ -41,6 +44,8 @@ export const ManageDataAppsPage = () => {
   } = useListDataAppsQuery(undefined, DATA_APP_REPO_QUERY_OPTS);
 
   const isConfigured = status?.configured ?? false;
+  const isLoading = isStatusLoading || isAppsLoading;
+  const error = statusError ?? appsError;
 
   return (
     <SettingsPageWrapper>
@@ -69,10 +74,7 @@ export const ManageDataAppsPage = () => {
       <Stack gap="lg">
         <Title order={2}>{t`Apps`}</Title>
 
-        <DelayedLoadingAndErrorWrapper
-          loading={isStatusLoading || isAppsLoading}
-          error={appsError}
-        >
+        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
           {apps.length === 0 ? (
             <DataAppsEmptyState />
           ) : (
