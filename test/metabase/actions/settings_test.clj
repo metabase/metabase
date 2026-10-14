@@ -74,3 +74,55 @@
           (mt/with-temp [:model/Database db {:initial_sync_status "complete"}]
             (is (= [:permissions/no-writable-table] (disabled-reasons db)))
             (is (false? (can-configure-data-editing-for-db? db)))))))))
+
+(defn- enable-actions!
+  [expected-status db-id]
+  (mt/user-http-request :crowberto :put expected-status (str "database/" db-id)
+                        {:settings {:database-enable-actions true}}))
+
+(defn- actions-enabled-in-app-db? [db-id]
+  (boolean (:database-enable-actions (t2/select-one-fn :settings :model/Database db-id))))
+
+(deftest database-enable-actions-refused-with-database-routing-test
+  (testing "PUT /api/database/:id refuses to enable actions on a database involved in routing"
+    (testing "on a router database"
+      (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                     :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}]
+        (is (re-find #"is not enabled for this database" (enable-actions! 400 db-id)))
+        (is (false? (actions-enabled-in-app-db? db-id)))))
+    (testing "on a router database that has destinations"
+      (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                     :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}
+                     :model/Database      _           {:engine :h2 :router_database_id db-id}]
+        (is (re-find #"is not enabled for this database" (enable-actions! 400 db-id)))
+        (is (false? (actions-enabled-in-app-db? db-id)))))
+    (testing "on a destination database of a router"
+      (mt/with-temp [:model/Database      {router-db-id :id} {:engine :h2}
+                     :model/DatabaseRouter _                 {:database_id router-db-id :user_attribute "db_name"}
+                     :model/Database      {dest-db-id :id}   {:engine :h2 :router_database_id router-db-id}]
+        (is (re-find #"is not enabled for this database" (enable-actions! 400 dest-db-id)))
+        (is (false? (actions-enabled-in-app-db? dest-db-id)))))
+    (testing "but a database with no routing is left alone"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (is (true? (get-in (enable-actions! 200 db-id) [:settings :database-enable-actions])))))))
+
+(defn- actions-disabled-reasons
+  [db-id]
+  (get-in (mt/user-http-request :crowberto :get 200 (str "database/" db-id "/settings-available"))
+          [:settings :database-enable-actions]))
+
+(deftest database-enable-actions-reports-routing-as-a-disabled-reason-test
+  (testing "GET /api/database/:id/settings-available names database routing, and says why"
+    (let [refused {:enabled false
+                   :reasons [{:key     "setting/database-routing"
+                              :type    "error"
+                              :message "Actions are not supported with database routing."}]}]
+      (testing "on a router database"
+        (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                       :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}]
+          (is (=? refused (actions-disabled-reasons db-id)))))
+      (testing "on a router database that has destinations"
+        (mt/with-temp [:model/Database      {db-id :id} {:engine :h2}
+                       :model/DatabaseRouter _          {:database_id db-id :user_attribute "db_name"}
+                       :model/Database      _           {:engine :h2 :router_database_id db-id}]
+          (is (=? refused (actions-disabled-reasons db-id))))))))

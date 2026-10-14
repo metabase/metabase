@@ -5,17 +5,14 @@
    [metabase.util.i18n :as i18n]
    [metabase.warehouses.models.database :as database]))
 
-(setting/defsetting database-enable-actions
-  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
-  :default          false
-  :driver-feature   :actions
-  :type             :boolean
-  :visibility       :public
-  :database-local   :only)
+;; reasons for disabling actions and table editing
 
-;; reasons for disabling table editing
+(def ^:private actions-db-routing-reason
+  {:key     :setting/database-routing
+   :type    :error
+   :message (i18n/deferred-tru "Actions are not supported with database routing.")})
 
-(def ^:private db-routing-reason
+(def ^:private table-editing-db-routing-reason
   {:key     :setting/database-routing
    :type    :error
    :message (i18n/deferred-tru "Table editing is not supported with database routing.")})
@@ -38,6 +35,21 @@
 ;; Marking reasons as warnings allow the user to proactively set the configuration, but it will only come into
 ;; effect once the warning is resolved.
 
+(setting/defsetting database-enable-actions
+  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
+  :default          false
+  :driver-feature   :actions
+  ;; Routing and actions are mutually exclusive: a database with actions enabled cannot become a router, and this closes
+  ;; the other direction.
+  :enabled-for-db? (fn [db]
+                     (setting/custom-disabled-reasons!
+                      [(when (or (database/is-destination? db)
+                                 (actions.db/router-exists? (:id db)))
+                         actions-db-routing-reason)]))
+  :type             :boolean
+  :visibility       :public
+  :database-local   :only)
+
 (setting/defsetting database-enable-table-editing
   (i18n/deferred-tru "Whether the Database has table data editing enabled.")
   :default          false
@@ -45,8 +57,9 @@
   :driver-feature   :actions/data-editing
   :enabled-for-db? (fn [db]
                      (setting/custom-disabled-reasons!
-                      [(when (database/is-destination? db) db-routing-reason)
-                       (when (actions.db/destination-database-exists-for-router? (:id db)) db-routing-reason)
+                      [(when (database/is-destination? db) table-editing-db-routing-reason)
+                       (when (actions.db/destination-database-exists-for-router? (:id db))
+                         table-editing-db-routing-reason)
                        (cond
                          ;; TODO we also care about re-sync after connection details are changed
                          (= (:initial_sync_status db) "incomplete") busy-sync-reason
