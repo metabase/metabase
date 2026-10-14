@@ -216,8 +216,8 @@
 
 (defn sql-results-readable?
   "Whether `run_query` would let the model read a SQL query's results in this session, the query's own checks aside:
-   the session offers the tool, query execution and SQL execution are allowed, and the
-   conversation belongs to the current user alone."
+   the session offers the tool, query execution and SQL execution are allowed, and the conversation belongs to the
+   current user alone."
   []
   (let [conversation-id (shared/current-conversation-id)]
     (boolean (and (shared/tool-offered? "run_query")
