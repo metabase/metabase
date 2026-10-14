@@ -1120,7 +1120,7 @@
   ([]
    (ns-routes *ns*))
   ([nmspace :- ::nmspace]
-   (-> nmspace the-ns meta :api/endpoints))
+   (-> nmspace the-ns meta :api/endpoints (or {})))
   ([nmspace :- ::nmspace
     method :- ::method]
    (let [routes (ns-routes nmspace)]

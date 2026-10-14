@@ -6,7 +6,7 @@ import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { useLocation } from "metabase/router";
-import { Box, Button, Flex, Modal, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
 
@@ -44,38 +44,25 @@ export const DashboardLeaveConfirmationModal = () => {
       opened={opened}
       onClose={close}
       size="28.5rem"
-      padding="2.5rem"
       title={content.title}
       data-testid="leave-confirmation"
       withCloseButton={false}
-      styles={{
-        title: {
-          fontSize: "1rem",
-        },
-        header: {
-          marginBottom: "0.5rem",
-        },
-      }}
     >
-      <Box>
-        <Text lh="1.5rem" mb={"xl"}>
-          {content.message}
-        </Text>
-        <Flex justify="flex-end" gap="lg">
-          <Button onClick={close}>{t`Cancel`}</Button>
-          <Button
-            color={content.actionBtn.color}
-            variant="filled"
-            onClick={async () => {
-              dispatch(dismissAllUndo());
-              await content.onConfirm?.();
-              confirm?.();
-            }}
-          >
-            {content.actionBtn.message}
-          </Button>
-        </Flex>
-      </Box>
+      <Text lh="1.5rem">{content.message}</Text>
+      <Modal.Footer>
+        <Button onClick={close}>{t`Cancel`}</Button>
+        <Button
+          color={content.actionBtn.color}
+          variant="filled"
+          onClick={async () => {
+            dispatch(dismissAllUndo());
+            await content.onConfirm?.();
+            confirm?.();
+          }}
+        >
+          {content.actionBtn.message}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

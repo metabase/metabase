@@ -91,7 +91,7 @@ export function ActionCreator({
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to create action` });
+      sendToast({ variant: "negative", message: t`Failed to create action` });
     }
   };
 
@@ -113,7 +113,7 @@ export function ActionCreator({
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to update action` });
+      sendToast({ variant: "negative", message: t`Failed to update action` });
     }
   };
 
@@ -149,6 +149,7 @@ export function ActionCreator({
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
       <Modal
+        density="relaxed"
         opened={isSaveModalShown}
         title={t`New Action`}
         onClose={handleCloseNewActionModal}

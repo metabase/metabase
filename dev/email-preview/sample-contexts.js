@@ -97,7 +97,6 @@ window.SAMPLE_CONTEXTS = {
     joinedViaSSO: false,
     joinedUserEmail: "oscar@example.com",
     joinedDate: "Friday, July 10",
-    adminEmail: "admin@example.com",
     joinedUserEditUrl: "http://localhost:3000/admin/people",
   },
 

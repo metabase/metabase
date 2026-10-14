@@ -45,6 +45,18 @@
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
 
+(deftest user-joined-admin-notification-email-test
+  (testing "the joined user's email links to the joined user, not to an admin"
+    (mt/with-temporary-setting-values [admin-email "admin@example.com"]
+      (et/with-fake-inbox
+        (messages/send-user-joined-admin-notification-email! {:first_name  "New"
+                                                              :common_name "New User"
+                                                              :email       "new-user@example.com"})
+        (let [content (-> (@et/inbox "admin@example.com")
+                          (get-in [0 :body 0 :content]))]
+          (is (str/includes? content "href=\"mailto:new-user@example.com\""))
+          (is (not (str/includes? content "mailto:admin@example.com"))))))))
+
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"
       (mt/with-log-level [metabase.channel.email :trace]

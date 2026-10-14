@@ -13,8 +13,10 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { MetabotProvider } from "metabase/metabot/context";
+import { mockAgentEndpoint } from "metabase/metabot/tests/utils";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
 import { NATIVE_EDITOR_ICON_SIZE } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { checkNotNull } from "metabase/utils/types";
@@ -45,6 +47,13 @@ const TEST_CARD = createMockCard({
     native: { query: "SELECT 1" },
   }),
 });
+
+const CODE_EDIT_RESPONSE: SSEEvent[] = [
+  {
+    type: "data-code_edit",
+    data: { buffer_id: "qb", mode: "rewrite", value: "SELECT 2" },
+  },
+];
 
 function TestEditor({ question }: { question: Question }) {
   const { extensions, portalElement, togglePrompt, isPromptOpen } =
@@ -143,6 +152,30 @@ describe("useInlineSQLPrompt", () => {
       ).not.toBeInTheDocument();
     });
     expect(button).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("shows that Metabot is working until the SQL arrives", async () => {
+    const agent = mockAgentEndpoint({
+      events: CODE_EDIT_RESPONSE,
+      waitForResponse: true,
+    });
+    setup();
+
+    expect(await screen.findByText("SELECT")).toBeInTheDocument();
+    await userEvent.click(await screen.findByLabelText("Ask Metabot"));
+    const prompt = await screen.findByTestId("metabot-inline-sql-prompt");
+    await userEvent.type(within(prompt).getByRole("textbox"), "count orders");
+    await userEvent.click(
+      within(prompt).getByRole("button", { name: "Send to Metabot" }),
+    );
+    expect(await within(prompt).findByRole("status")).toHaveTextContent(
+      "Working on it...",
+    );
+
+    agent.sendResponse();
+    await waitFor(() => {
+      expect(screen.queryByText("Working on it...")).not.toBeInTheDocument();
+    });
   });
 
   it("does not render when metabot is not enabled", async () => {

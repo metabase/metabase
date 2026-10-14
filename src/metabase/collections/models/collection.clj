@@ -245,6 +245,14 @@
                                parse-long)]
       (root-collection-type-by-id root-id))))
 
+(defn table-root-collection-type
+  "Return the `:type` of the top-level ancestor of the collection that holds a record's parent table.
+  Reads `:table_collection_id`, `:table_collection_location`, `:table_collection_type` from the ingestion record map."
+  [{:keys [table_collection_id table_collection_location table_collection_type]}]
+  (root-collection-type {:collection_id       table_collection_id
+                         :collection_location table_collection_location
+                         :collection_type     table_collection_type}))
+
 (def library-entity-id
   "The entity_id for the Library collection."
   "librarylibrarylibrary")

@@ -50,7 +50,8 @@
 
 (defn- protected-resource-metadata
   "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource, with the
-   baseline scopes for `resource-path` as `:scopes_supported`."
+   scopes that [[metabase.oauth-server.core/mcp-resource-advertised-scopes]] returns for `resource-path` as
+   `:scopes_supported`."
   [resource-path]
   ;; The scopes are derived from `resource-path` rather than passed in, so the resource and its advertised scopes
   ;; cannot disagree.
