@@ -10,7 +10,7 @@ import {
 
 const LIST_WIDTH = 360;
 
-const getChangeText = ({
+export const getChangeText = ({
   isChanged,
   isMissing,
   signedPercent,

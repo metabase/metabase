@@ -31,6 +31,17 @@ const createMockInsights = (insights: Partial<Insight>[]) => insights;
 const setup = (series: Series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
+interface SetupOpts {
+  series: Series;
+  width?: number;
+  height?: number;
+}
+
+const setupCard = ({ series, width = 800, height }: SetupOpts) =>
+  renderWithProviders(
+    <Visualization rawSeries={series} width={width} height={height} />,
+  );
+
 const getTrendSymbol = () => screen.getByTestId("trend-symbol");
 
 describe("SmartScalar", () => {
@@ -204,7 +215,7 @@ describe("SmartScalar", () => {
       expect(screen.getByText("810.8k")).toBeInTheDocument();
     });
 
-    it("should show only the first comparison plus a badge with the number of extra ones", async () => {
+    it("should show only the first comparison plus a badge with the number of extra ones on a short dashcard", async () => {
       const rows = [
         ["2019-09-01T00:00:00", 200],
         ["2019-10-01T00:00:00", 100],
@@ -212,8 +223,8 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(
-        series({
+      setupCard({
+        series: series({
           rows,
           insights,
           comparisonTypes: [
@@ -221,8 +232,9 @@ describe("SmartScalar", () => {
             { id: "2", type: "previousValue" },
           ],
         }),
-        400,
-      );
+        width: 400,
+        height: 200,
+      });
 
       expect(screen.getByText("+20% MoM")).toBeInTheDocument();
       expect(screen.getByText("+1")).toBeInTheDocument();
@@ -236,6 +248,83 @@ describe("SmartScalar", () => {
         within(tooltip).getByText("vs. previous month"),
       ).toBeInTheDocument();
       expect(within(tooltip).getByText("vs. Oct")).toBeInTheDocument();
+    });
+
+    describe("dashcards tall enough for every comparison", () => {
+      const rows = [
+        ["2019-09-01T00:00:00", 200],
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+      const multiComparisonSeries = series({
+        rows,
+        insights,
+        comparisonTypes: [
+          { id: "1", type: "previousPeriod" },
+          { id: "2", type: "previousValue" },
+          { id: "3", type: "staticNumber", value: 80, label: "Goal" },
+        ],
+      });
+
+      it("should list the primary comparison as the single row and the rest in query builder notation", () => {
+        // 400px wide and 264px tall is the size-400 tier at its spec min-height
+        setupCard({ series: multiComparisonSeries, width: 400, height: 264 });
+
+        const list = within(screen.getByTestId("scalar-comparison-list"));
+        const lines = list.getAllByTestId("scalar-previous-value");
+
+        expect(lines).toHaveLength(3);
+        expect(lines[0]).toHaveTextContent(/^Nov 2019,\s*\+20% MoM \(100\)$/);
+        expect(lines[1]).toHaveTextContent(/^vs\. Oct,\s*\+20% \(100\)$/);
+        expect(lines[2]).toHaveTextContent(/^vs\. Goal,\s*\+50% \(80\)$/);
+        expect(screen.queryByText("+2")).not.toBeInTheDocument();
+      });
+
+      it("should keep the badge when the card is shorter than the tier's min-height", async () => {
+        setupCard({ series: multiComparisonSeries, width: 400, height: 263 });
+
+        expect(screen.getByText("+20% MoM")).toBeInTheDocument();
+        expect(screen.getByText("+2")).toBeInTheDocument();
+        expect(screen.queryByText(/vs\. Goal/)).not.toBeInTheDocument();
+
+        await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+        const tooltip = await screen.findByRole("tooltip");
+        expect(within(tooltip).getByText("vs. Goal")).toBeInTheDocument();
+      });
+
+      it("should apply each tier's own min-height", () => {
+        // 320px wide is the size-300 tier, whose min-height is 256px
+        setupCard({ series: multiComparisonSeries, width: 320, height: 256 });
+
+        expect(
+          within(screen.getByTestId("scalar-comparison-list")).getAllByTestId(
+            "scalar-previous-value",
+          ),
+        ).toHaveLength(3);
+      });
+
+      it("should never list comparisons on the smallest cards", () => {
+        setupCard({ series: multiComparisonSeries, width: 100, height: 400 });
+
+        expect(
+          screen.queryByTestId("scalar-comparison-list"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText("+20%")).toBeInTheDocument();
+      });
+
+      it("should keep the single comparison row for one comparison", () => {
+        setupCard({
+          series: series({ rows, insights }),
+          width: 400,
+          height: 400,
+        });
+
+        expect(
+          screen.queryByTestId("scalar-comparison-list"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText("+20% MoM")).toBeInTheDocument();
+      });
     });
 
     it("should show no symbol and only the percentage on the smallest cards", () => {
@@ -495,8 +584,8 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(
-        series({
+      setupCard({
+        series: series({
           rows,
           insights,
           comparisonTypes: [
@@ -504,8 +593,9 @@ describe("SmartScalar", () => {
             { id: "2", type: "periodsAgo", value: 2 },
           ],
         }),
-        400,
-      );
+        width: 400,
+        height: 200,
+      });
 
       await userEvent.tab();
 
@@ -597,15 +687,16 @@ describe("SmartScalar", () => {
     });
 
     it("should hide the value of every comparison in the hover panel", async () => {
-      setup(
-        series({
+      setupCard({
+        series: series({
           rows,
           insights,
           comparisonTypes: twoComparisons,
           settings: hideComparisonValue,
         }),
-        400,
-      );
+        width: 400,
+        height: 200,
+      });
 
       const comparison = within(screen.getByTestId("scalar-previous-value"));
       expect(comparison.getByText("+100% MoM")).toBeInTheDocument();

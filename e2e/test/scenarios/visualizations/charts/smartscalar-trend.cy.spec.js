@@ -710,6 +710,53 @@ describe("scenarios > visualizations > trend chart on dashboards and public ques
       .should("be.visible");
   });
 
+  it("should list every comparison on a dashcard tall enough for them (metabase#84105)", () => {
+    const questionDetails = {
+      name: "Trend with three comparisons",
+      query: TREND_QUERY,
+      display: "smartscalar",
+      visualization_settings: {
+        "scalar.comparisons": [
+          { id: "1", type: "previousPeriod" },
+          { id: "2", type: "periodsAgo", value: 2 },
+          { id: "3", type: "periodsAgo", value: 3 },
+        ],
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: { size_x: 12, size_y: 8 },
+    }).then(({ body: { dashboard_id, card_id } }) => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          { card_id, row: 0, col: 0, size_x: 12, size_y: 8 },
+          { card_id, row: 8, col: 0, size_x: 12, size_y: 3 },
+        ],
+      });
+      H.visitDashboard(dashboard_id);
+    });
+
+    cy.log("the tall card lists every comparison");
+    H.getDashboardCard(0).within(() => {
+      cy.findByTestId("scalar-comparison-list")
+        .findAllByTestId("scalar-previous-value")
+        .should("have.length", 3)
+        .each(($line) => {
+          cy.wrap($line).should("be.visible");
+        });
+      cy.findByText("+2").should("not.exist");
+    });
+
+    cy.log("the short card keeps the first comparison and a badge");
+    H.getDashboardCard(1).within(() => {
+      cy.findByTestId("scalar-comparison-list").should("not.exist");
+      cy.findByTestId("scalar-previous-value").should("be.visible");
+      cy.findByText("+2").should("be.visible");
+    });
+  });
+
   it("should open the description tooltip and comparison panel with keyboard navigation", () => {
     H.createQuestionAndDashboard({
       questionDetails: {

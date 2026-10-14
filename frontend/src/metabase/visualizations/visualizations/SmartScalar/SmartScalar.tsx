@@ -22,6 +22,7 @@ import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
 import { TrendComparisonList } from "./TrendComparisonList";
 import { TrendComparisonRow } from "./TrendComparisonRow";
+import { TrendComparisonStack } from "./TrendComparisonStack";
 import { TrendSymbol } from "./TrendSymbol";
 import { computeTrend, getComparisonDisplay } from "./compute";
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
@@ -36,6 +37,7 @@ function SmartScalarComponent(
     series,
     rawSeries,
     width,
+    height,
     fontFamily,
     onRenderError,
     actionButtons,
@@ -92,6 +94,10 @@ function SmartScalarComponent(
   };
 
   const isSmallestTier = !tier.showsTitle;
+  const listsAllComparisons =
+    comparisons.length > 1 &&
+    tier.multiComparisonMinHeight != null &&
+    (height ?? 0) >= tier.multiComparisonMinHeight;
 
   const primaryComparison = comparisons[0];
   const symbolDirection =
@@ -225,11 +231,15 @@ function SmartScalarComponent(
           style={{ transform: "translateX(-50%)" }}
           {...innerTooltipHoverHandlers}
         >
-          <TrendComparisonRow
-            trend={trend}
-            formatOptions={formatOptions}
-            percentOnly={isSmallestTier}
-          />
+          {listsAllComparisons ? (
+            <TrendComparisonStack trend={trend} formatOptions={formatOptions} />
+          ) : (
+            <TrendComparisonRow
+              trend={trend}
+              formatOptions={formatOptions}
+              percentOnly={isSmallestTier}
+            />
+          )}
         </Box>
       )}
     </ScalarCardShell>
