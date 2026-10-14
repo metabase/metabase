@@ -35,6 +35,12 @@ const setup = ({
   appsError = false,
   statusError = false,
 }: SetupOpts = {}) => {
+  apps.forEach((app) => setupDeleteDataAppEndpoint(app.name));
+
+  if (updatedApp) {
+    setupUpdateDataAppEndpoint(updatedApp);
+  }
+
   if (statusError) {
     setupDataAppRepoStatusEndpointWithError("Repo status failed to load");
   } else {
@@ -45,12 +51,6 @@ const setup = ({
     setupListDataAppsEndpointWithError("Apps failed to load");
   } else {
     setupListDataAppsEndpoint(apps);
-  }
-
-  apps.forEach((app) => setupDeleteDataAppEndpoint(app.name));
-
-  if (updatedApp) {
-    setupUpdateDataAppEndpoint(updatedApp);
   }
 
   setupUserAcknowledgementEndpoints({
