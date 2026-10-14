@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -297,6 +298,30 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest native-sandbox-metadata-query-keeps-outer-query-cancelable-test
+  (testing "The query that fetches a native sandbox's metadata leaves the outer query cancelable"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [canceled-chan (a/promise-chan)
+            execute       qp.pipeline/*execute*
+            calls         (atom 0)
+            driver-saw    (atom nil)]
+        (binding [qp.pipeline/*canceled-chan* canceled-chan
+                  qp.pipeline/*execute*       (fn [driver query respond]
+                                                (if (= 1 (swap! calls inc))
+                                                  (execute driver query respond)
+                                                  ;; The outer query: cancel the request, and see whether its driver hears it.
+                                                  (do
+                                                    (a/>!! canceled-chan ::canceled)
+                                                    (reset! driver-saw (a/poll! qp.pipeline/*canceled-chan*))
+                                                    nil)))]
+          ;; The canceled outer query returns no rows, which the row helpers reject.
+          (try
+            (run-venues-count-query)
+            (catch Exception _)))
+        (testing "the metadata query runs first, then the outer query, which hears the cancel"
+          (is (= 2 @calls))
+          (is (= ::canceled @driver-saw)))))))
 
 (deftest metric-on-natively-sandboxed-table-test
   (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
