@@ -106,7 +106,7 @@ describe("QuestionInfoSidebar", () => {
 
   describe("question details", () => {
     it("should show last edited", () => {
-      const lastEditedAt = "2024-04-11T12:00:00Z";
+      const lastEditedAt = "2024-04-11T20:30:00-08:00";
       const card = createMockCard({
         name: "Question",
         "last-edit-info": {
@@ -125,7 +125,7 @@ describe("QuestionInfoSidebar", () => {
     });
 
     it("should show creation information", () => {
-      const createdAt = "2024-04-13T12:00:00Z";
+      const createdAt = "2024-04-13T20:30:00-08:00";
       const card = createMockCard({
         name: "Question",
         creator: createMockUserInfo({

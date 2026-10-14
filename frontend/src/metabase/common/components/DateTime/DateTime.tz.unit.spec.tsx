@@ -1,5 +1,4 @@
-// plain RTL render: the timezone CI job runs without the compiled cljs bundle
-// that __support__/ui transitively requires
+// plain RTL render and textContent checks: jest.tz.unit.conf.js does not load jest-dom
 import { render, screen } from "@testing-library/react";
 
 import {
@@ -7,9 +6,13 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { dayjs } from "metabase/dayjs";
+import {
+  DEFAULT_DATE_STYLE,
+  DEFAULT_TIME_STYLE,
+} from "metabase/utils/formatting";
 
-const DEFAULT_FORMAT = "MMMM D, YYYY, h:mm A";
-const DAY_FORMAT = "MMMM D, YYYY";
+const DEFAULT_FORMAT = `${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`;
+const DAY_FORMAT = DEFAULT_DATE_STYLE;
 
 function renderDateTime(props: React.ComponentProps<typeof DateTime>) {
   render(<DateTime {...props} data-testid="date-time" />);

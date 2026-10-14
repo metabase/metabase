@@ -109,7 +109,7 @@ describe("DashboardInfoSidebar", () => {
   });
 
   it("should show last edited info", async () => {
-    const lastEditedAt = "1793-09-22T12:00:00Z";
+    const lastEditedAt = "1793-09-22T20:30:00-08:00";
     await setup({
       dashboard: createMockDashboard({
         "last-edit-info": {
@@ -129,13 +129,13 @@ describe("DashboardInfoSidebar", () => {
   });
 
   it("should show creator info", async () => {
-    const createdAt = "2024-01-01T12:00:00Z";
+    const createdAt = "2024-01-01T20:30:00-08:00";
     await setup({
       dashboard: createMockDashboard({
         creator_id: 1,
         created_at: createdAt,
         "last-edit-info": {
-          timestamp: "1793-09-22T12:00:00Z",
+          timestamp: "1793-09-22T20:30:00-08:00",
           first_name: "Frodo",
           last_name: "Baggins",
           email: "dontlikejewelry@example.com",

@@ -3,8 +3,6 @@ import { t } from "ttag";
 import { getFormattedTime } from "metabase/common/components/DateTime";
 import { Markdown } from "metabase/common/components/Markdown";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { TimelineEvent } from "metabase-types/api";
 
 import S from "./TimelineEventInfo.module.css";
@@ -37,7 +35,7 @@ export function TimelineEventInfo({ event }: TimelineEventInfoProps) {
       {event.description && (
         <Markdown className={S.description}>{event.description}</Markdown>
       )}
-      <Text mt="0.25rem" fz="0.75rem" c="text-secondary" data-server-date>
+      <Text mt="0.25rem" fz="0.75rem" c="text-secondary">
         {creatorMessage}
       </Text>
     </Box>
@@ -45,9 +43,8 @@ export function TimelineEventInfo({ event }: TimelineEventInfoProps) {
 }
 
 function getDateMessage(event: TimelineEvent) {
-  const options = Settings.formattingOptions();
   const unit = event.time_matters ? "default" : "day";
-  return formatDateTimeWithUnit(event.timestamp, unit, options);
+  return getFormattedTime(event.timestamp, unit, { local: false });
 }
 
 function getCreatorMessage(event: TimelineEvent) {

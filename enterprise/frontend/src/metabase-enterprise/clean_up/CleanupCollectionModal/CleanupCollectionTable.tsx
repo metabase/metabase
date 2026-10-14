@@ -123,10 +123,7 @@ export const CleanupCollectionTable = ({
                 )}
               </ItemCell>
               {/* Last used at */}
-              <ItemCell
-                data-testid="clean-up-table-last-used-at"
-                data-server-date
-              >
+              <ItemCell data-testid="clean-up-table-last-used-at">
                 <Tooltip label={<DateTime value={item.last_used_at} />}>
                   <DateTime unit="day" value={item.last_used_at} />
                 </Tooltip>

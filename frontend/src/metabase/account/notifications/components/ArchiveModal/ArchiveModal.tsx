@@ -61,7 +61,7 @@ function ArchiveNotificationModal({
     >
       <Stack gap="lg">
         {isCreator(item, user) && hasUnsubscribed && (
-          <Box data-server-date>
+          <Box>
             {getCreatorMessage(type, user)}
             {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
           </Box>

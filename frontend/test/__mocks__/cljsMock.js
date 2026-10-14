@@ -1,11 +1,9 @@
-// Inert stand-in for compiled cljs modules (cljs/*) in the timezone jest config,
-// which runs without building the cljs bundle. Named imports not listed here
-// resolve to undefined at import time (CJS interop), so unused modules stay
-// harmless; a tz spec that actually exercises cljs behavior needs the real
-// bundle instead.
+// Inert stand-in for cljs/* under jest.tz.unit.conf.js, which runs without the cljs bundle.
 module.exports = {
   currency: [],
   TYPE: {},
   LEVEL_ONE_TYPES: [],
-  isa: () => false,
+  isa: () => {
+    throw new Error("cljs is mocked under jest.tz.unit.conf.js");
+  },
 };

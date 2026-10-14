@@ -121,7 +121,7 @@ describe("DocumentHeader", () => {
       expect(screen.getByText("John Doe")).toBeInTheDocument();
       expect(
         screen.getByText(
-          dayjs("2024-01-15T20:30:00-08:00").format("MMMM D, YYYY"),
+          dayjs(defaultDocument.updated_at).format("MMMM D, YYYY"),
         ),
       ).toBeInTheDocument();
     });

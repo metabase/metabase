@@ -7,8 +7,6 @@ import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { Markdown } from "metabase/common/components/Markdown";
 import { ActionIcon, Box, Center, Flex, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import S from "./EventCard.module.css";
@@ -63,7 +61,7 @@ const EventCard = ({
         {event.description && (
           <Markdown className={S.description}>{event.description}</Markdown>
         )}
-        <Text c="text-secondary" mt="xxs" fz="sm" lh="normal" data-server-date>
+        <Text c="text-secondary" mt="xxs" fz="sm" lh="normal">
           {creatorMessage}
         </Text>
       </Box>
@@ -131,12 +129,12 @@ const getMenuItems = (
 
 const getDateMessage = (event: TimelineEvent) => {
   const date = event.timestamp;
-  const options = Settings.formattingOptions();
+  const options = { local: false };
 
   if (event.time_matters) {
-    return formatDateTimeWithUnit(date, "default", options);
+    return getFormattedTime(date, "default", options);
   } else {
-    return formatDateTimeWithUnit(date, "day", options);
+    return getFormattedTime(date, "day", options);
   }
 };
 
