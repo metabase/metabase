@@ -182,14 +182,18 @@
                                                :context         {:capabilities []}}))]
                     {:tool?   (contains? tools "run_query")
                      :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))]
-    (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id rasta}
-                   :model/MetabotConversation {thread :id} {:user_id rasta, :slack_thread_ts "1.2"}]
+    (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
+                   :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
+                   :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
         (mt/with-current-user rasta
           (testing "the user's own conversation offers run_query and says results can be read"
             (is (= {:tool? true, :prompt? true} (offered own))))
           (testing "a conversation other people can read offers neither"
-            (is (= {:tool? false, :prompt? false} (offered thread)))))))))
+            (testing "a Slack thread"
+              (is (= {:tool? false, :prompt? false} (offered thread))))
+            (testing "a conversation someone else started"
+              (is (= {:tool? false, :prompt? false} (offered someone))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
