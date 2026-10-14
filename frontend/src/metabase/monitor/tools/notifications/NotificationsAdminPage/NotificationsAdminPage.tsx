@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useAdminNotificationCountsQuery,
   useBulkNotificationActionMutation,
+  useGetAdminNotificationCountsQuery,
   useLazyAdminListNotificationsQuery,
 } from "metabase/api";
 import {
@@ -77,7 +77,7 @@ export const NotificationsAdminPage = () => {
   const selectedCount = selectedNotifications.length;
 
   const { currentData: counts, isError: isCountsError } =
-    useAdminNotificationCountsQuery(undefined, {
+    useGetAdminNotificationCountsQuery(undefined, {
       refetchOnMountOrArgChange: true,
     });
 
