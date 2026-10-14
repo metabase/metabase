@@ -819,7 +819,7 @@
     (doseq [id ["claude-fable-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
       (is (true? (#'claude/supported-model? {:id id})) id)))
   (testing "non-whitelisted models are not supported"
-    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
       (is (false? (#'claude/supported-model? {:id id})) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
