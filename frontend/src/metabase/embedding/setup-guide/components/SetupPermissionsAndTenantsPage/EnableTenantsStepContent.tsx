@@ -53,8 +53,7 @@ export const EnableTenantsStepContent = ({
       }
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Failed to enable tenants and create shared collection`,

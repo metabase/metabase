@@ -59860,15 +59860,19 @@
                     "minLength" : 1
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "positive" ],
+                "required" : [ "message_id", "positive" ],
                 "additionalProperties" : false
               }
             }
@@ -59978,14 +59982,18 @@
       "get" : {
         "operationId" : "get-api-metabot-metabot-id-prompt-suggestions",
         "summary" : "GET /api/metabot/metabot/{id}/prompt-suggestions",
-        "description" : "Return the prompt suggestions for the metabot instance with `id`.",
+        "description" : "Return the prompt suggestions for a Metabot primary key or entity ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
+            "anyOf" : [ {
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "string"
+            } ]
           }
         }, {
           "in" : "query",
@@ -60570,9 +60578,13 @@
                     "minLength" : 1
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
@@ -60587,7 +60599,7 @@
                     "enum" : [ "table", "card", "model" ]
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ],
+                "required" : [ "message_id", "source_id", "source_type", "positive" ],
                 "additionalProperties" : false
               }
             }
