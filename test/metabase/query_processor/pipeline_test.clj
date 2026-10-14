@@ -10,7 +10,7 @@
   [chan]
   (first (a/alts!! [chan (a/timeout 5000)])))
 
-(defn- poll-only-chan
+(defn- poll-only-chan!
   "A channel holding `value` for [[a/poll!]], whose takes that may wait, as a go block's do, never complete.
   It stands for a canceled channel that the background forward has not read yet."
   [value]
@@ -47,7 +47,7 @@
     (testing "an outer query canceled already is seen by the inner one before it starts"
       (is (= ::canceled
              (qp.pipeline/do-with-own-canceled-chan
-              (poll-only-chan ::canceled)
+              (poll-only-chan! ::canceled)
               (fn [] (a/poll! qp.pipeline/*canceled-chan*))))))
     (testing "without an outer channel, none is bound"
       (is (nil? (qp.pipeline/do-with-own-canceled-chan (fn [] qp.pipeline/*canceled-chan*)))))
