@@ -93,7 +93,8 @@ export interface PathsSpec {
   included: FlagRef[];
   sessionGapMinutes: number;
   mergeRepeats: boolean;
-  collapseNoise: boolean;
+  /** Drops steps that make up an outsized share of all events. */
+  hideNoisyEvents: boolean;
   maxNodes: number;
   minVolume: number;
 }

@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel } from "../sql/compile/grain";
 
@@ -80,13 +81,12 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
   "habit.threshold": {
     getTitle: () => t`Regulars are active at least`,
     getSection: () => "setup",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: (_context, settings) =>
       settings["habit.sub_period"] === "week" ? 2 : 5,
     isValid: (value) => isPositiveInteger(value),
     getHidden: (_context, settings) =>
       settings["habit.measure"] !== "threshold",
-    getProps: () => ({ options: { isInteger: true, isNonNegative: true } }),
     readDependencies: ["habit.measure", "habit.sub_period"],
   },
 };

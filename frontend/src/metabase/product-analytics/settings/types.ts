@@ -35,7 +35,9 @@ export type SettingDefinition<
   K extends SettingKey<S>,
   P extends object = object,
 > = {
-  getTitle?: () => string;
+  getTitle?: (context: TContext, settings: S) => string;
+  /** Shown in a tooltip on an info icon next to the title. */
+  getHint?: () => string;
   group?: SettingGroup;
   /** Renders the title and widget on one line. */
   inline?: boolean;
@@ -72,6 +74,7 @@ export type SettingWidget = {
   group?: SettingGroup;
   inline?: boolean;
   title?: string;
+  hint?: string;
   hidden: boolean;
   value: unknown;
   props: Record<string, unknown>;

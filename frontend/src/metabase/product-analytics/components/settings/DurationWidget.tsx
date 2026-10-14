@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
-import { Group, NumberInput, Select } from "metabase/ui";
+import { Group, Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { SettingWidgetProps } from "../../settings/types";
 import type { Duration, TimeUnit } from "../../spec/types";
+
+import { NumberStepperWidget } from "./NumberStepperWidget";
 
 const DEFAULT_UNITS: TimeUnit[] = ["hour", "day", "week"];
 
@@ -19,17 +21,11 @@ export const DurationWidget = ({
   units = DEFAULT_UNITS,
 }: DurationWidgetProps) => (
   <Group id={id} gap="sm" wrap="nowrap">
-    <NumberInput
-      w="6rem"
-      min={1}
-      allowDecimal={false}
+    <NumberStepperWidget
+      id={`${id}-amount`}
       value={value.value}
       aria-label={t`Amount`}
-      onChange={(amount) => {
-        if (typeof amount === "number" && amount > 0) {
-          onChange({ ...value, value: amount });
-        }
-      }}
+      onChange={(amount) => onChange({ ...value, value: amount })}
     />
     <Select
       flex={1}

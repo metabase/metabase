@@ -8,6 +8,12 @@ import { scopedEvents } from "./base";
 const STEP_NAME_SQL =
   "if(event_name != '' AND event_name IS NOT NULL, event_name, url_path)";
 
+// A step is noisy when it makes up at least this share of all steps...
+const NOISY_SHARE = 0.2;
+// ...and at least this many times an even split, so a short list of steps
+// isn't all noise.
+const NOISY_FAIR_SHARE_MULTIPLE = 3;
+
 const BOUNDS_NOTES: Record<PathsSpec["direction"], string> = {
   from: "the window of steps in each visit, starting at the first starting event",
   to: "the window of steps in each visit, ending at the first ending event",
@@ -123,13 +129,36 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
   });
 
-  const dedupe = paths.mergeRepeats || paths.collapseNoise;
+  if (paths.hideNoisyEvents) {
+    ctes.push({
+      name: "noisy_steps",
+      note: `steps that fire so often they drown out the rest — at least ${NOISY_SHARE * 100}% of all steps`,
+      deps: ["visits"],
+      body: [
+        "SELECT step_name",
+        "FROM (",
+        "  SELECT",
+        "    step_name,",
+        "    count() / sum(count()) OVER () AS share,",
+        "    count() OVER () AS step_names",
+        "  FROM visits",
+        "  GROUP BY step_name",
+        ")",
+        `WHERE share >= greatest(${NOISY_SHARE}, ${NOISY_FAIR_SHARE_MULTIPLE} / step_names)`,
+      ].join("\n"),
+    });
+    warnings.push(
+      "Noisy events are hidden, except where they are the starting or ending event.",
+    );
+  }
+
+  const dedupe = paths.mergeRepeats;
   ctes.push({
     name: "ordered_steps",
     note: dedupe
       ? "steps in order within each visit, with consecutive repeats merged"
       : "steps in order within each visit",
-    deps: ["visits"],
+    deps: paths.hideNoisyEvents ? ["visits", "noisy_steps"] : ["visits"],
     body: [
       "SELECT",
       "  actor,",
@@ -145,6 +174,9 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       "    lagInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY ts",
       "      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_name",
       "  FROM visits",
+      paths.hideNoisyEvents
+        ? "  WHERE is_start OR is_end OR step_name NOT IN (SELECT step_name FROM noisy_steps)"
+        : "",
       ")",
       dedupe ? "WHERE previous_name = '' OR previous_name != step_name" : "",
     ]

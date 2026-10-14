@@ -4,7 +4,9 @@ import { SegmentedControl } from "metabase/ui";
 
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
+import type { Grain } from "../spec/types";
 
 import { commonSettings } from "./common-settings";
 import {
@@ -34,7 +36,17 @@ const EDGE_METRICS: readonly PathsSettings["paths.edge_metric"][] = [
   "people",
   "events",
 ];
-const INTEGER_PROPS = { options: { isInteger: true, isNonNegative: true } };
+
+const getMinVolumeTitle = (grain: Grain): string => {
+  switch (grain) {
+    case "person":
+      return t`Hide routes with fewer than this many people`;
+    case "session":
+      return t`Hide routes with fewer than this many sessions`;
+    case "event":
+      return t`Hide routes with fewer than this many events`;
+  }
+};
 
 const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   ...commonSettings({ granularity: null }),
@@ -75,10 +87,9 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   "paths.steps": {
     getTitle: () => t`Number of steps to see`,
     getSection: () => "setup",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: () => 5,
     isValid: (value) => isPositiveInteger(value),
-    getProps: () => INTEGER_PROPS,
   },
   "paths.included": withWidgetProps({
     getTitle: () => t`Which kind of events count as steps?`,
@@ -91,10 +102,9 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   "paths.session_gap_minutes": {
     getTitle: () => t`How many minutes of inactivity results in a new visit?`,
     getSection: () => "advanced",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: () => 30,
     isValid: (value) => isPositiveInteger(value),
-    getProps: () => INTEGER_PROPS,
   },
   "paths.edge_metric": withWidgetProps({
     getTitle: () => t`What line thickness should represent`,
@@ -118,29 +128,29 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     getDefault: () => true,
     isValid: (value) => isBoolean(value),
   },
-  "paths.collapse_noise": {
-    getTitle: () => t`Collapse noise`,
+  "paths.hide_noisy_events": {
+    getTitle: () => t`Hide noisy events`,
+    getHint: () =>
+      t`Noisy events make up at least 20% of all steps and happen at least three times as often as the average event. Starting and ending events are never hidden.`,
     getSection: () => "advanced",
     inline: true,
     widget: "toggle",
-    getDefault: () => true,
+    getDefault: () => false,
     isValid: (value) => isBoolean(value),
   },
   "paths.max_nodes": {
-    getTitle: () => t`Most steps per hop`,
+    getTitle: () => t`Number of routes to show at each step`,
     getSection: () => "advanced",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: () => 8,
     isValid: (value) => isPositiveInteger(value),
-    getProps: () => INTEGER_PROPS,
   },
   "paths.min_volume": {
-    getTitle: () => t`Hide paths with fewer than`,
+    getTitle: (_context, settings) => getMinVolumeTitle(settings.counting),
     getSection: () => "advanced",
-    widget: "number",
+    widget: NumberStepperWidget,
     getDefault: () => 5,
     isValid: (value) => isPositiveInteger(value),
-    getProps: () => INTEGER_PROPS,
   },
 };
 
@@ -189,7 +199,7 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
         })),
         sessionGapMinutes: settings["paths.session_gap_minutes"],
         mergeRepeats: settings["paths.merge_repeats"],
-        collapseNoise: settings["paths.collapse_noise"],
+        hideNoisyEvents: settings["paths.hide_noisy_events"],
         maxNodes: settings["paths.max_nodes"],
         minVolume: settings["paths.min_volume"],
       },
