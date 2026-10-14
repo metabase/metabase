@@ -30,6 +30,19 @@ jobs:
           token: ${{ secrets.automation_token }}
           ref: ${{ inputs.target_branch }}
 
+      # Run mage from this workflow's ref (master), so target branches don't need each change to it.
+      # Only `docs/` gets committed, so this checkout stays out of the PR.
+      - name: Checkout docs generator
+        uses: actions/checkout@v7
+        with:
+          path: docs-generator
+          sparse-checkout: |
+            /bb.edn
+            /bin/mage
+            /bin/mage.bb
+            /mage/
+          sparse-checkout-cone-mode: false
+
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
 
@@ -37,8 +50,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Generate documentation
-        # This reusable workflow always runs from master, so every target branch needs the `generate-docs` task.
-        run: ./bin/mage generate-docs
+        run: docs-generator/bin/mage generate-docs --dir "$GITHUB_WORKSPACE"
 
       - name: Check for changes
         id: check_changes

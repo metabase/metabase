@@ -65,8 +65,14 @@
     (let [calls (atom [])]
       (with-redefs [shell/sh* (fake-sh calls {backend-command 1})]
         (is (= 1 (try
-                   (with-out-str (generate-docs/run! "backend"))
+                   (with-out-str (generate-docs/run! "backend" {}))
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (:babashka/exit (ex-data e)))))))
-      (is (= [backend-command] @calls)))))
+      (is (= [backend-command] @calls))))
+  (testing "with `:dir`, runs every suite in that checkout"
+    (let [calls (atom [])]
+      (with-redefs [shell/sh* (fake-sh calls {})]
+        (with-out-str (generate-docs/run! nil {:dir "/tmp/release-checkout"})))
+      (is (= (repeat (count generate-docs/suite-names) {:dir "/tmp/release-checkout"})
+             (map first @calls))))))

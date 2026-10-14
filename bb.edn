@@ -389,6 +389,7 @@
               ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
               ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
               ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
    :arg-schema [:or
                 [:tuple]
                 [:tuple [:enum {:name "suite"}
@@ -397,7 +398,7 @@
                          "embedding-sdk"
                          "embedding-eajs"]]]
    :requires [[mage.generate-docs :as generate-docs]]
-   :task (task! (generate-docs/run! (first (:arguments parsed))))}
+   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"

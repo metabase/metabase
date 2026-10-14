@@ -3,6 +3,7 @@
   MCP tools, CLI commands, the usage analytics reference, and the embedding SDK and EAJS references."
   (:refer-clojure :exclude [run!])
   (:require
+   [babashka.fs :as fs]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -10,12 +11,13 @@
 (set! *warn-on-reflection* true)
 
 ;; .github/scripts/check-preresolve-aliases.sh reads the `clojure` alias out of this file.
+;; CI runs this list from master on each target branch, so every target branch needs each command.
 (def ^:private suites
   "Each suite and its command, in the order the bare `generate-docs` command runs them."
   [;; One JVM runs every Clojure generator, so Metabase's namespaces load once rather than once per document.
    ["backend"         ["clojure" "-M:ee:doc" "all-documentation"]]
-   ;; `./bin/mage` installs `./bin/bb` at the version bb.edn requires.
-   ["usage-analytics" ["./bin/bb" "bin/generate-usage-analytics-docs.bb"]]
+   ;; `./bin/mage` installs `bin/bb` in its own checkout only, not in the `--dir` checkout.
+   ["usage-analytics" [(str (fs/path u/project-root-directory "bin" "bb")) "bin/generate-usage-analytics-docs.bb"]]
    ["embedding-sdk"   ["bun" "run" "embedding-sdk:docs:generate"]]
    ["embedding-eajs"  ["bun" "run" "embedding-eajs:docs:generate"]]])
 
@@ -50,7 +52,11 @@
 
 (defn run!
   "Generate the docs for `suite`, or for every suite when `suite` is nil.
+  The suites run in the checkout at `dir`, or in this checkout when `dir` is nil.
   Exits nonzero when any suite fails."
-  [suite]
-  (when (seq (run-suites! shell/sh* (if suite [suite] suite-names)))
-    (u/exit 1)))
+  [suite {:keys [dir]}]
+  (let [sh (if dir
+             (partial shell/sh* {:dir dir})
+             shell/sh*)]
+    (when (seq (run-suites! sh (if suite [suite] suite-names)))
+      (u/exit 1))))
