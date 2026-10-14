@@ -301,12 +301,19 @@
       (is (=? {:is-single-stmt? false}
               (sql-tools/is-single-stmt-of-type? :postgres sql "read")))))
   (testing "a literal list beyond the impersonation ceiling is refused (memory guard), not parsed"
-    (let [huge   (str "SELECT x FROM t WHERE x IN (" (str/join "," (range 2500)) ")")
-          thrown (try (sql-tools/is-single-stmt-of-type? :postgres huge "read")
-                      (catch clojure.lang.ExceptionInfo e e))]
-      (is (instance? clojure.lang.ExceptionInfo thrown))
-      (is (= sql-tools/cannot-validate-sql (:type (ex-data thrown))))
-      (is (= :too-large (:reason (ex-data thrown)))))))
+    (let [huge (str "SELECT x FROM t WHERE x IN (" (str/join "," (range 2500)) ")")]
+      (is (= {:is-single-stmt? false, :allowed-stmt-type? false, :sql huge, :reason "large-literal-list"}
+             (sql-tools/is-single-stmt-of-type? :postgres huge "read")))
+      (testing "and the reason marks it as unchecked rather than disallowed"
+        (is (contains? sql-tools/unverifiable-reasons
+                       (:reason (sql-tools/is-single-stmt-of-type? :postgres huge "read")))))))
+  (testing "a driver with no SQLGlot dialect cannot be validated for impersonation"
+    ;; sqlglot would otherwise parse in its generic dialect and hand back a confident verdict plus a
+    ;; generically-regenerated `:sql` string, which the impersonation caller would go on to execute.
+    (is (= {:is-single-stmt? false, :allowed-stmt-type? false, :sql "SELECT 1", :reason "unknown-dialect"}
+           (sql-tools/is-single-stmt-of-type? :h2 "SELECT 1" "read")))
+    (testing "but \"read-only\" accepts the generic dialect"
+      (is (true? (sql-tools/read-only-select? :h2 "SELECT 1"))))))
 
 (deftest ^:parallel read-only-select?-test
   (doseq [driver [:postgres :mysql :h2]]

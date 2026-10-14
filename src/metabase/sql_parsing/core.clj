@@ -600,69 +600,66 @@
   "The longest SQL, in characters, that the \"read-only\" check parses."
   (* 16 1024))
 
-(def cannot-validate-sql
-  "`:type` on the `ex-info` [[is-single-stmt-of-type?]] throws when it cannot vouch that the string that
-  will execute is a single statement of the requested type. Connection impersonation relies on that
-  guarantee, so a caller that catches this MUST refuse the query — it may translate the error into a
-  friendlier message, but it may never fall back to running a string it did not validate.
+(def unverifiable-reasons
+  "The `:reason`s [[is-single-stmt-of-type?]] gives when it refused SQL *without checking* it, rather than
+  because it checked and the SQL is not a single statement of the requested type.
 
-  Only the `\"read\"` and `\"write\"` types throw; `\"read-only\"` reports the same conditions as a
-  `:reason` in its verdict."
-  ::cannot-validate-sql)
+  A caller must refuse either way — the verdict is `:allowed-stmt-type? false` for both — but one that
+  cares may word the refusal differently, or waive it where validation is not what keeps the query safe."
+  #{"unknown-dialect" "large-literal-list" "too-long"})
 
-(defn- read-only-verdict
-  "The fail-soft `\"read-only\"` check: SQL that is too long, or that holds a literal list too large to
-   parse whole, is refused with a `:reason` rather than parsed."
-  [dialect sql]
-  ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that grows with it.
-  (if (< max-read-only-sql-chars (count sql))
-    {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "too-long"}
-    (let [stripped-sql (strip-large-literal-lists sql)]
-      ;; Stripping does not skip comments, so it can rewrite a second statement into a commented-out list.
-      ;; "read-only" must judge the SQL that will run, and parsing a large list unstripped risks a GraalPy OOM, so it
-      ;; refuses.
-      (if (not= sql stripped-sql)
-        {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "large-literal-list"}
-        (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql "read-only")
-            (perf/update-keys (comp keyword u/->kebab-case-en)))))))
+(defn- refused
+  "A verdict refusing `sql` for `reason` without parsing it."
+  [sql reason]
+  {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason reason})
 
 (defn is-single-stmt-of-type?
   "Validates that `sql` is a single statement of `stmt-type` for `dialect`: `\"read\"` = SELECT,
   `\"write\"` = INSERT, UPDATE, or DELETE, `\"read-only\"` = a read statement that also holds nothing
   that writes or locks anywhere in its tree. Returns `{:is-single-stmt? bool, :allowed-stmt-type? bool,
-  :sql <reconstructed>}`, or `{:error ...}` when the SQL cannot be parsed. The `:sql` is the query
-  reconstructed from the parsed AST, so a caller that executes it is guaranteed to run exactly what was
-  validated.
+  :sql <reconstructed>}`, or `{:error ...}` when the SQL cannot be parsed.
 
-  `\"read\"` and `\"write\"` back connection impersonation, which must refuse anything it cannot vouch
-  for: they throw an `ex-info` tagged [[cannot-validate-sql]] when `dialect` is `nil` or a literal list
-  exceeds [[impersonation-literal-list-strip-threshold]], and callers MUST refuse the query in that case
-  (see [[cannot-validate-sql]]).
+  The `:sql` is the query reconstructed from the parsed AST, and is only ever reconstructed from `sql`
+  itself: SQL this cannot parse as it stands is refused with `:allowed-stmt-type? false` and a `:reason`
+  from [[unverifiable-reasons]], never parsed in a collapsed form and then vouched for in its original
+  one. Refusing is the default, so a caller is safe checking only `:allowed-stmt-type?`; the `:reason` is
+  there for one that wants to tell \"not allowed\" from \"could not be checked\".
 
-  `\"read-only\"` is fail-soft instead — it never throws, and reports SQL it would not parse (too long, or
-  holding a literal list over [[literal-list-strip-threshold]]) as `:allowed-stmt-type? false` with a
-  `:reason`."
+  Two policies differ by `stmt-type`, because `\"read\"` and `\"write\"` back connection impersonation —
+  whose caller executes the `:sql` that comes back — while `\"read-only\"` is a best-effort guard on SQL a
+  model wrote:
+
+  - a `nil` `dialect` makes SQLGlot parse in its generic dialect, which `\"read-only\"` accepts (H2 and
+    Vertica have no dialect of their own) and the impersonation types refuse;
+  - the literal-list ceiling is [[literal-list-strip-threshold]] for `\"read-only\"` and the far higher
+    [[impersonation-literal-list-strip-threshold]] for the impersonation types, which must not reject the
+    documented `IN ({{number_var}})` idiom (#74284)."
   [dialect sql stmt-type]
-  (if (= stmt-type "read-only")
-    (read-only-verdict dialect sql)
-    (do
-      ;; A `nil` dialect is the one value that does *not* fail downstream: SQLGlot reads it as "use the generic
-      ;; dialect" and hands back a confident verdict plus a generically-regenerated `:sql` string, which we would
-      ;; then execute. (An unsupported dialect *string* raises, and comes back as `{:error ...}`.) Refuse instead.
-      (when (nil? dialect)
-        (throw (ex-info "Cannot validate a single-statement query without a known SQL dialect."
-                        {:type cannot-validate-sql, :reason :unknown-dialect})))
-      ;; Stripping runs only as a size guard here: if it would collapse a list, that list is over the
-      ;; impersonation ceiling and parsing it could OOM the shared JVM, so refuse — the ceiling is purely an
-      ;; availability limit, set far above any real query. Below the ceiling nothing is stripped, so we parse
-      ;; exactly the string that will execute, which lets a large-but-legitimate literal list (e.g. the values
-      ;; a Number variable inlines for `IN ({{ids}})`) validate normally (#74284).
-      (when (not= sql (strip-large-literal-lists sql impersonation-literal-list-strip-threshold))
-        (throw (ex-info (str "Cannot validate a native query with a VALUES/IN/ARRAY literal list this"
-                             " large on an impersonated database.")
-                        {:type cannot-validate-sql, :reason :too-large})))
-      (-> (protocol/single-stmt-of-type (parser) dialect sql stmt-type)
-          (perf/update-keys (comp keyword u/->kebab-case-en))))))
+  (let [read-only? (= stmt-type "read-only")]
+    (cond
+      ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
+      ;; grows with it.
+      (and read-only? (< max-read-only-sql-chars (count sql)))
+      (refused sql "too-long")
+
+      ;; A `nil` dialect is the one value that does *not* fail downstream: SQLGlot reads it as "use the
+      ;; generic dialect" and hands back a confident verdict plus a generically-regenerated `:sql` string,
+      ;; which an impersonation caller would then execute. (An unsupported dialect *string* raises, and
+      ;; comes back as `{:error ...}`.)
+      (and (not read-only?) (nil? dialect))
+      (refused sql "unknown-dialect")
+
+      :else
+      ;; Stripping is only ever a size guard: if it would collapse a list, parsing that list could OOM the
+      ;; shared JVM, so refuse rather than parse the collapsed form and answer about that instead.
+      ;; Stripping also does not skip comments, so a collapsed list can swallow a second statement into a
+      ;; comment. Under the ceiling nothing is stripped, so we parse exactly the string the caller holds.
+      (if (not= sql (strip-large-literal-lists sql (if read-only?
+                                                     literal-list-strip-threshold
+                                                     impersonation-literal-list-strip-threshold)))
+        (refused sql "large-literal-list")
+        (-> (protocol/single-stmt-of-type (parser) dialect sql stmt-type)
+            (perf/update-keys (comp keyword u/->kebab-case-en)))))))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")

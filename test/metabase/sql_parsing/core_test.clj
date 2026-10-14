@@ -185,8 +185,5 @@
       (testing "a list the analysis threshold would strip still validates as one statement"
         (is (=? {:is-single-stmt? true} (sql-parsing/is-single-stmt-of-type? "postgres" under "read"))))
       (testing "a list past the validator's own ceiling is refused, not stripped and vouched for"
-        (is (= :too-large
-               (-> (try (sql-parsing/is-single-stmt-of-type? "postgres" over "read")
-                        (catch clojure.lang.ExceptionInfo e e))
-                   ex-data
-                   :reason)))))))
+        (is (= {:is-single-stmt? false, :allowed-stmt-type? false, :sql over, :reason "large-literal-list"}
+               (sql-parsing/is-single-stmt-of-type? "postgres" over "read")))))))
