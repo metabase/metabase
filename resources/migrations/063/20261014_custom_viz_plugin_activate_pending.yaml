@@ -6,7 +6,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.2026-10-14T10:00:00
+      id: v63.m2tnuz
       author: chodorowicz
       comment: Activate custom_viz_plugin rows left in the "pending" status by older serialization imports
       changes:
