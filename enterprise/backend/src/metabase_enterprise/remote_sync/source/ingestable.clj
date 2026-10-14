@@ -50,8 +50,7 @@
                         {:path path :entity entity}))
         problems (data-apps/problems files)]
     (when (seq problems)
-      (throw (ex-info (str/join " " (map (fn [{:keys [file message]}] (format "Invalid data app file %s: %s" file message))
-                                         problems))
+      (throw (ex-info (str/join "\n" (cons "Invalid data app files:" (map #(str "- " (:message %)) problems)))
                       {:files (mapv :file problems) :error ::invalid-data-app-files})))
     (doseq [{:keys [file message]} (data-apps/warnings files)]
       (log/warnf "Data app file %s: %s" file message))))

@@ -58,7 +58,7 @@
   "The scopes the MCP resource at `path` accepts, which [[narrow-scope-to-resource]] trims a grant to. Every path in
   [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they all accept the same set: the scopes
   the v2 tool registry gates on plus the resource scopes its UI tools render through. What the resource *advertises*
-  is the narrower [[mcp-resource-advertised-scopes]].
+  is [[mcp-resource-advertised-scopes]].
 
   This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
   (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
@@ -70,11 +70,12 @@
   (vec (into (sorted-set) (mcp/v2-scopes))))
 
 (defn mcp-resource-advertised-scopes
-  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: the baseline a client requests on first connect, a
-  subset of [[mcp-resource-scopes]]."
-  ;; Narrower than what the resource accepts: a client reaches the rest by a 403 `insufficient_scope` step-up.
+  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: every v2 scope, in surface order, which Claude Code
+  and the Claude connectors request on first connect."
+  ;; The whole surface, not the baseline (ENG-11089): a manual reconnect asks for exactly this, so a narrower list left
+  ;; the write scopes unreachable for clients whose step-up is lossy.
   [_path]
-  (vec (mcp/v2-baseline-scopes)))
+  (vec (mcp/v2-scopes)))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
@@ -118,9 +119,7 @@
   ;; scope still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
   ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
   ;;
-  ;; The MCP kill switch is the one thing that stops the widening entirely. Some MCP surface scopes also gate the agent
-  ;; API (`agent:resource:read` is the declared scope of `POST /api/agent/v1/read-resource`), which has its own lever,
-  ;; so widening with MCP off would hand a client a scope its registration never included for a surface still serving.
+  ;; The MCP kill switch stops the MCP part of the widening: with MCP off, no surface serves those scopes.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
       (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
