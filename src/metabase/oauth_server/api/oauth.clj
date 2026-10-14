@@ -7,10 +7,10 @@
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -22,8 +22,6 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
-   [oidc-provider.store :as oidc.store]
-   [oidc-provider.token :as oidc.token]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -631,65 +629,6 @@
                                  :error_description invalid-authorization-request-description}}))))))
           {:status 404 :body {:error "not_found"}}))))
 
-(def ^:private jwt-bearer-grant-type
-  "The RFC 7523 grant type that exchanges a JWT signed with the JWT authentication secret for an MCP access token."
-  "urn:ietf:params:oauth:grant-type:jwt-bearer")
-
-(def ^:private jwt-bearer-client-id
-  "The `client_id` of the built-in client, seeded by a migration, that JWT bearer grant tokens are issued to."
-  "metabase-jwt-bearer")
-
-(defn- check-jwt-bearer-request!
-  "Throw `ex-info` carrying the RFC 6749 `:error` and `:error-description` when the JWT bearer grant request `body` is
-  refused whatever its assertion says: the grant or the MCP server is off, there is no assertion, `scopes` holds a
-  scope the MCP endpoint does not accept, or the `resource` is not the MCP endpoint."
-  [{:keys [assertion resource]} scopes]
-  (cond
-    (not (oauth-server/jwt-bearer-grant-enabled?))
-    (throw (ex-info "JWT authentication is not enabled"
-                    {:error "unsupported_grant_type", :error-description "JWT authentication is not enabled."}))
-
-    (not (mcp/mcp-enabled?))
-    (throw (ex-info "the MCP server is not enabled"
-                    {:error "unsupported_grant_type", :error-description "The MCP server is not enabled."}))
-
-    (str/blank? assertion)
-    (throw (ex-info "no assertion was sent"
-                    {:error "invalid_request", :error-description "The request must include an assertion."}))
-
-    (not-every? (set (mcp/v2-scopes)) scopes)
-    (throw (ex-info "a requested scope is not an MCP scope"
-                    {:error             "invalid_scope"
-                     :error-description (str "Request only MCP scopes, or omit scope to get all of them: "
-                                             (str/join " " (mcp/v2-scopes)))}))
-
-    (not (oauth-server/mcp-endpoint-resource? resource))
-    (throw (ex-info "resource is not the MCP endpoint"
-                    {:error             "invalid_target"
-                     :error-description (str "The resource must be the MCP endpoint, "
-                                             (oauth-server/mcp-resource-url))}))))
-
-(defn- jwt-bearer-token-response
-  "The token response to a JWT bearer grant request `body` (RFC 7523): an access token to the MCP endpoint for the user
-  that its JWT assertion names, with the requested scopes or, when it names none, every MCP scope. Throws `ex-info`
-  carrying the RFC 6749 `:error` when the request is refused."
-  [provider body request]
-  (let [scopes  (or (scope-tokens (:scope body)) (mcp/v2-scopes))
-        _       (check-jwt-bearer-request! body scopes)
-        user-id (:id (oauth-server/jwt-bearer-user! (:assertion body) request))
-        token   (oidc.token/generate-access-token)
-        ttl     (oauth-settings/oauth-server-access-token-ttl)
-        granted (str/join " " scopes)
-        bound   [(oauth-server/mcp-resource-url)]]
-    (oidc.store/save-access-token (:token-store provider) token (str user-id) jwt-bearer-client-id scopes
-                                  (+ (System/currentTimeMillis) (* 1000 ttl)) bound)
-    (events/publish-event! :event/mcp-token-issued {:user-id user-id, :details {:scope granted}})
-    {:access_token token
-     :token_type   "Bearer"
-     :expires_in   ttl
-     :scope        granted
-     :resource     bound}))
-
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
@@ -717,8 +656,11 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (if (= jwt-bearer-grant-type (:grant_type body))
-                                 (jwt-bearer-token-response provider body request)
+                (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                 (jwt-bearer/exchange-jwt-for-token! provider request
+                                                                     {:assertion (:assertion body)
+                                                                      :scopes    (scope-tokens (:scope body))
+                                                                      :resource  (:resource body)})
                                  (oidc/token-request provider body authorization-header))]
                   {:status  200
                    :headers {"Content-Type"  "application/json"

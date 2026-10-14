@@ -1447,6 +1447,7 @@
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing

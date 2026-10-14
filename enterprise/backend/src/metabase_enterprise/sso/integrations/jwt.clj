@@ -48,24 +48,6 @@
   []
   (sso-settings/jwt-enabled-and-configured))
 
-(defenterprise jwt-bearer-user!
-  "Log in the user that the JWT `assertion` names through [[auth-identity/login!]], without creating a session, and
-  return them. Throws `ex-info` with the RFC 6749 `:error` `invalid_grant` when the login is refused, including for a
-  user who is not a personal account."
-  :feature :sso-jwt
-  [assertion request]
-  (let [{:keys [success? user message]}
-        (try
-          (auth-identity/login! :provider/jwt (assoc request
-                                                     :token               assertion
-                                                     :session/skip?       true
-                                                     :user/personal-only? true))
-          (catch clojure.lang.ExceptionInfo e
-            {:message (ex-message e)}))]
-    (if success?
-      user
-      (throw (ex-info (str message) {:error "invalid_grant"})))))
-
 (defn- throw-react-sdk-embedding-disabled
   []
   (throw

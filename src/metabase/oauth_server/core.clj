@@ -306,11 +306,3 @@
   metabase-enterprise.sso.integrations.jwt
   []
   false)
-
-(defenterprise jwt-bearer-user!
-  "Log in the user that the JWT `assertion` names, as JWT authentication does but without creating a session, and
-  return them. Throws `ex-info` carrying the RFC 6749 `:error`: `unsupported_grant_type` on OSS, and `invalid_grant`
-  when EE refuses the assertion or the user."
-  metabase-enterprise.sso.integrations.jwt
-  [_assertion _request]
-  (throw (ex-info "JWT authentication is not available" {:error "unsupported_grant_type"})))

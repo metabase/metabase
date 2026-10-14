@@ -1,0 +1,87 @@
+(ns metabase.oauth-server.jwt-bearer
+  "The JWT bearer grant (RFC 7523), which exchanges a signed JWT for an MCP access token for the user it names."
+  (:require
+   [clojure.string :as str]
+   [metabase.auth-identity.core :as auth-identity]
+   [metabase.events.core :as events]
+   [metabase.mcp.core :as mcp]
+   [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.settings :as oauth-settings]
+   [oidc-provider.store :as oidc.store]
+   [oidc-provider.token :as oidc.token])
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
+
+(def grant-type
+  "The RFC 7523 `grant_type` of a JWT bearer grant request."
+  "urn:ietf:params:oauth:grant-type:jwt-bearer")
+
+(def ^:private client-id "metabase-jwt-bearer")
+
+(defn- check-request!
+  "Throws `ex-info` carrying the RFC 6749 `:error` for a request that is refused before its assertion is checked."
+  [assertion scopes resource]
+  (cond
+    (not (oauth-server/jwt-bearer-grant-enabled?))
+    (throw (ex-info "JWT authentication is not enabled"
+                    {:error "unsupported_grant_type", :error-description "JWT authentication is not enabled."}))
+
+    (not (mcp/mcp-enabled?))
+    (throw (ex-info "the MCP server is not enabled"
+                    {:error "unsupported_grant_type", :error-description "The MCP server is not enabled."}))
+
+    (str/blank? assertion)
+    (throw (ex-info "no assertion was sent"
+                    {:error "invalid_request", :error-description "The request must include an assertion."}))
+
+    (not-every? (set (mcp/v2-scopes)) scopes)
+    (throw (ex-info "a requested scope is not an MCP scope"
+                    {:error             "invalid_scope"
+                     :error-description (str "Request only MCP scopes, or omit scope to get all of them: "
+                                             (str/join " " (mcp/v2-scopes)))}))
+
+    (not (oauth-server/mcp-endpoint-resource? resource))
+    (throw (ex-info "resource is not the MCP endpoint"
+                    {:error             "invalid_target"
+                     :error-description (str "The resource must be the MCP endpoint, "
+                                             (oauth-server/mcp-resource-url))}))))
+
+(defn- log-in!
+  "Logs in the user that the JWT `assertion` names through JWT authentication, without a session, and returns them.
+  Throws `ex-info` carrying `invalid_grant` when the login is refused."
+  [assertion request]
+  (let [{:keys [success? user message]}
+        (try
+          (auth-identity/login! :provider/jwt (assoc request
+                                                     :token               assertion
+                                                     :session/skip?       true
+                                                     :user/personal-only? true))
+          (catch ExceptionInfo e
+            {:message (ex-message e)}))]
+    (if success?
+      user
+      (throw (ex-info (str message) {:error "invalid_grant"})))))
+
+(defn exchange-jwt-for-token!
+  "Issues an MCP access token to the user that the JWT `assertion` names, and returns the RFC 6749 token response.
+
+  The token carries `scopes`, or every MCP scope when `scopes` is nil, and is bound to the MCP endpoint, which
+  `resource` must name when it is given. Throws `ex-info` carrying the RFC 6749 `:error` when the request is refused."
+  [provider request {:keys [assertion scopes resource]}]
+  (let [scopes  (or scopes (mcp/v2-scopes))
+        _       (check-request! assertion scopes resource)
+        user-id (:id (log-in! assertion request))
+        token   (oidc.token/generate-access-token)
+        ttl     (oauth-settings/oauth-server-access-token-ttl)
+        granted (str/join " " scopes)
+        bound   [(oauth-server/mcp-resource-url)]]
+    (oidc.store/save-access-token (:token-store provider) token (str user-id) client-id scopes
+                                  (+ (System/currentTimeMillis) (* 1000 ttl)) bound)
+    (events/publish-event! :event/mcp-token-issued {:user-id user-id, :details {:scope granted}})
+    {:access_token token
+     :token_type   "Bearer"
+     :expires_in   ttl
+     :scope        granted
+     :resource     bound}))
