@@ -34,9 +34,11 @@
       (throw (ex-info (if-let [error (:error result)]
                         (tru "Query failed: {0}" error)
                         (tru "Query failed: unknown error"))
-                      {:agent-error? true
-                       :error        :query-failed
-                       :query-error  (:error result)})))
+                      {:agent-error?       true
+                       :error              :query-failed
+                       :query-error        (:error result)
+                       ;; The QP's own refusal, as opposed to an error from the database.
+                       :permissions-error? (= :missing-required-permissions (:error_type result))})))
     result))
 
 (defn execute-page!
@@ -44,7 +46,8 @@
    Returns `{:cols :rows :returned :truncated?}`.
    The `truncated?` flag is true only when more rows exist, so a result that fills the page exactly is complete.
    A run that doesn't complete throws an agent error whose message carries the QP's error text.
-   Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`."
+   Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
+   `:permissions-error?` when the QP refused the query because the current user may not run it."
   [serialized-query row-limit context]
   ;; Fetch one row past the limit so truncation is observed rather than inferred from a full page.
   ;; Dropping the probe row keeps `(last rows)` a real page boundary.

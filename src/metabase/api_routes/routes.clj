@@ -40,6 +40,7 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.mcp.callback-api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
@@ -212,11 +213,13 @@
    ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
    ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
    ;; API-key session, or an `mb:full` bearer token), and the guard
-   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL, and MCP's group
+   ;; policy to stop a user denied `execute_sql`. The spec-generation
    ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
    ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
-                                    agent-api.query-guards/+refuse-unscoped-native-sql)
+                                    (partial agent-api.query-guards/+refuse-unscoped-native-sql
+                                             #'mcp/check-execute-sql-allowed!))
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)

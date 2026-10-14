@@ -103,8 +103,7 @@ export function AIProviderList() {
     if (error) {
       sendToast({
         message: getErrorMessage(error, t`Unable to remove this provider.`),
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
       });
       return;
     }

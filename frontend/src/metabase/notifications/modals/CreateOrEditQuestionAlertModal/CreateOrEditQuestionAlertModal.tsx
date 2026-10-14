@@ -215,8 +215,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
             message: t`Failed save alert. ${errorText}`,
           }),
         );
@@ -247,8 +246,7 @@ export const CreateOrEditQuestionAlertModal = ({
       if (result.error) {
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
             message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
