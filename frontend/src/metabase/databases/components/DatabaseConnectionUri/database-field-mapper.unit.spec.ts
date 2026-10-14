@@ -19,38 +19,59 @@ function mapConnectionString(
   return mapDatabaseValues(parsedValues, engineKey);
 }
 
-describe("mapDatabaseValues - mysql", () => {
-  it("should preserve public key retrieval in submitted connection details", () => {
-    const fieldsMap = mapConnectionString(
+describe.each<{
+  engineKey: EngineKey;
+  connectionString: string;
+  additionalOptions: string;
+}>([
+  {
+    engineKey: "mysql",
+    connectionString:
       "jdbc:mysql://metabase:password@localhost:3304/sample?allowPublicKeyRetrieval=true",
-      "mysql",
-    );
-    const engine = createMockEngine({
-      "details-fields": [
-        {
-          name: "additional-options",
-          "visible-if": { "advanced-options": true },
-        },
-      ],
-    });
-    const submitted = getSubmitValues(
-      engine,
-      createMockDatabaseData({
-        name: "sample",
-        engine: "mysql",
-        details: {
-          "advanced-options": fieldsMap.get("details.advanced-options"),
-          "additional-options": fieldsMap.get("details.additional-options"),
-        },
-      }),
-      true,
-    );
+    additionalOptions: "allowPublicKeyRetrieval=true",
+  },
+  {
+    engineKey: "postgres",
+    connectionString:
+      "jdbc:postgresql://metabase:password@localhost:5404/sample?prepareThreshold=0",
+    additionalOptions: "prepareThreshold=0",
+  },
+  {
+    engineKey: "databricks",
+    connectionString:
+      "jdbc:databricks://example.cloud.databricks.com:443/default;httpPath=/sql/1.0/warehouses/abc;IgnoreTransactions=0",
+    additionalOptions: "IgnoreTransactions=0",
+  },
+])(
+  "mapDatabaseValues - $engineKey",
+  ({ engineKey, connectionString, additionalOptions }) => {
+    it("should preserve additional options in submitted connection details", () => {
+      const fieldsMap = mapConnectionString(connectionString, engineKey);
+      const engine = createMockEngine({
+        "details-fields": [
+          {
+            name: "additional-options",
+            "visible-if": { "advanced-options": true },
+          },
+        ],
+      });
+      const submitted = getSubmitValues(
+        engine,
+        createMockDatabaseData({
+          name: "sample",
+          engine: engineKey,
+          details: {
+            "advanced-options": fieldsMap.get("details.advanced-options"),
+            "additional-options": fieldsMap.get("details.additional-options"),
+          },
+        }),
+        true,
+      );
 
-    expect(submitted.details?.["additional-options"]).toBe(
-      "allowPublicKeyRetrieval=true",
-    );
-  });
-});
+      expect(submitted.details?.["additional-options"]).toBe(additionalOptions);
+    });
+  },
+);
 
 describe("mapDatabaseValues - redshift", () => {
   it("should map UID and PWD to dedicated fields and keep unmapped params in additional options", () => {
