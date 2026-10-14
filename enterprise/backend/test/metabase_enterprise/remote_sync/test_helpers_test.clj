@@ -1,7 +1,6 @@
 (ns metabase-enterprise.remote-sync.test-helpers-test
   "Tests for test-helpers: the MockSource implementation and the clean-remote-sync-state fixture."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
@@ -412,22 +411,23 @@
       (is (not (t2/exists? :model/Collection :id coll-id)))
       (is (not (t2/exists? :model/NativeQuerySnippet :id sn-id))))))
 
-(deftest clean-object-names-the-table-when-its-delete-after-the-test-fails-test
-  (testing "clean-object throws an exception that names the table when its delete after the test fails"
-    (let [delete! (mt/original-fn #'th/delete-every-row!)
-          calls   (atom 0)
-          error   (try
-                    (mt/with-dynamic-fn-redefs [th/delete-every-row!
-                                                (fn [table]
-                                                  ;; the first call empties the table for the test
-                                                  (if (= 2 (swap! calls inc))
-                                                    (throw (ex-info "delete failed" {}))
-                                                    (delete! table)))]
-                      (th/clean-object (fn [])))
-                    nil
-                    (catch clojure.lang.ExceptionInfo e e))]
-      (is (= :remote_sync_object (:table (ex-data error))))
-      (is (str/includes? (ex-message error) "remote_sync_object")))))
+(deftest clean-optional-feature-models-makes-common-py-when-its-delete-after-the-test-fails-test
+  (testing (str "clean-optional-feature-models makes the built-in common.py PythonLibrary after the test, also when its "
+                "delete after the test fails")
+    (let [delete! (mt/original-fn #'th/delete-optional-feature-rows!)
+          calls   (atom 0)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"delete failed"
+                              (mt/with-dynamic-fn-redefs [th/delete-optional-feature-rows!
+                                                          (fn []
+                                                            ;; the first call empties the tables for the test
+                                                            (if (= 2 (swap! calls inc))
+                                                              (throw (ex-info "delete failed" {}))
+                                                              (delete!)))]
+                                (th/clean-optional-feature-models (fn [])))))
+        (is (t2/exists? :model/PythonLibrary :path "common.py"))
+        (finally
+          (#'th/ensure-builtin-python-library!))))))
 
 (defn- another-thread-runs-the-shared-fixture?
   "Whether [[th/clean-remote-sync-state]] runs an empty test on another thread without an exception."

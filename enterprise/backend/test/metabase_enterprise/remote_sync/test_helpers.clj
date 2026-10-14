@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
@@ -388,25 +387,15 @@ width: fixed
   [table]
   (t2/delete! table))
 
-(defn- rethrow-naming-table
-  "Run `f`, which cleans the table named `table`; an exception that `f` throws is thrown again with `table` in its
-  data and message, so a failed cleanup names the table that it did not clean."
-  [table f]
-  (try
-    (f)
-    (catch Throwable e
-      (throw (ex-info (str "The remote-sync cleanup of the " (name table) " table failed") {:table table} e)))))
-
 (defn- do-with-empty-table
-  "Run `f` with `table` empty, then delete every row that the test left. Restores nothing. A failed delete throws and
-  names `table`."
+  "Run `f` with `table` empty, then delete every row that the test left. Restores nothing."
   [table f]
   ;; the table, not the model: the delete runs no model hook
   (delete-every-row! table)
   (try
     (f)
     (finally
-      (rethrow-naming-table table #(delete-every-row! table)))))
+      (delete-every-row! table))))
 
 (defn clean-object
   "Test fixture that empties the RemoteSyncObject table before the test and deletes every row that the test left
@@ -440,10 +429,10 @@ width: fixed
   transforms and snippets namespaces and the snippets in those Collections, with the rows that their delete hooks and
   foreign keys remove."
   []
-  (rethrow-naming-table :transform_tag #(t2/delete! :model/TransformTag :built_in_type nil))
-  (rethrow-naming-table :transform #(t2/delete! :model/Transform))
-  (rethrow-naming-table :python_library #(t2/delete! :model/PythonLibrary))
-  (rethrow-naming-table :collection #(t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])))
+  (t2/delete! :model/TransformTag :built_in_type nil)
+  (t2/delete! :model/Transform)
+  (t2/delete! :model/PythonLibrary)
+  (t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]]))
 
 (defn clean-optional-feature-models
   "Test fixture that, before and after the test, deletes every Transform, TransformTag (not the built-in ones) and
@@ -452,12 +441,14 @@ width: fixed
   [f]
   ;; the delete before the test lets a test create its own common.py; the insert after it puts back the row of the
   ;; migration for the code that runs next
-  (delete-optional-feature-rows!)
   (try
+    (delete-optional-feature-rows!)
     (f)
     (finally
-      (delete-optional-feature-rows!)
-      (ensure-builtin-python-library!))))
+      (try
+        (delete-optional-feature-rows!)
+        (finally
+          (ensure-builtin-python-library!))))))
 
 (def imported-content-models
   "The models whose new rows [[clean-imported-content]] deletes after a test, in delete order."
@@ -517,27 +508,15 @@ width: fixed
               (when (or (pos? @deleted) (index-holds-new-content-document? max-ids))
                 (#'tu/reindex-search-index!)))))))))
 
-(defn- delete-transforms-ledger-rows!
-  "Delete the Transforms RemoteSyncObject rows, which the `:on-change` hook of `remote-sync-transforms` writes."
-  []
-  (t2/delete! :model/RemoteSyncObject
-              :model_type "Collection"
-              :model_id   remote-sync.settings/transforms-root-id))
-
 (defn- delete-remote-sync-setting-rows!
-  "Delete every stored `remote-sync%` setting row, then restore the settings cache from the app DB and delete the
-  Transforms RemoteSyncObject rows."
+  "Delete every stored `remote-sync%` setting row, then restore the settings cache from the app DB."
   []
   (t2/delete! :setting :key [:like "remote-sync%"])
-  ;; the cache restore runs the `:on-change` hooks of the deleted values; the hook of `remote-sync-transforms` writes a
-  ;; Transforms ledger row, which the next line deletes
-  (setting/restore-cache!)
-  (delete-transforms-ledger-rows!))
+  (setting/restore-cache!))
 
 (defn clean-remote-sync-settings
   "Test fixture that deletes every stored `remote-sync%` setting row before and after the test, then restores the
-  settings cache and deletes the Transforms RemoteSyncObject rows that the `:on-change` hook of
-  `remote-sync-transforms` wrote. Restores nothing.
+  settings cache. Restores nothing.
 
   Compose inside [[clean-object]]: the cache restore can write a Transforms RemoteSyncObject row, and [[clean-object]],
   whose cleanup runs after this fixture's, deletes every ledger row."
