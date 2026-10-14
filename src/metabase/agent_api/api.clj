@@ -41,6 +41,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -742,6 +743,17 @@
   ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
   ;; here is what lets both be true without the tool knowing either of us.
   (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx
+    {:on-item-fault
+     (fn [{:keys [uri]} e]
+       ;; One URI hitting a fault is this item's error, not the call's: the others read fine and the
+       ;; published response promises every URI it was given. Master did this too, with
+       ;; `(ex-message e)` as the text — a message written for a developer, crossing an API boundary
+       ;; to an agent that can do nothing with it. The exception goes to the log; the caller gets a
+       ;; sentence that is true and says nothing about our internals.
+       (log/error e "Reading a resource faulted" {:uri uri})
+       {:item    {:uri uri}
+        :failed? true
+        :output  (tru "This resource could not be read.")})}
     (fn [entries]
       {:resources (mapv read-resource-item entries)
        ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its

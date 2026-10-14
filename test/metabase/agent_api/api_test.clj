@@ -1960,6 +1960,25 @@
     ;; so the outer form differs by a `:description` the endpoint never publishes.
     (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)
            (nth (mr/schema :metabase.agent-api.api/read-resource-request) 2))))
+  (testing (str "a URI that faults is that item's error, and the ones that read are kept. The agent "
+                "loop fails the whole call for an undeclared failure — a bug is not a partial "
+                "result — but this endpoint publishes one status for the call and an `:error` per "
+                "item, so it opts out with `:on-item-fault`.")
+    (mt/with-dynamic-fn-redefs [metabot-resources/dispatch
+                                (fn [uri]
+                                  (if (str/includes? uri "boom")
+                                    (throw (ex-info "a bug nobody wrote text for" {}))
+                                    {:structured-output {:result-type :metabot-list
+                                                         :list-type   :databases
+                                                         :items [] :total 0 :page 1 :pages 1}}))]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                       {:uris ["metabase://databases" "metabase://boom"]})]
+        (is (= ["metabase://databases" "metabase://boom"] (mapv :uri (:resources resp))))
+        (is (some? (-> resp :resources first :content))
+            "the URI that read is not discarded by the one that faulted")
+        (testing "and the faulting one carries an authored sentence, not the exception's message"
+          (is (= "This resource could not be read." (-> resp :resources second :error)))
+          (is (not (str/includes? (:output resp) "a bug nobody wrote text for")))))))
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris ["metabase://nonsense/path"]})]

@@ -223,11 +223,13 @@
   "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
   failure rendered.
 
-  The per-item step, and the only one. A consumer that wants something else does it to the entries
-  afterwards through [[with-batched-entries]], which is strictly more than replacing this was: the
-  one thing it cannot change is that an undeclared exception from `handle` fails the whole call, and
-  that uniformity is the point rather than a limitation."
-  [tool item-args ctx]
+  A declared recoverable error becomes this item's contribution. Anything else is a fault, and by
+  default it is rethrown so the whole call fails — a bug is not a partial result.
+
+  `on-item-fault` is the one seam, for a consumer whose contract says otherwise: it takes the item's
+  args and the throwable and returns that item's [[::entry]]. Only `/v1/read-resource` passes one
+  (see [[with-batched-entries]]); it is nil everywhere else, which is the failing default."
+  [tool item-args ctx on-item-fault]
   (try
     (let [result (handle tool item-args ctx)]
       (when-not (mr/validate ::result result)
@@ -236,12 +238,15 @@
       (assoc result :item item-args :failed? false :output (render-text (:output result))))
     (catch Throwable e
       (let [error (tools.error/classify e)]
-        (if (= :recoverable (:class error))
+        (cond
+          (= :recoverable (:class error))
           {:item    item-args
            :error   error
            :output  (tools.error/recoverable-text error (:tool-names ctx))
            :failed? true}
-          (throw e))))))
+
+          on-item-fault (on-item-fault item-args e)
+          :else         (throw e))))))
 
 (defrecoverable all-items-failed!
   "Every item in a batched call failed, so the call has nothing to report but its failures."
@@ -272,11 +277,17 @@
 
   So if that endpoint goes away, delete this with it. Nothing else should reach for it: a consumer
   that wants one result per call wants [[run-batched]], which is this with `compose` and the
-  nothing-was-delivered check on top."
-  [tool args ctx f]
+  nothing-was-delivered check on top.
+
+  `opts` may carry `:on-item-fault`, called when one item fails with something other than a declared
+  recoverable error, with that item's args and the throwable; it returns that item's [[::entry]].
+  Without it such a failure fails the whole call, which is what the agent loop wants and what the
+  same endpoint must not do — its contract is one status for the call and an `:error` per item, so
+  one URI hitting a bug cannot discard the four that read."
+  [tool args ctx {:keys [on-item-fault]} f]
   (metabot.perms/with-cache
     (let [item-args (batched-args tool args)]
-      (f (mapv (fn [one] (entry tool one ctx)) item-args)))))
+      (f (mapv (fn [one] (entry tool one ctx on-item-fault)) item-args)))))
 
 (defn run-batched
   "Perform `tool`'s batched call and return one [[::result]].
@@ -295,7 +306,7 @@
   whole call and discards the items that did load. That is deliberate: a bug is not a partial
   result."
   [tool args ctx]
-  (with-batched-entries tool args ctx
+  (with-batched-entries tool args ctx nil
     (fn [entries]
       (let [result (compose tool entries ctx)]
         (if (and (seq entries) (every? :failed? entries))
