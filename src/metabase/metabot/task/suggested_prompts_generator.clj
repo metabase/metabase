@@ -13,8 +13,7 @@
    [metabase.util.log :as log])
   (:import
    (java.time Instant)
-   (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -67,9 +66,11 @@
       (when-not (= :api-key-missing (:error-code (ex-data e)))
         (log/errorf "Suggested prompts generation failed: %s" (.getMessage e))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Initial _suggested prompts_ generation for the enabled built-in Metabot instances."}
-  SuggestedPromptsGenerator [_ctx]
+(task/defjob SuggestedPromptsGenerator
+  "Initial _suggested prompts_ generation for the enabled built-in Metabot instances."
+  {:saved-class "metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator"
+   :concurrent? false}
+  [_ctx]
   (maybe-generate-suggested-prompts!))
 
 (defmethod task/init! ::SuggestedPromptsGenerator

@@ -15,9 +15,7 @@
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,8 +73,11 @@
         (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
     (metrics/refresh-metrics!)))
 
-(task/defjob ^{:doc "Periodically fetch and re-evaluate security advisories."
-               DisallowConcurrentExecution true} SyncAdvisories [_]
+(task/defjob SyncAdvisories
+  "Periodically fetch and re-evaluate security advisories."
+  {:saved-class "metabase_enterprise.security_center.task.sync_advisories.SyncAdvisories"
+   :concurrent? false}
+  [_]
   (sync-and-evaluate!))
 
 (defmethod task/init! ::SyncAdvisories [_]

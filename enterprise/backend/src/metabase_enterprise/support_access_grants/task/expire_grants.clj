@@ -14,9 +14,11 @@
 
 (set! *warn-on-reflection* true)
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc                                   "Revoke support access once its grant has ended"}
-  ExpireSupportAccessGrants [_ctx]
+(task/defjob ExpireSupportAccessGrants
+  "Revoke support access once its grant has ended"
+  {:saved-class "metabase_enterprise.support_access_grants.task.expire_grants.ExpireSupportAccessGrants"
+   :concurrent? false}
+  [_ctx]
   (grants/expire-ended-grants!))
 
 (def ^:private job
