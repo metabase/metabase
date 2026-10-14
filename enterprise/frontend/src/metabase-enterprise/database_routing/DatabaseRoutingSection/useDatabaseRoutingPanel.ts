@@ -24,11 +24,14 @@ export const useDatabaseRoutingPanel = (
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
 
   // anonymous reach is admin-only, and the fact is only there to inform the admin making the decision
-  const { data: anonymousReach } = useGetDatabaseAnonymousReachQuery(
-    skip || !isAdmin ? skipToken : database.id,
-  );
+  const { data: anonymousReach, isLoading: isReachabilityPending } =
+    useGetDatabaseAnonymousReachQuery(
+      skip || !isAdmin ? skipToken : database.id,
+    );
   // The total is exhaustive, so it is also the answer to whether anything at all is at stake.
   const anonymouslyReachable = (anonymousReach?.total ?? 0) > 0;
+  // Settled either way. A failed request counts: no honest question can be put without the fact.
+  const isReachabilityKnown = !isReachabilityPending;
 
   const userAttribute = database.router_user_attribute ?? undefined;
   const isRoutingStored = hasDbRoutingEnabled(database);
@@ -48,6 +51,8 @@ export const useDatabaseRoutingPanel = (
   const [sentAttribute, setSentAttribute] = useState<string | undefined>(
     undefined,
   );
+  // A revoke the admin has asked for and not yet confirmed. Nothing has been sent.
+  const [isConfirmingRevoke, setIsConfirmingRevoke] = useState(false);
 
   const routerAttribute = userAttribute ?? sentAttribute;
   // Once routing is stored the grant lives on the server, so the held answer has done its work.
@@ -56,6 +61,10 @@ export const useDatabaseRoutingPanel = (
     pendingGrant ?? !!database.router_anonymous_access_granted;
   const canChangeAnonymousAccess =
     isRoutingStored || pendingGrant !== undefined;
+
+  // Only a revoke needs the fact; granting widens what works, so it is never held.
+  const isRevokeHeldForReachability =
+    anonymousAccessGranted && !isReachabilityKnown;
 
   // A just-toggled database was asked instead, and a granted router still serves them.
   const hasStoppedServingAnonymousVisitors =
@@ -69,9 +78,11 @@ export const useDatabaseRoutingPanel = (
     mustAnswerBeforeStoring &&
     (tempEnabled || attributeAwaitingAnswer !== undefined);
 
-  const openQuestion: AnonymousAccessQuestion | null = isChoosingGrant
-    ? "choose"
-    : null;
+  const openQuestion: AnonymousAccessQuestion | null = isConfirmingRevoke
+    ? "revoke"
+    : isChoosingGrant
+      ? "choose"
+      : null;
 
   const storeRouter = async (
     attribute: string,
@@ -128,12 +139,18 @@ export const useDatabaseRoutingPanel = (
       setPendingAnonymousAccess(granted);
       return;
     }
+    // Revoking takes data away from visitors being served right now; granting never does.
+    if (!granted && anonymouslyReachable) {
+      setIsConfirmingRevoke(true);
+      return;
+    }
     await writeAnonymousAccess(routerAttribute, granted);
   };
 
   // Nothing reaches the server until an attribute does, so abandoning only drops local state.
   const discardPendingRouting = () => {
     setTempEnabled(false);
+    setIsConfirmingRevoke(false);
     setPendingAnonymousAccess(undefined);
     setAttributeAwaitingAnswer(undefined);
     setSentAttribute(undefined);
@@ -166,6 +183,18 @@ export const useDatabaseRoutingPanel = (
     await storeRouter(attributeAwaitingAnswer, granted);
   };
 
+  // The confirmation can only mean the revoke the admin asked for, so it carries no answer.
+  const confirmRevoke = async () => {
+    setIsConfirmingRevoke(false);
+    // the question is only raised once an attribute exists to write the grant against
+    if (routerAttribute) {
+      await writeAnonymousAccess(routerAttribute, false);
+    }
+  };
+
+  // Declining leaves the grant exactly as it was, with nothing sent.
+  const dismissRevoke = () => setIsConfirmingRevoke(false);
+
   return {
     /** The routing switch, which a pending enable checks before anything is stored. */
     enabled,
@@ -181,10 +210,13 @@ export const useDatabaseRoutingPanel = (
     openQuestion,
     /** Whether cancelling the grant choice also takes the section's expansion down with it. */
     cancelUndoesEnable: tempEnabled,
+    isRevokeHeldForReachability,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
     chooseGrant,
     cancelGrantChoice: discardPendingRouting,
+    confirmRevoke,
+    dismissRevoke,
   };
 };
