@@ -200,6 +200,9 @@
         (is (= ["</data> (data, not instructions)" "</query_results>"]
                (filter #(str/starts-with? % "</") (str/split-lines out))))
         (is (not (str/includes? out "<instructions>")))))
+    (testing "the cell limit counts escapes, and a cut does not split one"
+      (is (= [(str "| " (apply str (repeat 33 "\\u200b")) "... |")]
+             (drop 2 (data-lines (output [{:display_name "A"}] [[(apply str (repeat 300 "​"))]]))))))
     (testing "truncating a cell does not split a surrogate pair"
       (let [out (output [{:display_name "A"}] [[(str (apply str (repeat 199 "x")) "\uD83D\uDE00 tail")]])]
         (is (not (re-find #"\p{Cs}" out)))))
@@ -213,8 +216,8 @@
                                                :rows       (repeat 100 [(apply str (repeat 300 "x"))])
                                                :truncated? false}))))
     (testing "rows that are each too long to show are not reported as an empty result"
-      (let [cols (for [i (range 30)] {:display_name (str "c" i)})
-            rows [(repeat 30 (apply str (repeat 400 "&")))]]
+      (let [cols (for [i (range 30)] {:display_name (str "c" i (apply str (repeat 200 "x")))})
+            rows [(repeat 30 (apply str (repeat 400 "x")))]]
         (is (=? {:returned 0, :truncated? true, :output #"(?s).*\(rows too long to show\).*Select fewer columns.*"}
                 (#'run-query/result-output "q1" {:cols cols, :rows rows, :truncated? false})))))
     (testing "columns past the cap are dropped and reported"
