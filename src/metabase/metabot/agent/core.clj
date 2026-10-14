@@ -186,6 +186,25 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
+(defn- answer-producing?
+  "Whether this `:tool-output` part delivered an answer, rather than reporting a failure.
+
+  Success is the absence of `:error` ([[successful-tool-output?]]), and that is the rule everywhere
+  else. Ending a turn needs more, for exactly as long as the terminal tools are unconverted: each of
+  them catches its own exceptions and *returns* `{:output \"Query 3 not found\"}` — a failure with
+  no `:error` anywhere on it, because nothing was thrown for the adapter to classify. Ending the
+  turn on the absence of `:error` would hand that sentence to the user as the answer.
+
+  An unconverted tool's one remaining signal is that it attaches `:structured-output` when it really
+  produced something, which is the signal this branch otherwise removed for being unreliable. It is
+  reliable for this one set, because every tool in it is answer-producing by definition.
+
+  `metabase.metabot.agent.profiles-test/terminal-tools-are-still-unconverted-test` fails the day one
+  of them is converted, which is when this goes away."
+  [part]
+  (and (successful-tool-output? part)
+       (some? (get-in part [:result :structured-output]))))
+
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
   tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
@@ -193,11 +212,12 @@
   forcing the model to keep emitting tool calls under `:required-tool-call?`.
 
   Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct; see
+  [[answer-producing?]] for how a failure is recognised while these tools are unconverted."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
-     (let [success-ids (into #{} (comp (filter successful-tool-output?) (map :id)) parts)]
+     (let [success-ids (into #{} (comp (filter answer-producing?) (map :id)) parts)]
        (some (fn [p]
                (and (= (:type p) :tool-input)
                     (contains? terminal-tools (:function p))

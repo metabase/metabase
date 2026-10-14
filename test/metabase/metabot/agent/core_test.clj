@@ -120,6 +120,17 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
+    (testing (str "an unconverted tool's returned failure does not end the turn either. Every "
+                  "terminal tool catches its own exceptions and returns `{:output \"Query 3 not "
+                  "found\"}`, so there is no `:error` for the adapter to find — ending the turn on "
+                  "the absence of one would deliver that sentence to the user as the answer. The "
+                  "`:structured-output` it does not attach is what tells them apart until they are "
+                  "converted.")
+      (let [legacy-failure [{:type :tool-input :id "d" :function "edit_sql_query"}
+                            {:type :tool-output :id "d" :result {:output "Query 3 not found"}}]]
+        (is (not (#'agent/terminal-tool-call? terminal legacy-failure)))
+        (is (#'agent/should-continue? 0 20 terminal legacy-failure)
+            "the model gets another turn to fix the id")))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
