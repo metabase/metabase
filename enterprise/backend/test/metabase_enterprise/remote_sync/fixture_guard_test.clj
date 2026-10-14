@@ -2,10 +2,11 @@
   "Each remote-sync module test namespace not in [[exemptions]] has the shared fixture as its first `:each` fixture, no
   `:once` fixture that stores a `remote-sync%` setting row, and no `^:parallel` test."
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.parallel]
-   [metabase-enterprise.remote-sync.isolation-check-test-util :as isolation-check]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -29,6 +30,24 @@
     metabase-enterprise.remote-sync.task.table-cleanup-test     "its own task-table cleanup; binds no remote-sync setting"
     metabase-enterprise.remote-sync.test-helpers-test           "tests the shared fixture"
     metabase-enterprise.remote-sync.cost-test-util-test         "tests the cost helpers"})
+
+(defn- module-test-namespaces
+  "The namespace of each `*_test.clj` file in the directory of this file and its subdirectories, sorted."
+  []
+  ;; from the files, not from `all-ns`: when a test runs alone, `all-ns` holds only the namespaces that are loaded.
+  ;; Resolve this file, not the directory: the source directory has the same resource path.
+  (let [this-file  "metabase_enterprise/remote_sync/fixture_guard_test.clj"
+        module-dir (.getParentFile (io/file (io/resource this-file)))
+        root       (-> module-dir .getParentFile .getParentFile)]
+    (sort
+     (for [^java.io.File f (file-seq module-dir)
+           :let  [path (str (.relativize (.toPath root) (.toPath f)))]
+           :when (str/ends-with? path "_test.clj")]
+       (-> path
+           (str/replace #"\.clj$" "")
+           (str/replace java.io.File/separator ".")
+           (str/replace "_" "-")
+           symbol)))))
 
 (defn- shared-fixture-first?
   "Whether the first `:each` fixture of `ns-sym` carries the shared-fixture marker."
@@ -57,7 +76,7 @@
     (some? @stored)))
 
 (deftest module-namespaces-use-the-shared-fixture-test
-  (let [namespaces (isolation-check/module-test-namespaces)
+  (let [namespaces (module-test-namespaces)
         checked    (remove exemptions namespaces)]
     (testing "the file lookup finds the module test namespaces"
       (is (some #{'metabase-enterprise.remote-sync.source.git-test} namespaces)))
