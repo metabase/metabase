@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [mb.hawk.parallel]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -430,17 +429,61 @@
       (is (= :remote_sync_object (:table (ex-data error))))
       (is (str/includes? (ex-message error) "remote_sync_object")))))
 
-(deftest clean-imported-content-throws-without-running-the-test-in-a-parallel-test-test
-  (testing "clean-imported-content in a ^:parallel test throws and does not run the test body"
+(defn- another-thread-runs-the-shared-fixture?
+  "Whether [[th/clean-remote-sync-state]] runs an empty test on another thread without an exception."
+  []
+  (= ::ran (deref (future
+                    (try
+                      (th/clean-remote-sync-state (fn []))
+                      ::ran
+                      (catch Throwable e
+                        e)))
+                  10000
+                  ::timeout)))
+
+(deftest clean-remote-sync-state-throws-when-another-thread-runs-it-test
+  (testing "clean-remote-sync-state throws, and does not run the test, while another thread runs it"
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (let [ran?   (atom false)
-            ;; hawk reports the error of the parallel check through `is`; keep it out of this test's report
-            thrown (binding [mb.hawk.parallel/*parallel?* true
-                             report                       (fn [_])]
-                     (try
-                       (th/clean-imported-content (fn [] (reset! ran? true)))
-                       nil
-                       (catch Throwable e
-                         e)))]
-        (is (some? thrown))
-        (is (false? @ran?))))))
+      (let [entered (promise)
+            release (promise)
+            other   (future
+                      (th/clean-remote-sync-state (fn []
+                                                    (deliver entered true)
+                                                    (deref release 10000 ::timeout))))]
+        (try
+          (is (true? (deref entered 10000 ::timeout)))
+          (let [ran?   (atom false)
+                thrown (try
+                         (th/clean-remote-sync-state (fn [] (reset! ran? true)))
+                         nil
+                         (catch clojure.lang.ExceptionInfo e
+                           e))]
+            (is (re-find #"Remote-sync tests must not run in parallel" (str (ex-message thrown))))
+            (is (false? @ran?)))
+          (finally
+            (deliver release true)
+            (deref other 10000 ::timeout)))
+        (testing "after the other thread's run ends, this thread can run it"
+          (is (= ::ran (do (th/clean-remote-sync-state (fn [])) ::ran))))))))
+
+(deftest clean-remote-sync-state-does-not-throw-in-a-nested-run-on-the-same-thread-test
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+    (testing "a run of clean-remote-sync-state inside a run of it on the same thread runs the test"
+      (let [ran? (atom false)]
+        (th/clean-remote-sync-state (fn [] (th/clean-remote-sync-state (fn [] (reset! ran? true)))))
+        (is (true? @ran?)))
+      (is (another-thread-runs-the-shared-fixture?)))
+    (testing "another thread can run clean-remote-sync-state after a run whose test throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"the test fails"
+                            (th/clean-remote-sync-state (fn [] (throw (ex-info "the test fails" {}))))))
+      (is (another-thread-runs-the-shared-fixture?)))
+    (testing "another thread can run clean-remote-sync-state after a run whose cleanup throws"
+      (let [after-test? (atom false)
+            delete!     (mt/original-fn #'th/delete-every-row!)]
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (mt/with-dynamic-fn-redefs [th/delete-every-row! (fn [table]
+                                                                        (if @after-test?
+                                                                          (throw (ex-info "delete failed" {}))
+                                                                          (delete! table)))]
+                       (th/clean-remote-sync-state (fn [] (reset! after-test? true)))))))
+      (is (another-thread-runs-the-shared-fixture?)))))

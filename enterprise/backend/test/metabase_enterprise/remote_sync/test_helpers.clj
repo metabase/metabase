@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
-   [mb.hawk.parallel]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -502,14 +501,8 @@ width: fixed
   `collection_id` NULL. A Collection that the test moved under a new Collection keeps a `location` that names the
   deleted Collection. Keeps the permission group of a deleted DataApp: the raw delete runs no hook. Reindexes search
   iff it deleted a row or the index holds a document of a new row. Throws, keeping the Collection, when a Table is
-  published into a new Collection (the foreign key of `metabase_table.collection_id` blocks the delete).
-
-  Throws in a `^:parallel` test."
+  published into a new Collection (the foreign key of `metabase_table.collection_id` blocks the delete)."
   [f]
-  ;; hawk's `assert-test-is-not-parallel` only reports an error and the test would go on; the deletes of this
-  ;; fixture are JVM-wide, so stop the test here
-  (when mb.hawk.parallel/*parallel?*
-    (throw (ex-info "clean-imported-content is not allowed inside a parallel test." {})))
   (initialize/initialize-if-needed! :db)
   (let [max-ids (max-content-ids)]
     (try
@@ -564,21 +557,46 @@ width: fixed
     (finally
       (delete-remote-sync-setting-rows!))))
 
+(defonce ^:private shared-fixture-thread
+  (atom nil))
+
+(defn- one-thread-at-a-time
+  "Test fixture that throws, and does not run `f`, when another thread runs [[clean-remote-sync-state]]. A nested run
+  on the thread that runs it does not throw."
+  [f]
+  (let [this-thread (Thread/currentThread)
+        owner       @shared-fixture-thread]
+    (cond
+      (identical? owner this-thread)
+      (f)
+
+      (compare-and-set! shared-fixture-thread nil this-thread)
+      (try
+        (f)
+        (finally
+          (reset! shared-fixture-thread nil)))
+
+      :else
+      (throw (ex-info (str "Remote-sync tests must not run in parallel: another thread runs clean-remote-sync-state, "
+                           "whose deletes are JVM-wide.")
+                      {})))))
+
 (def clean-remote-sync-state
   "Composed test fixture for the remote-sync module. Run it only against a test app DB. Before and after each test, the
   fixture deletes every RemoteSyncObject, RemoteSyncTask, Transform, TransformTag (not the built-in ones),
   PythonLibrary, Collection of the transforms and snippets namespaces (and the snippets in those Collections) and stored
   `remote-sync%` setting row. After each test, it deletes each new row of [[imported-content-models]] and changes or
   deletes the older rows that foreign keys link to them (see [[clean-imported-content]]). It restores nothing, also not
-  the remote-sync rows that existed before the test.
+  the remote-sync rows that existed before the test. Throws, and does not run the test, when another thread runs
+  it: remote-sync tests must not run in parallel. A nested run on the same thread does not throw.
 
   Use as the first `:each` fixture, so that a setting binding in a later fixture ends before the cleanup deletes its
   row. Bind no remote-sync setting around the fixture (in a `:once` fixture, or in an `:each` fixture before it): the
   fixture deletes the row of the binding before the test, so the test does not see the bound value. Carries
   `{::shared-fixture true}`."
   (with-meta
-   (t/join-fixtures [clean-imported-content clean-object clean-remote-sync-settings clean-task-table
-                     clean-optional-feature-models])
+   (t/join-fixtures [one-thread-at-a-time clean-imported-content clean-object clean-remote-sync-settings
+                     clean-task-table clean-optional-feature-models])
    {::shared-fixture true}))
 
 (def clean-remote-sync-state-without-reindex
