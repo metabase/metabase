@@ -1,8 +1,7 @@
 import cx from "classnames";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Paper, Title } from "metabase/ui";
+import { Paper } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
@@ -21,8 +20,9 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
   const visible = widgets.filter(
     (widget) => widget.section === panel && !widget.hidden,
   );
+  // Column role settings still pick their defaults from the table; they just
+  // aren't editable here.
   const ungrouped = visible.filter((widget) => widget.group === undefined);
-  const columns = visible.filter((widget) => widget.group === "columns");
 
   return (
     <Paper
@@ -36,18 +36,6 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
       {ungrouped.map((widget) => (
         <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
       ))}
-      {columns.length > 0 && (
-        <Box mt="md">
-          <Title order={4} mb="md">{t`Columns`}</Title>
-          {columns.map((widget) => (
-            <ChartSettingsWidget
-              key={widget.id}
-              {...widget}
-              style={WIDGET_STYLE}
-            />
-          ))}
-        </Box>
-      )}
     </Paper>
   );
 };

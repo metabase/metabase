@@ -46,6 +46,13 @@ export const AnalysisToolbar = ({
 
   const togglePanel = (target: AnalysisPanel) =>
     onPanelChange(panel === target ? null : target);
+  // Column role settings aren't shown, so some analyses have nothing here.
+  const hasAdvancedSettings = widgets.some(
+    (widget) =>
+      widget.section === "advanced" &&
+      !widget.hidden &&
+      widget.group === undefined,
+  );
 
   return (
     <>
@@ -59,13 +66,15 @@ export const AnalysisToolbar = ({
             >
               {setupLabel}
             </Button>
-            <Button
-              variant="default"
-              aria-label={t`Advanced settings`}
-              aria-pressed={panel === "advanced"}
-              leftSection={<Icon name="sliders" />}
-              onClick={() => togglePanel("advanced")}
-            />
+            {hasAdvancedSettings && (
+              <Button
+                variant="default"
+                aria-label={t`Advanced settings`}
+                aria-pressed={panel === "advanced"}
+                leftSection={<Icon name="sliders" />}
+                onClick={() => togglePanel("advanced")}
+              />
+            )}
           </Button.Group>
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
