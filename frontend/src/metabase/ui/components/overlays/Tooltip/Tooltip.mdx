@@ -13,6 +13,10 @@ Our themed wrapper around [Mantine Tooltip](https://mantine.dev/core/tooltip/).
 
 - [Mantine Tooltip Docs](https://mantine.dev/core/tooltip/)
 
+## Behaviour
+
+A tooltip opened by hover stays open while the pointer is on it, so its content can be selected and links in it clicked ([WCAG 1.4.13](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html)). It closes shortly after the pointer leaves both the target and the tooltip. Tooltips with a controlled `opened` prop don't take pointer events.
+
 ## Examples
 
 <Canvas of={TooltipStories.Default} />
