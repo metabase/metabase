@@ -2074,6 +2074,21 @@
                   (filter #(contains? (:data %) "total_tokens")
                           (snowplow-test/pop-event-data-and-user-id!)))))))))
 
+(deftest call-llm-usage-log-profile-id-test
+  (testing "a profile the usage log does not list is logged without a profile id rather than failing the call"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")]
+      (let [response (test-util/mock-llm-response
+                      [{:type :start :id "m1"}
+                       {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged   (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter          (constantly response)
+                                    usage/valid-usage-profile-id   #(when (= :internal %) %)
+                                    usage/log-ai-usage!            #(swap! logged conj %)]
+          (doseq [profile-id [:internal :internal-sql]]
+            (run! identity (self/call-llm "openrouter-1/anthropic/claude-sonnet-4.6" nil [] {}
+                                          {:tag "metabot_agent" :profile-id profile-id}))))
+        (is (= [:internal nil] (map :profile-id @logged)))))))
+
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and
 ;;; an optional `:required-permission` against the current user's metabot perms.

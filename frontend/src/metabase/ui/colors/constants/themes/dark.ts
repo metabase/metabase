@@ -147,6 +147,7 @@ export const getDarkTheme = (
     "button_label-subtle-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
     "button_label-subtle-positive-default": baseColors.palm[30],
     "button_label-subtle-positive-hover": baseColors.palm[20],
+    "chart-axis": baseColors.orionAlphaInverse[20],
     "core-blue-saturated": baseColors.ocean[40],
     "core-brand": baseColors.blue[40],
     "core-brand-hover": brand[30],

@@ -154,6 +154,7 @@ export const getLightTheme = (
     "button_label-subtle-neutral-default": baseColors.orionAlpha[80], // Matches text-primary
     "button_label-subtle-positive-default": baseColors.palm[70],
     "button_label-subtle-positive-hover": baseColors.palm[80],
+    "chart-axis": baseColors.orionAlpha[20],
     "core-blue-saturated": baseColors.ocean[60],
     "core-brand": baseColors.blue[40],
     "core-brand-hover": brand[50],

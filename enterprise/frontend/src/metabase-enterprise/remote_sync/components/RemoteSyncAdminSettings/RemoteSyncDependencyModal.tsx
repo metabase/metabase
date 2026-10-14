@@ -64,11 +64,10 @@ export const RemoteSyncDependencyModal = ({
     <Modal
       opened
       onClose={handleDismiss}
-      padding="xxl"
       title={t`Couldn’t sync selected collection`}
       withCloseButton={false}
     >
-      <Stack gap="xl" pt="lg">
+      <Stack gap="xl">
         <Text>{getBlockedMessage(required)}</Text>
 
         {listedRequiredSyncs.length > 0 && (
@@ -94,20 +93,15 @@ export const RemoteSyncDependencyModal = ({
             ))}
           </Accordion>
         )}
-
-        <Group justify="end" gap="sm">
-          <Button onClick={handleDismiss}>{t`Back`}</Button>
-          {canSave && (
-            <Button
-              variant="filled"
-              loading={isSubmitting}
-              onClick={submitForm}
-            >
-              {t`Save changes`}
-            </Button>
-          )}
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button onClick={handleDismiss}>{t`Back`}</Button>
+        {canSave && (
+          <Button variant="filled" loading={isSubmitting} onClick={submitForm}>
+            {t`Save changes`}
+          </Button>
+        )}
+      </Modal.Footer>
     </Modal>
   );
 };
