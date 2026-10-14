@@ -450,30 +450,30 @@
   (.clearCheckSums liquibase)
   (with-scope-locked liquibase
     (when (seq (unrun-migrations data-source))
-      (let [change-log     (.getDatabaseChangeLog liquibase)
-            recorded?      (atom false)
-            fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
-                                 (.getChangeSets change-log))
-            exec-listener  (proxy [AbstractChangeExecListener] []
-                             (willRun [^ChangeSet change-set _database-change-log _database _run-status]
-                               (when (instance? ChangeSet change-set)
-                                 (log/infof "Start executing migration with id %s" (.getId change-set))))
+      (let [change-log                          (.getDatabaseChangeLog liquibase)
+            active-deployment-version-recorded? (atom false)
+            fail-on-errors                      (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
+                                                      (.getChangeSets change-log))
+            exec-listener                       (proxy [AbstractChangeExecListener] []
+                                                  (willRun [^ChangeSet change-set _database-change-log _database _run-status]
+                                                    (when (instance? ChangeSet change-set)
+                                                      (log/infof "Start executing migration with id %s" (.getId change-set))))
 
-                             (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]
-                               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
+                                                  (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]
+                                                    (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
 
-                             (ran [change-set _database-change-log ^Database database ^ChangeSet$ExecType exec-type]
-                               (when (instance? ChangeSet change-set)
-                                 (when (compare-and-set! recorded? false true)
-                                   (versions/record-active-deployment-version! database))
-                                 (condp = exec-type
-                                   ChangeSet$ExecType/EXECUTED
-                                   (log/info (u/format-color 'green "[SUCCESS]"))
+                                                  (ran [change-set _database-change-log ^Database database ^ChangeSet$ExecType exec-type]
+                                                    (when (instance? ChangeSet change-set)
+                                                      (when (compare-and-set! active-deployment-version-recorded? false true)
+                                                        (versions/record-active-deployment-version! database))
+                                                      (condp = exec-type
+                                                        ChangeSet$ExecType/EXECUTED
+                                                        (log/info (u/format-color 'green "[SUCCESS]"))
 
-                                   ChangeSet$ExecType/FAILED
-                                   (log/error (u/format-color 'red "[ERROR]"))
+                                                        ChangeSet$ExecType/FAILED
+                                                        (log/error (u/format-color 'red "[ERROR]"))
 
-                                   (log/infof "[%s]" (.name exec-type))))))]
+                                                        (log/infof "[%s]" (.name exec-type))))))]
         (try
           (doseq [^ChangeSet change-set (.getChangeSets change-log)]
             (.setFailOnError change-set false))

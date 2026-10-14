@@ -447,10 +447,10 @@
   "A Liquibase `ChangeExecListener` that records the running Metabase version against the current `deployment_id` as
   soon as the first changeset of a run is applied (see [[record-active-deployment-version!]])."
   ^ChangeExecListener [^Database database]
-  (let [recorded? (atom false)]
+  (let [active-deployment-version-recorded? (atom false)]
     (proxy [AbstractChangeExecListener] []
       (ran [change-set _database-change-log _database _exec-type]
-        (when (and (instance? ChangeSet change-set) (compare-and-set! recorded? false true))
+        (when (and (instance? ChangeSet change-set) (compare-and-set! active-deployment-version-recorded? false true))
           (record-active-deployment-version! database))))))
 
 (defn record-boot-version!
