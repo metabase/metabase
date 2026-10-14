@@ -39,9 +39,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
                   "getDashboard",
                 );
-                cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(
-                  "updateDashboard",
-                );
+                cy.intercept("PUT", `/api/dashboard/${dashboard_id}`, {
+                  statusCode: 403,
+                  body: {},
+                }).as("updateDashboard");
 
                 cy.signIn(user);
 
