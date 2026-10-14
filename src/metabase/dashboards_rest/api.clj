@@ -1222,8 +1222,7 @@
     ;; an already-shared Dashboard returns its existing link, as the docstring promises -- and so stays deletable
     ;; when routing has since made it dead. Only a link that would be newly minted can be refused.
     (when-not existing-public-uuid
-      (public-sharing.validation/check-public-link-allowed!
-       (dashboards-rest.db/dashboard-card-database-ids dashboard-id)))
+      (public-sharing.validation/check-public-link-allowed! :model/Dashboard dashboard-id))
     {:uuid (or existing-public-uuid
                (u/prog1 (str (random-uuid))
                  ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports

@@ -3502,6 +3502,18 @@
             (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
                    (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" (u/the-id card)))))
             (is (not (t2/exists? :model/Card :id (u/the-id card), :public_uuid [:not= nil])))))
+        (testing "a Card saved against another database whose filter draws its value list from the routed database
+                 refuses: it reaches that database through a query it runs, not through its own `:database_id`"
+          (mt/with-temp [:model/DatabaseRouter _            {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Database       other        {}
+                         :model/Card           value-source {}
+                         :model/Card           card
+                         {:database_id (u/the-id other)
+                          :parameters  [(public-sharing.test-util/card-value-source-parameter
+                                         (u/the-id value-source))]}]
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                   (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" (u/the-id card)))))
+            (is (not (t2/exists? :model/Card :id (u/the-id card), :public_uuid [:not= nil])))))
         (testing "once an admin allows anonymous access it can"
           (mt/with-temp [:model/DatabaseRouter _ {:database_id              (mt/id)
                                                   :user_attribute           "db_name"

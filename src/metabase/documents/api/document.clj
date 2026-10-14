@@ -257,8 +257,11 @@
   ;; Only one request will successfully create the UUID; both will return the same value.
   (t2/with-transaction [_conn]
     (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
+      ;; an already-shared Document returns its existing link, as the docstring promises -- and so stays deletable
+      ;; when routing has since made it dead. Only a link that would be newly minted can be refused.
       {:uuid existing-uuid}
       (do
+        (public-sharing.validation/check-public-link-allowed! :model/Document document-id)
         (documents.db/update-document! document-id
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})

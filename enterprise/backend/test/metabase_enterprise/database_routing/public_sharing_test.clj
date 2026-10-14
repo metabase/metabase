@@ -30,15 +30,28 @@
   [granted? f]
   (routing.tu/do-with-routed-warehouse!
    granted?
-   (fn [{:keys [db-id db-name str-dimension str-query pivot-query param-query tile-query lat-field lon-field]}]
-     (let [card-uuid  (str (random-uuid))
-           pivot-uuid (str (random-uuid))
-           param-uuid (str (random-uuid))
-           tile-uuid  (str (random-uuid))
-           dash-uuid  (str (random-uuid))
-           doc-uuid   (str (random-uuid))
-           shared     (fn [uuid]
-                        {:public_uuid uuid, :made_public_by_id (mt/user->id :crowberto)})]
+   (fn [{:keys [db-id db-name field-id str-dimension str-query pivot-query param-query tile-query
+                lat-field lon-field]}]
+     (let [card-uuid   (str (random-uuid))
+           pivot-uuid  (str (random-uuid))
+           param-uuid  (str (random-uuid))
+           source-uuid (str (random-uuid))
+           tile-uuid   (str (random-uuid))
+           dash-uuid   (str (random-uuid))
+           doc-uuid    (str (random-uuid))
+           shared      (fn [uuid]
+                         {:public_uuid uuid, :made_public_by_id (mt/user->id :crowberto)})
+           ;; a filter whose value list is drawn from another question rather than from a field. Nothing on the page
+           ;; renders that question, so this is the one edge that reaches a database none of the page's own questions
+           ;; need be saved against.
+           card-source (fn [source-card]
+                         {:id                   "_SRC_"
+                          :name                 "Src"
+                          :slug                 "src"
+                          :type                 "string/="
+                          :values_source_type   "card"
+                          :values_source_config {:card_id     (u/the-id source-card)
+                                                 :value_field [:field field-id nil]}})]
        (mt/with-temp [:model/Card card
                       (merge (shared card-uuid) {:dataset_query str-query})
                       :model/Card pivot-card
@@ -47,11 +60,20 @@
                       (merge (shared param-uuid) {:dataset_query param-query})
                       :model/Card tile-card
                       (merge (shared tile-uuid) {:dataset_query tile-query})
+                      :model/Card series-card
+                      {:dataset_query str-query}
+                      :model/Card source-card
+                      {:dataset_query str-query}
+                      :model/Card _card-source-card
+                      (merge (shared source-uuid)
+                             {:dataset_query str-query
+                              :parameters    [(card-source source-card)]})
                       :model/Dashboard dashboard
                       (merge (shared dash-uuid) {:parameters [{:id   "_STR_"
                                                                :name "Str"
                                                                :slug "str"
-                                                               :type "string/="}]})
+                                                               :type "string/="}
+                                                              (card-source source-card)]})
                       :model/DashboardCard dashcard
                       {:dashboard_id       (u/the-id dashboard)
                        :card_id            (u/the-id card)
@@ -62,6 +84,10 @@
                       {:dashboard_id (u/the-id dashboard), :card_id (u/the-id pivot-card)}
                       :model/DashboardCard tile-dashcard
                       {:dashboard_id (u/the-id dashboard), :card_id (u/the-id tile-card)}
+                      :model/DashboardCardSeries _
+                      {:dashboardcard_id (u/the-id dashcard)
+                       :card_id          (u/the-id series-card)
+                       :position         0}
                       :model/Document document
                       (merge (shared doc-uuid)
                              {:name     "Routed Document"
@@ -74,6 +100,7 @@
                      {:document (documents.test-util/cards->prose-mirror-ast
                                  [(u/the-id document-card)])})
          (let [card-id     (u/the-id card)
+               series-id   (u/the-id series-card)
                dc-id       (u/the-id dashcard)
                pivot-dc    [(u/the-id pivot-dashcard) (u/the-id pivot-card)]
                tile-dc     [(u/the-id tile-dashcard) (u/the-id tile-card)]
@@ -91,6 +118,10 @@
                  :card-tile           (str "public/tiles/card/" tile-uuid "/1/1/1")
                  :dashcard-query      (format "public/dashboard/%s/dashcard/%d/card/%d"
                                               dash-uuid dc-id card-id)
+                 :dashcard-series     (format "public/dashboard/%s/dashcard/%d/card/%d"
+                                              dash-uuid dc-id series-id)
+                 :card-source-values  (str "public/card/" source-uuid "/params/_SRC_/values")
+                 :dash-source-values  (str "public/dashboard/" dash-uuid "/params/_SRC_/values")
                  :dashcard-csv        (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
                                               dash-uuid dc-id card-id)
                  :dashcard-pivot      (apply format "public/pivot/dashboard/%s/dashcard/%d/card/%d"
@@ -137,6 +168,7 @@
    [:card-csv            :get  (:card-csv urls)]
    [:card-pivot          :get  (:card-pivot urls)]
    [:dashcard-query      :get  (:dashcard-query urls)]
+   [:dashcard-series     :get  (:dashcard-series urls)]
    [:dashcard-csv        :post (:dashcard-csv urls) {}]
    [:dashcard-pivot      :get  (:dashcard-pivot urls)]
    [:document-card-query :get  (:document-card-query urls)]
@@ -146,6 +178,8 @@
   "The refused paths that raise instead, where `+public-exceptions` decides the body, as `[endpoint & request-args]`."
   [urls]
   [[:card-param-remap  :get 400 (:card-param-remap urls)]
+   [:card-source-values :get 400 (:card-source-values urls)]
+   [:dash-source-values :get 400 (:dash-source-values urls)]
    [:dash-param-values :get 400 (:dash-param-values urls)]
    [:dash-param-search :get 400 (:dash-param-search urls)]
    [:dash-param-remap  :get 400 (:dash-param-remap urls)]
@@ -220,6 +254,22 @@
          (is (true? (from-both routing.tu/png? :get 200 (:dash-tile urls)
                                :latField (:lat-field urls)
                                :lonField (:lon-field urls)))))))))
+
+(deftest public-series-and-filter-value-lists-use-router-database-test
+  (testing "the ways into the router database that are not a question on the page itself -- a question added to a
+           dashboard card as a series, and a filter whose value list is drawn from a question -- answer from the
+           router database too"
+    (do-with-public-routing-setup!
+     true
+     (fn [urls]
+       (testing "GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id, for a series card"
+         (is (= [["router-data"]] (from-both mt/rows :get 202 (:dashcard-series urls)))))
+       (testing "GET /api/public/dashboard/:uuid/params/:param-key/values, drawn from a question"
+         (is (=? {:values [["router-data"]], :has_more_values false}
+                 (from-both identity :get 200 (:dash-source-values urls)))))
+       (testing "GET /api/public/card/:uuid/params/:param-key/values, drawn from a question"
+         (is (=? {:values [["router-data"]], :has_more_values false}
+                 (from-both identity :get 200 (:card-source-values urls)))))))))
 
 (deftest public-document-uses-router-database-test
   (testing "a card in a public document on a granted routed database answers from the router database"

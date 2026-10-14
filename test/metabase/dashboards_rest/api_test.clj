@@ -2969,6 +2969,21 @@
                    (mt/user-http-request :crowberto :post 400
                                          (format "dashboard/%d/public_link" (u/the-id dashboard)))))
             (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
+        (testing "a Dashboard whose Cards live elsewhere but whose filter draws its value list from the routed
+                 database refuses: it reaches that database through something it renders, not through its own Cards"
+          (mt/with-temp [:model/DatabaseRouter _            {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Database       other        {}
+                         :model/Card           value-source {}
+                         :model/Card           main         {:database_id (u/the-id other)}
+                         :model/Dashboard      dashboard
+                         {:parameters [(public-sharing.test-util/card-value-source-parameter
+                                        (u/the-id value-source))]}
+                         :model/DashboardCard  _            {:dashboard_id (u/the-id dashboard)
+                                                             :card_id      (u/the-id main)}]
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                   (mt/user-http-request :crowberto :post 400
+                                         (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+            (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
         (testing "a Card reaching the routed database only as a series on one of its DashboardCards refuses too"
           (mt/with-temp [:model/DatabaseRouter      _         {:database_id (mt/id), :user_attribute "db_name"}
                          :model/Database            other     {}
@@ -2981,6 +2996,16 @@
                                                                :card_id          (u/the-id series)}]
             (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
                    (mt/user-http-request :crowberto :post 400
+                                         (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+        (testing "the permission check runs before the refusal, so a non-admin is refused generically and the
+                 explanation naming the database reaches only a viewer who could act on it"
+          (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Dashboard      dashboard {}
+                         :model/Card           card      {}
+                         :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                          :card_id      (u/the-id card)}]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403
                                          (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
         (testing "an already-shared Dashboard still returns its existing link, so a dead one stays deletable"
           (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
@@ -2998,6 +3023,16 @@
                          :model/Dashboard     dashboard  {}
                          :model/Card          card       {}
                          :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                          :card_id      (u/the-id card)}]
+            (is (=? {:uuid string?}
+                    (mt/user-http-request :crowberto :post 200
+                                          (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+        (testing "a Dashboard whose only Card on the routed database is archived renders nothing anonymously -- the
+                 public dashcard route 404s on it -- so it can"
+          (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Dashboard      dashboard {}
+                         :model/Card           card      {:archived true}
+                         :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
                                                           :card_id      (u/the-id card)}]
             (is (=? {:uuid string?}
                     (mt/user-http-request :crowberto :post 200
