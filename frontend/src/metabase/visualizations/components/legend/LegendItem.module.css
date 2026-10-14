@@ -1,16 +1,3 @@
 .root {
   transition: opacity 0.25s linear;
 }
-
-.title {
-  color: var(--mb-color-text-primary);
-  overflow: hidden;
-}
-
-.clickableTitle {
-  cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-core-brand);
-  }
-}

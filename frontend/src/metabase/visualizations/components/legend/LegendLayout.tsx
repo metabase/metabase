@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { HoveredObject } from "metabase/viz-core";
@@ -124,7 +126,7 @@ export const LegendLayout = ({
       </Flex>
       {isVisible && layout.type === "vertical" && (
         <Box
-          className={S.verticalLegend}
+          className={cx(S.verticalLegend, CS.overflowHidden)}
           flex="0 0 auto"
           miw={0}
           ml={verticalGap}

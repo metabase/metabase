@@ -97,7 +97,12 @@ export const Legend = ({
           <Popover.Target>
             <Text
               component="div"
-              className={S.overflowLabel}
+              className={cx(
+                CS.textSecondary,
+                CS.textBrandHover,
+                CS.cursorPointer,
+                CS.textNoWrap,
+              )}
               fz={typography}
               lh={typography}
             >

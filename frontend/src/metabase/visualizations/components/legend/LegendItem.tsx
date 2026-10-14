@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { memo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 
@@ -41,6 +42,7 @@ const LegendItemInner = ({
   onToggleSeriesVisibility,
 }: LegendItemProps) => {
   const { dotSize, dotGap, typography } = LEGEND_SIZES[size];
+  const isClickable = onSelectSeries != null;
 
   const handleDotClick = (event: React.MouseEvent) => {
     onToggleSeriesVisibility?.(event, index);
@@ -75,9 +77,12 @@ const LegendItemInner = ({
         onClick={onToggleSeriesVisibility && handleDotClick}
       />
       <Box
-        className={cx(DashboardS.fullscreenNormalText, S.title, {
-          [S.clickableTitle]: onSelectSeries != null,
-        })}
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          CS.textPrimary,
+          CS.overflowHidden,
+          { [CS.cursorPointer]: isClickable, [CS.textBrandHover]: isClickable },
+        )}
         fz={typography}
         lh={typography}
         ml={dotGap}
