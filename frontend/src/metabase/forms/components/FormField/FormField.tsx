@@ -38,7 +38,7 @@ export const FormField = forwardRef(function FormField(
     <Flex {...props} ref={ref} direction="column">
       {(hasTitle || hasDescription) && (
         <Box>
-          <Flex align="center" mb="xxs">
+          <Flex align="center" mb={hasDescription ? "xxs" : undefined}>
             {hasTitle && (
               <Text
                 component="label"
