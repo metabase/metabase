@@ -5,6 +5,8 @@ on:
     # Sundays at 05:00 UTC
     - cron: "0 5 * * 0"
   workflow_dispatch:
+  pull_request:
+    branches: [check-docs-links-in-frontend-src]
 
 jobs:
   live-links:
@@ -97,7 +99,6 @@ jobs:
       # Keeps one open Linear issue: a failing run opens it or replaces its description, a passing run closes it.
       # Slack hears when it opens or closes. Only master reports: a manual run on a branch checks that branch.
       - name: Open, update, or close the broken links issue
-        if: github.ref == 'refs/heads/master'
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: fc363549-4f40-41ed-8f41-8fba461606ab # GRO
@@ -105,11 +106,11 @@ jobs:
         run: bun .github/scripts/report-links.ts broken-links-issue.md
 
       - name: Alert when the link check can't run
-        if: failure() && github.ref == 'refs/heads/master'
+        if: failure()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
-          jq -n --arg channel "$SLACK_CHANNEL" --arg text ":x: The weekly metabase/metabase link check failed to run: $RUN_URL" \
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text ":x: [GRO-1061 test] The weekly metabase/metabase link check failed to run: $RUN_URL" \
             '{channel: $channel, text: $text}' |
             curl -sSf https://slack.com/api/chat.postMessage \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \

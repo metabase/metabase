@@ -2,7 +2,7 @@
 // A non-empty report opens the Linear issue or replaces its description; an empty or missing one closes it.
 import { existsSync, readFileSync } from "node:fs";
 
-const TITLE = "Broken links report";
+const TITLE = "GRO-1061 test link report";
 
 type Issue = { id: string; identifier: string; url: string };
 
@@ -79,7 +79,7 @@ if (report && open) {
     { teamId, title: TITLE, description: report },
   );
   await slack(
-    `:link: The weekly link check found broken links in metabase/metabase: ${link(issueCreate.issue)}`,
+    `:link: [GRO-1061 test] The weekly link check found broken links in metabase/metabase: ${link(issueCreate.issue)}`,
   );
   console.log(`Opened ${issueCreate.issue.identifier}`);
 } else if (open) {
@@ -103,7 +103,7 @@ if (report && open) {
     },
   );
   await slack(
-    `:white_check_mark: All links in metabase/metabase pass again, closed ${link(open)}`,
+    `:white_check_mark: [GRO-1061 test] All links in metabase/metabase pass again, closed ${link(open)}`,
   );
   console.log(`Closed ${open.identifier}`);
 }
