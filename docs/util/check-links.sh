@@ -37,7 +37,14 @@ for arg in "$@"; do
   esac
 done
 
-lychee_args=(--config ./.lychee/config.toml)
+# Full metabase.com/docs/latest URLs would be skipped offline, and the live /docs/latest is the last release,
+# which lacks pages added on master since. So map each one back to its markdown file under docs/. --include
+# takes precedence over --offline and the config's excludes, so the API reference drops its #tag/... anchors
+# here: Scalar renders them client-side.
+docs_latest_args=(--include '^https?://(www\.)?metabase\.com/docs/latest/'
+                  --remap "^https?://(www\.)?metabase\.com/docs/latest/api(\.html)?(#.*)?\$ file://$PWD/docs/api.html"
+                  --remap "^https?://(www\.)?metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$2.md\$5")
+lychee_args=(--config ./.lychee/config.toml "${docs_latest_args[@]}")
 [ "$external" -eq 1 ] || lychee_args+=(--offline)
 
 # Prints each failure in lychee's JSON report ($1) as "path:line: url: status", with a GitHub annotation in
@@ -75,7 +82,6 @@ print_failures() {
                   | $failures[] | "\(.file)\t\(.line)\t\(.url)\t\($first[.url].text // .text)"' <<<"$report")
 }
 
-# Same arguments as the "Run link checker" step in CI (plus --offline there).
 check_docs() {
   echo "Checking links in docs/"
   local report total count
@@ -118,9 +124,9 @@ check_nav() {
   [ "$count" -eq 0 ]
 }
 
-# Full metabase.com/docs URLs in the source code (TSDoc, error messages, emails, docstrings) would be
-# skipped by --offline, so map each one back to its markdown file under docs/. git grep pulls the URLs
-# out first because lychee can't parse every string in source code as a URL (postgres://user:pw@host:port).
+# Full metabase.com/docs URLs in the source code (TSDoc, error messages, emails, docstrings), mapped back to
+# docs/ like the ones in docs/. git grep pulls the URLs out first because lychee can't parse every string
+# in source code as a URL (postgres://user:pw@host:port).
 # Links built with useDocsUrl/getDocsUrl aren't literal URLs, so bin/verify-doc-links checks those. Unit
 # specs only repeat what those helpers return, and resources/openapi is generated from src docstrings.
 check_src() {
@@ -141,9 +147,7 @@ check_src() {
   sed -E 's/^[^:]+:[0-9]+:(.*)$/- [src](\1)/' "$locations" > "$rendered"
 
   report=$(lychee --config ./.lychee/config.toml --offline --include-fragments=full --no-progress \
-                  --format json --include '^https?://(www\.)?metabase\.com/docs/latest/' \
-                  --remap "^https?://(www\.)?metabase\.com/docs/latest/([^#?]+?)(\.html)?(\?[^#]*)?(#.*)?\$ file://$PWD/docs/\$2.md\$5" \
-                  "$rendered" || true)
+                  --format json "${docs_latest_args[@]}" "$rendered" || true)
   print_failures "$report" "$locations" || return 1
   echo "Checked $total docs links in the source code, $count broken"
   [ "$count" -eq 0 ]
