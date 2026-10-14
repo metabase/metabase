@@ -15,21 +15,6 @@ describe("CustomVizPluginSummary", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders a pending plugin like an error", () => {
-    renderWithProviders(
-      <CustomVizPluginSummary
-        plugin={createMockCustomVizPlugin({
-          status: "pending",
-          error_message: null,
-        })}
-      />,
-    );
-
-    expect(
-      screen.getByText(/imported without being validated/),
-    ).toBeInTheDocument();
-  });
-
   it("renders an SDK version warning with a changelog link", () => {
     renderWithProviders(
       <CustomVizPluginSummary

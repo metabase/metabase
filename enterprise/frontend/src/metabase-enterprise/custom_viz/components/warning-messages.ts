@@ -1,10 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type {
-  CustomVizPlugin,
-  CustomVizPluginWarning,
-} from "metabase-types/api";
+import type { CustomVizPluginWarning } from "metabase-types/api";
 
 export const SDK_CHANGELOG_URL =
   "https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/custom-viz/CHANGELOG.md";
@@ -34,17 +31,4 @@ export function getCustomVizPluginWarningMessage(
         t`The identifier "${identifier}" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
     )
     .exhaustive();
-}
-
-/**
- * Error message to show for a plugin. `pending` state is treated as an error.
- */
-export function getCustomVizPluginErrorMessage(
-  plugin: Pick<CustomVizPlugin, "status" | "error_message">,
-): string | null {
-  if (plugin.status === "pending") {
-    return t`This visualization was imported without being validated. Replace its bundle or import it again to activate it.`;
-  }
-
-  return plugin.error_message;
 }

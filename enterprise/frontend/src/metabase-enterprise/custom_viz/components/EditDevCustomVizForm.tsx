@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -77,7 +77,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                         <Text c="feedback-positive" fw={700}>{t`Enabled`}</Text>
                       </Group>
                     ))
-                    .with(P.union("error", "pending"), () => (
+                    .with("error", () => (
                       <Text c="feedback-negative" fw={700}>{t`Error`}</Text>
                     ))
                     .exhaustive()}
