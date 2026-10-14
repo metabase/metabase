@@ -75,13 +75,70 @@
         (finally
           (run! shutdown! [source target]))))))
 
+(deftest copy-login-history-with-orphaned-session-id-test
+  (testing "copying a login history row whose session was deleted mid-dump clears the dangling session_id (UXW-5258)"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO core_user (
+                           id, email, first_name, last_name, password, password_salt, date_joined,
+                           is_superuser, is_active, entity_id
+                         )
+                         VALUES (
+                           1, 'nobody@nowhere.test', 'No', 'Body', 'nopassword', 'nosalt', NOW(),
+                           FALSE, TRUE, 'loginhistoryuser00001'
+                         )"])
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO login_history (
+                           timestamp, user_id, session_id, device_id, device_description, ip_address
+                         )
+                         VALUES (
+                           NOW(), 1, 'deleted-session-id', 'device', 'browser', '127.0.0.1'
+                         )"])
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
+        (copy/copy! :h2 source :h2 target)
+        (is (= [{:user_id 1, :session_id nil}]
+               (jdbc/query {:datasource target} ["SELECT user_id, session_id FROM login_history"])))
+        (finally
+          (run! shutdown! [source target]))))))
+
+(deftest copy-does-not-copy-sessions-test
+  ;; Check that `copy/copy!` excludes :model/Session. For the rest of the `models-to-exclude`, we just verify they are
+  ;; not present in `copy/entities` (see `entities-and-models-to-exclude-do-not-overlap-test`).
+  (testing "copy! leaves the target's core_session table empty"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO core_user (
+                           id, email, first_name, last_name, password, password_salt, date_joined,
+                           is_superuser, is_active, entity_id
+                         )
+                         VALUES (
+                           1, 'nobody@nowhere.test', 'No', 'Body', 'nopassword', 'nosalt', NOW(),
+                           FALSE, TRUE, 'sessioncopyuser000001'
+                         )"])
+        (jdbc/execute! {:datasource source}
+                       ["INSERT INTO core_session (id, user_id, created_at, key_hashed)
+                         VALUES ('session-id', 1, NOW(), 'hashed-key')"])
+        (is (= [{:count 1}]
+               (jdbc/query {:datasource source} ["SELECT COUNT(*) AS count FROM core_session"])))
+        (copy/copy! :h2 source :h2 target)
+        (is (= [{:count 0}]
+               (jdbc/query {:datasource target} ["SELECT COUNT(*) AS count FROM core_session"])))
+        (finally
+          (run! shutdown! [source target]))))))
+
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
   #{:model/AgentApiCallLog
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
-    :model/ApiKey
     :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite
@@ -98,10 +155,6 @@
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
-    :model/MetabotConversation
-    :model/MetabotGroupLimit
-    :model/MetabotInstanceLimit
-    :model/MetabotMessage
     :model/MetabotPermissions
     :model/PremiumFeaturesCache
     :model/PythonLibrary
@@ -116,6 +169,7 @@
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
+    :model/Session
     :model/SourceDimensionDaily
     :model/SourceDimensionProfileDaily
     :model/SourceMetricDaily
@@ -149,10 +203,17 @@
         (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
   (is (apply distinct? (map t2/table-name copy/entities))))
 
+(deftest ^:parallel entities-and-models-to-exclude-do-not-overlap-test
+  (is (= #{}
+         (set (filter models-to-exclude copy/entities)))
+      (format "%s and %s should not overlap" `copy/entities `models-to-exclude)))
+
 (def ^:private foreign-key-coverage-exceptions
   "Known exceptions to foreign-key coverage."
   ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
-  #{{:child_table "core_user", :parent_table "tenant"}})
+  #{{:child_table "core_user", :parent_table "tenant"}
+    ;; Sessions aren't copied and `copy/model-results-xform` clears `login_history.session_id`.
+    {:child_table "login_history", :parent_table "core_session"}})
 
 (def ^:private fk-graph-sql
   "Foreign keys from the test's H2 database."
