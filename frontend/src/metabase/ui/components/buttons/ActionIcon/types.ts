@@ -27,6 +27,9 @@ export type ActionIconColor =
   | "warning"
   | "neutral";
 
+/**
+ * @inline
+ */
 export type ActionIconProps = Omit<
   MantineActionIconProps,
   "size" | "variant" | "color"

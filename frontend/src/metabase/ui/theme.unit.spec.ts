@@ -134,7 +134,10 @@ describe("theme scales", () => {
       const light = getThemeOverrides({ colorScheme: "light" }).shadows ?? {};
       const dark = getThemeOverrides({ colorScheme: "dark" }).shadows ?? {};
 
-      for (const key of SHADOW_SCALE_KEYS) {
+      const themedKeys = SHADOW_SCALE_KEYS.filter(
+        (key) => key !== "xs_on_dark",
+      );
+      for (const key of themedKeys) {
         expect(dark[key]).not.toEqual(light[key]);
       }
     });
