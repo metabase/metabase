@@ -10,6 +10,16 @@
   [chan]
   (first (a/alts!! [chan (a/timeout 5000)])))
 
+(defn- poll-only-chan
+  "A channel holding `value` for [[a/poll!]], whose takes that may wait, as a go block's do, never complete.
+  It stands for a canceled channel that the background forward has not read yet."
+  [value]
+  (let [ready (doto (a/promise-chan) (a/>!! value))
+        never (a/promise-chan)]
+    (reify a.impl.protocols/ReadPort
+      (take! [_ handler]
+        (a.impl.protocols/take! (if (a.impl.protocols/blockable? handler) never ready) handler)))))
+
 (deftest ^:parallel do-with-own-canceled-chan-test
   (let [outer-chan (a/promise-chan)]
     (binding [qp.pipeline/*canceled-chan* outer-chan]
@@ -34,6 +44,11 @@
                 (fn []
                   (a/>!! outer-chan ::canceled)
                   (received qp.pipeline/*canceled-chan*)))))))
+    (testing "an outer query canceled already is seen by the inner one before it starts"
+      (is (= ::canceled
+             (qp.pipeline/do-with-own-canceled-chan
+              (poll-only-chan ::canceled)
+              (fn [] (a/poll! qp.pipeline/*canceled-chan*))))))
     (testing "without an outer channel, none is bound"
       (is (nil? (qp.pipeline/do-with-own-canceled-chan (fn [] qp.pipeline/*canceled-chan*)))))
     (testing "a channel passed in cancels the query in place of the bound one"

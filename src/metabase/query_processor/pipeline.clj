@@ -51,6 +51,8 @@
    (if outer-chan
      (let [own-chan  (a/promise-chan)
            done-chan (a/promise-chan)]
+       ;; A cancel that has already arrived is copied now, so the query sees it before it starts.
+       (some->> (a/poll! outer-chan) (a/offer! own-chan))
        (a/go
          ;; Only ever closed, `done-chan` yields nil, so a value can only come from `outer-chan`.
          (when-some [value (first (a/alts! [outer-chan done-chan]))]
