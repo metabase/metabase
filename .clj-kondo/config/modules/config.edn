@@ -2047,9 +2047,11 @@
   {:team "UX West"
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
+           metabase.public-sharing.reach
            metabase.public-sharing.validation}
    :uses #{api
            database-routing
+           embedding
            lib.schema
            settings
            util}
@@ -3336,6 +3338,7 @@
            models
            permissions
            premium-features
+           public-sharing
            queries
            request
            sample-data

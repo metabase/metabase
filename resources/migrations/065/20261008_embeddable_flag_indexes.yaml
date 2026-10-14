@@ -1,0 +1,44 @@
+## The anonymous-reach relation starts from the questions and dashboards anonymous traffic can open and walks outward
+## to the databases each reaches, instead of asking which questions belong to a database. The public-link half of that
+## starting set is already index-usable through the plaintext public_uuid_prefix column; the guest-embed half reads
+## enable_embedding, which has no index. Index it on both tables.
+##
+## enable_embedding alone: embedding_type records which embedding product published a row and nothing on the serving
+## path reads it, so it is not part of the predicate and does not belong in the index.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-08T12:00:00
+      author: johnswanson
+      comment: Index report_card.enable_embedding for the anonymous-reach walk
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_enable_embedding
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_enable_embedding
+            columns:
+              - column:
+                  name: enable_embedding
+
+  - changeSet:
+      id: v65.2026-10-08T12:00:01
+      author: johnswanson
+      comment: Index report_dashboard.enable_embedding for the anonymous-reach walk
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_dashboard
+                indexName: idx_report_dashboard_enable_embedding
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_enable_embedding
+            columns:
+              - column:
+                  name: enable_embedding
