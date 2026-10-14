@@ -37,6 +37,7 @@ import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
+import { AnonymousAccessChoiceModal } from "../AnonymousAccessChoiceModal";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import { useDatabaseRoutingPanel } from "./useDatabaseRoutingPanel";
@@ -68,9 +69,13 @@ export const DatabaseRoutingSection = ({
     anonymousAccessGranted,
     canChangeAnonymousAccess,
     hasStoppedServingAnonymousVisitors,
+    openQuestion,
+    cancelUndoesEnable,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
+    chooseGrant,
+    cancelGrantChoice,
   } = useDatabaseRoutingPanel(database, { skip: !!shouldHideSection });
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -110,6 +115,13 @@ export const DatabaseRoutingSection = ({
     await toggleRouting(nextEnabled);
   };
 
+  const handleGrantChoiceCancel = () => {
+    if (cancelUndoesEnable) {
+      setIsExpanded(false);
+    }
+    cancelGrantChoice();
+  };
+
   if (shouldHideSection) {
     return null;
   }
@@ -120,6 +132,11 @@ export const DatabaseRoutingSection = ({
       description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
+      <AnonymousAccessChoiceModal
+        question={openQuestion}
+        onChooseGrant={chooseGrant}
+        onCancelGrantChoice={handleGrantChoiceCancel}
+      />
       <Flex justify="space-between" align="center">
         <Stack>
           <Label htmlFor="database-routing-toggle">
