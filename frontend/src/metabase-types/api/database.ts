@@ -84,6 +84,8 @@ export interface Database extends DatabaseData {
   is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
+  /** Whether an admin has granted anonymous traffic permission to query this router database. */
+  router_anonymous_access_granted?: boolean | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -284,4 +286,5 @@ export interface CreateDestinationDatabaseRequest {
 export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
+  anonymous_access_granted?: boolean;
 }

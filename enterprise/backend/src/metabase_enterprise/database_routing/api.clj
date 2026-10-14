@@ -82,7 +82,7 @@
     (database-routing.db/delete-router! db-id)))
 
 (defn- create-or-update-router!
-  [db-id user-attribute]
+  [db-id router]
   (let [db (database-routing.db/database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
@@ -90,10 +90,10 @@
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :enabled
-                                                             :routing_attribute user-attribute}})
+                                                             :routing_attribute (:user_attribute router)}})
     (if (database-routing.db/router-for-database db-id)
-      (database-routing.db/update-router-user-attribute! db-id user-attribute)
-      (database-routing.db/insert-router! db-id user-attribute))))
+      (database-routing.db/update-router! db-id router)
+      (database-routing.db/insert-router! db-id router))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -104,10 +104,17 @@
   - turn an existing Database into a Router database
   - change the `user_attribute` used to route for an existing Router database, or
   - turn a Router database into a regular Database
-  depending on the value of `user_attribute`"
+  depending on the value of `user_attribute`.
+
+  `anonymous_access_granted` states that anonymous traffic may query this router database. It defaults to false on a
+  database that is becoming a router, is left alone when omitted, and is discarded along with the routing
+  configuration when `user_attribute` is nil."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+   {:keys [user_attribute anonymous_access_granted]}
+   :- [:map {:closed true}
+       [:user_attribute           {:optional true} [:maybe ms/NonBlankString]]
+       [:anonymous_access_granted {:optional true} :boolean]]]
   (let [db (database-routing.db/database id)]
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
@@ -119,9 +126,11 @@
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
   (if (nil? user_attribute)
-    ;; delete the DatabaseRouter
+    ;; delete the DatabaseRouter, discarding the anonymous-access grant with it
     (delete-router! id)
-    (create-or-update-router! id user_attribute)))
+    (create-or-update-router! id (cond-> {:user_attribute user_attribute}
+                                   (some? anonymous_access_granted)
+                                   (assoc :anonymous_access_granted anonymous_access_granted)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-routing` routes"

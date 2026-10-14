@@ -1,0 +1,48 @@
+## Admins state, per router database, that anonymous traffic may query it. The grant lives on the router record so it
+## is created, read, and destroyed with the routing configuration it describes. Routers that already have published
+## guest embeds are backfilled as granted: publishing a guest embed on a routed database is already that decision.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-06T11:00:00
+      author: johnswanson
+      comment: Add db_router.anonymous_access_granted
+      changes:
+        - addColumn:
+            tableName: db_router
+            columns:
+              - column:
+                  name: anonymous_access_granted
+                  type: ${boolean.type}
+                  remarks: Whether an admin has granted anonymous traffic permission to query this router database
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-10-06T11:00:01
+      author: johnswanson
+      comment: Grant anonymous access to routers that already have published guest embeds
+      changes:
+        - sql:
+            sql: >-
+              UPDATE db_router
+              SET anonymous_access_granted = TRUE
+              WHERE EXISTS (SELECT 1
+                            FROM report_card
+                            WHERE report_card.database_id = db_router.database_id
+                              AND report_card.enable_embedding = TRUE)
+                 OR EXISTS (SELECT 1
+                            FROM report_dashboard
+                            JOIN report_dashboardcard ON report_dashboardcard.dashboard_id = report_dashboard.id
+                            JOIN report_card ON report_card.id = report_dashboardcard.card_id
+                            WHERE report_dashboard.enable_embedding = TRUE
+                              AND report_card.database_id = db_router.database_id)
+                 OR EXISTS (SELECT 1
+                            FROM report_dashboard
+                            JOIN report_dashboardcard ON report_dashboardcard.dashboard_id = report_dashboard.id
+                            JOIN dashboardcard_series ON dashboardcard_series.dashboardcard_id = report_dashboardcard.id
+                            JOIN report_card ON report_card.id = dashboardcard_series.card_id
+                            WHERE report_dashboard.enable_embedding = TRUE
+                              AND report_card.database_id = db_router.database_id);
+      rollback: # nothing to do; rolling back the preceding changeset drops the column
