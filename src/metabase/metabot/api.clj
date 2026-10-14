@@ -313,8 +313,9 @@
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
-        ;; reject before `start-turn!` persists anything or the title job calls the LLM
-        _          (when-not (profiles/profile-registered? (keyword profile-id))
+        ;; reject before `start-turn!` persists anything or the title job calls the LLM. An eval-only profile on an
+        ;; instance that doesn't run evals gets the same refusal, so nobody can tell it exists.
+        _          (when-not (profiles/profile-available? (keyword profile-id))
                      (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))

@@ -68,6 +68,13 @@
   []
   (get-in (current-memory) [:state :chart-configs] {}))
 
+(defn tool-offered?
+  "Whether the current agent session recorded its tools and offers the one named `tool-name`.
+  A session that did not record its tools does not count as offering it, so text that promises the model a tool is
+  never shown on a guess."
+  [tool-name]
+  (contains? (:tool-names (current-memory)) tool-name))
+
 (defn current-context
   "Returns the current agent context from memory."
   []

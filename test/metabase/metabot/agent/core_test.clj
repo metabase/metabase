@@ -1320,3 +1320,17 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest eval-only-profile-needs-an-eval-instance-test
+  (let [check!  #'agent/check-metabot-access!
+        sql-yes {:permission/metabot :yes :permission/metabot-sql-generation :yes}]
+    (testing "without the eval setting, internal-sql is refused as an unknown profile, even with every permission"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Unknown profile$" (check! :internal-sql sql-yes)))]
+        (is (= {:status-code 400} (ex-data e)))))
+    (testing "on an eval instance it needs the SQL generation permission, as before"
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (nil? (check! :internal-sql sql-yes)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :internal-sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))))
+    (testing "the setting changes nothing for a profile the product offers"
+      (is (nil? (check! :internal {:permission/metabot :yes}))))))
