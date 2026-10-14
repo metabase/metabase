@@ -1,6 +1,6 @@
 ---
 title: Library
-summary: Create a source of truth for analytics with curated tables, metrics, SQL snippets, and glossary terms that your team can trust.
+summary: Create a source of truth for analytics with curated tables, metrics, dashboards, SQL snippets, and glossary terms that your team can trust.
 redirect_from:
   - /docs/latest/data-studio/library
 ---
@@ -85,7 +85,7 @@ The semantic layer lives in a special collection called Library, which has four 
 
 - **Data**: For [published tables](published-tables.md).
 - **Metrics**: For [official metrics](#metrics).
-- **Dashboards**: For [official dashboards](#dashboards). This collection holds only dashboards, so the questions in this collection live in its dashboards.
+- **Dashboards**: For [official dashboards](#dashboards).
 - **SQL snippets**: For all the [SQL snippets](#sql-snippets) on your instance.
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.
@@ -125,29 +125,28 @@ To create a new Library metric, go to **Data Studio > Semantic layer** and selec
 
 ## Dashboards
 
-Use the Library's **Dashboards** collection as a place for curated, "official" dashboards, like your company's KPI dashboard. People can find these dashboards in the **Library** section of the main app's navigation sidebar.
+Use **Library > Dashboards** for curated, "official" dashboards, like your company's KPI dashboard. People find these dashboards in the **Library** section of the main app's navigation sidebar.
+
+**Library > Dashboards** holds only dashboards and their [dashboard questions](../../questions/introduction.md#saving-questions-to-dashboards). To save a question there, you save it to one of its dashboards.
+
+A Library dashboard can also use questions saved in other collections. But if you [sync the Library to Git](#versioning-the-library), everything the dashboard uses must be in a synced collection. See [Items in synced collections must be self-contained](../../installation-and-operation/remote-sync.md#items-in-synced-collections-must-be-self-contained).
 
 ![Dashboards section of the semantic layer in Data Studio](./images/library-dashboards-section.png)
 
-**Library > Dashboards** holds only dashboards and their [dashboard questions](../../questions/introduction.md#saving-questions-to-dashboards). You can't save standalone questions, models, or metrics there. When you save or move a question to **Library > Dashboards**, you pick one of its dashboards, and Metabase saves the question to that dashboard.
-
-A Library dashboard can still include questions that are saved in other collections. Those questions keep the permissions of their own collections (see [Permissions to use Library content](#permissions-to-use-library-content)). If, however, you [sync the Library to Git](#versioning-the-library), everything a Library dashboard uses _must_ be in a synced collection. Metabase won't save a Library dashboard that includes a question from a collection that isn't synced. See [Items in synced collections must be self-contained](../../installation-and-operation/remote-sync.md#items-in-synced-collections-must-be-self-contained).
+In Data Studio, the **Dashboards** section lists your Library dashboards. Click a dashboard to open it in the main app, where you edit it like any other dashboard.
 
 To create a new Library dashboard:
 
 1. Go to **Data Studio > Semantic layer**.
-2. Click **+ New** and select **Dashboard**. If the **Dashboards** section is empty, you can click **Create a dashboard** instead.
-3. Enter a **Name** and, optionally, a **Description**.
-4. Under **Collection**, keep **Dashboards**, or pick one of its subcollections.
-5. Click **Create**.
+2. Click **+ New** and select **Dashboard**.
+3. Enter a name. Optionally, pick a subcollection of **Dashboards**.
+4. Click **Create**.
 
-Metabase opens the new dashboard in edit mode in the main app, so you can add questions to it.
+Metabase opens the new dashboard in edit mode, so you can add questions.
 
-To add an already existing dashboard to the Library, open the dashboard, click the **...** menu, select **Move**, and pick **Library > Dashboards** (or one of its subcollections).
+To add an existing dashboard to the Library, move it to **Library > Dashboards** (or one of its subcollections).
 
-You edit Library dashboards in the main app, like any other dashboard. In Data Studio, the **Dashboards** section lists dashboards and subcollections. Click a dashboard to open it in the main app.
-
-If you [duplicate a dashboard](../../dashboards/introduction.md#duplicating-a-dashboard) into **Library > Dashboards**, Metabase saves the copied questions to the new dashboard. Metabase doesn't copy metrics or models: the new dashboard uses the original metrics and models. If you select **Only duplicate the dashboard**, Metabase doesn't copy the questions: the new dashboard uses the original questions.
+If you [duplicate a dashboard](../../dashboards/introduction.md#duplicating-a-dashboard) into **Library > Dashboards**, Metabase saves the copied questions to the new dashboard. Metabase doesn't copy metrics or models: the new dashboard uses the originals.
 
 ## SQL snippets
 
