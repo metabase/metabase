@@ -205,21 +205,29 @@
       ;; After the backslashes are doubled, so an escape written here differs from the same text in the data.
       (escape-code-points invisible-code-point?)))
 
+(defn- whitespace-code-point?
+  [code-point]
+  (some? (re-matches #"(?U)\s" (Character/toString (int code-point)))))
+
 (defn- escaped-cell-text
-  "`s` escaped for a table cell and cut to [[max-cell-chars]].
-   The cap counts the escaped text, since an escape is up to 12 characters, and a cut never splits one."
-  [s]
-  (let [^String s (str/replace s #"(?U)\s+" " ")
-        sb        (StringBuilder.)]
-    (loop [i 0]
+  "`s` escaped for a table cell, with each run of whitespace as one space, and cut to [[max-cell-chars]].
+   The cap counts the escaped text, since an escape is up to 12 characters, and a cut never splits one.
+   Reading stops at the cap, so a huge value is not copied or scanned past what is shown."
+  [^String s]
+  (let [sb (StringBuilder.)]
+    (loop [i 0, after-space? false]
       (if (>= i (.length s))
         (str sb)
         (let [code-point (.codePointAt s (int i))
-              escaped    ^String (escaped-code-point code-point)]
-          (if (> (+ (.length sb) (.length escaped)) max-cell-chars)
-            (str sb "...")
-            (do (.append sb escaped)
-                (recur (+ i (Character/charCount code-point))))))))))
+              next-i     (+ i (Character/charCount code-point))
+              space?     (whitespace-code-point? code-point)]
+          (if (and space? after-space?)
+            (recur next-i true)
+            (let [escaped ^String (if space? " " (escaped-code-point code-point))]
+              (if (> (+ (.length sb) (.length escaped)) max-cell-chars)
+                (str sb "...")
+                (do (.append sb escaped)
+                    (recur next-i space?))))))))))
 
 (defn- cell-text
   [value]

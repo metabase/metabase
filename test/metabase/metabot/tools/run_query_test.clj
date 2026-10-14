@@ -202,7 +202,10 @@
         (is (not (str/includes? out "<instructions>")))))
     (testing "the cell limit counts escapes, and a cut does not split one"
       (is (= [(str "| " (apply str (repeat 33 "\\u200b")) "... |")]
-             (drop 2 (data-lines (output [{:display_name "A"}] [[(apply str (repeat 300 "​"))]]))))))
+             (drop 2 (data-lines (output [{:display_name "A"}] [[(apply str (repeat 300 "\u200b"))]]))))))
+    (testing "a run of whitespace longer than the cell limit shows as one space"
+      (is (= ["| a b |"]
+             (drop 2 (data-lines (output [{:display_name "A"}] [[(str "a" (apply str (repeat 500 " ")) "b")]]))))))
     (testing "truncating a cell does not split a surrogate pair"
       (let [out (output [{:display_name "A"}] [[(str (apply str (repeat 199 "x")) "\uD83D\uDE00 tail")]])]
         (is (not (re-find #"\p{Cs}" out)))))
