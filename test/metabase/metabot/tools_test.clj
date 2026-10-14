@@ -63,6 +63,20 @@
     (is (contains? tools "create_chart"))
     (is (contains? tools "create_dashboard_subscription"))))
 
+(deftest run-query-needs-query-execution-enabled-test
+  (testing "run_query is offered only once an admin enables query execution"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (is (not (contains? (tools-for-profile :internal) "run_query"))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (contains? (tools-for-profile :internal) "run_query")))))
+
+(deftest slackbot-profile-has-no-run-query-test
+  ;; Everyone in a Slack thread can read its stored tool output, so one person's rows would reach the others.
+  ;; Filter that output per reader before offering run_query there.
+  (testing "run_query is not offered in Slack even with query execution enabled"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (not (contains? (tools-for-profile :slackbot) "run_query"))))))
+
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
     (is (map? tools))
@@ -215,7 +229,8 @@
     (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
     (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
-    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
+    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))
+    (is (contains? @#'agent-tools/state-dependent-tools "run_query"))))
 
 (deftest wrap-tools-with-state-test
   (testing "wraps state-dependent tools with state injection"

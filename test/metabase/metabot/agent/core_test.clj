@@ -15,6 +15,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -149,6 +150,50 @@
           (is (contains? tools "create_sql_query"))
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
+
+(defn- run-query-offered-at-turn-start
+  "Whether the turn starts with `run_query` among its tools, and whether its system message says results can be read.
+   Reads them where the decision is made rather than running a turn. The bindings stand in for the ones the agent
+   loop makes."
+  [conversation-id capabilities]
+  (let [{:keys [tools system-msg]}
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                               :profile-id      :internal
+                               :conversation-id conversation-id
+                               :context         {:capabilities capabilities}}))]
+    {:tool?   (contains? tools "run_query")
+     :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))
+
+(deftest client-claimed-feature-capability-cannot-override-settings-test
+  ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
+      (testing "the same request gets run_query once the admin turns it on"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
+
+(deftest run-query-not-offered-where-others-can-read-the-conversation-test
+  (let [rasta   (mt/user->id :rasta)
+        offered #(run-query-offered-at-turn-start % [])]
+    (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
+                   :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
+                   :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (testing "the user's own conversation offers run_query and says results can be read"
+            (is (= {:tool? true, :prompt? true} (offered own))))
+          (testing "a conversation other people can read offers neither"
+            (testing "a Slack thread"
+              (is (= {:tool? false, :prompt? false} (offered thread))))
+            (testing "a conversation someone else started"
+              (is (= {:tool? false, :prompt? false} (offered someone)))))
+          (testing "no conversation offers neither"
+            (is (= {:tool? false, :prompt? false} (offered nil)))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
