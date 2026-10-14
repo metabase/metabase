@@ -66,7 +66,7 @@ export const LegendLabel = forwardRef(
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
           data-testid="legend-label"
-          data-is-clickable={!!onClick}
+          data-is-clickable={Boolean(onClick)}
         >
           {children}
         </div>
@@ -86,7 +86,7 @@ export const LegendLabel = forwardRef(
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
           data-testid="legend-label"
-          data-is-clickable={!!onClick}
+          data-is-clickable={Boolean(onClick)}
         >
           {children}
         </Box>
@@ -104,7 +104,7 @@ export const LegendLabel = forwardRef(
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
         data-testid="legend-label"
-        data-is-clickable={!!onClick}
+        data-is-clickable={Boolean(onClick)}
       >
         {children}
       </Link>

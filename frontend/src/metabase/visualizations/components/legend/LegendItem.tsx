@@ -4,7 +4,7 @@ import { memo } from "react";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 
-import S from "./Legend.module.css";
+import S from "./LegendItem.module.css";
 import { LegendItemDot } from "./LegendItemDot";
 import { LEGEND_SIZES, type LegendSize } from "./layout";
 
@@ -59,36 +59,33 @@ const LegendItemInner = ({
   };
 
   return (
-    <Flex align="center" miw={0} data-testid="legend-item">
-      <Flex
-        className={cx(S.itemLabel, {
-          [S.hoverableLabel]: onHoverChange != null,
+    <Flex
+      className={S.root}
+      align="center"
+      miw={0}
+      opacity={isMuted ? 0.4 : 1}
+      onMouseEnter={onHoverChange && handleItemMouseEnter}
+      onMouseLeave={onHoverChange && handleItemMouseLeave}
+      data-testid="legend-item"
+    >
+      <LegendItemDot
+        color={item.color}
+        size={rem(dotSize)}
+        isVisible={item.visible ?? true}
+        onClick={onToggleSeriesVisibility && handleDotClick}
+      />
+      <Box
+        className={cx(DashboardS.fullscreenNormalText, S.title, {
+          [S.clickableTitle]: onSelectSeries != null,
         })}
-        align="center"
-        w="100%"
-        opacity={isMuted ? 0.4 : 1}
-        onMouseEnter={onHoverChange && handleItemMouseEnter}
-        onMouseLeave={onHoverChange && handleItemMouseLeave}
+        fz={typography}
+        lh={typography}
+        ml={dotGap}
+        miw={0}
+        onClick={onSelectSeries && handleItemClick}
       >
-        <LegendItemDot
-          color={item.color}
-          size={rem(dotSize)}
-          isVisible={item.visible ?? true}
-          onClick={onToggleSeriesVisibility && handleDotClick}
-        />
-        <Box
-          className={cx(DashboardS.fullscreenNormalText, S.itemTitle, {
-            [S.clickableTitle]: onSelectSeries != null,
-          })}
-          fz={typography}
-          lh={typography}
-          ml={dotGap}
-          miw={0}
-          onClick={onSelectSeries && handleItemClick}
-        >
-          <Ellipsified>{item.name}</Ellipsified>
-        </Box>
-      </Flex>
+        <Ellipsified>{item.name}</Ellipsified>
+      </Box>
     </Flex>
   );
 };

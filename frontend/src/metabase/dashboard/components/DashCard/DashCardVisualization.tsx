@@ -40,7 +40,7 @@ import type { LoadingViewProps } from "metabase/visualizations/components/Visual
 import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
-} from "metabase/visualizations/components/legend/LegendCaption";
+} from "metabase/visualizations/components/legend/constants";
 import type {
   CardSlownessStatus,
   ClickObject,

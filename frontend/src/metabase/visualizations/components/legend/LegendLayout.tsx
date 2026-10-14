@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 
 import { Box, Flex } from "metabase/ui";
@@ -101,10 +100,14 @@ export const LegendLayout = ({
   };
 
   return (
-    <div className={cx(S.root, className)}>
-      <div className={S.main}>
+    <Flex className={className} flex="1 1 auto" miw={0} mih={0}>
+      <Flex direction="column" flex="1 1 auto" miw={0} mih={0}>
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
-        {hasDimensions && <div className={S.chart}>{children}</div>}
+        {hasDimensions && (
+          <Flex direction="column" flex="1 0 auto" mih={0}>
+            {children}
+          </Flex>
+        )}
         {isVisible && layout.type === "horizontal" && (
           <Flex
             justify="center"
@@ -118,7 +121,7 @@ export const LegendLayout = ({
             <Legend {...legendProps} />
           </Flex>
         )}
-      </div>
+      </Flex>
       {isVisible && layout.type === "vertical" && (
         <Box
           className={S.verticalLegend}
@@ -135,6 +138,6 @@ export const LegendLayout = ({
           />
         </Box>
       )}
-    </div>
+    </Flex>
   );
 };

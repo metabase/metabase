@@ -1,8 +1,5 @@
-.horizontalRoot {
-  overflow: hidden;
-}
-
 .overflowLabel {
+  color: var(--mb-color-text-secondary);
   cursor: pointer;
   white-space: nowrap;
 
@@ -13,25 +10,4 @@
 
 .popoverScroll {
   overflow-x: hidden;
-}
-
-.itemLabel {
-  transition: opacity 0.25s linear;
-}
-
-.hoverableLabel:hover {
-  color: var(--mb-color-core-brand);
-}
-
-.itemTitle {
-  color: var(--mb-color-text-primary);
-  overflow: hidden;
-}
-
-.clickableTitle {
-  cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-core-brand);
-  }
 }
