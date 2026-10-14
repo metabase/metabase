@@ -172,7 +172,8 @@
   [{{:keys [rows cols]} :data, :as qp-response} lat-field-ref lon-field-ref]
   (when-not (= (:status qp-response) :completed)
     (throw (ex-info (format "Error running tiles query: %s" (:error qp-response))
-                    (assoc qp-response :status-code 400))))
+                    ;; `:error` is client-facing by default, and the message already carries it
+                    (-> qp-response (dissoc :error) (assoc :status-code 400)))))
   (let [lat-id-or-name (second lat-field-ref)
         lon-id-or-name (second lon-field-ref)
 
