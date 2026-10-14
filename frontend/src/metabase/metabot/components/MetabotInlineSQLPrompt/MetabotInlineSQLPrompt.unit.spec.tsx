@@ -87,20 +87,20 @@ describe("MetabotInlineSQLPrompt", () => {
     ).toBeInTheDocument();
   });
 
-  it.each<{ ending: string; error: MetabotAgentTurnDisplayError }>([
+  it.each<{ replacement: string; error: MetabotAgentTurnDisplayError }>([
     {
-      ending: "fails",
+      replacement: "error",
       error: { type: "message", message: "Sorry, I ran into an error." },
     },
     {
-      ending: "is stopped",
+      replacement: "interruption notice",
       error: {
         type: "aborted",
         message: "Response from Metabot was interrupted",
       },
     },
   ])(
-    "shows that Metabot is working until the request $ending",
+    "replaces the working status with the $replacement when loading ends",
     async ({ error }) => {
       const { rerender } = setup({
         props: { isLoading: true },
