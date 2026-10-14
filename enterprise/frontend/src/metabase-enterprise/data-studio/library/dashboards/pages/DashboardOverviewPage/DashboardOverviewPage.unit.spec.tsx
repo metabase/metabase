@@ -7,6 +7,7 @@ import {
   setupDashboardNotFoundEndpoint,
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
+import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
 import {
   renderWithProviders,
   screen,
@@ -61,6 +62,7 @@ function setup({ dashboard: dashboardOpts, isNotFound = false }: SetupOpts) {
     dashcards: [],
     ...dashboardOpts,
   });
+  setupListSubscriptionsEndpoint([]);
   if (isNotFound) {
     setupDashboardNotFoundEndpoint(dashboard);
   } else {

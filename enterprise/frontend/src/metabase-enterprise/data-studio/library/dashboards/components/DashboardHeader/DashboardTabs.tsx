@@ -8,12 +8,16 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import type { DashboardId } from "metabase-types/api";
 
+import type { DashboardTabsInfo } from "../../hooks/use-dashboard-tabs-info";
+
 type DashboardTabsProps = {
   dashboardId: DashboardId;
+  tabsInfo: DashboardTabsInfo;
 };
 
-export function DashboardTabs({ dashboardId }: DashboardTabsProps) {
+export function DashboardTabs({ dashboardId, tabsInfo }: DashboardTabsProps) {
   const contentsUrl = Urls.dataStudioDashboardContents(dashboardId);
+  const subscriptionsUrl = Urls.dataStudioDashboardSubscriptions(dashboardId);
   const tabs: PillTab[] = [
     { label: t`Overview`, to: Urls.dataStudioDashboard(dashboardId) },
     {
@@ -29,6 +33,20 @@ export function DashboardTabs({ dashboardId }: DashboardTabsProps) {
           },
         ]
       : []),
+    ...(tabsInfo.hasUsageStats
+      ? [
+          {
+            label: t`Usage stats`,
+            to: Urls.dataStudioDashboardUsage(dashboardId),
+          },
+        ]
+      : []),
+    {
+      label: t`Subscriptions`,
+      to: subscriptionsUrl,
+      count: tabsInfo.subscriptionCount,
+      isSelected: (pathname) => pathname.startsWith(subscriptionsUrl),
+    },
   ];
 
   return <PillTabNavigation tabs={tabs} />;

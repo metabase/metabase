@@ -10,6 +10,8 @@ import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collect
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
+import type { DashboardTabsInfo } from "../../hooks/use-dashboard-tabs-info";
+
 import { DashboardArchivedBanner } from "./DashboardArchivedBanner";
 import { DashboardHeaderActions } from "./DashboardHeaderActions";
 import { DashboardTabs } from "./DashboardTabs";
@@ -17,9 +19,10 @@ import { getDashboardFolders } from "./utils";
 
 type DashboardHeaderProps = {
   dashboard: Dashboard;
+  tabsInfo: DashboardTabsInfo;
 };
 
-export function DashboardHeader({ dashboard }: DashboardHeaderProps) {
+export function DashboardHeader({ dashboard, tabsInfo }: DashboardHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: dashboard.collection_id,
   });
@@ -32,7 +35,7 @@ export function DashboardHeader({ dashboard }: DashboardHeaderProps) {
         data-testid="dashboard-pane-header"
         title={<PanelHeaderTitle>{dashboard.name}</PanelHeaderTitle>}
         icon="dashboard"
-        tabs={<DashboardTabs dashboardId={dashboard.id} />}
+        tabs={<DashboardTabs dashboardId={dashboard.id} tabsInfo={tabsInfo} />}
         actions={<DashboardHeaderActions dashboard={dashboard} />}
         breadcrumbs={
           <DataStudioBreadcrumbs loading={isLoadingPath}>

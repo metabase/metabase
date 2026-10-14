@@ -1,4 +1,4 @@
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_AUDIT, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 import { DashboardsSectionLayout } from "./pages/DashboardsSectionLayout";
@@ -34,6 +34,20 @@ const dashboardDependenciesPage = () =>
     Component: DashboardDependenciesPage,
   }));
 
+const dashboardUsageStatsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-dashboards" */ "./pages/DashboardUsageStatsPage"
+  ).then(({ DashboardUsageStatsPage }) => ({
+    Component: DashboardUsageStatsPage,
+  }));
+
+const dashboardSubscriptionsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-dashboards" */ "./pages/DashboardSubscriptionsPage"
+  ).then(({ DashboardSubscriptionsPage }) => ({
+    Component: DashboardSubscriptionsPage,
+  }));
+
 export function getDataStudioDashboardRoutes() {
   return (
     <Route path="dashboards" element={<DashboardsSectionLayout />}>
@@ -48,6 +62,13 @@ export function getDataStudioDashboardRoutes() {
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
+      {PLUGIN_AUDIT.isEnabled && (
+        <Route path=":dashboardId/usage" lazy={dashboardUsageStatsPage} />
+      )}
+      <Route
+        path=":dashboardId/subscriptions/:subscriptionId?"
+        lazy={dashboardSubscriptionsPage}
+      />
     </Route>
   );
 }
