@@ -103,6 +103,10 @@ fi
 errors=0
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
+    case "$file" in
+        # 1.64.2.1 shipped these v65 changesets, so the 64 branch has to keep them at their 065 path
+        resources/migrations/065/20261007_ai_analytics_views_conversation_title_source.yaml) continue ;;
+    esac
     dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9][0-9]*\)/.*|\1|p')
     [[ -z "$dir" ]] && continue
     dir_version=$((10#$dir))
