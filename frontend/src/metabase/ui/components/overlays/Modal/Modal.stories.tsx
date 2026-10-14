@@ -6,8 +6,10 @@ import {
   Button,
   Checkbox,
   Flex,
+  MODAL_DENSITIES,
   MODAL_LAYOUTS,
   Modal,
+  type ModalDensity,
   type ModalLayout,
   type ModalProps,
   Select,
@@ -30,6 +32,7 @@ const args = {
   centered: true,
   fullScreen: false,
   layout: "default",
+  density: "default",
   size: "md",
   withCloseButton: true,
 };
@@ -43,6 +46,10 @@ const argTypes = {
   },
   layout: {
     options: MODAL_LAYOUTS,
+    control: { type: "inline-radio" },
+  },
+  density: {
+    options: MODAL_DENSITIES,
     control: { type: "inline-radio" },
   },
   title: {
@@ -66,7 +73,7 @@ const IllustrationPlaceholder = () => (
 
 const InviteTeammateForm = ({ onCancel }: { onCancel?: () => void }) => (
   <form onSubmit={(event) => event.preventDefault()}>
-    <Stack gap="md">
+    <Stack gap="xl">
       <Text>{"They'll get an email with a link to set up their account."}</Text>
       <SimpleGrid cols={2} spacing="md">
         <TextInput label="First name" placeholder="Ada" />
@@ -273,6 +280,7 @@ interface OverviewRow {
   footer?: ReactNode;
   /** Replaces the body and footer, e.g. a form that wraps both */
   content?: ReactNode;
+  density?: ModalDensity;
   /** Layouts to show the row in. Defaults to all of them */
   layouts?: readonly ModalLayout[];
   height?: number;
@@ -348,9 +356,10 @@ const OVERVIEW_ROWS: readonly OverviewRow[] = [
     id: "form",
     label: "Form",
     title: "Invite a teammate",
+    density: "relaxed",
     content: <InviteTeammateForm />,
     layouts: ["default"],
-    height: 680,
+    height: 760,
   },
 ];
 
@@ -388,6 +397,7 @@ const OverviewCell = ({
       yOffset={0}
       size={432}
       layout={layout}
+      density={row.density}
       title={row.title}
       withCloseButton={row.withCloseButton ?? true}
       illustration={
@@ -466,6 +476,7 @@ export const Confirmation = {
 export const WithForm = {
   render: WithFormTemplate,
   name: "With form",
+  args: { density: "relaxed" },
 };
 
 export const Centered = {

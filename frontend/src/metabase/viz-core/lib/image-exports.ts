@@ -1,6 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { css } from "@emotion/react";
-
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
 
 import { getCardKey } from "./utils";
@@ -13,7 +10,20 @@ export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
   "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
-export const getSaveDomImageStyles = (allowTextOverflow: boolean) => css`
+const DASHCARD_SELECTOR = `[data-dashcard-key].${GlobalDashboardS.Card}`;
+
+/**
+ * The export renderer clips text vertically when a custom theme changes the
+ * line height, so the SDK captures with overflow visible.
+ */
+const getTextOverflowStyles = () => `
+  ${DASHCARD_SELECTOR} * {
+    overflow: visible !important;
+  }
+`;
+
+// Plain CSS text; the global style sheets that embed it resolve the nesting
+export const getSaveDomImageStyles = (allowTextOverflow: boolean) => `
   .${SAVING_DOM_IMAGE_CLASS} {
     .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
       visibility: hidden;
@@ -25,21 +35,14 @@ export const getSaveDomImageStyles = (allowTextOverflow: boolean) => css`
       overflow: visible;
     }
 
-    [data-dashcard-key].${GlobalDashboardS.Card} {
+    ${DASHCARD_SELECTOR} {
       /* the renderer we use for saving to image/pdf doesn't support box-shadow
         so we replace it with a border */
       box-shadow: none;
       border: 1px solid var(--mb-color-border-neutral);
     }
 
-    /* The export renderer clips text vertically when a custom theme changes the line height.
-       The flag works around that by capturing with overflow visible. */
-    ${allowTextOverflow &&
-    css`
-      [data-dashcard-key].${GlobalDashboardS.Card} * {
-        overflow: visible !important;
-      }
-    `};
+    ${allowTextOverflow ? getTextOverflowStyles() : ""}
   }
 `;
 

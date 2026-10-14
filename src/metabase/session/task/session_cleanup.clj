@@ -34,9 +34,9 @@
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))
 
-(task/defjob ^{:doc "Job that records the ending of sessions that stopped being live, and deletes those ended
-                     long ago."}
-  SessionCleanup
+(task/defjob SessionCleanup
+  "Job that records the ending of sessions that stopped being live, and deletes those ended long ago."
+  {:saved-class "metabase.session.task.session_cleanup.SessionCleanup"}
   [_]
   (cleanup-sessions!)
   (session/prune-session-activity-cache!))

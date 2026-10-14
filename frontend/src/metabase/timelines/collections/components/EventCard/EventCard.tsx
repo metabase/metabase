@@ -1,26 +1,16 @@
+import cx from "classnames";
 import { memo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Markdown } from "metabase/common/components/Markdown";
+import { ActionIcon, Box, Center, Flex, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import {
-  CardAside,
-  CardBody,
-  CardCreatorInfo,
-  CardDateInfo,
-  CardDescription,
-  CardRoot,
-  CardThread,
-  CardThreadIcon,
-  CardThreadIconContainer,
-  CardThreadStroke,
-  CardTitle,
-} from "./EventCard.styled";
+import S from "./EventCard.module.css";
 
 export interface EventCardProps {
   event: TimelineEvent;
@@ -42,29 +32,42 @@ const EventCard = ({
   const editLink = Urls.editEventInCollection(event, timeline);
 
   return (
-    <CardRoot>
-      <CardThread>
-        <CardThreadIconContainer>
-          <CardThreadIcon name={event.icon} />
-        </CardThreadIconContainer>
-        <CardThreadStroke />
-      </CardThread>
-      <CardBody>
-        <CardDateInfo>{dateMessage}</CardDateInfo>
+    <Flex mih="5rem">
+      <Flex direction="column" align="center">
+        <Center className={S.threadIcon} w="xxl" h="xxl" bdrs="lg">
+          <Icon name={event.icon} c="core-brand" />
+        </Center>
+        <Box className={S.threadStroke} flex="1 1 auto" />
+      </Flex>
+      <Box flex="1 1 auto" pt="xxs" px="md" pb="sm" miw={0}>
+        <Text c="core-brand" fz="sm" fw="bold">
+          {dateMessage}
+        </Text>
         {canEdit ? (
-          <CardTitle as={Link} to={editLink}>
+          <Text
+            component={Link}
+            className={cx(S.title, S.titleLink)}
+            to={editLink}
+            fz="1rem"
+            lh="1.25rem"
+            fw="bold"
+          >
             {event.name}
-          </CardTitle>
+          </Text>
         ) : (
-          <CardTitle>{event.name}</CardTitle>
+          <Text className={S.title} fz="1rem" lh="1.25rem" fw="bold">
+            {event.name}
+          </Text>
         )}
         {event.description && (
-          <CardDescription>{event.description}</CardDescription>
+          <Markdown className={S.description}>{event.description}</Markdown>
         )}
-        <CardCreatorInfo data-server-date>{creatorMessage}</CardCreatorInfo>
-      </CardBody>
+        <Text c="text-secondary" mt="xxs" fz="sm" lh="normal" data-server-date>
+          {creatorMessage}
+        </Text>
+      </Box>
       {menuItems.length > 0 && (
-        <CardAside>
+        <Box flex="0 0 auto">
           <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Event menu`}>
@@ -73,9 +76,9 @@ const EventCard = ({
             </Menu.Target>
             <Menu.Dropdown>{menuItems}</Menu.Dropdown>
           </Menu>
-        </CardAside>
+        </Box>
       )}
-    </CardRoot>
+    </Flex>
   );
 };
 

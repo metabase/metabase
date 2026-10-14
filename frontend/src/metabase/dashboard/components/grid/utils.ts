@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import { getMobileHeight } from "metabase/viz-core";
 import type { BaseDashboardCard } from "metabase-types/api";
 
@@ -21,13 +22,18 @@ type DashcardLayout = {
 export function generateMobileLayout(desktopLayout: DashcardLayout[]) {
   const mobile: DashcardLayout[] = [];
   desktopLayout.forEach((item) => {
-    const card = item.dashcard.card;
+    const { dashcard } = item;
+    // An action shown as a form needs its rows, unlike an action button
+    const isActionForm =
+      isActionDashCard(dashcard) &&
+      (dashcard.visualization_settings.actionDisplayType ??
+        dashcard.action?.visualization_settings?.type) === "form";
 
     mobile.push({
       ...item,
       x: 0,
       y: sumVerticalSpace(mobile),
-      h: getMobileHeight(card.display, item.h),
+      h: isActionForm ? item.h : getMobileHeight(dashcard.card.display, item.h),
       w: 1,
       minW: 1,
     });

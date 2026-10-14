@@ -167,6 +167,7 @@ config:
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
+    interestingness-max-fields-per-sync: 100000
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
     jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
@@ -238,6 +239,8 @@ config:
     llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
+    llm-openai-compatible-api-base-url: null
+    llm-openai-compatible-api-key: null
     llm-openai-model: gpt-5.4
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null

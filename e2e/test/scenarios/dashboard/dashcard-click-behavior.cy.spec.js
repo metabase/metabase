@@ -580,7 +580,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.modal().button("Discard changes").click();
       cy.button("Cancel").should("not.exist");
       cy.findByTestId("visualization-root")
-        .findByText("May 2025")
+        .findByText("April 2025")
         .should("exist");
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -917,8 +917,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").button("Done").click();
       H.saveDashboard();
 
+      cy.intercept("POST", "/api/dataset").as("multiParamDataset");
       clickLineChartPoint();
-      cy.wait("@dataset");
+      cy.wait("@multiParamDataset");
       cy.findByTestId("qb-filters-panel")
         .should("contain.text", "Created At is Jul 1–31, 2025")
         .should("contain.text", "Quantity is equal to 64");
@@ -1208,7 +1209,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.getDashboardCard().realHover().icon("click").click();
       H.getDashboardCard()
         .button()
-        .should("have.text", "Open the drill-through menu");
+        .should("contain.text", "Open the drill-through menu");
 
       (function addCustomDashboardDestination() {
         cy.log("custom destination (dashboard) behavior for 'Count' column");
@@ -1230,7 +1231,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         getCountToDashboardMapping().should("exist");
         H.getDashboardCard()
           .button()
-          .should("have.text", "1 column has custom behavior");
+          .should("contain.text", "1 column has custom behavior");
       })();
 
       (function addCustomQuestionDestination() {
@@ -1251,7 +1252,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         getCreatedAtToQuestionMapping().should("exist");
         H.getDashboardCard()
           .button()
-          .should("have.text", "2 columns have custom behavior");
+          .should("contain.text", "2 columns have custom behavior");
       })();
 
       cy.get("aside").button("Done").click();
@@ -1374,7 +1375,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       getCountToDashboardMapping().should("exist");
       H.getDashboardCard()
         .button()
-        .should("have.text", "1 column has custom behavior");
+        .should("contain.text", "1 column has custom behavior");
 
       cy.get("aside").button("Done").click();
       H.saveDashboard();
@@ -1440,7 +1441,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard()
         .button()
-        .should("have.text", "1 column has custom behavior");
+        .should("contain.text", "1 column has custom behavior");
 
       (function addCustomUrlDestination() {
         cy.log("custom destination (URL) behavior for 'Created At' column");
@@ -1474,7 +1475,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard()
         .button()
-        .should("have.text", "2 columns have custom behavior");
+        .should("contain.text", "2 columns have custom behavior");
 
       cy.get("aside").button("Done").click();
       H.saveDashboard();

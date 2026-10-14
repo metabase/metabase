@@ -182,7 +182,7 @@ describe("timeseries intervals", () => {
         end: "2020-04-05",
         unit: "month",
         count: 2,
-        expected: 1, // 2020-03-01
+        expected: 2, // 2020-02-01, 2020-04-01: every second month from the first month in range
       },
       {
         start: "2022-01-01",
@@ -197,6 +197,20 @@ describe("timeseries intervals", () => {
         unit: "year",
         count: 2,
         expected: 2, // 2024-01-01, 2026-01-01
+      },
+      {
+        start: "2021-01-01",
+        end: "2025-06-01",
+        unit: "year",
+        count: 2,
+        expected: 3, // 2021-01-01, 2023-01-01, 2025-01-01: the grid starts at the first year in range
+      },
+      {
+        start: "2021-03-01",
+        end: "2031-06-01",
+        unit: "year",
+        count: 5,
+        expected: 2, // 2022-01-01, 2027-01-01
       },
       {
         start: "2025-01-01",
@@ -224,7 +238,7 @@ describe("timeseries intervals", () => {
         end: "2025-01-22T00:00:00Z", // Wednesday
         unit: "week",
         count: 1,
-        expected: 2, // Jan 12, Jan 19
+        expected: 3, // Jan 8, Jan 15, Jan 22: weeks start on the first data point's weekday
       },
       {
         start: "2025-03-15T00:00:00Z",
@@ -310,6 +324,7 @@ describe("timeseries intervals", () => {
       xDomain: ContinuousDomain;
       xInterval: TimeSeriesInterval;
       outerWidth: number;
+      paddingX?: number;
       xTickWidth: number;
     };
     type TickExpected = {
@@ -356,7 +371,7 @@ describe("timeseries intervals", () => {
         },
         { expectedUnit: "quarter", expectedCount: 1 },
       ],
-      // even narrower and we should show yearly ticks
+      // even narrower: five half-year labels of 55px still fit in 300px
       [
         {
           xDomain: [
@@ -365,6 +380,19 @@ describe("timeseries intervals", () => {
           ],
           xInterval: { unit: "month", count: 1 },
           outerWidth: 300,
+          xTickWidth: 55,
+        },
+        { expectedUnit: "quarter", expectedCount: 2 },
+      ],
+      // narrower still and we should show yearly ticks
+      [
+        {
+          xDomain: [
+            new Date("2020-01-01").getTime(),
+            new Date("2022-01-01").getTime(),
+          ],
+          xInterval: { unit: "month", count: 1 },
+          outerWidth: 250,
           xTickWidth: 55,
         },
         { expectedUnit: "year", expectedCount: 1 },
@@ -380,6 +408,21 @@ describe("timeseries intervals", () => {
       //   },
       //   { expectedUnit: "month", expectedCount: 3 },
       // ],
+      // 25 yearly points on a 540px static chart: 13 two-year labels of 32px
+      // fit in the 491px plot, so the chart must not fall back to 5 years
+      [
+        {
+          xDomain: [
+            new Date("1999-01-01").getTime(),
+            new Date("2023-01-01").getTime(),
+          ],
+          xInterval: { unit: "year", count: 1 },
+          outerWidth: 540,
+          paddingX: 49,
+          xTickWidth: 32.4,
+        },
+        { expectedUnit: "year", expectedCount: 2 },
+      ],
       // wide tick labels should update the interval to have fewer ticks
       [
         {
@@ -393,11 +436,25 @@ describe("timeseries intervals", () => {
         },
         { expectedUnit: "year", expectedCount: 1 },
       ],
+      // raw second-level timestamps over years must not materialize every
+      // candidate tick while searching for an interval that fits
+      [
+        {
+          xDomain: [
+            new Date("2025-04-30T18:56:13Z").getTime(),
+            new Date("2029-04-11T07:12:44Z").getTime(),
+          ],
+          xInterval: { unit: "second", count: 1 },
+          outerWidth: 1232,
+          xTickWidth: 80,
+        },
+        { expectedUnit: "quarter", expectedCount: 2 },
+      ],
     ];
 
     TEST_CASES.forEach(
       ([
-        { xDomain, xInterval, outerWidth, xTickWidth },
+        { xDomain, xInterval, outerWidth, paddingX = 0, xTickWidth },
         { expectedUnit, expectedCount },
       ]) => {
         it(`should return ${expectedCount} ${expectedUnit}`, () => {
@@ -406,6 +463,7 @@ describe("timeseries intervals", () => {
             xInterval,
             createMockChartLayout({
               outerWidth,
+              padding: { left: paddingX, right: 0 },
               ticksDimensions: { getXTickWidth: () => xTickWidth },
             }),
             mockFormatter,

@@ -1,0 +1,22 @@
+.threadIcon {
+  border: 1px solid var(--mb-color-border-neutral);
+}
+
+.threadStroke {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.title {
+  overflow-wrap: break-word;
+}
+
+.titleLink {
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.description {
+  margin-top: var(--mantine-spacing-xxs);
+  overflow-wrap: break-word;
+}
