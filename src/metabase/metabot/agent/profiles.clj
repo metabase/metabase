@@ -105,10 +105,10 @@
                       {:profile (:name profile) :unknown-terminal-tools unknown}))))
   (swap! *profiles assoc (:name profile) profile))
 
-;; TODO (Chris 2026-10-14) -- Offer run_query here too. It runs as the signed-in user, so sandboxing and impersonation
-;; apply, but result rows are the embedding customer's end users' data and go to the LLM provider. Embedded Metabot
-;; first needs its own query execution setting, so an admin can turn results on for their staff without turning them
-;; on in every embed.
+;; TODO (Chris 2026-10-14) -- Offer run_query here once embedded Metabot has its own query execution setting.
+;; Queries run as the signed-in user, so sandboxing and impersonation apply,
+;; but the rows are the embedding customer's end users' data, and they go to the LLM provider.
+;; An admin should be able to show results to their own staff without showing them in every embed.
 (register-profile!
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
@@ -301,13 +301,13 @@
   (contains? @*profiles profile-id))
 
 (def ^:private eval-profile-ids
-  "Profiles that exist only for evals. `:internal-sql` lets a user with only the SQL generation permission run SQL,
-  which no profile the product offers allows, so it runs only where `metabot-eval-profiles-enabled?` is set."
+  "Profiles that exist only for evals.
+  `:internal-sql` lets a user run SQL with only the SQL generation permission, which no other profile allows."
   #{:internal-sql})
 
 (defn profile-available?
-  "Whether a profile with `profile-id` is registered and may run on this instance. An eval-only profile needs
-  `metabot-eval-profiles-enabled?`; elsewhere it is treated as unknown."
+  "Whether `profile-id` is registered and may run on this instance.
+  An eval-only profile may run only where `metabot-eval-profiles-enabled?` is set."
   [profile-id]
   (and (profile-registered? profile-id)
        (or (not (contains? eval-profile-ids profile-id))

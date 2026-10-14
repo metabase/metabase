@@ -126,10 +126,11 @@
     :else                          no-values-hint))
 
 (defn- metric-refusal
-  "Refuses the id of `metric`, a metric the user is viewing and can read. A metric is an aggregation, not a source,
-   so the refusal names what to aggregate over: the model or question the metric is built on, or else its base
-   table. A metric built on a question the user can't read has neither to offer."
+  "The refusal for `query-id`, the id of `metric`, a metric the user is viewing and can read.
+   It says what to aggregate the metric over: the model or question it is built on, or else its base table.
+   Where the user can't read the card it is built on, it offers no way to its values."
   [query-id metric]
+  ;; A metric is an aggregation, not a source, so no query with it as the source would run.
   (let [source-card (some-> (:source_card_id metric) metabot.db/card)
         source      (cond
                       (some-> source-card mi/can-read?)
@@ -146,14 +147,15 @@
 
 (defn- viewed-saved-question
   "`{:query :saved-card}` for the saved question or model the user is viewing whose id is `query-id`, or nil:
-   a notebook query over it, and the question itself.
-   The conversation holds no query under a saved question's id. The client sends the query on screen with the item,
-   and that query is not what runs: the saved question is, as a source-card query, which keeps the question's own
-   permissions and the checks on SQL that Metabot saved. Only run_query reads it this way: the chart, link and save
-   tools still take a query the conversation holds.
-   A metric the user can read is refused, with how to query it. The item's type is the client's claim, so the saved
-   card decides which it is."
+   a notebook query over the saved version, and the question itself.
+   Throws a refusal for a metric the user can read.
+   Only run_query reads a viewed question this way: the chart, link and save tools still take a query the
+   conversation holds."
   [query-id]
+  ;; The conversation holds no query under a saved question's id.
+  ;; The client sends the query on screen with the item, but that is not what runs.
+  ;; The saved question runs instead, as a source-card query.
+  ;; That keeps its own permissions, and the checks on SQL that Metabot saved.
   (when-let [card-id (some (fn [{:keys [id type]}]
                              (when (and (= query-id (str id))
                                         (contains? #{"question" "model" "metric"} (some-> type name)))
@@ -164,6 +166,7 @@
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
       (when (some-> card mi/can-read?)
+        ;; The client sets the item's type, so the card decides whether this is a metric.
         (when (= :metric (:type card))
           (throw (metric-refusal query-id card)))
         {:saved-card card

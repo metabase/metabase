@@ -474,10 +474,12 @@
    :explorations              :permission/metabot-nlq})
 
 (defn- check-metabot-access!
-  "Throw a 400 if the requested profile is not available on this instance, and a 403 if the user's metabot
-  permissions do not grant access to it. The 400 is the one an unknown profile gets, so an eval-only profile's
-  existence is not revealed. The streaming endpoint makes the same availability check before it saves the turn."
+  "Throw a 400 if `profile-id` is not available on this instance,
+  and a 403 if `perms` do not grant access to it."
   [profile-id perms]
+  ;; The same message and status as an unknown profile,
+  ;; so an eval-only profile refused here looks like one that doesn't exist.
+  ;; The streaming endpoint makes this check too, before it saves the turn.
   (when-not (profiles/profile-available? profile-id)
     (throw (ex-info "Unknown profile" {:status-code 400})))
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
