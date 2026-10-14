@@ -8,14 +8,12 @@
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.collections.core :as collections]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  (:import
-   (java.time OffsetDateTime ZoneOffset)
-   (java.time.temporal ChronoUnit)))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,7 +43,7 @@
                         (throw (ex-info (tru "Pass a slug: \"{0}\" is not a valid one." slug) {:status-code 400})))
         app-id        (u/generate-nano-id)
         collection-id (u/generate-nano-id)
-        created-at    (u.date/format (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/SECONDS))
+        created-at    (u.date/format (mi/current-timestamp))
         collection    {:name        (str "Data App: " slug)
                        :namespace   "data-apps"
                        :entity_id   collection-id

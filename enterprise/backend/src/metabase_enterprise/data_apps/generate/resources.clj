@@ -18,6 +18,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.core :as queries]
    [metabase.util.i18n :refer [tru]]
@@ -28,8 +29,6 @@
   (:import
    (java.nio.charset StandardCharsets)
    (java.security MessageDigest)
-   (java.time OffsetDateTime ZoneOffset)
-   (java.time.temporal ChronoUnit)
    (java.util Base64)))
 
 (set! *warn-on-reflection* true)
@@ -148,7 +147,7 @@
    query     :- ::lib.schema/query]
   {:entity_id              entity-id
    :name                   card-name
-   :created_at             (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/SECONDS)
+   :created_at             (mi/current-timestamp)
    :card_schema            queries/current-card-schema-version
    :type                   :question
    :display                :table
