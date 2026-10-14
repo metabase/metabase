@@ -14,9 +14,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      issues: write
     env:
       LINKS_REPORT: broken-links.txt
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      SLACK_CHANNEL: C0AL5E179P0 # #growth-alerts
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -24,6 +25,7 @@ jobs:
           sparse-checkout: |
             .lychee
             .github/ISSUE_TEMPLATE
+            .github/scripts
             docs
             frontend/src
             enterprise/frontend/src
@@ -55,22 +57,13 @@ jobs:
           docs/util/check-links.sh --external || status=1
           exit "$status"
 
-      # Keeps one open issue: the first failing run opens it, later ones replace its description and comment
-      # on it, so subscribers hear about every run.
-      - name: Open or update the broken links issue
+      - name: Build the broken links report
         if: steps.check.outcome == 'failure'
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TITLE: Broken links report
-          ASSIGNEE: tmashara
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}
         run: |
           max_rows=300
           {
-            echo "cc @metabase/growth-eng @metabase/tech-writers"
-            echo
             if [ -s "$LINKS_REPORT" ]; then
               failures=$(sort -u "$LINKS_REPORT")
               count=$(grep -c '' <<<"$failures")
@@ -84,7 +77,7 @@ jobs:
                 rest=${failure#*: }
                 url=${rest%%: *}
                 status=$(sed -E 's/^Rejected status code: ([0-9]+).*/\1/' <<<"${rest#*: }")
-                echo "| [\`$location\`]($BLOB_URL/${location%:*}#L${location##*:}) | $url | $status |"
+                echo "| [\`$location\`]($BLOB_URL/${location%:*}#L${location##*:}) | ${url//|/\\|} | ${status//|/\\|} |"
               done
               if [ "$count" -gt "$max_rows" ]; then
                 echo
@@ -95,28 +88,32 @@ jobs:
             fi
           } > broken-links-issue.md
 
-          issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
-                    --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
-          if [ -z "$issue" ]; then
-            gh issue create --title "$TITLE" --body-file broken-links-issue.md --assignee "$ASSIGNEE"
-          else
-            gh issue edit "$issue" --body-file broken-links-issue.md
-            gh issue comment "$issue" --body "Updated with the results of the $(date -u +%Y-%m-%d) run ([run]($RUN_URL)). cc @metabase/growth-eng @metabase/tech-writers"
-          fi
+      - name: Install bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: "package.json"
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Close the broken links issue
-        if: steps.check.outcome == 'success'
+      # Keeps one open Linear issue: a failing run opens it or replaces its description, a passing run closes it.
+      # Slack hears when it opens or closes. Only master reports: a manual run on a branch checks that branch.
+      - name: Open, update, or close the broken links issue
+        if: github.ref == 'refs/heads/master'
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TITLE: Broken links report
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: fc363549-4f40-41ed-8f41-8fba461606ab # GRO
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: bun .github/scripts/report-links.ts broken-links-issue.md
+
+      - name: Alert when the link check can't run
+        if: failure() && github.ref == 'refs/heads/master'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
-          issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
-                    --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
-          if [ -n "$issue" ]; then
-            gh issue close "$issue" --comment "All links pass as of $(date -u +%Y-%m-%d) ([run]($RUN_URL))."
-          fi
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text ":x: The weekly metabase/metabase link check failed to run: $RUN_URL" \
+            '{channel: $channel, text: $text}' |
+            curl -sSf https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @-
 
       - name: Fail the run
         if: steps.check.outcome == 'failure'
