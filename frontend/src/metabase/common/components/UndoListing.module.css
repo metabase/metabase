@@ -22,6 +22,14 @@
   min-height: rem(56px);
 }
 
+.toast[data-variant="negative"] {
+  border: 0.5px solid var(--mb-color-feedback-negative-strong);
+}
+
+.toast[data-variant="warning"] {
+  border: 0.5px solid var(--mb-color-feedback-warning-strong);
+}
+
 .progress {
   animation: animated-progress linear;
   transform-origin: left;

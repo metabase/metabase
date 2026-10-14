@@ -139,59 +139,64 @@ describe("scenarios > visualizations > sankey", () => {
     H.checkSavedToCollectionQuestionToast();
   });
 
-  [false, true].forEach((devMode) => {
-    it(`should render sankey charts in dashboard context - development-mode: ${devMode}`, () => {
-      cy.intercept("/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["token-features"].development_mode = devMode;
-        });
+  it("should render sankey charts in dashboard context - development-mode: true", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"].development_mode = true;
       });
-      H.createDashboard({
-        name: "Sankey Dashboard",
-      }).then(({ body: dashboard }) => {
-        H.createNativeQuestion({
-          name: "Sankey Question",
-          native: {
-            query: SANKEY_QUERY,
+    });
+    H.createDashboard({
+      name: "Sankey Dashboard",
+    }).then(({ body: dashboard }) => {
+      H.createNativeQuestion({
+        name: "Sankey Question",
+        native: {
+          query: SANKEY_QUERY,
+        },
+        display: "sankey",
+        visualization_settings: {
+          "graph.show_values": true,
+          "graph.label_value_formatting": "compact",
+        },
+      }).then(({ body: card }) => {
+        H.addOrUpdateDashboardCard({
+          card_id: card.id,
+          dashboard_id: dashboard.id,
+          card: {
+            size_x: 12,
+            size_y: 8,
           },
-          display: "sankey",
-          visualization_settings: {
-            "graph.show_values": true,
-            "graph.label_value_formatting": "compact",
-          },
-        }).then(({ body: card }) => {
-          H.addOrUpdateDashboardCard({
-            card_id: card.id,
-            dashboard_id: dashboard.id,
-            card: {
-              size_x: 12,
-              size_y: 8,
-            },
-          });
-
-          H.visitDashboard(dashboard.id);
         });
+
+        H.visitDashboard(dashboard.id);
       });
+    });
 
-      H.echartsContainer().findByText("Social Media");
+    H.getDashboardCard().findByTestId("development-watermark").should("exist");
+    H.echartsContainer().findByText("Social Media");
 
-      // Ensure drill-through works
-      H.chartPathWithFillColor("#ED8535").first().click();
-      H.popover().within(() => {
-        cy.findByText("=").should("be.visible");
-        cy.findByText("≠").should("be.visible");
+    // Ensure drill-through works
+    H.chartPathWithFillColor("#ED8535").first().click();
+    H.popover().within(() => {
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
 
-        cy.findByText("Is Paid Subscription").click();
-      });
+      cy.findByText("Is Paid Subscription").click();
+    });
 
-      cy.findAllByTestId("filter-pill").should("have.length", 1);
-      cy.findByTestId("filter-pill").within(() => {
-        cy.findByText("TARGET is Paid Subscription").should("be.visible");
-      });
+    cy.findAllByTestId("filter-pill").should("have.length", 1);
+    cy.findByTestId("filter-pill").within(() => {
+      cy.findByText("TARGET is Paid Subscription").should("be.visible");
     });
   });
 
-  it("should send the clicked node's own value to a mapped dashboard filter for both source and target column mappings (metabase#78113)", () => {
+  it("should send the clicked node's own value to a mapped dashboard filter for both source and target column mappings, and drill through from a node (metabase#78113)", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"].development_mode = false;
+      });
+    });
+
     const CROSSFILTER_QUERY = `
 SELECT 'Start A' AS source, 'Middle X' AS target, 1 AS amount
 UNION ALL
@@ -243,33 +248,52 @@ SELECT 'Middle Y', 'End', 3;
         "sankey.value": "AMOUNT",
       },
     }).then(({ body: card }) => {
-      H.createDashboard({
-        name: "Sankey crossfilter dashboard",
-        parameters: [TEXT_FILTER],
-      }).then(({ body: dashboard }) => {
-        H.updateDashboardCards({
-          dashboard_id: dashboard.id,
-          cards: [
-            {
-              card_id: card.id,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-              visualization_settings: crossfilterOn("TARGET"),
-            },
-            {
-              card_id: card.id,
-              row: 0,
-              col: 12,
-              size_x: 12,
-              size_y: 8,
-              visualization_settings: crossfilterOn("SOURCE"),
-            },
-          ],
-        });
+      H.createNativeQuestion({
+        name: "Sankey Question",
+        native: {
+          query: SANKEY_QUERY,
+        },
+        display: "sankey",
+        visualization_settings: {
+          "graph.show_values": true,
+          "graph.label_value_formatting": "compact",
+        },
+      }).then(({ body: drillCard }) => {
+        H.createDashboard({
+          name: "Sankey crossfilter dashboard",
+          parameters: [TEXT_FILTER],
+        }).then(({ body: dashboard }) => {
+          H.updateDashboardCards({
+            dashboard_id: dashboard.id,
+            cards: [
+              {
+                card_id: card.id,
+                row: 0,
+                col: 0,
+                size_x: 12,
+                size_y: 8,
+                visualization_settings: crossfilterOn("TARGET"),
+              },
+              {
+                card_id: card.id,
+                row: 0,
+                col: 12,
+                size_x: 12,
+                size_y: 8,
+                visualization_settings: crossfilterOn("SOURCE"),
+              },
+              {
+                card_id: drillCard.id,
+                row: 8,
+                col: 0,
+                size_x: 12,
+                size_y: 8,
+              },
+            ],
+          });
 
-        H.visitDashboard(dashboard.id);
+          H.visitDashboard(dashboard.id);
+        });
       });
     });
 
@@ -292,5 +316,23 @@ SELECT 'Middle Y', 'End', 3;
     cy.log("SOURCE mapping: a start node keeps working");
     clickNode(1, "Start A");
     cy.location("search").should("eq", "?text_filter=Start+A");
+
+    cy.log("drill through from a node");
+    H.getDashboardCard(2).within(() => {
+      cy.findByText("Sankey Question").should("be.visible");
+      H.echartsContainer().findByText("Social Media");
+      H.chartPathWithFillColor("#ED8535").first().click();
+    });
+    H.popover().within(() => {
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+
+      cy.findByText("Is Paid Subscription").click();
+    });
+
+    cy.findAllByTestId("filter-pill").should("have.length", 1);
+    cy.findByTestId("filter-pill").within(() => {
+      cy.findByText("TARGET is Paid Subscription").should("be.visible");
+    });
   });
 });

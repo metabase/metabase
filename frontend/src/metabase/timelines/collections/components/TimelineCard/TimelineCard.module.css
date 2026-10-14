@@ -1,0 +1,26 @@
+.card {
+  border: 1px solid var(--mb-color-border-neutral);
+}
+
+.cardLink {
+  &:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  &:hover .icon,
+  &:hover .title {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.icon {
+  color: var(--mb-color-text-disabled);
+}
+
+.title {
+  overflow-wrap: break-word;
+}
+
+.description {
+  overflow-wrap: break-word;
+}

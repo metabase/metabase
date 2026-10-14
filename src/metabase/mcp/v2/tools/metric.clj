@@ -275,12 +275,13 @@
   to your personal collection; pass \"root\" for the root collection), collection_position to pin. Updating a card that is a
   question or a model is refused rather than retyping it. Requires write permission on the metric and curate
   permission on the target collection."
-  {:name         "metric_write"
-   :scope        metabot.scope/agent-content-write
+  {:name           "metric_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the metric, so this is not the additive-only update
    ;; `destructiveHint false` would assert (matches collection_write).
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         metric-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           metric-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [dispatched (v2.write/dispatch-write metric-write-entry args)
         payload    (v2.write/readback token-scopes [metabot.scope/agent-content-read]

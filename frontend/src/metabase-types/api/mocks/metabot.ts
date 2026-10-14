@@ -4,6 +4,9 @@ import {
   AIToolKey,
   type McpAppsBootstrapResponse,
   type McpAppsBootstrapUser,
+  type McpGroupPermission,
+  type McpTool,
+  type McpToolPermissionsResponse,
   type MetabotConversation,
   type MetabotGroupPermission,
   type MetabotInfo,
@@ -83,6 +86,32 @@ export const createMockMetabotGroupPermissions = (
   }));
 };
 
+export const createMockMcpTool = (opts?: Partial<McpTool>): McpTool => ({
+  name: "search",
+  scope: "agent:content:read",
+  description: "Search for content.",
+  default_access: "allowed",
+  ...opts,
+});
+
+export const createMockMcpGroupPermission = (
+  opts?: Partial<McpGroupPermission>,
+): McpGroupPermission => ({
+  group_id: 1,
+  mcp_enabled: true,
+  tool_access: {},
+  ...opts,
+});
+
+export const createMockMcpToolPermissionsResponse = (
+  opts?: Partial<McpToolPermissionsResponse>,
+): McpToolPermissionsResponse => ({
+  advanced: false,
+  tools: [createMockMcpTool()],
+  permissions: [createMockMcpGroupPermission()],
+  ...opts,
+});
+
 /**
  * The setting keys `GET /api/embed-mcp/bootstrap` returns, out of those
  * {@link createMockSettings} defines: the `:public`, `:authenticated` and
@@ -122,9 +151,9 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "embedding-app-origins-sdk",
   "enable-embedding",
   "enable-embedding-interactive",
+  "enable-embedding-modular",
   "enable-embedding-sdk",
-  "enable-embedding-simple",
-  "enable-embedding-static",
+  "enable-embedding-sidecar",
   "enable-nested-queries",
   "enable-password-login",
   "enable-pivoted-exports",

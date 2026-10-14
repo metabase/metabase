@@ -40,6 +40,7 @@ export const EmbedModal = ({
     size="auto"
     withCloseButton={false}
     padding={0}
+    classNames={{ content: S.content, body: S.body }}
   >
     <ModalHeader
       py="xl"

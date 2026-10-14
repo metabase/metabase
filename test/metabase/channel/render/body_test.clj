@@ -812,7 +812,7 @@
                 card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
             ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
             ;; we should expect to see each of the 4 (and only those 4) colours.
-            ;; This is also true of the colours for the legend circle elements.
+            ;; This is also true of the colours for the legend marker elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -822,7 +822,7 @@
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{}}]]]
-              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+              (let [legend-elements (->> (hik.s/select (hik.s/child (hik.s/class "visx-group") (hik.s/tag :rect)) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)

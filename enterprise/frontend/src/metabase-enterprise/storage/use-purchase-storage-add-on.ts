@@ -111,8 +111,7 @@ export function usePurchaseStorageAddOn() {
     } catch {
       setPhase("idle");
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`It looks like something went wrong. Please refresh the page and try again.`,
       });
     }

@@ -18,6 +18,7 @@ interface LegendLayoutProps {
   width?: number;
   height?: number;
   chartHeight?: number;
+  indent?: number;
   hasLegend: boolean;
   alwaysVisible?: boolean;
   actionButtons?: ReactNode;
@@ -43,6 +44,7 @@ export const LegendLayout = ({
   width = 0,
   height = 0,
   chartHeight,
+  indent = 0,
   hasLegend,
   alwaysVisible,
   actionButtons,
@@ -66,6 +68,7 @@ export const LegendLayout = ({
         width,
         height,
         chartHeight,
+        horizontalWidth: width - Math.abs(indent),
         size,
         fontFamily,
         measureText,
@@ -76,6 +79,7 @@ export const LegendLayout = ({
       width,
       height,
       chartHeight,
+      indent,
       size,
       fontFamily,
       measureText,
@@ -107,6 +111,8 @@ export const LegendLayout = ({
             flex="0 0 auto"
             miw={0}
             mt={horizontalGap}
+            ml={Math.max(indent, 0)}
+            mr={Math.max(-indent, 0)}
             data-testid="legend-horizontal"
           >
             <Legend {...legendProps} />

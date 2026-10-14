@@ -6,22 +6,22 @@ describe("Cartesian tick and axis title styling", () => {
   it.each([
     {
       cartesianSize: "small",
-      ticks: { fontSize: 12, marginX: 8, marginY: 12 },
+      ticks: { fontSize: 12, marginX: 10, marginY: 12 },
       axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
     },
     {
       cartesianSize: "medium",
-      ticks: { fontSize: 12, marginX: 8, marginY: 12 },
+      ticks: { fontSize: 12, marginX: 10, marginY: 12 },
       axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       cartesianSize: "large",
-      ticks: { fontSize: 12, marginX: 8, marginY: 16 },
+      ticks: { fontSize: 12, marginX: 10, marginY: 16 },
       axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
     },
     {
       cartesianSize: "fullscreen",
-      ticks: { fontSize: 14, marginX: 12, marginY: 24 },
+      ticks: { fontSize: 14, marginX: 14, marginY: 24 },
       axisTitle: { fontSize: 14, fontWeight: 700, marginX: 40, marginY: 40 },
     },
   ] as const)(
@@ -69,7 +69,7 @@ describe("Cartesian tick and axis title styling", () => {
   it("keeps the unsized fallback as fullscreen", () => {
     expect(DEFAULT_VISUALIZATION_THEME.cartesian.ticks).toEqual({
       fontSize: 14,
-      marginX: 12,
+      marginX: 14,
       marginY: 24,
     });
     expect(DEFAULT_VISUALIZATION_THEME.cartesian.axisTitle).toEqual({

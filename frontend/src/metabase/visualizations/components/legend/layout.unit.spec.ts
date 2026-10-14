@@ -18,17 +18,19 @@ interface LayoutOpts {
   width?: number;
   height?: number;
   size?: LegendSize;
+  horizontalWidth?: number;
 }
 
 const layout = (
   names: string[],
-  { width = 600, height = 300, size = "sm" }: LayoutOpts = {},
+  { width = 600, height = 300, size = "sm", horizontalWidth }: LayoutOpts = {},
 ) =>
   getLegendLayout({
     items: createItems(names),
     width,
     height,
     size,
+    horizontalWidth,
     fontFamily: "Lato",
     measureText,
   });
@@ -65,6 +67,18 @@ describe("getLegendLayout", () => {
       width: 66,
       visibleCount: 10,
     });
+  });
+
+  it("should switch to the vertical layout when the items do not fit within the indented legend width", () => {
+    const names = ["first", "other", "third", "fourth", "fifth"];
+
+    expect(layout(names, { width: 420 })).toEqual({ type: "horizontal" });
+    expect(
+      layout(names, {
+        width: 420,
+        horizontalWidth: 232,
+      }),
+    ).toMatchObject({ type: "vertical", visibleCount: 5 });
   });
 
   it("should cap the vertical legend width at 25% of the available width", () => {

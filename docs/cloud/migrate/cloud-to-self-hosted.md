@@ -11,7 +11,7 @@ section: Migrate
 
 # Migrate from Metabase Cloud to a self-hosted Metabase
 
-> This guide outlines migrating _from_ Metabase Cloud to a self-hosted Metabase. If you want to migrate _to_ Metabase Cloud, check out [this guide](./guide.md) instead.
+> This guide outlines migrating _from_ Metabase Cloud to a self-hosted Metabase. If you want to migrate _to_ Metabase Cloud, check out [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide) instead.
 
 Migration from Metabase Cloud to self-hosted will keep all of your questions, dashboards, people, settings --- everything in your existing Metabase.
 

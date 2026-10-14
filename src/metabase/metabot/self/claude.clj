@@ -193,7 +193,8 @@
              (= t "message_stop")       identity
              ;; catch errors if any
              (= t "error")              (rf {:type      :error
-                                             :errorText (:message error)}))))))))
+                                             :errorText (:message error)
+                                             :error     error}))))))))
 
 ;;; AISDK parts → Claude messages
 
@@ -355,7 +356,6 @@
    "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :context-window 1000000}
    "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :context-window 1000000}
    "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :context-window  200000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :context-window  200000}
    "claude-sonnet-5-5"          {:display-name "Claude Sonnet 5.5" :context-window 1000000}
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :context-window 1000000}

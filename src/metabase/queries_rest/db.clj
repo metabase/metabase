@@ -170,12 +170,6 @@
                        (when new-collection-id-or-nil
                          [:= :collection_id nil])]]}))
 
-(mu/defn set-cards-collection-raw!
-  "Move the Cards with `card-ids` to the Collection with `collection-id` without running model hooks."
-  [card-ids :- [:set ::lib.schema.id/card]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! (t2/table-name :model/Card) {:id [:in card-ids]} {:collection_id collection-id}))
-
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."
   [id :- ms/PositiveInt]

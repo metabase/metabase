@@ -48,7 +48,7 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
   };
 
   return (
-    <Modal opened title={t`Edit tenant`} padding="xxl" onClose={onClose}>
+    <Modal density="relaxed" opened title={t`Edit tenant`} onClose={onClose}>
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <TenantForm
           initialValues={initialValues}
