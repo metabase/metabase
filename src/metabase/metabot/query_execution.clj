@@ -54,9 +54,10 @@
                                             :context     context}))
         timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
         timer      (u/start-timer)
-        ;; A run that was stopped comes back from the QP as a failure, as nothing, or as an exception, depending on
-        ;; how far it got. Each is reported as what stopped it, so a stored tool result never reads as a broken
-        ;; query. The QP stops a query no sooner than the limit, so a run that lasted that long was stopped by it.
+        ;; A run that was stopped comes back from the QP as a failure, as nothing, as an exception, or as a completed
+        ;; result holding only the rows read before it stopped, depending on how far it got. Each is reported as what
+        ;; stopped it, so a stored tool result never reads as a broken query or a complete page. The QP stops a query
+        ;; no sooner than the limit, so a run that lasted that long was stopped by it.
         stopped    #(cond
                       (request-canceled? request-canceled-chan)   (query-canceled)
                       (some-> timeout-ms (<= (u/since-ms timer))) (query-timed-out timeout-ms))
@@ -70,16 +71,17 @@
                        (qp.pipeline/do-with-own-canceled-chan request-canceled-chan #(qp/process-query query)))
                      (catch Throwable e
                        (throw (or (stopped) e))))]
+    (when-let [e (stopped)]
+      (throw e))
     (when-not (= (:status result) :completed)
-      (throw (or (stopped)
-                 (ex-info (if-let [error (:error result)]
-                            (tru "Query failed: {0}" error)
-                            (tru "Query failed: unknown error"))
-                          {:agent-error?       true
-                           :error              :query-failed
-                           :query-error        (:error result)
-                           ;; The QP's own refusal, as opposed to an error from the database.
-                           :permissions-error? (= :missing-required-permissions (:error_type result))}))))
+      (throw (ex-info (if-let [error (:error result)]
+                        (tru "Query failed: {0}" error)
+                        (tru "Query failed: unknown error"))
+                      {:agent-error?       true
+                       :error              :query-failed
+                       :query-error        (:error result)
+                       ;; The QP's own refusal, as opposed to an error from the database.
+                       :permissions-error? (= :missing-required-permissions (:error_type result))})))
     result))
 
 (defn execute-page!

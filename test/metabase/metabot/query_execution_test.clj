@@ -12,6 +12,7 @@
    ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]))
 
 (defn- venues-query
@@ -64,17 +65,20 @@
     (let [query        (venues-query 3)
           request-chan (a/promise-chan)
           seen!        (fn [request-canceled-chan during-query]
-                         (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query]
-                                                                        (let [query-chan qp.pipeline/*canceled-chan*
-                                                                              seen       (during-query query-chan)]
-                                                                          ;; As the QP does when a query ends.
-                                                                          (some-> query-chan a/close!)
-                                                                          {:status :completed
-                                                                           :data   {:cols [] :rows [[seen]]}}))]
-                           (-> (query-execution/execute-page! query 3 :agent
+                         (let [seen (atom nil)]
+                           (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query]
+                                                                          (let [query-chan qp.pipeline/*canceled-chan*]
+                                                                            (reset! seen (during-query query-chan))
+                                                                            ;; As the QP does when a query ends.
+                                                                            (some-> query-chan a/close!)
+                                                                            {:status :completed
+                                                                             :data   {:cols [] :rows []}}))]
+                             ;; A canceled run throws; what the query saw is the point here.
+                             (try
+                               (query-execution/execute-page! query 3 :agent
                                                               {:request-canceled-chan request-canceled-chan})
-                               :rows
-                               ffirst)))
+                               (catch clojure.lang.ExceptionInfo _)))
+                           @seen))
           canceled     (fn [query-chan]
                          (first (a/alts!! [query-chan (a/timeout 5000)])))]
       (testing "without a request to follow, the QP is left to make its own channel"
@@ -112,6 +116,38 @@
                                             nil)]
             (is (=? {:error :query-canceled} (failure (doto (a/promise-chan) (a/>!! :canceled)))))
             (is (false? @ran?))))))))
+
+(deftest execute-page-stopped-mid-stream-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (venues-query 3)
+          cols  (for [column ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]]
+                  {:name column})
+          run   (fn [stop! options]
+                  ;; A driver streams rows until its channel says to stop. The QP finishes the rows read so far as a
+                  ;; completed result, so the run must not read as a complete page.
+                  (binding [qp.pipeline/*execute* (fn [_driver _query respond]
+                                                    (let [rows (atom (for [id [1 2 3]] [id "Venue" 1 0.0 0.0 1]))]
+                                                      (respond {:cols cols}
+                                                               (qp.reducible/reducible-rows
+                                                                (fn []
+                                                                  (when (= 3 (count @rows))
+                                                                    (stop!)
+                                                                    (a/alts!! [qp.pipeline/*canceled-chan*
+                                                                               (a/timeout 5000)]))
+                                                                  (let [row (first @rows)]
+                                                                    (swap! rows rest)
+                                                                    row))))))]
+                    (try
+                      (query-execution/execute-page! query 3 :agent options)
+                      (catch clojure.lang.ExceptionInfo e
+                        (ex-data e)))))]
+      (testing "a request canceled after the first row reads as canceled"
+        (let [request-chan (a/promise-chan)]
+          (is (=? {:error :query-canceled}
+                  (run #(a/>!! request-chan :canceled) {:request-canceled-chan request-chan})))))
+      (testing "a time limit reached after the first row reads as timed out"
+        (is (=? {:error :query-timed-out}
+                (run (constantly nil) {:timeout-ms 200})))))))
 
 (deftest execute-page-time-limit-test
   (mt/with-current-user (mt/user->id :rasta)
