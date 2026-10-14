@@ -1,7 +1,6 @@
 (ns metabase.metabot.agent.core
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
-   [clojure.core.async.impl.protocols :as a.impl.protocols]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
@@ -26,6 +25,7 @@
    [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
+   [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -737,9 +737,9 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
-            ;; A channel that receives a value when the request this turn serves is canceled. A tool that runs a
+            ;; A promise channel that receives a value when the request this turn serves is canceled. A tool that runs a
             ;; query cancels it with this.
-            [:request-canceled-chan {:optional true} [:maybe [:fn #(satisfies? a.impl.protocols/ReadPort %)]]]]]
+            [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
         profile-id         (:profile-id opts)
         debug?             (:debug? opts)
