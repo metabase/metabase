@@ -3,6 +3,9 @@
 # extension available, semantic search automatically runs against the app db — its tables live in a
 # dedicated `semantic_search` schema and share the app-db connection pool (so heavy reindexing competes
 # with regular app-db traffic; use a dedicated database when that matters).
+# Compose names a project after its directory. Pin the name so volumes created from the old `semantic_search`
+# directory stay in use.
+name: semantic_search
 version: '3.8'
 
 services:
