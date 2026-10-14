@@ -99,7 +99,10 @@ export const RemoteSyncSettingsForm = ({
                 {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
 
                 <GitSettingsSection />
-                <SyncModeSection dirty={dirtyEntities} />
+                <SyncModeSection
+                  dirty={dirtyEntities}
+                  libraryCollectionId={libraryCollection?.id}
+                />
 
                 {isRemoteSyncEnabled && isReadWrite && !isModalVariant && (
                   <BranchSwitcherSection dirty={dirtyEntities} />

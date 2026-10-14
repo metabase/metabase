@@ -717,6 +717,37 @@ describe("RemoteSyncSettingsForm", () => {
       );
     });
 
+    it("should reset collection sync state to initial values when switching from read-write to read-only", async () => {
+      const unsyncedCollection = createMockCollectionItemFromCollection({
+        id: 20,
+        name: "Unsynced Collection",
+        is_remote_synced: false,
+        can_write: true,
+      });
+
+      setup({
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+        rootCollectionItems: [unsyncedCollection],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      const toggle = screen.getByLabelText("Sync Unsynced Collection");
+      await userEvent.click(toggle);
+      expect(toggle).toBeChecked();
+
+      await userEvent.click(screen.getByLabelText("Read-only"));
+      await waitFor(() => {
+        expect(
+          screen.getByLabelText("Sync Unsynced Collection"),
+        ).not.toBeChecked();
+      });
+    });
+
     it("should only send changed collections in request body", async () => {
       const syncedCollection = createMockCollectionItemFromCollection({
         id: 10,

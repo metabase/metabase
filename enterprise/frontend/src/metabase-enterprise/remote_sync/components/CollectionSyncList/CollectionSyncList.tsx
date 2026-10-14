@@ -1,20 +1,14 @@
 import { useFormikContext } from "formik";
-import { useCallback, useEffect, useMemo } from "react";
-import { usePrevious } from "react-use";
+import { useCallback, useMemo } from "react";
 
 import { Box, Flex, Loader, Text } from "metabase/ui";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
+  RemoteSyncConfigurationSettings,
 } from "metabase-types/api";
 
-import {
-  COLLECTIONS_KEY,
-  SYNC_LIBRARY_PENDING_KEY,
-  TRANSFORMS_KEY,
-  TYPE_KEY,
-} from "../../constants";
-import type { RemoteSyncSettingsFormState } from "../../types";
+import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 import { CollectionSyncRow } from "../CollectionSyncRow";
 import { LibrarySyncRow } from "../LibrarySyncRow";
 import { TransformsSyncRow } from "../TransformsSyncRow";
@@ -41,33 +35,11 @@ export const CollectionSyncList = ({
   showTransformsRow,
   showLibraryPlaceholder,
 }: CollectionSyncListProps) => {
-  const { values, setFieldValue, initialValues } =
-    useFormikContext<RemoteSyncSettingsFormState>();
+  const { values, setFieldValue } =
+    useFormikContext<RemoteSyncConfigurationSettings>();
 
   const currentType = values[TYPE_KEY];
   const isReadOnly = currentType === "read-only";
-  const previousType = usePrevious(currentType);
-
-  useEffect(() => {
-    if (previousType === "read-write" && currentType === "read-only") {
-      setFieldValue(COLLECTIONS_KEY, initialValues[COLLECTIONS_KEY] ?? {});
-      setFieldValue(TRANSFORMS_KEY, initialValues[TRANSFORMS_KEY]);
-      setFieldValue(
-        SYNC_LIBRARY_PENDING_KEY,
-        initialValues[SYNC_LIBRARY_PENDING_KEY],
-      );
-    }
-    if (previousType === "read-only" && currentType === "read-write") {
-      setFieldValue(TRANSFORMS_KEY, true);
-      setFieldValue(SYNC_LIBRARY_PENDING_KEY, true);
-      const libraryCollection = collections.find(
-        (collection) => collection.type === "library",
-      );
-      if (libraryCollection) {
-        setFieldValue(`${COLLECTIONS_KEY}.${libraryCollection.id}`, true);
-      }
-    }
-  }, [collections, currentType, initialValues, setFieldValue, previousType]);
 
   const handleToggle = useCallback(
     (collection: CollectionItem, checked: boolean) => {
