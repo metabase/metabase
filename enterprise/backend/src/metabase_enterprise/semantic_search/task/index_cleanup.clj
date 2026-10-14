@@ -16,9 +16,7 @@
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (set! *warn-on-reflection* true)
 
@@ -258,9 +256,11 @@
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Clean up inactive semantic search index tables"}
-  SemanticIndexCleanup [_ctx]
+(task/defjob SemanticIndexCleanup
+  "Clean up inactive semantic search index tables"
+  {:saved-class "metabase_enterprise.semantic_search.task.index_cleanup.SemanticIndexCleanup"
+   :concurrent? false}
+  [_ctx]
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
