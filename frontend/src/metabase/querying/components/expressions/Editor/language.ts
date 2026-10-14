@@ -76,6 +76,12 @@ function getErrorPosition(error: ExpressionError | Error) {
   };
 }
 
-export function customExpression(options: LintOptions) {
-  return new LanguageSupport(expressionLanguage, [lint(options)]);
+export function customExpression({
+  lint: withLint = true,
+  ...options
+}: LintOptions & { lint?: boolean }) {
+  return new LanguageSupport(
+    expressionLanguage,
+    withLint ? [lint(options)] : [],
+  );
 }

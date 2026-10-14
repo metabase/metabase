@@ -18,6 +18,8 @@ type Options = {
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
   extensions?: Extension[];
+  /** Validate the whole document as one expression. Defaults to true. */
+  lint?: boolean;
 };
 
 function getTooltipParent() {
@@ -42,6 +44,7 @@ export function useExtensions(options: Options): Extension[] {
     availableMetrics,
     database,
     extensions: extra = [],
+    lint = true,
   } = options;
 
   return useMemo(() => {
@@ -53,6 +56,7 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
+        lint,
       }),
       expander(),
       suggestions({
@@ -78,6 +82,7 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     database,
+    lint,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

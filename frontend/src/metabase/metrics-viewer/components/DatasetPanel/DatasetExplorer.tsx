@@ -19,6 +19,7 @@ import {
   Group,
   Icon,
   Popover,
+  SegmentedControl,
   Stack,
   Text,
   Tooltip,
@@ -33,7 +34,37 @@ import { useSummaryResult } from "../../pages/QuestionSummaryPage/use-summary-re
 import { initializeTableSummary } from "../../utils/table-formula";
 
 import S from "./DatasetExplorer.module.css";
+import { FormulaSuggestions } from "./FormulaSuggestions";
+import { ResultSkeleton } from "./ResultSkeleton";
 import { TableFormulaBar } from "./TableFormulaBar";
+
+type FormulaBarVariant = "single" | "row";
+
+const FORMULA_BAR_VARIANT_KEY = "metabase-excel-mode-formula-bar";
+
+function readFormulaBarVariant(): FormulaBarVariant {
+  try {
+    return localStorage.getItem(FORMULA_BAR_VARIANT_KEY) === "row"
+      ? "row"
+      : "single";
+  } catch {
+    return "single";
+  }
+}
+
+/** Prototype toggle between one shared formula bar and a bar per calculation. */
+function useFormulaBarVariant() {
+  const [variant, setVariant] = useState(readFormulaBarVariant);
+  const update = (nextVariant: FormulaBarVariant) => {
+    setVariant(nextVariant);
+    try {
+      localStorage.setItem(FORMULA_BAR_VARIANT_KEY, nextVariant);
+    } catch {
+      // Storage can be unavailable; the toggle still works for this session.
+    }
+  };
+  return [variant, update] as const;
+}
 
 type DisplayOption = { value: CardDisplayType; label: string; icon: IconName };
 
@@ -63,8 +94,10 @@ export function DatasetExplorer({
     initializeTableSummary(initialQuestion),
   );
   const [isAddingCalculation, setIsAddingCalculation] = useState(false);
+  const [barVariant, setBarVariant] = useFormulaBarVariant();
   const query = question.query();
   const aggregations = Lib.aggregations(query, -1);
+  const hasGrouping = Lib.breakouts(query, -1).length > 0;
   const canRun = Lib.canRun(query, question.type());
   const { result, error, isRunning, refresh, cancel } = useSummaryResult(
     question,
@@ -83,50 +116,35 @@ export function DatasetExplorer({
       <ExplorerHeader
         question={question}
         returnTo={returnTo}
+        barVariant={barVariant}
+        onBarVariantChange={setBarVariant}
         onQueryChange={updateQuery}
       />
-      <Box className={S.formulaPanel}>
-        {aggregations.map((aggregation, index) => (
-          <TableFormulaBar
-            key={index}
+      <Stack gap="sm">
+        <Box className={S.formulaPanel}>
+          {barVariant === "single" ? (
+            <TableFormulaBar
+              variant="single"
+              query={query}
+              onChange={updateQuery}
+            />
+          ) : (
+            <RowFormulaBars
+              query={query}
+              aggregations={aggregations}
+              isAddingCalculation={isAddingCalculation}
+              onAddingCalculationChange={setIsAddingCalculation}
+              onQueryChange={updateQuery}
+            />
+          )}
+          <FilterPanel
+            className={S.filters}
             query={query}
-            aggregationIndex={index}
             onChange={updateQuery}
-            onRemove={
-              aggregations.length > 1
-                ? () => updateQuery(Lib.removeClause(query, -1, aggregation))
-                : undefined
-            }
           />
-        ))}
-        {isAddingCalculation ? (
-          <TableFormulaBar
-            query={query}
-            aggregationIndex={aggregations.length}
-            autoFocus
-            onChange={(nextQuery) => {
-              setIsAddingCalculation(false);
-              updateQuery(nextQuery);
-            }}
-            onRemove={() => setIsAddingCalculation(false)}
-          />
-        ) : (
-          <UnstyledButton
-            className={S.addCalculation}
-            onClick={() => setIsAddingCalculation(true)}
-          >
-            <Group gap="sm" wrap="nowrap">
-              <Icon name="add" aria-hidden />
-              <Text c="inherit">{t`Add calculation`}</Text>
-            </Group>
-          </UnstyledButton>
-        )}
-        <FilterPanel
-          className={S.filters}
-          query={query}
-          onChange={updateQuery}
-        />
-      </Box>
+        </Box>
+        <FormulaSuggestions query={query} onChange={updateQuery} />
+      </Stack>
       <Box className={S.result}>
         {!canRun ? (
           <Flex h="100%" align="center" justify="center">
@@ -134,6 +152,12 @@ export function DatasetExplorer({
           </Flex>
         ) : error ? (
           <LoadingAndErrorWrapper error={error} />
+        ) : !hasGrouping ? (
+          <ResultSkeleton
+            query={query}
+            result={result}
+            onQueryChange={updateQuery}
+          />
         ) : (
           <QueryVisualization
             question={question}
@@ -182,13 +206,72 @@ export function DatasetExplorer({
   );
 }
 
+/** One formula bar per calculation, plus a row that adds a new one. */
+function RowFormulaBars({
+  query,
+  aggregations,
+  isAddingCalculation,
+  onAddingCalculationChange,
+  onQueryChange,
+}: {
+  query: Lib.Query;
+  aggregations: Lib.AggregationClause[];
+  isAddingCalculation: boolean;
+  onAddingCalculationChange: (isAdding: boolean) => void;
+  onQueryChange: (query: Lib.Query) => void;
+}) {
+  return (
+    <>
+      {aggregations.map((aggregation, index) => (
+        <TableFormulaBar
+          key={index}
+          query={query}
+          aggregationIndex={index}
+          onChange={onQueryChange}
+          onRemove={
+            aggregations.length > 1
+              ? () => onQueryChange(Lib.removeClause(query, -1, aggregation))
+              : undefined
+          }
+        />
+      ))}
+      {isAddingCalculation ? (
+        <TableFormulaBar
+          query={query}
+          aggregationIndex={aggregations.length}
+          autoFocus
+          onChange={(nextQuery) => {
+            onAddingCalculationChange(false);
+            onQueryChange(nextQuery);
+          }}
+          onRemove={() => onAddingCalculationChange(false)}
+        />
+      ) : (
+        <UnstyledButton
+          className={S.addCalculation}
+          onClick={() => onAddingCalculationChange(true)}
+        >
+          <Group gap="sm" wrap="nowrap">
+            <Icon name="add" aria-hidden />
+            <Text c="inherit">{t`Add calculation`}</Text>
+          </Group>
+        </UnstyledButton>
+      )}
+    </>
+  );
+}
+
 function ExplorerHeader({
   question,
   returnTo,
+  barVariant,
+  onBarVariantChange,
   onQueryChange,
 }: {
   question: Question;
   returnTo: string | null;
+  barVariant: FormulaBarVariant;
+  onBarVariantChange: (variant: FormulaBarVariant) => void;
   onQueryChange: (query: Lib.Query) => void;
 }) {
   const [filterOpened, setFilterOpened] = useState(false);
@@ -224,6 +307,19 @@ function ExplorerHeader({
         )}
       </Group>
       <Group gap="sm">
+        <Tooltip label={t`Prototype: compare formula bar layouts`}>
+          <SegmentedControl
+            aria-label={t`Formula bar layout`}
+            value={barVariant}
+            data={[
+              { value: "single", label: t`Single bar` },
+              { value: "row", label: t`Bar per calculation` },
+            ]}
+            onChange={(value) =>
+              onBarVariantChange(value === "row" ? "row" : "single")
+            }
+          />
+        </Tooltip>
         <Popover
           opened={filterOpened}
           onDismiss={() => setFilterOpened(false)}

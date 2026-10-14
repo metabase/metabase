@@ -19,7 +19,9 @@ import {
 
 import {
   applyTableFormula,
+  applyTableFormulaList,
   initializeTableSummary,
+  splitFormulaList,
   tableFormulaReferences,
 } from "./table-formula";
 
@@ -173,5 +175,51 @@ describe("table formulas", () => {
     const result = applyTableFormula(query, "AVG(Price)");
     expect(result.error).toBeNull();
     expect(result.query && Lib.aggregations(result.query, -1)).toHaveLength(1);
+  });
+
+  it("splits formula lists on top-level commas only", () => {
+    expect(
+      splitFormulaList(
+        'Sum([Price]), Percentile([Price], 0.9) , [A, B], "x, y",',
+      ),
+    ).toEqual(["Sum([Price])", "Percentile([Price], 0.9)", "[A, B]", '"x, y"']);
+  });
+
+  it("replaces every calculation with the formulas in a list, keeping groupings", () => {
+    const query = Lib.toLegacyQuery(
+      applyTableFormulaList(
+        new Question(
+          createMockCard({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": PRODUCTS_ID,
+                aggregation: [["count"]],
+                breakout: [["field", PRODUCTS.CATEGORY, null]],
+              },
+            },
+          }),
+          SAMPLE_METADATA,
+        ).query(),
+        "Sum(Price), Average(Price)",
+      ).query ?? setup().query(),
+    );
+    expect(query).toMatchObject({
+      query: {
+        aggregation: [
+          ["sum", ["field", PRODUCTS.PRICE, expect.anything()]],
+          ["avg", ["field", PRODUCTS.PRICE, expect.anything()]],
+        ],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+    });
+  });
+
+  it("reports which formula in a list fails", () => {
+    expect(
+      applyTableFormulaList(setup().query(), "Count(), SUM(nope)"),
+    ).toEqual({ query: null, error: "Calculation 2: Unknown column: nope" });
+    expect(applyTableFormulaList(setup().query(), " , ").error).toBeTruthy();
   });
 });

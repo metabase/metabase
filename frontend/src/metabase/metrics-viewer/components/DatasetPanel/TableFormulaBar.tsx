@@ -33,6 +33,7 @@ import {
 } from "../../utils/formula-blocks";
 import {
   applyTableFormula,
+  applyTableFormulaList,
   tableFormulaColumns,
 } from "../../utils/table-formula";
 
@@ -42,24 +43,30 @@ import E from "./FormulaEditor.module.css";
 import { type BlockClick, formulaPreview } from "./formula-preview";
 
 /**
- * Edits one aggregation as a typed formula. Finished calls render as blocks
- * whose function and column can be swapped from a menu. When the aggregation
- * doesn't exist yet, committing the formula adds it, and Escape calls
- * `onRemove` to discard the draft.
+ * Edits calculations as typed formulas. Finished calls render as blocks whose
+ * function and column can be swapped from a menu.
+ *
+ * The `row` variant edits the aggregation at `aggregationIndex`; when it
+ * doesn't exist yet, committing adds it and Escape calls `onRemove` to discard
+ * the draft. The `single` variant edits every aggregation at once as a
+ * comma-separated list, like the metric explorer's bar.
  */
 export function TableFormulaBar({
   query,
   onChange,
   onRemove,
+  variant = "row",
   aggregationIndex = 0,
   autoFocus = false,
 }: {
   query: Lib.Query;
+  variant?: "row" | "single";
   aggregationIndex?: number;
   autoFocus?: boolean;
   onChange: (query: Lib.Query) => void;
   onRemove?: () => void;
 }) {
+  const isSingle = variant === "single";
   const editorRef = useRef<CodeMirrorRef>(null);
   const [source, setSource] = useState("");
   const [appliedSource, setAppliedSource] = useState("");
@@ -78,9 +85,18 @@ export function TableFormulaBar({
 
   useEffect(() => {
     let active = true;
-    const aggregation = Lib.aggregations(query, -1)[aggregationIndex];
-    if (aggregation) {
-      void format(aggregation, { query, stageIndex: -1 })
+    const aggregations = Lib.aggregations(query, -1);
+    const formatted = isSingle
+      ? Promise.all(
+          aggregations.map((aggregation) =>
+            format(aggregation, { query, stageIndex: -1 }),
+          ),
+        ).then((values) => values.join(", "))
+      : aggregations[aggregationIndex]
+        ? format(aggregations[aggregationIndex], { query, stageIndex: -1 })
+        : null;
+    if (formatted) {
+      void formatted
         .then((value) => {
           if (active) {
             setSource(value);
@@ -99,12 +115,14 @@ export function TableFormulaBar({
     return () => {
       active = false;
     };
-  }, [query, aggregationIndex]);
+  }, [query, aggregationIndex, isSingle]);
 
   const getDoc = () => editorRef.current?.view?.state.doc.toString() ?? source;
 
   const commit = (nextSource: string) => {
-    const result = applyTableFormula(query, nextSource, aggregationIndex);
+    const result = isSingle
+      ? applyTableFormulaList(query, nextSource)
+      : applyTableFormula(query, nextSource, aggregationIndex);
     setSource(nextSource);
     setError(result.error);
     if (result.query) {
@@ -123,7 +141,7 @@ export function TableFormulaBar({
     setSource(appliedSource);
     setError(null);
     editorRef.current?.view?.contentDOM.blur();
-    const isDraft = !Lib.aggregations(query, -1)[aggregationIndex];
+    const isDraft = !isSingle && !Lib.aggregations(query, -1)[aggregationIndex];
     if (isDraft) {
       onRemove?.();
     }
@@ -191,6 +209,8 @@ export function TableFormulaBar({
     availableMetrics,
     database,
     extensions: [helpTooltip, editorBehavior],
+    // A comma-separated list isn't one valid expression; commit reports errors.
+    lint: !isSingle,
   });
 
   const isDirty = source.trim() !== appliedSource.trim();
@@ -223,7 +243,11 @@ export function TableFormulaBar({
             basicSetup={false}
             value={source}
             extensions={extensions}
-            placeholder={t`Type a formula like Sum([Price]), or use + to add a block`}
+            placeholder={
+              isSingle
+                ? t`Add calculations separated by commas, like Sum([Price]), Count()`
+                : t`Type a formula like Sum([Price]), or use + to add a block`
+            }
             indentWithTab={false}
             autoCorrect="off"
             autoFocus={autoFocus}
@@ -231,11 +255,13 @@ export function TableFormulaBar({
             onChange={handleSourceChange}
           />
         </Box>
-        <AddBlockMenu
-          query={query}
-          references={references}
-          onAppend={handleAppend}
-        />
+        {!isSingle && (
+          <AddBlockMenu
+            query={query}
+            references={references}
+            onAppend={handleAppend}
+          />
+        )}
         {isDirty && (
           <Button
             size="compact-sm"

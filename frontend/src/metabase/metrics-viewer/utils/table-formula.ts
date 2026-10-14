@@ -57,11 +57,15 @@ export function initializeTableSummary(question: Question): Question {
     .setDisplay("table");
 }
 
-export function applyTableFormula(
+type CompiledFormula =
+  | { clause: Lib.ExpressionClause; error: null }
+  | { clause: null; error: string };
+
+/** Compiles one aggregation formula over the query's own columns and metrics. */
+export function compileTableFormula(
   query: Lib.Query,
   source: string,
-  aggregationIndex = 0,
-) {
+): CompiledFormula {
   const availableColumns = tableFormulaColumns(query);
   const options = {
     query,
@@ -103,14 +107,85 @@ export function applyTableFormula(
       },
     },
   });
-  if (result.error) {
-    return { query: null, error: result.error.message };
+  return result.error
+    ? { clause: null, error: result.error.message }
+    : { clause: result.expressionClause, error: null };
+}
+
+export function applyTableFormula(
+  query: Lib.Query,
+  source: string,
+  aggregationIndex = 0,
+) {
+  const result = compileTableFormula(query, source);
+  if (!result.clause) {
+    return { query: null, error: result.error };
   }
   const previous = Lib.aggregations(query, -1)[aggregationIndex];
   return {
     query: previous
-      ? Lib.replaceClause(query, -1, previous, result.expressionClause)
-      : Lib.aggregate(query, -1, result.expressionClause),
+      ? Lib.replaceClause(query, -1, previous, result.clause)
+      : Lib.aggregate(query, -1, result.clause),
     error: null,
   };
+}
+
+/**
+ * Splits a list of formulas on top-level commas, the way the metric explorer's
+ * bar separates items. Commas inside calls, brackets or strings are kept.
+ */
+export function splitFormulaList(source: string): string[] {
+  const segments: string[] = [];
+  let depth = 0;
+  let quote: string | null = null;
+  let start = 0;
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index];
+    if (quote) {
+      if (char === "\\") {
+        index++;
+      } else if (char === quote) {
+        quote = null;
+      }
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === "(" || char === "[") {
+      depth++;
+    } else if (char === ")" || char === "]") {
+      depth = Math.max(0, depth - 1);
+    } else if (char === "," && depth === 0) {
+      segments.push(source.slice(start, index));
+      start = index + 1;
+    }
+  }
+  segments.push(source.slice(start));
+  return segments.map((segment) => segment.trim()).filter(Boolean);
+}
+
+/**
+ * Replaces every calculation with the comma-separated formulas in `source`.
+ * Reports the first formula that doesn't compile, by position.
+ */
+export function applyTableFormulaList(query: Lib.Query, source: string) {
+  const formulas = splitFormulaList(source);
+  if (formulas.length === 0) {
+    return { query: null, error: t`Add at least one calculation.` };
+  }
+  const base = Lib.aggregations(query, -1).reduce(
+    (nextQuery, aggregation) => Lib.removeClause(nextQuery, -1, aggregation),
+    query,
+  );
+  let nextQuery = base;
+  for (const [index, formula] of formulas.entries()) {
+    const result = compileTableFormula(base, formula);
+    if (!result.clause) {
+      const error =
+        formulas.length > 1
+          ? t`Calculation ${index + 1}: ${result.error}`
+          : result.error;
+      return { query: null, error };
+    }
+    nextQuery = Lib.aggregate(nextQuery, -1, result.clause);
+  }
+  return { query: nextQuery, error: null };
 }

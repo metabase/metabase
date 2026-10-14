@@ -66,6 +66,15 @@ describe("formulaPreview", () => {
     cleanup();
   });
 
+  it("shows each calculation in a comma-separated list as a block", () => {
+    const { blocks, cleanup } = setup({ doc: "Sum([Price]), Count()" });
+    expect(blocks().map((block) => block.getAttribute("aria-label"))).toEqual([
+      "Sum Price",
+      "Count",
+    ]);
+    cleanup();
+  });
+
   it("leaves calls with computed arguments as text", () => {
     const { blocks, view, cleanup } = setup({ doc: "Sum([Price] * 2)" });
     expect(blocks()).toHaveLength(0);

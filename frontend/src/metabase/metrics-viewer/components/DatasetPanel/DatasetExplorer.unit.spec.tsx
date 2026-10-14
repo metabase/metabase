@@ -29,9 +29,11 @@ registerVisualizations();
 
 interface SetupOpts {
   query?: StructuredQuery;
+  barVariant?: "single" | "row";
 }
 
-function setup({ query = {} }: SetupOpts = {}) {
+function setup({ query = {}, barVariant = "single" }: SetupOpts = {}) {
+  localStorage.setItem("metabase-excel-mode-formula-bar", barVariant);
   setupDatabaseEndpoints(createSampleDatabase());
   setupCardDataset({
     dataset: createMockDataset({
@@ -77,6 +79,10 @@ async function runFormula(formula: string) {
 }
 
 describe("DatasetExplorer", () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it("starts with Sum of Price and accepts a typed formula, keeping filters", async () => {
     const { onChange } = setup({
       query: {
@@ -117,7 +123,7 @@ describe("DatasetExplorer", () => {
   });
 
   it("appends a block with an operator from the add menu", async () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ barVariant: "row" });
     await screen.findByDisplayValue("Sum([Price])");
 
     await userEvent.click(
@@ -144,7 +150,7 @@ describe("DatasetExplorer", () => {
   });
 
   it("adds a calculation and removes another one", async () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ barVariant: "row" });
     await screen.findByDisplayValue("Sum([Price])");
     expect(
       screen.queryByRole("button", { name: "Remove calculation" }),
@@ -184,7 +190,7 @@ describe("DatasetExplorer", () => {
   });
 
   it("discards an empty draft calculation", async () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ barVariant: "row" });
     await screen.findByDisplayValue("Sum([Price])");
     await userEvent.click(
       screen.getByRole("button", { name: "Add calculation" }),
@@ -196,6 +202,82 @@ describe("DatasetExplorer", () => {
     );
     expect(screen.getAllByTestId("table-formula-editor")).toHaveLength(1);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("edits every calculation in one comma-separated bar", async () => {
+    const { onChange } = setup();
+    await screen.findByDisplayValue("Sum([Price])");
+    expect(
+      screen.queryByRole("button", { name: "Add calculation" }),
+    ).not.toBeInTheDocument();
+
+    await runFormula("SUM(price), COUNT()");
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    expect(getLastQuery(onChange)).toMatchObject({
+      query: {
+        aggregation: [
+          ["sum", ["field", PRODUCTS.PRICE, expect.anything()]],
+          ["count"],
+        ],
+      },
+    });
+    expect(
+      await screen.findByDisplayValue("Sum([Price]), Count()"),
+    ).toBeInTheDocument();
+  });
+
+  it("names the calculation that fails in the single bar", async () => {
+    const { onChange } = setup();
+    await screen.findByDisplayValue("Sum([Price])");
+    await runFormula("SUM(price), SUM(nope)");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Calculation 2: Unknown column: nope",
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("switches between the single bar and a bar per calculation", async () => {
+    setup();
+    await screen.findByDisplayValue("Sum([Price])");
+    await userEvent.click(
+      screen.getByRole("radio", { name: "Bar per calculation" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Add calculation" }),
+    ).toBeInTheDocument();
+    expect(localStorage.getItem("metabase-excel-mode-formula-bar")).toBe("row");
+  });
+
+  it("adds a suggested calculation with one click", async () => {
+    const { onChange } = setup();
+    await screen.findByDisplayValue("Sum([Price])");
+    const suggestions = screen.getByRole("group", {
+      name: "Suggested calculations",
+    });
+    await userEvent.click(
+      within(suggestions).getByRole("button", { name: "Average of Price" }),
+    );
+    expect(getLastQuery(onChange)).toMatchObject({
+      query: {
+        aggregation: [
+          ["sum", ["field", PRODUCTS.PRICE, expect.anything()]],
+          ["avg", ["field", PRODUCTS.PRICE, expect.anything()]],
+        ],
+      },
+    });
+  });
+
+  it("shows a table skeleton with one-click groupings until there's a grouping", async () => {
+    const { onChange } = setup();
+    const skeleton = await screen.findByTestId("result-skeleton");
+    expect(within(skeleton).getByText("Sum of Price")).toBeInTheDocument();
+    await userEvent.click(
+      within(skeleton).getByRole("button", { name: "Category" }),
+    );
+    expect(getLastQuery(onChange)).toMatchObject({
+      query: { breakout: [["field", PRODUCTS.CATEGORY, expect.anything()]] },
+    });
+    expect(screen.queryByTestId("result-skeleton")).not.toBeInTheDocument();
   });
 
   it("groups and changes the chart from the bottom controls", async () => {
