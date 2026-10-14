@@ -11,7 +11,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.m2tnuz
       author: chodorowicz
-      comment: Resolve custom_viz_plugin rows left in the "pending" status by older serialization imports
+      comment: Mark custom_viz_plugin rows left "pending" without a bundle by older serialization imports as errors
       changes:
         - update:
             tableName: custom_viz_plugin
@@ -23,12 +23,20 @@ databaseChangeLog:
                   name: error_message
                   value: Bundle is empty
             where: status = 'pending' AND bundle IS NULL
+      rollback: # nothing to restore; "pending" was never a valid status to go back to
+        - empty: {}
+
+  - changeSet:
+      id: v63.18voz9
+      author: chodorowicz
+      comment: Activate custom_viz_plugin rows left "pending" by older serialization imports
+      changes:
         - update:
             tableName: custom_viz_plugin
             columns:
               - column:
                   name: status
                   value: active
-            where: status = 'pending'
+            where: status = 'pending' AND bundle IS NOT NULL
       rollback: # nothing to restore; "pending" was never a valid status to go back to
         - empty: {}

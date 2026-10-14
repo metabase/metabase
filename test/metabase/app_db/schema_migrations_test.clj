@@ -3339,8 +3339,8 @@
           (is (not (column?))))))))
 
 (deftest resolve-pending-custom-viz-plugins-test
-  (testing "v63.m2tnuz: custom_viz_plugin rows left in 'pending' by older serialization imports are resolved"
-    (impl/test-migrations ["v63.m2tnuz" "v63.m2tnuz"] [migrate!]
+  (testing "v63.m2tnuz, v63.18voz9: custom_viz_plugin rows left in 'pending' by older serialization imports are resolved"
+    (impl/test-migrations ["v63.m2tnuz" "v63.18voz9"] [migrate!]
       (let [new-plugin! (fn [identifier status & {:as extra}]
                           (t2/insert-returning-pk! :custom_viz_plugin (merge {:identifier   identifier
                                                                               :display_name identifier
