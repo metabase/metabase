@@ -53,7 +53,8 @@
                                            {:collection_id target-id})]
         ;; Verify error response contains dependency information
         (is (str/includes? (:message response) "content that is not remote synced")
-            "Error message should mention content that is not remote synced"))
+            "Error message should mention content that is not remote synced")
+        (is (seq (:non-remote-synced-models response))))
       ;; Verify the transaction was rolled back - dashboard should not be moved
       (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
         (is (= source-id (:collection_id unchanged-dash))

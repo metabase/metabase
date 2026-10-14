@@ -2,6 +2,7 @@ import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import type { State } from "metabase/redux/store";
 import {
   getEmbedOptions,
@@ -25,7 +26,7 @@ export const getDetailViewState = (state: State) => {
 
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
-  return errorPage?.data?.message || errorPage?.data;
+  return findErrorMessage(errorPage?.data) ?? errorPage?.data;
 };
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
