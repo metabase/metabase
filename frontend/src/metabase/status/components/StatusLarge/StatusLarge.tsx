@@ -2,10 +2,18 @@ import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
-import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Box, Ellipsified, Flex, Icon, Loader, Paper, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Loader,
+  Paper,
+  Text,
+} from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
@@ -50,7 +58,7 @@ export const StatusLarge = ({
       radius="xs"
       withBorder
     >
-      <Flex align="center" py="0.625rem" px="lg" bg="core-brand">
+      <Flex align="center" py="0.625rem" pl="lg" pr="md" bg="core-brand">
         <Box
           flex="1 1 auto"
           w="100%"
@@ -62,22 +70,26 @@ export const StatusLarge = ({
           <Ellipsified>{status.title}</Ellipsified>
         </Box>
         {onCollapse && (
-          <IconButtonWrapper
-            className={cx(CS.flexNoShrink, CS.textWhite)}
+          <ActionIcon
+            variant="static"
+            size="xs"
+            c="text-primary-inverse"
             onClick={onCollapse}
             aria-label={t`Collapse`}
           >
             <Icon name="chevrondown" />
-          </IconButtonWrapper>
+          </ActionIcon>
         )}
         {onDismiss && (
-          <IconButtonWrapper
-            className={cx(CS.flexNoShrink, CS.textWhite)}
+          <ActionIcon
+            variant="static"
+            size="xs"
+            c="text-primary-inverse"
             onClick={onDismiss}
             aria-label={t`Dismiss`}
           >
             <Icon name="close" />
-          </IconButtonWrapper>
+          </ActionIcon>
         )}
       </Flex>
       <Box bg="background_page-primary">
@@ -133,7 +145,7 @@ const StatusCard = ({
           {/* Unjustified type cast. FIXME */}
           <Icon name={icon as unknown as IconName} />
         </Flex>
-        <Box className={CS.overflowHidden} flex="1 1 auto" mx="md">
+        <Box flex="1 1 auto" mx="md">
           <Box
             className={CS.overflowHidden}
             c="text-primary"
