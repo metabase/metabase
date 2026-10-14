@@ -2056,9 +2056,9 @@
 ;;; ============================================================
 
 (defn- smallest-order-query
-  "Compares each order's TOTAL with `target` through `First`, a self-join returning each product's
-  smallest TOTAL as `min`."
-  [target]
+  "Compares each order's TOTAL with `target` through `ref-alias` (default `First`, a self-join
+  returning each product's smallest TOTAL as `min`)."
+  [target & {:keys [ref-alias] :or {ref-alias "First"}}]
   (let [orders-col (fn [column] ["field" {} ["Sample" "PUBLIC" "ORDERS" column]])]
     {"lib/type" "mbql/query"
      "database" "Sample"
@@ -2073,7 +2073,7 @@
                                    "conditions" [["=" {}
                                                   (orders-col "PRODUCT_ID")
                                                   ["field" {"join-alias" "First"} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]]}]
-                  "expressions"  {"Smallest?" ["=" {} (orders-col "TOTAL") ["field" {"join-alias" "First"} target]]}}]}))
+                  "expressions"  {"Smallest?" ["=" {} (orders-col "TOTAL") ["field" {"join-alias" ref-alias} target]]}}]}))
 
 (deftest grouped-join-aggregation-by-name-test
   (with-mp-and-stubs!
@@ -2086,6 +2086,14 @@
         (let [e (editor-rejection (smallest-order-query "nope"))]
           (is (=? {:agent-error? true :status-code 400} (ex-data e)))
           (is (str/includes? (ex-message e) "join \"First\" doesn't return \"nope\"")))))))
+
+(deftest ref-through-unknown-join-alias-explained-test
+  (testing "a by-name ref through an alias no join has is explained as an unresolved reference"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection (smallest-order-query "TOTAL" :ref-alias "Nope"))]
+          (is (=? {:agent-error? true :error :query-not-runnable :status-code 400} (ex-data e)))
+          (is (str/includes? (ex-message e) "could not be resolved")))))))
 
 (deftest path-ref-to-dropped-join-column-rejected-before-sql-test
   (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
@@ -2101,17 +2109,26 @@
       (missing :lib/uuid)                                                   #"could not be resolved"
       (missing :base-type)                                                  #"missing `base-type`"
       (missing :alias)                                                      #"^missing `alias`$"
-      (invalid [:fn {:error/message "non-aggregation expression"} any?] 1)  #"cannot be custom columns"
-      (invalid :int "x")                                                    #"^should be an integer$")))
+      (invalid [:fn {:error/message "non-aggregation expression"} any?] 1)  #"cannot be custom columns")
+    (testing "an error with no known cause is left to Malli's own message"
+      (is (nil? (#'construct/not-runnable-problem (invalid :int "x")))))))
 
 (deftest query-not-runnable-explanation-test
   (let [explain (fn [& errors]
                   (mt/with-dynamic-fn-redefs [mr/explain (constantly {:errors errors})]
                     (#'construct/query-not-runnable-explanation {})))
-        missing (fn [k] {:type :malli.core/missing-key :in [:stages 0 k]})]
+        missing (fn [k] {:type :malli.core/missing-key :in [:stages 0 k]})
+        invalid (fn [k] {:schema (mc/schema :int) :value "x" :in [:stages 0 k]})
+        hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
       (is (= "[:stages 0 :alias]: missing `alias`" (explain (missing :alias) (missing :alias)))))
     (testing "at most three problems are listed"
       (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
-    (testing "an explanation with no errors falls back to a generic sentence"
-      (is (= "the query does not match the query builder's schema" (explain))))))
+    (testing "problems with a known cause are listed before Malli's own messages"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
+                            "[:stages 0 :alias]: missing `alias`; [:stages 0 :a]: should be an integer")))
+    (testing "the usual causes are added only when no problem has a known cause"
+      (is (re-find hint (explain (invalid :a))))
+      (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
+    (testing "an explanation with no errors falls back to a generic sentence and the usual causes"
+      (is (str/starts-with? (explain) "the query does not match the query builder's schema. This usually means")))))

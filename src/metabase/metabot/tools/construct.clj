@@ -652,8 +652,9 @@
     (ex-info (ex-message e) data e)))
 
 (defn- not-runnable-problem
-  "What is wrong at a Malli schema `error`, phrased for the LLM. Missing keys the LLM never writes
-  itself are translated into their usual cause instead of being named."
+  "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add
+  to Malli's own message. Missing keys the LLM never writes itself are translated into their usual
+  cause instead of being named."
   [error]
   (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))]
     (cond
@@ -670,24 +671,25 @@
 
       ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
       (= "non-aggregation expression" (me/error-message error))
-      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error))
-
-      :else
-      (me/error-message error))))
+      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- query-not-runnable-explanation
   "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
-  description of where and why; nil when the query is runnable."
+  description of where and why; nil when the query is runnable. Problems [[not-runnable-problem]]
+  explains are listed first, and the usual causes are added when it explains none."
   [pmbql-query]
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (or (some->> (:errors explanation)
-                   (map #(str (pr-str (:in %)) ": " (not-runnable-problem %)))
-                   distinct
-                   (take 3)
-                   seq
-                   (str/join "; "))
-          (tru "the query does not match the query builder''s schema")))))
+      (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
+        (cond-> (or (some->> errors
+                             (map #(str (pr-str (:in %)) ": " (or (not-runnable-problem %) (me/error-message %))))
+                             distinct
+                             (take 3)
+                             seq
+                             (str/join "; "))
+                    (tru "the query does not match the query builder''s schema"))
+          (not-any? not-runnable-problem errors)
+          (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.

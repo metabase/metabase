@@ -3504,15 +3504,18 @@
 (def ^:private native-orders-card-eid "nAt123_456DefGhI789_K")
 
 (def ^:private mp-orders-with-cards
-  "ORDERS, an MBQL card returning each user's first order date (`USER_ID`, `min`), and a native card
-  returning `USER_ID` and `CREATED_AT` without field ids."
+  "ORDERS, PEOPLE (whose `ID` shares its name with ORDERS'), an MBQL card returning each user's first
+  order date (`USER_ID`, `min`), and a native card returning `USER_ID` and `CREATED_AT` without field
+  ids."
   (lib.tu/mock-metadata-provider
    {:database {:id 1 :name "Sample"}
-    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PEOPLE" :schema "PUBLIC" :db-id 1}]
     :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
                {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
                {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer}
-               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/Date}]
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/Date}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}]
     :cards    [{:id              500
                 :name            "First orders"
                 :database-id     1
@@ -3674,11 +3677,11 @@
                                                                                  (resolve mp query store))]
                           (repair* q))
                         @calls))]
-    (testing "a join named only by already-typed refs is never resolved"
-      (is (zero? (resolutions [first-orders-stage]
-                              (query (orders-stage {"joins"   [(-> (join "First" [first-orders-stage])
-                                                                   (assoc-in ["conditions" 0 3] (typed (join-ref "First" "USER_ID") "type/Integer")))]
-                                                    "filters" [["not-null" {} (typed (join-ref "First" "min") "type/Date")]]}))))))
+    (testing "a join named only by already-typed by-name refs is resolved once, to check them"
+      (is (= 1 (resolutions [first-orders-stage]
+                            (query (orders-stage {"joins"   [(-> (join "First" [first-orders-stage])
+                                                                 (assoc-in ["conditions" 0 3] (typed (join-ref "First" "USER_ID") "type/Integer")))]
+                                                  "filters" [["not-null" {} (typed (join-ref "First" "min") "type/Date")]]}))))))
     (testing "a grouped join named by both by-name and path refs is resolved once"
       (is (= 1 (resolutions [first-orders-stage] first-order-query))))
     (testing "a path ref into a plain table join doesn't resolve it"
@@ -3704,7 +3707,7 @@
               e))
       (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: USER_ID, min\)" (:message e)))))
   (testing "every bad ref is reported in one error, across refs, joins, and stages"
-    (is (= [[0 "First" ["nope" "TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
+    (is (= [[0 "First" ["nope" "ORDERS.TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
            (join-problems
             (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) (join "Second" [first-orders-stage])]
                                   "filters" [["not-null" {} (join-ref "First" "nope")]
@@ -3715,8 +3718,13 @@
   (testing "a bad ref repeated in several clauses is listed once"
     (is (= [[0 "First" ["nope"]]]
            (join-problems (first-orders-filtering (join-ref "First" "nope") (join-ref "First" "nope"))))))
-  (testing "a by-name ref the LLM typed itself isn't checked"
-    (is (nil? (repair-error (first-orders-filtering (typed (join-ref "First" "nope") "type/Text")))))))
+  (testing "a by-name ref the LLM typed itself is checked too"
+    (is (= [[0 "First" ["nope"]]]
+           (join-problems (first-orders-filtering (typed (join-ref "First" "nope") "type/Text"))))))
+  (testing "a by-name ref the LLM typed itself keeps its type when the join returns the column"
+    (is (= "type/Text"
+           (base-type (get-in (repair* (first-orders-filtering (typed (join-ref "First" "min") "type/Text")))
+                              ["stages" 0 "filters" 0 2]))))))
 
 (defn- filtering-through [alias stages column]
   (query (orders-stage {"joins"   [(join alias stages)]
@@ -3724,22 +3732,27 @@
 
 (deftest ^:parallel join-alias-path-ref-must-be-returned-by-the-join-test
   (testing "a path ref to a column the grouped join drops raises"
-    (is (= [[0 "First" ["TOTAL"]]] (join-problems (filtering-through "First" [first-orders-stage] "TOTAL")))))
+    (is (= [[0 "First" ["ORDERS.TOTAL"]]] (join-problems (filtering-through "First" [first-orders-stage] "TOTAL")))))
   (testing "a path ref to the grouped join's breakout column is accepted"
     (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "USER_ID")))))
   (testing "a join narrowed with `fields:` is checked"
-    (is (= [[0 "Narrow" ["TOTAL"]]]
+    (is (= [[0 "Narrow" ["ORDERS.TOTAL"]]]
            (join-problems (filtering-through "Narrow" [(orders-stage {"fields" [(orders-col "USER_ID")]})] "TOTAL")))))
   (testing "a two-stage join is checked"
-    (is (= [[0 "Two" ["TOTAL"]]]
+    (is (= [[0 "Two" ["ORDERS.TOTAL"]]]
            (join-problems (filtering-through "Two" [(orders-stage {}) (stage {"fields" [user-id-by-name]})] "TOTAL")))))
   (testing "through a native card, whose columns carry no field ids, a path ref matches by name"
     (let [native [(stage {"source-card" native-orders-card-eid})]]
       (is (nil? (repair-error (filtering-through "Native" native "CREATED_AT"))))
-      (is (= [[0 "Native" ["TOTAL"]]] (join-problems (filtering-through "Native" native "TOTAL"))))))
-  (testing "a numeric field id target is reported by the field's name"
+      (is (= [[0 "Native" ["ORDERS.TOTAL"]]] (join-problems (filtering-through "Native" native "TOTAL"))))))
+  (testing "a path ref doesn't match a returned column of another table by name, and is reported with its table"
+    (let [e (repair-error (query (orders-stage {"joins"   [(join "Narrow" [(orders-stage {"fields" [(orders-col "ID") (orders-col "USER_ID")]})])]
+                                                "filters" [["not-null" {} (join-ref "Narrow" ["Sample" "PUBLIC" "PEOPLE" "ID"])]]})))]
+      (is (=? {:error :unresolved-join-alias-field :problems [{:columns ["PEOPLE.ID"] :available ["ID" "USER_ID"]}]} e))
+      (is (re-find #"join \"Narrow\" doesn't return \"PEOPLE.ID\" \(available: ID, USER_ID\)" (:message e)))))
+  (testing "a numeric field id target is reported by its table and field names"
     (binding [serdes.resolve/*numeric-ids-allowed?* true]
-      (is (= [[0 "First" ["TOTAL"]]] (join-problems (first-orders-filtering (join-ref "First" 101))))))))
+      (is (= [[0 "First" ["ORDERS.TOTAL"]]] (join-problems (first-orders-filtering (join-ref "First" 101))))))))
 
 (deftest ^:parallel join-alias-path-ref-with-source-field-is-skipped-test
   (testing "a path ref with source-field (an implicit hop from the joined table) isn't checked"
@@ -3748,4 +3761,7 @@
 
 (deftest ^:parallel join-alias-path-ref-unresolvable-field-is-skipped-test
   (testing "a path to no real field is left for the resolver to report"
-    (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "NOPE"))))))
+    (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "NOPE")))))
+  (testing "a numeric id of no real field is left for the resolver to report"
+    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+      (is (nil? (repair-error (first-orders-filtering (join-ref "First" 999))))))))

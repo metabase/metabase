@@ -2600,7 +2600,8 @@
 ;;; are not the previous stage's. Each referenced join's own stages are resolved as a standalone
 ;;; query, and its returned columns both type the string refs and check every join-alias ref
 ;;; against what the join actually returns. A concrete-column ref to a column a grouped join
-;;; doesn't return passes lib and only fails in SQL, so it is caught here too. A ref whose alias
+;;; doesn't return, or a string ref the LLM typed itself with a name the join doesn't return,
+;;; passes lib and only fails in SQL, so both are caught here too. A ref whose alias
 ;;; names no join on its stage is a previous-stage ref, typed and checked by Passes 4.5 / 5 / 5.7;
 ;;; refs whose join or field can't be resolved are left for the resolver to report.
 ;;; ============================================================
@@ -2610,11 +2611,6 @@
        (match/matches? v ["field"
                           {"join-alias" (_ :guard non-blank-string?)}
                           (_ :guard non-blank-string?)])))
-
-(defn- unstamped-join-alias-ref?
-  [node]
-  (and (join-alias-string-field-clause? node)
-       (not (contains? (nth node 1) "base-type"))))
 
 (defn- join-alias-path-field-clause?
   "True if `v` is a concrete-column field ref (portable path or numeric id) through an explicit
@@ -2656,40 +2652,41 @@
                              joins)))))
 
 (defn- join-alias-refs
-  "`stage`'s untyped join-alias string refs (`:named`) and concrete-column join-alias refs
-  (`:path`), each grouped by alias, outside the joins' own `stages`."
+  "`stage`'s join-alias string refs (`:named`) and concrete-column join-alias refs (`:path`), each
+  grouped by alias, outside the joins' own `stages`."
   [stage]
   (let [stage' (without-join-stages stage)
         alias  #(get (nth % 1) "join-alias")]
-    {:named (group-by alias (match/match-many stage' (node :guard (unstamped-join-alias-ref? node)) node))
+    {:named (group-by alias (match/match-many stage' (node :guard (join-alias-string-field-clause? node)) node))
      :path  (group-by alias (match/match-many stage' (node :guard (join-alias-path-field-clause? node)) node))}))
 
 (defn- bad-join-alias-refs
   "The distinct `named-refs` naming no column in `cols`, followed by the distinct `path-refs` whose
-  field matches no column of `cols` by id or by name. A path ref whose field can't be resolved is
-  skipped."
+  field matches no column of `cols` by id, or by name among the columns without an id. A path ref
+  whose field can't be resolved is skipped."
   [mp cols named-refs path-refs import-resolver]
-  (let [returned-ids   (set (keep :id cols))
-        returned-names (set (keep :name cols))]
+  (let [returned-ids  (set (keep :id cols))
+        id-less-names (set (keep #(when-not (:id %) (:name %)) cols))]
     (distinct
      (concat
       (filter #(nil? (match-cross-stage-column cols (nth % 2))) named-refs)
-      (filter #(let [field-id (try-resolve-field-id @import-resolver (nth % 2))]
-                 ;; lib falls back to the field's name when no returned column carries its id,
-                 ;; e.g. through a native card
-                 (and field-id
-                      (not (contains? returned-ids field-id))
-                      (not (contains? returned-names (:name (lib.metadata.protocols/field mp field-id))))))
+      (filter #(when-let [field (some->> (try-resolve-field-id @import-resolver (nth % 2))
+                                         (lib.metadata.protocols/field mp))]
+                 ;; like lib, fall back to the field's name only for a column without an id, e.g.
+                 ;; one returned through a native card
+                 (and (not (contains? returned-ids (:id field)))
+                      (not (contains? id-less-names (:name field)))))
               path-refs)))))
 
 (defn- field-target-name
-  "The column name a field ref's target denotes: the name itself, the last segment of a portable
-  path, or the field's name for a numeric id."
+  "The column a field ref's target denotes: the name itself, or `TABLE.FIELD` for a portable path
+  or a numeric field id, so a column isn't mistaken for another table's column of the same name."
   [mp target]
   (cond
     (string? target)  target
-    (vector? target)  (peek target)
-    (pos-int? target) (:name (lib.metadata.protocols/field mp target))))
+    (vector? target)  (str/join "." (drop 2 target))
+    (pos-int? target) (let [field (lib.metadata.protocols/field mp target)]
+                        (str (:name (lib.metadata.protocols/table mp (:table-id field))) "." (:name field)))))
 
 (defn- repair-join-alias-refs-in-stage
   "Type `stage`'s join-alias string refs. Returns `{:stage <typed stage>, :problems [...]}`, one
@@ -2741,7 +2738,7 @@
 (defn- repair-join-alias-refs*
   "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins'
   returned columns, and raise one `:agent-error?` listing every join-alias ref, across all stages,
-  that names a column its join doesn't return. Only joins named by an untyped string ref, or by a
+  that names a column its join doesn't return. Only joins named by a string ref, or by a
   concrete-column ref into a join that isn't a [[plain-table-join?]], are resolved."
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
