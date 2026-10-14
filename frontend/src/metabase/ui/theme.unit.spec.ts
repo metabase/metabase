@@ -13,6 +13,8 @@ const SHADOW_SCALE_KEYS = [
   "lg_outline",
 ];
 
+const THEME_INDEPENDENT_SHADOWS: string[] = ["xs_on_dark"];
+
 // Keep expected values independent from the production scale definitions so
 // these tests catch accidental changes to the theme.
 const LIGHT_SHADOWS = {
@@ -135,7 +137,7 @@ describe("theme scales", () => {
       const dark = getThemeOverrides({ colorScheme: "dark" }).shadows ?? {};
 
       const themedKeys = SHADOW_SCALE_KEYS.filter(
-        (key) => key !== "xs_on_dark",
+        (key) => !THEME_INDEPENDENT_SHADOWS.includes(key),
       );
       for (const key of themedKeys) {
         expect(dark[key]).not.toEqual(light[key]);
