@@ -14,6 +14,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -500,3 +501,17 @@
                              ;; collection is the model originally loaded set the correct sync state
                              {:object (assoc collection :is_remote_synced false)
                               :user-id api/*current-user-id*}))))
+
+(defn enable-library-and-transforms-sync!
+  "Turns on remote sync for transforms and the Library on a read-write instance, logging rather than failing when the
+  Library can't sync yet. A read-only instance takes both from its pulls."
+  []
+  (when (= :read-write (settings/remote-sync-type))
+    (when-not (settings/remote-sync-transforms)
+      (settings/remote-sync-transforms! true))
+    (when-let [library (collections/library-collection)]
+      (when-not (:is_remote_synced library)
+        (try
+          (bulk-set-remote-sync {(:id library) true})
+          (catch Exception e
+            (log/warnf "Could not turn on remote sync for the Library: %s" (ex-message e))))))))

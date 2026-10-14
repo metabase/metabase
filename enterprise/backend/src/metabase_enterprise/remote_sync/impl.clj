@@ -4,6 +4,7 @@
    [diehard.core :as dh]
    [java-time.api :as t]
    [metabase-enterprise.data-apps.core :as data-apps]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
@@ -1760,7 +1761,8 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
-  Will attempt, import the remote collection if no remote-collection exists locally or you are in read-only mode.
+  Turns on Library and transforms sync (see [[remote-sync.core/enable-library-and-transforms-sync!]]), then imports
+  the remote collection if you are in read-only mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
   []
@@ -1768,6 +1770,7 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
+      (remote-sync.core/enable-library-and-transforms-sync!)
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

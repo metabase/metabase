@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -44,7 +45,8 @@
   ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
   (remote-sync.task/supersede-stale-tasks!)
   (if (settings/remote-sync-enabled)
-    (do
+    (let [first-import? (not (collection/has-remote-synced-collection?))]
+      (remote-sync.core/enable-library-and-transforms-sync!)
       (when (= :read-only (settings/remote-sync-type))
         (let [branch (settings/remote-sync-branch)]
           (when (str/blank? branch)
@@ -70,7 +72,7 @@
         (let [n (events/backfill-data-app-tracking!)]
           (when (pos? n)
             (log/infof "Tracking %d existing data apps for remote sync" n))))
-      (when-not (collection/has-remote-synced-collection?)
+      (when first-import?
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
           (let [branch (settings/remote-sync-branch)]

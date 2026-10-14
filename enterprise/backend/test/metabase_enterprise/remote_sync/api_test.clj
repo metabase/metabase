@@ -2259,12 +2259,12 @@
                 (is (true? (settings/remote-sync-transforms)))
                 (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
                     "Built-in transform tags should not be deleted by sync")))
-            (testing "can disable transforms sync"
+            (testing "can't disable transforms sync on a read-write instance"
               (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                                      {:remote-sync-transforms false})]
                 (wait-for-task-completion task_id)
                 (is (=? {:success true} resp))
-                (is (false? (settings/remote-sync-transforms)))
+                (is (true? (settings/remote-sync-transforms)))
                 (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
                     "Built-in transform tags should not be deleted by sync")))))))))
 

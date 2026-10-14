@@ -2,10 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase-enterprise.remote-sync.tracking :as rs-tracking]
    [metabase.collections.models.collection :as collection]
@@ -279,11 +281,12 @@
 (deftest remote-sync-init-glossary-backfill-skips-unsynced-library-test
   (testing "Glossary entries are only tracked when the Library is synced"
     (collections.tu/with-library-not-synced
-      (do-with-untracked-glossary-entry!
-       :read-write
-       (fn [_entry]
-         (#'init/remote-sync-init)
-         (is (zero? (glossary-rso-count))))))))
+      (mt/with-dynamic-fn-redefs [remote-sync.core/enable-library-and-transforms-sync! (constantly nil)]
+        (do-with-untracked-glossary-entry!
+         :read-write
+         (fn [_entry]
+           (#'init/remote-sync-init)
+           (is (zero? (glossary-rso-count)))))))))
 
 ;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
 
@@ -331,3 +334,75 @@
      (fn [{:keys [tracked]}]
        (#'init/remote-sync-init)
        (is (= {tracked "synced"} (data-app-rso-statuses)))))))
+
+(defn- library-synced? []
+  (boolean (:is_remote_synced (collection/library-collection))))
+
+(defn- do-with-unsynced-library!
+  "Runs `thunk` with an unsynced Library, leaving the Library unsynced afterward."
+  [thunk]
+  (collections.tu/with-library [_]
+    (try
+      (th/set-library-remote-synced! false)
+      (thunk)
+      (finally
+        (th/set-library-remote-synced! false)))))
+
+(deftest finish-remote-config-syncs-library-and-transforms-test
+  (testing "Saving remote sync settings on a read-write instance turns on Library and transforms sync"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (do-with-unsynced-library!
+       (fn []
+         (impl/finish-remote-config!)
+         (is (library-synced?))
+         (is (true? (settings/remote-sync-transforms)))
+         (testing "every time, so neither can be turned off"
+           (settings/remote-sync-transforms! false)
+           (impl/finish-remote-config!)
+           (is (true? (settings/remote-sync-transforms)))))))))
+
+(deftest finish-remote-config-read-only-test
+  (testing "Saving remote sync settings on a read-only instance leaves Library and transforms sync to its pulls"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-only
+                                       :remote-sync-branch "main"]
+      (let [[_calls capture] (capture-async-import!)]
+        (mt/with-dynamic-fn-redefs [impl/async-import! capture]
+          (do-with-unsynced-library!
+           (fn []
+             (impl/finish-remote-config!)
+             (is (not (library-synced?)))
+             (is (false? (settings/remote-sync-transforms))))))))))
+
+(deftest finish-remote-config-library-refused-test
+  (testing "When the Library can't sync, saving remote sync settings still turns on transforms sync"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (mt/with-dynamic-fn-redefs [remote-sync.core/bulk-set-remote-sync
+                                  (fn [_] (throw (ex-info "Uses content that is not remote synced." {})))]
+        (do-with-unsynced-library!
+         (fn []
+           (impl/finish-remote-config!)
+           (is (not (library-synced?)))
+           (is (true? (settings/remote-sync-transforms)))))))))
+
+(deftest remote-sync-init-syncs-library-and-transforms-test
+  (testing "A read-write start turns on Library and transforms sync and still runs the first import"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (let [[calls capture] (capture-async-import!)]
+        (mt/with-dynamic-fn-redefs [impl/async-import! capture]
+          (do-with-unsynced-library!
+           (fn []
+             (#'init/remote-sync-init)
+             (is (library-synced?))
+             (is (true? (settings/remote-sync-transforms)))
+             (is (= [["main" true {}]] @calls))
+             (testing "and a later start with synced content doesn't import again"
+               (reset! calls [])
+               (#'init/remote-sync-init)
+               (is (empty? @calls))))))))))
