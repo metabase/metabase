@@ -167,6 +167,12 @@
                  (subs 0 (dec (count path)))))))
       (catch java.net.URISyntaxException _ nil))))
 
+(defn- mcp-endpoint-paths-by-url
+  "The MCP endpoint paths, keyed by their [[canonical-resource-uri]] under the Site URL."
+  []
+  (into {} (keep (fn [path] (some-> (canonical-resource-uri (str (system/site-url) path)) (vector path))))
+        (mcp/mcp-endpoint-paths)))
+
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
@@ -202,8 +208,7 @@
         ;; token has to work against each -- so the accepted set is the UNION of what they accept, not the set
         ;; of whichever one is checked first. Taking a single winner would drop the v1-only scopes when a v1
         ;; alias is named alongside v2, silently shrinking a grant the client asked for and the user approved.
-        matched  (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
-                         (mcp/mcp-endpoint-paths))]
+        matched  (keep (mcp-endpoint-paths-by-url) named)]
     (if (or (not scope) (empty? matched))
       scope
       (let [accepted (into #{} (mapcat mcp-resource-scopes) matched)]
@@ -220,8 +225,7 @@
   `resources` is a string or a sequence of strings. They are compared as [[canonical-resource-uri]] with the Site URL
   joined to each of [[metabase.mcp.core/mcp-endpoint-paths]]."
   [resources]
-  (let [mcp-urls (into #{} (keep #(canonical-resource-uri (str (system/site-url) %))) (mcp/mcp-endpoint-paths))]
-    (every? (comp mcp-urls canonical-resource-uri) (cond-> resources (string? resources) vector))))
+  (every? (comp (mcp-endpoint-paths-by-url) canonical-resource-uri) (cond-> resources (string? resources) vector)))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
