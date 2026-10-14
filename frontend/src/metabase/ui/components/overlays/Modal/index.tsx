@@ -28,6 +28,27 @@ export const MODAL_DENSITIES = ["default", "relaxed"] as const;
 
 export type ModalDensity = (typeof MODAL_DENSITIES)[number];
 
+// Spacing comes from `layout` and `density`, so call sites can't override it.
+type ForbiddenMantineModalProps =
+  | "m"
+  | "mx"
+  | "my"
+  | "mt"
+  | "mb"
+  | "ml"
+  | "mr"
+  | "ms"
+  | "me"
+  | "p"
+  | "px"
+  | "py"
+  | "pt"
+  | "pb"
+  | "pl"
+  | "pr"
+  | "ps"
+  | "pe";
+
 interface ModalLayoutProps {
   /**
    * How the modal's contents are arranged. `default` left-aligns the title
@@ -43,13 +64,18 @@ interface ModalLayoutProps {
   density?: ModalDensity;
 }
 
-export interface ModalProps extends MantineModalProps, ModalLayoutProps {
+export interface ModalProps
+  extends
+    Omit<MantineModalProps, ForbiddenMantineModalProps>,
+    ModalLayoutProps {
   /** Rendered above the title. Only used by the `centered` layout. */
   illustration?: ReactNode;
 }
 
 export interface ModalRootProps
-  extends MantineModalRootProps, ModalLayoutProps {}
+  extends
+    Omit<MantineModalRootProps, ForbiddenMantineModalProps>,
+    ModalLayoutProps {}
 
 export function Modal({
   layout = "default",
