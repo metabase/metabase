@@ -12,6 +12,7 @@ A single objective: **the query you build should return the data the user asked 
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/semantic-layer-discovery.selmer" %}
 {% include "metabot/prompts/shared/prompt_snippets/data-sources-curation-signals.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer" %}
