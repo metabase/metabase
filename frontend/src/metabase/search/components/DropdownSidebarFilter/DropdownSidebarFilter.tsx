@@ -16,7 +16,15 @@ import type {
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { ActionIcon, Box, Group, Icon, Popover, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Group,
+  Icon,
+  Popover,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
 
