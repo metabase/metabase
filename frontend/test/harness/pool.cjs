@@ -123,6 +123,9 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
         // than 32 on a CI runner, and 128 gains no more.
         `--max-semi-space-size=${settings.NT_SEMI_SPACE_MB ?? 64}`,
         `--test-reporter=${settings.NT_REPORTER ?? "dot"}`,
+        // Results travel over the IPC channel. node:test's own report would go
+        // through process.stdout.write, where a spec that spies on it sees it.
+        ...(settings.NT_REPORTER ? [] : [`--test-reporter-destination=${require("node:os").devNull}`]),
         ...(settings.NT_NODE_EXTRA ? settings.NT_NODE_EXTRA.split(" ") : []),
       ],
       env: { ...settings, NT_QUEUE: "1", NT_PROJECT: project },
