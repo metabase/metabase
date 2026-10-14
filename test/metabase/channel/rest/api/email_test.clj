@@ -51,7 +51,7 @@
   (testing "POST /api/email/test refuses to send when no SMTP server is configured"
     (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil]
       (mt/with-temporary-setting-values [email-smtp-host nil]
-        (is (= "Wrong host or port"
+        (is (= "SMTP host is not set."
                (mt/user-http-request :crowberto :post 400 "email/test")))))))
 
 (deftest update-email-settings-test
