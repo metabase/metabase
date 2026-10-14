@@ -587,14 +587,15 @@
 
 (defn- structured-output-in-text
   "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
-  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches."
+  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches.
+  Keys below the top level are strings, as in a tool call's arguments ([[core/stringify-nested-keys]])."
   [parts json-schema]
   (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
         schema (json-schema->malli json-schema)]
     (some (fn [candidate]
             (let [value (try (json/decode-document+kw candidate) (catch Exception _ nil))]
               (when (mr/validate schema value)
-                value)))
+                (core/stringify-nested-keys value))))
           (cons text (reverse (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text)))))))
 
 (defn- incomplete-structured-output-error
@@ -677,23 +678,25 @@
       (with-retries
         tracking-opts
         (fn []
-          (let [parts (into []
-                            (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
-                            (stream-fn streaming-opts))
-                result (some (fn [{:keys [type arguments]}]
-                               (when (= type :tool-input)
-                                 arguments))
-                             parts)
-                error  (some (fn [{:keys [type error]}]
-                               (when (= type :error)
-                                 error))
-                             parts)
+          (let [parts    (into []
+                               (comp (core/aisdk-xf)
+                                     (report-aisdk-errors-xf tracking-opts)
+                                     (report-token-usage-xf tracking-opts))
+                               (stream-fn streaming-opts))
+                result   (some (fn [{:keys [type arguments]}]
+                                 (when (= type :tool-input)
+                                   arguments))
+                               parts)
+                error    (some (fn [{:keys [type error]}]
+                                 (when (= type :error)
+                                   error))
+                               parts)
+                unparsed (core/unparsed-arguments result)
                 ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
                 ;; part, which the agent loop emits and this single-shot path never runs.
                 incomplete-reason (core/parts->incomplete-finish-reason parts)
-                malformed?        (and (map? result) (contains? result :_raw_arguments))]
+                ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
+                malformed?        (contains? unparsed :raw-arguments)]
             (cond
               ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
               ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
@@ -701,14 +704,15 @@
               (and malformed? (= incomplete-reason "length"))
               (throw (incomplete-structured-output-error parts incomplete-reason))
 
-              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
-              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
-              ;; bogus map back to the caller as if it were a valid structured result.
-              malformed?
-              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
-                              {:parts         parts
-                               :error-code    "structured-output-invalid"
-                               :raw-arguments (:_raw_arguments result)}))
+              ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
+              ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
+              unparsed
+              (throw (ex-info (if malformed?
+                                "LLM returned malformed JSON in its structured tool call"
+                                "LLM returned a JSON value that is not an object in its structured tool call")
+                              (merge {:parts      parts
+                                      :error-code "structured-output-invalid"}
+                                     unparsed)))
 
               result
               {:result result :parts parts}
