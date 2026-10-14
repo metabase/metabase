@@ -389,7 +389,9 @@
 ;;; |                                              Slug Validation                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- slugify [collection-name]
+(defn slugify
+  "The slug a collection named `collection-name` is stored with."
+  [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
