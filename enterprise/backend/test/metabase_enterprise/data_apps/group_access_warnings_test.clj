@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.group-access :as group-access]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -26,6 +29,32 @@
   "Bind `app-sym` to a data app whose resource collection reads `table-ids`, and run `body`."
   [[app-sym table-ids] & body]
   `(do-with-app-reading! ~table-ids (fn [~app-sym] ~@body)))
+
+(deftest group-permission-warnings-walk-the-dependency-graph-test
+  (testing "the warnings list the tables a native card, a card on another card, and a query action read"
+    (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (let [mp (mt/metadata-provider)]
+            (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
+                           {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                           :model/Card {base-id :id} {:collection_id collection-id
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                           :model/Card _ {:collection_id collection-id
+                                          :dataset_query (lib/native-query mp "SELECT * FROM VENUES")}
+                           :model/PermissionsGroup group {}]
+              (mt/with-temp [:model/Card _ {:collection_id collection-id
+                                            :dataset_query (lib/query mp (lib.metadata/card mp base-id))}
+                             :model/Action {action-id :id} {:type :query :name "Delete" :collection_id collection-id}
+                             :model/QueryAction _ {:action_id     action-id
+                                                   :database_id   (mt/id)
+                                                   :dataset_query (lib/native-query mp "DELETE FROM CHECKINS WHERE ID = 1")}]
+                (deps.test/synchronously-run-backfill!)
+                (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+                (group-access/add-groups! app [(:id group)])
+                (is (=? [{:group_id       (:id group)
+                          :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :orders)} {:id (mt/id :venues)}]}]
+                        (group-access/permission-warnings app)))))))))))
 
 (deftest group-permission-warnings-exclude-inactive-tables-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}

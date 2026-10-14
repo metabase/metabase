@@ -112,11 +112,6 @@
   [entity-id]
   (t2/select-one [:model/DataApp :id :entity_id :resource_collection_id] :entity_id entity-id))
 
-(defn data-apps-with-resource-collections
-  "The `:id` and `:resource_collection_id` of every DataApp that has a resource collection."
-  []
-  (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:not= nil]))
-
 (defn active-table?
   "Whether the table with `table-id` is active."
   [table-id]
@@ -159,6 +154,11 @@
   "The IDs of the actions in the collection with `collection-id`."
   [collection-id]
   (t2/select-pks-vec :model/Action :collection_id collection-id))
+
+(defn transform-target-table-ids
+  "The IDs of the output tables of the transforms with `transform-ids` that have run."
+  [transform-ids]
+  (t2/select-fn-set :target_table_id :model/Transform :id [:in transform-ids] :target_table_id [:not= nil]))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."

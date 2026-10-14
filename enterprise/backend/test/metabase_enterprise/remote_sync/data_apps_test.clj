@@ -637,7 +637,7 @@
     (impl/handle-task-result! result task)
     result))
 
-(deftest an-export-that-merges-checks-and-records-like-a-pull-test
+(deftest an-export-that-merges-checks-like-a-pull-test
   (with-data-apps-sync
     (testing "a remote file that a pull refuses is refused by an export that merges it in"
       (mt/with-temp [:model/Collection {elsewhere :id} {:name "Elsewhere"}

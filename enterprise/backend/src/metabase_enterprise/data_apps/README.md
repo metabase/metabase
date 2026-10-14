@@ -146,7 +146,7 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | Namespace                              | Responsibility                                                                                  |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `apps.clj`                             | Creating apps; the connected repository's URL.                                                  |
-| `core.clj`                             | Public access checks, resource file problems, and table dependencies.                           |
+| `core.clj`                             | Public access checks and resource file problems.                                                |
 | `config.clj`                           | The serialized layout and data app contract version constants.                                  |
 | `schema.clj`                           | Column schemas, with the normalization and validation every write goes through.                 |
 | `api.clj`                              | The `/api/apps` endpoints, bundle serving, ETag handling.                                       |
@@ -160,7 +160,7 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `query_definition.clj`                 | The closed schema of a `defineQuery` definition the serialization accepts.                      |
 | `resource_validation.clj`              | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
 | `access.clj`                           | App access through assigned groups.                                                             |
-| `group_access.clj`                     | Assignment management and collection grant reconciliation.                                      |
+| `group_access.clj`                     | Assignment management, collection grant reconciliation, and the permission warnings, which walk the dependency graph (`:dependencies` feature) from the app's cards and actions to the tables they read. |
 | `models/data_app_group_assignment.clj` | App-to-group assignments.                                                                       |
 | `db.clj`                               | The module's application-database queries.                                                      |
 | `csp.clj`                              | `allowed_hosts` lookup for the core CSP middleware.                                             |

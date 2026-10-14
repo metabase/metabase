@@ -72,22 +72,22 @@
 
 (defn- resource-table-ids
   "The IDs of the tables the cards and actions in the resource collection with `collection-id` read, directly or
-  through the cards, measures, segments and snippets they use, as the dependency graph records them."
+  through the cards, measures, segments and snippets they use, with a transform they name standing for its output."
   [collection-id]
   (let [nodes (models.dependency/entities->nodes {:card   (data-apps.db/collection-card-ids collection-id)
                                                   :action (data-apps.db/collection-action-ids collection-id)})
-        graph (models.dependency/filtered-graph-dependencies nil {:types #{:action :card :measure :segment :snippet}})]
-    (into []
-          (keep (fn [[entity-type entity-id]]
-                  (when (= entity-type :table)
-                    entity-id)))
-          (graph/transitive graph (vec nodes)))))
+        graph (models.dependency/filtered-graph-dependencies nil {:types #{:action :card :measure :segment :snippet}})
+        {:keys [table transform]} (models.dependency/group-nodes (graph/transitive graph (vec nodes)))]
+    (vec (into (set table)
+               (when (seq transform)
+                 (data-apps.db/transform-target-table-ids transform))))))
 
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."
   [{app-id :id collection-id :resource_collection_id}]
-  (let [table-ids    (some-> collection-id resource-table-ids)
-        assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))]
+  (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))
+        table-ids    (when (and (seq assigned-ids) collection-id)
+                       (resource-table-ids collection-id))]
     (if (and (seq assigned-ids) (seq table-ids))
       (let [tables       (table-details table-ids)
             all-users-id (:id (perms/all-users-group))
