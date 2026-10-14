@@ -99,11 +99,8 @@
     [model instance]
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(defmethod before-update* :model/Action
-  [model action]
-  (mark-entity-changed! model action #{:model_id :type}))
-
-(doseq [[model columns] {:model/Card               #{:type :dataset_query :dimension_mappings :parameters}
+(doseq [[model columns] {:model/Action             #{:model_id :type}
+                         :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
                          :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}
