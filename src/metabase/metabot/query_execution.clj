@@ -39,9 +39,6 @@
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
    under `context`, stopping it as [[execute-page!]] describes for `options`."
   [serialized-query row-limit context {:keys [request-canceled-chan timeout-ms]}]
-  ;; The cancel reaches the query's own channel asynchronously, so the QP's own check could miss it.
-  (when (qp.pipeline/canceled?* request-canceled-chan)
-    (throw (query-canceled)))
   (let [query      (-> (select-keys serialized-query query-passthrough-keys)
                        (assoc :middleware {:js-int-to-string? true})
                        qp/userland-query-with-default-constraints
@@ -59,6 +56,10 @@
                       (qp.pipeline/canceled?* request-canceled-chan) (query-canceled)
                       (some-> timeout-ms (<= (u/since-ms timer)))   (query-timed-out timeout-ms))
         result     (try
+                     ;; Checked right before the handoff: the cancel reaches the query's own channel asynchronously,
+                     ;; so the QP's own check could miss it.
+                     (when (qp.pipeline/canceled?* request-canceled-chan)
+                       (throw (query-canceled)))
                      ;; Each query gets a channel of its own. The QP closes its channel when a query ends and writes
                      ;; to it when one times out, and on a channel shared by the turn either would cancel every
                      ;; later query.
