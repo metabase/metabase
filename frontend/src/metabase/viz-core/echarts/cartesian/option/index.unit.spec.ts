@@ -136,8 +136,10 @@ describe("ensureRoomForLabels", () => {
     return [axes, chartModel, chartLayout, dataSeriesOptions] as const;
   };
 
-  const getBoundaryGap = (axis: YAXisOption | XAXisOption) =>
-    "boundaryGap" in axis ? axis.boundaryGap : undefined;
+  const getBoundaryGap = (axis: YAXisOption | XAXisOption | XAXisOption[]) =>
+    !Array.isArray(axis) && "boundaryGap" in axis
+      ? axis.boundaryGap
+      : undefined;
 
   beforeEach(() => {
     seriesFn.mockReturnValue({ display: "bar" });

@@ -365,13 +365,6 @@ export const getCartesianChartOption = (
     }
   }
 
-  // echarts crashes while building a cartesian coordinate system that has an
-  // x-axis but no y-axis, which happens when a render lands with no visible
-  // series. Keep the axes consistent so an empty chart renders instead.
-  if (yAxis.length === 0) {
-    xAxis = [];
-  }
-
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
     ...splitPanelOverrides,
