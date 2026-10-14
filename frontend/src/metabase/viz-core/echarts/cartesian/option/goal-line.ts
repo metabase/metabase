@@ -54,23 +54,23 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
 }
 
 export type GoalLineLabelLayout = {
+  align: "left" | "right";
   x: number;
   y: number;
-  align: "left" | "right";
 };
 
 export function getGoalLineLabelLayout({
+  fontSize,
   goalY,
+  labelOnLeft,
   plotLeft,
   plotRight,
-  labelOnLeft,
-  fontSize,
 }: {
+  fontSize: number;
   goalY: number;
+  labelOnLeft: boolean;
   plotLeft: number;
   plotRight: number;
-  labelOnLeft: boolean;
-  fontSize: number;
 }): GoalLineLabelLayout {
   return {
     x: labelOnLeft ? plotLeft : plotRight,
@@ -131,11 +131,11 @@ export function getGoalLineSeriesOption(
       };
 
       const labelLayout = getGoalLineLabelLayout({
+        fontSize,
         goalY: y,
+        labelOnLeft,
         plotLeft: xStart,
         plotRight: xEnd,
-        labelOnLeft,
-        fontSize,
       });
 
       const label = {
