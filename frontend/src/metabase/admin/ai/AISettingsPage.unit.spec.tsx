@@ -67,6 +67,7 @@ const setup = async ({
   metabots = buildDefaultMetabots(),
   collections = defaultSeedCollections,
   page = "ai-features",
+  queryExecutionEnabled = false,
 }: {
   aiFeaturesEnabled?: boolean;
   enableEmbedding?: boolean;
@@ -78,6 +79,7 @@ const setup = async ({
     typeof setupCollectionByIdEndpoint
   >[0]["collections"];
   page?: Page;
+  queryExecutionEnabled?: boolean;
 } = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
@@ -95,6 +97,7 @@ const setup = async ({
     "llm-metabot-provider": null,
     "mcp-enabled?": true,
     "metabot-enabled?": true,
+    "metabot-query-execution-enabled?": queryExecutionEnabled,
     "token-features": tokenFeatures,
   });
 
@@ -309,5 +312,53 @@ describe("AISettingsPage", () => {
     const puts = await findRequests("PUT");
     expect(puts[0].url).toContain("/setting/ai-features-enabled%3F");
     expect(puts[0].body).toEqual({ value: false });
+  });
+
+  it("shows query execution as off when the setting is off", async () => {
+    await setup({ queryExecutionEnabled: false });
+
+    expect(
+      screen.getByRole("switch", { name: "Let Metabot read query results" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByText(/The result rows are sent to your AI provider/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows query execution as on when the setting is on", async () => {
+    await setup({ queryExecutionEnabled: true });
+
+    expect(
+      screen.getByRole("switch", { name: "Let Metabot read query results" }),
+    ).toBeChecked();
+  });
+
+  it("persists turning query execution on", async () => {
+    await setup({ queryExecutionEnabled: false });
+
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Let Metabot read query results" }),
+    );
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+    });
+
+    const puts = await findRequests("PUT");
+    expect(puts[0].url).toContain(
+      "/setting/metabot-query-execution-enabled%3F",
+    );
+    expect(puts[0].body).toEqual({ value: true });
+  });
+
+  it("disables query execution until an AI provider is configured", async () => {
+    await setup({ isConfigured: false });
+
+    expect(
+      screen.getByText("Let Metabot read query results", {
+        selector: '[aria-disabled="true"] *',
+      }),
+    ).toBeInTheDocument();
   });
 });
