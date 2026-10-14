@@ -54,24 +54,27 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search`, and the `catalog://metabase/fields` data resource (see [Resources](#resources)) |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
-| `agent:resource:read` | No tools: it gates reading the `catalog://metabase/fields` data resource (see [Resources](#resources)). |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
-Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run agent:resource:read`: a fresh connection can read,
-query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
-(`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
-server metadata still advertises all of them.
+These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
+MCP client grants nothing on the REST API.
 
-`agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
-step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
-chart never embeds.
+The protected-resource metadata's `scopes_supported` and the `scope` of the 401 challenge both list every scope in
+the table, so a fresh connection asks for all of them. Some clients do not step up after a 403: a manual reconnect
+from Claude's connector settings registers a new client and asks for exactly what these list. When they listed only
+the baseline, that reconnect never offered writes, raw SQL, or delivery, and the user had no way to grant them
+(ENG-11089). The authorization server metadata advertises all of them too.
+
+The baseline (`agent:content:read agent:query:run`) is locked on the consent screen: when a client requests one of
+these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never need a step-up. Claude
+Desktop retries a tool after a step-up over a session that doesn't declare MCP Apps support, so a stepped-up
+`visualize_query` is refused and its chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
@@ -87,18 +90,21 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
-unticked. Only the scopes the user ticks are granted, and only for the token this authorization mints: an untick never
-touches a token the app already has. A scope left unticked is not remembered by Metabase. A later 403 can trigger
-another step-up in clients that support it. Other clients may require manual reauthorization. Each challenge's
-`error_description` ends with a note that the user must tick the permission on the consent screen.
+On the consent screen, every scope the client requested starts ticked, and the baseline scopes are also locked. Only
+the scopes left ticked are granted, and only for the token this authorization mints. An untick never touches a token
+the app already has. A scope left unticked is not remembered by Metabase. A later 403 can trigger another step-up in
+clients that support it. Other clients may require manual reauthorization. Each challenge's `error_description` ends
+with a note that the user must grant the permission on the consent screen.
 
-Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
-`instructions` explain scope failures to the model too: an auth error usually means a missing permission rather than an
-expired login, the model should name the failed tool or resource and the permission it requires, and the user grants it
-by reconnecting and ticking permissions on the consent screen. Because every optional permission starts unticked, the
-instructions tell the model to have the user tick every permission they want, not only the new one. The instructions
-are one static string, the same for every caller: there is no per-connection permission list.
+Several clients replace the 403's `error_description` with their own text, so the `initialize` result's `instructions`
+explain scope failures to the model too: an auth error usually means a missing permission rather than an expired
+login, the model should name the failed tool or resource and the permission it requires, and the user grants it by
+reconnecting and leaving the permission ticked on the consent screen. The instructions are one static string, the same
+for every caller: there is no per-connection permission list.
+
+### Per-group tool access
+
+On Enterprise instances with the `ai_controls` feature, an admin can narrow the surface per permissions group on Admin > AI > Usage controls > MCP tools access (shown whenever the MCP server is on, with or without an LLM provider). Each group has a row in `mcp_group_permission` saying whether its members may connect at all and, per tool name, the admin's explicit `"yes"` or `"no"`; a tool with no entry takes the default its author declared, so every `deftool` carries a required `:default-access` of `:allowed` or `:denied` and a tool released later gets exactly that default in every group until an admin overrides it. Entries are keyed by tool name, so renaming a tool needs `:renamed-from` with its former names (a stored entry under a former name still applies and the admin API presents it under the current name), or the author accepts that every admin's choice for it is discarded; `metabase.mcp.v2.tool-names-test` pins the live names so neither happens by accident. A user's effective policy is the `tool_access` of each group of theirs whose row enables MCP: MCP is on when any such group exists, and a tool is allowed when any of those groups resolves it to yes. The rows alone decide it, and they also record the permission mode: simple mode (Administrators, All Users, and All tenant users) or group-level mode (every other group), which is the state in which All Users has no row. A switch deletes the rows of the groups the new mode hides and seeds the groups it enables on entry that have no row (Data Analysts on entering group-level mode, All Users and All tenant users on leaving it), and `PUT` refuses a group the current mode hides, so no request reads a cached mode. The policy is applied on top of OAuth scopes in `tools/list` and `tools/call` (`v2/registry.clj`), and a user whose groups grant no access is refused at `initialize` and at `resources/read` (for sessions opened before MCP was turned off) with an error naming the fix. App-only tools (`_meta {:ui {:visibility ["app"]}}`, i.e. `refresh_ui_credential`) are not on the admin page: they are allowed while the policy allows any MCP Apps tool. Superusers and internal callers are never narrowed; OSS allows everything. On Enterprise the stored rows are enforced even without the `ai_controls` feature (an expired or unverifiable token keeps the restrictions an admin configured); the feature only gates the admin page and API. The resolver is `permissions.clj` (`defenterprise`, EE implementation in `metabase-enterprise.mcp.permissions`) and the admin API is `/api/ee/ai-controls/mcp-permissions`.
 
 ## Available tools
 
@@ -150,7 +156,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 | ------------ | ----- | ----------- |
 | `ui://metabase/visualize-query.html` | `agent:query:run` (UI credential only) | The MCP Apps iframe shell `visualize_query` points a capable client at. |
 | `ui://metabase/render-drill-through.html` | `agent:query:run` (UI credential only) | The shell `render_drill_through` points at. |
-| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
+| `catalog://metabase/fields` | `agent:content:read` | The dot-paths each content type accepts in `fields` arguments. |
 
 Every resource is listed whatever the token's scopes. A data resource, such as the fields catalog, is read only by a
 token holding its scope; otherwise the read gets the 403 `insufficient_scope` challenge described under

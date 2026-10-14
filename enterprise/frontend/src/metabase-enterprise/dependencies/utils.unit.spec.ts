@@ -23,6 +23,7 @@ import {
   createMockSegmentDependencyNode,
   createMockSegmentDependencyNodeData,
   createMockSnippetDependencyNode,
+  createMockSnippetDependencyNodeData,
   createMockTable,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
@@ -397,6 +398,19 @@ describe("getNodeLocationInfo", () => {
     const result = getNodeLocationInfo(node);
     expect(result?.icon).toBe("collection");
     expect(result?.links[0].label).toBe("My Collection");
+  });
+
+  it("should link a snippet's folder to the SQL snippets tab", () => {
+    const node = createMockSnippetDependencyNode({
+      data: createMockSnippetDependencyNodeData({
+        collection: createMockCollection({ name: "My Folder" }),
+      }),
+    });
+    const result = getNodeLocationInfo(node);
+    expect(result?.links[0]).toEqual({
+      label: "My Folder",
+      url: "/data-studio/snippets",
+    });
   });
 
   it("should return database location for table", () => {

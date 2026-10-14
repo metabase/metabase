@@ -3,7 +3,7 @@ import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
-import { idTag } from "metabase/api/tags";
+import { listTag } from "metabase/api/tags";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { getUser } from "metabase/current-user";
 import {
@@ -67,9 +67,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
   const handleNewConversation = () => {
     metabot.createNewConversation();
     dispatch(
-      metabotApi.util.invalidateTags([
-        idTag("metabot-prompt-suggestions", metabot.metabotId),
-      ]),
+      metabotApi.util.invalidateTags([listTag("metabot-prompt-suggestions")]),
     );
   };
 
