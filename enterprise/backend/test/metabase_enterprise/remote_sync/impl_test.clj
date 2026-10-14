@@ -1290,9 +1290,7 @@
                   "Import should succeed")
               (is (true? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should be auto-enabled after successful import with transforms")
-              (is (not (t2/exists? :model/RemoteSyncObject
-                                   :model_type "Collection"
-                                   :model_id remote-sync.settings/transforms-root-id))
+              (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
                   "auto-enabling should leave nothing to push"))))))))
 
 (deftest import!-auto-enables-transforms-setting-when-python-libraries-detected-test

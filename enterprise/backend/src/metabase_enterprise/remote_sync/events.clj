@@ -21,71 +21,12 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.remote-sync.tracking :as tracking]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(defn- glossary-tracking-rows
-  "A 'create' ledger row for each of the glossary `entries`."
-  [entries timestamp]
-  (for [entry entries]
-    {:model_type        "Glossary"
-     :model_id          (:id entry)
-     :model_name        (:term entry)
-     :status            "create"
-     :status_changed_at timestamp}))
-
-(defn- data-action-collections
-  "The `:id` and `:name` of the data actions Collections."
-  []
-  (remote-sync.db/collections-with-names-in-namespace (name collections/data-actions-ns)))
-
-(defn- library-actions
-  "The Actions without a model in the data actions root or a data actions Collection."
-  [data-action-collection-ids]
-  (remote-sync.db/actions-without-model-in (vec data-action-collection-ids)))
-
-(defn enable-library-tracking!
-  "Mark all existing snippets, data actions, their namespaces' collections, and glossary entries as 'create' for
-  initial sync."
-  []
-  (let [timestamp               (t/offset-date-time)
-        data-action-collections (data-action-collections)
-        rows      (concat
-                   (for [coll (concat (remote-sync.db/snippet-collections) data-action-collections)]
-                     {:model_type        "Collection"
-                      :model_id          (:id coll)
-                      :model_name        (:name coll)
-                      :status            "create"
-                      :status_changed_at timestamp})
-                   (for [snippet (remote-sync.db/snippets)]
-                     {:model_type          "NativeQuerySnippet"
-                      :model_id            (:id snippet)
-                      :model_name          (:name snippet)
-                      :model_collection_id (:collection_id snippet)
-                      :status              "create"
-                      :status_changed_at   timestamp})
-                   (for [action (library-actions (map :id data-action-collections))]
-                     {:model_type          "Action"
-                      :model_id            (:id action)
-                      :model_name          (:name action)
-                      :model_collection_id (:collection_id action)
-                      :status              "create"
-                      :status_changed_at   timestamp})
-                   (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
-    (when (seq rows)
-      (remote-sync.db/insert-rsos! rows))))
-
-(defn backfill-glossary-tracking!
-  "Insert a 'create' ledger row for every glossary entry that has none, so an instance upgraded with the Library
-  already synced still pushes its entries. Returns the number of rows inserted."
-  []
-  (let [rows (vec (glossary-tracking-rows (remote-sync.db/untracked-glossary-entries) (t/offset-date-time)))]
-    (when (seq rows)
-      (remote-sync.db/insert-rsos! rows))
-    (count rows)))
 
 (defn backfill-action-tracking!
   "Insert a 'create' ledger row for every unarchived Action in a remote-synced collection that has none, returning the
@@ -123,19 +64,6 @@
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
-
-(defn disable-library-tracking!
-  "Remove all snippet, data action, their namespaces' collection, and glossary tracking entries."
-  []
-  (let [data-action-coll-ids (into #{} (map :id) (data-action-collections))
-        coll-ids             (into (remote-sync.db/snippet-collection-ids) data-action-coll-ids)
-        action-ids           (into #{} (map :id) (library-actions data-action-coll-ids))]
-    (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
-    (remote-sync.db/delete-rsos-of-type! "Glossary")
-    (when (seq coll-ids)
-      (remote-sync.db/delete-rsos-of-models! "Collection" coll-ids))
-    (when (seq action-ids)
-      (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -358,11 +286,11 @@
       (and is-now-synced? (not library-already-tracked?))
       (do
         (log/info "Library collection became remote-synced, enabling Library content sync tracking")
-        (enable-library-tracking!))
+        (tracking/enable-library-tracking!))
       (and (not is-now-synced?) library-already-tracked?)
       (do
         (log/info "Library collection is no longer remote-synced, disabling Library content sync tracking")
-        (disable-library-tracking!)))))
+        (tracking/disable-library-tracking!)))))
 
 (defn- cascade-archived-state!
   "Brings the RemoteSyncObject rows of `collection`'s subtree, other than its own row, in line with the archived state

@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -391,6 +392,26 @@
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
 
+(mu/defn transforms
+  "The `:id`, `:name`, and `:collection_id` of every Transform."
+  []
+  (t2/select [:model/Transform :id :name :collection_id]))
+
+(mu/defn custom-transform-tags
+  "The `:id` and `:name` of every TransformTag that isn't built in."
+  []
+  (t2/select [:model/TransformTag :id :name] :built_in_type nil))
+
+(mu/defn transform-tests
+  "The `:id` and `:name` of every TransformTest."
+  []
+  (t2/select [:model/TransformTest :id :name]))
+
+(mu/defn custom-python-libraries
+  "The `:id` and `:path` of every PythonLibrary that isn't built in."
+  []
+  (t2/select [:model/PythonLibrary :id :path] :entity_id [:not= transforms-python/builtin-entity-id]))
+
 (mu/defn glossary-entries
   "The `:id` and `:term` of every Glossary entry."
   []
@@ -570,11 +591,6 @@
   "The IDs of the remote-synced Collections with `entity-ids`."
   [entity-ids :- [:set :string]]
   (t2/select-pks-set :model/Collection :entity_id [:in entity-ids] :is_remote_synced true))
-
-(mu/defn transform-exists?
-  "Whether any Transform exists."
-  []
-  (t2/exists? :model/Transform))
 
 (mu/defn rso-exists?
   "Whether the entity `model-type` `model-id` has a RemoteSyncObject."

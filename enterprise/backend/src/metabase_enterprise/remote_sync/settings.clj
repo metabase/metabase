@@ -1,10 +1,10 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [clojure.string :as str]
-   [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.tracking :as tracking]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -99,42 +99,21 @@
   :default 60)
 
 (def ^:const transforms-root-id
-  "Sentinel value for the virtual Transforms root collection.
-   Used to represent the entire transforms feature being enabled/disabled."
+  "Sentinel `model_id` of the Transforms root RSO that earlier versions recorded for the transforms setting."
   -1)
 
-(defn- replace-transforms-root-rso!
-  "Replaces the Transforms root RSO with one in `status`."
-  [status]
-  (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
-  (remote-sync.db/insert-rso! {:model_type        "Collection"
-                               :model_id          transforms-root-id
-                               :model_name        "Transforms"
-                               :status            status
-                               :status_changed_at (t/offset-date-time)}))
-
 (defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled with
-  transforms to publish, 'delete' when disabled after transforms were tracked, left alone when already in that state
-  (the settings cache also calls this on every load), and absent on a read-only instance, which has nothing to
-  publish."
+  "Tracks every untracked transform as 'create' for initial sync when enabled on an instance that publishes, and drops
+  the transform tracking when disabled. Either way it removes the Transforms root RSO (model_id -1) that earlier
+  versions recorded. The settings cache also calls this on every load, so it only adds what is untracked."
   [enabled?]
-  (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
-    (cond
-      (= :read-only (remote-sync-type))
-      (when status
-        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
+  (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
+  (cond
+    (not enabled?)
+    (tracking/disable-transform-tracking!)
 
-      enabled?
-      (when-not (#{"create" "synced"} status)
-        (if (remote-sync.db/transform-exists?)
-          (replace-transforms-root-rso! "create")
-          (when status
-            (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))))
-
-      (and (not= "delete" status)
-           (or status (remote-sync.db/rso-of-type-exists? "Transform")))
-      (replace-transforms-root-rso! "delete"))))
+    (not= :read-only (remote-sync-type))
+    (tracking/enable-transform-tracking!)))
 
 (defn- sync-transform-tracking-on-change
   "Called when remote-sync-transforms setting changes."

@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.task.import]
    [metabase-enterprise.remote-sync.task.table-cleanup]
+   [metabase-enterprise.remote-sync.tracking :as tracking]
    [metabase.collections.models.collection :as collection]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log])
@@ -59,7 +60,7 @@
       ;; rebuilds the ledger anyway.
       (when (and (= :read-write (settings/remote-sync-type))
                  (settings/library-is-remote-synced?))
-        (let [n (events/backfill-glossary-tracking!)]
+        (let [n (tracking/backfill-glossary-tracking!)]
           (when (pos? n)
             (log/infof "Tracking %d existing glossary entries for remote sync" n))))
       (when (= :read-write (settings/remote-sync-type))

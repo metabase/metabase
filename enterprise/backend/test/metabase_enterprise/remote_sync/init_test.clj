@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase-enterprise.remote-sync.tracking :as rs-tracking]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
@@ -216,8 +217,8 @@
       (do-with-untracked-glossary-entry!
        :read-write
        (fn [_entry]
-         (is (= 1 (rs-events/backfill-glossary-tracking!)))
-         (is (= 0 (rs-events/backfill-glossary-tracking!)))
+         (is (= 1 (rs-tracking/backfill-glossary-tracking!)))
+         (is (= 0 (rs-tracking/backfill-glossary-tracking!)))
          (is (= 1 (glossary-rso-count))))))))
 
 (deftest remote-sync-init-glossary-backfill-skips-read-only-test
