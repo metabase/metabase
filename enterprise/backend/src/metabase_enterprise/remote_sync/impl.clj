@@ -186,15 +186,14 @@
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
-   - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
+   - :first-import-conflicts - feature/namespace conflicts that only block on the very first import
    - :deletion-conflicts     - unsynced local entities of all-or-nothing models (transforms) that the import
                                would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
-   - :library-conflict - First import only, local Library exists, import has Library
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
-  [ingestable first-import?]
+  [ingestable]
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list #(serialization/ingest-one ingestable %))
         models-present (spec/models-in-import ingest-list)
@@ -217,18 +216,7 @@
         ns-coll-conflicts (spec/check-namespace-collection-conflicts
                            import-namespace-collections
                            (:entity-ids import-ns-info))
-        library-conflict (when-let [local-library (remote-sync.db/library-collection collection/library-collection-type)]
-                           (when (and first-import?
-                                      (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
-                                                 collection/library-entity-id)
-                                      (not (remote-sync.db/rso-exists? "Collection" (:id local-library))))
-                             {:type :library-conflict
-                              :category "Library"
-                              :message "Import contains Library but local instance has an unsynced Library collection"}))
-        first-import-conflicts (concat
-                                feature-conflicts
-                                ns-coll-conflicts
-                                (when library-conflict [library-conflict]))]
+        first-import-conflicts (concat feature-conflicts ns-coll-conflicts)]
     {:first-import-conflicts (vec first-import-conflicts)
      :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
                                    (spec/check-content-deletion-conflicts imported-data))}))
@@ -668,8 +656,7 @@
             blocking-conflicts (delay
                                  (let [conflicts (delay
                                                    (report 0.02 {:force? true})
-                                                   (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
-                                                                  first-import?))]
+                                                   (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})))]
                                    (cond-> []
                                      (and first-import? (not force?))
                                      (into (:first-import-conflicts @conflicts))

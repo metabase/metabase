@@ -434,11 +434,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
-(mu/defn library-collection
-  "The Library Collection of `library-type`, or nil."
-  [library-type :- :string]
-  (t2/select-one :model/Collection :type library-type))
-
 (mu/defn collections-with-names-in-namespace
   "The `:id` and `:name` of the Collections of `namespace-name`."
   [namespace-name :- :string]
