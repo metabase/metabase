@@ -333,7 +333,6 @@
    "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000 :context-window  200000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000 :context-window  200000}
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
@@ -385,10 +384,24 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
+;; Release branch only. The backport of https://github.com/metabase/metabase/pull/83949 removed the retired Claude
+;; Opus 4.1 from [[supported-models]]. On this branch that map also holds each model's `max_tokens` ceiling, and Google
+;; Cloud's `claude-opus-4-1@20250805` resolves to the removed row. Without this map, those requests would send the
+;; 64000 [[default-max-tokens]], above the model's 32000 ceiling. Master does not need this map: since
+;; https://github.com/metabase/metabase/pull/82436 it sends the same flat `max_tokens` for every model.
+(def ^:private unlisted-model-max-tokens
+  "`max_tokens` ceilings for models that [[supported-models]] no longer offers but a partner platform still serves.
+
+  Google Cloud still serves Claude Opus 4.1:
+  https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#api-model-ids"
+  {"claude-opus-4-1-20250805" 32000})
+
 (defn- model-max-tokens
   "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
   [model]
-  (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
+  (let [id (strip-vendor-prefix model)]
+    (or (get-in supported-models [id :max-tokens])
+        (get unlisted-model-max-tokens id))))
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
