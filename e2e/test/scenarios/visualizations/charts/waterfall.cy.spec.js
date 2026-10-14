@@ -91,7 +91,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("Created At", "Count");
   });
 
-  it("should hide the Total label if there is no space", () => {
+  it("should keep the Total label and drop the date label crowding it", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -108,7 +108,11 @@ describe("scenarios > visualizations > waterfall", () => {
     switchToWaterfallDisplay();
 
     H.chartPathWithFillColor("#303D46").should("exist");
-    H.echartsContainer().find("text").contains("Total").should("not.exist");
+    H.echartsContainer().within(() => {
+      cy.findByText("Total").should("exist");
+      // the last month sits one month before the Total and gives way to it
+      cy.findByText("April 2029").should("not.exist");
+    });
   });
 
   describe("multi-series (metabase#15152)", () => {
@@ -167,8 +171,8 @@ describe("scenarios > visualizations > waterfall", () => {
         });
 
         // y-axis labels (some)
-        ["0", "300,000", "900,000", "1,800,000"].forEach((label) => {
-          cy.findByText(label).should("exist");
+        ["0", "450.0k", "900.0k", "1.8M"].forEach((label) => {
+          cy.findByText(label).should("be.visible");
         });
       });
     }
@@ -404,8 +408,35 @@ describe("scenarios > visualizations > waterfall", () => {
       cy.findByLabelText("Goal label").clear().type("Target");
     });
 
-    H.echartsContainer().findByText("Target").should("exist");
     H.goalLine().should("exist");
+    H.goalLineMarker().should("be.visible");
+  });
+
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      display: "waterfall",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+      },
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": 11000,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    H.goalLineMarker().trigger("mousemove");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("11,000").should("be.visible");
+    });
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

@@ -10,15 +10,15 @@ import {
   type HoveredObject,
   type SeriesModel,
   X_AXIS_DATA_KEY,
-  getDashboardAdjustedSettings,
   getDatasetKey,
+  getSizeAdjustedSettings,
 } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 import { normalizeDimensionValue } from "./events";
 import type { CartesianHoveredObject } from "./types";
 
-export { getDashboardAdjustedSettings };
+export { getSizeAdjustedSettings };
 
 export const getHoveredSeriesDataKey = (
   seriesModels: SeriesModel[],

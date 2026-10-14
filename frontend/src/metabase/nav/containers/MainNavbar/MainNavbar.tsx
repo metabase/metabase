@@ -138,9 +138,10 @@ function maybeGetQuestionId(
   { location, params }: MainNavbarOwnProps,
 ) {
   const { pathname } = location;
-  const canFetchQuestion =
+  const canFetchCard =
     isQuestionPath(pathname) || isModelPath(pathname) || isMetricPath(pathname);
-  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+  const cardId = isMetricPath(pathname) ? params.cardId : params.slug;
+  return canFetchCard ? Urls.extractEntityId(cardId) : null;
 }
 
 function maybeGetCollectionId(

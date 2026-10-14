@@ -82,7 +82,7 @@ describe("chart-clipboard", () => {
 
     expect(parseChartClipboard(`${SITE_URL}/question#${hash}`)).toEqual({
       name: "Orders by month",
-      description: undefined,
+      description: null,
       display: "bar",
       dataset_query: datasetQuery,
       visualization_settings: {},

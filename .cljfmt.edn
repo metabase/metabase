@@ -113,6 +113,8 @@
   defprotocol+                                                                                [[:block 1] [:inner 1]]
   defrecord+                                                                                  [[:block 2] [:inner 1]]
   deftype+                                                                                    [[:block 2] [:inner 1]]
+  metabase.task.core/defjob-type                                                              [[:inner 0] [:inner 1]]
+  metabase.task.impl/defjob-type                                                              [[:inner 0] [:inner 1]]
   net.cgrand.macrovich/case                                                                   [[:block 0]]
   potemkin.namespaces/import-vars                                                             [[:default]]
   potemkin.types/def-map-type                                                                 [[:block 2] [:inner 1]]

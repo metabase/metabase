@@ -59,6 +59,8 @@ export type SearchResultItem = {
   display?: CardDisplayType;
   moderated_status?: string;
   database_id?: number;
+  /** The base table of a measure or segment. */
+  table_id?: number;
   database_schema?: string;
   database_name?: string;
   collection?: { id?: number; name: string };

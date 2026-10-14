@@ -141,7 +141,7 @@
               ["./bin/mage start-db postgres latest --port 5555" "start postgres on a custom port"]]
    :requires [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle]
+                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle :starburst]
                 [:enum :oldest :latest]]
    :options [["-p" "--port PORT" "Override the default host port for the container" :parse-fn Integer/parseInt]]
    :db-info      {:postgres   {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
@@ -151,6 +151,7 @@
                   :sqlserver  {:ports {:oldest 1433 :latest 1434}   :eol-url "https://endoflife.date/api/mssqlserver.json"}
                   :oracle     {:ports {:oldest 1521 :latest 1522}   :eol-url "https://endoflife.date/api/oracle-database.json"}
                   ;; some databases aren't on endoflife.date
+                  :starburst  {:ports {:oldest 8084 :latest 8085}   :eol-url nil}
                   :clickhouse {:ports {:oldest 8124 :latest 8123}   :eol-url nil}}
    :usage-fn start-db/usage
    :task (task!

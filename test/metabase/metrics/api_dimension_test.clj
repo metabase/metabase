@@ -815,7 +815,7 @@
        (t2/update! :model/Card metric-id {:dataset_query (people-metric-query)})
        (let [{:keys [card_schema dimensions]} (stored-card metric-id)
              stored-names (display-name-by-field-id dimensions)]
-         (is (= @#'card/current-schema-version card_schema)
+         (is (= card/current-card-schema-version card_schema)
              "the vintage advances alongside the migrated columns")
          (testing "the dimensions written alongside that bump are the modernized ones"
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
@@ -832,7 +832,7 @@
          (t2/update! :model/Card metric-id {:dimensions modernized})
          (let [{:keys [card_schema dimensions]} (stored-card metric-id)
                stored-names (display-name-by-field-id dimensions)]
-           (is (= @#'card/current-schema-version card_schema))
+           (is (= card/current-card-schema-version card_schema))
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
            (is (= "User - ID" (stored-names (mt/id :people :id))))
            (doseq [[field-id display-name] stored-names]
