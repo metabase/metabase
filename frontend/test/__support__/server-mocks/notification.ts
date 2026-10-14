@@ -30,7 +30,6 @@ export const setupCreateNotificationEndpoint = () => {
   });
 };
 
-/** Mocks default-population counts for the admin Alerts tabs. */
 export const setupAdminNotificationCountsEndpoint = (
   response: AdminNotificationCountsResponse,
   options?: UserRouteConfig,
@@ -38,12 +37,10 @@ export const setupAdminNotificationCountsEndpoint = (
   fetchMock.get("path:/api/notification/admin/counts", response, options);
 };
 
-/** Mocks a failed admin-count request. */
 export const setupAdminNotificationCountsErrorEndpoint = () => {
   fetchMock.get("path:/api/notification/admin/counts", { status: 500 });
 };
 
-/** Mocks static or deferred admin alert pages; array responses accept overrides. */
 export const setupAdminListNotificationsEndpoint = (
   response:
     | AdminNotification[]

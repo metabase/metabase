@@ -562,10 +562,10 @@ describe("NotificationsAdminPage", () => {
     });
 
     it("refreshes counters after archiving and keeps the previous count until the response arrives", async () => {
-      setup({ allCount: 9 });
+      setup({ allCount: 1 });
       await waitForTableToLoad();
       const allTab = screen.getByRole("button", { name: "All alerts" });
-      expect(await within(allTab).findByText("9")).toBeInTheDocument();
+      expect(await within(allTab).findByText("1")).toBeInTheDocument();
       const countsRefetch = defer<AdminNotificationCountsResponse>();
       fetchMock.modifyRoute("admin-notification-counts", {
         response: () => countsRefetch.promise,
@@ -590,11 +590,11 @@ describe("NotificationsAdminPage", () => {
         );
 
         await waitFor(() => expect(getCountCalls()).toHaveLength(2));
-        expect(within(allTab).getByText("9")).toBeInTheDocument();
-        act(() => countsRefetch.resolve({ all: 8, failing: 0, ownerless: 0 }));
-        expect(await within(allTab).findByText("8")).toBeInTheDocument();
+        expect(within(allTab).getByText("1")).toBeInTheDocument();
+        act(() => countsRefetch.resolve({ all: 0, failing: 0, ownerless: 0 }));
+        expect(await within(allTab).findByText("0")).toBeInTheDocument();
       } finally {
-        countsRefetch.resolve({ all: 8, failing: 0, ownerless: 0 });
+        countsRefetch.resolve({ all: 0, failing: 0, ownerless: 0 });
       }
     });
   });
