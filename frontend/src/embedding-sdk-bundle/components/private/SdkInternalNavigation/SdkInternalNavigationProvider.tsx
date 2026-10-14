@@ -20,6 +20,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import { Stack } from "metabase/ui";
+import { uuid } from "metabase/utils/uuid";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type {
@@ -34,6 +35,7 @@ import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButt
 import {
   SdkInternalNavigationContext,
   type SdkInternalNavigationEntry,
+  type SdkInternalNavigationStackEntry,
 } from "./context";
 
 // Strips props that are only meant for the root dashboard before forwarding to a drill-through target.
@@ -71,7 +73,7 @@ const SdkInternalNavigationProviderInner = ({
   drillThroughQuestionProps,
   keepChildrenMounted = false,
 }: Props) => {
-  const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
+  const [stack, setStack] = useState<SdkInternalNavigationStackEntry[]>([]);
   const dispatch = useSdkDispatch();
   const currentDashboard = useSelector(getDashboardComplete);
   const selectedTabId = useSelector(getSelectedTabId);
@@ -103,6 +105,7 @@ const SdkInternalNavigationProviderInner = ({
       if (entry.type === "dashboard") {
         dispatch(setInitialDashboardTabId(entry.tabId ?? null));
       }
+      const navigationId = uuid();
       setStack((prev) => {
         const top = prev.at(-1);
         // Capture the live selected tab onto the outgoing dashboard entry so
@@ -115,7 +118,7 @@ const SdkInternalNavigationProviderInner = ({
                 { ...top, tabId: selectedTabId ?? top.tabId },
               ]
             : prev;
-        return [...updated, entry];
+        return [...updated, { ...entry, navigationId }];
       });
     },
     [dispatch, currentDashboard, selectedTabId],
@@ -144,7 +147,12 @@ const SdkInternalNavigationProviderInner = ({
     (dashboard: { id: SdkDashboardId; name: string }) => {
       if (stack.length === 0) {
         setStack([
-          { type: "dashboard", id: dashboard.id, name: dashboard.name },
+          {
+            type: "dashboard",
+            id: dashboard.id,
+            name: dashboard.name,
+            navigationId: uuid(),
+          },
         ]);
       }
     },
