@@ -5,6 +5,7 @@ import { Roles } from "./test_roles";
 import * as testTables from "./test_tables";
 
 const dbClients = {};
+const existingWritableDbs = new Set();
 
 function getDbClient(connectionConfig) {
   const connectionId =
@@ -115,6 +116,10 @@ function getAdminConnectionConfig(type) {
 }
 
 async function writableDbExists(type) {
+  if (existingWritableDbs.has(type)) {
+    return true;
+  }
+
   const dbName = WRITABLE_DB_CONFIG[type].connection.database;
 
   const dbCheckQuery = {
@@ -127,7 +132,12 @@ async function writableDbExists(type) {
     query: dbCheckQuery,
   });
 
-  return rows.length > 0;
+  const exists = rows.length > 0;
+  if (exists) {
+    existingWritableDbs.add(type);
+  }
+
+  return exists;
 }
 
 async function assertWritableDbExists(type) {
@@ -146,6 +156,7 @@ export async function createWritableDb({ type = "postgres" }) {
       connectionConfig: getAdminConnectionConfig(type),
       query: `CREATE DATABASE ${dbName};`,
     });
+    existingWritableDbs.add(type);
   }
 
   return null;
