@@ -241,7 +241,7 @@ const SuggestedPromptRow = ({
                 to={Urls.newMetabotConversation({ prompt: row.prompt })}
                 data-testid="prompt-run"
                 target="_blank"
-                h="sm"
+                size="sm"
               >
                 <Icon name="play" size="1rem" />
               </ActionIcon>
@@ -252,7 +252,7 @@ const SuggestedPromptRow = ({
                 variant="subtle"
                 onClick={() => clipboard.copy(row.prompt)}
                 data-testid="prompt-copy"
-                h="sm"
+                size="sm"
               >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
@@ -263,7 +263,7 @@ const SuggestedPromptRow = ({
               variant="subtle"
               onClick={onDelete}
               data-testid="prompt-remove"
-              h="sm"
+              size="sm"
             >
               <Icon name="trash" size="1rem" />
             </ActionIcon>

@@ -81,7 +81,6 @@ export const SidebarHeader = ({
                 variant="subtle"
                 aria-label={t`More actions`}
                 size="lg"
-                c="icon-primary"
                 disabled={isBulkLoading}
               >
                 <Icon name="ellipsis" />
@@ -109,7 +108,6 @@ export const SidebarHeader = ({
             variant="subtle"
             aria-label={t`Edit`}
             size="lg"
-            c="icon-primary"
             disabled={isEditDisabled}
             onClick={!isEditDisabled ? onEdit : undefined}
           >
@@ -119,7 +117,6 @@ export const SidebarHeader = ({
             variant="subtle"
             aria-label={t`Close`}
             size="lg"
-            c="icon-primary"
             onClick={onClose}
           >
             <Icon name="close" />

@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
@@ -49,6 +48,7 @@ export const ChartTypeOption = ({
           size="lg"
           radius="xl"
           aria-pressed={isSelected}
+          selected={isSelected}
           onClick={() => {
             if (isSelected) {
               onOpenSettings?.();
@@ -69,16 +69,11 @@ export const ChartTypeOption = ({
 
         {isSelected && onOpenSettings && (
           <ActionIcon
-            variant="subtle"
             pos="absolute"
             top="-0.5rem"
             right="-0.6rem"
             radius="xl"
-            bg="background_page-primary"
-            className={cx(
-              ChartTypeOptionS.BorderedButton,
-              ChartTypeOptionS.SettingsButton,
-            )}
+            className={ChartTypeOptionS.SettingsButton}
             onClick={() => onOpenSettings?.()}
           >
             <Icon name="gear" size={16} />

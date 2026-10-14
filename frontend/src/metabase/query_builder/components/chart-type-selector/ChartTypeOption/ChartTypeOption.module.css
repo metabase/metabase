@@ -1,7 +1,3 @@
-.BorderedButton {
-  border: var(--border-size) var(--border-style) var(--mb-color-border-neutral) !important;
-}
-
 .SettingsButton {
   opacity: 0;
 }

@@ -15,7 +15,7 @@ export const MetabotBranchPicker = ({
     <Tooltip label={t`Previous version`} disabled={index === 0}>
       <ActionIcon
         variant="subtle"
-        h="sm"
+        size="sm"
         aria-label={t`Previous version`}
         disabled={index === 0}
         onClick={() => onChange(index - 1)}
@@ -29,7 +29,7 @@ export const MetabotBranchPicker = ({
     <Tooltip label={t`Next version`} disabled={index === count - 1}>
       <ActionIcon
         variant="subtle"
-        h="sm"
+        size="sm"
         aria-label={t`Next version`}
         disabled={index === count - 1}
         onClick={() => onChange(index + 1)}

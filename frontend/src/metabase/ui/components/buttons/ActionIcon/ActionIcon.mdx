@@ -52,6 +52,6 @@ Pass `radius="xl"` for the rounded corners.
 
 ### Selectable
 
-`light` and `subtle` have a selected state. Pass `aria-pressed={isSelected}`.
+`light` and `subtle` have a selected state. Pass `selected={isSelected}` (and `aria-pressed` for toggle buttons). To force the pressed look, pass `mod={{ pressed: true }}`.
 
 <Canvas of={ActionIconStories.Selectable} />

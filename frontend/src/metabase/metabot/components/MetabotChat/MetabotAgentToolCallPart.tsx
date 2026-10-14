@@ -59,7 +59,7 @@ const ToolCallSection = ({
         <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
           <ActionIcon
             variant="subtle"
-            h="sm"
+            size="sm"
             aria-label={copyLabel}
             onClick={() => clipboard.copy(value)}
           >
@@ -205,13 +205,12 @@ export const AgentToolCallPart = ({
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
               variant="subtle"
-              h="sm"
+              size="sm"
               aria-label={t`Copy tool call JSON`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleCopy();
               }}
-              className={Styles.agentPartActionIcon}
             >
               <Icon name="copy" size="1rem" />
             </ActionIcon>

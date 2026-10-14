@@ -101,9 +101,7 @@ function Emoji({
   return (
     <ActionIcon
       variant="subtle"
-      c="text-primary"
       component="button"
-      w="2rem"
       fz="1.25rem"
       // Unjustified type cast. FIXME
       ref={ref as React.RefObject<HTMLButtonElement>}

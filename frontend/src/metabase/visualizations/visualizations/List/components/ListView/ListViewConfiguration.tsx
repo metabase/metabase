@@ -241,7 +241,6 @@ export const ListViewConfiguration = ({
                 <Flex className={S.iconMenuButtonContainer}>
                   <ActionIcon
                     data-testid="list-view-icon"
-                    variant="subtle"
                     className={S.iconMenuButton}
                     style={{
                       backgroundColor: iconConfig.entityIconEnabled
@@ -311,9 +310,6 @@ export const ListViewConfiguration = ({
                   <ActionIcon
                     variant="subtle"
                     radius="lg"
-                    p="lg"
-                    w="2rem"
-                    h="2rem"
                     disabled={!imageColumn}
                     className={cx({
                       [S.imageColumn]: !!imageColumn,
@@ -354,8 +350,6 @@ export const ListViewConfiguration = ({
                     <Flex justify="center" align="center" key={key}>
                       <ActionIcon
                         variant="subtle"
-                        w="2rem"
-                        h="2rem"
                         radius="lg"
                         className={cx({
                           [S.selected]:

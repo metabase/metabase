@@ -35,11 +35,7 @@ const DEFAULT_COLORS: Partial<Record<ActionIconVariant, ActionIconColor>> = {
 const CELLS = [
   "default-neutral",
   "filled-brand",
-  "light-brand",
-  "light-negative",
   "light-neutral",
-  "light-positive",
-  "light-warning",
   "subtle-brand",
   "subtle-negative",
   "subtle-neutral",

@@ -61,7 +61,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
         data-testid={dataTestId}
         onClick={onClick}
         disabled={disabled}
-        h="sm"
+        size="sm"
         ref={ref}
       >
         <Icon

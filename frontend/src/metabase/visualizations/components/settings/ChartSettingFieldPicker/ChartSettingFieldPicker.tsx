@@ -185,7 +185,6 @@ export const ChartSettingFieldPicker = ({
                 c="text-secondary"
                 size="sm"
                 radius="xl"
-                p={0}
               >
                 <Icon name="chevrondown" />
               </ActionIcon>

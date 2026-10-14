@@ -219,7 +219,6 @@ const baseColors = {
   dubloonAlpha: {
     40: "rgba(223, 164, 0, 0.78)",
     30: "rgba(248, 189, 0, 0.51)",
-    10: "rgba(248, 189, 0, 0.18)",
   },
 
   // Palm

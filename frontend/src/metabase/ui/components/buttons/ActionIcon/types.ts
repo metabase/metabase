@@ -34,4 +34,5 @@ export type ActionIconProps = Omit<
   size?: ActionIconSize;
   variant?: ActionIconVariant;
   color?: ActionIconColor;
+  selected?: boolean;
 } & ButtonHTMLAttributes<HTMLButtonElement>;

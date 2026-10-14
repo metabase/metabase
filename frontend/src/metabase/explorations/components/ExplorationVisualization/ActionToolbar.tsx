@@ -509,8 +509,6 @@ function TriageNavButton({
   return (
     <Tooltip label={label} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
       <ActionIcon
-        variant="subtle"
-        className={S.triageButton}
         aria-label={label}
         radius="xl"
         disabled={!onClick}

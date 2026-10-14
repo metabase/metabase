@@ -171,9 +171,6 @@ const getActualColors = (brand: BrandRamp) => ({
   "button-light-positive-default": baseColors.orionAlphaInverse[10],
   "button-light-positive-hover": baseColors.orionAlphaInverse[20],
   "button-light-positive-pressed": baseColors.orionAlphaInverse[10],
-  "button-light-warning-default": baseColors.orionAlphaInverse[10],
-  "button-light-warning-hover": baseColors.orionAlphaInverse[20],
-  "button-light-warning-pressed": baseColors.orionAlphaInverse[10],
   "button-on_dark-disabled": baseColors.orionAlphaInverse[10],
   "button-on_dark-primary-default": baseColors.white,
   "button-on_dark-primary-hover": baseColors.orion[20],
@@ -211,8 +208,6 @@ const getActualColors = (brand: BrandRamp) => ({
   "button_label-light-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
   "button_label-light-positive-default": baseColors.palm[30],
   "button_label-light-positive-hover": baseColors.palm[20],
-  "button_label-light-warning-default": baseColors.dubloon[20],
-  "button_label-light-warning-hover": baseColors.dubloon[10],
   "button_label-on_dark-disabled": baseColors.orionAlphaInverse[40],
   "button_label-on_dark-primary": baseColors.orionAlpha[80],
   "button_label-on_dark-secondary": baseColors.white,

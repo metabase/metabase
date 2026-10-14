@@ -27,6 +27,7 @@ export const ChartSettingIconRadio = ({
           key={`radio-icon-${option.iconName}`}
           variant="light"
           aria-pressed={option.value === value}
+          selected={option.value === value}
           ml="sm"
           onClick={() => handleClick(option.value)}
         >

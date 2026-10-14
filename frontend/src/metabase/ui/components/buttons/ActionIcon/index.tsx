@@ -27,10 +27,14 @@ const guardSubtleOnlyXs = ({
     : { size, variant };
 
 const ActionIconRoot = forwardRef<HTMLButtonElement, ActionIconProps>(
-  function ActionIconRoot({ size, variant, color, ...props }, ref) {
+  function ActionIconRoot(
+    { size, variant, color, selected, mod, ...props },
+    ref,
+  ) {
     return (
       <MantineActionIcon
         {...props}
+        mod={[{ selected }, mod]}
         {...guardSubtleOnlyXs({ size, variant })}
         // `color` is overloaded with Figma color names that ActionIcon.config.tsx
         // resolves into button tokens, so it is not a Mantine color

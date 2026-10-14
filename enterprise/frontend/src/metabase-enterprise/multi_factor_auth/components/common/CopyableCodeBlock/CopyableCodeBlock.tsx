@@ -18,15 +18,15 @@ export function CopyableCodeBlock({ codes }: CopyableCodeBlockProps) {
   return (
     <Group
       px="lg"
-      py="0.75rem"
+      py="sm"
       justify="space-between"
       align="flex-start"
       bg="background-secondary"
       bdrs="sm"
     >
-      <Stack gap="sm">
+      <Stack gap={0}>
         {codes.map((code, index) => (
-          <Box key={index} ff="mono" fz="sm" lh="1rem">
+          <Box key={index} ff="mono" fz="sm" lh="1.5rem">
             {code}
           </Box>
         ))}
@@ -36,8 +36,7 @@ export function CopyableCodeBlock({ codes }: CopyableCodeBlockProps) {
           <Tooltip label={copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
               variant="subtle"
-              size="xs"
-              m={-1}
+              size="sm"
               aria-label={t`Copy`}
               onClick={copy}
             >

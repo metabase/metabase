@@ -11,8 +11,6 @@ import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
-import S from "./NativeQueryEditorActionButtons.module.css";
-
 export const NATIVE_EDITOR_ICON_SIZE = 16;
 
 interface NativeQueryEditorActionButtonsProps {
@@ -95,7 +93,6 @@ export const NativeQueryEditorActionButtons = (
           <ActionIcon
             variant="subtle"
             size="xs"
-            className={S.button}
             aria-label={t`Auto-format`}
             onClick={onFormatQuery}
           >

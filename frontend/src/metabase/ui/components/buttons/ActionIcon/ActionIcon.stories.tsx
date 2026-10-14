@@ -80,6 +80,8 @@ const SELECTABLE_STATES = [
   "disabled",
   "selected",
   "selected-hover",
+  "selected-active",
+  "selected-disabled",
 ] as const;
 
 const MATRIX_COLORS = {
@@ -106,6 +108,8 @@ const STATE_LABELS: Record<MatrixState, string> = {
   loading: "loading",
   selected: "selected",
   "selected-hover": "hover (selected)",
+  "selected-active": "pressed (selected)",
+  "selected-disabled": "disabled (selected)",
 };
 
 type MatrixSize = (typeof MATRIX_SIZES)[number];
@@ -114,19 +118,33 @@ type MatrixState =
   | (typeof SELECTABLE_STATES)[number];
 type MatrixColor = keyof typeof MATRIX_COLORS;
 
+const SELECTED_STATE = "selected";
+const SELECTED_STATE_PREFIX = `${SELECTED_STATE}-`;
+
+const isSelectedState = (state: MatrixState) =>
+  state === SELECTED_STATE || state.startsWith(SELECTED_STATE_PREFIX);
+
 const matrixStateProps = (
   state: MatrixState,
-): { disabled?: boolean; loading?: boolean; "aria-pressed"?: boolean } => {
-  if (state === "disabled") {
-    return { disabled: true };
+): { disabled?: boolean; loading?: boolean; selected?: boolean } => {
+  const selectedProps = isSelectedState(state) ? { selected: true } : {};
+  if (state === "disabled" || state === "selected-disabled") {
+    return { ...selectedProps, disabled: true };
   }
   if (state === "loading") {
     return { loading: true };
   }
-  if (state === "selected" || state === "selected-hover") {
-    return { "aria-pressed": true };
+  return selectedProps;
+};
+
+const specCellKey = (cell: string, size: MatrixSize, state: MatrixState) => {
+  if (state === SELECTED_STATE) {
+    return `${cell}-${SELECTED_STATE}/${size}/default`;
   }
-  return {};
+  if (state.startsWith(SELECTED_STATE_PREFIX)) {
+    return `${cell}-${SELECTED_STATE}/${size}/${state.slice(SELECTED_STATE_PREFIX.length)}`;
+  }
+  return `${cell}/${size}/${state}`;
 };
 
 const matrixCell = (
@@ -149,7 +167,7 @@ const matrixJsx = (
     `variant="${variant}"`,
     color === "neutral" ? null : `color="${MATRIX_COLORS[color]}"`,
     rounded ? 'radius="xl"' : null,
-    selectable ? "aria-pressed={selected}" : null,
+    selectable ? "selected={selected}" : null,
     "/>",
   ]
     .filter(Boolean)
@@ -183,42 +201,49 @@ const MatrixSection = ({
   sizes,
   rounded = false,
   states = MATRIX_STATES,
-}: MatrixSectionProps) => (
-  <StorySection
-    title={title}
-    description={
-      <StoryJsx>
-        {matrixJsx(variant, color, rounded, states === SELECTABLE_STATES)}
-      </StoryJsx>
-    }
-  >
-    <Box style={matrixGridStyle(sizes.length)}>
-      <Box />
-      {sizes.map((size) => (
-        <StoryLabel key={size}>{size}</StoryLabel>
-      ))}
-      {states.map((state) => (
-        <Fragment key={state}>
-          <StoryLabel>{STATE_LABELS[state]}</StoryLabel>
-          {sizes.map((size) => (
-            <ActionIcon
-              key={size}
-              variant={variant}
-              color={MATRIX_COLORS[color]}
-              size={size}
-              radius={rounded ? "xl" : undefined}
-              aria-label="action"
-              data-spec-cell={`${matrixCell(variant, color, rounded)}/${size}/${state}`}
-              {...matrixStateProps(state)}
-            >
-              <Icon name="model" />
-            </ActionIcon>
-          ))}
-        </Fragment>
-      ))}
-    </Box>
-  </StorySection>
-);
+}: MatrixSectionProps) => {
+  const selectable = states === SELECTABLE_STATES;
+  return (
+    <StorySection
+      title={title}
+      description={
+        <StoryJsx>{matrixJsx(variant, color, rounded, selectable)}</StoryJsx>
+      }
+    >
+      <Box style={matrixGridStyle(sizes.length)}>
+        <Box />
+        {sizes.map((size) => (
+          <StoryLabel key={size}>{size}</StoryLabel>
+        ))}
+        {states.map((state) => (
+          <Fragment key={state}>
+            <StoryLabel>{STATE_LABELS[state]}</StoryLabel>
+            {sizes.map((size) => (
+              <ActionIcon
+                key={size}
+                variant={variant}
+                color={MATRIX_COLORS[color]}
+                size={size}
+                radius={rounded ? "xl" : undefined}
+                aria-label="action"
+                data-spec-cell={specCellKey(
+                  selectable
+                    ? `selectable-${matrixCell(variant, color, rounded)}`
+                    : matrixCell(variant, color, rounded),
+                  size,
+                  state,
+                )}
+                {...matrixStateProps(state)}
+              >
+                <Icon name="model" />
+              </ActionIcon>
+            ))}
+          </Fragment>
+        ))}
+      </Box>
+    </StorySection>
+  );
+};
 
 const groupJsx = (variant: ActionIconVariant) =>
   [
@@ -303,11 +328,7 @@ const VariantMatrix = ({
 
 const matrixParameters = {
   pseudo: {
-    hover: [
-      '[data-spec-cell$="/hover"]',
-      '[data-spec-cell$="/selected-hover"]',
-      '[data-group-state="hover"]',
-    ],
+    hover: ['[data-spec-cell$="/hover"]', '[data-group-state="hover"]'],
     active: ['[data-spec-cell$="/active"]', '[data-group-state="active"]'],
   },
   controls: { disable: true },
@@ -346,7 +367,7 @@ export const VariantLight = {
     <VariantMatrix
       title="ActionIcon · light"
       variant="light"
-      colors={["neutral", "brand", "negative", "positive", "warning"]}
+      colors={["neutral"]}
       sizes={NO_XS_SIZES}
       group
     />

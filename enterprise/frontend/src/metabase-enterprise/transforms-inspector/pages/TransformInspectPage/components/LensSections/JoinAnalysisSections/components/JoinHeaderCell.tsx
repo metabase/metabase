@@ -39,8 +39,9 @@ export const JoinHeaderCell = ({
         .with("warning", () => "warning")
         .with("info", () => "brand")
         .otherwise(() => undefined)}
-      size="lg"
+      size="sm"
       aria-pressed={isExpanded}
+      mod={{ pressed: isExpanded }}
       onClick={(e) => {
         e.stopPropagation();
         trackTransformInspectAlertClicked({ transformId, cardId: card.id });

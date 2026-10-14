@@ -55,6 +55,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       variant="subtle"
       data-testid="toolbar-button"
       aria-pressed={isActive || undefined}
+      selected={isActive}
       ref={ref}
       display={{
         base: visibleOnSmallScreen ? "flex" : "none",

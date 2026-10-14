@@ -7,8 +7,6 @@
 }
 
 .button {
-  border: none;
-  background: transparent;
   cursor: pointer;
 
   &:focus-visible {

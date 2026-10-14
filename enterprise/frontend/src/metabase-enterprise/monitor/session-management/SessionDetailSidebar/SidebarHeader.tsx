@@ -44,7 +44,6 @@ export const SidebarHeader = ({
           variant="subtle"
           aria-label={t`Copy link to clipboard`}
           size="lg"
-          c="icon-primary"
           onClick={handleCopyLink}
         >
           <Icon name="link" />
@@ -53,7 +52,6 @@ export const SidebarHeader = ({
           variant="subtle"
           aria-label={t`Close`}
           size="lg"
-          c="icon-primary"
           onClick={onClose}
         >
           <Icon name="close" />

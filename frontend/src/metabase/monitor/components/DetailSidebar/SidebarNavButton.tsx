@@ -1,7 +1,6 @@
 import { ActionIcon, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import S from "./SidebarNavButton.module.css";
 import type { SidebarNavButtonProps, SidebarNavDirection } from "./types";
 
 const NAV_ICONS: Record<SidebarNavDirection, IconName> = {
@@ -18,7 +17,6 @@ export const SidebarNavButton = ({
   <ActionIcon
     aria-label={label}
     size="lg"
-    className={S.navButton}
     disabled={disabled}
     onClick={onClick}
   >
