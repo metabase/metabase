@@ -1,82 +1,24 @@
-import { Canvas, Story, Meta } from "@storybook/blocks";
-import { Icon } from "metabase/ui";
-import { Stack, Textarea } from "metabase/ui";
+import { Canvas, Meta } from "@storybook/blocks";
 import * as TextareaStories from "./Textarea.stories";
 
 <Meta of={TextareaStories} />
 
 # Textarea
 
-Our themed wrapper around [Mantine Textarea](https://v6.mantine.dev/core/textarea/).
+Our themed wrapper around [Mantine Textarea](https://mantine.dev/core/textarea/). It shares its border, background, focus, error and disabled styles with `TextInput`.
+
+- Sizes: `sm`, `md` (default) and `lg`.
+- Autosizes between `minRows={2}` and `maxRows={6}` by default. Pass `autosize={false}` with `rows` for a fixed height.
 
 ## Docs
 
-- [Mantine Textarea Docs](https://v6.mantine.dev/core/textarea/)
+- [Mantine Textarea Docs](https://mantine.dev/core/textarea/)
+- [Figma](https://www.figma.com/design/qYbAmJHUJ2Tkb01WFegUKp/Component-Library?node-id=277-14383)
 
 ## Examples
 
 <Canvas of={TextareaStories.Default} />
 
-### Size - md
+## Overview
 
-<Canvas of={TextareaStories.EmptyMd} />
-
-#### Filled
-
-<Canvas of={TextareaStories.FilledMd} />
-
-#### Asterisk
-
-<Canvas of={TextareaStories.AsteriskMd} />
-
-#### Description
-
-<Canvas of={TextareaStories.DescriptionMd} />
-
-#### Disabled
-
-<Canvas of={TextareaStories.DisabledMd} />
-
-#### Error
-
-<Canvas of={TextareaStories.ErrorMd} />
-
-#### Read only
-
-<Canvas of={TextareaStories.ReadOnlyMd} />
-
-#### Autosize
-
-<Canvas of={TextareaStories.AutosizeMd} />
-
-### Size - xs
-
-<Canvas of={TextareaStories.EmptyXs} />
-
-#### Filled
-
-<Canvas of={TextareaStories.FilledXs} />
-
-#### Asterisk
-
-<Canvas of={TextareaStories.AsteriskXs} />
-
-#### Description
-
-<Canvas of={TextareaStories.DescriptionXs} />
-
-#### Disabled
-
-<Canvas of={TextareaStories.DisabledXs} />
-
-#### Error
-
-<Canvas of={TextareaStories.ErrorXs} />
-
-#### Read only
-
-<Canvas of={TextareaStories.ReadOnlyXs} />
-
-#### Autosize
-
-<Canvas of={TextareaStories.AutosizeXs} />
+<Canvas of={TextareaStories.Overview} />
