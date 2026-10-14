@@ -3,13 +3,12 @@ import { useEffect, useState } from "react";
 import _ from "underscore";
 
 import { Box } from "metabase/ui";
-import {
-  GOAL_WARNING_ICON_SIZE,
-  GoalWarningIcon,
-} from "metabase/visualizations/components/GoalWarning";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
 import {
   CHART_STYLE,
   type ComputedVisualizationSettings,
+  GOAL_WARNING_GAP,
+  GOAL_WARNING_ICON_SIZE,
   type GoalLineLabelLayout,
   type GoalLineParams,
   type GoalRefError,
@@ -17,8 +16,6 @@ import {
   getGoalLineLabelLayout,
   getGoalLineValue,
 } from "metabase/viz-core";
-
-const ICON_GAP = 4;
 
 type GoalLineWarningsProps = {
   chartInstance: EChartsType | undefined;
@@ -105,8 +102,8 @@ export function GoalLineWarnings({
           pos="absolute"
           left={
             align === "right"
-              ? x - labelWidth - ICON_GAP - GOAL_WARNING_ICON_SIZE
-              : x + labelWidth + ICON_GAP
+              ? x - labelWidth - GOAL_WARNING_GAP - GOAL_WARNING_ICON_SIZE
+              : x + labelWidth + GOAL_WARNING_GAP
           }
           top={y + (fontSize - GOAL_WARNING_ICON_SIZE) / 2}
         >

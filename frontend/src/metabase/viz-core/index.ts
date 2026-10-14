@@ -235,6 +235,7 @@ export {
   isCustomVizSettingKey,
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
+export { GOAL_WARNING_GAP, GOAL_WARNING_ICON_SIZE } from "./lib/goal-warning";
 export {
   getGoalErrorMessage,
   getGoalErrors,

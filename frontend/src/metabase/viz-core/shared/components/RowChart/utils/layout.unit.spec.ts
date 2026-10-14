@@ -24,9 +24,9 @@ describe("getRowChartGoal", () => {
     ).toBe("right");
   });
 
-  it("puts the label on the left when the label and its adornment do not fit on the right", () => {
+  it("puts the label on the left when the label and its warning do not fit on the right", () => {
     expect(
-      getRowChartGoal(GOAL, GOAL_STYLE, measureTextWidth, X_SCALE, 20)
+      getRowChartGoal(GOAL, GOAL_STYLE, measureTextWidth, X_SCALE, true)
         ?.position,
     ).toBe("left");
   });
@@ -34,10 +34,10 @@ describe("getRowChartGoal", () => {
 
 describe("getGoalLinePadding", () => {
   it("leaves room for the goal label", () => {
-    expect(getGoalLinePadding(GOAL_STYLE, undefined)).toBe(14);
+    expect(getGoalLinePadding(GOAL_STYLE, false)).toBe(14);
   });
 
-  it("leaves room for an adornment taller than the goal label", () => {
-    expect(getGoalLinePadding(GOAL_STYLE, 16)).toBe(16);
+  it("leaves room for a warning taller than the goal label", () => {
+    expect(getGoalLinePadding(GOAL_STYLE, true)).toBe(16);
   });
 });

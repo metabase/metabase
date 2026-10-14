@@ -2,9 +2,12 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Icon, List, Stack, Text, Tooltip } from "metabase/ui";
-import { type GoalRefError, getGoalErrorMessage } from "metabase/viz-core";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  type GoalRefError,
+  getGoalErrorMessage,
+} from "metabase/viz-core";
 
-export const GOAL_WARNING_ICON_SIZE = 16;
 const TOOLTIP_MAX_WIDTH = 300;
 
 type GoalWarningSource = "goal" | "color-ranges";

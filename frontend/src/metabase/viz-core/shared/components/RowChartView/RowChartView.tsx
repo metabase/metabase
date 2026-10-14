@@ -7,6 +7,7 @@ import { scaleBand } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
 import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
+import type { ReactNode } from "react";
 import * as React from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
@@ -17,7 +18,6 @@ import type { HoveredData } from "../../types/events";
 import type { Margin } from "../../types/layout";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import type { GoalAdornment } from "../VerticalGoalLine/adornment";
 
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
@@ -41,7 +41,7 @@ export interface RowChartViewProps<TDatum> {
     value: number;
     position: "left" | "right";
   } | null;
-  goalAdornment?: GoalAdornment;
+  goalWarning?: ReactNode;
   theme: RowChartTheme;
   margin: Margin;
   innerWidth: number;
@@ -73,7 +73,7 @@ const RowChartView = <TDatum,>({
   yScale,
   seriesData,
   goal,
-  goalAdornment,
+  goalWarning,
   theme,
   margin,
   labelsFormatter,
@@ -230,7 +230,7 @@ const RowChartView = <TDatum,>({
             labelWidth={goal.labelWidth}
             style={theme.goal}
             position={goal.position}
-            adornment={goalAdornment}
+            warning={goalWarning}
           />
         )}
 

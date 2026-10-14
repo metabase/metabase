@@ -1,14 +1,14 @@
 import { Line } from "@visx/shape";
 import { Text } from "@visx/text";
-
-import type { GoalStyle } from "../../types/style";
+import type { ReactNode } from "react";
 
 import {
-  GOAL_ADORNMENT_GAP,
-  GOAL_LABEL_OFFSET_EM,
-  type GoalAdornment,
-  getGoalAdornmentY,
-} from "./adornment";
+  GOAL_WARNING_GAP,
+  GOAL_WARNING_ICON_SIZE,
+} from "../../../lib/goal-warning";
+import type { GoalStyle } from "../../types/style";
+
+import { GOAL_LABEL_OFFSET_EM, getGoalWarningY } from "./goal-warning";
 
 interface VerticalGoalLineProps {
   x: number;
@@ -17,7 +17,7 @@ interface VerticalGoalLineProps {
   labelWidth: number;
   position: "left" | "right";
   style: GoalStyle;
-  adornment?: GoalAdornment;
+  warning?: ReactNode;
 }
 
 export const VerticalGoalLine = ({
@@ -27,10 +27,9 @@ export const VerticalGoalLine = ({
   labelWidth,
   style,
   position = "right",
-  adornment,
+  warning,
 }: VerticalGoalLineProps) => {
   const textAnchor = position === "right" ? "start" : "end";
-  const labelSize = style.label.size;
 
   return (
     <g role="graphics-symbol" aria-roledescription="goal line">
@@ -46,28 +45,18 @@ export const VerticalGoalLine = ({
       >
         {label}
       </Text>
-      {adornment != null && (
+      {warning != null && (
         <foreignObject
           x={
             position === "right"
-              ? x + labelWidth + GOAL_ADORNMENT_GAP
-              : x - labelWidth - GOAL_ADORNMENT_GAP - adornment.size
+              ? x + labelWidth + GOAL_WARNING_GAP
+              : x - labelWidth - GOAL_WARNING_GAP - GOAL_WARNING_ICON_SIZE
           }
-          y={getGoalAdornmentY(labelSize, adornment.size)}
-          width={adornment.size}
-          height={adornment.size}
-          overflow="visible"
+          y={getGoalWarningY(style.label.size)}
+          width={GOAL_WARNING_ICON_SIZE}
+          height={GOAL_WARNING_ICON_SIZE}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-            }}
-          >
-            {adornment.content}
-          </div>
+          {warning}
         </foreignObject>
       )}
       <Line

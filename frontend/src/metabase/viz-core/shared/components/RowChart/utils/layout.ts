@@ -5,7 +5,10 @@ import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { Margin } from "../../../types/layout";
 import type { ChartGoal } from "../../../types/settings";
 import type { ChartFont, GoalStyle } from "../../../types/style";
-import { getGoalAdornmentY } from "../../VerticalGoalLine/adornment";
+import {
+  GOAL_WARNING_WIDTH,
+  getGoalWarningY,
+} from "../../VerticalGoalLine/goal-warning";
 import { LABEL_PADDING } from "../constants";
 import type { SeriesData } from "../types";
 
@@ -76,15 +79,9 @@ export const getChartMargin = <TDatum>(
   return margin;
 };
 
-export const getGoalLinePadding = (
-  style: GoalStyle,
-  adornmentSize: number | undefined,
-) =>
-  adornmentSize != null
-    ? Math.max(
-        GOAL_LINE_PADDING,
-        Math.ceil(-getGoalAdornmentY(style.label.size, adornmentSize)),
-      )
+export const getGoalLinePadding = (style: GoalStyle, hasWarning: boolean) =>
+  hasWarning
+    ? Math.max(GOAL_LINE_PADDING, Math.ceil(-getGoalWarningY(style.label.size)))
     : GOAL_LINE_PADDING;
 
 export const getMaxYValuesCount = (
@@ -103,7 +100,7 @@ export const getRowChartGoal = (
   style: GoalStyle,
   measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
-  adornmentWidth = 0,
+  hasWarning = false,
 ) => {
   if (!goal) {
     return null;
@@ -114,7 +111,7 @@ export const getRowChartGoal = (
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;
   const position =
-    labelWidth + adornmentWidth > availableRightSideSpace
+    labelWidth + (hasWarning ? GOAL_WARNING_WIDTH : 0) > availableRightSideSpace
       ? ("left" as const)
       : ("right" as const);
 
