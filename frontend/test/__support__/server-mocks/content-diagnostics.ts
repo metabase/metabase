@@ -11,7 +11,6 @@ import type {
 
 type MockResponse<T> = T | ((call: CallLog) => T | Promise<T>);
 
-/** Mocks default-population counts with optional deferred responses and route options. */
 export function setupContentDiagnosticsCountsEndpoint(
   response: MockResponse<ContentDiagnosticsCountsResponse> = {
     stale: 0,
@@ -26,7 +25,6 @@ export function setupContentDiagnosticsCountsEndpoint(
   fetchMock.get("path:/api/ee/content-diagnostics/counts", response, options);
 }
 
-/** Mocks an unavailable Content count endpoint without affecting list requests. */
 export function setupContentDiagnosticsCountsErrorEndpoint() {
   fetchMock.get("path:/api/ee/content-diagnostics/counts", { status: 500 });
 }

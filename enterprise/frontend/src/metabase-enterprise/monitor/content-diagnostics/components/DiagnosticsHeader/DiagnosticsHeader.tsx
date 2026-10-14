@@ -11,7 +11,6 @@ import { Group, Icon, Stack, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { contentDiagnosticsApi } from "metabase-enterprise/api/content-diagnostics";
 
-/** Renders all Content tabs with cached default counts, without initiating requests. */
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const { currentData: counts, isError } =
     contentDiagnosticsApi.endpoints.getContentDiagnosticsCounts.useQueryState(

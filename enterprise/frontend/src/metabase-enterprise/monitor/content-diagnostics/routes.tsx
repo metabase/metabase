@@ -10,7 +10,6 @@ import {
   StaleContentPage,
 } from "./pages";
 
-/** Keeps default-population counts subscribed across tabs and refreshes on section entry. */
 export function ContentDiagnosticsSectionLayout() {
   useGetContentDiagnosticsCountsQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -19,7 +18,6 @@ export function ContentDiagnosticsSectionLayout() {
   return <Outlet />;
 }
 
-/** Returns the Content diagnostics pages with section-owned count freshness. */
 export function getContentDiagnosticsRoutes() {
   return (
     <Route element={<ContentDiagnosticsSectionLayout />}>
