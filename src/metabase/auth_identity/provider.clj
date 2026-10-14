@@ -83,6 +83,7 @@
 
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
+(def ^:private personal-only-message (deferred-tru "This login is only for personal accounts."))
 
 ;;; -------------------------------------------------- Multimethod: validate --------------------------------------------------
 
@@ -337,6 +338,24 @@
                                                            :error disabled-account-snippet
                                                            :message disabled-account-message)))
 
+(mu/defn- apply-personal-only-check
+  "Refuses a `request` that sets `:user/personal-only?` for a user who is not a personal account.
+
+  The refusal drops the user, so the rest of the login changes nothing about them."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
+  (cond-> request
+    (and (:user/personal-only? request)
+         (:user request)
+         (not= :personal (get-in request [:user :type])))
+    (-> (dissoc :user)
+        (assoc :success? false
+               :error    :non-personal-user
+               :message  personal-only-message))))
+
 (mu/defn- create-session!
   "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
   method set one, otherwise to that of `provider`. Updates the last_used_at timestamp on that AuthIdentity."
@@ -412,14 +431,7 @@
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
                    (auth-identity.db/user-login-columns-by-email email)))))
-    (cond-> $
-      (and (:user/personal-only? $)
-           (:user $)
-           (not= :personal (get-in $ [:user :type])))
-      (-> (dissoc :user)
-          (assoc :success? false
-                 :error    :non-personal-user
-                 :message  "This login is only for personal accounts.")))
+    (apply-personal-only-check $)
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
