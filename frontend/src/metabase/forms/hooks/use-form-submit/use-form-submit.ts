@@ -2,7 +2,7 @@ import type { FormikHelpers } from "formik";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useState } from "react";
 
-import { getResponseErrorMessage } from "metabase/utils/errors";
+import { findErrorMessage } from "metabase/api/utils/errors";
 
 import type { FormState } from "../../contexts";
 
@@ -61,6 +61,6 @@ const getFormErrors = (error: unknown) => {
 
 const getFormMessage = (error: unknown) => {
   if (isFormError(error)) {
-    return getResponseErrorMessage(error);
+    return findErrorMessage(error);
   }
 };

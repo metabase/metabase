@@ -220,6 +220,7 @@ const getActualColors = (brand: BrandRamp) => ({
   "button_label-subtle-positive-hover": baseColors.palm[20],
   "button_label-subtle-warning-default": baseColors.dubloon[20],
   "button_label-subtle-warning-hover": baseColors.dubloon[10],
+  "chart-axis": baseColors.orionAlphaInverse[20],
   "core-blue-saturated": baseColors.ocean[40],
   "core-brand-hover": brand[30],
   "core-filter-strong": baseColors.filter[20],

@@ -5,7 +5,7 @@ import {
   type UserOption,
   UserPicker,
 } from "metabase/common/components/UserPicker";
-import { Button, Flex, Modal } from "metabase/ui";
+import { Button, Modal } from "metabase/ui";
 import type { AdminNotification, UserId } from "metabase-types/api";
 
 type Props = {
@@ -48,21 +48,18 @@ export const ChangeOwnerModal = ({
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
-      <Flex direction="column" gap="lg">
-        <UserPicker value={selectedCreator} onChange={setSelectedCreator} />
-
-        <Flex justify="flex-end" gap="sm">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            disabled={selectedCreator === null || isSubmitting}
-            loading={isSubmitting}
-            onClick={handleSubmit}
-          >
-            {t`Change owner`}
-          </Button>
-        </Flex>
-      </Flex>
+      <UserPicker value={selectedCreator} onChange={setSelectedCreator} />
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          variant="filled"
+          disabled={selectedCreator === null || isSubmitting}
+          loading={isSubmitting}
+          onClick={handleSubmit}
+        >
+          {t`Change owner`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

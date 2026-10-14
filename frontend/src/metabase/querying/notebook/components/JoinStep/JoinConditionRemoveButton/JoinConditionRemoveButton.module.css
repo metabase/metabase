@@ -18,11 +18,7 @@
 
     &:hover,
     &:focus {
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-core-brand),
-        white 10%
-      );
+      background-color: var(--mb-color-background_surface-brand-strong-hover);
     }
   }
 
@@ -30,7 +26,7 @@
   &:focus {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-core-brand),
+      var(--mb-color-background_surface-brand-strong),
       transparent 20%
     );
   }

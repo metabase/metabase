@@ -208,6 +208,7 @@ export type MetabaseColorKey =
   | "button_label-subtle-positive-hover"
   | "button_label-subtle-warning-default"
   | "button_label-subtle-warning-hover"
+  | "chart-axis"
   | "core-blue-saturated"
   | "core-brand"
   | "core-brand-hover"
