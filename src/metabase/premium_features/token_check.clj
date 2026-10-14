@@ -646,6 +646,7 @@
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
+    ((requiring-resolve 'metabase.library.hooks/after-premium-token-update))
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present
