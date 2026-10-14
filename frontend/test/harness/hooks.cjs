@@ -952,17 +952,28 @@ const { ModernFakeTimers } = require(bunModule("@jest/fake-timers"));
 // per-test timeout on that module, and jest's jsdom global is separate the same way.
 const timerGlobal = new Proxy(globalThis, {});
 const fakeTimers = new ModernFakeTimers({ global: timerGlobal, config: {
-    fakeTimers: {
-      enableGlobally: false,
-      timerLimit: 20000,
-      // The clock installs on the real globalThis, so faking these would replace
-      // the microtask primitives Node's own fetch body parsing runs on, and its
-      // read loop then spins. jest fakes them safely because its clock installs
-      // on a sandboxed jsdom global whose process is a separate object.
-      doNotFake: ["nextTick", "queueMicrotask"],
-    },
+    fakeTimers: { enableGlobally: false, timerLimit: 20000 },
     rootDir: root,
   } });
+// jest's clock installs on a sandboxed jsdom global, so Node and jsdom keep the
+// real nextTick and queueMicrotask while the code under test gets fake ones.
+// Here there is one global object. nextTick stays real for everyone, because
+// Node's streams run on it. queueMicrotask is faked as under jest, for every
+// caller except the runtime: code that batches its work with queueMicrotask
+// then runs when the test advances the clock, and not before.
+const realQueueMicrotask = globalThis.queueMicrotask;
+const useFakeTimers = (config) => {
+  fakeTimers.useFakeTimers({ ...config, doNotFake: [...new Set([...(config?.doNotFake ?? []), "nextTick"])] });
+  const fakeQueueMicrotask = globalThis.queueMicrotask;
+  if (fakeQueueMicrotask === realQueueMicrotask) return;
+  // The clock marks its functions, and reads the marks to put the real ones
+  // back when it is removed. The copy keeps them.
+  globalThis.queueMicrotask = Object.assign(function queueMicrotask(callback) {
+    const caller = (new Error().stack ?? "").split("\n")[2] ?? "";
+    const fromRuntime = caller.includes("/node_modules/jsdom/") || caller.includes("node:") || caller.includes(__dirname + path.sep);
+    return (fromRuntime ? realQueueMicrotask : fakeQueueMicrotask)(callback);
+  }, fakeQueueMicrotask);
+};
 
 const callerFile = () => {
   const frames = (new Error().stack ?? "").split("\n").slice(1);
@@ -1122,7 +1133,7 @@ globalThis.jest = {
     const outer = takeProjectModules();
     try { await fn(); } finally { putProjectModules(outer); }
   },
-  useFakeTimers: (config) => { fakeTimers.useFakeTimers(config); return globalThis.jest; },
+  useFakeTimers: (config) => { useFakeTimers(config); return globalThis.jest; },
   useRealTimers: () => { fakeTimers.useRealTimers(); return globalThis.jest; },
   advanceTimersByTime: (ms) => fakeTimers.advanceTimersByTime(ms),
   advanceTimersByTimeAsync: (ms) => fakeTimers.advanceTimersByTimeAsync(ms),
