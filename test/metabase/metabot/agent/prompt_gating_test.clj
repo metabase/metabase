@@ -311,3 +311,13 @@
   (testing "the embedding SDK template (loader only) keeps the narration guidance"
     (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
       (is (re-find #"silent between tool calls" rendered)))))
+
+(deftest ^:parallel prompt-gates-query-results-grounding-test
+  (testing "without run_query the model is told it cannot see query results"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query"])]
+      (is (re-find #"# Hard constraint: you cannot see query results" rendered))
+      (is (not (re-find #"run_query" rendered)))))
+  (testing "with run_query the model is told how to read results"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
+      (is (re-find #"# You can see results only by running a query" rendered))
+      (is (not (re-find #"you cannot see query results" rendered))))))

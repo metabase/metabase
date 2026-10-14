@@ -17,6 +17,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
@@ -495,7 +496,15 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/profile->tools profile capabilities)
+        ;; Where other people can read the conversation, or there is no conversation or user to check, run_query would
+        ;; refuse every call, so it is not offered and the prompt does not promise results. The tool checks again, for
+        ;; someone who joins mid-turn.
+        offered      (profiles/profile->tools profile capabilities)
+        base-tools   (cond-> offered
+                       (and (contains? offered "run_query")
+                            (or (not (and conversation-id api/*current-user-id*))
+                                (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)))
+                       (dissoc "run_query"))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)
