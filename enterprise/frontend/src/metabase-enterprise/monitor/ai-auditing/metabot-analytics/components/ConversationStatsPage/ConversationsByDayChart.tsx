@@ -14,12 +14,10 @@ import {
   type GetColor,
   type StatsFilters,
   type UsageStatsMetric,
-  applyDateFilter,
-  applyIdFilter,
   applyUsageStatsAggregation,
+  buildFilteredQuery,
   findColumn,
   getMetricSeriesSettings,
-  joinGroupMembers,
 } from "./query-utils";
 import {
   type ChartDataSources,
@@ -157,22 +155,11 @@ type BuildQueryOpts = StatsFilters &
   ChartDataSources & { bucketName: BucketName };
 
 export function buildTimeseriesBreakoutQuery({
-  provider,
-  table,
-  groupMembersTable,
-  dateFilter,
-  userId,
-  groupId,
-  tenantId,
   metric,
   bucketName,
+  ...filteredQueryOpts
 }: BuildQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyIdFilter(q, "user_id", userId);
-  q = applyIdFilter(q, "tenant_id", tenantId);
-  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
+  let q = buildFilteredQuery(filteredQueryOpts);
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByCreatedAtBucket(q, bucketName);
   return q;

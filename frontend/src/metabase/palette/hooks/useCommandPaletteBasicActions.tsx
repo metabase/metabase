@@ -55,6 +55,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
+  "navigate-data-apps",
 ];
 
 // Small enough that it only orders actions whose relevance scores are equal,
@@ -246,6 +247,13 @@ export const useCommandPaletteBasicActions = ({
           dispatch(closeModal());
           dispatch(openEmbedJsWizard());
         },
+      });
+
+      actions.push({
+        id: "navigate-data-apps",
+        section: "basic",
+        icon: "app",
+        perform: () => navigate(Urls.dataAppsSettings()),
       });
     }
 
