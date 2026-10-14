@@ -338,10 +338,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
   });
 });
 
-function assertOnRequest(xhr_alias) {
-  cy.wait("@" + xhr_alias).then((xhr) => {
-    expect(xhr.status).not.to.eq(403);
-  });
+function assertOnRequest(alias) {
+  cy.wait(`@${alias}`).its("response.statusCode").should("not.eq", 403);
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
