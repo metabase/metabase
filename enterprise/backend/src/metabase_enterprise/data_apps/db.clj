@@ -321,6 +321,14 @@
                                  [:= :model_id nil]
                                  [:= :type "query"]
                                  [:= :archived false]
+                                 [:or
+                                  [:= :collection_id nil]
+                                  [:exists ^:allow-subquery {:select [1]
+                                                             :from [[(t2/table-name :model/Collection) :c]]
+                                                             :where [:and
+                                                                     [:= :c.id :action.collection_id]
+                                                                     [:= :c.archived false]
+                                                                     [:= :c.namespace "data-actions"]]}]]
                                  (when (seq excluded-collection-ids)
                                    [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])]
                       :order-by [[:name :asc] [:id :asc]]}))
@@ -363,7 +371,11 @@
   [measure-ids :- [:sequential ::lib.schema.id/measure]]
   (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))
 
-(mu/defn collections-with-entity-ids
-  "The Collections with `entity-ids`."
-  [entity-ids :- [:set :string]]
-  (t2/select :model/Collection :entity_id [:in entity-ids]))
+(mu/defn unarchived-collections
+  "The unarchived Collections among `collection-ids`, with their Library types."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select [:model/Collection :id :type]
+               :id [:in collection-ids]
+               :archived false)
+    []))
