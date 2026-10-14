@@ -15,13 +15,11 @@
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
-   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -413,7 +411,7 @@ width: fixed
 
 (defn clean-object
   "Test fixture that empties the RemoteSyncObject table before the test and deletes every row that the test left
-  after it. Restores nothing: run it only on a test app DB."
+  after it. Restores nothing."
   [f]
   (do-with-empty-table (t2/table-name :model/RemoteSyncObject) f))
 
@@ -424,7 +422,7 @@ width: fixed
 
 (defn clean-task-table
   "Test fixture that empties the RemoteSyncTask table before the test and deletes every row that the test left
-  after it. Restores nothing: run it only on a test app DB."
+  after it. Restores nothing."
   [f]
   (do-with-empty-table (t2/table-name :model/RemoteSyncTask) f))
 
@@ -451,8 +449,7 @@ width: fixed
 (defn clean-optional-feature-models
   "Test fixture that, before and after the test, deletes every Transform, TransformTag (not the built-in ones) and
   PythonLibrary row, and every Collection of the transforms and snippets namespaces and the snippets in those
-  Collections. Makes the built-in common.py PythonLibrary again after the test. Restores nothing: run it only on a
-  test app DB."
+  Collections. Makes the built-in common.py PythonLibrary again after the test. Restores nothing."
   [f]
   ;; the delete before the test lets a test create its own common.py; the insert after it puts back the row of the
   ;; migration for the code that runs next
@@ -554,7 +551,7 @@ width: fixed
 (defn clean-remote-sync-settings
   "Test fixture that deletes every stored `remote-sync%` setting row before and after the test, then restores the
   settings cache and deletes the Transforms RemoteSyncObject rows that the `:on-change` hook of
-  `remote-sync-transforms` wrote. Restores nothing: run it only on a test app DB.
+  `remote-sync-transforms` wrote. Restores nothing.
 
   Compose inside [[clean-object]]: the cache restore can write a Transforms RemoteSyncObject row, and [[clean-object]],
   whose cleanup runs after this fixture's, deletes every ledger row."
@@ -567,54 +564,21 @@ width: fixed
     (finally
       (delete-remote-sync-setting-rows!))))
 
-(defonce ^:private another-writer-warning-logged?
-  (atom false))
-
-(defn- started-scheduler?
-  "Whether the Quartz scheduler that [[task/scheduler]] returns runs jobs: it is started, not in standby, and not shut
-  down."
-  []
-  (when-let [^org.quartz.Scheduler scheduler (task/scheduler)]
-    (and (.isStarted scheduler)
-         (not (.isInStandbyMode scheduler))
-         (not (.isShutdown scheduler)))))
-
-(defn- warn-when-another-writer-can-be-active
-  "Test fixture that logs one WARN line per JVM when a started Quartz scheduler can run jobs that write the app DB
-  during the test, for example after `dev/start!`. The line names what [[clean-remote-sync-state]] deletes. It does
-  not stop the test."
-  [f]
-  ;; the test runner starts its own Jetty server with the handler of `dev/start!`, so a Jetty instance does not show
-  ;; another writer; `dev/start!` also starts the scheduler, and the test runner does not
-  (when (and (started-scheduler?)
-             (compare-and-set! another-writer-warning-logged? false true))
-    (log/warnf (str "A started Quartz scheduler can run jobs that write the app DB during a remote-sync test. After "
-                    "each test, clean-remote-sync-state deletes every RemoteSyncObject, RemoteSyncTask, Transform, "
-                    "PythonLibrary and TransformTag row (not the built-in TransformTags), every Collection of the "
-                    "transforms and snippets namespaces and the snippets in those Collections, every stored "
-                    "remote-sync%% setting row, and each %s row that any writer added during the test, except the "
-                    "test users' personal collections. Foreign keys also change or delete older rows that link to a "
-                    "deleted row. It restores nothing. This warning is logged once per JVM.")
-               (str/join ", " (map name imported-content-models))))
-  (f))
-
 (def clean-remote-sync-state
-  "Composed test fixture for the remote-sync module. These tests delete remote-sync content from the app DB that they
-  run on; do not run them against an app DB that serves an instance. Before and after each test, the fixture deletes
-  every RemoteSyncObject, RemoteSyncTask, Transform, TransformTag (not the built-in ones), PythonLibrary, Collection of
-  the transforms and snippets namespaces (and the snippets in those Collections) and stored `remote-sync%` setting
-  row. After each test, it deletes each new row of [[imported-content-models]] and changes or deletes the older rows
-  that foreign keys link to them (see [[clean-imported-content]]). It restores nothing, also not the remote-sync rows
-  that existed before the test. Logs one WARN line per JVM when a started Quartz scheduler can write the app DB
-  during the test.
+  "Composed test fixture for the remote-sync module. Run it only against a test app DB. Before and after each test, the
+  fixture deletes every RemoteSyncObject, RemoteSyncTask, Transform, TransformTag (not the built-in ones),
+  PythonLibrary, Collection of the transforms and snippets namespaces (and the snippets in those Collections) and stored
+  `remote-sync%` setting row. After each test, it deletes each new row of [[imported-content-models]] and changes or
+  deletes the older rows that foreign keys link to them (see [[clean-imported-content]]). It restores nothing, also not
+  the remote-sync rows that existed before the test.
 
   Use as the first `:each` fixture, so that a setting binding in a later fixture ends before the cleanup deletes its
   row. Bind no remote-sync setting around the fixture (in a `:once` fixture, or in an `:each` fixture before it): the
   fixture deletes the row of the binding before the test, so the test does not see the bound value. Carries
   `{::shared-fixture true}`."
   (with-meta
-   (t/join-fixtures [warn-when-another-writer-can-be-active clean-imported-content clean-object
-                     clean-remote-sync-settings clean-task-table clean-optional-feature-models])
+   (t/join-fixtures [clean-imported-content clean-object clean-remote-sync-settings clean-task-table
+                     clean-optional-feature-models])
    {::shared-fixture true}))
 
 (def clean-remote-sync-state-without-reindex

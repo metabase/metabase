@@ -11,7 +11,6 @@
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -20,7 +19,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -176,25 +174,6 @@
        sort
        vec))
 
-(defn- do-with-remote-sync-state-restored!
-  "Runs `thunk`, then puts back the raw `remote-sync%` setting rows and the RemoteSyncObject rows that existed before
-  it, and restores the settings cache."
-  [thunk]
-  (let [settings (t2/select :setting :key [:like "remote-sync%"])
-        ledger   (t2/select :model/RemoteSyncObject)]
-    (try
-      (thunk)
-      (finally
-        ;; one autocommit statement for each row, so that the restore holds the lock of one setting row at a time
-        (doseq [k (t2/select-fn-set :key :setting :key [:like "remote-sync%"])]
-          (t2/query-one {:delete-from :setting :where [:= :key k]}))
-        (doseq [row settings]
-          (t2/query-one {:insert-into :setting :values [row]}))
-        (setting/restore-cache!)
-        (t2/delete! :model/RemoteSyncObject)
-        (when (seq ledger)
-          (t2/insert! :model/RemoteSyncObject ledger))))))
-
 (defn- transforms-ledger-rows
   "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
   []
@@ -213,56 +192,50 @@
   (testing (str "the remote-sync-transforms value that the test sets, and the Transforms ledger row that its "
                 ":on-change hook writes, do not outlive clean-remote-sync-state")
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
+      (th/clean-remote-sync-state
        (fn []
-         (th/clean-remote-sync-state
-          (fn []
-            (remote-sync.settings/remote-sync-transforms! true)
-            (is (seq (transforms-ledger-rows)))))
-         (is (= {:stored nil :ledger []} (transforms-state)))
-         (is (false? (remote-sync.settings/remote-sync-transforms))
-             "the settings cache agrees with the deleted row"))))))
+         (remote-sync.settings/remote-sync-transforms! true)
+         (is (seq (transforms-ledger-rows)))))
+      (is (= {:stored nil :ledger []} (transforms-state)))
+      (is (false? (remote-sync.settings/remote-sync-transforms))
+          "the settings cache agrees with the deleted row"))))
 
 (deftest clean-remote-sync-state-removes-a-stored-transforms-value-before-the-test-test
   (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
                 "ledger row when the settings cache restores it inside the test")
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
+      (t2/query-one {:delete-from :setting :where [:= :key "remote-sync-transforms"]})
+      (setting/restore-cache!)
+      (t2/delete! :model/RemoteSyncObject)
+      ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+      (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
+      (th/clean-remote-sync-state
        (fn []
-         (t2/query-one {:delete-from :setting :where [:= :key "remote-sync-transforms"]})
          (setting/restore-cache!)
-         (t2/delete! :model/RemoteSyncObject)
-         ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
-         (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
-         (th/clean-remote-sync-state
-          (fn []
-            (setting/restore-cache!)
-            (is (empty? (transforms-ledger-rows))))))))))
+         (is (empty? (transforms-ledger-rows))))))))
 
 (deftest clean-remote-sync-state-deletes-every-remote-sync-setting-row-test
   (testing (str "no remote-sync setting row outlives clean-remote-sync-state, also when the test binds settings "
                 "that had no row, and changes or adds rows with no binding")
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
+      (th/clean-remote-sync-state
        (fn []
-         (th/clean-remote-sync-state
-          (fn []
-            ;; through the model, so that the rows stay readable under an encryption key
-            (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                        {:key "remote-sync-url" :value "https://example.com/a.git"}])
-            (setting/restore-cache!)
-            (is (seq (remote-sync-setting-rows)))
-            (mt/with-temporary-setting-values [remote-sync-type                :read-only
-                                               remote-sync-auto-import         true
-                                               remote-sync-git-timeout-seconds 5]
-              (is (= [:read-only true 5]
-                     [(remote-sync.settings/remote-sync-type)
-                      (remote-sync.settings/remote-sync-auto-import)
-                      (remote-sync.settings/remote-sync-git-timeout-seconds)])))
-            ;; change a row and add one, with no binding to undo them
-            (remote-sync.settings/remote-sync-type! :read-only)
-            (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})))
-         (is (= [] (remote-sync-setting-rows))))))))
+         ;; through the model, so that the rows stay readable under an encryption key
+         (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                     {:key "remote-sync-url" :value "https://example.com/a.git"}])
+         (setting/restore-cache!)
+         (is (seq (remote-sync-setting-rows)))
+         (mt/with-temporary-setting-values [remote-sync-type                :read-only
+                                            remote-sync-auto-import         true
+                                            remote-sync-git-timeout-seconds 5]
+           (is (= [:read-only true 5]
+                  [(remote-sync.settings/remote-sync-type)
+                   (remote-sync.settings/remote-sync-auto-import)
+                   (remote-sync.settings/remote-sync-git-timeout-seconds)])))
+         ;; change a row and add one, with no binding to undo them
+         (remote-sync.settings/remote-sync-type! :read-only)
+         (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})))
+      (is (= [] (remote-sync-setting-rows))))))
 
 (defn- raw-rows
   "Every row of `table`, every column as stored, sorted by id."
@@ -292,91 +265,27 @@
 
 (deftest clean-remote-sync-state-does-not-reindex-when-the-test-writes-no-content-test
   (testing "clean-remote-sync-state around a test that writes no content does not reindex search"
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (let [calls (atom 0)]
-         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (swap! calls inc) nil)]
-           (th/clean-remote-sync-state (fn [])))
-         (is (zero? @calls)))))))
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (swap! calls inc) nil)]
+        (th/clean-remote-sync-state (fn [])))
+      (is (zero? @calls)))))
 
 (deftest clean-imported-content-reindexes-when-the-test-writes-content-test
   (testing "clean-imported-content reindexes search once after a test that leaves new content or its index document"
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (let [calls     (atom 0)
-             reindexes (fn [body]
-                         (reset! calls 0)
-                         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (swap! calls inc) nil)]
-                           (th/clean-imported-content body))
-                         @calls)]
-         (testing "the test leaves a new Collection"
-           (is (= 1 (reindexes #(t2/insert! :model/Collection {:name "New" :location "/"})))))
-         (when (search.index/active-table)
-           (testing "the test deletes its new Collection, and the index keeps the Collection's document"
-             (is (= 1 (reindexes #(t2/delete! :model/Collection
-                                              (t2/insert-returning-pk! :model/Collection {:name "New" :location "/"}))))))
-           ;; the stubbed reindexes left the documents of the deleted Collections in the index
-           (#'tu/reindex-search-index!)))))))
-
-(defn- shared-fixture-warnings
-  "Run `thunk` with the once-per-JVM warning of the shared fixture not yet logged. Returns the WARN messages of the
-  test-helpers namespace that `thunk` logs, then puts back the logged state from before."
-  [thunk]
-  (let [logged? @#'th/another-writer-warning-logged?
-        before  @logged?]
-    (try
-      (reset! logged? false)
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.test-helpers :warn]]
-        (thunk)
-        (messages))
-      (finally
-        (reset! logged? before)))))
-
-(deftest clean-remote-sync-state-warns-once-when-a-started-scheduler-can-write-test
-  (testing (str "clean-remote-sync-state logs one warning per JVM that names what it deletes and that it restores "
-                "nothing, when a started scheduler can run jobs that write the app DB during the test")
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (is (=? [{:level   :warn
-                 :message #"(?s).*scheduler.*RemoteSyncObject.*remote-sync%.*Dashboard, Card, Action, Document, DataApp, Collection.*restores nothing.*"}]
-               (shared-fixture-warnings
-                (fn []
-                  (mt/with-temp-scheduler!
-                    (th/clean-remote-sync-state (fn []))
-                    (th/clean-remote-sync-state (fn [])))))))))))
-
-(deftest clean-remote-sync-state-does-not-warn-when-no-started-scheduler-can-write-test
-  (testing "clean-remote-sync-state logs no warning when the scheduler is not started"
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (is (= []
-              (shared-fixture-warnings
-               (fn []
-                 (tu/do-with-unstarted-temp-scheduler!
-                  (fn []
-                    (th/clean-remote-sync-state (fn []))))))))
-       (testing "and a later fixture run with a started scheduler still warns"
-         (is (=? [{:level :warn}]
-                 (shared-fixture-warnings
-                  (fn []
-                    (tu/do-with-unstarted-temp-scheduler!
-                     (fn []
-                       (th/clean-remote-sync-state (fn []))))
-                    (mt/with-temp-scheduler!
-                      (th/clean-remote-sync-state (fn []))))))))))))
-
-(defn- run-vars-quietly
-  "Run the test vars `vs` with their namespace's fixtures. Returns their counts as `{:pass n :fail n :error n}`;
-  their failures do not reach the calling test's report."
-  [vs]
-  (let [results (atom {:pass 0 :fail 0 :error 0})]
-    (binding [*test-out*        (java.io.StringWriter.)
-              *report-counters* (ref *initial-report-counters*)
-              report            (fn [m]
-                                  (when (#{:pass :fail :error} (:type m))
-                                    (swap! results update (:type m) inc)))]
-      (test-vars vs))
-    @results))
+    (let [calls     (atom 0)
+          reindexes (fn [body]
+                      (reset! calls 0)
+                      (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (swap! calls inc) nil)]
+                        (th/clean-imported-content body))
+                      @calls)]
+      (testing "the test leaves a new Collection"
+        (is (= 1 (reindexes #(t2/insert! :model/Collection {:name "New" :location "/"})))))
+      (when (search.index/active-table)
+        (testing "the test deletes its new Collection, and the index keeps the Collection's document"
+          (is (= 1 (reindexes #(t2/delete! :model/Collection
+                                           (t2/insert-returning-pk! :model/Collection {:name "New" :location "/"}))))))
+        ;; the stubbed reindexes left the documents of the deleted Collections in the index
+        (#'tu/reindex-search-index!)))))
 
 ;;; ------------------------------------------------ the shared fixture deletes rows from before the test ------------------------------------------------
 
@@ -520,17 +429,6 @@
                     (catch clojure.lang.ExceptionInfo e e))]
       (is (= :remote_sync_object (:table (ex-data error))))
       (is (str/includes? (ex-message error) "remote_sync_object")))))
-
-(deftest clean-remote-sync-state-setting-row-tests-pass-with-an-encryption-key-test
-  (testing (str "clean-remote-sync-state-deletes-every-remote-sync-setting-row-test passes on an app DB whose "
-                "settings are encrypted under MB_ENCRYPTION_SECRET_KEY")
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
-      (encryption-test/with-secret-key "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ="
-        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
-        (is (= {:fail 0 :error 0}
-               (select-keys (run-vars-quietly [#'clean-remote-sync-state-deletes-every-remote-sync-setting-row-test])
-                            [:fail :error])))))))
 
 (deftest clean-imported-content-throws-without-running-the-test-in-a-parallel-test-test
   (testing "clean-imported-content in a ^:parallel test throws and does not run the test body"

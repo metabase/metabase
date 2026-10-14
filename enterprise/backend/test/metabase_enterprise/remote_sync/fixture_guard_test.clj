@@ -1,7 +1,6 @@
 (ns metabase-enterprise.remote-sync.fixture-guard-test
-  "These tests delete remote-sync content from the app DB that they run on; do not run them against an app DB that
-  serves an instance. Each remote-sync module test namespace not in [[exemptions]] has the shared fixture as its
-  first `:each` fixture, no `:once` fixture that stores a `remote-sync%` setting row, and no `^:parallel` test."
+  "Each remote-sync module test namespace not in [[exemptions]] has the shared fixture as its first `:each` fixture, no
+  `:once` fixture that stores a `remote-sync%` setting row, and no `^:parallel` test."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
