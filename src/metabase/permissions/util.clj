@@ -366,8 +366,8 @@
   false)
 
 (defenterprise routed-user?
-  "Returns a boolean if the current user is routed to a destination database for any router database. In OSS this is
-  always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  "Returns a boolean if the current user is routed to a destination database for any router database they can view
+  data from. In OSS this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
   metabase-enterprise.database-routing.common
   []
   (when-not api/*current-user-id*

@@ -44,6 +44,16 @@
       (met/with-user-attributes! :crowberto {"db_name" "__METABASE_ROUTER__"}
         (mt/with-test-user :crowberto
           (is (false? (perms/routed-user?))))))
+    (testing "only routers the user can view data from count: a router they are blocked from never routes them"
+      (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked :create-queries :no}}
+        (testing "missing the attribute"
+          (met/with-user-attributes! :rasta {}
+            (mt/with-test-user :rasta
+              (is (false? (perms/routed-user?))))))
+        (testing "attribute naming a destination database"
+          (met/with-user-attributes! :rasta {"db_name" "sr-dest"}
+            (mt/with-test-user :rasta
+              (is (false? (perms/routed-user?))))))))
     (testing "throws without a current user, like its sandbox / impersonation siblings"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No current user found"
                             (perms/routed-user?))))))
@@ -77,3 +87,31 @@
             (testing "the same user, routed to a destination database, does not"
               (met/with-user-attributes! :rasta {"db_name" "sr-dest"}
                 (is (= #{} (search! :rasta)))))))))))
+
+(deftest unrelated-router-does-not-hide-indexed-entities-test
+  (testing "a router on a database the user is blocked from does not hide indexed values from other databases"
+    (mt/dataset airports
+      (search.tu/with-appdb-search-and-legacy-search
+        (mt/with-temp [:model/Card           model  {:type          :model
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (lib/query mp (lib.metadata/table mp (mt/id :municipality))))
+                                                     :collection_id nil}
+                       :model/Database       router {:name "sr-unrelated-router"}
+                       :model/Database       _      {:name "sr-dest" :router_database_id (:id router)}
+                       :model/DatabaseRouter _      {:database_id (:id router) :user_attribute "tenant_db"}]
+          (mt/with-all-users-data-perms-graph! {(mt/id)      {:view-data      :unrestricted
+                                                              :create-queries :query-builder-and-native}
+                                                (:id router) {:view-data      :blocked
+                                                              :create-queries :no}}
+            (let [model-index (model-index/create (mt/$ids {:model-id   (:id model)
+                                                            :pk-ref     $municipality.id
+                                                            :value-ref  $municipality.name
+                                                            :creator-id (mt/user->id :crowberto)}))]
+              (mt/with-test-user :crowberto (model-index/add-values! model-index))
+              (met/with-user-attributes! :rasta {}
+                (is (= #{"Rome"}
+                       (->> (mt/user-http-request :rasta :get 200 "search" :q "rome" :models "indexed-entity")
+                            :data
+                            (filter (comp #{(:id model)} :model_id))
+                            (map :name)
+                            set)))))))))))
