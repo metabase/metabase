@@ -438,6 +438,7 @@
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
       :mysql     :bare-dash-comment   nil                "SELECT id --1 FROM t"
       :mysql     :backslash-quote     nil                "SELECT 'it\\'s' FROM t"
+      :postgres  :unicode-identifier  nil                "SELECT U&\"pg_\\0073leep\"(10)"
       :postgres  :not-a-select        nil                "-- nothing here"
       :postgres  :large-literal-list  nil                (str "SELECT * FROM t WHERE id IN ("
                                                               (str/join "," (range 200)) ")"))))

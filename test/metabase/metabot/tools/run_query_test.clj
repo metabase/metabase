@@ -506,6 +506,9 @@
       "It holds a backslash before a quote. Write a quote inside a string by doubling it."
       :mysql "SELECT 'it\\'s' FROM t"
 
+      "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
+      :postgres "SELECT U&\"pg_\\0073leep\"(10)"
+
       "It calls pg_advisory_lock, which takes a lock, waits, or changes the session."
       :postgres "SELECT pg_advisory_lock(42)"
 

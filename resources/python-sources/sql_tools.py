@@ -2009,7 +2009,13 @@ def _hidden_sql(sql: str, dialect: str):
     the parser again, and MySQL's `NO_BACKSLASH_ESCAPES` mode ends one where sqlglot does not: after a backslash,
     sqlglot reads a quote as part of the literal and MySQL in that mode reads it as the literal's end. A backslash
     before a quote is refused for that reason, since everything after it may be SQL the parser took for text.
+
+    A `U&"..."` identifier is refused in every dialect. Postgres reads its escapes, so `U&"pg_\\0073leep"` names
+    `pg_sleep`, and sqlglot keeps them, so the function checks above never see the name. Like the MySQL marks, it is
+    looked for in the raw text.
     """
+    if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
+        return ("unicode-identifier", None)
     if dialect == "tsql":
         quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
         for tok in sqlglot.tokenize(sql, read=dialect):
