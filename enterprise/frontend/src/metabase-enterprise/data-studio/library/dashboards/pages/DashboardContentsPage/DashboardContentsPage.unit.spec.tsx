@@ -5,6 +5,7 @@ import {
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
 } from "__support__/server-mocks";
+import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -81,6 +82,7 @@ function setup({
   isNotFound = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 800 });
+  setupListSubscriptionsEndpoint([]);
   if (isNotFound) {
     setupDashboardNotFoundEndpoint(dashboard);
   } else {

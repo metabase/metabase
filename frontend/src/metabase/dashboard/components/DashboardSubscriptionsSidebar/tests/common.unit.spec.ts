@@ -500,4 +500,68 @@ describe("DashboardSubscriptionsSidebar", () => {
       });
     });
   });
+
+  describe("requested subscription", () => {
+    const pulse = createMockDashboardSubscription({
+      id: 10,
+      channels: [
+        createMockChannel({
+          schedule_type: "hourly",
+          recipients: [user],
+          details: { subject: "Weekly revenue" },
+        }),
+      ],
+    });
+
+    it("opens the edit form of the requested subscription once", async () => {
+      setup({ isAdmin: true, pulses: [pulse], requestedSubscriptionId: 10 });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Subject")).toHaveValue("Weekly revenue");
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the list when the requested subscription does not exist", async () => {
+      setup({ isAdmin: true, pulses: [pulse], requestedSubscriptionId: 99 });
+
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the edit form of a requested subscription whose channel is not configured, like the list does", async () => {
+      setup({
+        isAdmin: true,
+        emailConfigured: false,
+        pulses: [pulse],
+        requestedSubscriptionId: 10,
+      });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the list when the form input leaves out the requested subscription's channel", async () => {
+      setup({
+        isAdmin: true,
+        email: false,
+        pulses: [pulse],
+        requestedSubscriptionId: 10,
+      });
+
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
