@@ -38,6 +38,7 @@ import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
 import { AnonymousAccessChoiceModal } from "../AnonymousAccessChoiceModal";
+import { AnonymousReachList } from "../AnonymousReachList";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import { useDatabaseRoutingPanel } from "./useDatabaseRoutingPanel";
@@ -63,6 +64,8 @@ export const DatabaseRoutingSection = ({
 
   const {
     enabled,
+    anonymousReach,
+    panelReachFraming,
     userAttribute,
     isRoutingStored,
     error,
@@ -129,6 +132,14 @@ export const DatabaseRoutingSection = ({
     return null;
   }
 
+  const reachList = panelReachFraming ? (
+    <AnonymousReachList
+      reach={anonymousReach}
+      framing={panelReachFraming}
+      variant="panel"
+    />
+  ) : null;
+
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
@@ -137,6 +148,7 @@ export const DatabaseRoutingSection = ({
     >
       <AnonymousAccessChoiceModal
         question={openQuestion}
+        reach={anonymousReach}
         onChooseGrant={chooseGrant}
         onCancelGrantChoice={handleGrantChoiceCancel}
         onConfirmRevoke={confirmRevoke}
@@ -199,7 +211,10 @@ export const DatabaseRoutingSection = ({
               title={t`This database has stopped serving anonymous visitors`}
               mb="lg"
             >
-              <Text>{t`To start serving them again, allow anonymous access below.`}</Text>
+              <Stack gap="md">
+                <Text>{t`To start serving them again, allow anonymous access below.`}</Text>
+                {reachList}
+              </Stack>
             </Alert>
           )}
           <Stack mb="xxl" gap="sm">
@@ -276,6 +291,8 @@ export const DatabaseRoutingSection = ({
                 </Box>
               </Tooltip>
             </Flex>
+            {/* What has already stopped belongs in the warning above, beside what it reports. */}
+            {!hasStoppedServingAnonymousVisitors && reachList}
           </Stack>
 
           <Flex justify="space-between" align="center" mih="2.5rem">

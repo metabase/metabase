@@ -55,6 +55,11 @@ const reachServing = (
   total: number = data.length,
 ): DatabaseAnonymousReach => ({ total, data });
 
+const reachingEntities = (count: number): AnonymouslyReachingEntity[] =>
+  Array.from({ length: count }, (_unused, index) =>
+    reachingEntity({ id: index + 1, name: `Published thing ${index + 1}` }),
+  );
+
 /** The reachability fact arrives asynchronously, and absence before it lands means nothing. */
 const waitForReachabilityFact = () =>
   waitFor(async () => {
@@ -92,6 +97,7 @@ interface SetupOpts {
   isAdmin?: boolean;
   routerUpdateStatus?: number;
   anonymouslyReachable?: boolean;
+  reach?: DatabaseAnonymousReach;
   /** Hold the anonymous-reach response until the test releases it, so a click can get in first. */
   holdReach?: boolean;
   reachStatus?: number;
@@ -102,14 +108,17 @@ const setup = ({
   isAdmin = true,
   routerUpdateStatus = 200,
   anonymouslyReachable = false,
+  reach,
   holdReach = false,
   reachStatus = 200,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
-  const anonymousReach = createMockDatabaseAnonymousReach(
-    anonymouslyReachable ? reachServing([reachingEntity()]) : undefined,
-  );
+  const anonymousReach =
+    reach ??
+    createMockDatabaseAnonymousReach(
+      anonymouslyReachable ? reachServing([reachingEntity()]) : undefined,
+    );
   let releaseReach = () => {};
   if (holdReach) {
     const held = new Promise<void>((resolve) => {
@@ -1077,5 +1086,381 @@ describe("DatabaseRoutingSection confirmation before revoking anonymous access",
     expect(queryConfirmation()).not.toBeInTheDocument();
     expect(screen.getByLabelText("Allow anonymous access")).not.toBeChecked();
     expect(await findRequests("PUT")).toHaveLength(0);
+  });
+});
+
+describe("DatabaseRoutingSection anonymous reach list", () => {
+  const KEEPS_WORKING = "These keep working while anonymous access is allowed:";
+  const HAS_STOPPED = "These have stopped returning data:";
+  const AT_STAKE = "Anonymous visitors reach this database through:";
+  const WILL_STOP = "These will stop returning data:";
+  const SETTINGS_LINK = "See public sharing settings";
+
+  const findList = () => screen.findByTestId("anonymous-reach-list");
+  const queryList = () => screen.queryByTestId("anonymous-reach-list");
+  const rowsOf = (list: HTMLElement) => within(list).getAllByRole("listitem");
+
+  const grantedDatabase = (overrides: Partial<Database> = {}) =>
+    routedDatabase({ router_anonymous_access_granted: true, ...overrides });
+
+  const openRevokeConfirmation = async () => {
+    await userEvent.click(
+      await screen.findByLabelText("Allow anonymous access"),
+    );
+    return screen.findByRole("dialog", {
+      name: "Stop serving anonymous visitors?",
+    });
+  };
+
+  describe("in the question raised at the toggle", () => {
+    const setupUnansweredRouter = (reach: DatabaseAnonymousReach) =>
+      setup({
+        database: routingCapableDatabase({ router_user_attribute: null }),
+        reach,
+      });
+
+    it("should name what the decision is about, before anything is sent", async () => {
+      setupUnansweredRouter(
+        reachServing([
+          reachingEntity({ id: 11, name: "Quarterly revenue" }),
+          reachingEntity({ id: 12, model: "card", name: "Signups by week" }),
+        ]),
+      );
+      await waitForReachabilityFact();
+
+      await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+      const question = await findQuestion();
+      expect(question).toHaveTextContent(AT_STAKE);
+      expect(
+        within(question).getByRole("link", { name: "Quarterly revenue" }),
+      ).toHaveAttribute("href", "/dashboard/11-quarterly-revenue");
+      expect(
+        within(question).getByRole("link", { name: "Signups by week" }),
+      ).toHaveAttribute("href", "/question/12-signups-by-week");
+      expect(await findRequests("PUT")).toHaveLength(0);
+    });
+
+    it("should show at most five rows and count the rest", async () => {
+      setupUnansweredRouter(reachServing(reachingEntities(8)));
+      await waitForReachabilityFact();
+
+      await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+      const list = within(await findQuestion()).getByTestId(
+        "anonymous-reach-list",
+      );
+      expect(rowsOf(list)).toHaveLength(5);
+      expect(list).toHaveTextContent("3 more are not listed here.");
+    });
+
+    it("should count against the exact total even when the server cap hid the rest", async () => {
+      setupUnansweredRouter(reachServing(reachingEntities(100), 412));
+      await waitForReachabilityFact();
+
+      await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+      const list = within(await findQuestion()).getByTestId(
+        "anonymous-reach-list",
+      );
+      expect(rowsOf(list)).toHaveLength(5);
+      expect(list).toHaveTextContent("407 more are not listed here.");
+    });
+
+    it("should not send the admin out of a decision it has not taken yet", async () => {
+      setupUnansweredRouter(reachServing(reachingEntities(100), 412));
+      await waitForReachabilityFact();
+
+      await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+      expect(
+        within(await findQuestion()).queryByRole("link", {
+          name: SETTINGS_LINK,
+        }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("in the revoke confirmation", () => {
+    it("should carry the same five-row list", async () => {
+      setup({
+        database: grantedDatabase(),
+        reach: reachServing(reachingEntities(7)),
+      });
+      await waitForReachabilityFact();
+
+      const confirmation = await openRevokeConfirmation();
+
+      expect(confirmation).toHaveTextContent(WILL_STOP);
+      const list = within(confirmation).getByTestId("anonymous-reach-list");
+      expect(rowsOf(list)).toHaveLength(5);
+      expect(list).toHaveTextContent("2 more are not listed here.");
+    });
+
+    it("should still revoke the grant with the list in front of the admin", async () => {
+      setup({
+        database: grantedDatabase(),
+        reach: reachServing([reachingEntity()]),
+      });
+      await waitForReachabilityFact();
+
+      const confirmation = await openRevokeConfirmation();
+      await userEvent.click(
+        within(confirmation).getByRole("button", { name: "Stop serving them" }),
+      );
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].body).toEqual({
+        user_attribute: "cool_guy",
+        anonymous_access_granted: false,
+      });
+    });
+  });
+
+  describe("in the panel", () => {
+    it("should carry the list in the stopped-serving warning", async () => {
+      setup({
+        database: routedDatabase({ router_anonymous_access_granted: false }),
+        reach: reachServing([reachingEntity()]),
+      });
+
+      const warning = await screen.findByRole("alert", {
+        name: "This database has stopped serving anonymous visitors",
+      });
+
+      const list = within(warning).getByTestId("anonymous-reach-list");
+      expect(list).toHaveTextContent(HAS_STOPPED);
+      expect(
+        within(list).getByRole("link", { name: "Quarterly revenue" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should say what the grant keeps working while it stands", async () => {
+      setup({
+        database: grantedDatabase(),
+        reach: reachServing([reachingEntity()]),
+      });
+
+      const list = await findList();
+      expect(list).toHaveTextContent(KEEPS_WORKING);
+      expect(list).not.toHaveTextContent(HAS_STOPPED);
+      // the caption says what the rows are, so it is the list's name
+      expect(within(list).getByRole("list")).toHaveAccessibleName(
+        KEEPS_WORKING,
+      );
+      expect(
+        screen.queryByRole("alert", {
+          name: "This database has stopped serving anonymous visitors",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show nothing while routing is off", async () => {
+      setup({
+        database: routingCapableDatabase({ router_user_attribute: null }),
+        reach: reachServing([reachingEntity()]),
+      });
+      await waitForReachabilityFact();
+
+      // the chevron only discloses the panel; it turns nothing on
+      await userEvent.click(screen.getByLabelText("chevrondown icon"));
+
+      expect(queryList()).not.toBeInTheDocument();
+    });
+
+    it("should show the list while routing is only being turned on", async () => {
+      setup({
+        database: routingCapableDatabase({ router_user_attribute: null }),
+        reach: reachServing([reachingEntity()]),
+      });
+      await waitForReachabilityFact();
+
+      await enableRoutingAndAnswer("Keep serving them");
+
+      const list = await findList();
+      expect(list).toHaveTextContent(KEEPS_WORKING);
+    });
+
+    it("should name what a chosen but unstored refusal will stop", async () => {
+      setup({
+        database: routingCapableDatabase({ router_user_attribute: null }),
+        reach: reachServing([reachingEntity()]),
+      });
+      await waitForReachabilityFact();
+
+      await enableRoutingAndAnswer("Stop serving them");
+
+      const list = await findList();
+      // nothing has reached the server yet, so nothing has stopped
+      expect(list).toHaveTextContent(WILL_STOP);
+      expect(list).not.toHaveTextContent(HAS_STOPPED);
+    });
+
+    it("should leave the open question to carry the list on its own", async () => {
+      setup({
+        database: routingCapableDatabase({ router_user_attribute: null }),
+        reach: reachServing([reachingEntity()]),
+      });
+      await waitForReachabilityFact();
+
+      await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+      const question = await findQuestion();
+      expect(
+        within(question).getByTestId("anonymous-reach-list"),
+      ).toBeInTheDocument();
+      expect(screen.getAllByTestId("anonymous-reach-list")).toHaveLength(1);
+    });
+
+    it("should list everything the server served, in a bounded scrolling region", async () => {
+      setup({
+        database: grantedDatabase(),
+        reach: reachServing(reachingEntities(100)),
+      });
+
+      const list = await findList();
+      expect(rowsOf(list)).toHaveLength(100);
+      expect(within(list).getByTestId("anonymous-reach-scroll")).toHaveStyle({
+        maxHeight: "13.75rem",
+      });
+    });
+
+    it("should say how many the cap left out and point at the public-sharing settings", async () => {
+      setup({
+        database: grantedDatabase(),
+        reach: reachServing(reachingEntities(3), 43),
+      });
+
+      const list = await findList();
+      expect(list).toHaveTextContent("40 more are not listed here.");
+      expect(
+        within(list).getByRole("link", { name: SETTINGS_LINK }),
+      ).toHaveAttribute("href", "/admin/settings/public-sharing");
+    });
+
+    it("should say nothing about unlisted rows when it is showing them all", async () => {
+      setup({
+        database: grantedDatabase(),
+        reach: reachServing(reachingEntities(3)),
+      });
+
+      const list = await findList();
+      expect(list).not.toHaveTextContent("not listed here");
+      expect(
+        within(list).queryByRole("link", { name: SETTINGS_LINK }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render nothing when nothing anonymous reaches the database", async () => {
+      setup({ database: grantedDatabase(), anonymouslyReachable: false });
+      await waitForReachabilityFact();
+
+      expect(queryList()).not.toBeInTheDocument();
+    });
+  });
+
+  describe("a row", () => {
+    const setupRows = (data: AnonymouslyReachingEntity[]) =>
+      setup({ database: grantedDatabase(), reach: reachServing(data) });
+
+    it("should name the entity and link through to it", async () => {
+      setupRows([
+        reachingEntity({
+          id: 11,
+          model: "dashboard",
+          name: "Quarterly revenue",
+        }),
+        reachingEntity({ id: 12, model: "card", name: "Signups by week" }),
+        reachingEntity({ id: 13, model: "document", name: "Launch notes" }),
+        reachingEntity({ id: 14, model: "dataset", name: "Clean orders" }),
+        reachingEntity({ id: 15, model: "metric", name: "Revenue" }),
+      ]);
+
+      const list = await findList();
+      const hrefOf = (name: string) =>
+        within(list).getByRole("link", { name }).getAttribute("href");
+      expect(hrefOf("Quarterly revenue")).toBe(
+        "/dashboard/11-quarterly-revenue",
+      );
+      expect(hrefOf("Signups by week")).toBe("/question/12-signups-by-week");
+      expect(hrefOf("Launch notes")).toBe("/document/13");
+      expect(hrefOf("Clean orders")).toBe("/model/14-clean-orders");
+      expect(hrefOf("Revenue")).toBe("/metric/15");
+    });
+
+    it("should say which anonymous surfaces reach the database through it", async () => {
+      setupRows([
+        reachingEntity({
+          id: 11,
+          name: "Only public",
+          surfaces: ["public-link"],
+        }),
+        reachingEntity({
+          id: 12,
+          name: "Only embedded",
+          surfaces: ["guest-embed"],
+        }),
+        reachingEntity({
+          id: 13,
+          name: "Both ways",
+          surfaces: ["guest-embed", "public-link"],
+        }),
+      ]);
+
+      // rows come back in the order the endpoint served them
+      const [publicOnly, embedOnly, bothWays] = rowsOf(await findList());
+      expect(publicOnly).toHaveTextContent("Only public");
+      expect(publicOnly).toHaveTextContent("Public link");
+      expect(embedOnly).toHaveTextContent("Only embedded");
+      expect(embedOnly).toHaveTextContent("Guest embed");
+      expect(bothWays).toHaveTextContent("Both ways");
+      expect(bothWays).toHaveTextContent("Public link and guest embed");
+    });
+
+    it("should say when its only path to the database is a filter's value list", async () => {
+      setupRows([
+        reachingEntity({
+          id: 11,
+          name: "Filtered elsewhere",
+          reaches_indirectly: true,
+        }),
+        reachingEntity({ id: 12, name: "Built on this database" }),
+      ]);
+
+      const indirectLine =
+        "Reaches this database through a filter's value list";
+      const [indirect, direct] = rowsOf(await findList());
+      expect(indirect).toHaveTextContent("Filtered elsewhere");
+      expect(indirect).toHaveTextContent(indirectLine);
+      expect(direct).toHaveTextContent("Built on this database");
+      expect(direct).not.toHaveTextContent(indirectLine);
+    });
+
+    it("should offer no action, destructive or otherwise", async () => {
+      setupRows(reachingEntities(3));
+
+      const list = await findList();
+      expect(within(list).queryAllByRole("button")).toHaveLength(0);
+      expect(
+        within(list).queryByText(/revoke|unpublish|disable/i),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("should render nothing at all for a non-admin", async () => {
+    setup({
+      database: grantedDatabase(),
+      isAdmin: false,
+      reach: reachServing([reachingEntity()]),
+    });
+
+    expect(
+      await screen.findByLabelText("Allow anonymous access"),
+    ).toBeDisabled();
+    expect(queryList()).not.toBeInTheDocument();
+    // the fact is admin-only, so it is never even asked for
+    const gets = await findRequests("GET");
+    expect(gets.some(({ url }) => url.includes("anonymous-reach"))).toBe(false);
   });
 });

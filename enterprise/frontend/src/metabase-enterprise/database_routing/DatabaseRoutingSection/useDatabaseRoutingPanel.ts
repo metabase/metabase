@@ -10,6 +10,7 @@ import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import type { Database } from "metabase-types/api";
 
 import type { AnonymousAccessQuestion } from "../AnonymousAccessChoiceModal";
+import type { PanelReachFraming } from "../AnonymousReachList";
 
 /**
  * The panel's write state: the routing enable, the attribute, and the grant decision, whose
@@ -76,6 +77,21 @@ export const useDatabaseRoutingPanel = (
   const isChoosingGrant =
     mustAnswerBeforeStoring &&
     (tempEnabled || attributeAwaitingAnswer !== undefined);
+
+  /** How the panel frames the anonymous-reach list, or null where it shows none. */
+  const getPanelReachFraming = (): PanelReachFraming | null => {
+    if (!enabled || !anonymouslyReachable) {
+      return null;
+    }
+    if (anonymousAccessGranted) {
+      return "keeps-working";
+    }
+    if (isRoutingStored) {
+      return "has-stopped";
+    }
+    // a refusal the admin has chosen but no attribute has carried to the server yet
+    return pendingGrant === false ? "would-stop" : null;
+  };
 
   const openQuestion: AnonymousAccessQuestion | null = isConfirmingRevoke
     ? "revoke"
@@ -195,6 +211,10 @@ export const useDatabaseRoutingPanel = (
   return {
     /** The routing switch, which a pending enable checks before anything is stored. */
     enabled,
+    /** What anonymous traffic reaches, for the admin to see before deciding. Admin-only. */
+    anonymousReach,
+    /** How the panel frames that list, or null where the panel shows none. */
+    panelReachFraming: getPanelReachFraming(),
     /** The stored attribute routing matches on, which is also the select's value. */
     userAttribute,
     isRoutingStored,
