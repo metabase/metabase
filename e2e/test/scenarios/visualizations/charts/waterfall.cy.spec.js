@@ -91,7 +91,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("Created At", "Count");
   });
 
-  it("should hide the Total label if there is no space", () => {
+  it("should keep the Total label and drop the date label crowding it", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -108,7 +108,11 @@ describe("scenarios > visualizations > waterfall", () => {
     switchToWaterfallDisplay();
 
     H.chartPathWithFillColor("#303D46").should("exist");
-    H.echartsContainer().find("text").contains("Total").should("not.exist");
+    H.echartsContainer().within(() => {
+      cy.findByText("Total").should("exist");
+      // the last month sits one month before the Total and gives way to it
+      cy.findByText("April 2029").should("not.exist");
+    });
   });
 
   describe("multi-series (metabase#15152)", () => {

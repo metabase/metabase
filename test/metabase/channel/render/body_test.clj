@@ -1355,7 +1355,7 @@
                               (map str/trim)
                               first)]
               (testing "Renders with correct day of week first"
-                (is (= "2017/1" label))))))))))
+                (is (= "2018/4" label))))))))))
 
 (deftest render-correct-whitelabel-colors
   (when config/ee-available?
