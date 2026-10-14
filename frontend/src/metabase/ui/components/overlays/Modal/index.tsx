@@ -24,6 +24,31 @@ export const MODAL_LAYOUTS = ["default", "centered"] as const;
 
 export type ModalLayout = (typeof MODAL_LAYOUTS)[number];
 
+export const MODAL_DENSITIES = ["default", "relaxed"] as const;
+
+export type ModalDensity = (typeof MODAL_DENSITIES)[number];
+
+// Spacing comes from `layout` and `density`, so call sites can't override it.
+type ForbiddenMantineModalProps =
+  | "m"
+  | "mx"
+  | "my"
+  | "mt"
+  | "mb"
+  | "ml"
+  | "mr"
+  | "ms"
+  | "me"
+  | "p"
+  | "px"
+  | "py"
+  | "pt"
+  | "pb"
+  | "pl"
+  | "pr"
+  | "ps"
+  | "pe";
+
 interface ModalLayoutProps {
   /**
    * How the modal's contents are arranged. `default` left-aligns the title
@@ -32,18 +57,29 @@ interface ModalLayoutProps {
    * `illustration`) at the top of the body.
    */
   layout?: ModalLayout;
+  /**
+   * Space between the header, body and footer. `default` is 16px. `relaxed`
+   * is 24px, for bodies with several fields or sections, such as forms.
+   */
+  density?: ModalDensity;
 }
 
-export interface ModalProps extends MantineModalProps, ModalLayoutProps {
+export interface ModalProps
+  extends
+    Omit<MantineModalProps, ForbiddenMantineModalProps>,
+    ModalLayoutProps {
   /** Rendered above the title. Only used by the `centered` layout. */
   illustration?: ReactNode;
 }
 
 export interface ModalRootProps
-  extends MantineModalRootProps, ModalLayoutProps {}
+  extends
+    Omit<MantineModalRootProps, ForbiddenMantineModalProps>,
+    ModalLayoutProps {}
 
 export function Modal({
   layout = "default",
+  density = "default",
   illustration,
   title,
   children,
@@ -62,6 +98,7 @@ export function Modal({
       <MantineModal
         {...props}
         data-layout={layout}
+        data-density={density}
         title={isCentered ? undefined : title}
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
@@ -78,7 +115,11 @@ export function Modal({
   );
 }
 
-function ModalRoot({ layout = "default", ...props }: ModalRootProps) {
+function ModalRoot({
+  layout = "default",
+  density = "default",
+  ...props
+}: ModalRootProps) {
   const closeProps = useGatedCloseProps(props);
 
   useDisableCommandPalette({
@@ -89,6 +130,7 @@ function ModalRoot({ layout = "default", ...props }: ModalRootProps) {
       <MantineModal.Root
         {...props}
         data-layout={layout}
+        data-density={density}
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
       />

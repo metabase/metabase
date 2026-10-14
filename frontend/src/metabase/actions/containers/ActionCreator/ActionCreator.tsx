@@ -149,6 +149,7 @@ export function ActionCreator({
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
       <Modal
+        density="relaxed"
         opened={isSaveModalShown}
         title={t`New Action`}
         onClose={handleCloseNewActionModal}
