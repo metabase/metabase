@@ -60,6 +60,20 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (constantly {:status :failed, :error "Column FOO not found"})]
           (is (=? {:error :query-failed, :permissions-error? false} (failure))))))))
 
+(defn- received
+  "The value `chan` delivers within 5 seconds, or nil."
+  [chan]
+  (first (a/alts!! [chan (a/timeout 5000)])))
+
+(defn- waiting-execute
+  "An [[qp.pipeline/*execute*]] that calls `before!`, then waits as a driver does until its channel says to stop,
+  records what the channel delivered in `saw`, and responds with nothing."
+  [before! saw]
+  (fn [_driver _query _respond]
+    (before!)
+    (reset! saw (received qp.pipeline/*canceled-chan*))
+    nil))
+
 (deftest execute-page-request-cancellation-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [query        (venues-query 3)
@@ -78,18 +92,12 @@
                                (query-execution/execute-page! query 3 :agent
                                                               {:request-canceled-chan request-canceled-chan})
                                (catch clojure.lang.ExceptionInfo _)))
-                           @seen))
-          canceled     (fn [query-chan]
-                         (first (a/alts!! [query-chan (a/timeout 5000)])))]
+                           @seen))]
       (testing "without a request to follow, the QP is left to make its own channel"
         (is (false? (seen! nil some?))))
       (testing "a query runs on a channel of its own, and the QP closing that one leaves the request's open"
         (is (true? (seen! request-chan #(and (some? %) (not= request-chan %)))))
-        (is (nil? (a/poll! request-chan))))
-      (testing "a canceled request cancels the query that is running"
-        (is (some? (seen! request-chan (fn [query-chan]
-                                         (a/>!! request-chan :canceled)
-                                         (canceled query-chan)))))))))
+        (is (nil? (a/poll! request-chan)))))))
 
 (deftest execute-page-canceled-run-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -101,12 +109,7 @@
       (testing "a request canceled while the driver runs the query reaches the driver, and the run reads as canceled"
         (let [request-chan (a/promise-chan)
               driver-saw   (atom nil)]
-          (binding [qp.pipeline/*execute* (fn [_driver _query _respond]
-                                            (a/>!! request-chan :canceled)
-                                            ;; A driver stops when its channel says so, and responds with nothing.
-                                            (reset! driver-saw (first (a/alts!! [qp.pipeline/*canceled-chan*
-                                                                                 (a/timeout 5000)])))
-                                            nil)]
+          (binding [qp.pipeline/*execute* (waiting-execute #(a/>!! request-chan :canceled) driver-saw)]
             (is (=? {:error :query-canceled} (failure request-chan)))
             (is (some? @driver-saw)))))
       (testing "a request that is already canceled runs nothing"
@@ -132,8 +135,7 @@
                                                                 (fn []
                                                                   (when (= 3 (count @rows))
                                                                     (stop!)
-                                                                    (a/alts!! [qp.pipeline/*canceled-chan*
-                                                                               (a/timeout 5000)]))
+                                                                    (received qp.pipeline/*canceled-chan*))
                                                                   (let [row (first @rows)]
                                                                     (swap! rows rest)
                                                                     row))))))]
@@ -155,11 +157,7 @@
           driver-saw (atom nil)
           failure    (fn [run]
                        (reset! driver-saw nil)
-                       ;; A driver stops when its channel says so, and responds with nothing.
-                       (binding [qp.pipeline/*execute* (fn [_driver _query _respond]
-                                                         (reset! driver-saw (first (a/alts!! [qp.pipeline/*canceled-chan*
-                                                                                              (a/timeout 5000)])))
-                                                         nil)]
+                       (binding [qp.pipeline/*execute* (waiting-execute (constantly nil) driver-saw)]
                          (try
                            (run)
                            (catch clojure.lang.ExceptionInfo e
