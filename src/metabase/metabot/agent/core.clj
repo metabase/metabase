@@ -656,9 +656,11 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
-          (let [terminal-error (when (:required-tool-call? profile)
-                                 (terminal-error-message parts))]
+          ;; Every profile, not just the `:required-tool-call?` ones. An unrecoverable failure is
+          ;; defined as one only the user can act on, so the class is the decision and the profile
+          ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
+          ;; recoverable, which is a choice made at the error, where the reason for it is visible.
+          (let [terminal-error (terminal-error-message parts)]
             (cond
               (reduced? result')
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
