@@ -150,7 +150,7 @@ export function DateOffsetIntervalPicker({
         />
         <ActionIcon
           variant="subtle"
-          size="sm"
+          size="lg"
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         >
