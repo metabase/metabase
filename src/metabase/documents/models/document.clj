@@ -740,6 +740,24 @@
                    :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
+(defmethod public-sharing/rendered-card-ids :model/Document
+  [_model id->surfaces]
+  ;; A document anonymous traffic can open runs the query of each question its content embeds inline and that belongs to
+  ;; the document.
+  (let [document-ids   (keys id->surfaces)
+        owned-card-ids (public-sharing/card-ids-by :document_id :id
+                                                   (documents.db/card-ids-owned-by-documents document-ids))]
+    (public-sharing/rendered-cards
+     (into {}
+           (keep (fn [{document-id :id, content-type :content_type, :as document}]
+                   (when (= prose-mirror/prose-mirror-content-type content-type)
+                     (let [owned (get owned-card-ids document-id #{})]
+                       (when-let [embedded (not-empty (into #{} (filter owned) (prose-mirror/card-ids document)))]
+                         [document-id embedded])))))
+           (documents.db/contents-for-documents document-ids))
+     ;; a document has no filters of its own, so it never runs a question's query to fill a value list
+     {})))
+
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
