@@ -1,0 +1,21 @@
+## Serialization import used to insert custom visualization plugins with status "pending" and nothing ever
+## resolved it, so every imported plugin was hidden from the visualization picker and its questions fell back
+## to a default visualization. The import now validates the bundle and sets active/error itself. Rows left in
+## "pending" by the old import carry the bundle, hash and manifest exported from an active plugin, so activate
+## them; a bundle that turns out unusable fails at serve time and can be replaced by an admin.
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.2026-10-14T10:00:00
+      author: chodorowicz
+      comment: Activate custom_viz_plugin rows left in the "pending" status by older serialization imports
+      changes:
+        - update:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: status
+                  value: active
+            where: status = 'pending'
+      rollback: # nothing to restore; "pending" was never a valid status to go back to
+        - empty: {}
