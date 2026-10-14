@@ -6,17 +6,15 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useLocation } from "metabase/router";
-import { Center, Flex, Group, Stack } from "metabase/ui";
+import { Center, Flex, Group } from "metabase/ui";
 
 import { toBackendStartedAt } from "../../utils";
 import { TaskRunTypePicker } from "../RunTypePicker";
 import { TaskRunEntityPicker } from "../TaskRunEntityPicker";
 import { TaskRunDatePicker } from "../TaskRunStartedAtPicker";
 import { TaskRunStatusPicker } from "../TaskRunStatusPicker";
-import { TasksTabs } from "../TasksTabs";
+import { TasksPageLayout } from "../TasksPageLayout";
 
 import { TaskRunsTable } from "./TaskRunsTable";
 import { PAGE_SIZE } from "./constants";
@@ -72,97 +70,91 @@ export const TaskRunsPage = () => {
   const entityValue = entityType && entityId ? { entityType, entityId } : null;
 
   return (
-    <Flex h="100%" wrap="nowrap">
-      <MonitorMain>
-        <Stack gap="xl">
-          <MonitorHeaderTitle>{t`Background tasks`}</MonitorHeaderTitle>
-          <TasksTabs />
-        </Stack>
-        <Group gap="lg" align="center" wrap="wrap">
-          <TaskRunTypePicker
-            value={runType}
-            onChange={(runType) =>
-              patchUrlState({
-                "run-type": runType,
+    <TasksPageLayout>
+      <Group gap="lg" align="center" wrap="wrap">
+        <TaskRunTypePicker
+          value={runType}
+          onChange={(runType) =>
+            patchUrlState({
+              "run-type": runType,
+              "entity-type": null,
+              "entity-id": null,
+              page: 0,
+            })
+          }
+        />
+
+        <TaskRunDatePicker
+          value={startedAt}
+          includeToday={includeToday}
+          placeholder={t`Filter by started at`}
+          onChange={(nextStartedAt, nextIncludeToday) =>
+            patchUrlState({
+              "started-at": nextStartedAt,
+              "include-today": nextIncludeToday,
+              ...(nextStartedAt !== startedAt && {
                 "entity-type": null,
                 "entity-id": null,
-                page: 0,
-              })
-            }
-          />
+              }),
+              page: 0,
+            })
+          }
+        />
 
-          <TaskRunDatePicker
-            value={startedAt}
-            includeToday={includeToday}
-            placeholder={t`Filter by started at`}
-            onChange={(nextStartedAt, nextIncludeToday) =>
-              patchUrlState({
-                "started-at": nextStartedAt,
-                "include-today": nextIncludeToday,
-                ...(nextStartedAt !== startedAt && {
-                  "entity-type": null,
-                  "entity-id": null,
-                }),
-                page: 0,
-              })
-            }
-          />
+        <TaskRunEntityPicker
+          runType={runType}
+          startedAt={startedAt}
+          includeToday={includeToday}
+          value={entityValue}
+          onChange={(entity) =>
+            patchUrlState({
+              "entity-type": entity?.entityType ?? null,
+              "entity-id": entity?.entityId ?? null,
+              page: 0,
+            })
+          }
+        />
 
-          <TaskRunEntityPicker
-            runType={runType}
-            startedAt={startedAt}
-            includeToday={includeToday}
-            value={entityValue}
-            onChange={(entity) =>
-              patchUrlState({
-                "entity-type": entity?.entityType ?? null,
-                "entity-id": entity?.entityId ?? null,
-                page: 0,
-              })
-            }
-          />
+        <TaskRunStatusPicker
+          value={status}
+          onChange={(status) => patchUrlState({ status, page: 0 })}
+        />
+      </Group>
 
-          <TaskRunStatusPicker
-            value={status}
-            onChange={(status) => patchUrlState({ status, page: 0 })}
-          />
-        </Group>
+      {error !== undefined ? (
+        <Center flex={1}>
+          <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+        </Center>
+      ) : (
+        <TaskRunsTable
+          taskRuns={taskRuns}
+          isFetching={isFetching}
+          isLoading={isLoading}
+          page={page}
+          sortingOptions={sortingOptions}
+          onSortingOptionsChange={(sortingOptions) =>
+            patchUrlState({ ...sortingOptions, page: 0 })
+          }
+        />
+      )}
 
-        {error !== undefined ? (
-          <Center flex={1}>
-            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-          </Center>
-        ) : (
-          <TaskRunsTable
-            taskRuns={taskRuns}
-            isFetching={isFetching}
-            isLoading={isLoading}
+      {!isLoading && error === undefined && (
+        <Flex justify="end">
+          <PaginationControls
             page={page}
-            sortingOptions={sortingOptions}
-            onSortingOptionsChange={(sortingOptions) =>
-              patchUrlState({ ...sortingOptions, page: 0 })
+            pageSize={PAGE_SIZE}
+            itemsLength={taskRuns.length}
+            total={total}
+            showTotal
+            onPreviousPage={() =>
+              patchUrlState({ page: page - 1 }, { immediate: true })
+            }
+            onNextPage={() =>
+              patchUrlState({ page: page + 1 }, { immediate: true })
             }
           />
-        )}
-
-        {!isLoading && error === undefined && (
-          <Flex justify="end">
-            <PaginationControls
-              page={page}
-              pageSize={PAGE_SIZE}
-              itemsLength={taskRuns.length}
-              total={total}
-              showTotal
-              onPreviousPage={() =>
-                patchUrlState({ page: page - 1 }, { immediate: true })
-              }
-              onNextPage={() =>
-                patchUrlState({ page: page + 1 }, { immediate: true })
-              }
-            />
-          </Flex>
-        )}
-      </MonitorMain>
-    </Flex>
+        </Flex>
+      )}
+    </TasksPageLayout>
   );
 };
