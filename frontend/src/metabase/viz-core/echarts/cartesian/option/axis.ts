@@ -486,21 +486,28 @@ export const buildAxes = (
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
-  return {
-    xAxis: buildDimensionAxis(
-      chartModel,
-      settings,
-      chartLayout,
-      hasTimelineEvents,
-      renderingContext,
-    ),
-    yAxis: buildMetricsAxes(
-      chartModel,
-      chartLayout,
-      settings,
-      renderingContext,
-    ),
-  };
+  const yAxis = buildMetricsAxes(
+    chartModel,
+    chartLayout,
+    settings,
+    renderingContext,
+  );
+
+  // echarts crashes while building a cartesian coordinate system that has an
+  // x-axis but no y-axis, which happens on a render with no visible series.
+  // Drop the lone x-axis so an empty chart renders instead of throwing.
+  const xAxis =
+    yAxis.length === 0
+      ? []
+      : buildDimensionAxis(
+          chartModel,
+          settings,
+          chartLayout,
+          hasTimelineEvents,
+          renderingContext,
+        );
+
+  return { xAxis, yAxis };
 };
 
 export const createAxisVisibilityOption = ({
