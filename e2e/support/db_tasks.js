@@ -21,6 +21,11 @@ function getDbClient(connectionConfig) {
 }
 
 export async function connectAndQueryDB({ connectionConfig, query }) {
+  const writableDbType = getWritableDbType(connectionConfig);
+  if (writableDbType) {
+    await createWritableDb({ type: writableDbType });
+  }
+
   const dbClient = getDbClient(connectionConfig);
 
   const result = await dbClient.raw(query);
@@ -35,12 +40,13 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
   }
 }
 
-export async function queryWritableDB({ type = "postgres", query }) {
-  await createWritableDb({ type });
-
-  return connectAndQueryDB({
-    connectionConfig: WRITABLE_DB_CONFIG[type],
-    query,
+function getWritableDbType(connectionConfig) {
+  return Object.keys(WRITABLE_DB_CONFIG).find((type) => {
+    const { client, connection } = WRITABLE_DB_CONFIG[type];
+    return (
+      client === connectionConfig.client &&
+      connection.database === connectionConfig.connection.database
+    );
   });
 }
 
@@ -98,15 +104,17 @@ export async function resetWritableDb({ type = "postgres" }) {
   return null;
 }
 
-export async function createWritableDb({ type = "postgres" }) {
-  const connectionConfig = {
+function getAdminConnectionConfig(type) {
+  return {
     postgres: QA_DB_CONFIG.postgres,
     mysql: {
       ...QA_DB_CONFIG.mysql,
       connection: { ...QA_DB_CONFIG.mysql.connection, user: "root" },
     },
   }[type];
+}
 
+async function writableDbExists(type) {
   const dbName = WRITABLE_DB_CONFIG[type].connection.database;
 
   const dbCheckQuery = {
@@ -115,13 +123,27 @@ export async function createWritableDb({ type = "postgres" }) {
   }[type];
 
   const { rows } = await connectAndQueryDB({
-    connectionConfig,
+    connectionConfig: getAdminConnectionConfig(type),
     query: dbCheckQuery,
   });
 
-  if (!rows.length) {
+  return rows.length > 0;
+}
+
+async function assertWritableDbExists(type) {
+  if (!(await writableDbExists(type))) {
+    const dbName = WRITABLE_DB_CONFIG[type].connection.database;
+    throw new Error(
+      `The ${type} "${dbName}" database does not exist. Restore the "${type}-writable" snapshot or call setupWritableDB("${type}") first.`,
+    );
+  }
+}
+
+export async function createWritableDb({ type = "postgres" }) {
+  if (!(await writableDbExists(type))) {
+    const dbName = WRITABLE_DB_CONFIG[type].connection.database;
     await connectAndQueryDB({
-      connectionConfig,
+      connectionConfig: getAdminConnectionConfig(type),
       query: `CREATE DATABASE ${dbName};`,
     });
   }
@@ -130,6 +152,8 @@ export async function createWritableDb({ type = "postgres" }) {
 }
 
 export async function resetTable({ type = "postgres", table = "testTable1" }) {
+  await assertWritableDbExists(type);
+
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
   return testTables?.[table]?.(dbClient);
 }
@@ -138,6 +162,10 @@ export async function createTestRoles({
   type = "postgres",
   isWritable = false,
 }) {
+  if (isWritable) {
+    await assertWritableDbExists(type);
+  }
+
   const config = isWritable ? WRITABLE_DB_CONFIG : QA_DB_CONFIG;
   const dbClient = getDbClient(config[type]);
 

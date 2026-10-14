@@ -223,7 +223,10 @@ export function queryQADB(query, type = "postgres") {
  * @returns {Cypress.Chainable<{rows: any[]}>} - Cypress chainable that resolves to query results
  */
 export function queryWritableDB(query, type = "postgres") {
-  return cy.task("queryWritableDB", { type, query });
+  return cy.task("connectAndQueryDB", {
+    connectionConfig: WRITABLE_DB_CONFIG[type],
+    query,
+  });
 }
 
 export function resetWritableDb({ type = "postgres" }) {
