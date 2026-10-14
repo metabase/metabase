@@ -32,7 +32,7 @@ export interface GoalLineParams {
   dataset: ChartDataset;
   isNormalized: boolean;
   toEChartsAxisValue: (value: RowValue) => number | null;
-  labelOnLeft: boolean;
+  labelAlign: "left" | "right";
 }
 
 interface GoalLineParamsSource {
@@ -49,12 +49,36 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
     dataset: model.dataset,
     isNormalized: model.leftAxisModel?.isNormalized ?? false,
     toEChartsAxisValue: model.yAxisScaleTransforms.toEChartsAxisValue,
-    labelOnLeft: model.rightAxisModel != null,
+    labelAlign: model.rightAxisModel != null ? "left" : "right",
+  };
+}
+
+export type GoalLineLabelLayout = {
+  x: number;
+  y: number;
+};
+
+export function getGoalLineLabelLayout({
+  fontSize,
+  goalY,
+  labelAlign,
+  plotLeft,
+  plotRight,
+}: {
+  fontSize: number;
+  goalY: number;
+  labelAlign: GoalLineParams["labelAlign"];
+  plotLeft: number;
+  plotRight: number;
+}): GoalLineLabelLayout {
+  return {
+    x: labelAlign === "left" ? plotLeft : plotRight,
+    y: goalY - fontSize - CHART_STYLE.goalLine.label.margin,
   };
 }
 
 export function getGoalLineSeriesOption(
-  { dataset, isNormalized, toEChartsAxisValue, labelOnLeft }: GoalLineParams,
+  { dataset, isNormalized, toEChartsAxisValue, labelAlign }: GoalLineParams,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
@@ -104,21 +128,25 @@ export function getGoalLineSeriesOption(
         },
       };
 
-      const align = labelOnLeft ? ("left" as const) : ("right" as const);
-      const labelX = labelOnLeft ? xStart : xEnd;
-      const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
+      const labelLayout = getGoalLineLabelLayout({
+        fontSize,
+        goalY: y,
+        labelAlign,
+        plotLeft: xStart,
+        plotRight: xEnd,
+      });
 
       const label = {
         type: "text" as const,
-        x: labelX,
-        y: labelY,
+        x: labelLayout.x,
+        y: labelLayout.y,
         blur: {
           style: {
             opacity: 1,
           },
         },
         style: {
-          align,
+          align: labelAlign,
           text: settings["graph.goal_label"] ?? "",
           fontFamily: renderingContext.fontFamily,
           fontSize,

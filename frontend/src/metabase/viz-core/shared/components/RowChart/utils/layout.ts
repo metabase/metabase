@@ -2,9 +2,11 @@ import type { ScaleContinuousNumeric } from "d3-scale";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
+import { GOAL_WARNING_WIDTH } from "../../../../lib/goal-warning";
 import type { Margin } from "../../../types/layout";
 import type { ChartGoal } from "../../../types/settings";
 import type { ChartFont, GoalStyle } from "../../../types/style";
+import { getGoalWarningY } from "../../VerticalGoalLine/goal-warning";
 import { LABEL_PADDING } from "../constants";
 import type { SeriesData } from "../types";
 
@@ -33,7 +35,7 @@ export const getChartMargin = <TDatum>(
   yTickFormatter: (value: any) => string,
   ticksFont: ChartFont,
   labelFont: ChartFont,
-  hasGoalLine: boolean,
+  goalLinePadding: number | null,
   measureTextWidth: TextWidthMeasurer,
   xLabel?: string | null,
   yLabel?: string | null,
@@ -60,7 +62,7 @@ export const getChartMargin = <TDatum>(
   const xAxisOffset = hasXAxis ? TICKS_OFFSET + ticksFont.size : 0;
 
   const margin: Margin = {
-    top: hasGoalLine ? GOAL_LINE_PADDING : CHART_PADDING,
+    top: goalLinePadding ?? CHART_PADDING,
     left:
       yAxisOffset +
       CHART_PADDING +
@@ -74,6 +76,12 @@ export const getChartMargin = <TDatum>(
 
   return margin;
 };
+
+export function getGoalLinePadding(style: GoalStyle, hasWarning: boolean) {
+  return hasWarning
+    ? Math.max(GOAL_LINE_PADDING, Math.ceil(-getGoalWarningY(style.label.size)))
+    : GOAL_LINE_PADDING;
+}
 
 export const getMaxYValuesCount = (
   viewportHeight: number,
@@ -91,6 +99,7 @@ export const getRowChartGoal = (
   style: GoalStyle,
   measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
+  hasWarning = false,
 ) => {
   if (!goal) {
     return null;
@@ -101,12 +110,13 @@ export const getRowChartGoal = (
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;
   const position =
-    labelWidth > availableRightSideSpace
+    labelWidth + (hasWarning ? GOAL_WARNING_WIDTH : 0) > availableRightSideSpace
       ? ("left" as const)
       : ("right" as const);
 
   return {
     ...goal,
+    labelWidth,
     position,
   };
 };

@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -12,6 +13,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -48,6 +50,7 @@ const ROWS = [
 const MAX_COUNT = 30;
 const GOAL = 250;
 const GOAL_LABEL = "Target";
+const GOAL_ERROR = "Couldn't load this value";
 const SETTINGS: VisualizationSettings = {
   "graph.dimensions": ["category"],
   "graph.metrics": ["count"],
@@ -61,9 +64,14 @@ const FAILED = createMockFailedReferencedEntitiesResults();
 type SetupOpts = {
   settings?: VisualizationSettings;
   referencedEntities?: ReferencedEntitiesResults;
+  isQueryBuilder?: boolean;
 };
 
-function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
+function setup({
+  settings = SETTINGS,
+  referencedEntities,
+  isQueryBuilder = false,
+}: SetupOpts = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({ display: "row", visualization_settings: settings }),
@@ -77,7 +85,9 @@ function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
     ),
   ];
 
-  renderWithProviders(<Visualization rawSeries={series} />);
+  renderWithProviders(
+    <Visualization rawSeries={series} isQueryBuilder={isQueryBuilder} />,
+  );
 
   return { series };
 }
@@ -177,9 +187,9 @@ describe("row chart dynamic goal", () => {
     expect(getGraphicsSymbols("goal line")).toHaveLength(0);
   });
 
-  it("draws the goal line at 0 when fetching the reference fails", async () => {
+  it("draws the goal line at 0 with a warning in the query builder when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
-    setup();
+    setup({ isQueryBuilder: true });
 
     const goalLine = await findGoalLine();
 
@@ -188,9 +198,27 @@ describe("row chart dynamic goal", () => {
       0,
     );
     expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length);
+
+    await userEvent.hover(within(goalLine).getByLabelText("Goal warning"));
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
   });
 
-  it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
+  it("draws the goal line at 0 with a warning in the query builder when the dataset reports the reference as failed", async () => {
+    setup({ referencedEntities: FAILED, isQueryBuilder: true });
+
+    const goalLine = await findGoalLine();
+
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
+      0,
+    );
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+
+    await userEvent.hover(within(goalLine).getByLabelText("Goal warning"));
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
+  });
+
+  it("draws the goal line at 0 without a warning outside the query builder", async () => {
     setup({ referencedEntities: FAILED });
 
     const goalLine = await findGoalLine();
@@ -199,6 +227,7 @@ describe("row chart dynamic goal", () => {
       getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
       0,
     );
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });

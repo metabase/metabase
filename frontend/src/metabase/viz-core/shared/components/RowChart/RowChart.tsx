@@ -1,5 +1,5 @@
 import type { NumberValue } from "d3-scale";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
@@ -14,6 +14,7 @@ import type { BarData, RowChartTheme, Series, StackOffset } from "./types";
 import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import {
   getChartMargin,
+  getGoalLinePadding,
   getMaxYValuesCount,
   getRowChartGoal,
 } from "./utils/layout";
@@ -35,6 +36,7 @@ export interface RowChartProps<TDatum> {
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
   goal?: ChartGoal | null;
+  goalWarning?: ReactNode;
   theme: RowChartTheme;
   stackOffset: StackOffset;
   labelledSeries?: string[] | null;
@@ -76,6 +78,7 @@ export const RowChart = <TDatum,>({
   seriesColors,
 
   goal,
+  goalWarning,
   theme,
   stackOffset,
   labelledSeries,
@@ -145,6 +148,9 @@ export const RowChart = <TDatum,>({
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;
 
+  const hasGoalWarning = goalWarning != null;
+  const goalLinePadding =
+    goal != null ? getGoalLinePadding(theme.goal, hasGoalWarning) : null;
   const margin = useMemo(
     () =>
       getChartMargin(
@@ -152,7 +158,7 @@ export const RowChart = <TDatum,>({
         yTickFormatter,
         theme.axis.ticks,
         theme.axis.label,
-        goal != null,
+        goalLinePadding,
         measureTextWidth,
         xLabel,
         yLabel,
@@ -165,7 +171,7 @@ export const RowChart = <TDatum,>({
       yTickFormatter,
       theme.axis.ticks,
       theme.axis.label,
-      goal,
+      goalLinePadding,
       measureTextWidth,
       xLabel,
       yLabel,
@@ -247,10 +253,15 @@ export const RowChart = <TDatum,>({
     ],
   );
 
-  const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale),
-    [goal, measureTextWidth, theme.goal, paddedXScale],
-  );
+  const rowChartGoal = useMemo(() => {
+    return getRowChartGoal(
+      goal,
+      theme.goal,
+      measureTextWidth,
+      paddedXScale,
+      hasGoalWarning,
+    );
+  }, [goal, measureTextWidth, theme.goal, paddedXScale, hasGoalWarning]);
 
   return (
     <RowChartView
@@ -266,6 +277,7 @@ export const RowChart = <TDatum,>({
       xScale={paddedXScale}
       yScale={yScale}
       goal={rowChartGoal}
+      goalWarning={goalWarning}
       hoveredData={hoveredData}
       yTickFormatter={yTickFormatter}
       xTickFormatter={xTickFormatter}

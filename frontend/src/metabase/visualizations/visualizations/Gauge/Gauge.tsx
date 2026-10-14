@@ -9,13 +9,14 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
-import {
-  GOAL_WARNING_ICON_SIZE,
-  GoalWarningIcon,
-} from "metabase/visualizations/components/GoalWarning";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  getGoalSegmentBounds,
+  resolveGoalSegments,
+} from "metabase/viz-core";
 
 import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";

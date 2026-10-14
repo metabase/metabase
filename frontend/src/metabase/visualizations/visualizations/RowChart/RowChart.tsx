@@ -7,6 +7,7 @@ import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -113,8 +114,11 @@ const RowChartVisualization = ({
     () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
-  const { status: goalStatus, settings: goalSettings } =
-    useResolvedGoalSettings(card, chartSeries.data, settings);
+  const {
+    status: goalStatus,
+    settings: goalSettings,
+    errors: goalErrors,
+  } = useResolvedGoalSettings(card, chartSeries.data, settings);
   const goal = useMemo(() => getChartGoal(goalSettings), [goalSettings]);
   const stackOffset = getStackOffset(settings);
   const theme = useRowChartTheme(getFontFamilyValue(fontFamily), isDashboard);
@@ -292,6 +296,11 @@ const RowChartVisualization = ({
             series={series}
             seriesColors={seriesColors}
             goal={goal}
+            goalWarning={
+              isQueryBuilder && goalErrors.length > 0 ? (
+                <GoalWarningIcon errors={goalErrors} source="goal" />
+              ) : undefined
+            }
             theme={theme}
             stackOffset={stackOffset}
             tickFormatters={tickFormatters}

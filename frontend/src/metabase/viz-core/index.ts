@@ -67,7 +67,12 @@ export type {
 } from "./echarts/cartesian/model/types";
 export { getFormattingOptionsWithoutScaling } from "./echarts/cartesian/model/util";
 export { createAxisVisibilityOption } from "./echarts/cartesian/option/axis";
-export { GOAL_LINE_DASH } from "./echarts/cartesian/option/goal-line";
+export {
+  GOAL_LINE_DASH,
+  type GoalLineParams,
+  getGoalLineLabelLayout,
+  getGoalLineParams,
+} from "./echarts/cartesian/option/goal-line";
 export {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
@@ -230,8 +235,14 @@ export {
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
+  GOAL_WARNING_GAP,
+  GOAL_WARNING_ICON_SIZE,
+  GOAL_WARNING_WIDTH,
+} from "./lib/goal-warning";
+export {
   getGoalErrorMessage,
   getGoalErrors,
+  getGoalLineValue,
   getGoalSegmentBounds,
   getNumericGoalValue,
   getReferencedEntities,

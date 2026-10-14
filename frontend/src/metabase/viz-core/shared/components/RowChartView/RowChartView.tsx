@@ -7,6 +7,7 @@ import { scaleBand } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";
 import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
+import type { ReactNode } from "react";
 import * as React from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
@@ -36,9 +37,11 @@ export interface RowChartViewProps<TDatum> {
   xTicks: number[];
   goal: {
     label: string;
+    labelWidth: number;
     value: number;
     position: "left" | "right";
   } | null;
+  goalWarning?: ReactNode;
   theme: RowChartTheme;
   margin: Margin;
   innerWidth: number;
@@ -70,6 +73,7 @@ const RowChartView = <TDatum,>({
   yScale,
   seriesData,
   goal,
+  goalWarning,
   theme,
   margin,
   labelsFormatter,
@@ -223,8 +227,10 @@ const RowChartView = <TDatum,>({
             x={goalLineX}
             height={innerHeight}
             label={goal.label}
+            labelWidth={goal.labelWidth}
             style={theme.goal}
             position={goal.position}
+            warning={goalWarning}
           />
         )}
 

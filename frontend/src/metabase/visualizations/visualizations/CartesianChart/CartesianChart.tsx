@@ -20,11 +20,13 @@ import type { CartesianHoveredObject } from "metabase/visualizations/visualizati
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 import {
   type TimelineEventGroup,
+  getGoalLineParams,
   getLegendItems,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
 
+import { GoalLineWarnings } from "./GoalLineWarnings";
 import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
@@ -86,11 +88,11 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
-  const { status: goalStatus, settings } = useResolvedGoalSettings(
-    card,
-    rawSeries[0].data,
-    adjustedSettings,
-  );
+  const {
+    status: goalStatus,
+    settings,
+    errors: goalErrors,
+  } = useResolvedGoalSettings(card, rawSeries[0].data, adjustedSettings);
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
@@ -188,10 +190,11 @@ function CartesianChartInner(props: VisualizationProps) {
     setChartSize({ width, height });
   }, []);
 
-  const timelineEventsXAxisIndex =
+  const panelCount =
     chartLayout.panelHeight != null
-      ? chartModel.seriesModels.filter((series) => series.visible).length - 1
-      : 0;
+      ? chartModel.seriesModels.filter((series) => series.visible).length
+      : 1;
+  const timelineEventsXAxisIndex = panelCount - 1;
 
   useTimelineEventsHover({
     chartRef,
@@ -282,6 +285,18 @@ function CartesianChartInner(props: VisualizationProps) {
               onDeselectTimelineEvents={onDeselectTimelineEvents}
               onSeeAllEvents={onSeeAllEvents}
             />
+            {isQueryBuilder && goalErrors.length > 0 && (
+              <GoalLineWarnings
+                chartInstance={chartInstance}
+                errors={goalErrors}
+                goalLineParams={getGoalLineParams(chartModel)}
+                plotLeft={chartLayout.padding.left}
+                plotRight={chartSize.width - chartLayout.padding.right}
+                renderingContext={renderingContext}
+                settings={settings}
+                yAxisCount={panelCount}
+              />
+            )}
           </ResponsiveEChartsRenderer>
         </CartesianChartLegendLayout>
       )}
