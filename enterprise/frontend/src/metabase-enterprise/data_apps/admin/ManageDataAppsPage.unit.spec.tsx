@@ -22,6 +22,7 @@ type SetupOpts = {
   configured?: boolean;
   url?: string | null;
   apps?: DataApp[];
+  updatedApp?: DataApp;
   appsError?: boolean;
   statusError?: boolean;
 };
@@ -30,6 +31,7 @@ const setup = ({
   configured = true,
   url = null,
   apps = [],
+  updatedApp,
   appsError = false,
   statusError = false,
 }: SetupOpts = {}) => {
@@ -43,6 +45,12 @@ const setup = ({
     setupListDataAppsEndpointWithError("Apps failed to load");
   } else {
     setupListDataAppsEndpoint(apps);
+  }
+
+  apps.forEach((app) => setupDeleteDataAppEndpoint(app.name));
+
+  if (updatedApp) {
+    setupUpdateDataAppEndpoint(updatedApp);
   }
 
   setupUserAcknowledgementEndpoints({
@@ -206,10 +214,10 @@ describe("ManageDataAppsPage", () => {
 
   describe("actions", () => {
     it("disables an app", async () => {
-      setup({ apps: [createMockDataApp({ name: "sales" })] });
-      setupUpdateDataAppEndpoint(
-        createMockDataApp({ name: "sales", enabled: false }),
-      );
+      setup({
+        apps: [createMockDataApp({ name: "sales" })],
+        updatedApp: createMockDataApp({ name: "sales", enabled: false }),
+      });
 
       await openActionsMenu("Sales");
       await userEvent.click(
@@ -221,8 +229,10 @@ describe("ManageDataAppsPage", () => {
     });
 
     it("re-enables a disabled app", async () => {
-      setup({ apps: [createMockDataApp({ name: "sales", enabled: false })] });
-      setupUpdateDataAppEndpoint(createMockDataApp({ name: "sales" }));
+      setup({
+        apps: [createMockDataApp({ name: "sales", enabled: false })],
+        updatedApp: createMockDataApp({ name: "sales" }),
+      });
 
       await openActionsMenu("Sales");
       await userEvent.click(
@@ -255,7 +265,6 @@ describe("ManageDataAppsPage", () => {
         configured: false,
         apps: [createMockDataApp({ name: "sales" })],
       });
-      setupDeleteDataAppEndpoint("sales");
 
       await openActionsMenu("Sales");
       await userEvent.click(
