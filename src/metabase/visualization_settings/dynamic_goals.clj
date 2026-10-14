@@ -130,10 +130,10 @@
       goal-value)))
 
 (defn- resolve-or-nil
-  "`(resolve goal-value)`, or nil when it throws `::unresolved-goal`."
-  [resolve goal-value]
+  "`(resolve-fn goal-value)`, or nil when it throws `::unresolved-goal`."
+  [resolve-fn goal-value]
   (try
-    (resolve goal-value)
+    (resolve-fn goal-value)
     (catch clojure.lang.ExceptionInfo e
       (when-not (= ::unresolved-goal (:type (ex-data e)))
         (throw e)))))
@@ -157,13 +157,13 @@
   ([viz-settings referenced-entities]
    (resolve-dynamic-goals viz-settings referenced-entities viz-settings))
   ([viz-settings referenced-entities effective-settings]
-   (let [resolve #(resolve-goal-value % referenced-entities)]
+   (let [resolve-fn #(resolve-goal-value % referenced-entities)]
      (reduce-kv
       (fn [viz setting kind]
         (if (nil? (get viz setting))
           viz
           (case kind
-            :value    (update viz setting #(or (resolve-or-nil resolve %) 0))
-            :segments (update viz setting resolve-segments resolve))))
+            :value    (update viz setting #(or (resolve-or-nil resolve-fn %) 0))
+            :segments (update viz setting resolve-segments resolve-fn))))
       viz-settings
       (shown-goal-settings effective-settings)))))
