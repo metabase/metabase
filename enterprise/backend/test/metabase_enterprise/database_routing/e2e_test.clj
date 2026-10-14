@@ -16,6 +16,9 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -227,11 +230,19 @@
         (with-routing-setup! [router-db [[_destination-db "my database name"]]]
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                   :user_attribute "db_name"}]
-            (testing "Anonymous access is prohibited"
+            (testing "Anonymous access outside a public link is prohibited"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anonymous users cannot access a database with routing enabled."
                                     (qp/process-query {:database (u/the-id router-db)
                                                        :type :query
                                                        :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}))))
+            (testing "Through a public link the grant decides, and this router has none"
+              (let [mp    (lib.metadata.jvm/application-database-metadata-provider (u/the-id router-db))
+                    query (lib/query mp (lib.metadata/table mp (t2/select-one-pk :model/Table
+                                                                                 :db_id (u/the-id router-db))))]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"This database does not allow anonymous access."
+                                      (database-routing/with-database-routing-off-if-granted
+                                        (qp/process-query query))))))
             (testing "No destination database matches"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database Routing error: No Destination Database with slug `nonexistent_database_name` found."
                                     (mt/with-test-user :crowberto
