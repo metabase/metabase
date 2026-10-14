@@ -35,8 +35,9 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
 
 /**
  * A list of event definitions, edited one at a time and reordered by
- * dragging. Starting another edit, adding or removing cancels the current
- * edit, and nothing can be dragged during one.
+ * dragging. Starting another edit, adding or removing submits the current
+ * edit first, or discards it when it can't be submitted. Nothing can be
+ * dragged during an edit.
  */
 export const EventDefinitionListWidget = ({
   id,
@@ -129,20 +130,17 @@ export const EventDefinitionListWidget = ({
           )}
         />
       </Stack>
-      {isAdding ? (
-        <ListRow>{editor}</ListRow>
-      ) : (
-        <Box>
-          <Button
-            variant="light"
-            leftSection={<Icon name="add" />}
-            disabled={tableQuery === undefined}
-            onClick={() => setEditingIndex(value.length)}
-          >
-            {addLabel}
-          </Button>
-        </Box>
-      )}
+      {isAdding && <ListRow>{editor}</ListRow>}
+      <Box>
+        <Button
+          variant="light"
+          leftSection={<Icon name="add" />}
+          disabled={tableQuery === undefined}
+          onClick={() => setEditingIndex(value.length)}
+        >
+          {addLabel}
+        </Button>
+      </Box>
     </Stack>
   );
 };

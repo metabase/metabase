@@ -18,6 +18,8 @@ const END_MS = new Date().setUTCHours(0, 0, 0, 0);
 const START_MS = END_MS - DAYS * 86_400_000;
 const INCIDENT_START = START_MS + 84 * 86_400_000;
 const INCIDENT_END = INCIDENT_START + 7 * 86_400_000;
+// Signups simulated after the data ends, whose earlier browsing is in range.
+const LEAD_WEEKS = 2;
 
 type Persona = "power" | "regular" | "casual" | "churned";
 type Plan = "starter" | "pro" | "business";
@@ -349,7 +351,7 @@ function bump(name: keyof GroundTruth["counts"], n = 1) {
 
 function makePerson(i: number) {
   const rng = rngFrom(`${SEED}:person:${i}`);
-  const weeks = Math.max(1, Math.floor(DAYS / 7));
+  const weeks = Math.max(1, Math.floor(DAYS / 7)) + LEAD_WEEKS;
   const weekWeights: [number, number][] = Array.from({ length: weeks }, (_, w) => [
     w,
     1 + 0.03 * w,
@@ -359,12 +361,10 @@ function makePerson(i: number) {
     rng,
     weekWeights.map(([w, weight]) => [w, weight / totalW]),
   );
-  // Leave at least 14 days of life after signup when possible.
-  const maxSignupDay = Math.max(0, DAYS - 14);
-  const signupDay = Math.min(
-    maxSignupDay,
-    signupWeek * 7 + Math.floor(rng() * 7),
-  );
+  // Signups run past the end of the data, so recent activity is cut off the
+  // way it is in real data. Clamping instead piles the last weeks' signups
+  // onto a single day.
+  const signupDay = signupWeek * 7 + Math.floor(rng() * 7);
   const hour = pickWeighted(rng, [
     [10, 0.15],
     [11, 0.15],
@@ -503,7 +503,11 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
       data?: Record<string, string>;
     },
     identified: boolean,
-  ) => {
+  ): boolean => {
+    // People who sign up after the data ends still browse before it ends.
+    if (at >= END_MS) {
+      return false;
+    }
     const sessionStart = lastTs === 0 || at - lastTs > SESSION_GAP_MS;
     if (sessionStart) {
       sessionSeq += 1;
@@ -515,6 +519,7 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
       sessionStart,
     });
     path = spec.path;
+    return true;
   };
 
   // Anonymous browsing before signup.
@@ -528,15 +533,17 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
     if (person.sawPricing && n === preCount - 2) {
       path = "/pricing";
     }
-    if (path === "/pricing") {
+    if (push(t, { type: 1, name: null, path }, false) && path === "/pricing") {
       sawPricing = true;
     }
-    push(t, { type: 1, name: null, path }, false);
     t += (2 + Math.floor(rng() * 12)) * 60_000;
   }
   if (person.sawPricing && !sawPricing) {
-    push(person.signupAt - 5 * 60_000, { type: 1, name: null, path: "/pricing" }, false);
-    sawPricing = true;
+    sawPricing = push(
+      person.signupAt - 5 * 60_000,
+      { type: 1, name: null, path: "/pricing" },
+      false,
+    );
   }
   if (sawPricing) {
     truth.funnel.pricing += 1;

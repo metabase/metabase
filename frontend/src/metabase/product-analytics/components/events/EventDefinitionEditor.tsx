@@ -1,6 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
-import { useLatest } from "react-use";
+import { useState } from "react";
 import { c, t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
@@ -9,6 +8,7 @@ import { FilterPill } from "metabase/querying/filters/components/FilterPanel/Fil
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import {
   ActionIcon,
+  Box,
   Button,
   Flex,
   Group,
@@ -21,6 +21,7 @@ import * as Lib from "metabase-lib";
 
 import { readEventQuery } from "../../events/read-event-query";
 import type { EventDefinition } from "../../events/types";
+import { useClickOutsideFirst } from "../../use-click-outside-first";
 
 const STAGE_INDEX = -1;
 
@@ -52,8 +53,8 @@ export const EventDefinitionEditor = ({
   const [customName, setCustomName] = useState(() =>
     value && value.name !== getConditionsName(query) ? value.name : null,
   );
-  // The name as typed, which EditableText only commits on blur. A click
-  // outside is handled before that blur, so it submits this instead.
+  // The name as typed, which EditableText only commits on blur. Enter is
+  // handled before that blur commits, so it submits this instead.
   const [draftName, setDraftName] = useState<string | null>(null);
   const filters = Lib.filters(query, STAGE_INDEX);
   const committedName = customName ?? getConditionsName(query);
@@ -83,7 +84,7 @@ export const EventDefinitionEditor = ({
     }
   };
 
-  const handlePointerDownInside = usePointerDownOutside(
+  const handlePointerDownInside = useClickOutsideFirst(
     canSubmit ? handleSubmit : onCancel,
   );
 
@@ -138,37 +139,13 @@ export const EventDefinitionEditor = ({
           ))}
         </Flex>
       )}
-      <AddConditionButton query={query} onChange={setQuery} />
+      <AddConditionButton
+        query={query}
+        onChange={setQuery}
+        initialOpened={filters.length === 0}
+      />
     </Stack>
   );
-};
-
-/**
- * Calls `onPointerDownOutside` when a press lands outside the element given the
- * returned `onPointerDownCapture` handler. Presses in its portaled popovers
- * count as inside.
- */
-const usePointerDownOutside = (onPointerDownOutside: () => void) => {
-  const isInsideRef = useRef(false);
-  const onPointerDownOutsideRef = useLatest(onPointerDownOutside);
-
-  useEffect(() => {
-    // React events bubble through portals but DOM events don't, so the React
-    // handler flags presses inside before this listener on document sees them.
-    const handlePointerDown = () => {
-      if (!isInsideRef.current) {
-        onPointerDownOutsideRef.current();
-      }
-      isInsideRef.current = false;
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [onPointerDownOutsideRef]);
-
-  return () => {
-    isInsideRef.current = true;
-  };
 };
 
 /** The conditions' names joined with "and", or "" without conditions. */
@@ -218,13 +195,15 @@ const ConditionPill = ({
         </FilterPill>
       </Popover.Target>
       <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={STAGE_INDEX}
-          filter={filter}
-          filterIndex={filterIndex}
-          onSelect={handleSelect}
-        />
+        <Box mah="80vh">
+          <FilterPicker
+            query={query}
+            stageIndex={STAGE_INDEX}
+            filter={filter}
+            filterIndex={filterIndex}
+            onSelect={handleSelect}
+          />
+        </Box>
       </Popover.Dropdown>
     </Popover>
   );
@@ -233,10 +212,15 @@ const ConditionPill = ({
 type QueryEditorProps = {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
+  initialOpened: boolean;
 };
 
-const AddConditionButton = ({ query, onChange }: QueryEditorProps) => {
-  const [isOpened, setIsOpened] = useState(false);
+const AddConditionButton = ({
+  query,
+  onChange,
+  initialOpened,
+}: QueryEditorProps) => {
+  const [isOpened, setIsOpened] = useState(initialOpened);
 
   const handleSelect = (filter: Lib.Filterable) => {
     onChange(Lib.filter(query, STAGE_INDEX, filter));
@@ -254,11 +238,13 @@ const AddConditionButton = ({ query, onChange }: QueryEditorProps) => {
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={STAGE_INDEX}
-          onSelect={handleSelect}
-        />
+        <Box mah="80vh">
+          <FilterPicker
+            query={query}
+            stageIndex={STAGE_INDEX}
+            onSelect={handleSelect}
+          />
+        </Box>
       </Popover.Dropdown>
     </Popover>
   );
