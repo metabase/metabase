@@ -68,6 +68,7 @@ export const DatabaseRoutingSection = ({
     error,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
+    isRevokeHeldForReachability,
     hasStoppedServingAnonymousVisitors,
     openQuestion,
     cancelUndoesEnable,
@@ -76,6 +77,8 @@ export const DatabaseRoutingSection = ({
     changeAnonymousAccess,
     chooseGrant,
     cancelGrantChoice,
+    confirmRevoke,
+    dismissRevoke,
   } = useDatabaseRoutingPanel(database, { skip: !!shouldHideSection });
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -136,6 +139,8 @@ export const DatabaseRoutingSection = ({
         question={openQuestion}
         onChooseGrant={chooseGrant}
         onCancelGrantChoice={handleGrantChoiceCancel}
+        onConfirmRevoke={confirmRevoke}
+        onDismissRevoke={dismissRevoke}
       />
       <Flex justify="space-between" align="center">
         <Stack>
@@ -258,7 +263,11 @@ export const DatabaseRoutingSection = ({
                     id="db-routing-anonymous-access"
                     checked={anonymousAccessGranted}
                     disabled={
-                      !isAdmin || !!disabledFeatMsg || !canChangeAnonymousAccess
+                      !isAdmin ||
+                      !!disabledFeatMsg ||
+                      !canChangeAnonymousAccess ||
+                      // a revoke cannot be decided before the panel knows what it is serving
+                      isRevokeHeldForReachability
                     }
                     onChange={(e) =>
                       changeAnonymousAccess(e.currentTarget.checked)
