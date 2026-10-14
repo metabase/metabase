@@ -98,16 +98,23 @@
         (throw (refusal (str "No query with id " query-id ". Known query ids: ["
                              (str/join ", " (keys queries)) "]."))))))
 
-(defn- conversation-open-to-others?
-  "Whether someone other than the current user can read the current conversation, now or by joining it later."
-  []
-  (some-> (shared/current-conversation-id)
-          (metabot.db/conversation-open-to-others? api/*current-user-id*)))
-
 (defn- shared-conversation-refusal
   []
   (refusal (str "run_query is not available in a conversation other people can read, because they would see "
                 "the rows too. Ask the user to continue in their own Metabot chat.")))
+
+(defn- check-private-conversation!
+  "Refuse unless the current conversation belongs to the current user alone.
+   The rows are stored with the conversation, and every participant can read them back. Without a conversation and a
+   user to check, nothing says who will read the rows, so the call is refused too."
+  []
+  (let [conversation-id (shared/current-conversation-id)]
+    (cond
+      (not (and conversation-id api/*current-user-id*))
+      (throw (refusal "run_query is only available in a Metabot conversation."))
+
+      (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)
+      (throw (shared-conversation-refusal)))))
 
 (def ^:private no-permission-message "You do not have permission to run this query.")
 
@@ -282,9 +289,7 @@
   (try
     (when-not (metabot.settings/metabot-query-execution-enabled?)
       (throw (refusal "Query execution is turned off for Metabot.")))
-    ;; The rows are stored with the conversation, and every participant can read them back.
-    (when (conversation-open-to-others?)
-      (throw (shared-conversation-refusal)))
+    (check-private-conversation!)
     (let [page                                 (-> (stored-query query_id)
                                                    runnable-query
                                                    (query-execution/execute-page! (or row_limit default-row-limit)

@@ -496,14 +496,14 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        ;; Where other people can read the conversation, run_query would refuse every call, so it is not offered
-        ;; and the prompt does not promise results. The tool checks again, for someone who joins mid-turn.
+        ;; Where other people can read the conversation, or there is no conversation or user to check, run_query would
+        ;; refuse every call, so it is not offered and the prompt does not promise results. The tool checks again, for
+        ;; someone who joins mid-turn.
         offered      (profiles/profile->tools profile capabilities)
         base-tools   (cond-> offered
                        (and (contains? offered "run_query")
-                            conversation-id
-                            api/*current-user-id*
-                            (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))
+                            (or (not (and conversation-id api/*current-user-id*))
+                                (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)))
                        (dissoc "run_query"))
         seeded       (-> (or state {})
                          (seed-state context)

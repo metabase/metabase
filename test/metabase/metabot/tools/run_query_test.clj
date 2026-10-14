@@ -22,10 +22,12 @@
       (run-query/run-query-tool args))))
 
 (defn- run-tool!
-  "Call `run_query` as rasta with `queries` in conversation state and query execution enabled."
+  "Call `run_query` as rasta, in a conversation of rasta's own, with `queries` in conversation state and query
+   execution enabled."
   [queries args]
-  (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-    (call-tool! {:state {:queries queries}} args)))
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (call-tool! {:conversation-id conversation-id, :state {:queries queries}} args))))
 
 (defn- venues-by-id
   []
@@ -154,7 +156,10 @@
         (testing "a conversation someone else started is refused when no message names them"
           (is (=? refusal (run-in theirs))))
         (testing "a Slack thread stored without its thread id is refused"
-          (is (=? refusal (run-in legacy))))))))
+          (is (=? refusal (run-in legacy))))
+        (testing "a run outside a conversation is refused"
+          (is (= {:output "run_query is only available in a Metabot conversation."}
+                 (call-tool! {:state {:queries {"q1" (venues-count)}}} {:query_id "q1"}))))))))
 
 (deftest result-output-bounds-test
   (let [output (fn [cols rows]

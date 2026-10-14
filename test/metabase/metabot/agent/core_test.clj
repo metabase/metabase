@@ -157,6 +157,21 @@
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
 
+(defn- run-query-offered-at-turn-start
+  "Whether the turn starts with `run_query` among its tools, and whether its system message says results can be read.
+   Reads them where the decision is made rather than running a turn. The bindings stand in for the ones the agent
+   loop makes."
+  [conversation-id capabilities]
+  (let [{:keys [tools system-msg]}
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                               :profile-id      :internal
+                               :conversation-id conversation-id
+                               :context         {:capabilities capabilities}}))]
+    {:tool?   (contains? tools "run_query")
+     :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))
+
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
@@ -165,23 +180,12 @@
   (testing "the same request gets run_query once the admin turns it on"
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (contains? (tools-registered-for-request! ["feature:query_execution"]) "run_query"))))))
+        (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
-  ;; Reads the tools and system message the turn starts with, where the decision is made, rather than running a
-  ;; turn. The bindings stand in for the ones the agent loop makes.
   (let [rasta   (mt/user->id :rasta)
-        offered (fn [conversation-id]
-                  (let [{:keys [tools system-msg]}
-                        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
-                                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes
-                                                                            scope/all-yes-permissions)]
-                          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                                               :profile-id      :internal
-                                               :conversation-id conversation-id
-                                               :context         {:capabilities []}}))]
-                    {:tool?   (contains? tools "run_query")
-                     :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))]
+        offered #(run-query-offered-at-turn-start % [])]
     (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
                    :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
@@ -193,7 +197,9 @@
             (testing "a Slack thread"
               (is (= {:tool? false, :prompt? false} (offered thread))))
             (testing "a conversation someone else started"
-              (is (= {:tool? false, :prompt? false} (offered someone))))))))))
+              (is (= {:tool? false, :prompt? false} (offered someone)))))
+          (testing "no conversation offers neither"
+            (is (= {:tool? false, :prompt? false} (offered nil)))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
