@@ -51,7 +51,7 @@ export function CreateTransformCollectionModal({
       } catch (error) {
         sendToast({
           message: getErrorMessage(error, t`Failed to create collection`),
-          icon: "warning",
+          variant: "negative",
         });
       }
     },

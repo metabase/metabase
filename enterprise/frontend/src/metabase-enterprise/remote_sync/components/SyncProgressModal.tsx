@@ -64,8 +64,7 @@ export function SyncProgressModal({
 
       sendToast({
         message,
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         timeout: 60000,
       });
 
@@ -86,7 +85,9 @@ export function SyncProgressModal({
       <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
         <Stack gap="lg">
           <Text>{t`An error occurred during sync.`}</Text>
-          {errorMessage && <Text>{errorMessage}</Text>}
+          {errorMessage && (
+            <Text style={{ whiteSpace: "pre-line" }}>{errorMessage}</Text>
+          )}
           {startedBy}
         </Stack>
         <Modal.Footer>

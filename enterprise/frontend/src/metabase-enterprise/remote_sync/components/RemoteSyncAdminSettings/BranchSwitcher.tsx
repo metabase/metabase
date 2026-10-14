@@ -91,8 +91,7 @@ export const BranchSwitcher = ({
         return;
       }
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: errorMessage ?? t`Sorry, we were unable to switch branches.`,
       });
     }

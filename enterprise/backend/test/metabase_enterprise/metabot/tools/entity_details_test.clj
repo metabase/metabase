@@ -100,5 +100,6 @@
                    (source-names (metric-dimensions)))))
           (testing "missing sandbox metadata fails closed"
             (let [sandbox (t2/select-one :model/Sandbox :table_id (mt/id :venues))]
-              (t2/update! :model/Card :id (:card_id sandbox) {:result_metadata nil})
+              (mt/with-test-user :crowberto
+                (t2/update! :model/Card :id (:card_id sandbox) {:result_metadata nil}))
               (is (empty? (metric-dimensions))))))))))
