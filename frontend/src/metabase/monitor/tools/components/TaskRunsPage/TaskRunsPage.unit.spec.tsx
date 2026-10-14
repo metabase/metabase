@@ -19,8 +19,6 @@ import * as Urls from "metabase/urls";
 import type { ListTaskRunsResponse } from "metabase-types/api";
 import { createMockTaskRun } from "metabase-types/api/mocks";
 
-import { TasksSectionLayout } from "../../routes";
-
 import { TaskRunsPage } from "./TaskRunsPage";
 
 const PATHNAME = Urls.monitorTasksRuns();
@@ -42,10 +40,8 @@ const setup = async ({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const utils = renderWithProviders(
-    <Route element={<TasksSectionLayout />}>
-      <Route path={PATHNAME} element={<TaskRunsPage />}>
-        <Route path=":runId" />
-      </Route>
+    <Route path={PATHNAME} element={<TaskRunsPage />}>
+      <Route path=":runId" />
     </Route>,
     {
       initialRoute,

@@ -62,10 +62,7 @@ function setup({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   return renderWithProviders(
-    <>
-      <Route path={Urls.monitorTasks()}>{getTasksRoutes()}</Route>
-      <Route path="/outside" element={<div>Outside the section</div>} />
-    </>,
+    <Route path={Urls.monitorTasks()}>{getTasksRoutes()}</Route>,
     { withRouter: true, initialRoute },
   );
 }
@@ -119,44 +116,30 @@ describe("task section counts", () => {
     }
   });
 
-  it.each([false, true])(
-    "does not refetch counts on tab switches (countsError: %s)",
-    async (countsError) => {
-      setup({ countsError });
-      expect(await screen.findByText("No results")).toBeVisible();
-      await waitFor(() =>
-        expect(fetchMock.callHistory.done("path:/api/task/counts")).toBe(true),
-      );
-      await waitFor(() =>
-        expect(within(getTasksTab()).queryByText("137") !== null).toBe(
-          !countsError,
-        ),
-      );
-      for (let visit = 0; visit < 2; visit++) {
-        await switchToRuns();
-        await switchToTasks();
-      }
-      expect(getCountCalls()).toHaveLength(1);
-    },
-  );
-
-  it("refreshes cached counts when reentering the section", async () => {
-    const { router } = setup();
-    if (!router) {
-      throw new Error("Expected test router");
+  it("reuses loaded counts across tab switches", async () => {
+    setup();
+    expect(await screen.findByText("No results")).toBeVisible();
+    expect(await within(getTasksTab()).findByText("137")).toBeVisible();
+    for (let visit = 0; visit < 2; visit++) {
+      await switchToRuns();
+      await switchToTasks();
     }
-    const tasksTab = await screen.findByRole("link", { name: "Tasks" });
-    expect(await within(tasksTab).findByText("137")).toBeVisible();
-    act(() => router.navigate("/outside"));
-    expect(await screen.findByText("Outside the section")).toBeVisible();
-    fetchMock.modifyRoute("task-counts", {
-      response: { tasks: 138, runs: 1 },
-    });
-    act(() => router.navigate(Urls.monitorTasksRuns()));
-    expect(await screen.findByTestId("task-run")).toBeVisible();
-    expect(await within(getTasksTab()).findByText("138")).toBeVisible();
-    expect(getCountCalls()).toHaveLength(2);
+    expect(getCountCalls()).toHaveLength(1);
+  });
+
+  it("keeps tab navigation working and hides badges when counts fail", async () => {
+    setup({ countsError: true });
+    expect(await screen.findByText("No results")).toBeVisible();
+    await waitFor(() =>
+      expect(fetchMock.callHistory.done("path:/api/task/counts")).toBe(true),
+    );
+    await switchToRuns();
     await switchToTasks();
-    expect(getCountCalls()).toHaveLength(2);
+    await waitFor(() =>
+      expect(
+        within(getTasksTab()).queryByTestId("tab-count-skeleton"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(getTasksTab()).toHaveTextContent(/^Tasks$/);
   });
 });

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { taskApi } from "metabase/api/task";
+import { useGetTaskCountsQuery } from "metabase/api";
 import {
   type PillTab,
   PillTabNavigation,
@@ -9,8 +9,7 @@ import {
 import * as Urls from "metabase/urls";
 
 export const TasksTabs = () => {
-  const { currentData: counts, isError } =
-    taskApi.endpoints.getTaskCounts.useQueryState(undefined);
+  const { currentData: counts, isError } = useGetTaskCountsQuery();
   const tabs: PillTab[] = [
     {
       label: t`Tasks`,

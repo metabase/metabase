@@ -25,8 +25,6 @@ import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { TasksSectionLayout } from "../../routes";
-
 import { TaskListPage } from "./TaskListPage";
 
 interface SetupOpts {
@@ -56,10 +54,8 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route element={<TasksSectionLayout />}>
-      <Route path={PATHNAME} element={<TaskListPage />}>
-        <Route path=":taskId" />
-      </Route>
+    <Route path={PATHNAME} element={<TaskListPage />}>
+      <Route path=":taskId" />
     </Route>,
     {
       initialRoute: `${location.pathname}${location.search}`,
