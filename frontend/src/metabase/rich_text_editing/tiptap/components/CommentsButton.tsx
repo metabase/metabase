@@ -18,8 +18,9 @@ export const CommentsButton = <C extends ElementType = "button">({
   return (
     <Button
       aria-label={t`Comments`}
-      variant={active ? "filled" : "transparent"}
-      size={active ? "sm" : "compact-md"}
+      variant={active ? "filled" : "subtle"}
+      color={active ? undefined : "neutral"}
+      size="sm"
       leftSection={
         <Icon
           name={unresolvedCommentsCount > 0 ? "comment" : "add_comment"}

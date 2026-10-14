@@ -3,26 +3,11 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/settings";
-import { Stack, Text, TextInput } from "metabase/ui";
-import type { FontFile } from "metabase-types/api";
+import { Box, Flex, Stack, Text, TextInput } from "metabase/ui";
 
-import {
-  TableBody,
-  TableBodyCell,
-  TableBodyCellLabel,
-  TableBodyRow,
-  TableHeader,
-  TableHeaderCell,
-  TableHeaderRow,
-  TableRoot,
-} from "./FontFilesWidget.styled";
-import type { FontFileOption, FontFilesSetting } from "./types";
+import S from "./FontFilesWidget.module.css";
+import type { FontFileOption } from "./types";
 import { getFontFiles, getFontOptions, getFontUrls } from "./utils";
-
-export interface FontFilesWidgetProps {
-  setting: FontFilesSetting;
-  onChange: (fontFiles: FontFile[]) => void;
-}
 
 export const FontFilesWidget = () => {
   const {
@@ -68,14 +53,22 @@ const FontFilesTable = ({
   onChange,
 }: FontFilesTableProps): JSX.Element => {
   return (
-    <TableRoot data-testid="font-files-widget">
-      <TableHeader>
-        <TableHeaderRow>
-          <TableHeaderCell>{t`Font weight`}</TableHeaderCell>
-          <TableHeaderCell>{t`URL`}</TableHeaderCell>
-        </TableHeaderRow>
-      </TableHeader>
-      <TableBody>
+    <Box data-testid="font-files-widget">
+      <Flex
+        className={S.headerBorder}
+        align="center"
+        bg="background_page-secondary"
+        c="text-secondary"
+        fz="xs"
+        fw="bold"
+        lh="xs"
+        lts="0.0625rem"
+        tt="uppercase"
+      >
+        <Box flex="0 0 auto" w="12rem" px="xl" py="sm">{t`Font weight`}</Box>
+        <Box flex="1 1 auto" px="xl" py="sm">{t`URL`}</Box>
+      </Flex>
+      <Box className={S.bodyBorder}>
         {getFontOptions().map((option) => (
           <FontFileRow
             key={option.name}
@@ -84,8 +77,8 @@ const FontFilesTable = ({
             onChange={onChange}
           />
         ))}
-      </TableBody>
-    </TableRoot>
+      </Box>
+    </Box>
   );
 };
 
@@ -108,19 +101,21 @@ const FontFileRow = ({
   );
 
   return (
-    <TableBodyRow>
-      <TableBodyCell fontWeight={option.fontWeight}>
+    <Flex className={S.rowDivider} align="center" c="text-secondary">
+      <Box flex="0 0 auto" w="12rem" px="xl" py="lg" fw={option.fontWeight}>
         {option.name}
-        <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
-      </TableBodyCell>
-      <TableBodyCell>
+        <Box component="span" c="text-disabled" ml="xxs">
+          {option.fontWeight}
+        </Box>
+      </Box>
+      <Box flex="1 1 auto" px="xl" py="lg">
         <TextInput
           defaultValue={url}
           placeholder="https://some.trusted.location/font-file.woff2"
           onBlur={handleBlur}
           aria-label={option.name}
         />
-      </TableBodyCell>
-    </TableBodyRow>
+      </Box>
+    </Flex>
   );
 };

@@ -1,12 +1,16 @@
 (ns metabase.pulse.send
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
+   [clojure.string :as str]
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.task-history.core :as task-history]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -78,7 +82,9 @@
                                                                           :dashboard_card_id (:dashboard_card_id %)}
                                                                          (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
                                                                  (:cards pulse))}
-     :handlers               [(get-notification-handler pulse-channel)]}
+     ;; only a dashboard subscription email has a subject; an alert handler must not carry the key
+     :handlers               [(m/assoc-some (get-notification-handler pulse-channel)
+                                            :subject (get-in pulse-channel [:details :subject]))]}
     {:id            (:id pulse)
      :payload_type  :notification/card
      :creator_id    (:creator_id pulse)
@@ -97,17 +103,48 @@
                                                                            (update :schedule_frame maybe-name)))}]
      :handlers      [(get-notification-handler pulse-channel)]}))
 
+(defn- delivery-failure?
+  "Whether `e`, thrown by [[notification/send-notification!]], is a delivery failure."
+  [e]
+  (= :notification/delivery-failed (:error-code (ex-data e))))
+
+(defn- failed-channel-names
+  "One line that names each failed channel once: the channel type, and the channel id when there is one."
+  [failed-handlers]
+  (str/join ", " (distinct (for [{:keys [channel_type channel_id]} failed-handlers]
+                             (cond-> (u/qualified-name channel_type)
+                               channel_id (str " " channel_id))))))
+
+(defn- delivery-failure
+  "One exception for the delivery failures of a pulse: the failed channels in the message, all their entries under
+  `:failed-handlers`, `:error-code :notification/delivery-failed` and `:status-code 502`."
+  [pulse delivery-failures]
+  (let [failed-handlers (into [] (mapcat (comp :failed-handlers ex-data)) delivery-failures)]
+    (ex-info (tru "Failed to deliver to {0}" (failed-channel-names failed-handlers))
+             {:status-code     502
+              :error-code      :notification/delivery-failed
+              :notification-id (:id pulse)
+              :failed-handlers failed-handlers})))
+
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard async?]
   (let [;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
         channels (if (seq channel-ids)
                    (filter #((set channel-ids) (:id %)) channels)
                    channels)]
-    (doseq [pulse-channel channels]
-      (try
-        (notification/send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
-        (catch Exception e
-          (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e)))))
+    (let [delivery-failures (volatile! [])]
+      (doseq [pulse-channel channels]
+        (try
+          (notification/send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
+          (catch Exception e
+            (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e))
+            (when (delivery-failure? e)
+              (vswap! delivery-failures conj e)))))
+      ;; A synchronous send is a test send from `POST /api/pulse/test`, and its caller must learn that a channel did not
+      ;; deliver. The scheduled job sends asynchronously, so its failures are logged by the notification worker. Other
+      ;; errors keep the old behaviour: logged, not raised.
+      (when-let [failed (and (not async?) (seq @delivery-failures))]
+        (throw (delivery-failure pulse failed))))
     nil))
 
 (defn pulse->task-run-info

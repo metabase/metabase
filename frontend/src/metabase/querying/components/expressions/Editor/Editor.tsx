@@ -18,8 +18,8 @@ import {
   format,
   formatIdentifier,
   getClauseDefinition,
+  tokenAtPos,
 } from "metabase/querying/expressions";
-import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";

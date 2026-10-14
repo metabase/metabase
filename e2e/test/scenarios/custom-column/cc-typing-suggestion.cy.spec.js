@@ -285,6 +285,27 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 });
 
+describe("scenarios > question > custom column > typing suggestion > reviews", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().contains("Custom Expression").click();
+
+    H.enterCustomColumnDetails({ formula: "Distinct([R", blur: false });
+
+    cy.log(
+      "**The point of failure for ANY non-numeric value reported in v0.36.4**",
+    );
+    // the default type for "Reviewer" is "No semantic type"
+    H.CustomExpressionEditor.completion("Reviewer").should("be.visible");
+  });
+});
+
 const addCustomColumn = () => {
   cy.findByTestId("action-buttons").findByText("Custom column").click();
 };
@@ -292,11 +313,10 @@ const addCustomColumn = () => {
 function verifyHelptextPosition(text) {
   H.CustomExpressionEditor.get()
     .findByText(text)
-    .then(($element) => {
-      const { left: textLeft } = $element[0].getBoundingClientRect();
-
-      H.CustomExpressionEditor.helpText().then(($element) => {
-        const { left: helpTextLeft } = $element[0].getBoundingClientRect();
+    .then(($text) => {
+      H.CustomExpressionEditor.helpText().should(($helpText) => {
+        const { left: textLeft } = $text[0].getBoundingClientRect();
+        const { left: helpTextLeft } = $helpText[0].getBoundingClientRect();
 
         expect(helpTextLeft).to.be.closeTo(textLeft, 5);
       });

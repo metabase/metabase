@@ -117,6 +117,7 @@
                     :pulse_id         nil
                     :card_id          nil
                     :is_sandboxed     false
+                    :sandbox_details  nil
                     :dashboard_id     nil
                     :transform_id     nil
                     :lens_id          nil
@@ -768,6 +769,23 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+(deftest ^:parallel pivot-dataset-error-response-test
+  (mt/dataset test-data
+    (testing "POST /api/dataset/pivot"
+      (testing "a failed query returns the usual formatted error response, not an empty body"
+        (doseq [[cause query] {"an out-of-range pivot row index"
+                               (assoc (qp.pivot.test-util/pivot-query) :pivot_rows [0 1 2 3])
+
+                               "a reference to a nonexistent column"
+                               (assoc-in (qp.pivot.test-util/pivot-query) [:query :filter]
+                                         [:= [:field Integer/MAX_VALUE nil] 1])}]
+          (testing cause
+            (let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
+              (is (contains? #{400 500} status))
+              (is (=? {:status "failed"
+                       :error  string?}
+                      body)))))))))
+
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
@@ -1238,3 +1256,25 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+(deftest native-form-requires-native-query-perms-test
+  (testing "POST /api/dataset only returns the compiled query in `:native_form` to users with native query perms"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (doseq [[create-queries expected] {:query-builder-and-native some?
+                                         :query-builder            nil?}]
+        (testing (format "with %s" create-queries)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries create-queries)
+          (let [response (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues {:limit 1}))]
+            (is (= "completed" (:status response)))
+            (is (expected (get-in response [:data :native_form])))))))))
+
+(deftest card-query-native-form-requires-native-query-perms-test
+  (testing "POST /api/card/:id/query doesn't return the compiled query to users without native query perms"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+        (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))]
+          (is (= "completed" (:status response)))
+          (is (nil? (get-in response [:data :native_form]))))))))

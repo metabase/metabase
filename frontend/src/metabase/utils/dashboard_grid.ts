@@ -8,6 +8,8 @@ import { DEFAULT_CARD_SIZE_JSON } from "cljs/metabase.dashboards.constants";
 export const GRID_WIDTH = 24;
 export const GRID_ASPECT_RATIO = 10 / 9;
 
+// The dashboard grid skeleton's mobile container query repeats this value,
+// because CSS can't read it. Keep the two in sync.
 const MOBILE_BREAKPOINT = 752;
 
 export const GRID_BREAKPOINTS = {
@@ -18,6 +20,15 @@ export const GRID_BREAKPOINTS = {
 export const GRID_COLUMNS = {
   desktop: GRID_WIDTH,
   mobile: 1,
+};
+
+/** The gaps between dashcards, as `[horizontal, vertical]` pixels. */
+export const GRID_MARGINS: Record<
+  keyof typeof GRID_BREAKPOINTS,
+  [number, number]
+> = {
+  desktop: [6, 6],
+  mobile: [6, 10],
 };
 
 /** @type {{ width: number, height: number }} */

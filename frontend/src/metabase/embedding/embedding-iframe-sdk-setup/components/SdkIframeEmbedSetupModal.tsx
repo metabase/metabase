@@ -2,9 +2,7 @@ import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-
 import "react-resizable/css/styles.css";
-
 import noResultsSource from "assets/img/no_results.svg";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";

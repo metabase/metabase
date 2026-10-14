@@ -695,10 +695,6 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldValues" :id "0"}))
 
-(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
-  (let [db-path (first (serdes/path fv))]
-    [[db-path]]))
-
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
@@ -718,7 +714,7 @@
                :last_used_at (serdes/date)
                :type         (serdes/kw)
                :field_id     {::serdes/fk true
-                              :export     (constantly ::serdes/skip)
+                              :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
                                                        (serdes/*import-field-fk* field-ref)))}}
@@ -733,6 +729,9 @@
                    (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
     ((get-method serdes/load-update! "") "FieldValues" ingested local)))
 
+(defmethod serdes/ingested-path "FieldValues" [_ {:keys [field_id]}]
+  (conj (serdes/field->path field_id) {:model "FieldValues" :id "0"}))
+
 (def ^:private field-values-slug "___fieldvalues")
 
 (defmethod serdes/storage-path "FieldValues" [fv _]
@@ -741,4 +740,4 @@
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str field-values-slug)))))
+            (fn [segment] (assoc segment :suffix field-values-slug)))))

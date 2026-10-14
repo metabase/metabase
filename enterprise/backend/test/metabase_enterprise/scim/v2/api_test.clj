@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -104,15 +105,6 @@
                             :display "Test Group"}]
                 :meta     {:resourceType "User"}}
                response)))))
-    (testing "Data-app group memberships are not exposed"
-      (mt/with-temp [:model/User                       user      {:email "scim-app-test@metabase.com"}
-                     :model/PermissionsGroup           group     {:name "Test Group"}
-                     :model/PermissionsGroup           app-group {:name "App Group" :is_data_app_group true}
-                     :model/PermissionsGroupMembership _         {:user_id (:id user) :group_id (:id group)}
-                     :model/PermissionsGroupMembership _         {:user_id (:id user) :group_id (:id app-group)}]
-        (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))
-              response  (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))]
-          (is (= ["Test Group"] (map :display (:groups response)))))))
     (testing "404 is returned when fetching a non-existent user"
       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
@@ -372,17 +364,7 @@
           (is (= 0 (count (get response :Resources))))))
       (testing "Error if unsupported filter operation is provided"
         (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
-                                      (codec/url-encode "displayName ne \"Group 1\""))))
-      (testing "Data-app groups are not listed"
-        (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
-          (let [app-entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))
-                response      (scim-client :get 200 "ee/scim/v2/Groups")]
-            (is (not (contains? (into #{} (map :id) (:Resources response)) app-entity-id)))
-            (is (= (count (:Resources response)) (:totalResults response))))
-          (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
-                                                       (codec/url-encode "displayName eq \"App Group\"")))]
-            (is (= 0 (get response :totalResults)))
-            (is (= 0 (count (get response :Resources))))))))))
+                                      (codec/url-encode "displayName ne \"Group 1\"")))))))
 
 (deftest fetch-group-test
   (with-scim-setup!
@@ -406,10 +388,6 @@
       (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
                                          {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
         (doseq [entity-id entity-ids]
-          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))
-    (testing "404 is returned when fetching a data-app group"
-      (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
-        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))]
           (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
 
 (deftest create-group-test
@@ -445,18 +423,17 @@
             (is (= new-group-name (:name group)))
             (is (= 1 (count (:members group))))
             (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))
-    (testing "404 is returned when trying to update a data-app group, and its membership is left alone"
-      (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id app-group)}]
-        (let [entity-id    (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))
+    (testing "A members list naming only unknown users leaves the membership alone rather than emptying the group"
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id    (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
               group-update {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
                             :id          entity-id
-                            :displayName "Renamed App Group"
-                            :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]}]
-          (scim-client :put 404 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
-          (is (= "App Group" (t2/select-one-fn :name :model/PermissionsGroup :id (:id app-group))))
+                            :displayName (:name group)
+                            :members     [{:value (str (random-uuid))}]}]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
           (is (= #{(mt/user->id :rasta)}
-                 (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id (:id app-group)))))))))
+                 (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id (:id group)))))))))
 
 (deftest delete-group-test
   (with-scim-setup!
@@ -473,9 +450,102 @@
       (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
                                          {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
         (doseq [entity-id entity-ids]
-          (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))
-    (testing "404 is returned when trying to delete a data-app group, and it survives"
-      (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}]
-        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id app-group))]
-          (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id))
-          (is (t2/exists? :model/PermissionsGroup :id (:id app-group))))))))
+          (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
+
+;;; ------------------------- Data Analysts group: additions gated, removals never -------------------------
+
+(defn- data-analyst-scim-group-update
+  "A SCIM Group PUT body setting the Data Analysts group's members to `user-ids`."
+  [user-ids]
+  (let [group (perms-group/data-analyst)]
+    {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+     :id          (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+     :displayName (:name group)
+     :members     (for [user-id user-ids]
+                    {:value (t2/select-one-fn :entity_id :model/User :id user-id)})}))
+
+(defn- data-analyst-group-member-ids []
+  (set (t2/select-fn-set :user_id :model/PermissionsGroupMembership
+                         :group_id (:id (perms-group/data-analyst)))))
+
+(defn- put-data-analyst-group! [expected-status user-ids]
+  (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id (perms-group/data-analyst)))]
+    (scim-client :put expected-status (format "ee/scim/v2/Groups/%s" entity-id)
+                 (data-analyst-scim-group-update user-ids))))
+
+(deftest scim-data-analyst-group-add-requires-advanced-permissions-test
+  (testing "PUT /Groups/:id cannot add a new member to the Data Analysts group without :advanced-permissions"
+    (mt/with-temp [:model/User {existing-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
+                   :model/User {new-id :id}      {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! existing-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (let [before   (data-analyst-group-member-ids)
+                response (put-data-analyst-group! 402 [existing-id new-id])]
+            (testing "the error names the required feature, so provisioning drift is visible at the IdP"
+              (is (= (str perms/fail-to-add-data-analyst-msg) response)))
+            (testing "and the push rolls back, leaving existing memberships untouched"
+              (is (= before (data-analyst-group-member-ids)))
+              (is (contains? (data-analyst-group-member-ids) existing-id))
+              (is (not (contains? (data-analyst-group-member-ids) new-id))))))))))
+
+(deftest scim-data-analyst-group-removal-only-put-is-not-gated-test
+  (testing "PUT /Groups/:id can remove a member of the Data Analysts group without :advanced-permissions"
+    (mt/with-temp [:model/User {keep-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
+                   :model/User {drop-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! keep-id (:id (perms-group/data-analyst)))
+        (perms/add-user-to-group! drop-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (put-data-analyst-group! 200 [keep-id])
+          (let [members (data-analyst-group-member-ids)]
+            (is (contains? members keep-id))
+            (is (not (contains? members drop-id))))
+          (testing "and the removed member loses the is_data_analyst flag"
+            (is (not (t2/select-one-fn :is_data_analyst :model/User :id drop-id)))))))))
+
+(deftest scim-data-analyst-group-idempotent-resync-is-not-gated-test
+  (testing "PUT /Groups/:id with an unchanged member list succeeds without :advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/add-user-to-group! user-id (:id (perms-group/data-analyst))))
+      (mt/with-premium-features #{}
+        (with-scim-setup!
+          (let [before (data-analyst-group-member-ids)]
+            (put-data-analyst-group! 200 [user-id])
+            (is (= before (data-analyst-group-member-ids)))
+            (is (contains? (data-analyst-group-member-ids) user-id))
+            (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))))))
+
+(deftest scim-data-analyst-group-add-with-advanced-permissions-test
+  (testing "PUT /Groups/:id can add members to the Data Analysts group with :advanced-permissions"
+    (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (with-scim-setup!
+          (put-data-analyst-group! 200 [user-id])
+          (is (contains? (data-analyst-group-member-ids) user-id))
+          (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
+
+(deftest scim-group-put-is-diff-based-test
+  (testing "PUT /Groups/:id leaves untouched members' rows alone rather than deleting and recreating them"
+    (with-scim-setup!
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/User {keep-id :id} {}
+                     :model/User {drop-id :id} {}]
+        (mt/with-premium-features #{:advanced-permissions}
+          (perms/add-user-to-group! keep-id (:id group))
+          (perms/add-user-to-group! drop-id (:id group)))
+        (let [membership-id #(t2/select-one-pk :model/PermissionsGroupMembership
+                                               :group_id (:id group) :user_id keep-id)
+              original-id   (membership-id)
+              entity-id     (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id)
+                       {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                        :id          entity-id
+                        :displayName (:name group)
+                        :members     [{:value (t2/select-one-fn :entity_id :model/User :id keep-id)}]})
+          (is (= original-id (membership-id)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership
+                               :group_id (:id group) :user_id drop-id))))))))

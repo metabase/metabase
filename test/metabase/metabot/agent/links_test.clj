@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
@@ -138,12 +139,34 @@
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
 (deftest ^:parallel resolve-metabase-uri-table-link-test
-  (testing "resolves table links to ad-hoc question URLs"
-    (let [result (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})]
-      (is (string? result))
-      (is (str/starts-with? result "/question#"))))
-  (testing "returns nil for non-existent table"
-    (is (nil? (links/resolve-metabase-uri "metabase://table/999999999" {} {})))))
+  (testing "resolves table links to the table page"
+    (is (= (str "/table/" (mt/id :venues))
+           (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})))))
+
+(deftest resolve-metabase-uri-measure-link-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue Count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/aggregate (lib/count)))}]
+      (testing "resolves measure links to the measure's Data Studio page"
+        (is (= (str "/data-studio/library/tables/" (mt/id :venues) "/measures/" measure-id)
+               (links/resolve-metabase-uri (str "metabase://measure/" measure-id) {} {}))))))
+  (testing "returns nil for non-existent or malformed measure ids"
+    (is (nil? (links/resolve-metabase-uri "metabase://measure/999999999" {} {})))
+    (is (nil? (links/resolve-metabase-uri "metabase://measure/abc" {} {})))))
+
+(deftest resolve-metabase-uri-segment-link-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Segment {segment-id :id} {:name       "Cheap Venues"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 2)))}]
+      (testing "resolves segment links to an ad-hoc question filtered by the segment"
+        (is (= (str "/question#?db=" (mt/id) "&table=" (mt/id :venues) "&segment=" segment-id)
+               (links/resolve-metabase-uri (str "metabase://segment/" segment-id) {} {}))))))
+  (testing "returns nil for non-existent segment"
+    (is (nil? (links/resolve-metabase-uri "metabase://segment/999999999" {} {})))))
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"

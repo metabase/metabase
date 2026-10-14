@@ -39,6 +39,11 @@
   [type :- :string]
   (t2/select-one :model/Collection :type type))
 
+(mu/defn collection-with-entity-id
+  "The ::collections.schema/collection with `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/select-one :model/Collection :entity_id entity-id))
+
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
   []
@@ -378,10 +383,12 @@
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
 (mu/defn set-pulse-archived-in-collections!
-  "Set `archived?` on the Pulses in the Collections with `collection-ids`, returning the number updated."
+  "Set `archived?` on the Pulses in the Collections with `collection-ids`, returning the number updated.
+  Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own `archived` flag
+  records only that the user deleted them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    archived?      :- :boolean]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids]} {:archived archived?}))
+  (t2/update! :model/Pulse {:collection_id [:in collection-ids] :dashboard_id nil} {:archived archived?}))
 
 (mu/defn set-native-query-snippet-archived-in-collections!
   "Set `archived?` on the NativeQuerySnippets in the Collections with `collection-ids`, returning the number
@@ -395,6 +402,32 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    archived?      :- :boolean]
   (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
+
+(mu/defn set-action-archived-in-collections!
+  "Archive the unarchived Actions in the Collections with `collection-ids` along with them, or unarchive the ones
+  archived along with them whose model, if any, is not archived, returning the number updated."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]
+   archived?      :- :boolean]
+  (if archived?
+    (t2/update! :model/Action {:collection_id [:in collection-ids], :archived false}
+                {:archived true, :archived_directly false})
+    (if-let [action-ids (not-empty (into #{} (map :id)
+                                         (t2/query {:select    [:action.id]
+                                                    :from      [[(t2/table-name :model/Action) :action]]
+                                                    :left-join [[(t2/table-name :model/Card) :model]
+                                                                [:= :model.id :action.model_id]]
+                                                    :where     [:and
+                                                                [:in :action.collection_id collection-ids]
+                                                                [:= :action.archived true]
+                                                                [:= :action.archived_directly false]
+                                                                [:or [:= :action.model_id nil] [:= :model.archived false]]]})))]
+      (t2/update! :model/Action :id [:in action-ids] {:archived false})
+      0)))
+
+(mu/defn delete-actions-in-collections!
+  "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/delete! :model/Action :collection_id [:in collection-ids]))
 
 (mu/defn set-card-archived-in-collections-not-directly!
   "Set `archived?` on the Cards in the Collections with `collection-ids` that were not archived directly, returning
@@ -487,6 +520,13 @@
                                               [:= :exploration_id nil]
                                               (when skip-archived? [:not :archived])]}))
 
+(mu/defn action-ids-in-collection
+  "The IDs of the Actions in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
+  [collection-id  :- [:maybe ::lib.schema.id/collection]
+   skip-archived? :- [:maybe :boolean]]
+  (t2/select-pks-set :model/Action
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+
 (mu/defn timeline-ids-in-collection
   "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
@@ -571,6 +611,15 @@
              :where           [:and
                                [:in :collection_id collection-ids]
                                [:in :source_type source-types]]}))
+
+(defn unarchived-action-collection-ids-in
+  "The distinct `:collection_id`s of the unarchived Actions in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :action
+             :where           [:and
+                               [:= :archived false]
+                               [:in :collection_id collection-ids]]}))
 
 (defn unarchived-dashboard-collection-ids-in
   "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."

@@ -95,7 +95,8 @@ export type MiniPickerPickableItem =
   | MiniPickerPickableCollectionItem
   | MiniPickerTableItem
   | MiniPickerMeasureItem
-  | MiniPickerSchemaItem;
+  | MiniPickerSchemaItem
+  | MiniPickerDatabaseItem;
 
 // can't get schemas in search results
 export type SearchableMiniPickerItem =

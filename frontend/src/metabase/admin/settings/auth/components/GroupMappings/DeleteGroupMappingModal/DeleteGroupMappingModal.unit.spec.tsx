@@ -1,0 +1,193 @@
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
+
+import {
+  DeleteGroupMappingModal,
+  type DeleteGroupMappingModalProps,
+} from "./DeleteGroupMappingModal";
+
+type SetupOpts = Partial<DeleteGroupMappingModalProps>;
+
+const DEVS_DN = "cn=devs,ou=groups,dc=example,dc=org";
+
+const DEFAULT_PROPS = {
+  mappingName: DEVS_DN,
+  clearedGroups: ["Engineering"],
+  keptOnClear: [],
+  deletedGroups: ["Engineering"],
+  keptOnDelete: [],
+  onConfirm: jest.fn(),
+  onHide: jest.fn(),
+};
+
+const setup = (props?: SetupOpts) => {
+  renderWithProviders(
+    <DeleteGroupMappingModal {...DEFAULT_PROPS} {...props} />,
+  );
+};
+
+describe("DeleteGroupMappingModal", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("shows options for when mapping is linked to just one group", () => {
+    setup();
+
+    expect(screen.getByText(DEVS_DN)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Membership of this group will no longer be synced when users log in.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Nothing, just remove the mapping"),
+    ).toBeChecked();
+    expect(
+      screen.getByText("Also remove all members from this group"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Members keep their Metabase accounts."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Also delete the group")).toBeInTheDocument();
+    expect(screen.queryByText(/Administrators group/)).not.toBeInTheDocument();
+  });
+
+  it("shows options for when mapping is linked to more than one group", () => {
+    setup({
+      clearedGroups: ["Engineering", "Marketing"],
+      deletedGroups: ["Engineering", "Marketing"],
+    });
+
+    expect(
+      screen.getByText(
+        "Membership of these groups will no longer be synced when users log in.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Nothing, just remove the mapping"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Also remove all members from these groups"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Also delete the groups")).toBeInTheDocument();
+  });
+
+  it("names the groups each option acts on and the built-in groups it leaves alone", () => {
+    setup({
+      clearedGroups: ["Data Analysts", "Engineering"],
+      keptOnClear: ["Administrators"],
+      deletedGroups: ["Engineering"],
+      keptOnDelete: ["Administrators", "Data Analysts"],
+    });
+
+    expect(
+      screen.getByLabelText("Also remove all members from these groups"),
+    ).toBeEnabled();
+    expect(screen.getByText("Data Analysts, Engineering")).toBeInTheDocument();
+    expect(screen.getByLabelText("Also delete the group")).toBeEnabled();
+    expect(screen.getByText("Engineering")).toBeInTheDocument();
+    expect(
+      screen.getByText(/The Administrators group is not affected\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "These groups are not affected: Administrators, Data Analysts.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("counts only the groups an option acts on", async () => {
+    setup({
+      clearedGroups: ["Engineering"],
+      keptOnClear: ["Administrators"],
+      deletedGroups: ["Engineering"],
+      keptOnDelete: ["Administrators"],
+    });
+
+    expect(
+      screen.getByText(
+        "Membership of these groups will no longer be synced when users log in.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Also remove all members from this group"),
+    ).toBeEnabled();
+    await userEvent.click(screen.getByLabelText("Also delete the group"));
+    expect(
+      screen.getByRole("button", { name: "Remove mapping and delete group" }),
+    ).toBeInTheDocument();
+  });
+
+  it("still offers clearing a built-in group that cannot be deleted", () => {
+    setup({
+      clearedGroups: ["Data Analysts"],
+      deletedGroups: [],
+      keptOnDelete: ["Data Analysts"],
+    });
+
+    expect(
+      screen.getByLabelText("Also remove all members from this group"),
+    ).toBeEnabled();
+    expect(screen.getByLabelText("Also delete the group")).toBeDisabled();
+    expect(
+      screen.getByText("The Data Analysts group is not affected."),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no group options when only the Administrators group is mapped", () => {
+    setup({
+      clearedGroups: [],
+      keptOnClear: ["Administrators"],
+      deletedGroups: [],
+      keptOnDelete: ["Administrators"],
+    });
+
+    expect(
+      screen.getByText("The Administrators group is not affected."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove mapping" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no group options when no group is mapped", () => {
+    setup({ clearedGroups: [], deletedGroups: [] });
+
+    expect(
+      screen.getByText("This mapping isn't linked to any group."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove mapping" }),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms when clearing members", async () => {
+    setup();
+
+    await userEvent.click(
+      screen.getByLabelText("Also remove all members from this group"),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove mapping and members" }),
+    );
+
+    expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith("clear");
+  });
+
+  it("confirms when deleting groups", async () => {
+    setup();
+
+    await userEvent.click(screen.getByLabelText("Also delete the group"));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove mapping and delete group" }),
+    );
+
+    expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith("delete");
+  });
+});

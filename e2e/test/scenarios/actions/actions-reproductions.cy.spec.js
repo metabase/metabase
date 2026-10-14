@@ -5,7 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -20,48 +20,40 @@ const viewports = [
 ];
 
 describe("metabase#31587", () => {
-  viewports.forEach(([width, height]) => {
-    describe(`Testing on resolution ${width} x ${height}`, () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        H.setActionsEnabledForDB(SAMPLE_DB_ID);
-        cy.viewport(width, height);
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+  });
+
+  it("should not allow action buttons to overflow when editing dashboard or viewing info sidebar (metabase#31587)", () => {
+    viewports.forEach(([width, height]) => {
+      cy.log(`Resolution ${width} x ${height}`);
+      cy.viewport(width, height);
+
+      H.createDashboard({ name: `Orders ${width} x ${height}` }).then(
+        ({ body: { id: dashboardId } }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: ORDERS_QUESTION_ID,
+            dashboard_id: dashboardId,
+            card: { size_x: 16, size_y: 8 },
+          });
+          H.visitDashboard(dashboardId);
+        },
+      );
+
+      H.editDashboard();
+      cy.findByLabelText("Add action").click();
+
+      cy.findByTestId("dashboard-parameters-and-cards").within(() => {
+        assertActionButtonFitsDashcard();
       });
 
-      it("should not allow action buttons to overflow when editing dashboard", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.editDashboard();
-        cy.button("Add action").click();
+      H.saveDashboard();
+      cy.icon("info").click();
 
-        cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          actionButtonContainer().then((actionButtonElem) => {
-            dashCard().then((dashCardElem) => {
-              expect(actionButtonElem[0].scrollHeight).to.eq(
-                dashCardElem[0].scrollHeight,
-              );
-            });
-          });
-        });
-      });
-
-      it("should not allow action buttons to overflow when viewing info sidebar", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.editDashboard();
-        cy.findByLabelText("Add action").click();
-
-        H.saveDashboard();
-        cy.icon("info").click();
-
-        cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          actionButtonContainer().then((actionButtonElem) => {
-            dashCard().then((dashCardElem) => {
-              expect(actionButtonElem[0].scrollHeight).to.eq(
-                dashCardElem[0].scrollHeight,
-              );
-            });
-          });
-        });
+      cy.findByTestId("dashboard-parameters-and-cards").within(() => {
+        assertActionButtonFitsDashcard();
       });
     });
   });
@@ -159,8 +151,6 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     );
 
     cy.get("@modelId").then((modelId) => {
-      H.createImplicitActions({ modelId });
-
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
@@ -175,7 +165,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
                   {
                     id: H.getNextUnsavedDashboardCardId(),
                     card_id: modelId,
-                    // Map dashboard parameter to PRODUCTS.ID
+                    // Map dashboard parameter to scoreboard_actions.id
                     parameter_mappings: [
                       {
                         parameter_id: ID_DASHBOARD_PARAMETER.id,
@@ -208,10 +198,6 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   }
 
   beforeEach(() => {
-    cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
-    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
-    cy.intercept("POST", "/api/action/*/execute/values").as("prefetchValues");
-
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TEST_TABLE });
 
@@ -272,7 +258,7 @@ describe("issue 51020", () => {
     H.saveDashboard();
   }
 
-  describe("when primary key is called 'id'", () => {
+  describe("when primary key is called 'id'", { tags: "@external" }, () => {
     function createTemporaryTable() {
       H.queryWritableDB(
         "CREATE TABLE IF NOT EXISTS foo (id INT PRIMARY KEY, name VARCHAR)",
@@ -494,7 +480,22 @@ describe("issue 32840", () => {
         cy.button("Update").scrollIntoView().click();
       });
     cy.wait("@executeAction");
+    H.undoToast().findByText("Successfully updated").should("be.visible");
     H.modal().findByText("July 19, 2026, 7:44 PM").should("be.visible");
+
+    cy.log("the stored timestamp is unchanged after reopening the row");
+    cy.findByTestId("object-detail").icon("close").click();
+    cy.findByTestId("object-detail").should("not.exist");
+    cy.findAllByTestId("cell-data").eq(8).click();
+    H.modal().within(() => {
+      cy.findByText("July 19, 2026, 7:44 PM").should("be.visible");
+      cy.findByTestId("actions-menu").click();
+    });
+    H.popover().findByText("Update").should("be.visible").click();
+    H.modal()
+      .eq(1)
+      .findByPlaceholderText("Created At")
+      .should("have.value", "2026-07-19T19:44:56");
   });
 });
 
@@ -506,12 +507,27 @@ describe("issue 32750", () => {
     cy.visit("/");
   });
 
-  it("modal do not dissapear on viewport change", () => {
+  it("action creator keeps its query and template tag parameters across viewport changes (metabase#32750)", () => {
     H.startNewAction();
+
+    cy.log("only variable template tags become parameters");
+    H.fillActionQuery("{{#1-orders-model}}");
+    H.fillActionQuery("{{snippet:101}}");
+    H.fillActionQuery("{{id}}");
+    cy.findByLabelText("ID").should("be.visible");
+    cy.findByLabelText("#1 Orders Model").should("not.exist");
+    cy.findByLabelText("Snippet:101").should("not.exist");
+    cy.findAllByTestId("form-field-container").should("have.length", 1);
+
     cy.viewport(320, 800);
     cy.findByTestId("action-creator").should("be.visible");
+    H.NativeEditor.get().should("contain", "{{id}}");
+    cy.findByLabelText("ID").should("exist");
+
     cy.viewport(1440, 800);
     cy.findByTestId("action-creator").should("be.visible");
+    H.NativeEditor.get().should("contain", "{{id}}");
+    cy.findByLabelText("ID").should("be.visible");
   });
 });
 
@@ -521,12 +537,20 @@ function setupBasicActionsInModel() {
   cy.button(/Create basic actions/).click();
 }
 
-const actionButtonContainer = () =>
-  cy.findByTestId("action-button-full-container");
-
-const dashCard = () =>
+function assertActionButtonFitsDashcard() {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy
-    .findAllByTestId("dashcard-container")
+  cy.findAllByTestId("dashcard-container")
     .last()
     .should("have.text", "Click Me");
+
+  cy.findByTestId("action-button-full-container")
+    .find("button")
+    .should(($button) => {
+      const button = $button[0].getBoundingClientRect();
+      const dashcard = $button
+        .closest('[data-testid="dashcard-container"]')[0]
+        .getBoundingClientRect();
+      expect(button.bottom).to.be.at.most(dashcard.bottom + 0.5);
+      expect(button.top).to.be.at.least(dashcard.top - 0.5);
+    });
+}

@@ -9,7 +9,9 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import applicationPermissionsReducer from "./reducer";
-import getRoutes from "./routes";
+import getRoutes, {
+  registerApplicationPermissionsPagePrefetch,
+} from "./routes";
 import { canAccessSettings, canManageSubscriptions } from "./selectors";
 import {
   monitoringPermissionAllowedPathGetter,
@@ -37,5 +39,7 @@ export function initializePlugin() {
       canManageSubscriptions;
     PLUGIN_REDUCERS.applicationPermissionsPlugin =
       applicationPermissionsReducer;
+
+    registerApplicationPermissionsPagePrefetch();
   }
 }

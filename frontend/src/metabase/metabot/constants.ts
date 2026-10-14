@@ -4,16 +4,6 @@ import { isEmbedding } from "metabase/embedding/config";
 
 export const CONTEXT_WINDOW_WARNING_PERCENT = 90;
 
-// NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
-export const FIXED_METABOT_IDS = {
-  DEFAULT: 1 as const,
-  EMBEDDED: 2 as const,
-};
-
-export const METABOT_REQUEST_IDS = {
-  EMBEDDED: "c61bf5f5-1025-47b6-9298-bf1827105bb6",
-};
-
 export const FIXED_METABOT_ENTITY_IDS = {
   DEFAULT: "metabotmetabotmetabot" as const,
   EMBEDDED: "embeddedmetabotmetabo" as const,
@@ -160,6 +150,7 @@ export const TOOL_MESSAGES = {
             count,
           ),
   },
+  run_query: { active: () => t`Running a query`, done: () => t`Ran a query` },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {

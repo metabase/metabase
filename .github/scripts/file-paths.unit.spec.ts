@@ -49,6 +49,7 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
+      expect(matches(name, ".clj-kondo/ratchets-test.edn")).toBe(false);
       expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
         false,
       );
@@ -59,6 +60,32 @@ describe("file-paths.yaml", () => {
 
   it("runs CI script tests when the Node version changes", () => {
     expect(matches("ci_scripts", ".nvmrc")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/config.mjs",
+    "frontend/lint/oxlint/rule-map.json",
+    "frontend/lint/eslint-plugin-metabase/rules/no-module-side-effects.js",
+    "frontend/lint/tests/oxlint-config.test.mjs",
+  ])(
+    "runs frontend checks without forcing full suites when %s changes",
+    (file) => {
+      expect(matches("frontend_all", file)).toBe(true);
+      expect(matches("frontend_unit_infra", file)).toBe(false);
+      expect(matches("frontend_loki_infra", file)).toBe(false);
+    },
+  );
+
+  it("treats frontend/lint/OXLINT.md as a documentation-only change", () => {
+    expect(matches("frontend_all", "frontend/lint/OXLINT.md")).toBe(false);
+    expect(matches("documentation", "frontend/lint/OXLINT.md")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/module-boundaries.mjs",
+    "frontend/lint/shared-tiers.mjs",
+  ])("keeps CI script coverage for %s", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
   });
 
   it.each([
@@ -90,10 +117,63 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", path)).toBe(true);
   });
 
+  // Every suite's gate calls the same workflow, so a change to it has to reach every suite.
+  it.each([
+    "backend_all",
+    "frontend_all",
+    "frontend_loki_all",
+    "e2e_all",
+    "embedding_sdk_components",
+    "embedding_sdk_host_sample_apps",
+    "ci_scripts",
+  ])("runs %s when the test gate changes", (filter) => {
+    expect(matches(filter, ".github/workflows/test.gate.yml")).toBe(true);
+  });
+
+  // The build filters replace what used to be an inline condition in run-tests.yml, so what they
+  // leave out is the whole point: a diff that changes nothing an artifact ships gets no build.
+  it.each([
+    "src/metabase/core.clj",
+    "frontend/src/metabase/App.tsx",
+    "e2e/test/scenarios/question/foo.cy.spec.js",
+    // The SDK component and host-app suites boot a Metabase instance, so their CI entry points
+    // have to build one.
+    ".github/workflows/embedding-sdk.yml",
+  ])("builds the uberjar for %s", (path) => {
+    expect(matches("build_uberjar", path)).toBe(true);
+  });
+
+  it.each([
+    ".clj-kondo/ratchets.edn",
+    "README.md",
+    "docs/questions/introduction.md",
+    // The SDK type checks read the package artifact, not a running instance.
+    "docs/embedding/sdk/introduction.md",
+  ])("skips the uberjar for %s", (path) => {
+    expect(matches("build_uberjar", path)).toBe(false);
+  });
+
+  it.each([
+    "enterprise/frontend/src/embedding-sdk-package/index.ts",
+    "docs/embedding/sdk/introduction.md",
+    ".github/workflows/embedding-sdk.yml",
+  ])("builds the SDK package for %s", (path) => {
+    expect(matches("build_embedding_sdk_package", path)).toBe(true);
+  });
+
+  it("does not build the SDK package for unrelated documentation", () => {
+    expect(
+      matches("build_embedding_sdk_package", "docs/questions/introduction.md"),
+    ).toBe(false);
+  });
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
     );
+    expect(
+      matches("project_ratchet_checks", ".clj-kondo/ratchets-test.edn"),
+    ).toBe(true);
     expect(
       matches(
         "project_ratchet_checks",
@@ -177,5 +257,14 @@ describe("file-paths.yaml", () => {
     "e2e/support/cypress.config.js",
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
+  });
+
+  it("runs the module cycles test when a cluster is named", () => {
+    expect(
+      matches(
+        "project_backend_checks",
+        ".clj-kondo/config/modules/cycle-clusters.edn",
+      ),
+    ).toBe(true);
   });
 });

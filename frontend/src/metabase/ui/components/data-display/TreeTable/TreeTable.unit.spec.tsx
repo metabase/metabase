@@ -1,9 +1,12 @@
+import type { Row, RowSelectionState } from "@tanstack/react-table";
 import userEvent from "@testing-library/user-event";
+import { useCallback, useState } from "react";
 
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
 
 import { TreeTable } from "./TreeTable";
@@ -60,6 +63,42 @@ function setup({
   renderWithProviders(<Container />);
 }
 
+const getNodeId = (node: TestNode) => node.id;
+
+const getRowProps = (row: Row<TestNode>) => ({
+  "data-testid": `row-${row.original.id}`,
+});
+
+function setupSelection() {
+  mockGetBoundingClientRect({ width: 200, height: 40 });
+
+  function SelectionContainer() {
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+    const handleRowClick = useCallback(() => {}, []);
+    const instance = useTreeTableInstance<TestNode>({
+      data: DATA,
+      columns: SORTABLE_COLUMNS,
+      getNodeId,
+      enableRowSelection: true,
+      rowSelection,
+      onRowSelectionChange: setRowSelection,
+    });
+
+    return (
+      <TreeTable
+        instance={instance}
+        hierarchical={false}
+        showCheckboxes
+        ariaLabel="Test table"
+        onRowClick={handleRowClick}
+        getRowProps={getRowProps}
+      />
+    );
+  }
+
+  renderWithProviders(<SelectionContainer />);
+}
+
 describe("TreeTable keyboard interaction", () => {
   it("does not activate a previously keyboard-focused row when Enter sorts a column header", async () => {
     const onRowActivate = jest.fn();
@@ -75,5 +114,20 @@ describe("TreeTable keyboard interaction", () => {
 
     expect(header).toHaveAttribute("aria-sort", "ascending");
     expect(onRowActivate).not.toHaveBeenCalled();
+  });
+});
+
+describe("TreeTable row selection", () => {
+  // Every other prop the memoized row receives is stable here, so only the selection change itself can update it
+  it("checks a row's checkbox when the row is selected", async () => {
+    setupSelection();
+
+    const row = await screen.findByTestId("row-1");
+    await userEvent.click(within(row).getByRole("checkbox"));
+
+    expect(within(row).getByRole("checkbox")).toBeChecked();
+    expect(
+      within(screen.getByTestId("row-2")).getByRole("checkbox"),
+    ).not.toBeChecked();
   });
 });

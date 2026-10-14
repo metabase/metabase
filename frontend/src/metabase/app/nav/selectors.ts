@@ -37,6 +37,12 @@ export const getIsMonitorApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/monitor");
 });
 
+const EMBEDDING_HUB_PATH_PREFIX = "/embedding";
+
+export const getIsEmbeddingHubApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith(EMBEDDING_HUB_PATH_PREFIX);
+});
+
 export const getIsDataApp = createSelector([getRouterPath], (path) => {
   return path.startsWith(`${Urls.DATA_APP_ROOT_URL}/`);
 });
@@ -76,6 +82,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/auth/,
   /^\/data-studio/,
   /^\/monitor/,
+  new RegExp(`^${EMBEDDING_HUB_PATH_PREFIX}`),
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.
   new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
@@ -206,6 +213,7 @@ export const getIsAppBarVisible = createSelector(
     getIsAdminApp,
     getIsDataStudioApp,
     getIsMonitorApp,
+    getIsEmbeddingHubApp,
     getIsEditingDashboard,
     selectIsWithinIframe,
     getIsEmbeddedAppBarVisible,
@@ -217,6 +225,7 @@ export const getIsAppBarVisible = createSelector(
     isAdminApp,
     isDataStudioApp,
     isMonitorApp,
+    isEmbeddingHubApp,
     isEditingDashboard,
     isEmbedded,
     isEmbeddedAppBarVisible,
@@ -229,6 +238,7 @@ export const getIsAppBarVisible = createSelector(
       isAdminApp ||
       isDataStudioApp ||
       isMonitorApp ||
+      isEmbeddingHubApp ||
       isEditingDashboard ||
       isFullscreen
     ) {

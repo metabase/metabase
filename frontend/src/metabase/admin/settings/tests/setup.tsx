@@ -16,6 +16,7 @@ import {
   setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
+  setupTimezonesEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
   setupUserKeyValueEndpoints,
@@ -25,7 +26,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
-import { Outlet, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -89,7 +90,7 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: {
     path: "/authentication/saml",
-    testPattern: /Configure your identity provider/i,
+    testPattern: /Identity provider \(IdP\) configuration/i,
   },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
 };
@@ -118,12 +119,14 @@ export const setup = async ({
   isAdmin = true,
   features = {},
   initialRoute = "",
+  waitForLayout = true,
 }: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   hasTokenFeatures?: boolean;
   isAdmin?: boolean;
   features?: Partial<TokenFeatures>;
   initialRoute?: string;
+  waitForLayout?: boolean;
 }) => {
   const tokenFeatures = createMockTokenFeatures({});
   if (hasTokenFeatures) {
@@ -151,6 +154,7 @@ export const setup = async ({
   setupApiKeyEndpoints([]);
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
+  setupTimezonesEndpoint(["Europe/Paris", "US/Mountain", "UTC"]);
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);
@@ -208,14 +212,18 @@ export const setup = async ({
     initialRoute: `/admin/settings${initialRoute}`,
   });
 
-  const PassThroughGuard = () => <Outlet />;
-
   testingLibraryRender(
-    <Route path="admin/settings">
-      {getSettingsRoutes(store, PassThroughGuard)}
-    </Route>,
+    <>
+      <Route path="admin/settings">{getSettingsRoutes(store)}</Route>
+      <Route
+        path="unauthorized"
+        element={<div data-testid="unauthorized-page">Unauthorized</div>}
+      />
+    </>,
     { wrapper },
   );
 
-  await screen.findByTestId("admin-layout-content");
+  if (waitForLayout) {
+    await screen.findByTestId("admin-layout-content");
+  }
 };

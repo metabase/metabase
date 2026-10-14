@@ -22,6 +22,13 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+// Every test here waits out the real search debounce, which is 500ms of idling
+// per test and nothing else. The debounce has no behaviour these tests assert.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 type SearchResultsSetupProps = {
   searchResults?: SearchResult[];
   forceEntitySelect?: boolean;

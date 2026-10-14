@@ -13,6 +13,7 @@ import {
   type MetabotConversationState,
   type MetabotMessage,
   getContextUsagePercent,
+  getIncompleteTurn,
   getIsConversationInProgress,
   getLastAgentMessageExternalId,
   getLongChatNotice,
@@ -201,6 +202,36 @@ describe("metabot selectors", () => {
       it("caps at 100 when the window is overrun", () => {
         const state = setup([shortMessage, usage(CONTEXT_WINDOW * 2)]);
         expect(getContextUsagePercent(state, "omnibot")).toBe(100);
+      });
+    });
+  });
+
+  describe("getIncompleteTurn", () => {
+    it("returns null when the last turn finished normally", () => {
+      const state = setup([createMockMetabotMessage()]);
+      expect(getIncompleteTurn(state, "omnibot")).toBeNull();
+    });
+
+    it("ignores incomplete turns that are no longer the last message", () => {
+      const state = setup([
+        createMockMetabotMessage({
+          status: { type: "incomplete", finishReason: "tool-calls" },
+        }),
+        createMockMetabotMessage({ role: "user" }),
+      ]);
+      expect(getIncompleteTurn(state, "omnibot")).toBeNull();
+    });
+
+    it("describes the last turn when it stopped early", () => {
+      const state = setup([
+        createMockMetabotMessage({
+          status: { type: "incomplete", finishReason: "tool-calls" },
+        }),
+      ]);
+      expect(getIncompleteTurn(state, "omnibot")).toEqual({
+        reason: "step-limit",
+        message: expect.stringContaining("Metabot"),
+        resumePrompt: expect.any(String),
       });
     });
   });

@@ -1,3 +1,9 @@
-name: Custom Error Component
 version: 1
+name: Custom Error Component
+slug: custom-error-component
 path: ./dist/index.js
+entity_id: uWb09GFf1aqUzlNsbhPyF
+serdes/meta:
+- model: DataApp
+  id: uWb09GFf1aqUzlNsbhPyF
+  label: custom-error-component

@@ -1,5 +1,5 @@
 import type { CLI_STEPS } from "embedding-sdk-package/cli/run";
-import type { Settings, Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import type { DashboardInfo } from "./dashboard";
 
@@ -15,9 +15,6 @@ export type CliState = Partial<{
 
   /** User does not have a database, so the sample database is used instead. */
   useSampleDatabase: boolean;
-
-  /** Metabase instance settings */
-  settings: Settings;
 
   /** Database tables present in the instance */
   tables: Table[];

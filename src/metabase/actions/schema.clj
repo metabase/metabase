@@ -1,6 +1,5 @@
 (ns metabase.actions.schema
   (:require
-   [metabase.actions.http-action :as http-action]
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -85,35 +84,8 @@
   [:enum
    {:decode/normalize keyword
     :description      (deferred-tru "Unsupported action type")}
-   :http
    :implicit
    :query])
-
-(mr/def ::http-action.json-query
-  [:and
-   {:description (deferred-tru "must be a valid json-query, something like ''.item.title''")}
-   string?
-   [:fn
-    {:error/fn (fn [_ _]
-                 (deferred-tru "must be a valid json-query, something like ''.item.title''"))}
-    #(http-action/apply-json-query {} %)]])
-
-(mr/def ::http-action.template
-  [:map {:closed true}
-   [:method                              [:enum "GET" "POST" "PUT" "DELETE" "PATCH"]]
-   [:url                                 [string? {:min 1}]]
-   [:body               {:optional true} [:maybe string?]]
-   [:headers            {:optional true} [:maybe string?]]
-   [:parameters         {:optional true} [:maybe ::parameters.schema/parameters]]])
-
-(def ^:private http-action-entries
-  [[:template        {:optional true} [:maybe ::http-action.template]]
-   [:response_handle {:optional true} [:maybe ::http-action.json-query]]
-   [:error_handle    {:optional true} [:maybe ::http-action.json-query]]
-   [:disabled        {:optional true} :boolean]])
-
-(mr/def ::http-action
-  (into [:map {:closed true}] http-action-entries))
 
 (mr/def ::implicit-action.kind
   [:enum
@@ -153,7 +125,8 @@
 (mr/def ::action.parameters
   [:sequential [:ref ::action.parameter]])
 
-(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
+(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
+                         request?    :- :boolean]
   ;; `required-for-insert` = you have to specify this when you insert a row
   ;;
   ;; `not-null-in-app-db` = this is `NOT NULL` in the app DB, and will always come back when you `SELECT` something,
@@ -166,61 +139,58 @@
                              cat
                              [(case schema-type
                                 :select [[:id ::id]
-                                         [:creator {:optional true} [:maybe ::users.schema/user]]]
+                                         [:creator {:optional true} [:maybe ::users.schema/user]]
+                                         [:can_write {:optional true} :boolean]]
                                 :update [[:id {:optional true} ::id]]
                                 :insert nil)
                               [[:name                   required-for-insert :string]
                                [:type                   required-for-insert ::type]
-                               [:model_id               required-for-insert ::lib.schema.id/card]
+                               [:model_id               {:optional true}    [:maybe ::lib.schema.id/card]]
+                               [:collection_id          {:optional true}    [:maybe ::lib.schema.id/collection]]
                                [:archived               {:optional true}    :boolean]
+                               [:archived_directly      {:optional true}    :boolean]
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:database_id            {:optional true}    [:maybe ::lib.schema.id/database]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
                                [:visualization_settings {:optional true}    [:maybe ms/VisualizationSettings]]]
-                              [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
-                               [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
-                               [:public_uuid        {:optional true} [:maybe ms/UUIDString]]
-                               [:public_uuid_prefix {:optional true} [:maybe :string]]
-                               [:made_public_by_id  {:optional true} [:maybe ::lib.schema.id/user]]
-                               [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
-                               [:entity_id          {:optional true} [:maybe :string]]
-                               [:legacy_query       {:optional true} [:maybe :string]]]])]
+                              (when-not request?
+                                [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                 [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                 [:public_uuid        {:optional true} [:maybe ms/UUIDString]]
+                                 [:public_uuid_prefix {:optional true} [:maybe :string]]
+                                 [:made_public_by_id  {:optional true} [:maybe ::lib.schema.id/user]]
+                                 [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
+                                 [:entity_id          {:optional true} [:maybe :string]]
+                                 [:legacy_query       {:optional true} [:maybe :string]]])])]
     [:merge
      (into [:map {:closed true}] common)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-              :dispatch         (comp keyword :type)}
-      [:http     (into [:map {:closed true}] http-action-entries)]
-      [:implicit (into [:map {:closed true}] implicit-action-entries)]
+              :dispatch         (comp #{:implicit :query} keyword :type)}
+      [:implicit (into [:map {:closed true} [:model_id required-for-insert ::lib.schema.id/card]] implicit-action-entries)]
       [:query    (into [:map {:closed true}] query-action-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [:map {:closed true}] cat [http-action-entries implicit-action-entries query-action-entries])]]]))
+      [nil       (into [:map {:closed true}] cat [implicit-action-entries query-action-entries])]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."
-  (action-schema :select))
+  (action-schema :select false))
 
 (mr/def ::action.for-insert
-  "Schema for inserting a new Action (REST API or internally)."
-  (action-schema :insert))
+  "Schema for inserting a new Action internally."
+  (action-schema :insert false))
 
 (mr/def ::action.for-update
-  "Schema for updating an Action (REST API or internally)."
-  (action-schema :update))
+  "Schema for updating an Action internally."
+  (action-schema :update false))
 
-(mr/def ::httpaction
-  "A HTTPAction as selected from the app DB: every column of `:http_action`."
-  [:merge
-   ::httpaction.update
-   [:map {:closed true}]])
+(mr/def ::action.create-request
+  "Schema for the REST API body that creates an Action, without the columns the server populates."
+  (action-schema :insert true))
 
-(mr/def ::httpaction.update
-  "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id       {:optional true} [:maybe ::lib.schema.id/action]]
-   [:template        {:optional true} [:maybe ::http-action.template]]
-   [:response_handle {:optional true} [:maybe :string]]
-   [:error_handle    {:optional true} [:maybe :string]]])
+(mr/def ::action.update-request
+  "Schema for the REST API body that updates an Action, without the columns the server populates."
+  (action-schema :update true))
 
 (mr/def ::implicit-action.row
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
