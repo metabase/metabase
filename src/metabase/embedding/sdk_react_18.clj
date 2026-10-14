@@ -5,13 +5,13 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.batch-processing.core :as grouper]
    [metabase.embedding.db :as embedding.db]
    [metabase.embedding.util :as embedding.util]
    [metabase.util :as u]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]))
 
-(def ^:private max-hosts-per-hour 50)
+(def ^:private save-interval-seconds 60)
 
 (defn last-seen-cutoff
   "Hosts last seen before this time are expired."
@@ -19,21 +19,6 @@
   (t/minus (t/offset-date-time) (t/days 4)))
 
 (def ^:private loopback-hosts #{"localhost" "127.0.0.1" "[::1]"})
-
-;; The hosts this server already queued to save in the current hour, so it writes each host at most once an hour.
-(defonce ^:private hosts-this-hour (atom {:hour nil, :hosts #{}}))
-
-(defn- first-this-hour?
-  "Return true (and remember `host` for `hour`) the first time this server sees `host` in `hour`, otherwise false."
-  [host hour]
-  (let [[before after] (swap-vals! hosts-this-hour
-                                   (fn [state]
-                                     (let [hosts (if (= hour (:hour state)) (:hosts state) #{})]
-                                       (if (or (contains? hosts host)
-                                               (>= (count hosts) max-hosts-per-hour))
-                                         state
-                                         {:hour hour, :hosts (conj hosts host)}))))]
-    (not (identical? before after))))
 
 (defn- react-18-sdk-request? [{:keys [headers] :as request}]
   (and (embedding.util/has-react-sdk-header? request)
@@ -48,26 +33,34 @@
        (or (some? metabase-user-id)
            (str/starts-with? uri "/api/embed/"))))
 
-(defn- save-host! [host seen-at]
+(defn- save-hosts!
+  "Save the hosts submitted since the last save, each one with the newest time it was seen."
+  [submitted]
   (try
-    ;; Delete first: an expired row of this host goes away here, so another server's delete cannot remove it between
+    ;; Delete first: an expired row of a host goes away here, so another server's delete cannot remove it between
     ;; the SELECT and the UPDATE of the upsert.
     (embedding.db/delete-sdk-react-18-hosts-last-seen-before! (last-seen-cutoff))
-    (embedding.db/save-sdk-react-18-host! host seen-at)
-    (catch Exception e
-      (log/warn e "Failed to save a host that uses the React embedding SDK with React 18"))))
+    (catch Throwable e
+      (log/warn e "Failed to delete the expired hosts that use the React embedding SDK with React 18")))
+  (doseq [[host seen] (group-by :host submitted)]
+    (try
+      (embedding.db/save-sdk-react-18-host! host (apply t/max (map :timestamp seen)))
+      (catch Throwable e
+        (log/warn e "Failed to save a host that uses the React embedding SDK with React 18")))))
+
+(defonce ^:private save-hosts-queue
+  (delay (grouper/start! #'save-hosts!
+                         :capacity 500
+                         :interval (* save-interval-seconds 1000))))
 
 (defn- maybe-record-host! [request response]
   (when (record-host? request response)
     ;; "" groups the host apps whose page URL has no hostname, e.g. an Electron app on file://
-    (let [host    (or (some-> (analytics/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))
-                              u/lower-case-en)
-                      "")
-          seen-at (t/offset-date-time)]
-      (when (and (not (contains? loopback-hosts host))
-                 (first-this-hour? host (t/truncate-to (t/instant) :hours)))
-        (u.jvm/in-virtual-thread*
-         (save-host! host seen-at))))))
+    (let [host (or (some-> (analytics/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))
+                           u/lower-case-en)
+                   "")]
+      (when-not (contains? loopback-hosts host)
+        (grouper/submit! @save-hosts-queue {:host host, :timestamp (t/offset-date-time)})))))
 
 (defn wrap-record-react-18-sdk-host
   "Ring middleware that saves the host apps that use the React embedding SDK with React 18. It must run after

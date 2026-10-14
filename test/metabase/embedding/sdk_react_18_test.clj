@@ -5,17 +5,10 @@
    [metabase.embedding.db :as embedding.db]
    [metabase.embedding.sdk-react-18 :as embedding.sdk-react-18]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- reset-hosts-this-hour! []
-  (reset! @#'embedding.sdk-react-18/hosts-this-hour {:hour nil, :hosts #{}}))
-
-(defn- hosts-this-hour []
-  (:hosts @@#'embedding.sdk-react-18/hosts-this-hour))
 
 (defn- react-18-sdk-request
   [{:keys [method uri user-id client react-version referrer preview?]
@@ -37,87 +30,81 @@
                  (fn [_ respond _] (respond {:status status})))]
     (handler request identity identity)))
 
+(defn- saved-hosts!
+  "Empties the table, calls `thunk` and returns the hosts it saved."
+  [thunk]
+  (t2/delete! :model/EmbeddingSdkReact18Host)
+  (thunk)
+  (vec (t2/select-fn-vec :host :model/EmbeddingSdkReact18Host)))
+
+;; With `synchronous-batch-updates` the save runs right away, on the calling thread, instead of in a batch.
 (deftest record-react-18-sdk-host-test
-  (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
-                              embedding.db/save-sdk-react-18-host!                     (constantly nil)]
-    (doseq [[description request-opts status recorded?]
-            [["logged-in user"           {}                                                         200 true]
-             ["valid guest token"        {:user-id nil, :uri "/api/embed/card/token"}               200 true]
-             ["streaming response"       {}                                                         202 true]
-             ["React 19"                 {:react-version "19.1.0"}                                  200 false]
-             ["no React version"         {:react-version nil}                                       200 false]
-             ["EAJS"                     {:client "embedding-simple"}                               200 false]
-             ["embed preview"            {:preview? true}                                           200 false]
-             ["POST"                     {:method :post}                                            200 false]
-             ["OPTIONS on a guest route" {:method :options, :user-id nil, :uri "/api/embed/card/x"} 200 false]
-             ["error"                    {}                                                         500 false]
-             ["anonymous"                {:user-id nil}                                             200 false]
-             ["invalid guest token"      {:user-id nil, :uri "/api/embed/card/token"}               400 false]]]
-      (testing description
-        (reset-hosts-this-hour!)
-        (is (= {:status status} (run-middleware (react-18-sdk-request request-opts) status)))
-        (is (= (if recorded? #{"app.example.com"} #{})
-               (hosts-this-hour)))))
-    (testing "lowercases the hostname"
-      (reset-hosts-this-hour!)
-      (run-middleware (react-18-sdk-request {:referrer "https://App.Example.COM/page"}) 200)
-      (is (= #{"app.example.com"} (hosts-this-hour))))
-    (testing "records a host app without a hostname as an empty string"
-      (doseq [referrer [nil "file:///app/index.html"]]
-        (reset-hosts-this-hour!)
-        (run-middleware (react-18-sdk-request {:referrer referrer}) 200)
-        (is (= #{""} (hosts-this-hour)) (str referrer))))
-    (testing "skips localhost"
-      (doseq [referrer ["http://localhost:3000" "http://LOCALHOST:3000" "http://127.0.0.1:3000" "http://[::1]:3000"]]
-        (reset-hosts-this-hour!)
-        (run-middleware (react-18-sdk-request {:referrer referrer}) 200)
-        (is (= #{} (hosts-this-hour)) referrer)))))
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-model-cleanup [:model/EmbeddingSdkReact18Host]
+      (doseq [[description request-opts status recorded?]
+              [["logged-in user"           {}                                                         200 true]
+               ["valid guest token"        {:user-id nil, :uri "/api/embed/card/token"}               200 true]
+               ["streaming response"       {}                                                         202 true]
+               ["React 19"                 {:react-version "19.1.0"}                                  200 false]
+               ["no React version"         {:react-version nil}                                       200 false]
+               ["EAJS"                     {:client "embedding-simple"}                               200 false]
+               ["embed preview"            {:preview? true}                                           200 false]
+               ["POST"                     {:method :post}                                            200 false]
+               ["OPTIONS on a guest route" {:method :options, :user-id nil, :uri "/api/embed/card/x"} 200 false]
+               ["error"                    {}                                                         500 false]
+               ["anonymous"                {:user-id nil}                                             200 false]
+               ["invalid guest token"      {:user-id nil, :uri "/api/embed/card/token"}               400 false]]]
+        (testing description
+          (is (= (if recorded? ["app.example.com"] [])
+                 (saved-hosts! #(is (= {:status status} (run-middleware (react-18-sdk-request request-opts) status))))))))
+      (testing "lowercases the hostname"
+        (is (= ["app.example.com"]
+               (saved-hosts! #(run-middleware (react-18-sdk-request {:referrer "https://App.Example.COM/page"}) 200)))))
+      (testing "records a host app without a hostname as an empty string"
+        (doseq [referrer [nil "file:///app/index.html"]]
+          (is (= [""] (saved-hosts! #(run-middleware (react-18-sdk-request {:referrer referrer}) 200)))
+              (str referrer))))
+      (testing "skips localhost"
+        (doseq [referrer ["http://localhost:3000" "http://LOCALHOST:3000" "http://127.0.0.1:3000" "http://[::1]:3000"]]
+          (is (= [] (saved-hosts! #(run-middleware (react-18-sdk-request {:referrer referrer}) 200)))
+              referrer))))))
 
-(deftest record-react-18-sdk-host-saves-in-background-test
-  (let [calls   (atom [])
-        db-free (promise)]
-    (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (fn [cutoff]
-                                                                                           (deref db-free 5000 nil)
-                                                                                           (swap! calls conj [:delete cutoff]))
-                                embedding.db/save-sdk-react-18-host!                     (fn [host _] (swap! calls conj [:save host]))]
-      (reset-hosts-this-hour!)
-      (testing "responds before the DB writes finish"
-        (is (= {:status 200} (run-middleware (react-18-sdk-request {}) 200)))
-        (is (= [] @calls)))
-      (deliver db-free true)
-      (testing "deletes the expired hosts, then saves the host"
-        (is (=? [[:delete some?] [:save "app.example.com"]]
-                (u/poll {:thunk #(deref calls), :done? #(= 2 (count %)), :timeout-ms 5000})))))))
+(deftest save-hosts-test
+  (let [saved   (atom [])
+        earlier (t/offset-date-time "2026-10-13T10:00:00Z")
+        later   (t/offset-date-time "2026-10-13T10:00:30Z")]
+    (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
+                                embedding.db/save-sdk-react-18-host!                     #(swap! saved conj [%1 %2])]
+      (testing "saves each host once, with the newest time it was seen"
+        (#'embedding.sdk-react-18/save-hosts! [{:host "a.example.com", :timestamp later}
+                                               {:host "a.example.com", :timestamp earlier}
+                                               {:host "b.example.com", :timestamp earlier}])
+        (is (= [["a.example.com" later] ["b.example.com" earlier]] (sort-by first @saved)))))))
 
-(deftest record-react-18-sdk-host-failure-test
-  (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (fn [_] (throw (ex-info "boom" {})))]
-    (mt/with-log-messages-for-level [messages [metabase.embedding.sdk-react-18 :warn]]
-      (reset-hosts-this-hour!)
-      (testing "a failed save does not change the response"
-        (is (= {:status 200} (run-middleware (react-18-sdk-request {}) 200))))
-      (testing "a failed save logs a warning"
-        (is (=? [{:level :warn, :message #"Failed to save a host.*"}]
-                (u/poll {:thunk messages, :done? seq, :timeout-ms 5000})))))))
-
-(deftest first-this-hour-test
-  (let [first-this-hour? #'embedding.sdk-react-18/first-this-hour?
-        hour             (t/instant "2026-10-13T10:00:00Z")]
-    (reset-hosts-this-hour!)
-    (testing "true only the first time a host is seen in an hour"
-      (is (true? (first-this-hour? "app.example.com" hour)))
-      (is (false? (first-this-hour? "app.example.com" hour)))
-      (is (true? (first-this-hour? "" hour)))
-      (is (false? (first-this-hour? "" hour))))
-    (testing "a new hour starts over"
-      (is (true? (first-this-hour? "app.example.com" (t/plus hour (t/hours 1))))))
-    (testing "stops at the cap"
-      (reset-hosts-this-hour!)
-      (dotimes [i @#'embedding.sdk-react-18/max-hosts-per-hour]
-        (first-this-hour? (str "host-" i ".example.com") hour))
-      (is (false? (first-this-hour? "one-more.example.com" hour))))
-    (testing "concurrent requests let a host through once"
-      (reset-hosts-this-hour!)
-      (is (= 1 (count (filter true? (pmap (fn [_] (first-this-hour? "app.example.com" hour)) (range 20)))))))))
+(deftest save-hosts-failure-test
+  (let [now   (t/offset-date-time)
+        saved (atom [])]
+    (testing "a failed delete logs a warning, and the hosts are still saved"
+      (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (fn [_] (throw (ex-info "boom" {})))
+                                  embedding.db/save-sdk-react-18-host!                     (fn [host _] (swap! saved conj host))]
+        (mt/with-log-messages-for-level [messages [metabase.embedding.sdk-react-18 :warn]]
+          (#'embedding.sdk-react-18/save-hosts! [{:host "app.example.com", :timestamp now}])
+          (is (= ["app.example.com"] @saved))
+          (is (=? [{:level :warn, :message #"Failed to delete the expired hosts.*"}]
+                  (messages))))))
+    (testing "a host that fails to save does not stop the other hosts"
+      (reset! saved [])
+      (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
+                                  embedding.db/save-sdk-react-18-host!                     (fn [host _]
+                                                                                             (when (= host "bad.example.com")
+                                                                                               (throw (ex-info "boom" {})))
+                                                                                             (swap! saved conj host))]
+        (mt/with-log-messages-for-level [messages [metabase.embedding.sdk-react-18 :warn]]
+          (#'embedding.sdk-react-18/save-hosts! [{:host "bad.example.com", :timestamp now}
+                                                 {:host "good.example.com", :timestamp now}])
+          (is (= ["good.example.com"] @saved))
+          (is (=? [{:level :warn, :message #"Failed to save a host.*"}]
+                  (messages))))))))
 
 (defn- stored-host [host]
   (some-> (t2/select-one :model/EmbeddingSdkReact18Host :host host)
@@ -126,7 +113,7 @@
           (update :last_seen_at t/instant)))
 
 (defn- save-host! [host seen-at]
-  (#'embedding.sdk-react-18/save-host! host (t/offset-date-time seen-at)))
+  (#'embedding.sdk-react-18/save-hosts! [{:host host, :timestamp (t/offset-date-time seen-at)}]))
 
 (deftest save-host-test
   (mt/with-model-cleanup [:model/EmbeddingSdkReact18Host]
@@ -177,19 +164,18 @@
 
 (deftest record-react-18-sdk-host-handler-test
   (testing "the middleware runs after authentication and saves the host"
-    (mt/with-model-cleanup [:model/EmbeddingSdkReact18Host]
-      (reset-hosts-this-hour!)
-      (let [headers (fn [host]
-                      {"x-metabase-client"               "embedding-sdk-react"
-                       "x-metabase-client-react-version" "18.3.1"
-                       "x-metabase-embed-referrer"       (str "https://" host "/page")})]
-        (testing "anonymous requests are not recorded, even when they succeed"
-          (mt/client :get 200 "session/properties" {:request-options {:headers (headers "anonymous.example.com")}})
-          (is (= #{} (hosts-this-hour))))
-        (testing "logged-in requests are recorded and saved"
-          (mt/user-http-request :rasta :get 200 "user/current"
-                                {:request-options {:headers (headers "handler.example.com")}})
-          (is (= #{"handler.example.com"} (hosts-this-hour)))
-          (is (u/poll {:thunk      #(t2/exists? :model/EmbeddingSdkReact18Host :host "handler.example.com")
-                       :done?      true?
-                       :timeout-ms 10000})))))))
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-model-cleanup [:model/EmbeddingSdkReact18Host]
+        (let [headers (fn [host]
+                        {"x-metabase-client"               "embedding-sdk-react"
+                         "x-metabase-client-react-version" "18.3.1"
+                         "x-metabase-embed-referrer"       (str "https://" host "/page")})]
+          ;; so a row left by an earlier run can't make the assertions below pass
+          (t2/delete! :model/EmbeddingSdkReact18Host :host [:in ["anonymous.example.com" "handler.example.com"]])
+          (testing "anonymous requests are not recorded, even when they succeed"
+            (mt/client :get 200 "session/properties" {:request-options {:headers (headers "anonymous.example.com")}})
+            (is (not (t2/exists? :model/EmbeddingSdkReact18Host :host "anonymous.example.com"))))
+          (testing "logged-in requests are recorded and saved"
+            (mt/user-http-request :rasta :get 200 "user/current"
+                                  {:request-options {:headers (headers "handler.example.com")}})
+            (is (t2/exists? :model/EmbeddingSdkReact18Host :host "handler.example.com"))))))))

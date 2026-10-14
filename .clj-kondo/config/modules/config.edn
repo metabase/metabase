@@ -988,6 +988,7 @@
    :uses #{analytics
            api
            app-db
+           batch-processing
            models
            premium-features
            server
