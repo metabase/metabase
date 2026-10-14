@@ -7,7 +7,6 @@ import {
   HeaderBackIcon,
   HeaderCloseButton,
   HeaderLink,
-  HeaderMenu,
 } from "./ModalHeader.styled";
 
 export interface ModalHeaderProps {
@@ -42,7 +41,7 @@ const ModalHeader = ({
             {title}
           </Ellipsified>
         </HeaderLink>
-        {children && <HeaderMenu>{children}</HeaderMenu>}
+        {children}
         {onClose && (
           <HeaderCloseButton onClick={onClose}>
             <Icon name="close" />

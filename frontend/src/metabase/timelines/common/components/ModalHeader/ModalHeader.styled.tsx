@@ -22,10 +22,6 @@ export const HeaderBackIcon = styled(Icon)`
   margin-right: 0.5rem;
 `;
 
-export const HeaderMenu = styled.div`
-  margin-right: 1rem;
-`;
-
 /**
  * Both the `height` and the `width` need to be in sync with `EntityMenuIconButton`
  * in order to prevent the header from visually jumping.

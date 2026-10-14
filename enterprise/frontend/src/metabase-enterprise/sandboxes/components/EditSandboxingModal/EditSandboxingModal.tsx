@@ -235,6 +235,7 @@ const EditSandboxingModal = ({
                   <Menu.Target>
                     <ActionIcon
                       variant="subtle"
+                      size="sm"
                       aria-label={t`Question options`}
                       className={S.optionsButton}
                     >
