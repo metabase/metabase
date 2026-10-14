@@ -107,33 +107,16 @@
           previous-card (t2/instance :model/Card (t2/original card))]
       (mdb/do-after-commit #(deps.metadata-update/card-updated! card-id previous-card)))))
 
-(defmethod before-update* :model/Dashboard
-  [model dashboard]
-  (mark-entity-changed! model dashboard #{:parameters}))
-
-(defmethod before-update* :model/Document
-  [model document]
-  (mark-entity-changed! model document #{:content_type :document}))
-
-(defmethod before-update* :model/Measure
-  [model measure]
-  (mark-entity-changed! model measure #{:definition :table_id}))
-
-(defmethod before-update* :model/NativeQuerySnippet
-  [model snippet]
-  (mark-entity-changed! model snippet #{:content :template_tags}))
-
-(defmethod before-update* :model/Sandbox
-  [model sandbox]
-  (mark-entity-changed! model sandbox #{:card_id}))
-
-(defmethod before-update* :model/Segment
-  [model segment]
-  (mark-entity-changed! model segment #{:definition :table_id}))
-
-(defmethod before-update* :model/Transform
-  [model transform]
-  (mark-entity-changed! model transform #{:source :target}))
+(doseq [[model columns] {:model/Dashboard          #{:parameters}
+                         :model/Document           #{:content_type :document}
+                         :model/Measure            #{:definition :table_id}
+                         :model/NativeQuerySnippet #{:content :template_tags}
+                         :model/Sandbox            #{:card_id}
+                         :model/Segment            #{:definition :table_id}
+                         :model/Transform          #{:source :target}}]
+  (defmethod before-update* model
+    [model instance]
+    (mark-entity-changed! model instance columns)))
 
 (defmethod before-insert* :model/DashboardCard
   [_model dashcard]
