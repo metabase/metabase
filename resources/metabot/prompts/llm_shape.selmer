@@ -219,6 +219,13 @@ The question's saved query, in the same canonical portable representations JSON 
 The question is visualized as follows:
 {{question_visualization_xml|safe}}
 {% endif %}
+{% if question_fields_xml %}
+
+### Fields
+
+The following fields are returned by this question.
+{{question_fields_xml|safe}}
+{% endif %}
 </metabase_question>
 {% endif %}
 {% if is_text_card %}
