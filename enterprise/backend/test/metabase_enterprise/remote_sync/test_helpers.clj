@@ -439,11 +439,37 @@ width: fixed
   (tu/with-temporary-setting-values [remote-sync-transforms false]
     (f)))
 
+(def ^:private default-mock-entity-ids
+  "The entity_ids of the content an import of [[create-mock-source]]'s default files creates, by model, in deletion
+  order."
+  [[:model/Dashboard  ["Q_jD-f-9clKLFZ2TfUG2h"]]
+   [:model/Card       ["f1C68pznmrpN1F5xFDj6d" "test-dev-cardxxxxxxxx"]]
+   [:model/Collection ["M-Q4pcV0qkiyJ0kiSWECl" "test-dev-collectionxx"]]])
+
+(defn- delete-default-mock-content!
+  "Deletes the content an import of [[create-mock-source]]'s default files creates."
+  []
+  (doseq [[model entity-ids] default-mock-entity-ids]
+    (t2/delete! model :entity_id [:in entity-ids])))
+
+(defn- clean-default-mock-content
+  "Test fixture that deletes the content imports of [[create-mock-source]]'s default files leave behind, so a later
+  import of a smaller tree doesn't see it as unsynced local content."
+  [f]
+  (delete-default-mock-content!)
+  (try
+    (f)
+    (finally
+      (delete-default-mock-content!))))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean, and transforms sync is off."
+  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
+  TransformTag, PythonLibrary), and the default mock source's content are clean, and transforms sync is off."
   (t/compose-fixtures restore-transforms-setting
-                      (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models))))
+                      (t/compose-fixtures clean-default-mock-content
+                                          (t/compose-fixtures clean-object
+                                                              (t/compose-fixtures clean-task-table
+                                                                                  clean-optional-feature-models)))))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
