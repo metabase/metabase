@@ -242,7 +242,8 @@
                        (count changesets-to-retain) (str/join ", " (sort (map peek changesets-to-retain))))
             (reassign-changeset-rows! conn changelog-table changesets-to-retain boundary-deployment))
           (log-unreversible-rows! liquibase changesets-to-drop)
-          (delete-deployment-rows! conn changelog-table deployments-to-drop))))))
+          (delete-deployment-rows! conn changelog-table deployments-to-drop)
+          (versions/record-schema-marker! lb-db))))))
 
 ;;; ------------------------------------------------------ guards --------------------------------------------------
 

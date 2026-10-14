@@ -19,10 +19,19 @@
 (defn- tag [s] (assoc config/mb-version-info :tag s))
 
 (defn- changelog-ids
-  "The ids in the changelog, in execution order."
+  "The changeset ids in the changelog, in execution order, without the `vNN.legacy-version-tracking` markers (every run
+  and rollback re-records one; see [[versions/record-legacy-version-tracking!]])."
+  [conn changelog-table]
+  (into []
+        (comp (remove versions/legacy-version-tracking-marker?) (map :id))
+        (jdbc/query {:connection conn}
+                    [(format "SELECT id, filename FROM %s ORDER BY dateexecuted, orderexecuted" changelog-table)])))
+
+(defn- marker-ids
+  "The `vNN.legacy-version-tracking` marker ids in the changelog, in id order."
   [conn changelog-table]
   (mapv :id (jdbc/query {:connection conn}
-                        [(format "SELECT id FROM %s ORDER BY dateexecuted, orderexecuted" changelog-table)])))
+                        [(format "SELECT id FROM %s WHERE filename = 'legacy-version-tracking' ORDER BY id" changelog-table)])))
 
 (defn- has-changeset? [conn changelog-table id]
   (boolean (seq (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = ?" changelog-table) id]))))
@@ -291,27 +300,27 @@
                       "the upgrade's version row was removed"))))))))))
 
 (deftest legacy-version-tracking-removed-by-rollback-test
-  (testing "rolling back several majors (65 -> 63) removes the v64 and v65 markers with their deployments, leaving v63"
+  (testing "rolling back several version-less majors (68 -> 66) removes the v67 and v68 markers with their deployments, leaving v66"
     ;; No special handling: each marker belongs to the deployment that created it, so delete-deployment-rows! sweeps it up.
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (liquibase/with-liquibase [liquibase conn]
           (let [db      (.getDatabase liquibase)
                 ct      (liquibase/changelog-table-name liquibase)
-                markers (fn [] (filterv #(re-find #"legacy-version-tracking$" %) (changelog-ids conn ct)))]
+                markers #(marker-ids conn ct)]
             (versions/ensure-version-tracking! conn db)
-            (doseq [major [63 64 65]
+            (doseq [major [66 67 68]
                     :let [dep (str "d" major)]]
               (mdb.test-util/fabricate-history! conn ct [{:deployment dep :ran (format "x.%d.0.0" major) :changesets [(str "c" major)]}])
               (versions/record-legacy-version-tracking! db major dep))
-            (is (= ["v63.legacy-version-tracking" "v64.legacy-version-tracking" "v65.legacy-version-tracking"] (markers)))
-            (is (= 65 (versions/latest-applied-major-version conn db)) "older binaries see 65 before the downgrade")
-            (with-redefs [config/mb-version-info (tag "v0.65.0")]
-              ;; 63 is two majors back, so it is outside the default window -- force widens it to the full history
-              (rollback/rollback-major-version! conn liquibase true "63"))
-            (is (= ["v63.legacy-version-tracking"] (markers)))
-            (is (= 63 (versions/latest-applied-major-version conn db)) "older binaries now correctly see 63")
-            (is (= #{"d63"} (changelog-deployments conn ct)) "only the v63 deployment remains")))))))
+            (is (= ["v66.legacy-version-tracking" "v67.legacy-version-tracking" "v68.legacy-version-tracking"] (markers)))
+            (is (= 68 (versions/latest-applied-major-version conn db)) "older binaries see 68 before the downgrade")
+            (with-redefs [config/mb-version-info (tag "v0.68.0")]
+              ;; 66 is two majors back, so it is outside the default window -- force widens it to the full history
+              (rollback/rollback-major-version! conn liquibase true "66"))
+            (is (= ["v66.legacy-version-tracking"] (markers)))
+            (is (= 66 (versions/latest-applied-major-version conn db)) "older binaries now correctly see 66")
+            (is (= #{"d66"} (changelog-deployments conn ct)) "only the v66 deployment remains")))))))
 
 (deftest rollback-failure-preserves-history-test
   (testing "a rollback that cannot reverse a changeset throws and leaves the deployment's history intact"
@@ -324,24 +333,24 @@
                 ct (liquibase/changelog-table-name liquibase)]
             (versions/ensure-version-tracking! conn db)
             (mdb.test-util/fabricate-history! conn ct
-                                              [{:deployment "d63" :ran "x.63.0.0" :changesets ["c63"]}
-                                               {:deployment "d64" :ran "x.64.0.0" :changesets ["c64"]}])
-            (versions/record-legacy-version-tracking! db 64 "d64")
-            (with-redefs [config/mb-version-info (tag "v0.64.0")
+                                              [{:deployment "d66" :ran "x.66.0.0" :changesets ["c66"]}
+                                               {:deployment "d67" :ran "x.67.0.0" :changesets ["c67"]}])
+            (versions/record-legacy-version-tracking! db 67 "d67")
+            (with-redefs [config/mb-version-info (tag "v0.67.0")
                           ;; simulate Liquibase failing to reverse one of the changesets
-                          rollback/run-liquibase-rollback! (fn [& _] ["c64"])]
+                          rollback/run-liquibase-rollback! (fn [& _] ["c67"])]
               (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"could not roll back changeset"
-                                            (rollback/rollback-major-version! conn liquibase false "63")))]
+                                            (rollback/rollback-major-version! conn liquibase false "66")))]
                 (if (= driver/*driver* :postgres)
                   (is (re-find #"left unchanged" (ex-message e))
                       "transactional DDL: the transaction rollback really does leave the database unchanged")
                   (is (re-find #"may (already )?have been committed" (ex-message e))
                       "auto-committing DDL: the error must not claim the database is unchanged"))))
             (testing "the deployment's history is left alone, so the changelog does not claim a rollback that failed"
-              (is (has-changeset? conn ct "c64"))
-              (is (has-changeset? conn ct "v64.legacy-version-tracking"))
-              (is (= 64 (versions/latest-applied-major-version conn db))
-                  "older binaries still see 64 -- the schema really is still at 64"))))))))
+              (is (has-changeset? conn ct "c67"))
+              (is (has-changeset? conn ct "v67.legacy-version-tracking"))
+              (is (= 67 (versions/latest-applied-major-version conn db))
+                  "older binaries still see 67 -- the schema really is still at 67"))))))))
 
 (deftest ^:parallel rollback-failure-message-test
   (testing "the rollback-failure message only claims 'left unchanged' where transactional DDL makes that true"
@@ -565,3 +574,27 @@
               (is (= 3 (view-x)) "the view is not reversed")
               (is (nil? (rollback-last-deployment!)) "a further rollback with no earlier deployment is a clean no-op")
               (is (= [versions/dev-version] (versions-recorded))))))))))
+
+(deftest rollback-leaves-a-marker-as-the-newest-row-test
+  (testing "rows a rollback keeps can be newer than the boundary's marker; old binaries must still read a marker last"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db     (.getDatabase liquibase)
+                ct     (liquibase/changelog-table-name liquibase)
+                newest #(mapv :id (jdbc/query {:connection conn}
+                                              [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)" ct ct)]))]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.9" :changesets ["v58.2025-01-01T00:00:00" "thing_one"]}])
+            (versions/record-legacy-version-tracking! db 58 "d58")
+            ;; 59.9 re-ran a version-less runOnChange view of 58's, which the rollback keeps on the 58 deployment
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d59" :ran "x.59.9"
+                                                        :changesets ["v59.2025-02-01T00:00:00"
+                                                                     {:id "thing_view" :exectype "RERAN"}]}])
+            (versions/record-legacy-version-tracking! db 59 "d59")
+            (with-redefs [config/mb-version-info (tag "v0.59.9")]
+              (rollback/rollback-major-version! conn liquibase false))
+            (is (= "d58" (deployment-of {:connection conn} ct "thing_view")) "the re-run row is kept")
+            (is (= ["v56.legacy-version-tracking"] (newest)))
+            (is (= "d58" (deployment-of {:connection conn} ct "v56.legacy-version-tracking")))
+            (is (= 58 (versions/current-schema-major conn db)))))))))

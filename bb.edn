@@ -181,16 +181,11 @@
              (lint-migrations-file/-main))}
 
   new-migration
-  {:doc "Create a new migration file: version-less in the current year's directory, or versioned for a backport to v65 or earlier"
+  {:doc "Create a new version-less migration file in the current year's directory"
    :requires [[mage.new-migration :as new-migration]]
-   :examples [["./bin/mage new-migration mq_indexes" "Create resources/migrations/2026/20261012_mq_indexes.yaml with id mq_indexes"]
-              ["./bin/mage new-migration 65 mq_indexes" "Create resources/migrations/065/20261012_mq_indexes.yaml with a v65 id (backports only)"]]
-   :arg-schema [:or
-                [:tuple
-                 [:string {:name "description" :description "Lowercase alphanumeric/underscore name, also the changeset id (e.g., mq_indexes)"}]]
-                [:tuple
-                 [:int {:name "version" :description "Major version to backport to; only versions before 66"}]
-                 [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]]
+   :examples [["./bin/mage new-migration mq_indexes" "Create resources/migrations/2026/20261012_mq_indexes.yaml with a random changeset id"]]
+   :arg-schema [:tuple
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name for the file (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download

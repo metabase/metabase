@@ -378,7 +378,11 @@
         database (.getDatabase liquibase)]
     (.update liquibase "" writer)
     (str (.toString writer)
-         (versions/version-tracking-sql (.. database getConnection getUnderlyingConnection) database))))
+         (versions/version-tracking-sql (.. database getConnection getUnderlyingConnection)
+                                        database
+                                        (->> (.getChangeSets (.getDatabaseChangeLog liquibase))
+                                             (keep (fn [^ChangeSet cs] (some-> (re-find #"^v(\d+)\." (.getId cs)) second parse-long)))
+                                             (reduce max 0))))))
 
 (defn migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed, recording the Metabase version that ran them (see

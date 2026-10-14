@@ -11,51 +11,55 @@ pushing.
 
 ## Where a new changeset goes
 
-Starting with v66, new changesets are **version-less** and live in a year directory. Create one with
+New changesets are **version-less** and live in a year directory. Create one with
 `./bin/mage new-migration <snake_case_name>`, which writes:
 
 ```
-resources/migrations/2026/20261012_short_snake_case_name.yaml   # changeset id: short_snake_case_name
+resources/migrations/2026/20261012_short_snake_case_name.yaml   # changeset id: a random one, e.g. k3x9qa
 ```
 
 - The directory is the current year; the file name is `<yyyymmdd>_<snake_case_name>.yaml` (lower-case letters,
   digits and underscores only). One file per change or per closely related group of changes; several changesets in
   one file are fine.
-- The changeset **id carries no version**: lower-case letters, digits and underscores, with at least one letter, e.g.
-  `glossary_entity_id`, `metabot_message_data_version_1`. Not an ISO date or timestamp like the old ids carried
-  (`2026-09-18T12:00:00`), not `v66.…`, not all digits, no `v<digit>` prefix. Ids must be unique across the
-  repository, so make them specific. `new-migration` uses the name as the first changeset's id and refuses one that
-  is already taken.
+- The changeset **id is a random identifier with no version**, e.g. `k3x9qa`: `new-migration` generates one for the
+  first changeset, checking it is unused in `resources/migrations`. For more changesets in the same file, make up
+  another the same way and grep to confirm it is unused. The lint accepts lower-case letters, digits and underscores
+  with at least one letter -- not an ISO date or timestamp like the old ids carried (`2026-09-18T12:00:00`), not
+  `v66.…`, not all digits, and no leading `v`: releases from before version-less support read the schema's version
+  from the highest `id LIKE 'v%'`.
 - The Metabase version a changeset ships in is decided by the branch it is merged into, not by anything in the file.
-  A backport to v66 or later is the same file with the same id and author on the release branch; Liquibase then
-  recognises it as already run when the customer upgrades.
 
-Do **not** add new work to the versioned files (`migrations/0NN/…` with `vNN.` ids, or `0NN_update_migrations.yaml`).
-They cover v65 and earlier, which shipped without version-less support, and the lint refuses `vNN.` ids for 66 and
-later.
+Do **not** start new work in the versioned files (`migrations/0NN/…` with `vNN.` ids, or `0NN_update_migrations.yaml`).
+The lint still accepts `vNN.` ids up to v66, so changesets already in flight for 66 can land, and refuses them from
+v67 on. Don't add versioned changesets on release branches either: changelog order puts every versioned file before
+the year directories, so a versioned changeset added after a version-less one would run before it on a fresh install
+but after it on an upgraded one.
 
-### Backporting to v65 or earlier
+## Backporting a changeset
 
-v65 and earlier binaries don't support version-less changesets, so a backport to them is a **versioned copy**:
-`./bin/mage new-migration 65 <snake_case_name>` writes `resources/migrations/065/<yyyymmdd>_<name>.yaml` with a
-`v65.<random>` id. Add the copy on master and on the release branch, and guard both copies so that a database runs
-only one of them:
+Version-less support is backported to patch releases of every supported major back to v58, so a
+version-less changeset is backported like any other change: cherry-pick the **same file** onto each release branch.
+Liquibase identifies a changeset by file path, id and author, so the upgraded customer's database already has it as
+run. A few rules follow from the same changeset meeting different histories:
 
-- the `065/` copy gets `preConditions: [onFail: MARK_RAN, not: changeSetExecuted: <the version-less id>]`, for
-  databases that already ran the version-less changeset (a 66+ release that shipped before the backport);
-- the version-less changeset gets the mirror precondition on the `v65.` id. `065/` sorts before `2026/`, so a fresh
-  install and every database that ran the v65 backport run the copy first, and the original must then be skipped.
-
-`changeSetExecuted` needs `id`, `author` and `changeLogFile` (e.g. `migrations/2026/20261012_name.yaml`).
-`resources/migrations/064/20260911_glossary_entity_id.yaml` shows the precondition shape (from an earlier
-versioned-to-versioned backport).
+- **The file must be byte-identical on every branch.** Liquibase checksums ran changesets, and a different body on
+  another branch fails checksum validation when a customer upgrades onto it. Fix a mistake with a new changeset.
+- **Ship it on every branch from the oldest target up to master.** A customer can upgrade from any patch of an older
+  major to any later one.
+- **Use only schema that exists in the oldest major it targets.**
+- **It runs at different points in different histories.** On a fresh install of a newer major it runs after that
+  major's `vNN.` changesets; on a database upgraded from an older major's patch it already ran before them. Make sure
+  none of the later majors' changesets conflict with it either way round, e.g. by both creating the same object.
+- Customers on a patch from before the backport still boot against a database it ran on: those releases ignore
+  changelog rows they don't know, and Metabase keeps a marker row last in `databasechangelog` so they read the schema's
+  version correctly (see `metabase.app-db.liquibase.versions/record-legacy-version-tracking!`).
 
 ## Writing the changeset
 
 ```yaml
 databaseChangeLog:
   - changeSet:
-      id: glossary_entity_id
+      id: k3x9qa
       author: yourgithubhandle
       comment: Add entity_id to glossary
       changes:
@@ -127,7 +131,7 @@ seed data, runs your changeset(s) when you call `migrate!`, and you assert on th
 
 ```clojure
 (deftest glossary-entity-id-test
-  (impl/test-migrations ["glossary_entity_id"] [migrate!]
+  (impl/test-migrations ["k3x9qa"] [migrate!]
     ;; seed rows, then
     (migrate!)
     (is ...)))

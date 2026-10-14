@@ -427,8 +427,7 @@
 (deftest record-legacy-version-tracking-test
   (testing "record-legacy-version-tracking! tags the deployment that ran migrations, so older binaries read the right major"
     ;; Older (pre-version-less) binaries detect an unsupported downgrade via latest-applied-major-version (id LIKE 'v%')
-    ;; and know nothing about databasechangelog_version. This row keeps that signal accurate once migrations ship as
-    ;; version-less changesets.
+    ;; and know nothing about databasechangelog_version. For a version-less major this row is the only signal.
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (liquibase/with-liquibase [liquibase conn]
@@ -439,37 +438,43 @@
                 row-of  (fn [id] (first (jdbc/query {:connection conn}
                                                     [(format "SELECT deployment_id, orderexecuted, liquibase, description FROM %s WHERE id = ?" ct) id])))]
             (versions/ensure-version-tracking! conn db)
-            (mdb.test-util/fabricate-history! conn ct [{:deployment "d64" :changesets ["c64"]}])
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d66" :changesets ["c66"]}])
             (testing "records the row against the deployment that ran, and latest-applied-major-version reads it"
-              (versions/record-legacy-version-tracking! db 64 "d64")
-              (is (= ["v64.legacy-version-tracking"] (markers)))
-              (is (= "d64" (:deployment_id (row-of "v64.legacy-version-tracking")))
+              (versions/record-legacy-version-tracking! db 66 "d66")
+              (is (= ["v66.legacy-version-tracking"] (markers)))
+              (is (= "d66" (:deployment_id (row-of "v66.legacy-version-tracking")))
                   "shares the deployment_id, so the normal rollback path removes it with its deployment")
-              (is (= (inc (:orderexecuted (row-of "c64"))) (:orderexecuted (row-of "v64.legacy-version-tracking")))
+              (is (= (inc (:orderexecuted (row-of "c66"))) (:orderexecuted (row-of "v66.legacy-version-tracking")))
                   "at the next execution position, like a changeset Liquibase ran")
-              (is (= (LiquibaseUtil/getBuildVersion) (:liquibase (row-of "v64.legacy-version-tracking")))
+              (is (= (LiquibaseUtil/getBuildVersion) (:liquibase (row-of "v66.legacy-version-tracking")))
                   "stamped with the Liquibase version, like a changeset Liquibase ran")
-              (is (= "Metabase v64 version marker (not a changeset)" (:description (row-of "v64.legacy-version-tracking")))
+              (is (= "Metabase v66 version marker (not a changeset)" (:description (row-of "v66.legacy-version-tracking")))
                   "with a description saying what the row is")
-              (is (re-find (re-pattern (str "legacy-version-tracking[^;]*'" (LiquibaseUtil/getBuildVersion) "'"))
-                           (versions/version-tracking-sql conn db))
-                  "and so is the marker in the manual-upgrade SQL")
-              (is (= 64 (versions/latest-applied-major-version conn db))))
-            (testing "idempotent for a major that already has a row (a pre-existing row never fails an upgrade)"
-              (versions/record-legacy-version-tracking! db 64 "d64")
-              (versions/record-legacy-version-tracking! db 64 "dOther")
-              (is (= ["v64.legacy-version-tracking"] (markers))))
+              (with-redefs [config/mb-version-info (tag "v0.66.0")]
+                (is (re-find (re-pattern (str "legacy-version-tracking[^;]*'" (LiquibaseUtil/getBuildVersion) "'"))
+                             (versions/version-tracking-sql conn db 0))
+                    "and so is the marker in the manual-upgrade SQL"))
+              (is (= 66 (versions/latest-applied-major-version conn db))))
+            (testing "idempotent when the marker already ends the changelog"
+              (versions/record-legacy-version-tracking! db 66 "d66")
+              (is (= ["v66.legacy-version-tracking"] (markers)))
+              (is (= "d66" (:deployment_id (row-of "v66.legacy-version-tracking")))))
+            (testing "a later deployment of the same major moves the row to itself"
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d66b" :changesets ["c66b"]}])
+              (versions/record-legacy-version-tracking! db 66 "d66b")
+              (is (= ["v66.legacy-version-tracking"] (markers)))
+              (is (= "d66b" (:deployment_id (row-of "v66.legacy-version-tracking")))))
             (testing "a new major adds its own row; earlier majors' rows are deliberately kept"
-              (mdb.test-util/fabricate-history! conn ct [{:deployment "d65" :changesets ["c65"]}])
-              (versions/record-legacy-version-tracking! db 65 "d65")
-              (is (= ["v64.legacy-version-tracking" "v65.legacy-version-tracking"] (markers)))
-              (is (= 65 (versions/latest-applied-major-version conn db))
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d67" :changesets ["c67"]}])
+              (versions/record-legacy-version-tracking! db 67 "d67")
+              (is (= ["v66.legacy-version-tracking" "v67.legacy-version-tracking"] (markers)))
+              (is (= 67 (versions/latest-applied-major-version conn db))
                   "older binaries read the highest, i.e. the current major"))
             (testing "the 1-arity records the running binary's major against the current deployment"
-              (mdb.test-util/fabricate-history! conn ct [{:deployment "d66" :changesets ["c66"]}])
-              (with-redefs [config/mb-version-info (tag "v0.66.0")]
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d68" :changesets ["c68"]}])
+              (with-redefs [config/mb-version-info (tag "v0.68.0")]
                 (versions/record-legacy-version-tracking! db))
-              (is (= "d66" (:deployment_id (row-of "v66.legacy-version-tracking")))))
+              (is (= "d68" (:deployment_id (row-of "v68.legacy-version-tracking")))))
             (testing "a dev deployment gets a marker too: a pre-version-less binary pointed at a dev DB must refuse
                       cleanly (its id scan reads v9999) instead of picking the legacy changelog off the version-less
                       id and crashing on re-running changeset 1"
@@ -483,16 +488,175 @@
             pre-versionless binaries can still detect a downgrade after a force upgrade"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (with-redefs [config/mb-version-info (tag "v0.65.0")
+        (with-redefs [config/mb-version-info (tag "v0.66.0")
                       liquibase/changelog-file "versionless-dev-run1.yaml"]
           (mdb/migrate! (mdb/data-source) :force))
         (let [ct     (liquibase/changelog-table-name conn)
               row    (fn [id] (first (jdbc/query {:datasource (mdb/data-source)}
                                                  [(format "SELECT deployment_id, orderexecuted FROM %s WHERE id = ?" ct) id])))
-              marker (row "v65.legacy-version-tracking")]
+              marker (row "v66.legacy-version-tracking")]
           (is (some? marker) "force must leave the same old-binary downgrade signal as a normal upgrade")
           (is (= (:deployment_id (row "dev_run_a")) (:deployment_id marker))
               "as an ordinary row of the deployment that ran the migrations")
           (liquibase/with-liquibase [liquibase conn]
-            (is (= 65 (versions/latest-applied-major-version conn (.getDatabase liquibase)))
+            (is (= 66 (versions/latest-applied-major-version conn (.getDatabase liquibase)))
                 "a pre-versionless binary's id scan now reads the upgraded major")))))))
+
+;;; ------------------------------- binaries from before version-less support (58 - 65) ------------------------------
+;;; Version-less support is backported to patch releases of every supported major, so customers move between those
+;;; patches and the earlier ("old") patches of the same majors, which know nothing about version tracking.
+
+(defn- old-binary-latest-row
+  "The changelog row an old binary's `decide-liquibase-file` reads to pick its changelog: `ORDER BY dateexecuted DESC`
+  with no tiebreak. A tie for newest is returned as `::tie`, since the database may then return either row."
+  [conn changelog-table]
+  (let [newest (jdbc/query {:connection conn}
+                           [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)"
+                                    changelog-table changelog-table)])]
+    (if (= 1 (count newest)) (:id (first newest)) ::tie)))
+
+(defn- marker-rows [conn changelog-table]
+  (mapv (juxt :id :deployment_id)
+        (jdbc/query {:connection conn}
+                    [(format "SELECT id, deployment_id FROM %s WHERE filename = 'legacy-version-tracking' ORDER BY id"
+                             changelog-table)])))
+
+(deftest tail-marker-keeps-old-binaries-on-the-current-changelog-test
+  (testing "old binaries take a version-less newest row for a pre-4.2 install, so every run ends with a marker they read safely"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.9" :changesets ["v58.2025-01-01T00:00:00" "glossary_entity_id"]}])
+            (testing "a versioned major gets the position marker, which never raises the major old binaries read"
+              (versions/record-legacy-version-tracking! db 58 "d58")
+              (is (= "v56.legacy-version-tracking" (old-binary-latest-row conn ct)))
+              (is (= [["v56.legacy-version-tracking" "d58"]] (marker-rows conn ct)))
+              (is (= 58 (versions/latest-applied-major-version conn db))))
+            (testing "a later patch of the same major moves the marker to its own deployment"
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d58b" :ran "x.58.10" :changesets ["thing_two"]}])
+              (versions/record-legacy-version-tracking! db 58 "d58b")
+              (is (= "v56.legacy-version-tracking" (old-binary-latest-row conn ct)))
+              (is (= [["v56.legacy-version-tracking" "d58b"]] (marker-rows conn ct))))
+            (testing "the marker lands strictly after a row stored in the future (MySQL rounds sub-second timestamps up)"
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d58c" :ran "x.58.11" :changesets ["thing_three"]}])
+              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET dateexecuted = CURRENT_TIMESTAMP + INTERVAL '1' SECOND WHERE id = 'thing_three'" ct)])
+              (versions/record-legacy-version-tracking! db 58 "d58c")
+              (is (= "v56.legacy-version-tracking" (old-binary-latest-row conn ct)))
+              (is (= ["d58c"] (map :deployment-id (take 1 (versions/recorded-deployments conn db))))
+                  "and stays part of the deployment that ran"))
+            (testing "a version-less major gets its own major marker, so old binaries read it as newer"
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d66" :ran "x.66.0" :changesets ["thing_four"]}])
+              (versions/record-legacy-version-tracking! db 66 "d66")
+              (is (= "v66.legacy-version-tracking" (old-binary-latest-row conn ct)))
+              (is (= 66 (versions/latest-applied-major-version conn db)))
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d66b" :ran "x.66.1" :changesets ["thing_five"]}])
+              (versions/record-legacy-version-tracking! db 66 "d66b")
+              (is (= "v66.legacy-version-tracking" (old-binary-latest-row conn ct)))
+              (is (= [["v56.legacy-version-tracking" "d58c"] ["v66.legacy-version-tracking" "d66b"]] (marker-rows conn ct))))))))))
+
+(deftest ensure-backfills-deployments-old-binaries-ran-test
+  (testing "deployments an old binary ran after version tracking started are recorded from their vNN. ids"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            ;; 58.9 (tracking) -> 59.0 (old) -> 60.0 (old) -> back to a tracking binary
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.9" :changesets ["v58.2025-01-01T00:00:00" "thing_one"]}
+                                                       {:deployment "d59" :changesets ["v59.2025-02-01T00:00:00"]}
+                                                       {:deployment "d60" :changesets ["v60.2025-03-01T00:00:00"]}])
+            (versions/ensure-version-tracking! conn db)
+            (is (= [["d58" "x.58.9" true] ["d59" "x.59.0.0" true] ["d60" "x.60.0.0" true]]
+                   (sort (version-rows conn))))
+            (is (= 59 (versions/previous-recorded-major (versions/recorded-deployments conn db) false))
+                "so `migrate down` steps back to the major the old binary left, not past it")))))))
+
+(deftest ensure-repairs-a-deployment-an-old-binary-rolled-back-test
+  (testing "an old binary's `migrate down` removes a major's vNN. changesets but not the version rows recording that major"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            ;; 58 -> 59.9 (tracking: v59 ids, a version-less changeset, the marker), then 59.0 (old) ran `migrate down`,
+            ;; which removed the v59 ids and nothing else
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.0.0" :changesets ["v58.2025-01-01T00:00:00"]}
+                                                       {:deployment "d59" :ran "x.59.9" :booted ["x.59.10"]
+                                                        :changesets ["thing_one"
+                                                                     {:id "v56.legacy-version-tracking" :author "version-tracking" :filename "legacy-version-tracking"}]}])
+            (versions/ensure-version-tracking! conn db)
+            (is (= [["d58" "x.58.0.0" true] ["d59" "x.58.0.0" true]] (sort (version-rows conn)))
+                "recorded as the major its changesets are back at, so a 58 binary boots against it")
+            (is (= 58 (versions/current-schema-major conn db)))))))
+    (testing "a deployment whose major's vNN. changesets are still there is left alone"
+      (mt/test-drivers #{:h2 :mysql :postgres}
+        (mt/with-temp-empty-app-db [conn driver/*driver*]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [db (.getDatabase liquibase)
+                  ct (liquibase/changelog-table-name liquibase)]
+              (versions/ensure-version-tracking! conn db)
+              ;; 59.0 (old) ran the v59 ids; 59.9 later ran only a version-less changeset
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d59" :ran "x.59.0.0" :changesets ["v59.2025-01-01T00:00:00"]}
+                                                         {:deployment "d59b" :ran "x.59.9" :changesets ["thing_one"]}
+                                                         {:deployment "d66" :ran "x.66.0" :changesets ["thing_two"]}])
+              (versions/ensure-version-tracking! conn db)
+              (is (= [["d59" "x.59.0.0" true] ["d59b" "x.59.9" true] ["d66" "x.66.0" true]] (sort (version-rows conn)))
+                  "and so is a version-less major, which has no vNN. changesets at all"))))))))
+
+(deftest deployments-are-ordered-like-liquibase-orders-them-test
+  (testing "rows are ordered by dateexecuted, then orderexecuted, like Liquibase: orderexecuted only increases within
+            an update run and can restart, so a later deployment may have lower values"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.0" :changesets ["v58.2025-01-01T00:00:00"]}
+                                                       {:deployment "d59" :ran "x.59.0" :changesets ["v59.2025-01-01T00:00:00"]}])
+            (jdbc/execute! {:connection conn} [(format "UPDATE %s SET orderexecuted = 0 WHERE deployment_id = 'd59'" ct)])
+            (is (= ["d59" "d58"] (map :deployment-id (versions/recorded-deployments conn db))))
+            (is (= "d59" (versions/last-deployment-id conn db)))
+            (is (= 59 (versions/current-schema-major conn db)))))))))
+
+(deftest ensure-heals-a-version-less-newest-row-test
+  (testing "whatever left a version-less row newest, the next entry point puts a marker after it"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.99" :changesets ["v58.2025-01-01T00:00:00" "thing_one"]}])
+            (versions/ensure-version-tracking! conn db)
+            (is (= "v56.legacy-version-tracking" (old-binary-latest-row conn ct)))
+            (testing "and leaves a newest row old binaries already read safely alone"
+              (mdb.test-util/fabricate-history! conn ct [{:deployment "d59" :ran "x.59.0.0" :changesets ["v59.2025-01-01T00:00:00"]}])
+              (versions/ensure-version-tracking! conn db)
+              (is (= "v59.2025-01-01T00:00:00" (old-binary-latest-row conn ct)))
+              (is (= [["v56.legacy-version-tracking" "d58"]] (marker-rows conn ct))))))))))
+
+(deftest which-majors-are-versioned-comes-from-the-changelog-test
+  (testing "a major is versioned when its own vNN. changesets are in the changelog -- however late a major still shipped some"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct [{:deployment "d65" :ran "x.65.0" :changesets ["v65.abc123"]}
+                                                       {:deployment "d66" :ran "x.66.9" :changesets ["v66.def456" "thing_one"]}])
+            (testing "its own ids tell old binaries the major, so it gets the position marker"
+              (versions/record-legacy-version-tracking! db 66 "d66")
+              (is (= [["v56.legacy-version-tracking" "d66"]] (marker-rows conn ct)))
+              (is (= 66 (versions/latest-applied-major-version conn db))))
+            (testing "an old 66 binary's `migrate down` removed v66.def456: the deployment is repaired to 65"
+              (jdbc/execute! {:connection conn} [(format "DELETE FROM %s WHERE id = 'v66.def456'" ct)])
+              (versions/ensure-version-tracking! conn db)
+              (is (= [["d65" "x.65.0" true] ["d66" "x.65.0.0" true]] (sort (version-rows conn))))
+              (is (= 65 (versions/current-schema-major conn db))))))))))

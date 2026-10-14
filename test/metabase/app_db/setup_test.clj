@@ -270,8 +270,9 @@
                 (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
               (testing "records the upgrading version"
                 (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.64\.0" sql)))
-              (testing "adds the legacy version-tracking marker so older binaries detect downgrades"
-                (is (re-find #"v64\.legacy-version-tracking" sql)))
+              (testing "ends with the marker older binaries read safely as the newest row (a versioned major's own ids
+                        give them its major, so it is the low position marker)"
+                (is (re-find #"v56\.legacy-version-tracking" sql)))
               (testing "the version table is created by the printed SQL, not on the live database"
                 (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_version" sql))
                 (is (false? (versions/versions-table-exists? conn))

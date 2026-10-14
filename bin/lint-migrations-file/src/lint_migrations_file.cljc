@@ -202,11 +202,12 @@
 
 (defn valid-version-less-id?
   "Whether `id` is a valid version-less changeset ID: lowercase letters/digits/underscores, at least one letter, and no
-  leading `v<digit>`."
+  leading `v`. Binaries from before version-less support read the schema's major from the highest `id LIKE 'v%'` and
+  roll back by the number in those ids, so a `view_metrics` id would sort above every `vNN.` id there and break both."
   [id]
   (boolean (and (re-matches #"[a-z0-9_]+" id)
                 (re-find #"[a-z]" id)
-                (not (re-find #"^v\d" id)))))
+                (not (str/starts-with? id "v")))))
 
 (defn- require-change-set-ids-match-file-format
   "Enforces that changeset IDs use the correct format for the file type:
@@ -216,11 +217,11 @@
   [change-log file]
   (cond
     ;; year-based directories use version-less IDs (e.g. `aeiagus09e`): lowercase letters/digits/underscores with at
-    ;; least one letter, and no leading `v<digit>`. This keeps out timestamp-style IDs (`2026-02-09T12:00:00`) and
+    ;; least one letter, and no leading `v`. This keeps out timestamp-style IDs (`2026-02-09T12:00:00`) and
     ;; version-prefixed IDs (`v60.aeiagus09e`, `v60abc`) -- the version must not be encoded in the ID -- and all-digit
     ;; IDs (`20260703`), which `decide-liquibase-file` would mistake for a pre-4.2 changeset if the year-directory
-    ;; filename signal were ever lost. A `v<digit>` prefix would pollute the `id LIKE 'v%'` version scans that older
-    ;; binaries use for downgrade detection.
+    ;; filename signal were ever lost. A leading `v` would pollute the `id LIKE 'v%'` version scans that older
+    ;; binaries use for downgrade detection and rollback.
     (year-dir-migration-file? file)
     (let [ids          (change-set-ids change-log)
           ;; the ISO date/timestamp the versioned ids were built from (`v50.2024-03-18T16:00:00`): checked first so
@@ -237,7 +238,7 @@
       (when (seq bad-ids)
         (throw (validation-error
                 (format (str "Migration file contains invalid changeset IDs (use a version-less ID: lowercase "
-                             "letters/digits/underscores with at least one letter, no leading 'v<digit>', and no "
+                             "letters/digits/underscores with at least one letter, no leading 'v', and no "
                              "timestamp or version prefix): %s")
                         (str/join ", " bad-ids))
                 {:invalid-ids (vec bad-ids)}))))
@@ -327,12 +328,8 @@
       (Integer/parseInt file-version))))
 
 (def first-versionless-major
-  "The first Metabase major whose changesets are version-less, and the first that ships the version-less runtime
-  support. From this major on every changeset lives in a year-based directory (e.g. `2026/20261001_something.yaml`)
-  with a version-less ID, so that the version a changeset ships with is decided by the branch it is merged into rather
-  than being baked into the changelog. Earlier majors are versioned only: a backport to one of them is a versioned copy
-  in its `0NN/` directory."
-  66)
+  "The first Metabase major whose changesets must all be version-less: they live in a year-based directory with a version-less ID"
+  67)
 
 (defn- require-no-versioned-changesets-from-first-versionless-major
   "Ensures no `vNN.`-prefixed changeset for [[first-versionless-major]] or later exists, whichever kind of versioned

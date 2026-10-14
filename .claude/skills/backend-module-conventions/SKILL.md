@@ -61,10 +61,10 @@ The docstring of `metabase.app-db.value-guard` explains what the guard refuses w
 
 ## Add app-DB migrations
 
-Follow the `app-db-migrations` skill (`.claude/skills/app-db-migrations/SKILL.md`): from v66 on, changesets are
-version-less, live in year directories like `resources/migrations/2026/` (`./bin/mage new-migration <name>`), and
-`./bin/lint-migrations-file.sh` enforces the rules. The versioned layout (`0NN/` directories, `vNN.` ids) is only for
-backports to v65 and earlier.
+Follow the `app-db-migrations` skill (`.claude/skills/app-db-migrations/SKILL.md`): changesets are version-less, live
+in year directories like `resources/migrations/2026/` (`./bin/mage new-migration <name>`), and are backported by
+cherry-picking the same file to each release branch. `./bin/lint-migrations-file.sh` enforces the rules. The versioned
+layout (`0NN/` directories, `vNN.` ids) only holds changesets that already shipped.
 
 The whole `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db` rule (the
 `app-db-namespaces` group in `.clj-kondo/config.edn`).

@@ -3,11 +3,12 @@ and enforce additional constraints (e.g. make sure you're not using duplicate mi
 one change in a single `changeSet`), plus the file-layout rules:
 
 - `resources/migrations/<year>/<yyyymmdd>_<name>.yaml` -- the current layout: version-less ids (lower-case letters,
-  digits and underscores, at least one letter, no `v<digit>` prefix, no ISO date/timestamp like the old
+  digits and underscores, at least one letter, no leading `v`, no ISO date/timestamp like the old
   `vNN.2024-03-18T16:00:00` ids). The version a changeset ships in is decided by the branch it is merged into.
 - `resources/migrations/0NN/…` and `0NN_update_migrations.yaml` -- the older versioned layouts, whose ids carry the
-  major (`vNN.…`). Versioned ids are refused from v66 on (`first-versionless-major`), the first release with
-  version-less changesets; these layouts remain only for backports to v65 and earlier.
+  major (`vNN.…`). Versioned ids are refused from v67 on (`first-versionless-major`). New changesets are version-less
+  on every branch, including the release branches of earlier majors, whose patch releases get version-less support
+  backported.
 
 Older/existing migrations are validated with a less-strict spec; newer ones use a stricter spec that enforces some
 additional constraints. The less-strict specs are in `x.unstrict` namespaces while equivalent stricter ones are in
