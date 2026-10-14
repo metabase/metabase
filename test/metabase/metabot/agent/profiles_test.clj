@@ -73,6 +73,11 @@
       (is (true? (profiles/profile-registered? :embedding_next)))
       (is (true? (profiles/profile-registered? :explorations)))
       (is (false? (profiles/profile-registered? :unknown-profile))))
+    (testing "profile-available? also needs an eval instance for an eval-only profile"
+      (is (= {:internal true, :internal-sql false, :unknown-profile false}
+             (into {} (for [p [:internal :internal-sql :unknown-profile]] [p (boolean (profiles/profile-available? p))]))))
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (true? (boolean (profiles/profile-available? :internal-sql))))))
     (testing "all profiles have required keys"
       (doseq [profile-id [:embedding_next :internal :internal-sql :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]

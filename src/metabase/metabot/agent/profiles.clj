@@ -300,6 +300,19 @@
   [profile-id]
   (contains? @*profiles profile-id))
 
+(def ^:private eval-profile-ids
+  "Profiles that exist only for evals. `:internal-sql` lets a user with only the SQL generation permission run SQL,
+  which no profile the product offers allows, so it runs only where `metabot-eval-profiles-enabled?` is set."
+  #{:internal-sql})
+
+(defn profile-available?
+  "Whether a profile with `profile-id` is registered and may run on this instance. An eval-only profile needs
+  `metabot-eval-profiles-enabled?`; elsewhere it is treated as unknown."
+  [profile-id]
+  (and (profile-registered? profile-id)
+       (or (not (contains? eval-profile-ids profile-id))
+           (metabot.settings/metabot-eval-profiles-enabled?))))
+
 (defn get-profile
   "Get profile configuration by profile-id keyword.
   The `:model` in the returned profile is resolved from the `llm-metabot-provider`

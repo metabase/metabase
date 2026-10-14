@@ -23,7 +23,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -474,18 +473,12 @@
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 
-(def ^:private eval-profile-ids
-  "Profiles that exist only for evals. `:internal-sql` lets a user with only the SQL generation permission run SQL,
-  which no profile the product offers allows, so it runs only where `metabot-eval-profiles-enabled?` is set."
-  #{:internal-sql})
-
 (defn- check-metabot-access!
-  "Throw a 400 if the requested profile exists only for evals and this instance does not run them, and a 403 if the
-  user's metabot permissions do not grant access to it. The 400 is the one an unknown profile gets, so the profile's
-  existence is not revealed."
+  "Throw a 400 if the requested profile is not available on this instance, and a 403 if the user's metabot
+  permissions do not grant access to it. The 400 is the one an unknown profile gets, so an eval-only profile's
+  existence is not revealed. The streaming endpoint makes the same availability check before it saves the turn."
   [profile-id perms]
-  (when (and (contains? eval-profile-ids profile-id)
-             (not (metabot.settings/metabot-eval-profiles-enabled?)))
+  (when-not (profiles/profile-available? profile-id)
     (throw (ex-info "Unknown profile" {:status-code 400})))
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
     (throw (ex-info (if (= missing :permission/metabot)
