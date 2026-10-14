@@ -39,7 +39,7 @@ describe.each<{
   {
     engineKey: "databricks",
     connectionString:
-      "jdbc:databricks://example.cloud.databricks.com:443/default;httpPath=/sql/1.0/warehouses/abc;IgnoreTransactions=0",
+      "jdbc:databricks://example.cloud.databricks.com:443;httpPath=/sql/1.0/warehouses/abc;IgnoreTransactions=0",
     additionalOptions: "IgnoreTransactions=0",
   },
 ])(
