@@ -144,7 +144,13 @@ export const MetabotInlineSQLPrompt = ({
           </Tooltip>
         )}
         {isLoading ? (
-          <MetabotWorkingIndicator pr="0.125rem" ta="right" flex={1} fz="sm" />
+          <MetabotWorkingIndicator
+            pr="0.125rem"
+            ta="right"
+            flex={1}
+            fz="sm"
+            ff="var(--mb-default-font-family)"
+          />
         ) : (
           <Box
             data-testid="metabot-inline-sql-error"
