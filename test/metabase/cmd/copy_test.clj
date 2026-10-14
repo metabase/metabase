@@ -152,7 +152,6 @@
     :model/Dependency
     :model/DependencyStatus
     :model/ExplorationQueryResult
-    :model/McpGroupPermission
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
