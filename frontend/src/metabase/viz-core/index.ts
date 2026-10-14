@@ -69,7 +69,6 @@ export { getFormattingOptionsWithoutScaling } from "./echarts/cartesian/model/ut
 export { createAxisVisibilityOption } from "./echarts/cartesian/option/axis";
 export {
   GOAL_LINE_DASH,
-  type GoalLineLabelLayout,
   type GoalLineParams,
   getGoalLineLabelLayout,
   getGoalLineParams,
