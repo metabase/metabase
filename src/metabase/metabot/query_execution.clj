@@ -1,12 +1,15 @@
 (ns metabase.metabot.query-execution
   "Run a serialized MBQL query on behalf of an agent and return one bounded page of rows."
   (:require
+   [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]])
+  (:import
+   (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,6 +37,35 @@
            {:agent-error? true
             :error        :query-timed-out}))
 
+(defonce ^:private time-limit-executor
+  (delay
+    (doto (ScheduledThreadPoolExecutor. 1
+                                        (reify ThreadFactory
+                                          (newThread [_ r]
+                                            (doto (Thread. ^Runnable r "metabot-query-time-limit")
+                                              (.setDaemon true)))))
+      (.setRemoveOnCancelPolicy true))))
+
+(defn- schedule-time-limit!
+  "Call `stop!` after `timeout-ms`. Returns the task, which the caller cancels when the query ends."
+  ^ScheduledFuture [timeout-ms stop!]
+  (.schedule ^ScheduledThreadPoolExecutor @time-limit-executor ^Runnable stop! (long timeout-ms) TimeUnit/MILLISECONDS))
+
+(defn- do-with-time-limit
+  "Call `thunk`, canceling the query it runs on [[qp.pipeline/*canceled-chan*]] after `timeout-ms`.
+   Sets `timed-out?` when the limit cancels it."
+  [timeout-ms timed-out? thunk]
+  ;; Rebinding `*query-timeout-ms*` would also stop the query, but a connection pool opened by this query would keep
+  ;; the shorter limit as its leak timeout and kill the connections of every later query on that database.
+  (let [canceled-chan qp.pipeline/*canceled-chan*
+        task          (schedule-time-limit! timeout-ms (fn []
+                                                         (reset! timed-out? true)
+                                                         (a/put! canceled-chan ::timed-out)))]
+    (try
+      (thunk)
+      (finally
+        (.cancel task false)))))
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
@@ -48,19 +80,29 @@
                                             :context     context}))
         timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
         timer      (u/start-timer)
+        timed-out? (atom false)
+        run        #(qp/process-query query)
         ;; Depending on how far it got, a stopped run comes back from the QP as a failure, as nothing,
         ;; as an exception, or as a completed result holding only the rows read before it stopped.
         ;; Each is reported as what stopped it, so the model never reads it as a broken query or a complete page.
-        ;; The QP stops a query no sooner than the limit, so a run that lasted that long was stopped by it.
+        ;; The database query timeout can stop the run first when it is as short as the limit.
+        ;; It stops a query no sooner than that, so a run that lasted as long as the limit was stopped by one of them.
         stopped    #(cond
-                      (qp.pipeline/canceled?* request-canceled-chan) (query-canceled)
-                      (some-> timeout-ms (<= (u/since-ms timer)))   (query-timed-out timeout-ms))
+                      (qp.pipeline/canceled?* request-canceled-chan)
+                      (query-canceled)
+
+                      (or @timed-out? (some-> timeout-ms (<= (u/since-ms timer))))
+                      (query-timed-out timeout-ms))
         result     (try
                      ;; Each query gets its own channel.
                      ;; The QP closes it when the query ends and writes to it on a timeout.
                      ;; On one channel for the whole turn, either would cancel every later query.
-                     (binding [driver.settings/*query-timeout-ms* (or timeout-ms driver.settings/*query-timeout-ms*)]
-                       (qp.pipeline/do-with-own-canceled-chan request-canceled-chan #(qp/process-query query)))
+                     ;; A query with a time limit needs its own channel even when no request can cancel it.
+                     (qp.pipeline/do-with-own-canceled-chan
+                      (or request-canceled-chan (when timeout-ms (a/promise-chan)))
+                      (if timeout-ms
+                        #(do-with-time-limit timeout-ms timed-out? run)
+                        run))
                      (catch Throwable e
                        (throw (or (stopped) e))))]
     (when-let [e (stopped)]
