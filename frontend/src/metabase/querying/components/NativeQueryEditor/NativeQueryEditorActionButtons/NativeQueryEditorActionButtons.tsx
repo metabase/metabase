@@ -11,8 +11,6 @@ import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
-export const NATIVE_EDITOR_ICON_SIZE = 16;
-
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
   features: SidebarFeatures;
@@ -63,7 +61,7 @@ export const NativeQueryEditorActionButtons = (
     <Flex
       component="aside"
       data-testid="native-query-editor-action-buttons"
-      gap="xl"
+      gap="sm"
       align="center"
     >
       {promptButton}
@@ -72,27 +70,18 @@ export const NativeQueryEditorActionButtons = (
           <PreviewQueryButton {...props} />
         )}
       {features.dataReference && (
-        <DataReferenceButton
-          {...props}
-          size={NATIVE_EDITOR_ICON_SIZE}
-          onClick={toggleDataReference}
-        />
+        <DataReferenceButton {...props} onClick={toggleDataReference} />
       )}
       {features.snippets && showSnippetSidebarButton && (
-        <SnippetSidebarButton {...props} size={NATIVE_EDITOR_ICON_SIZE} />
+        <SnippetSidebarButton {...props} />
       )}
       {features.variables && (
-        <NativeVariablesButton
-          {...props}
-          size={NATIVE_EDITOR_ICON_SIZE}
-          onClick={toggleTemplateTagsEditor}
-        />
+        <NativeVariablesButton {...props} onClick={toggleTemplateTagsEditor} />
       )}
       {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <ActionIcon
             variant="subtle"
-            size="xs"
             aria-label={t`Auto-format`}
             onClick={onFormatQuery}
           >

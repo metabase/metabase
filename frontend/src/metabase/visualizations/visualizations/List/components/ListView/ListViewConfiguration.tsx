@@ -308,15 +308,13 @@ export const ListViewConfiguration = ({
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={5} p="lg">
                   <ActionIcon
-                    variant="subtle"
-                    radius="lg"
+                    variant="light"
+                    radius="xl"
                     disabled={!imageColumn}
-                    className={cx({
-                      [S.imageColumn]: !!imageColumn,
-                      [S.selected]:
-                        iconConfig.useImageColumn &&
-                        iconConfig.entityIconEnabled,
-                    })}
+                    selected={
+                      iconConfig.useImageColumn && iconConfig.entityIconEnabled
+                    }
+                    className={cx({ [S.imageColumn]: !!imageColumn })}
                     onClick={() => {
                       handleConfigurationChange({
                         left: leftValues,
@@ -349,13 +347,12 @@ export const ListViewConfiguration = ({
                   {Object.entries(ENTITY_ICONS).map(([key, iconName]) => (
                     <Flex justify="center" align="center" key={key}>
                       <ActionIcon
-                        variant="subtle"
-                        radius="lg"
-                        className={cx({
-                          [S.selected]:
-                            iconConfig.selectedEntityIcon === iconName &&
-                            iconConfig.entityIconEnabled,
-                        })}
+                        variant="light"
+                        radius="xl"
+                        selected={
+                          iconConfig.selectedEntityIcon === iconName &&
+                          iconConfig.entityIconEnabled
+                        }
                         onClick={() => {
                           handleConfigurationChange({
                             left: leftValues,
@@ -365,7 +362,7 @@ export const ListViewConfiguration = ({
                           });
                         }}
                       >
-                        <Icon name={iconName} c="text-primary" />
+                        <Icon name={iconName} />
                       </ActionIcon>
                     </Flex>
                   ))}

@@ -219,7 +219,6 @@ export function Editor(props: EditorProps) {
             <ButtonTooltip label={t`Auto-format`}>
               <ActionIcon
                 variant="subtle"
-                size="sm"
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}

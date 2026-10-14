@@ -16,7 +16,6 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { MetabotProvider } from "metabase/metabot/context";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
-import { NATIVE_EDITOR_ICON_SIZE } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -65,7 +64,6 @@ function TestEditor({ question }: { question: Question }) {
           <NativeQueryEditor.Sidebar
             promptButton={
               <MetabotPromptButton
-                size={NATIVE_EDITOR_ICON_SIZE}
                 isPromptInputOpen={isPromptOpen}
                 onClick={togglePrompt}
               />

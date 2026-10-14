@@ -101,11 +101,11 @@ export function BreakoutColumnListItem({
     >
       <Flex
         className={BreakoutColumnListItemS.Content}
+        px="sm"
         onClick={handleListItemClick}
       >
         <Flex
           align="center"
-          ml="sm"
           p="0.5rem 0"
           className={BreakoutColumnListItemS.TitleContainer}
         >
@@ -143,6 +143,7 @@ export function BreakoutColumnListItem({
         {isSelected && (
           <ActionIcon
             variant="on-dark-secondary"
+            size="sm"
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
           >

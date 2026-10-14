@@ -99,7 +99,7 @@ export const ChartSettingSegmentsEditor = ({
                   {(segments.length > 1 || canRemoveAll) && (
                     <ActionIcon
                       variant="subtle"
-                      size="sm"
+                      size="lg"
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }

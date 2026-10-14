@@ -332,7 +332,6 @@ function SidebarShowFilterMenu({
           variant={showHidden ? "filled" : undefined}
           className={S.filterButton}
           radius="xl"
-          size="lg"
           aria-label={t`Filter`}
           aria-pressed={showHidden}
           data-testid="exploration-show-hidden-toggle"

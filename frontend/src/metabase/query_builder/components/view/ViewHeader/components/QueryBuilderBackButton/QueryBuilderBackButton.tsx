@@ -63,7 +63,7 @@ export function QueryBuilderBackButton({
         to={url}
         {...actionIconProps}
       >
-        <Icon c="core-brand" name="arrow_left" />
+        <Icon name="arrow_left" />
       </ActionIcon>
     </Tooltip>
   );
