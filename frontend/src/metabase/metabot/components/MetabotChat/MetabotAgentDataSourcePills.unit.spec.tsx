@@ -3,6 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
@@ -16,6 +18,7 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import {
   CodeEditTablePills,
@@ -276,6 +279,51 @@ describe("MetabotAgentDataSourcePills", () => {
         },
       }),
     ).toHaveLength(1);
+  });
+
+  it("parses MBQL 5 native SQL queries and requests extracted sources", async () => {
+    const sql = "SELECT * FROM ORDERS";
+    setupNativeEndpoints();
+
+    renderWithProviders(
+      <GeneratedCardTablePills
+        messageId="message-5"
+        value={createGeneratedCard(
+          Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query: sql }),
+        )}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
+        body: {
+          database_id: SAMPLE_DB_ID,
+          sql,
+        },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("parses MBQL 5 source tables", async () => {
+    setupTableEndpoints(ORDERS_TABLE);
+
+    renderWithProviders(
+      <GeneratedCardTablePills
+        messageId="message-4"
+        value={createGeneratedCard(
+          Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        )}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
   });
 
   it("renders extracted native query model sources", async () => {

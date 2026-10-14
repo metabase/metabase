@@ -84,6 +84,26 @@
       (is (not (contains? stripped :lib/type)))
       (is (= stripped (links/->legacy-mbql stripped))))))
 
+(deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
+  (testing "temporal filters legacy MBQL cannot carry through JSON survive the /question# hash (BOT-1972)"
+    ;; Both shapes used to arrive as legacy MBQL with their units stringified, fail legacy
+    ;; normalization, and be silently deleted by `lib.convert/clean` on the frontend.
+    (let [date  (meta/field-metadata :checkins :date)
+          query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
+      (doseq [[desc filter-clause] {"between with absolute-datetime bounds"
+                                    (lib/between date
+                                                 (lib/absolute-datetime "2025-01-01" :day)
+                                                 (lib/absolute-datetime "2026-12-31" :day))
+                                    "during"
+                                    [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]}]
+        (testing desc
+          (let [query         (lib/filter query filter-clause)
+                dataset-query (:dataset_query (decode-question-url (links/pseudo-card->link {:dataset_query query})))]
+            (is (= "mbql/query" (:lib/type dataset-query)))
+            (testing "normalizing the hash the way the frontend does keeps the filter intact"
+              (is (= (lib/filters query)
+                     (-> dataset-query lib/normalize :stages first :filters))))))))))
+
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
   (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
     (let [chart-id     "chart-fe-1"
