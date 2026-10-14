@@ -141,6 +141,38 @@
                         (t2/select-one :model/MetabotMessage
                                        :conversation_id conversation-id :role "assistant")))))))))))
 
+(deftest agent-streaming-offers-run-query-only-in-a-private-conversation-test
+  (let [rasta (mt/user->id :rasta)]
+    (mt/with-temporary-setting-values [llm.settings/llm-providers                       llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider             test-provider
+                                       metabot.settings/metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id rasta}
+                       :model/MetabotConversation {joined :id} {:user_id rasta}
+                       :model/MetabotMessage      _            {:conversation_id joined, :user_id (mt/user->id :lucky)}
+                       :model/MetabotConversation {thread :id} {:user_id rasta, :slack_thread_ts "1.2"}]
+          (mt/with-model-cleanup [:model/MetabotMessage]
+            (let [offered? (fn [conversation-id]
+                             (let [requests (atom [])]
+                               (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                                           (fn [request]
+                                                             (swap! requests conj request)
+                                                             (mut/mock-llm-response [{:type :text :text "Done"}]))
+                                                           conversation-title/ensure-title!
+                                                           (constantly {:status :ready, :title "Orders"})]
+                                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                       {:message         "How many orders?"
+                                                        :context         {}
+                                                        :conversation_id conversation-id
+                                                        :state           {}}))
+                               (contains? (set (map :tool-name (:tools (first @requests)))) "run_query")))]
+              (testing "the user's own conversation offers run_query"
+                (is (true? (offered? own))))
+              (testing "a conversation someone else has written to does not"
+                (is (false? (offered? joined))))
+              (testing "a Slack thread does not"
+                (is (false? (offered? thread)))))))))))
+
 (def ^:private openrouter-error-chunks
   "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as
   `finish_reason \"error\"` rather than as an error event."
