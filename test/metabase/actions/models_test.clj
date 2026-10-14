@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
@@ -267,7 +268,8 @@
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
             (is (false? (mi/can-write? action)))
-            (is (false? (mi/can-write? :model/Action (:id action))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                  (api/write-check :model/Action (:id action))))
             (is (false? (:can_write (t2/hydrate action :can_write))))
             (testing "nor creates one there, or moves one in"
               (is (false? (mi/can-create? :model/Action (action-in app-id))))

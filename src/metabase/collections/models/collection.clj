@@ -160,17 +160,6 @@
     (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
     :else (collections.db/collection-remote-synced? (u/the-id collection-or-id))))
 
-(defn data-apps-collection?
-  "Is `collection-or-id` a collection of the data apps namespace? Reads the namespace from the app DB unless given a
-  collection with `:namespace`."
-  [collection-or-id]
-  (= data-apps-ns
-     (some-> (if (and (map? collection-or-id) (contains? collection-or-id :namespace))
-               (:namespace collection-or-id)
-               ;; the root collection has no ID, and is the default namespace's
-               (some-> (u/id collection-or-id) collections.db/collection-namespace))
-             keyword)))
-
 (defn- is-library?
   "Is this the Library collection?"
   [collection]
@@ -388,7 +377,7 @@
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
         ;; not even an administrator edits a data app's collection: only a pull of its app changes it
-        (not (data-apps-collection? instance))
+        (not (perms/data-apps-namespace-collection? instance))
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]

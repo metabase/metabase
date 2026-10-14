@@ -200,7 +200,6 @@
           (some? (:id (audit/default-audit-collection)))
           ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (not (collection/data-apps-collection? (or (:collection instance) (:collection_id instance))))
     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
     (parent-document-permits? instance :write)))
   ([_ pk]

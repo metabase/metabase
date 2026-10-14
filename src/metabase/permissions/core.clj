@@ -99,6 +99,7 @@
   collection-id-only-read-models
   collection-read-access-group-ids
   current-user-has-application-permissions?
+  data-apps-namespace-collection?
   define-collection-based-visibility!
   grant-application-permissions!
   grant-collection-read-permissions!

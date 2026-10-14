@@ -124,9 +124,9 @@ Collection access alone does not grant app access.
 
 Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
 
-Nobody can write a collection of the `data-apps` namespace, or the cards and actions in it, administrators included,
-with or without remote sync: the `can-write?` of collections, cards and actions refuses them, and a pull is what
-changes them.
+Nobody can write a collection of the `data-apps` namespace, or what it holds, administrators included, with or
+without remote sync: the collection's `can-write?` refuses it, the write permissions of everything that takes them
+from its collection are a path no user holds, and a pull is what changes them.
 
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
