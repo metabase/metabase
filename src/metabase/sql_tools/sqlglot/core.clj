@@ -41,6 +41,7 @@
     :presto-jdbc         "presto"
     :starburst           "trino"
     :clickhouse          "clickhouse"
+    :druid-jdbc          "druid"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
