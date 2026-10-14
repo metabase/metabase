@@ -23,7 +23,6 @@
    [malli.transform :as mtx]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
-   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.shared :as shared]
@@ -64,6 +63,12 @@
   forgot to add their tool to it."
   [:map {:closed true}
    [:profile-id  :keyword]
+   ;; The scope set granted to the user this turn. Passed rather than read from
+   ;; `metabase.metabot.scope/*current-user-scope*` because requiring that namespace from here is a
+   ;; load cycle: it reaches the provider adapters through `metabot.settings`, and those require
+   ;; `metabase.metabot.self.core`, which requires this namespace. `tools/->entries` reads the var
+   ;; once per turn, inside the request, and puts it here.
+   [:user-scope  [:set :string]]
    ;; The resolved Metabot row, not an id: `tools.shared/*metabot*` carries the row so a tool can
    ;; scope a query to that metabot's collection.
    [:metabot     [:maybe :map]]
@@ -261,10 +266,10 @@
   path to offer it, and a profile that lists a tool the user may not call is a configuration problem
   the user needs to see. The message names the tool because that is the actionable part — it says
   which permission to ask for."
-  [{tool-name :name :keys [scope]}]
-  (when (and scope (not (api-scope/scope-matches? scope/*current-user-scope* scope)))
+  [{tool-name :name :keys [scope]} user-scope]
+  (when (and scope (not (api-scope/scope-matches? user-scope scope)))
     (log/warnf "Scope check failed for tool %s — required: %s, granted: %s"
-               tool-name scope scope/*current-user-scope*)
+               tool-name scope user-scope)
     (tools.error/unrecoverable! :scope-denied
                                 {:user-message (tru "You don''t have permission to use the {0} tool."
                                                     tool-name)
@@ -348,7 +353,7 @@
       (let [{:keys [declaration tool]} (or (get entries tool-name)
                                            (throw (unknown-tool-ex tool-name entries)))
             checked                     (validated-args declaration args)]
-        (check-scope! declaration)
+        (check-scope! declaration (:user-scope ctx))
         (-> (call-tool tool checked ctx)
             (->> (checked-result tool-name))
             rendered-output))

@@ -5,6 +5,7 @@
   converted — an `mu/defn` var whose metadata carries `:tool-name`, `:schema` and friends.
   `metabase.metabot.tools.legacy` wraps the second kind, so [[->entries]] treats both the same."
   (:require
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase.metabot.tools.charts :as tools.charts]
@@ -131,8 +132,13 @@
   `metabase.metabot.self.schema/tool-function` reads. It is the declaration's `:args` either way."
   [tool-list memory-atom metabot profile-id]
   (let [entries (tools.core/entries (tools.legacy/adapt-all tool-list))
+        ;; `*current-user-scope*` is read here, once per turn and inside the request, rather than by
+        ;; the runtime: `metabase.metabot.scope` reaches the provider adapters through
+        ;; `metabot.settings`, and those require `metabase.metabot.self.core`, which requires the
+        ;; runtime — so the runtime cannot require scope without a load cycle.
         ctx     {:profile-id  profile-id
                  :metabot     metabot
+                 :user-scope  scope/*current-user-scope*
                  :tool-names  (set (keys entries))
                  :memory-atom memory-atom}]
     (update-vals

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -98,7 +99,11 @@
 (defn- ctx
   ([] (ctx {}))
   ([overrides]
-   (merge {:profile-id :sql :metabot nil :tool-names all-tool-names} overrides)))
+   (merge {:profile-id :sql :metabot nil :tool-names all-tool-names
+           ;; The runtime takes the user's scope from ctx rather than reading
+           ;; `metabase.metabot.scope/*current-user-scope*` — see `::ctx`.
+           :user-scope api-scope/unrestricted}
+          overrides)))
 
 (defn- invoke
   ([tool-name args] (invoke (ctx) tool-name args))
@@ -210,14 +215,13 @@
 
 (deftest ^:parallel scope-denial-is-unrecoverable-test
   (testing "the agent cannot acquire a scope, so there is no alternative path to offer it"
-    (let [outcome (invoke "scoped" {})]
+    (let [outcome (tools.runtime/invoke entries (ctx {:user-scope #{}}) "scoped" {})]
       (is (=? {:class :unrecoverable :code :scope-denied} (:error outcome)))
       (testing "and the user is told which tool to ask for"
         (is (str/includes? (get-in outcome [:error :user-message]) "scoped")))))
   (testing "a satisfied scope runs the tool"
     (is (= {:output "ok"}
-           (binding [scope/*current-user-scope* #{"agent:sql:*"}]
-             (tools.runtime/invoke entries (ctx) "scoped" {}))))))
+           (tools.runtime/invoke entries (ctx {:user-scope #{"agent:sql:*"}}) "scoped" {})))))
 
 (deftest ^:parallel invoke-never-throws-test
   (testing "every caller has to pair a tool_use with a tool_result, so nothing escapes"
@@ -360,10 +364,14 @@
             :internal          :unrecoverable}
            tools.runtime/runtime-codes))
     (testing "and every one of them is reachable through invoke"
+      ;; The scoped case needs a ctx that grants nothing; the rest run under the default
+      ;; unrestricted one.
       (is (= #{:unknown-tool :invalid-json :invalid-arguments :scope-denied :internal}
-             (set (keep #(get-in (invoke (first %) (second %)) [:error :code])
+             (set (keep (fn [[tool-name args overrides]]
+                          (get-in (tools.runtime/invoke entries (ctx overrides) tool-name args)
+                                  [:error :code]))
                         [["nope" {}]
                          ["happy" {tools.runtime/raw-arguments-key "{"}]
                          ["happy" {:m 1}]
-                         ["scoped" {}]
+                         ["scoped" {} {:user-scope #{}}]
                          ["crash" {}]])))))))

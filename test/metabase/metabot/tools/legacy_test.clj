@@ -109,7 +109,7 @@
   ([extra-tool-names tool-name args]
    (binding [scope/*current-user-scope* #{"*"}]
      (tools.runtime/invoke entries
-                           {:profile-id :nlq :metabot nil
+                           {:profile-id :nlq :metabot nil :user-scope #{"*"}
                             :tool-names (into extra-tool-names (keys entries))}
                            tool-name args))))
 
@@ -226,11 +226,10 @@
             (invoke "old_plain" {:m 1}))))
   (testing "and the scope is checked from the declaration"
     (is (=? {:error {:class :unrecoverable :code :scope-denied}}
-            (binding [scope/*current-user-scope* #{"agent:nothing"}]
-              (tools.runtime/invoke entries
-                                    {:profile-id :nlq :metabot nil
-                                     :tool-names (set (keys entries))}
-                                    "old_plain" {:n 1})))))
+            (tools.runtime/invoke entries
+                                  {:profile-id :nlq :metabot nil :user-scope #{"agent:nothing"}
+                                   :tool-names (set (keys entries))}
+                                  "old_plain" {:n 1}))))
   (testing "a converted tool's recovery steps are filtered the same way"
     (is (= ["Widget 3 does not exist." "Call `search` to find a widget id."]
            (str/split-lines (:output (invoke "new_widget" {:id 3})))))
