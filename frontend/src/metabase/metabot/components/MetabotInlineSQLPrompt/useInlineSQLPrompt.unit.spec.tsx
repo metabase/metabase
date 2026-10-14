@@ -16,7 +16,10 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { MetabotProvider } from "metabase/metabot/context";
-import { mockAgentEndpoint } from "metabase/metabot/tests/utils";
+import {
+  erroredResponse,
+  mockAgentEndpoint,
+} from "metabase/metabot/tests/utils";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
 import { NATIVE_EDITOR_ICON_SIZE } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { checkNotNull } from "metabase/utils/types";
@@ -117,6 +120,20 @@ function setup({ isMetabotEnabled = true } = {}) {
   );
 }
 
+async function startGenerating() {
+  expect(await screen.findByText("SELECT")).toBeInTheDocument();
+  await userEvent.click(await screen.findByLabelText("Ask Metabot"));
+  const prompt = await screen.findByTestId("metabot-inline-sql-prompt");
+  await userEvent.type(within(prompt).getByRole("textbox"), "count orders");
+  await userEvent.click(
+    within(prompt).getByRole("button", { name: "Send to Metabot" }),
+  );
+  expect(await within(prompt).findByRole("status")).toHaveTextContent(
+    "Working on it...",
+  );
+  return prompt;
+}
+
 describe("useInlineSQLPrompt", () => {
   it("toggles the inline prompt open and closed", async () => {
     setup();
@@ -161,21 +178,45 @@ describe("useInlineSQLPrompt", () => {
     });
     setup();
 
-    expect(await screen.findByText("SELECT")).toBeInTheDocument();
-    await userEvent.click(await screen.findByLabelText("Ask Metabot"));
-    const prompt = await screen.findByTestId("metabot-inline-sql-prompt");
-    await userEvent.type(within(prompt).getByRole("textbox"), "count orders");
-    await userEvent.click(
-      within(prompt).getByRole("button", { name: "Send to Metabot" }),
-    );
-    expect(await within(prompt).findByRole("status")).toHaveTextContent(
-      "Working on it...",
-    );
+    await startGenerating();
 
     agent.sendResponse();
     await waitFor(() => {
       expect(screen.queryByText("Working on it...")).not.toBeInTheDocument();
     });
+  });
+
+  it("replaces the working status with the error when generation fails", async () => {
+    const agent = mockAgentEndpoint({
+      events: erroredResponse,
+      waitForResponse: true,
+    });
+    setup();
+
+    const prompt = await startGenerating();
+
+    agent.sendResponse();
+    expect(
+      await within(prompt).findByText(
+        "Sorry, I ran into an error. Could you please try that again?",
+      ),
+    ).toBeInTheDocument();
+    expect(within(prompt).queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("replaces the working status with the interruption notice when generation is stopped", async () => {
+    mockAgentEndpoint({ stream: new ReadableStream() });
+    setup();
+
+    const prompt = await startGenerating();
+
+    await userEvent.click(
+      within(prompt).getByRole("button", { name: "Stop generating" }),
+    );
+    expect(
+      await within(prompt).findByText("Response from Metabot was interrupted"),
+    ).toBeInTheDocument();
+    expect(within(prompt).queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("does not render when metabot is not enabled", async () => {
