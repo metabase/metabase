@@ -66,7 +66,9 @@ describe("scenarios > data studio > dashboards", () => {
         .should("be.visible")
         .and("contain", "Question");
 
-      cy.log("Edit opens the main-app editor and Cancel comes back to Contents");
+      cy.log(
+        "Edit opens the main-app editor and Cancel comes back to Contents",
+      );
       dashboardHeader().findByRole("button", { name: /Edit/ }).click();
       cy.location("pathname").should(
         "match",

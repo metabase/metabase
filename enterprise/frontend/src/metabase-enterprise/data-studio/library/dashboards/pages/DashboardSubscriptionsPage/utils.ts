@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import {
   buildFilterText,
@@ -122,9 +122,8 @@ export function formatChannelSchedule(
   ) {
     return schedule;
   }
-  return c(
-    "{0} is when a subscription sends, like 'Daily at 8:00 AM', and {1} is a timezone abbreviation",
-  ).t`${schedule} ${timezone}`;
+  // Not translated: ttag rejects a message made only of placeholders
+  return `${schedule} ${timezone}`;
 }
 
 export function getChannelDescription({
