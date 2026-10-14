@@ -44,11 +44,6 @@
                 (fn []
                   (a/>!! outer-chan ::canceled)
                   (received qp.pipeline/*canceled-chan*)))))))
-    (testing "an outer query canceled already is seen by the inner one before it starts"
-      (is (= ::canceled
-             (qp.pipeline/do-with-own-canceled-chan
-              (poll-only-chan! ::canceled)
-              (fn [] (a/poll! qp.pipeline/*canceled-chan*))))))
     (testing "without an outer channel, none is bound"
       (is (nil? (qp.pipeline/do-with-own-canceled-chan (fn [] qp.pipeline/*canceled-chan*)))))
     (testing "a channel passed in cancels the query in place of the bound one"
@@ -59,3 +54,10 @@
                 (fn []
                   (a/>!! request-chan ::canceled)
                   (received qp.pipeline/*canceled-chan*)))))))))
+
+(deftest do-with-own-canceled-chan-already-canceled-test
+  (testing "an outer query canceled already is seen by the inner one before it starts"
+    (is (= ::canceled
+           (qp.pipeline/do-with-own-canceled-chan
+            (poll-only-chan! ::canceled)
+            (fn [] (a/poll! qp.pipeline/*canceled-chan*)))))))
