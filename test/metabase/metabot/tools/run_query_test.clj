@@ -339,14 +339,16 @@
 
 (deftest run-query-missing-database-for-admin-test
   (testing "an admin may read any database id, but a missing one still reads as not found, not as an unreadable query"
-    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (binding [shared/*memory-atom* (atom {:state {:queries {"q1" {:database Integer/MAX_VALUE
-                                                                      :type     :query
-                                                                      :query    {:source-table 1}
-                                                                      :stages   []}}}})]
-          (is (= {:output unreadable-database-output}
-                 (run-query/run-query-tool {:query_id "q1"}))))))))
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (binding [shared/*memory-atom* (atom {:conversation-id conversation-id
+                                                :state           {:queries {"q1" {:database Integer/MAX_VALUE
+                                                                                  :type     :query
+                                                                                  :query    {:source-table 1}
+                                                                                  :stages   []}}}})]
+            (is (= {:output unreadable-database-output}
+                   (run-query/run-query-tool {:query_id "q1"})))))))))
 
 (defn- not-read-only-output
   "The read-only refusal for q1, giving `problem` as the reason."
