@@ -606,6 +606,7 @@
                   (action-deps action-id))))
          (testing "deleting an action removes its dependencies and status"
            (t2/delete! :model/Action action-id)
+           (deps.test/synchronously-run-backfill!)
            (is (empty? (action-deps action-id)))
            (is (not (t2/exists? :model/DependencyStatus :entity_type :action :entity_id action-id)))))))))
 
