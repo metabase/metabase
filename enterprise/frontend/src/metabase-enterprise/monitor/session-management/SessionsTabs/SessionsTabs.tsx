@@ -4,7 +4,7 @@ import {
   PillTabNavigation,
   getTabCount,
 } from "metabase/common/components/PillTabNavigation";
-import { useSessionCountsQuery } from "metabase-enterprise/api";
+import { useGetSessionCountsQuery } from "metabase-enterprise/api";
 import type { IconName } from "metabase-types/api";
 
 import type { SessionsTab } from "../SessionsPage/types";
@@ -22,7 +22,7 @@ type TabConfig = {
 
 /** Session population navigation with counts independent of table filters. */
 export const SessionsTabs = ({ tab, onChange }: SessionsTabsProps) => {
-  const { currentData: counts, isError } = useSessionCountsQuery(undefined, {
+  const { currentData: counts, isError } = useGetSessionCountsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
   const tabs: TabConfig[] = [
