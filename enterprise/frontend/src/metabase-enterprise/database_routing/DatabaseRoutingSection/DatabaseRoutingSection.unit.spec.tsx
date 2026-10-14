@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
 import type {
   AnonymouslyReachableEntity,
   Database,
@@ -63,11 +64,38 @@ const waitForReachabilityFact = () =>
     expect(gets.some(({ url }) => url.includes("anonymous-reach"))).toBe(true);
   });
 
+const QUESTION = "Keep serving anonymous visitors?";
+
+const findQuestion = () => screen.findByRole("dialog", { name: QUESTION });
+const queryQuestion = () => screen.queryByRole("dialog", { name: QUESTION });
+
+const answerQuestion = async (
+  answer: "Keep serving them" | "Stop serving them",
+) =>
+  userEvent.click(
+    within(await findQuestion()).getByRole("button", { name: answer }),
+  );
+
+/** Switch routing on and answer the question it raises, which sends nothing on its own. */
+const enableRoutingAndAnswer = async (
+  answer: "Keep serving them" | "Stop serving them",
+) => {
+  await userEvent.click(screen.getByLabelText("Enable database routing"));
+  await answerQuestion(answer);
+};
+
+const pickUserAttribute = async (attribute: string) => {
+  await userEvent.click(await screen.findByTestId("db-routing-user-attribute"));
+  await userEvent.click(await screen.findByRole("option", { name: attribute }));
+};
+
 interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
   routerUpdateStatus?: number;
   anonymouslyReachable?: boolean;
+  /** Hold the anonymous-reach response until the test releases it, so a click can get in first. */
+  holdReach?: boolean;
 }
 
 const setup = ({
@@ -75,15 +103,19 @@ const setup = ({
   isAdmin = true,
   routerUpdateStatus = 200,
   anonymouslyReachable = false,
+  holdReach = false,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
+  const anonymousReach = createMockDatabaseAnonymousReach(
+    anonymouslyReachable ? reachServing([reachingEntity()]) : undefined,
+  );
+  const heldReach = defer<DatabaseAnonymousReach>();
   setupDatabaseAnonymousReachEndpoint(
     database,
-    createMockDatabaseAnonymousReach(
-      anonymouslyReachable ? reachServing([reachingEntity()]) : undefined,
-    ),
+    holdReach ? heldReach.promise : anonymousReach,
   );
+  const releaseReach = () => heldReach.resolve(anonymousReach);
   fetchMock.put(
     "express:/api/ee/database-routing/router-database/:id",
     routerUpdateStatus === 200
@@ -104,13 +136,18 @@ const setup = ({
     }),
   );
 
-  renderWithProviders(<DatabaseRoutingSection database={database} />, {
-    storeInitialState: {
-      currentUser: createMockUser({ is_superuser: isAdmin }),
-      settings: createMockSettingsState(createMockSettings()),
+  const utils = renderWithProviders(
+    <DatabaseRoutingSection database={database} />,
+    {
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+        settings: createMockSettingsState(createMockSettings()),
+      },
+      withUndos: true,
     },
-    withUndos: true,
-  });
+  );
+
+  return { ...utils, releaseReach };
 };
 
 describe("DatabaseRoutingSection", () => {
@@ -253,10 +290,13 @@ describe("DatabaseRoutingSection anonymous reachability warning", () => {
     });
     await waitForReachabilityFact();
 
-    await userEvent.click(screen.getByLabelText("Enable database routing"));
+    await enableRoutingAndAnswer("Stop serving them");
 
-    // nothing is stored yet, so nothing has stopped
+    // the question at the toggle has already put this decision to the admin
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
+    expect(
+      screen.queryByText(/will stop serving anonymous visitors/),
+    ).not.toBeInTheDocument();
   });
 
   it("should render no alert at all when nothing anonymous reaches the database", async () => {
@@ -420,5 +460,363 @@ describe("DatabaseRoutingSection anonymous access grant", () => {
     expect(
       await screen.findByLabelText("Allow anonymous access"),
     ).toBeDisabled();
+  });
+});
+
+describe("DatabaseRoutingSection anonymous access question at the toggle", () => {
+  it("should ask before sending anything when routing is switched on for a reachable database", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+
+    expect(await findQuestion()).toBeInTheDocument();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should return the toggle to off and send nothing when the question is cancelled", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+    await userEvent.click(
+      within(await findQuestion()).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(queryQuestion()).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Enable database routing")).not.toBeChecked();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should send the answer and the user attribute as one request", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await pickUserAttribute("cool_guy");
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: true,
+    });
+  });
+
+  it("should show the pending answer on the Allow anonymous access switch", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+
+    const grant = await screen.findByLabelText("Allow anonymous access");
+    expect(grant).toBeChecked();
+    // sitting disabled would read as though the question had never been asked
+    expect(grant).toBeEnabled();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should discard the pending answer when routing is switched back off", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+    const routingToggle = screen.getByLabelText("Enable database routing");
+
+    await userEvent.click(routingToggle);
+    await answerQuestion("Keep serving them");
+    await userEvent.click(routingToggle);
+    await userEvent.click(routingToggle);
+
+    expect(screen.getByLabelText("Allow anonymous access")).not.toBeChecked();
+    // and the question comes back, because there is nothing held to answer it
+    expect(await findQuestion()).toBeInTheDocument();
+  });
+
+  it("should send a declined answer explicitly, rather than leaving it to the default", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Stop serving them");
+    await pickUserAttribute("cool_guy");
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
+  });
+
+  it("should change nothing server-side when the admin answers and then leaves", async () => {
+    const { unmount } = setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    unmount();
+
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should let the admin revise the pending answer on the switch without sending it", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await userEvent.click(screen.getByLabelText("Allow anonymous access"));
+    await pickUserAttribute("cool_guy");
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
+  });
+
+  it("should not ask about a database nothing anonymous reaches", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: false,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+    await pickUserAttribute("cool_guy");
+
+    expect(queryQuestion()).not.toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({ user_attribute: "cool_guy" });
+  });
+
+  it("should not re-send the answer once the router already carries it", async () => {
+    const database = routingCapableDatabase({ router_user_attribute: null });
+    const { rerender } = setup({ database, anonymouslyReachable: true });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await pickUserAttribute("cool_guy");
+
+    rerender(
+      <DatabaseRoutingSection
+        database={routingCapableDatabase({
+          router_user_attribute: "cool_guy",
+          router_anonymous_access_granted: true,
+        })}
+      />,
+    );
+    await pickUserAttribute("boss_gal");
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(2);
+    expect(puts[1].body).toEqual({ user_attribute: "boss_gal" });
+  });
+
+  it("should still ask when the toggle beats the reachability fact", async () => {
+    const { releaseReach } = setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+      holdReach: true,
+    });
+
+    await userEvent.click(screen.getByLabelText("Enable database routing"));
+    expect(queryQuestion()).not.toBeInTheDocument();
+
+    releaseReach();
+
+    expect(await findQuestion()).toBeInTheDocument();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should keep the answer for a retry when the combined request fails", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+      routerUpdateStatus: 400,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await pickUserAttribute("cool_guy");
+    expect(await screen.findByText(ROUTER_UPDATE_ERROR)).toBeInTheDocument();
+
+    await pickUserAttribute("boss_gal");
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(2);
+    expect(puts[1].body).toEqual({
+      user_attribute: "boss_gal",
+      anonymous_access_granted: true,
+    });
+    expect(queryQuestion()).not.toBeInTheDocument();
+  });
+
+  it("should ask when the attribute is reached through the chevron, not the toggle", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(screen.getByLabelText("chevrondown icon"));
+    expect(queryQuestion()).not.toBeInTheDocument();
+
+    await pickUserAttribute("cool_guy");
+
+    expect(await findQuestion()).toBeInTheDocument();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should store the chevron-reached attribute and the answer as one request", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(screen.getByLabelText("chevrondown icon"));
+    await pickUserAttribute("cool_guy");
+    await answerQuestion("Keep serving them");
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: true,
+    });
+  });
+
+  it("should send nothing when the chevron-reached question is cancelled", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await userEvent.click(screen.getByLabelText("chevrondown icon"));
+    await pickUserAttribute("cool_guy");
+    await userEvent.click(
+      within(await findQuestion()).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(queryQuestion()).not.toBeInTheDocument();
+    // the chevron's disclosure was the admin's own, so it survives
+    expect(screen.getByLabelText("Allow anonymous access")).toBeInTheDocument();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should not write to a database that has no router when the toggle goes back off", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+    const routingToggle = screen.getByLabelText("Enable database routing");
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await userEvent.click(routingToggle);
+
+    expect(routingToggle).not.toBeChecked();
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("should still turn a stored router off", async () => {
+    setup({ database: routedDatabase(), anonymouslyReachable: true });
+
+    await userEvent.click(
+      await screen.findByLabelText("Enable database routing"),
+    );
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({ user_attribute: null });
+    expect(
+      await screen.findByText("Database routing disabled"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not claim routing was enabled when the combined request fails", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+      routerUpdateStatus: 400,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await pickUserAttribute("cool_guy");
+
+    expect(await screen.findByText(ROUTER_UPDATE_ERROR)).toBeInTheDocument();
+    expect(
+      screen.queryByText("Database routing enabled"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should send a grant change made before the stored attribute has arrived", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Keep serving them");
+    await pickUserAttribute("cool_guy");
+
+    // the prop still lags the store, which is exactly when the admin is looking at this switch
+    await userEvent.click(screen.getByLabelText("Allow anonymous access"));
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(2);
+    expect(puts[1].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: false,
+    });
+    expect(screen.getByLabelText("Allow anonymous access")).not.toBeChecked();
+  });
+
+  it("should keep showing a grant it just saved while the prop still lags", async () => {
+    setup({
+      database: routingCapableDatabase({ router_user_attribute: null }),
+      anonymouslyReachable: true,
+    });
+    await waitForReachabilityFact();
+
+    await enableRoutingAndAnswer("Stop serving them");
+    await pickUserAttribute("cool_guy");
+
+    const grant = screen.getByLabelText("Allow anonymous access");
+    await userEvent.click(grant);
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(2);
+    expect(puts[1].body).toEqual({
+      user_attribute: "cool_guy",
+      anonymous_access_granted: true,
+    });
+    // snapping back to the lagging prop would contradict what the server just accepted
+    expect(grant).toBeChecked();
   });
 });
