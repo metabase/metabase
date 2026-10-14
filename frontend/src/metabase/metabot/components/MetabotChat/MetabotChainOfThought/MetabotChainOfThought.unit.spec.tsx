@@ -149,6 +149,34 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText(/Worked/)).not.toBeInTheDocument();
   });
 
+  it("displays thinking >= 60 seconds in minutes and seconds", () => {
+    setup(
+      chain({
+        steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+        startedAtMs: 1000,
+        endedAtMs: 697000,
+      }),
+      false,
+    );
+    expect(
+      screen.getAllByText("Thought for 11 minutes 36 seconds").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("displays even minute thinking durations without seconds", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "analyze_data", status: "ended" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 61000,
+      }),
+      false,
+    );
+    expect(screen.getByText("Worked for 1 minute")).toBeInTheDocument();
+  });
+
   it("rolls a sub-5s thinking-only turn up to Thought briefly", () => {
     setup(
       chain({

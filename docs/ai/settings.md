@@ -94,6 +94,8 @@ If you're self-hosting, you can configure a provider with [environment variables
 
 An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
 
+A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
+
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
 On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
@@ -231,7 +233,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 If you're using the Metabase AI service, you can see how many Metabot requests people have made this month by going to **Admin > AI**.
 
-If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
+If you aren't logged into the [Metabase Store](https://www.metabase.com/docs/latest/cloud/accounts-and-billing), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
 If you're using your own provider credentials, you can track usage and costs through that provider's dashboard.
 

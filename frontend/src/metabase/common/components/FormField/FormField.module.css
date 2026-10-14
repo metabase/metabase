@@ -1,0 +1,32 @@
+/* Classes rather than style props, so consumers can override the root margin and the label color */
+.root {
+  margin-bottom: 1.25rem;
+}
+
+.selfCenter {
+  align-self: center;
+}
+
+.label {
+  color: var(--mb-color-text-secondary);
+}
+
+.invalid {
+  color: var(--mb-color-feedback-negative);
+}
+
+.root:focus-within .label {
+  color: var(--mb-color-text-secondary);
+}
+
+.root:focus-within .labelError {
+  display: none;
+}
+
+.infoIcon {
+  color: var(--mb-color-background_page-tertiary-inverse);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}

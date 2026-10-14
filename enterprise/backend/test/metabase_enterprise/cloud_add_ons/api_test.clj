@@ -56,9 +56,9 @@
                                           {:terms_of_service true})))))
         (testing "succeeds"
           (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-            (with-redefs [hm.client/call                store-api-proxy
-                          premium-features/clear-cache! clear-token-cache-proxy]
+                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+            (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                        premium-features/clear-cache! clear-token-cache-proxy]
               (is (=? {}
                       (mt/user-http-request :crowberto :post 200 "ee/cloud-add-ons/metabase-ai"
                                             {:terms_of_service true})))
@@ -118,9 +118,9 @@
     (testing "succeeds, provisioning dwh-rent and etl-connections together"
       (mt/with-premium-features #{:hosting :audit-app}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-          (with-redefs [hm.client/call                store-api-proxy
-                        premium-features/clear-cache! clear-token-cache-proxy]
+              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+          (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                      premium-features/clear-cache! clear-token-cache-proxy]
             (is (=? {}
                     (mt/user-http-request :crowberto :post 200 "ee/cloud-add-ons/dwh-rent" {})))
             (is (= [{:args [:change-add-ons
@@ -179,9 +179,9 @@
                     (mt/user-http-request :crowberto :delete 500 "ee/cloud-add-ons/metabase-ai-managed")))))
         (testing "succeeds"
           (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-            (with-redefs [hm.client/call                store-api-proxy
-                          premium-features/clear-cache! clear-token-cache-proxy]
+                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+            (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                        premium-features/clear-cache! clear-token-cache-proxy]
               (is (=? {}
                       (mt/user-http-request :crowberto :delete 200 "ee/cloud-add-ons/metabase-ai-managed")))
               (is (= [{:args [:change-add-ons
@@ -205,9 +205,9 @@
     (testing "succeeds, removing dwh-rent and etl-connections together"
       (mt/with-premium-features #{:hosting}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-          (with-redefs [hm.client/call                store-api-proxy
-                        premium-features/clear-cache! clear-token-cache-proxy]
+              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+          (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                      premium-features/clear-cache! clear-token-cache-proxy]
             (is (=? {}
                     (mt/user-http-request :crowberto :delete 200 "ee/cloud-add-ons/dwh-rent")))
             (is (= [{:args [:change-add-ons

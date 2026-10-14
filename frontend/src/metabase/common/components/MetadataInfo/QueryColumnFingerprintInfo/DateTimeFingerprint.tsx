@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type * as Lib from "metabase-lib";
-
-import { Table } from "../MetadataInfo.styled";
 
 export type DateTimeFingerprintProps = {
   className?: string;
@@ -25,23 +24,23 @@ export function DateTimeFingerprint({
   const formattedLatest = formatDateTimeWithUnit(latest, "minute");
 
   return (
-    <Table className={className}>
+    <table className={className}>
       <tbody>
         {timezone && (
           <tr>
-            <th>{t`Timezone`}</th>
-            <td>{timezone}</td>
+            <th className={CS.textNormal}>{t`Timezone`}</th>
+            <td className={CS.textBold}>{timezone}</td>
           </tr>
         )}
         <tr>
-          <th>{t`Earliest date`}</th>
-          <td>{formattedEarliest}</td>
+          <th className={CS.textNormal}>{t`Earliest date`}</th>
+          <td className={CS.textBold}>{formattedEarliest}</td>
         </tr>
         <tr>
-          <th>{t`Latest date`}</th>
-          <td>{formattedLatest}</td>
+          <th className={CS.textNormal}>{t`Latest date`}</th>
+          <td className={CS.textBold}>{formattedLatest}</td>
         </tr>
       </tbody>
-    </Table>
+    </table>
   );
 }

@@ -23,7 +23,7 @@ Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also 
 
 Your client will direct you to an authentication page for your Metabase.
 
-Once authenticated, you can approve or block the tools in your client (not in your Metabase).
+Once authenticated, you can approve or block the tools in your client. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [limit which tools each group can use](./usage-controls.md#mcp-tools-access).
 
 Connected a client before Metabase 0.64? It'll ask you to sign in again after you upgrade.
 
@@ -33,11 +33,27 @@ To connect Claude Code:
 
 1. Run a command to add the MCP server.
 
+To use Metabase in all your projects, add `--scope user`:
+
+```
+claude mcp add --scope user --transport http metabase https://{your-metabase-url}/api/metabase-mcp
+```
+
+To use Metabase only in the current project, leave out `--scope`:
+
 ```
 claude mcp add --transport http metabase https://{your-metabase-url}/api/metabase-mcp
 ```
 
 Replace `{your-metabase-url}` with your Metabase address.
+
+Without `--scope`, Claude Code adds the server only to the directory you ran the command in, so Metabase won't show up if you start Claude Code from a different directory. To check where you added it, run:
+
+```
+claude mcp get metabase
+```
+
+See [MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
 2. Start Claude Code with `claude`.
 
@@ -62,6 +78,8 @@ One of your Metabase admins will still need to have [turned on your Metabase's M
 ## MCP tools
 
 The MCP server gives your agent tools for searching, browsing, querying, and creating content in your Metabase. For the full list and the permission each one needs, see [MCP server tools](./mcp-tools.md).
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can choose which of these tools each group can use. See [MCP tools access](./usage-controls.md#mcp-tools-access).
 
 ## Using the MCP server
 

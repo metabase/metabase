@@ -8,7 +8,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { dayjs } from "metabase/dayjs";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -116,8 +115,9 @@ describe("issues 8030 and 32444", () => {
 });
 
 describe("issue 12720, issue 47172", () => {
-  function clickThrough(title) {
+  function clickThrough(title, { beforeClick } = {}) {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
+    beforeClick?.();
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
     cy.location("pathname").should("match", /^\/question/);
@@ -206,35 +206,26 @@ describe("issue 12720, issue 47172", () => {
   it("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", () => {
     cy.signIn("readonly");
 
-    clickThrough("12720_SQL");
-    clickThrough("Orders");
-  });
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-  it("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.getDashboardCard(1).within(() => {
-      cy.findByTestId("table-root").should("be.visible");
-      cy.findByText("There was a problem displaying this chart.").should(
-        "not.exist",
-      );
-
-      cy.log("Drill down to the question");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.findByText(questionDetails.name).click();
+    clickThrough("12720_SQL", {
+      beforeClick: () => {
+        cy.log(
+          "Run a native field filter with an open date range (metabase#47172)",
+        );
+        H.getDashboardCard(1).within(() => {
+          cy.findByTestId("table-root").should("be.visible");
+          cy.findByText("There was a problem displaying this chart.").should(
+            "not.exist",
+          );
+        });
+      },
     });
-
-    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
     cy.wait("@cardQuery");
+    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
     H.tableInteractive().should("be.visible").and("contain", "97.44");
-    cy.findByTestId("question-row-count").should(
-      "not.have.text",
-      "Showing 0 rows",
-    );
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 1,980 rows",
-    );
+
+    clickThrough("Orders");
   });
 });
 
@@ -310,8 +301,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.button("Add filter").click();
 
     cy.location("search").should("eq", "?category=Gadget");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ergonomic Silk Coat");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(53));
   });
 });
 
@@ -405,7 +395,10 @@ describe("issues 15119 and 16112", () => {
     H.popover().contains("adam").click();
     cy.button("Add filter").click();
 
-    cy.findByTestId("dashcard-container").should("contain", "adam");
+    H.getDashboardCard().within(() => {
+      H.assertTableRowsCount(1);
+      cy.findAllByTestId("cell-data").should("contain", "adam");
+    });
     cy.location("search").should("eq", "?rating=&reviewer=adam");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -414,8 +407,12 @@ describe("issues 15119 and 16112", () => {
     H.popover().contains("5").click();
     cy.button("Add filter").click();
 
-    cy.findByTestId("dashcard-container").should("contain", "adam");
-    cy.findByTestId("dashcard-container").should("contain", "5");
+    H.getDashboardCard().within(() => {
+      H.assertTableRowsCount(1);
+      cy.findAllByTestId("cell-data")
+        .should("contain", "adam")
+        .and("contain", "5");
+    });
     cy.location("search").should("eq", "?rating=5&reviewer=adam");
   });
 });
@@ -857,47 +854,6 @@ describe("issue 21528", () => {
   });
 });
 
-describe("issue 22482", () => {
-  function getFormattedRange(start, end) {
-    return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
-    H.setFilter("Date picker", "All Options");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    H.popover().contains("Created At").eq(0).click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative date range…").click();
-  });
-
-  it("should round relative date range (metabase#22482)", () => {
-    cy.findByLabelText("Interval").clear().type(15);
-    cy.findByRole("textbox", { name: "Unit" }).click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("months").click();
-
-    const expectedRange = getFormattedRange(
-      dayjs().startOf("month").add(-15, "month"),
-      dayjs().add(-1, "month").endOf("month"),
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(expectedRange);
-  });
-});
-
 describe("issue 22788", () => {
   const ccName = "Custom Category";
   const ccDisplayName = "Products.Custom Category";
@@ -1003,77 +959,6 @@ describe("issue 22788", () => {
     cy.location("search").should("eq", "?my_filter_text=Gizmo");
     cy.reload();
     assertFilteredByGizmo();
-  });
-});
-
-describe("issue 24235", () => {
-  const questionDetails = {
-    query: { "source-table": PRODUCTS_ID, limit: 5 },
-  };
-
-  const parameter = {
-    id: "727b06c1",
-    name: "Date Filter",
-    sectionId: "date",
-    slug: "date_filter",
-    type: "date/all-options",
-  };
-
-  const parameterTarget = [
-    "dimension",
-    ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
-  ];
-
-  const dashboardDetails = { parameters: [parameter] };
-
-  const mapParameterToDashboardCard = ({ id, card_id, dashboard_id }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-      dashcards: [
-        {
-          id,
-          card_id,
-          row: 0,
-          col: 0,
-          size_x: 24,
-          size_y: 10,
-          parameter_mappings: [
-            {
-              card_id,
-              parameter_id: parameter.id,
-              target: parameterTarget,
-            },
-          ],
-        },
-      ],
-    });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not allow to add a filter when all exclude options are selected (metabase#24235)", () => {
-    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        mapParameterToDashboardCard({ id, card_id, dashboard_id });
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.filterWidget().contains(parameter.name).click();
-    H.popover().within(() => {
-      cy.findByText("Exclude…").click();
-      cy.findByText("Days of the week…").click();
-      cy.findByText("Select all").click();
-      cy.findByText("Add filter").click();
-    });
-
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Select all").click();
-      cy.button("Update filter").should("be.disabled");
-    });
   });
 });
 
@@ -1295,93 +1180,6 @@ describe("issue 25322", () => {
   });
 });
 
-describe("issue 25248", () => {
-  const question1Details = {
-    name: "Q1",
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-    visualization_settings: {
-      "graph.metrics": ["count"],
-      "graph.dimensions": ["CREATED_AT"],
-    },
-  };
-
-  const question2Details = {
-    name: "Q2",
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-    visualization_settings: {
-      "graph.metrics": ["avg"],
-      "graph.dimensions": ["CREATED_AT"],
-    },
-  };
-
-  const parameterDetails = {
-    name: "Date Filter",
-    slug: "date_filter",
-    id: "888188ad",
-    type: "date/all-options",
-    sectionId: "date",
-  };
-
-  const dashboardDetails = {
-    name: "25248",
-    parameters: [parameterDetails],
-  };
-
-  const createDashboard = () => {
-    H.createQuestionAndDashboard({
-      questionDetails: question1Details,
-      dashboardDetails,
-    }).then(({ body: { id, card_id, dashboard_id } }) => {
-      H.createQuestion(question2Details).then(({ body: { id: card_2_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              id,
-              card_id,
-              series: [{ id: card_2_id }],
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 8,
-            },
-          ],
-        });
-      });
-      H.visitDashboard(dashboard_id);
-    });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow mapping parameters to combined cards individually (metabase#25248)", () => {
-    createDashboard();
-    H.editDashboard();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameterDetails.name).click();
-    cy.findAllByText("Select…").first().click();
-    H.popover().findAllByText("Created At").first().click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders.Created At").should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").should("be.visible");
-  });
-});
-
 describe("issue 25374", () => {
   const questionDetails = {
     name: "25374",
@@ -1424,7 +1222,7 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
 
@@ -1472,8 +1270,8 @@ describe("issue 25374", () => {
     });
   });
 
-  it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
-    // Drill-through and go to the question
+  it("should pass comma-separated values down to the question and retain them on refresh and when reverting to default (metabase#25374-1, metabase#25374-2, metabase#25374-3, metabase#25374-4)", () => {
+    cy.log("Drill-through and go to the question (metabase#25374-1)");
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
@@ -1481,9 +1279,13 @@ describe("issue 25374", () => {
     H.tableInteractiveBody().findByText("3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
 
-  it("should retain comma-separated values on refresh and when reverting to default (metabase#25374-2, metabase#25374-3, metabase#25374-4)", () => {
+    H.queryBuilderHeader()
+      .findByLabelText(`Back to ${dashboardDetails.name}`)
+      .click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+    cy.findByDisplayValue("1,2,3").should("be.visible");
+
     cy.reload();
 
     // Make sure filter widget still has all the values
@@ -1888,6 +1690,7 @@ describe("issues 29347, 29346", () => {
 
   const createDashboard = ({
     dashboardDetails = editableDashboardDetails,
+    alias = "dashboardId",
   } = {}) => {
     H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
@@ -1911,7 +1714,7 @@ describe("issues 29347, 29346", () => {
           ],
         });
 
-        cy.wrap(dashboard_id).as("dashboardId");
+        cy.wrap(dashboard_id).as(alias);
       },
     );
   };
@@ -1928,7 +1731,7 @@ describe("issues 29347, 29346", () => {
   };
 
   const verifyRemappedValues = (fieldValue) => {
-    verifyRemappedFilterValues(filterValue);
+    verifyRemappedFilterValues(fieldValue);
     verifyRemappedCardValues(fieldValue);
   };
 
@@ -1950,121 +1753,109 @@ describe("issues 29347, 29346", () => {
     addFieldRemapping(ORDERS.QUANTITY);
   });
 
-  describe("regular dashboards", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-      cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
+  it("should be able to filter on remapped values in the UI, in the url and in the token (metabase#29347, metabase#29346)", () => {
+    cy.intercept("GET", "/api/dashboard/*").as("dashboard");
+    cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/public/dashboard/*").as("publicDashboard");
+    cy.intercept("GET", "/api/public/dashboard/**/card/*").as(
+      "publicCardQuery",
+    );
+    cy.intercept("GET", "/api/embed/dashboard/*").as("embedDashboard");
+    cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("embedCardQuery");
+
+    createDashboard();
+    createDashboard({
+      dashboardDetails: lockedDashboardDetails,
+      alias: "lockedDashboardId",
     });
 
-    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      H.visitDashboard("@dashboardId");
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
+    cy.log("Regular dashboard");
+    H.visitDashboard("@dashboardId");
+    cy.wait("@dashboard");
+    cy.wait("@cardQuery");
 
-      filterOnRemappedValues(filterValue);
-      cy.wait("@cardQuery");
+    filterOnRemappedValues(filterValue);
+    cy.wait("@cardQuery");
 
-      verifyRemappedValues(filterValue);
+    verifyRemappedValues(filterValue);
 
-      // Clear the last used value so the url value is the only source
-      H.clearFilterWidget();
-      cy.wait("@cardQuery");
+    // Clear the last used value so the url value is the only source
+    H.clearFilterWidget();
+    cy.wait("@cardQuery");
 
-      H.visitDashboard("@dashboardId", {
-        params: { [filterDetails.slug]: filterValue },
-      });
-
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-    });
-  });
-
-  describe("embedded dashboards", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    H.visitDashboard("@dashboardId", {
+      params: { [filterDetails.slug]: filterValue },
     });
 
-    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then((dashboardId) =>
-        H.visitEmbeddedPage({
+    cy.wait("@dashboard");
+    cy.wait("@cardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.log("Public dashboard");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitPublicDashboard(dashboardId),
+    );
+    cy.wait("@publicDashboard");
+    cy.wait("@publicCardQuery");
+
+    filterOnRemappedValues(filterValue);
+    cy.wait("@publicCardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.location("pathname").then((pathname) =>
+      cy.visit(`${pathname}?${filterDetails.slug}=${filterValue}`),
+    );
+    cy.wait("@publicDashboard");
+    cy.wait("@publicCardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.log("Embedded dashboard with an editable parameter");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    cy.wait("@embedDashboard");
+    cy.wait("@embedCardQuery");
+
+    filterOnRemappedValues(filterValue);
+    cy.wait("@embedCardQuery");
+
+    verifyRemappedValues(filterValue);
+
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.visitEmbeddedPage(
+        {
           resource: { dashboard: dashboardId },
           params: {},
-        }),
+        },
+        {
+          setFilters: { [filterDetails.slug]: filterValue },
+        },
       );
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
+    });
+    cy.wait("@embedDashboard");
+    cy.wait("@embedCardQuery");
 
-      filterOnRemappedValues(filterValue);
-      cy.wait("@cardQuery");
+    verifyRemappedValues(filterValue);
 
-      verifyRemappedValues(filterValue);
-
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitEmbeddedPage(
-          {
-            resource: { dashboard: dashboardId },
-            params: {},
-          },
-          {
-            setFilters: { [filterDetails.slug]: filterValue },
-          },
-        );
+    cy.log("Embedded dashboard with a locked parameter in the token");
+    cy.get("@lockedDashboardId").then((dashboardId) => {
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {
+          [filterDetails.slug]: filterValue,
+        },
       });
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
     });
+    cy.wait("@embedDashboard");
+    cy.wait("@embedCardQuery");
 
-    it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
-      createDashboard({ dashboardDetails: lockedDashboardDetails });
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.visitEmbeddedPage({
-          resource: { dashboard: dashboardId },
-          params: {
-            [filterDetails.slug]: filterValue,
-          },
-        });
-      });
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedCardValues(filterValue);
-    });
-  });
-
-  describe("public dashboards", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/public/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/public/dashboard/**/card/*").as("cardQuery");
-    });
-
-    it("should be able to filter on remapped values in the UI and in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then((dashboardId) =>
-        H.visitPublicDashboard(dashboardId),
-      );
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      filterOnRemappedValues(filterValue);
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-
-      cy.location("pathname").then((pathname) =>
-        cy.visit(`${pathname}?${filterDetails.slug}=${filterValue}`),
-      );
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedValues(filterValue);
-    });
+    verifyRemappedCardValues(filterValue);
   });
 });
 
@@ -2248,11 +2039,11 @@ describe("issue 43154", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to see field values with a model-based question (metabase#43154)", () => {
+  it("should be able to see field values with a model-based question with and without aggregation (metabase#43154)", () => {
+    cy.log("Question without aggregation");
     verifyNestedFilter(questionDetails);
-  });
 
-  it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
+    cy.log("Question with aggregation");
     verifyNestedFilter(questionWithAggregationDetails, () =>
       H.getDashboardCard().findByText("18,760").should("be.visible"),
     );

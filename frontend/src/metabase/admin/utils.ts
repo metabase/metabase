@@ -2,15 +2,15 @@ import { useLayoutEffect } from "react";
 
 import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
 import { useSelector } from "metabase/redux";
+import type { AdminPathKey } from "metabase/redux/store";
 import { createRedirectGuard } from "metabase/route-guards";
 import { useNavigate } from "metabase/router";
-import { getAdminPaths } from "metabase/selectors/admin";
+import { getAdminPaths, getHasAdminPath } from "metabase/selectors/admin";
 import { getSetting } from "metabase/settings";
 
-export const createAdminRouteGuard = (routeKey: string) =>
+export const createAdminRouteGuard = (routeKey: AdminPathKey) =>
   createRedirectGuard(
-    (state) =>
-      getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
+    (state) => getHasAdminPath(state, routeKey),
     "/unauthorized",
   );
 
@@ -30,7 +30,7 @@ export const RedirectToAllowedSettings = () => {
 export const createTenantsRouteGuard = () =>
   createRedirectGuard(
     (state) =>
-      getAdminPaths(state)?.find((path) => path.key === "people") != null &&
+      getHasAdminPath(state, "people") &&
       (getSetting(state, "use-tenants") || shouldShowTenantsUpsell(state)),
     "/admin/people",
   );

@@ -55,6 +55,7 @@ describe("DatabaseListApp", () => {
     await setup({ isStub: true, isAdmin: true });
 
     expect(screen.getByText("Stubbed")).toBeInTheDocument();
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
     expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
@@ -62,6 +63,7 @@ describe("DatabaseListApp", () => {
     await setup({ isAdmin: true });
 
     expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
     expect(screen.queryByText("Stubbed")).not.toBeInTheDocument();
   });
 

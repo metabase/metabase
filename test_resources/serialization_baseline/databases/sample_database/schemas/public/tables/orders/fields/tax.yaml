@@ -12,12 +12,5 @@ effective_type: type/Float
 position: 4
 database_position: 4
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: ORDERS
-  model: Table
-- id: TAX
-  model: Field
+- model: Field
 database_indexed: false
