@@ -68,7 +68,7 @@ export function setupDatabaseUsageInfoEndpoint(
 
 export function setupDatabaseAnonymousReachEndpoint(
   db: Database,
-  anonymousReach: DatabaseAnonymousReach,
+  anonymousReach: DatabaseAnonymousReach | Promise<DatabaseAnonymousReach>,
 ) {
   fetchMock.get(`path:/api/database/${db.id}/anonymous-reach`, anonymousReach);
 }
