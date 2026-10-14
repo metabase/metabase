@@ -173,14 +173,14 @@
      :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))
 
 (deftest client-claimed-feature-capability-cannot-override-settings-test
-  (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
-    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (is (not (contains? (tools-registered-for-request! ["feature:query_execution"]) "run_query"))))))
-  (testing "the same request gets run_query once the admin turns it on"
-    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+  ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
+      (testing "the same request gets run_query once the admin turns it on"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
           (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
