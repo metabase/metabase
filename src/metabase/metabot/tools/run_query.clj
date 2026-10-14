@@ -442,7 +442,7 @@
 (def ^:private query-timeout-ms
   "How long one query may run. A query Metabot wrote can be far slower than its author expected, and nothing else
    ends it before the database query timeout."
-  (u/seconds->ms 60))
+  (u/minutes->ms 3))
 
 (defn- run-options
   "What may stop a query this tool runs: the chat request being canceled, and the time limit."
