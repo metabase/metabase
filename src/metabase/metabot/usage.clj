@@ -73,17 +73,36 @@
         default-key (default-metabase-meter-key)]
     (meter-value meters default-key)))
 
+(defn managed-usage-locked?
+  "Whether the managed provider's free tier is locked, regardless of which connection is selected. What the fallback
+  asks before routing a request to the managed connection."
+  []
+  (boolean (some-> (premium-features/token-status) (#(:is-locked (meter-entry %))))))
+
+(declare managed-model-locked?)
+
 (defn managed-free-limit-reached?
-  "True when the configured managed Metabase provider is locked for free-tier usage."
-  ([] (and (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
-           (some-> (premium-features/token-status) managed-free-limit-reached?)))
+  "True when the managed Metabase provider is locked and is the one about to serve requests — after the fallback has
+  had its say, so a locked managed selection that fell back to BYOK is not rejected, and a BYOK selection that fell
+  back to the managed provider is checked."
+  ([] (managed-model-locked? (:model-ref (metabot.settings/metabot-model-selection))))
   ([token-status]
    (some-> (meter-entry token-status)
            :is-locked)))
 
+(defn managed-model-locked?
+  "[[managed-free-limit-reached?]] for a `model-ref` the caller already resolved, so a request checks the same model
+  it goes on to run."
+  [model-ref]
+  (boolean (and (llm.provider/managed-model-ref? model-ref)
+                (some-> (premium-features/token-status) managed-free-limit-reached?))))
+
 (defn check-metabase-managed-free-limit!
-  "Return the free-trial lock message when the managed Metabase provider is locked."
-  []
-  (api/check (not (managed-free-limit-reached?))
-             [402 {:message    (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key.")
-                   :error-code "metabase_ai_managed_locked"}]))
+  "Return the free-trial lock message when the managed Metabase provider is locked. Pass the `model-ref` the request
+  will run on when it was already resolved."
+  ([]
+   (check-metabase-managed-free-limit! (:model-ref (metabot.settings/metabot-model-selection))))
+  ([model-ref]
+   (api/check (not (managed-model-locked? model-ref))
+              [402 {:message    (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key.")
+                    :error-code "metabase_ai_managed_locked"}])))

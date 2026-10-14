@@ -705,7 +705,8 @@
                    :promptFeedback {:blockReason "PROHIBITED_CONTENT"}
                    :usageMetadata  {:promptTokenCount 12}}]]
       (is (=? [{:type :start}
-               {:type :error :error {:message "Prompt blocked by Google: PROHIBITED_CONTENT"}}
+               {:type :error :error {:message    "Prompt blocked by Google: PROHIBITED_CONTENT"
+                                     :error-code "prompt_blocked"}}
                {:type :usage}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 

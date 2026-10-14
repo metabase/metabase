@@ -48,6 +48,11 @@
    :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
    :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
 
+(defn- mark-blocked-prompt
+  [error-chunk code]
+  (cond-> error-chunk
+    (= "invalid_prompt" code) (assoc :request-specific? true :error-code "prompt_blocked")))
+
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
@@ -185,12 +190,16 @@
                                 :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
-             (= t "response.failed")            (rf {:type      :error
-                                                     :errorText (or (get-in response [:error :message])
-                                                                    (get-in response [:error :code])
-                                                                    (tru "The model provider failed to complete the response"))})
-             (= t "error")                      (rf {:type      :error
-                                                     :errorText (or (:message error) (:message chunk))}))))))))
+             (= t "response.failed")            (rf (mark-blocked-prompt
+                                                     {:type      :error
+                                                      :errorText (or (get-in response [:error :message])
+                                                                     (get-in response [:error :code])
+                                                                     (tru "The model provider failed to complete the response"))}
+                                                     (get-in response [:error :code])))
+             (= t "error")                      (rf (mark-blocked-prompt
+                                                     {:type      :error
+                                                      :errorText (or (:message error) (:message chunk))}
+                                                     (or (:code error) (:code chunk)))))))))))
 
 ;;; AISDK parts → OpenAI Responses API input items
 

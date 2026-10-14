@@ -14,6 +14,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as core]
@@ -54,12 +55,21 @@
           (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
           models)))
 
+(def provider-config-error-codes
+  "Error codes that mean the LLM provider connection is misconfigured.
+
+   Thrown by [[parse-provider-model]] and by the provider adapters' own setup validation."
+  #{"llm-not-configured" "api-key-missing" "credentials-unavailable" "base-url-missing"
+    "model-missing" "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
+    "not-a-service-account-key" "invalid-location" "project-id-required"
+    "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
+
 (defn- parse-provider-model
   "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
   Throws a 400 when the string names a connection that is not configured, so a stale
   `llm-metabot-provider` surfaces as a clear error rather than an unauthenticated request."
   [s]
-  (let [{:keys [type model credentials ai-proxy?]}
+  (let [{:keys [connection-key type model credentials ai-proxy?]}
         (or (llm.provider/resolve-model-ref s)
             (throw (ex-info (tru "No LLM provider connection named {0} is configured."
                                  (pr-str (llm.provider/model-ref->connection-key s)))
@@ -67,11 +77,91 @@
                              :api-error   true
                              :error-code  :llm-not-configured
                              :model-ref   s})))]
-    {:provider    type
-     :stream-fn   (registry/required type :stream)
-     :model       model
-     :credentials credentials
-     :ai-proxy?   ai-proxy?}))
+    {:connection-key connection-key
+     :provider       type
+     :stream-fn      (registry/required type :stream)
+     :model          model
+     :credentials    credentials
+     :ai-proxy?      ai-proxy?}))
+
+(def ^:private provider-billing-error-codes
+  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
+  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
+    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
+
+(def ^:private provider-unavailable-error-types
+  "Error types Anthropic uses for a failure on its side, in a 5xx response or in an error event streamed after a 200."
+  #{"api_error" "timeout_error" "overloaded_error"})
+
+(defn- provider-failure
+  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth` or `:unavailable`, or nil for any other failure.
+  Reads its HTTP `status`, nil for an error streamed after a 200, and the `error` object the provider sent."
+  [status {error-type :type error-code :code :keys [message details]}]
+  (cond
+    (or (= status 402)
+        (some provider-billing-error-codes [error-type error-code (:error_code details)])
+        ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
+        (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
+    :billing
+
+    (= status 429)
+    :rate-limit
+
+    (or (= status 401) (= "permission_error" error-type))
+    :auth
+
+    (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
+    :unavailable))
+
+(defn- provider-stream
+  "The reducible `stream-fn` returns for `streaming-opts`, opened when it is reduced, with whatever the provider
+  throws — on the request, or mid-stream — kept in `provider-fault`. What the consumer throws back through the
+  stream is not kept: a tool, a transducer or the client going away is not the provider failing. Each reduction
+  starts clean, so after retries `provider-fault` describes the last attempt."
+  [stream-fn streaming-opts provider-fault]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (vreset! provider-fault nil)
+      (let [consumer-threw? (volatile! false)
+            guarded-rf      (fn
+                              ([acc] (rf acc))
+                              ([acc x]
+                               (try
+                                 (rf acc x)
+                                 (catch Throwable t
+                                   (vreset! consumer-threw? true)
+                                   (throw t)))))]
+        (try
+          (reduce guarded-rf init (stream-fn streaming-opts))
+          (catch Throwable t
+            (when-not @consumer-threw?
+              (vreset! provider-fault t))
+            (throw t)))))))
+
+(defn- with-health-recorded
+  "Run `thunk`, reporting to [[metabase.llm.health]] whether `conn-key` served the request. A failure recorded here
+  is what takes the connection out of the fallback rotation, so the user's next message — or their retry of a
+  response that died mid-stream — runs on the next provider instead of hitting the same wall.
+
+  Only what the [[provider-stream]] kept in `provider-fault` counts as a failure. A provider that answered with
+  something the caller could not use — no tool call, malformed JSON — or a consumer that threw is not the
+  connection failing, and records nothing.
+
+  `errored?` covers the provider that fails without throwing: it streams an `:error` part and then ends the
+  response normally, which [[report-aisdk-errors-xf]] has already recorded. Returning true keeps that from being
+  overwritten by a success the stream did not earn."
+  [conn-key provider-fault errored? thunk]
+  (try
+    (let [result (thunk)]
+      (when-not (errored?)
+        (llm.health/record-success! conn-key))
+      result)
+    (catch Exception e
+      (when-let [failure @provider-fault]
+        (if (#{:billing :auth} (provider-failure (:status (ex-data failure)) (:error (:body (ex-data failure)))))
+          (llm.health/record-failure! conn-key (ex-message failure) true)
+          (llm.health/record-exception! conn-key failure)))
+      (throw e))))
 
 (defn context-window-tokens
   "Input context window (tokens) for a `connection-key/model` string, or nil when the
@@ -208,6 +298,10 @@
                       {:model  (:model tracking-opts "unknown")
                        :source (:tag tracking-opts "none")
                        :error  (:error part)})
+           (when-not (:request-specific? part)
+             (llm.health/record-failure! (:connection-key tracking-opts)
+                                         (:message (:error part))
+                                         false))
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -347,48 +441,20 @@
                (recur (inc attempt)))
            (:ok result)))))))
 
-(def ^:private provider-billing-error-codes
-  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
-  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
-    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
-
-(def ^:private provider-unavailable-error-types
-  "Error types Anthropic uses for a failure on its side, in a 5xx response or in an error event streamed after a 200."
-  #{"api_error" "timeout_error" "overloaded_error"})
-
-(defn- provider-failure
-  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth` or `:unavailable`, or nil for any other failure.
-  Reads its HTTP `status`, nil for an error streamed after a 200, and the `error` object the provider sent."
-  [status {error-type :type error-code :code :keys [message details]}]
-  (cond
-    (or (= status 402)
-        (some provider-billing-error-codes [error-type error-code (:error_code details)])
-        ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
-        (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
-    :billing
-
-    (= status 429)
-    :rate-limit
-
-    (or (= status 401) (= "permission_error" error-type))
-    :auth
-
-    (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
-    :unavailable))
-
 (defn provider-error
   "A user-facing `{:message :error-code}` for a provider failure we can explain better than the generic error, or nil.
-  Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them.
+  Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them,
+  and the `model-ref` the request ran on.
 
   On the managed provider only an outage gets one, since billing, rate limits and credentials there are Metabase's to
   fix. Only admins on their own key are told which provider failed and where to fix it."
-  ([e]
+  ([e model-ref]
    (let [{:keys [api-error provider status body]} (ex-data e)]
      (when (and api-error provider)
-       (provider-error provider status (:error body)))))
-  ([provider status error]
+       (provider-error provider status (:error body) model-ref))))
+  ([provider status error model-ref]
    (when-let [failure (provider-failure status error)]
-     (let [managed?      (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+     (let [managed?      (llm.provider/managed-model-ref? model-ref)
            admin?        (and api/*is-superuser?* (not managed?))
            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
        (when (or (= :unavailable failure) (not managed?))
@@ -412,10 +478,10 @@
 
 (defn- provider-error-xf
   "Transducer that replaces the error on a streamed `:error` part with [[provider-error]]'s, when it has one."
-  [provider]
+  [provider model-ref]
   (map (fn [part]
          (if-let [error (when (= :error (:type part))
-                          (provider-error provider nil (:error part)))]
+                          (provider-error provider nil (:error part) model-ref))]
            (assoc part :error error)
            part))))
 
@@ -525,11 +591,15 @@
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
-       (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
+       (let [{:keys [connection-key provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
          (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
-         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :provider provider
-                                     :model-name model :ai-proxy? ai-proxy?)
+         (let [tracking-opts  (assoc tracking-opts
+                                     :model provider-and-model
+                                     :provider provider
+                                     :model-name model
+                                     :ai-proxy? ai-proxy?
+                                     :connection-key connection-key)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
                                        :fast?       (metabot.settings/llm-fast-mode)}
@@ -537,15 +607,16 @@
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
+               provider-fault (volatile! nil)
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
-                                                (provider-error-xf provider)
+                                                (provider-error-xf provider provider-and-model)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
-                                          (stream-fn streaming-opts)))]
+                                          (provider-stream stream-fn streaming-opts provider-fault)))]
            (reify clojure.lang.IReduceInit
              (reduce [_ rf init]
                (with-span :info {:name       :metabot.agent/call-llm
@@ -558,13 +629,22 @@
                  ;; has seen output, replaying would duplicate it and re-execute tools. Gate retries
                  ;; on "nothing emitted yet" so a mid-stream failure surfaces instead of replaying.
                  (let [emitted? (volatile! false)
+                       errored? (volatile! false)
                        rf*      (fn
                                   ([acc]   (rf acc))
-                                  ([acc x] (vreset! emitted? true) (rf acc x)))]
-                   (with-retries
-                     tracking-opts
-                     #(reduce rf* init (make-source))
-                     (fn [_e] (not @emitted?))))))))))))
+                                  ([acc x]
+                                   (vreset! emitted? true)
+                                   (when (= (:type x) :error)
+                                     (vreset! errored? true))
+                                   (rf acc x)))]
+                   (with-health-recorded
+                     connection-key
+                     provider-fault
+                     #(deref errored?)
+                     #(with-retries
+                        tracking-opts
+                        (fn [] (reduce rf* init (make-source)))
+                        (fn [_e] (not @emitted?)))))))))))))
 
 (defn- json-schema->malli
   "Malli equivalent of `json-schema`, for the JSON Schema subset [[core/LLMRequestOpts]] accepts as `:schema`."
@@ -650,7 +730,7 @@
                      :error-code "ai_usage_limit_reached"
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
-  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
+  (let [{:keys [connection-key provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))
                              [(:content (first messages)) (vec (rest messages))]
                              [nil messages])
@@ -660,8 +740,11 @@
                                                            :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
                            (dissoc :required-permission)
-                           (assoc :model provider-and-model :provider provider :model-name model
-                                  :ai-proxy? ai-proxy?))
+                           (assoc :model provider-and-model
+                                  :provider provider
+                                  :model-name model
+                                  :ai-proxy? ai-proxy?
+                                  :connection-key connection-key))
         streaming-opts (cond-> {:model       model
                                 :input       input
                                 :schema      json-schema
@@ -671,72 +754,79 @@
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
-                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
+                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
+        provider-fault (volatile! nil)
+        errored?       (volatile! false)]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}
-      (with-retries
-        tracking-opts
-        (fn []
-          (let [parts    (into []
-                               (comp (core/aisdk-xf)
-                                     (report-aisdk-errors-xf tracking-opts)
-                                     (report-token-usage-xf tracking-opts))
-                               (stream-fn streaming-opts))
-                result   (some (fn [{:keys [type arguments]}]
-                                 (when (= type :tool-input)
-                                   arguments))
-                               parts)
-                error    (some (fn [{:keys [type error]}]
-                                 (when (= type :error)
-                                   error))
-                               parts)
-                unparsed (core/unparsed-arguments result)
-                ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
-                ;; part, which the agent loop emits and this single-shot path never runs.
-                incomplete-reason (core/parts->incomplete-finish-reason parts)
-                ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
-                malformed?        (contains? unparsed :raw-arguments)]
-            (cond
-              ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
-              ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
-              ;; ends the turn without truncating the JSON it already sent.
-              (and malformed? (= incomplete-reason "length"))
-              (throw (incomplete-structured-output-error parts incomplete-reason))
+      (with-health-recorded
+        connection-key
+        provider-fault
+        #(deref errored?)
+        #(with-retries
+           tracking-opts
+           (fn []
+             (let [parts    (into []
+                                  (comp (core/aisdk-xf)
+                                        (report-aisdk-errors-xf tracking-opts)
+                                        (report-token-usage-xf tracking-opts))
+                                  (provider-stream stream-fn streaming-opts provider-fault))
+                   result   (some (fn [{:keys [type arguments]}]
+                                    (when (= type :tool-input)
+                                      arguments))
+                                  parts)
+                   error    (some (fn [{:keys [type error]}]
+                                    (when (= type :error)
+                                      error))
+                                  parts)
+                   unparsed (core/unparsed-arguments result)
+                   ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
+                   ;; part, which the agent loop emits and this single-shot path never runs.
+                   incomplete-reason (core/parts->incomplete-finish-reason parts)
+                   ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
+                   malformed?        (contains? unparsed :raw-arguments)]
+               (vreset! errored? (some? error))
+               (cond
+                 ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
+                 ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
+                 ;; ends the turn without truncating the JSON it already sent.
+                 (and malformed? (= incomplete-reason "length"))
+                 (throw (incomplete-structured-output-error parts incomplete-reason))
 
-              ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
-              ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
-              unparsed
-              (throw (ex-info (if malformed?
-                                "LLM returned malformed JSON in its structured tool call"
-                                "LLM returned a JSON value that is not an object in its structured tool call")
-                              (merge {:parts      parts
-                                      :error-code "structured-output-invalid"}
-                                     unparsed)))
+                 ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
+                 ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
+                 unparsed
+                 (throw (ex-info (if malformed?
+                                   "LLM returned malformed JSON in its structured tool call"
+                                   "LLM returned a JSON value that is not an object in its structured tool call")
+                                 (merge {:parts      parts
+                                         :error-code "structured-output-invalid"}
+                                        unparsed)))
 
-              result
-              {:result result :parts parts}
+                 result
+                 {:result result :parts parts}
 
-              ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
-              ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
-              ;; see the real cause rather than a misleading "no tool call".
-              error
-              (throw (ex-info (or (:message error) "LLM stream returned an error")
-                              {:parts parts :error error :error-code "llm-stream-error"}))
+                 ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
+                 ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
+                 ;; see the real cause rather than a misleading "no tool call".
+                 error
+                 (throw (ex-info (or (:message error) "LLM stream returned an error")
+                                 {:parts parts :error error :error-code "llm-stream-error"}))
 
-              ;; No tool call. Use JSON from the text when it matches the schema, also when the turn
-              ;; stopped early: JSON that the model completed before the stop, in the whole reply or in
-              ;; a fenced block, is usable.
-              :else
-              (if-let [output (structured-output-in-text parts json-schema)]
-                (do (log/info "LLM answered in text instead of calling the structured-output tool"
-                              {:provider          provider
-                               :model             model
-                               :tag               (:tag opts)
-                               :finish-reason     incomplete-reason
-                               :raw-finish-reason (core/parts->raw-finish-reason parts)})
-                    {:result output :parts parts})
-                (throw (no-structured-output-error parts incomplete-reason))))))))))
+                 ;; No tool call. Use JSON from the text when it matches the schema, also when the turn
+                 ;; stopped early: JSON that the model completed before the stop, in the whole reply or in
+                 ;; a fenced block, is usable.
+                 :else
+                 (if-let [output (structured-output-in-text parts json-schema)]
+                   (do (log/info "LLM answered in text instead of calling the structured-output tool"
+                                 {:provider          provider
+                                  :model             model
+                                  :tag               (:tag opts)
+                                  :finish-reason     incomplete-reason
+                                  :raw-finish-reason (core/parts->raw-finish-reason parts)})
+                       {:result output :parts parts})
+                   (throw (no-structured-output-error parts incomplete-reason)))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
