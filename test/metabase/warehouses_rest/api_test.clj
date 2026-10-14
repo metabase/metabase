@@ -1233,16 +1233,19 @@
               (is (= expected-keys
                      (set (keys db)))))))))))
 
+(defn- database-list-call-count
+  "The number of app-db queries a `GET /api/database` by Rasta makes once its caches are warm."
+  []
+  ;; The first request fills caches that outlive it, so only the second one counts.
+  (mt/user-http-request :rasta :get 200 "database")
+  (t2/with-call-count [call-count]
+    (mt/user-http-request :rasta :get 200 "database")
+    (call-count)))
+
 (deftest ^:parallel databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (let [list-call-count (fn []
-                              ;; The first request fills caches that outlive it, so only the second one is counted.
-                              (mt/user-http-request :rasta :get 200 "database")
-                              (t2/with-call-count [call-count]
-                                (mt/user-http-request :rasta :get 200 "database")
-                                (call-count)))
-            baseline        (list-call-count)]
+      (let [baseline (database-list-call-count)]
         (mt/with-temp [:model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}
@@ -1257,11 +1260,9 @@
                        :model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}]
-          ;; Compared with a baseline rather than a fixed number: what one listing costs depends on the token's
-          ;; features and on the databases other tests leave behind, so a fixed bound fails whenever those line up.
-          ;; A query per database would add at least 14 here. The slack covers a settings cache refresh, which is
-          ;; two queries.
-          (is (<= (- (list-call-count) baseline) 2)))))))
+          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
+          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
+          (is (<= (database-list-call-count) (+ baseline 2))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"
