@@ -566,6 +566,11 @@
   [file-path :- :string]
   (t2/select-one :model/RemoteSyncObject :file_path file-path))
 
+(mu/defn remote-synced-collection-ids-with-entity-ids
+  "The IDs of the remote-synced Collections with `entity-ids`."
+  [entity-ids :- [:set :string]]
+  (t2/select-pks-set :model/Collection :entity_id [:in entity-ids] :is_remote_synced true))
+
 (mu/defn transform-exists?
   "Whether any Transform exists."
   []

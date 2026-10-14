@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [with-library]]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.search.core :as search]
@@ -1395,6 +1396,24 @@ serdes/meta:
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :success (:status result))))))))
 
+(deftest import!-keeps-library-root-collections-missing-from-the-import-test
+  (testing "a synced Library's system collections survive an import that doesn't contain them"
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+          root-ids #(t2/select-pks-set :model/Collection :entity_id [:in (vec collection/library-root-entity-ids)])]
+      (with-library [_]
+        (let [ids (root-ids)]
+          (try
+            (test-helpers/set-library-remote-synced! true)
+            (let [test-files {"main" {"collections/main/other/other.yaml"
+                                      (test-helpers/generate-collection-yaml "other-collection-xxxx" "Other"
+                                                                             :is-remote-synced true)}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)]
+              (let [result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
+                (is (= :success (:status result)) (pr-str result)))
+              (is (= ids (root-ids))))
+            (finally
+              (test-helpers/set-library-remote-synced! false))))))))
+
 (deftest import!-blocks-deleting-unsynced-library-content-test
   (testing "an import containing the Library blocks on unsynced local Library content it would delete"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
@@ -2467,13 +2486,3 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
-
-(deftest keep-library-dashboards-test
-  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
-    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
-           (get-in (#'impl/keep-library-dashboards
-                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
-                   [:by-entity-id "Collection"]))))
-  (testing "An import without the Library leaves it to be removed with the Library"
-    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
-           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

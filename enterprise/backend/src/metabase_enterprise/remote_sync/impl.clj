@@ -58,13 +58,6 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
-(defn- keep-library-dashboards
-  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
-  [imported-data]
-  (cond-> imported-data
-    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
-    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
-
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
@@ -402,7 +395,7 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
+            _                     (remove-unsynced! synced-collection-ids imported-data)
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
@@ -1066,6 +1059,14 @@
                   (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
+(defn- library-root-collection-deps
+  "The remote-synced Library root collections as dependencies, written by every incremental export since they have no
+  RemoteSyncObject of their own."
+  []
+  (into #{}
+        (map (fn [id] {:model_type "Collection" :model_id id}))
+        (remote-sync.db/remote-synced-collection-ids-with-entity-ids collection/library-root-entity-ids)))
+
 (defn- incremental-export-plan
   "Build an incremental export plan for `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time.
 
@@ -1082,7 +1083,7 @@
         ;; the no-extraction rows first (cheap)
         plan          (->> other-rows
                            (map #(row->incremental-export-plan % nil))
-                           (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
+                           (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull (library-root-collection-deps)}))
         plan          (->> cu-rows
                            (->sized-chunks)
                            (map #(chunk->incremental-export-plan snapshot opts %))

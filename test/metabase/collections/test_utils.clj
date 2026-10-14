@@ -103,23 +103,20 @@
                                   :type collection/library-data-collection-type :location loc)
           :metrics (t2/select-one :model/Collection
                                   :type collection/library-metrics-collection-type :location loc)}))
-    ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
-    (mt/with-temp [:model/Collection library {:name     "Library"
-                                              :type     collection/library-collection-type
-                                              :location "/"}
-                   :model/Collection data    {:name     "Data"
-                                              :type     collection/library-data-collection-type
-                                              :location (str "/" (:id library) "/")}
-                   :model/Collection metrics {:name     "Metrics"
-                                              :type     collection/library-metrics-collection-type
-                                              :location (str "/" (:id library) "/")}]
-      (f {:library library :data data :metrics metrics}))))
+    ;; None exists — create the Library and delete its collections afterward.
+    (let [library (collection/create-library-collection!)
+          loc     (str "/" (:id library) "/")]
+      (try
+        (f {:library library
+            :data    (t2/select-one :model/Collection :type collection/library-data-collection-type :location loc)
+            :metrics (t2/select-one :model/Collection :type collection/library-metrics-collection-type :location loc)})
+        (finally
+          (t2/delete! :model/Collection :entity_id [:in (vec collection/library-root-entity-ids)]))))))
 
 (defmacro with-library
   "Ensure the singleton Library collection and its Data/Metrics sub-collections exist for the duration of
   `body`, binding `binding` to a `{:library _ :data _ :metrics _}` map of those collections.
-  Reuses an existing library if one is present; otherwise creates a temporary tree that's cleaned up
-  afterward."
+  Reuses an existing library if one is present; otherwise creates the Library and deletes it afterward."
   {:style/indent 1}
   [[binding] & body]
   `(do-with-library (fn [~binding] ~@body)))

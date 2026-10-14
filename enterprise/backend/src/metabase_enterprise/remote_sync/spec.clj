@@ -202,21 +202,22 @@
     :enabled?       true}
 
    :model/Collection
-   {:model-type     "Collection"
-    :model-key      :model/Collection
-    :identity       :entity-id
-    :events         {:prefix :event/collection
-                     :types  [:create :update]}  ; no delete event for collections
-    :eligibility    {:type       :collection
-                     :collection :any}  ; remote-synced OR transforms-namespace
-    :archived-key   :archived
-    :tracking       {:select-fields  [:name :id]
-                     :field-mappings {:model_name          :name
-                                      :model_collection_id :id}}  ; collection_id is self
-    :removal        {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
-                     :scope-key :id}  ; collections are scoped by their own id
-    :export-scope   :root-collections  ; query for root-level remote-synced + transforms-namespace collections
-    :enabled?       true}
+   {:model-type         "Collection"
+    :model-key          :model/Collection
+    :identity           :entity-id
+    :events             {:prefix :event/collection
+                         :types  [:create :update]}  ; no delete event for collections
+    :eligibility        {:type       :collection
+                         :collection :any}  ; remote-synced OR transforms-namespace
+    :archived-key       :archived
+    :tracking           {:select-fields  [:name :id]
+                         :field-mappings {:model_name          :name
+                                          :model_collection_id :id}}  ; collection_id is self
+    :removal-conditions {:entity_id [:not-in (into [] collections/library-root-entity-ids)]}  ; every instance has the Library
+    :removal            {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
+                         :scope-key :id}  ; collections are scoped by their own id
+    :export-scope       :root-collections  ; query for root-level remote-synced + transforms-namespace collections
+    :enabled?           true}
 
    :model/Table
    {:model-type     "Table"

@@ -410,6 +410,9 @@
                (spec/library-collection? object))
       (handle-library-sync-status-change! is-remote-synced?))
     (cond
+      (and should-sync? (collections/library-root-collection? object))
+      nil
+
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
@@ -417,7 +420,8 @@
         (when (and (= topic :event/collection-update)
                    (or (:archived object) (= "delete" (:status existing-entry))))
           (cascade-archived-state! object)))
-      (and existing-entry (not should-sync?))
+      (and (not should-sync?)
+           (or existing-entry (collections/library-root-collection? object)))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))

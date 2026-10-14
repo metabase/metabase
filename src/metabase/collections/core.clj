@@ -35,6 +35,8 @@
   library-dashboards-collection?
   library-data-collection-type
   library-metrics-collection-type
+  library-root-collection?
+  library-root-entity-ids
   location-path
   location-path->ids
   moving-from-remote-synced?

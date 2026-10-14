@@ -267,8 +267,8 @@
   "The entity_id for the Library's Dashboards collection."
   "librarylibrarydashbrd")
 
-(def ^:private library-entity-id?
-  "Returns true if the given entity ID is one of the hard-coded Library keys."
+(def library-root-entity-ids
+  "The entity_ids of the system-created Library collections (root, data, metrics, and dashboards)."
   #{library-entity-id
     library-data-entity-id
     library-metrics-entity-id
@@ -334,7 +334,7 @@
   "Is this one of the immutable system-created Library collections (root, data, metrics, or dashboards)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
-  (library-entity-id? (:entity_id collection)))
+  (contains? library-root-entity-ids (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
@@ -733,7 +733,7 @@
   not to all of them."
   [{:keys [entity_id] :as collection}]
   (cond-> collection
-    (library-entity-id? entity_id) (assoc :is_library_root true)))
+    (contains? library-root-entity-ids entity_id) (assoc :is_library_root true)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
