@@ -23,9 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]
-   [potemkin :as p])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [potemkin :as p]))
 
 (comment metabase.driver.sql.parameters.substitution/keep-me
          metabase.driver.sql.normalize/keep-me ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
@@ -348,48 +346,41 @@
   [driver stage admin?]
   (let [write?    driver.settings/*impersonation-allow-write?*
         stmt-type (if write? "write" "read")
-        verdict
-        ;; `is-single-stmt-of-type?` throws rather than return a verdict when it cannot vouch that the
-        ;; string that would execute is the string it validated — e.g. a large VALUES/IN list it would have
-        ;; to collapse before parsing.
-        (try
-          (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)
-          (catch ExceptionInfo e
-            (when-not (= (:type (ex-data e)) sql-tools/cannot-validate-sql)
-              (throw e))
-            ;; Admins run as the full connection user and are never actually impersonated, so validating
-            ;; their native SQL changes nothing — leave a query we merely can't collapse-then-parse untouched
-            ;; for them rather than refuse it. Everyone else is refused, preserving the `:reason` and logging
-            ;; it so an operator has a thread to pull.
-            (when-not admin?
-              (let [reason (:reason (ex-data e))]
-                (log/warnf "Refusing impersonated native query on %s: cannot validate (%s)" driver reason)
-                (throw (ex-info (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
-                                {:type   qp.error-type/invalid-query
-                                 :reason reason
-                                 :sql    (:native stage)}))))
-            ::admin-bypass))]
-    (if (= verdict ::admin-bypass)
-      stage
-      (let [{:keys [is-single-stmt? allowed-stmt-type? sql error]} verdict]
-        (cond
-          error
-          (do
-            (log/warnf "Failed to parse native query: %s" error)
-            (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
-                            {:type qp.error-type/invalid-query
-                             :sql  (:native stage)})))
+        {:keys [is-single-stmt? allowed-stmt-type? sql error reason]}
+        (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
+    (cond
+      error
+      (do
+        (log/warnf "Failed to parse native query: %s" error)
+        (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
+                        {:type qp.error-type/invalid-query
+                         :sql  (:native stage)})))
 
-          (and is-single-stmt?
-               (or allowed-stmt-type? admin?))
-          (assoc stage :native sql)
+      ;; The validator refused without checking the SQL — it could not vouch that the string that would
+      ;; execute is the string it would have parsed (e.g. a large VALUES/IN list it would have to collapse
+      ;; first). Admins run as the full connection user and are never actually impersonated, so validating
+      ;; their native SQL changes nothing: leave such a query untouched for them rather than refuse it.
+      ;; Everyone else is refused, with the `:reason` logged so an operator has a thread to pull.
+      (contains? sql-tools/unverifiable-reasons reason)
+      (if admin?
+        stage
+        (do
+          (log/warnf "Refusing impersonated native query on %s: cannot validate (%s)" driver reason)
+          (throw (ex-info (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
+                          {:type   qp.error-type/invalid-query
+                           :reason reason
+                           :sql    (:native stage)}))))
 
-          :else
-          (throw (ex-info (if write?
-                            (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement.")
-                            (tru "Invalid impersonated native query. Must be a single select statement."))
-                          {:type qp.error-type/invalid-query
-                           :sql  (:native stage)})))))))
+      (and is-single-stmt?
+           (or allowed-stmt-type? admin?))
+      (assoc stage :native sql)
+
+      :else
+      (throw (ex-info (if write?
+                        (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement.")
+                        (tru "Invalid impersonated native query. Must be a single select statement."))
+                      {:type qp.error-type/invalid-query
+                       :sql  (:native stage)})))))
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
@@ -402,10 +393,10 @@
    statement of the required type.
 
    Throws a [[metabase.query-processor.error-type/invalid-query]] `ex-info` when the query is rejected —
-   including when the validator cannot vouch for the executable string (a large VALUES/IN/ARRAY list it
+   including when the validator refused without checking the SQL at all (a large VALUES/IN/ARRAY list it
    would have to collapse before parsing, or an unknown dialect), which it refuses for non-admins rather
-   than running a string it did not validate. Admins are exempt from that cannot-validate refusal: they run
-   as the full connection user, so refusing a query we merely cannot collapse-then-parse changes nothing.
+   than running a string it did not validate. Admins are exempt from that refusal: they run as the full
+   connection user, so refusing a query we merely cannot collapse-then-parse changes nothing.
    Registered as the `:sql` method of [[driver/validate-impersonated-query]], so every SQL driver inherits
    it."
   [driver query]
