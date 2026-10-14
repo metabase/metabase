@@ -23,7 +23,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]
-   [potemkin :as p]))
+   [potemkin :as p])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (comment metabase.driver.sql.parameters.substitution/keep-me
          metabase.driver.sql.normalize/keep-me ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
@@ -352,8 +354,8 @@
         ;; to collapse before parsing.
         (try
           (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)
-          (catch clojure.lang.ExceptionInfo e
-            (when-not (= (:type (ex-data e)) sql-tools/cannot-validate-error-type)
+          (catch ExceptionInfo e
+            (when-not (= (:type (ex-data e)) sql-tools/cannot-validate-sql)
               (throw e))
             ;; Admins run as the full connection user and are never actually impersonated, so validating
             ;; their native SQL changes nothing — leave a query we merely can't collapse-then-parse untouched
