@@ -2506,8 +2506,8 @@ serdes/meta:
                                                          :location         "/"
                                                          :is_remote_synced true}
                      :model/Card _ {:name "Library Card" :collection_id library-id}]
-        (let [files {"main" {"collections/main/library/library.yaml"
-                             (test-helpers/generate-collection-yaml collection/library-entity-id "Library" :type "library")}}]
-          (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
-            (is (= :conflict (:status result)))
-            (is (some #(= :library-conflict (:type %)) (:conflict-details result)))))))))
+        (let [files  {"main" {"collections/main/library/library.yaml"
+                              (test-helpers/generate-collection-yaml collection/library-entity-id "Library" :type "library")}}
+              result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
+          (is (= :conflict (:status result)))
+          (is (some #(= :library-conflict (:type %)) (:conflict-details result))))))))
