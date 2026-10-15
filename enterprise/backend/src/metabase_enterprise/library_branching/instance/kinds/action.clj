@@ -96,11 +96,12 @@
     (nil? model_id)))
 
 (defn current-action
-  "The content of the in-scope action `id`, after a lock on its row and its query or implicit row, or nil."
+  "The state of action `id` (`instance/current`), after a lock on its row and its query or implicit row."
   [id]
-  (library-branching.db/lock-action id)
-  (when (scope/in-scope? :action id)
-    (get (read-actions [id]) id)))
+  (let [row (library-branching.db/lock-action id)]
+    (content/current-state (boolean (and row (row-in-tree? row)))
+                           #(scope/in-scope? :action id)
+                           #(get (read-actions [id]) id))))
 
 (defn- model-card!
   "The card row of `model`, the model of action `id`. Throws ::instance/refused unless it is an in-scope model."
