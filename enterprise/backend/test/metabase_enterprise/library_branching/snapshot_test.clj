@@ -8,6 +8,8 @@
    [clojure.test.check.properties :as prop]
    [clojure.test.check.random :as random]
    [clojure.test.check.rose-tree :as rose]
+   [metabase-enterprise.library-branching.collation :as collation]
+   [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
    [metabase.util :as u]
@@ -146,10 +148,10 @@
         "Filter "         "Filter"
         "Filter \u00A0 "  "Filter"
         "a\u200Bb"        "ab"
-        "\u00ADab\uFEFF"  "ab"
+        "\u200Dab\uFEFF"  "ab"
         "😀"              "😃"
         "x🦄y"            "x😀y"))
-    (testing "letters of their own, leading and inner spaces, punctuation, U+FFFD"
+    (testing "letters of their own, leading and inner spaces, punctuation, the soft hyphen, U+FFFD"
       (are [a b] (not (one-key? a b))
         "ı"       "i"
         "Łódź"    "Lodz"
@@ -159,6 +161,7 @@
         " Filter" "Filter"
         "a b"     "ab"
         "a-b"     "a_b"
+        "a\u00ADb" "ab"
         "😀"      "\uFFFD"
         "一"      "丁"))))
 
@@ -170,7 +173,7 @@
 (defspec fold-name-ignores-ignorable-characters-test 200
   (prop/for-all [s lb.tu/unicode-name-gen
                  i gen/nat
-                 c (gen/elements [\u200B \u200C \u200D \u00AD \uFEFF])]
+                 c (gen/elements [\u200B \u200C \u200D \u2060 \uFEFF])]
     (let [cps (vec (.toArray (.codePoints ^String s)))
           i   (mod i (inc (count cps)))]
       (one-key? s (str (lb.tu/code-points->string (subvec cps 0 i)) c (lb.tu/code-points->string (subvec cps i)))))))
@@ -183,6 +186,38 @@
 (defspec fold-name-ignores-ascii-case-test 200
   (prop/for-all [s gen/string-ascii]
     (one-key? (u/lower-case-en s) (u/upper-case-en s))))
+
+(def fold-mutations
+  "Each mutation removes one rule of the name fold."
+  [{:name   :case-and-accents-only
+    :doc    "The fold before utf8mb4_unicode_ci: NFKD, no combining mark, lower case."
+    :target `snapshot/fold-name
+    :edits  [[:replace '(collation/primary-key s)
+              '(.toLowerCase ^String (clojure.string/replace (java.text.Normalizer/normalize s java.text.Normalizer$Form/NFKD)
+                                                             #"\p{M}" "")
+                             java.util.Locale/ROOT)]]}
+   {:name   :no-pad-space
+    :doc    "Trailing spaces count."
+    :target `collation/primary-key
+    :edits  [[:replace '(= space-weight (int (.charAt sb (dec end)))) false]]}
+   {:name   :supplementary-by-code-point
+    :doc    "Each supplementary character has weights of its own."
+    :target `collation/code-point-weights
+    :edits  [[:replace '(str (char supplementary-weight)) '(String. (Character/toChars (int cp)))]]}
+   {:name   :no-expansions
+    :doc    "A character has only its first weight, so the sharp s and ss differ."
+    :target `collation/code-point-weights
+    :edits  [[:replace '(aget table cp) '(let [^String w (aget table cp)] (if (seq w) (subs w 0 1) w))]]}
+   {:name   :no-ignorables
+    :doc    "An ignorable character counts as itself."
+    :target `collation/code-point-weights
+    :edits  [[:replace '(aget table cp) '(let [w (aget table cp)] (if (= "" w) (str (char cp)) w))]]}])
+
+(deftest fold-mutations-test
+  (mut/check fold-mutations {:tests [#'fold-name-test #'fold-name-ignores-trailing-spaces-test
+                                     #'fold-name-ignores-ignorable-characters-test
+                                     #'fold-name-takes-supplementary-characters-as-one-test
+                                     #'fold-name-ignores-ascii-case-test]}))
 
 (deftest ^:parallel unique-key-test
   (testing "a name key compares in its folded form, any other key as it is"
