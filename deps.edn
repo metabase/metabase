@@ -429,6 +429,10 @@
   ;; as some default values differ between dev and prod
   ;;
   ;;    clojure -M:ee:doc api-documentation
+  ;;
+  ;; or run every documentation command in one JVM
+  ;;
+  ;;    clojure -M:ee:doc all-documentation
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"

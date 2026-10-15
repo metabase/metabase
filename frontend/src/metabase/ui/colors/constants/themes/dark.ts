@@ -122,6 +122,9 @@ export const getDarkTheme = (
     "button-subtle-positive-default": baseColors.transparent,
     "button-subtle-positive-hover": baseColors.orionAlphaInverse[20],
     "button-subtle-positive-pressed": baseColors.orionAlphaInverse[10],
+    "button-subtle-warning-default": baseColors.transparent,
+    "button-subtle-warning-hover": baseColors.orionAlphaInverse[20],
+    "button-subtle-warning-pressed": baseColors.orionAlphaInverse[10],
     "button_label-default-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
     "button_label-filled-brand-default": brand[80],
     "button_label-filled-filter-default": baseColors.filter[80],
@@ -147,6 +150,8 @@ export const getDarkTheme = (
     "button_label-subtle-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
     "button_label-subtle-positive-default": baseColors.palm[30],
     "button_label-subtle-positive-hover": baseColors.palm[20],
+    "button_label-subtle-warning-default": baseColors.dubloon[20],
+    "button_label-subtle-warning-hover": baseColors.dubloon[10],
     "chart-axis": baseColors.orionAlphaInverse[20],
     "core-blue-saturated": baseColors.ocean[40],
     "core-brand": baseColors.blue[40],
