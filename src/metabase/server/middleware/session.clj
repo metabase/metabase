@@ -179,11 +179,11 @@
    [:bearer-only-paths [:set [:re #"^/"]]]])
 
 (defn- bearer-only-path?
-  "Whether request path `uri` is one of `bearer-only-paths` or below one. Compares paths, never a host, and follows
-  segment boundaries, so `/api/mcpfoo` is not below `/api/mcp`."
-  [bearer-only-paths uri]
-  (boolean (and uri
-                (some #(or (= uri %) (str/starts-with? uri (str % "/")))
+  "Whether request `path` is one of `bearer-only-paths` or below one. Compares paths, never a host, and follows segment
+  boundaries, so `/api/mcpfoo` is not below `/api/mcp`."
+  [bearer-only-paths path]
+  (boolean (and path
+                (some #(or (= path %) (str/starts-with? path (str % "/")))
                       bearer-only-paths))))
 
 (mr/def ::mcp-ui-credentials
