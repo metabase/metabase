@@ -627,8 +627,7 @@
 ;;; do not encode MetadataProviders to JSON, just generate `nil` instead.
 (json/add-encoder
  UncachedApplicationDatabaseMetadataProvider
- (fn [_mp json-generator]
-   (json/generate-nil nil json-generator)))
+ (constantly nil))
 
 (extend-protocol clj-yaml.core/YAMLCodec
   UncachedApplicationDatabaseMetadataProvider

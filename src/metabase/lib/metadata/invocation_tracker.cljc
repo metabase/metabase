@@ -103,8 +103,7 @@
    ;; do not encode MetadataProviders to JSON, just generate `nil` instead.
    (json/add-encoder
     InvocationTracker
-    (fn [_mp json-generator]
-      (json/generate-nil nil json-generator))))
+    (constantly nil)))
 
 #?(:clj
    (extend-protocol clj-yaml.core/YAMLCodec

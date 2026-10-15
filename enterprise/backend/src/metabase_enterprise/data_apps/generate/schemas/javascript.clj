@@ -148,6 +148,26 @@
     [(second item) (nth item 2)]
     [nil item]))
 
+(defn- json-key
+  [k]
+  (json/encode (if (keyword? k) (u/qualified-name k) (str k))))
+
+(defn- indented-json
+  "Renders `x` as JSON the way `JSON.stringify(x, null, 2)` would, except for empty collections, written `{ }` and
+  `[ ]`, with each line after the first indented by `indent`."
+  [x indent]
+  (let [inner (+ indent 2)
+        lines (fn [open close items]
+                (if (empty? items)
+                  (str open " " close)
+                  (str open "\n"
+                       (str/join ",\n" (for [item items] (str (spaces inner) item)))
+                       "\n" (spaces indent) close)))]
+    (cond
+      (map? x)  (lines "{" "}" (for [[k v] x] (str (json-key k) ": " (indented-json v inner))))
+      (coll? x) (lines "[" "]" (for [v x] (indented-json v inner)))
+      :else     (json/encode x))))
+
 (defn- metadata-json
   "Renders `metadata` as JSON: on one line when every value is a scalar, otherwise as `JSON.stringify(x, null, 2)`
   would, with each line after the first indented by `indent`."
@@ -155,10 +175,9 @@
   (if (not-any? coll? (vals metadata))
     (str "{ "
          (str/join ", " (for [[k v] metadata]
-                          (str (json/encode (u/qualified-name k)) ": " (json/encode v))))
+                          (str (json-key k) ": " (json/encode v))))
          " }")
-    (str/replace (json/encode metadata {:pretty {:indent-arrays? true :object-field-value-separator ": "}})
-                 "\n" (str "\n" (spaces indent)))))
+    (indented-json metadata indent)))
 
 (defn- metadata-block
   "Returns a `/* metadata: {...} */` block. A `*/` can only occur inside a JSON string, where it is written as the

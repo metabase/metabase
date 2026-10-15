@@ -15,7 +15,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json])
   (:import
-   [com.fasterxml.jackson.core JsonParseException]))
+   (com.s_exp.oda JsonParseException)))
 
 (set! *warn-on-reflection* true)
 

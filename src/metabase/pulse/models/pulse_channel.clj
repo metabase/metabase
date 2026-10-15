@@ -310,5 +310,5 @@
 
 (methodical/defmethod mi/to-json :model/PulseChannel
   "Don't include `:emails`, we use that purely internally"
-  [pulse-channel json-generator]
-  (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
+  [pulse-channel]
+  (next-method (m/dissoc-in pulse-channel [:details :emails])))

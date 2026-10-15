@@ -39,10 +39,8 @@
 
 (methodical/defmethod mi/to-json :model/Secret
   "Never include the secret value in JSON."
-  [secret json-generator]
-  (next-method
-   (dissoc secret :value)
-   json-generator))
+  [secret]
+  (next-method (dissoc secret :value)))
 
 (defn latest-for-id
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."

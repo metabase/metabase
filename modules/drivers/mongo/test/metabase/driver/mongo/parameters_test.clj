@@ -20,6 +20,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- raw-json
+  "Marks `s` to be spliced as-is into the JSON written by [[encode-json]], e.g. a `{{tag}}` standing for a value."
+  [s]
+  (str "__RAW__" s "__RAW__"))
+
+(defn- encode-json
+  [x]
+  (str/replace (json/encode x) #"\"__RAW__(.*?)__RAW__\"" "$1"))
+
 (deftest ^:parallel ->utc-instant-test
   (doseq [t [#t "2020-03-14"
              #t "2020-03-14T00:00:00"
@@ -367,8 +376,8 @@
                 (qp/process-query
                  (mt/query checkins
                    {:type       :native
-                    :native     {:query         (json/encode
-                                                 [{:$match (json/raw-json-generator "{{date}}")}
+                    :native     {:query         (encode-json
+                                                 [{:$match (raw-json "{{date}}")}
                                                   {:$sort {:_id 1}}])
                                  :collection    "checkins"
                                  :template-tags {"date" {:name         "date"
@@ -390,7 +399,7 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/encode [{:$match (json/raw-json-generator "{{id}}")}
+                  :native     {:query         (encode-json [{:$match (raw-json "{{id}}")}
                                                             {:$sort {:_id 1}}])
                                :collection    "categories"
                                :template-tags {"id" {:name         "id"
@@ -411,8 +420,8 @@
                 (qp/process-query
                  (mt/query checkins
                    {:type   :native
-                    :native {:query         (json/encode
-                                             [{:$match (json/raw-json-generator "{{date}}")}
+                    :native {:query         (encode-json
+                                             [{:$match (raw-json "{{date}}")}
                                               {:$sort {:_id 1}}
                                               {:$limit 1}])
                              :collection    "checkins"
@@ -432,8 +441,8 @@
                   (qp/process-query
                    (mt/query tips
                      {:type       :native
-                      :native     {:query         (json/encode
-                                                   [{:$match (json/raw-json-generator "{{username}}")}
+                      :native     {:query         (encode-json
+                                                   [{:$match (raw-json "{{username}}")}
                                                     {:$sort {:_id 1}}
                                                     {:$project {"username" "$source.username"
                                                                 "_id" 1}}
@@ -463,8 +472,8 @@
                       (qp/process-query
                        (mt/query tips
                          {:type       :native
-                          :native     {:query         (json/encode
-                                                       [{:$match (json/raw-json-generator "{{username}}")}
+                          :native     {:query         (encode-json
+                                                       [{:$match (raw-json "{{username}}")}
                                                         {:$sort {:_id 1}}
                                                         {:$project {"username" "$source.username"}}
                                                         {:$limit 1}])
@@ -493,8 +502,8 @@
                          (qp/process-query
                           (mt/query venues
                             {:type       :native
-                             :native     {:query         (json/encode
-                                                          [{:$match (json/raw-json-generator "{{price}}")}
+                             :native     {:query         (encode-json
+                                                          [{:$match (raw-json "{{price}}")}
                                                            {:$project {"price" "$price"}}
                                                            {:$sort {:_id 1}}
                                                            {:$limit 10}])
@@ -519,8 +528,8 @@
                                (qp/process-query
                                 (mt/query tips
                                   {:type       :native
-                                   :native     {:query         (json/encode
-                                                                [{:$match (json/raw-json-generator "{{username}}")}
+                                   :native     {:query         (encode-json
+                                                                [{:$match (raw-json "{{username}}")}
                                                                  {:$sort {:_id 1}}
                                                                  {:$project {"username" "$source.username"}}
                                                                  {:$limit 20}])
@@ -555,7 +564,7 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/encode [{:$match (json/raw-json-generator "{{snippet: first 3 checkins}}")}])
+                  :native     {:query         (encode-json [{:$match (raw-json "{{snippet: first 3 checkins}}")}])
                                :collection    "categories"
                                :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
                                                                             :display-name "Snippet: First 3 checkins"
@@ -569,13 +578,13 @@
     (mt/test-driver :mongo
       (let [query (mt/native-query
                    {:collection "orders"
-                    :query (json/encode
+                    :query (encode-json
                             [{"$lookup" {"from" "products"
                                          "localField" "product_id"
                                          "foreignField" "_id"
                                          "as" "join_alias_Products"}}
                              {"$unwind" "$join_alias_Products"}
-                             {"$match" (json/raw-json-generator "{{category_filter}}")}
+                             {"$match" (raw-json "{{category_filter}}")}
                              {"$count" "count"}])
                     :template-tags {"category_filter" {:id "category_filter_id"
                                                        :name "category_filter"
@@ -592,13 +601,13 @@
     (mt/test-driver :mongo
       (let [query (mt/native-query
                    {:collection "orders"
-                    :query (json/encode
+                    :query (encode-json
                             [{"$lookup" {"from" "products"
                                          "localField" "product_id"
                                          "foreignField" "_id"
                                          "as" "join_alias_Products"}}
                              {"$unwind" "$join_alias_Products"}
-                             {"$match" (json/raw-json-generator "{{date_filter}}")}
+                             {"$match" (raw-json "{{date_filter}}")}
                              {"$count" "count"}])
                     :template-tags {"date_filter" {:id "date_filter_id"
                                                    :name "date_filter"
@@ -615,13 +624,13 @@
     (mt/test-driver :mongo
       (let [query (mt/native-query
                    {:collection "orders"
-                    :query (json/encode
+                    :query (encode-json
                             [{"$lookup" {"from" "products"
                                          "localField" "product_id"
                                          "foreignField" "_id"
                                          "as" "join_alias_Products"}}
                              {"$unwind" "$join_alias_Products"}
-                             {"$match" (json/raw-json-generator "{{date_filter}}")}
+                             {"$match" (raw-json "{{date_filter}}")}
                              {"$count" "count"}])
                     :template-tags {"date_filter" {:id "date_filter_id"
                                                    :name "date_filter"
