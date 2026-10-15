@@ -211,10 +211,12 @@
   10000)
 
 (defn parse
-  "The YAML documents of `text`. A duplicate key and a tag that is not a YAML type throw."
+  "The YAML documents of `text`, as a vector. A syntax error, a duplicate key and a tag that is not a YAML type throw
+  here."
   [^String text]
-  (yaml/parse-string text :keywords false :load-all true :allow-duplicate-keys false
-                     :nesting-depth-limit nesting-depth-limit))
+  ;; clj-yaml reads the documents lazily; `vec` makes a parse error throw inside the caller's `try`.
+  (vec (yaml/parse-string text :keywords false :load-all true :allow-duplicate-keys false
+                          :nesting-depth-limit nesting-depth-limit)))
 
 (defn read-yaml
   "The document of the YAML bytes `b`. Throws an ex-info of type ::unreadable when `b` is not UTF-8 text that holds
