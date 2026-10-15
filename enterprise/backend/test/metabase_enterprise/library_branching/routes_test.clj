@@ -7,6 +7,7 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.api]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.repository-test-util :as rtu :refer [with-remote with-settings]]
    [metabase-enterprise.library-branching.store :as store]
@@ -19,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private requests
   "A request of each route of the module: `{[method route] body}`. A body is valid, so that the route reaches its
@@ -56,7 +57,7 @@
 (deftest every-route-is-for-superusers-test
   (testing "the requests of this test cover every route of the module"
     (is (= (module-routes) (set (keys requests)))))
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (tasks.tu/with-no-tasks
       (with-settings {:remote-sync-url "https://git.example.com/a.git" :remote-sync-branch "main"}
         (let [before (rtu/saved)]
@@ -68,7 +69,7 @@
             (is (nil? (tasks/newest-task)))))))))
 
 (deftest repository-routes-need-a-repository-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-settings {}
       (is (= "Library branching is not configured." (request :crowberto :post "/test-connection" 400 {})))
       (is (= "Library branching is not configured." (request :crowberto :get "/branches" 400 nil)))
@@ -78,7 +79,7 @@
             (is (= "Library branching is not configured." (request :crowberto :post route 400 body)))))))))
 
 (deftest repository-routes-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main" "dev"])
       (tasks.tu/with-no-tasks
@@ -111,7 +112,7 @@
                      (request :crowberto :post "/test-connection" 400 {}))))))))))
 
 (deftest operation-routes-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main" "dev"])
       (tasks.tu/with-no-tasks
@@ -136,7 +137,7 @@
   (repository/do-with-store store/branches))
 
 (deftest branch-routes-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main" "dev"])
       (tasks.tu/with-no-tasks

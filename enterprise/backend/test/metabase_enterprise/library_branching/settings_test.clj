@@ -3,13 +3,14 @@
    [clojure.test :refer :all]
    ;; loads the settings of every enterprise module, as at startup
    [metabase-enterprise.core.init]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (deftest library-branching-enabled-default-test
   (testing "library-branching-enabled is false until an admin sets it"

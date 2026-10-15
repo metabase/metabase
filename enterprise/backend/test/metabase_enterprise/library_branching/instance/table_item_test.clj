@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.engine.diff :as diff]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
@@ -25,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;;; ---------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -164,7 +165,7 @@
 
 (deftest scope-test
   (collections.tu/with-library [{:keys [data]}]
-    (mt/with-temp [:model/Collection        outside   {:name "Not the Library" :location "/"}
+    (mt/with-temp [:model/Collection        outside   {:name "Not the Library" :type "library-data" :location "/"}
                    :model/TableUserSettings _         (published :venues data)
                    :model/TableUserSettings _         (published :checkins outside)
                    :model/Segment           in        {:table_id (mt/id :venues) :name "In" :definition (below :venues :price 2)}
@@ -190,7 +191,7 @@
 
 (deftest local-changes-test
   (collections.tu/with-library [{:keys [data]}]
-    (mt/with-temp [:model/Collection        outside {:name "Not the Library" :location "/"}
+    (mt/with-temp [:model/Collection        outside {:name "Not the Library" :type "library-data" :location "/"}
                    :model/TableUserSettings _       (published :venues data)
                    :model/TableUserSettings _       (published :checkins outside)
                    :model/Segment           s       {:table_id (mt/id :venues) :name "Cheap" :definition (below :venues :price 2)}
@@ -291,7 +292,7 @@
 
 (deftest refused-writes-write-nothing-test
   (collections.tu/with-library [{:keys [data]}]
-    (mt/with-temp [:model/Collection        outside {:name "Not the Library" :location "/"}
+    (mt/with-temp [:model/Collection        outside {:name "Not the Library" :type "library-data" :location "/"}
                    :model/TableUserSettings _       (published :venues data)
                    :model/TableUserSettings _       (published :checkins outside)
                    :model/Segment           s       {:table_id (mt/id :venues) :name "Cheap" :definition (below :venues :price 2)}

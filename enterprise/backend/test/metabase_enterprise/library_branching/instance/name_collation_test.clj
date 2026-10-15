@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.collation :as collation]
    [metabase-enterprise.library-branching.engine.test-util :as engine.tu]
    [metabase-enterprise.library-branching.engine.validate :as validate]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
    [metabase.app-db.core :as mdb]
@@ -20,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 (def ^:private one-key
   "Pairs of names that utf8mb4_unicode_ci and the engine both take as one key."

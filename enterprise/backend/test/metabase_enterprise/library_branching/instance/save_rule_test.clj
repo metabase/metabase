@@ -3,6 +3,7 @@
   named, and changes nothing. Each test saves in a transaction that rolls back."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.save-rule :as save-rule]
    [metabase-enterprise.library-branching.instance.write-test :as write-test]
    [metabase.collections.test-utils :as collections.tu]
@@ -14,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- metric-query
   "A query of the venues table whose aggregation is the metric `card-id`."

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.manifest :as manifest]
@@ -10,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- entry
   "The entry of the database named `db-name` in manifest document `doc`."
@@ -73,7 +74,7 @@
          (is (not (str/includes? (String. b "UTF-8") "mem:x"))))))))
 
 (deftest manifest-api-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (do-with-warehouse
      (fn []
        (testing "a superuser gets the manifest as a YAML file"

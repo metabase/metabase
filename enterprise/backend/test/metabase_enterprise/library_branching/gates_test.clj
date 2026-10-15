@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.repository-test-util :refer [with-settings]]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -23,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private url "https://git.example.com/library.git")
 
@@ -55,29 +56,42 @@
                    :model/Collection nested     {:name "Nested" :type "library-dashboards"
                                                  :location (str (:location inner) (:id inner) "/")}
                    :model/Collection regular    {:name "Regular"}
-                   :model/Card       inner-card {:name "Inner card" :collection_id (:id inner)
+                   :model/Dashboard  inner-dash {:name "Inner dashboard" :collection_id (:id inner)}
+                   :model/Dashboard  nested-dash {:name "Nested dashboard" :collection_id (:id nested)}
+                   :model/Dashboard  regular-dash {:name "Regular dashboard" :collection_id (:id regular)}
+                   ;; a question in a Library Dashboards collection is a question of a dashboard there
+                   :model/Card       inner-card {:name "Inner card" :type :question :collection_id (:id inner)
+                                                 :dashboard_id (:id inner-dash)
                                                  :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Card       nested-card {:name "Nested card" :collection_id (:id nested)
+                   :model/Card       nested-card {:name "Nested card" :type :question :collection_id (:id nested)
+                                                  :dashboard_id (:id nested-dash)
                                                   :dataset_query (mt/native-query {:query "SELECT 1"})}
                    :model/Card       regular-card {:name "Regular card" :collection_id (:id regular)
                                                    :dataset_query (mt/native-query {:query "SELECT 1"})}
                    :model/Card       root-card  {:name "Root card" :collection_id nil
                                                  :dataset_query (mt/native-query {:query "SELECT 1"})}
-                   :model/Dashboard  inner-dash {:name "Inner dashboard" :collection_id (:id inner)}
-                   :model/Dashboard  nested-dash {:name "Nested dashboard" :collection_id (:id nested)}
-                   :model/Dashboard  regular-dash {:name "Regular dashboard" :collection_id (:id regular)}
-                   :model/Document   inner-doc  {:name "Inner document" :document (prose "inner")
-                                                 :collection_id (:id inner)}
-                   :model/Document   nested-doc {:name "Nested document" :document (prose "nested")
-                                                 :collection_id (:id nested)}
                    :model/Document   regular-doc {:name "Regular document" :document (prose "regular")
                                                   :collection_id (:id regular)}]
-      (f (assoc tree
-                :inner inner :nested nested :regular regular
-                :synced  {:inner-card inner-card :nested-card nested-card :inner-dash inner-dash
-                          :nested-dash nested-dash :inner-doc inner-doc :nested-doc nested-doc}
-                :outside {:regular-card regular-card :root-card root-card :regular-dash regular-dash
-                          :regular-doc regular-doc})))))
+      ;; The Library's content rule refuses a document in a Library collection; such a document exists on an instance
+      ;; that had it before the rule (the :library feature) applied.
+      (let [docs (mt/with-premium-features #{}
+                   (mapv #(t2/insert-returning-instance! :model/Document %)
+                         [{:name "Inner document" :document (prose "inner") :collection_id (:id inner)
+                           :content_type "application/json+vnd.prose-mirror"
+                           :creator_id (mt/user->id :crowberto)}
+                          {:name "Nested document" :document (prose "nested") :collection_id (:id nested)
+                           :content_type "application/json+vnd.prose-mirror"
+                           :creator_id (mt/user->id :crowberto)}]))
+            [inner-doc nested-doc] docs]
+        (try
+          (f (assoc tree
+                    :inner inner :nested nested :regular regular
+                    :synced  {:inner-card inner-card :nested-card nested-card :inner-dash inner-dash
+                              :nested-dash nested-dash :inner-doc inner-doc :nested-doc nested-doc}
+                    :outside {:regular-card regular-card :root-card root-card :regular-dash regular-dash
+                              :regular-doc regular-doc}))
+          (finally
+            (t2/delete! :model/Document :id [:in (map :id docs)])))))))
 
 (defn- writable? [model row]
   (mi/can-write? (t2/select-one model :id (:id row))))
@@ -146,7 +160,7 @@
        (with-role :consumption
          (testing "a cache policy is instance state, not content: a consumption instance takes it"
            (mt/with-model-cleanup [:model/CacheConfig]
-             (mt/with-premium-features #{:cache-granular-controls}
+             (mt/with-additional-premium-features #{:cache-granular-controls}
                (is (=? {:id pos-int?}
                        (mt/user-http-request :crowberto :put 200 "cache/"
                                              {:model "dashboard" :model_id dash-id :strategy {:type "nocache"}}))))))
@@ -169,7 +183,8 @@
 
 (deftest published-table-is-read-only-on-a-consumption-instance-test
   (collections.tu/with-library [{:keys [data]}]
-    (mt/with-temp [:model/Collection regular {:name "Regular"}]
+    ;; the Library's content rule lets a table be published only in a Data collection, also outside the Library
+    (mt/with-temp [:model/Collection regular {:name "Regular" :type "library-data"}]
       (mt/with-current-user (mt/user->id :crowberto)
         (doseq [role roles]
           (testing (str "an instance of the role " role)
@@ -187,7 +202,7 @@
                                                                          :table      (t2/select-one :model/Table :id table-id)
                                                                          :name       "New segment"
                                                                          :definition {}}))))))
-                (testing "a table published in a regular collection stays writable"
+                (testing "a table published in a Data collection outside the Library stays writable"
                   (do-with-published-venues
                    (:id regular)
                    (fn [table-id]
@@ -202,7 +217,7 @@
    :target        {:database (mt/id) :type "table" :schema "public" :name "lb_gates_target"}})
 
 (deftest transforms-are-read-only-on-a-consumption-instance-test
-  (mt/with-premium-features #{:transforms-basic :hosting}
+  (mt/with-additional-premium-features #{:transforms-basic :hosting}
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms" :namespace :transforms}
                    :model/Transform  {transform-id :id} (transform-row coll-id)]
       (mt/with-current-user (mt/user->id :crowberto)
@@ -253,7 +268,7 @@
   "Calls `(f collection snippet)` with a snippets collection that all users can read and write, a snippet in it, and
   native query permissions for all users."
   [f]
-  (mt/with-premium-features #{:snippet-collections}
+  (mt/with-additional-premium-features #{:snippet-collections}
     (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
       (mt/with-temp [:model/Collection collection {:name "Snippets" :namespace "snippets"}
                      :model/NativeQuerySnippet snippet {:name "Original" :content "SELECT 1"

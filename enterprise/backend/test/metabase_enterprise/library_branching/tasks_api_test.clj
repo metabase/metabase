@@ -2,6 +2,7 @@
   "The current-task routes. The task functions commit their rows, so these tests are not parallel."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
    [metabase.test :as mt]
@@ -9,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- current-task [user status]
   (mt/user-http-request user :get status "ee/library-branching/current-task"))
@@ -18,7 +19,7 @@
   (mt/user-http-request user :post status "ee/library-branching/current-task/cancel"))
 
 (defmacro ^:private with-tasks [& body]
-  `(mt/with-premium-features #{:remote-sync}
+  `(mt/with-additional-premium-features #{:remote-sync}
      (tu/with-no-tasks ~@body)))
 
 (deftest current-task-is-for-superusers-test
