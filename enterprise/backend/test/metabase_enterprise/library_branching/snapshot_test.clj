@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.snapshot-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
@@ -9,6 +10,7 @@
    [clojure.test.check.rose-tree :as rose]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -121,27 +123,71 @@
   [s]
   (some #(< 1 %) (vals (frequencies (map (juxt :place :kind :name) (vals s))))))
 
+(defn- one-key? [a b] (= (snapshot/fold-name a) (snapshot/fold-name b)))
+
 (deftest ^:parallel fold-name-test
-  (testing "a name in its folded form: NFKD, with no combining mark, in lower case"
-    (are [s folded] (= folded (snapshot/fold-name s))
-      "Filter"                               "filter"
-      "FILTER"                               "filter"
-      "Fïlter"                               "filter"
-      "Fi\u0308lter"                         "filter"
-      "Café"                                 "cafe"
-      "\uFB01lter"                           "filter"
-      "\uFF26\uFF49\uFF4C\uFF54\uFF45\uFF52" "filter"
-      "x\u00B2"                              "x2"
-      "\u0130stanbul"                        "istanbul"
-      "\u0131"                               "\u0131"
-      "Straße"                               "straße"
-      "Łódź"                                 "łodz"
-      " Filter "                             " filter ")))
+  (testing "two names are one key iff utf8mb4_unicode_ci takes them as equal"
+    (testing "case, accents, compatibility forms"
+      (are [a b] (one-key? a b)
+        "Filter"        "filter"
+        "FILTER"        "filter"
+        "Fïlter"        "filter"
+        "Fi\u0308lter"  "Fïlter"
+        "Café"          "cafe"
+        "ﬁlter"         "filter"
+        "Ｆｉｌｔｅｒ"  "filter"
+        "x²"            "x2"
+        "İstanbul"      "istanbul"))
+    (testing "expansions, final sigma, trailing spaces, ignorable characters, supplementary characters"
+      (are [a b] (one-key? a b)
+        "Straße"          "Strasse"
+        "σ"               "ς"
+        "Œuvre"           "OEuvre"
+        "Filter "         "Filter"
+        "Filter \u00A0 "  "Filter"
+        "a\u200Bb"        "ab"
+        "\u00ADab\uFEFF"  "ab"
+        "😀"              "😃"
+        "x🦄y"            "x😀y"))
+    (testing "letters of their own, leading and inner spaces, punctuation, U+FFFD"
+      (are [a b] (not (one-key? a b))
+        "ı"       "i"
+        "Łódź"    "Lodz"
+        "Æther"   "AEther"
+        "Øre"     "Ore"
+        "Straße"  "Strase"
+        " Filter" "Filter"
+        "a b"     "ab"
+        "a-b"     "a_b"
+        "😀"      "\uFFFD"
+        "一"      "丁"))))
+
+(defspec fold-name-ignores-trailing-spaces-test 200
+  (prop/for-all [s   lb.tu/unicode-name-gen
+                 pad (gen/vector (gen/elements [\space \u00A0 \u3000]) 1 3)]
+    (one-key? s (apply str s pad))))
+
+(defspec fold-name-ignores-ignorable-characters-test 200
+  (prop/for-all [s lb.tu/unicode-name-gen
+                 i gen/nat
+                 c (gen/elements [\u200B \u200C \u200D \u00AD \uFEFF])]
+    (let [cps (vec (.toArray (.codePoints ^String s)))
+          i   (mod i (inc (count cps)))]
+      (one-key? s (str (lb.tu/code-points->string (subvec cps 0 i)) c (lb.tu/code-points->string (subvec cps i)))))))
+
+(defspec fold-name-takes-supplementary-characters-as-one-test 200
+  (prop/for-all [s  lb.tu/unicode-name-gen
+                 cp (gen/choose 0x10000 0x10FFFF)]
+    (one-key? s (str/replace s #"[\x{10000}-\x{10FFFF}]" (String. (Character/toChars (int cp)))))))
+
+(defspec fold-name-ignores-ascii-case-test 200
+  (prop/for-all [s gen/string-ascii]
+    (one-key? (u/lower-case-en s) (u/upper-case-en s))))
 
 (deftest ^:parallel unique-key-test
   (testing "a name key compares in its folded form, any other key as it is"
     (let [table {:snippet {:path [:name] :name? true} :metric {:path [:attrs :path]}}]
-      (is (= "filter" (snapshot/unique-key table {:kind :snippet :name "Fïlter"})))
+      (is (= (snapshot/fold-name "filter") (snapshot/unique-key table {:kind :snippet :name "Fïlter"})))
       (is (= "A.py" (snapshot/unique-key table {:kind :metric :name "M" :attrs {:path "A.py"}})))
       (is (nil? (snapshot/unique-key table {:kind :metric :name "M" :attrs {}})))
       (is (nil? (snapshot/unique-key table {:kind :collection :name "C"}))))))

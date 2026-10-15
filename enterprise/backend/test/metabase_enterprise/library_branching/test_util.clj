@@ -8,7 +8,10 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test.check.generators :as gen]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]))
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
+   [metabase.util :as u])
+  (:import
+   (java.text Normalizer Normalizer$Form)))
 
 (set! *warn-on-reflection* true)
 
@@ -141,9 +144,66 @@
 
 (def name-gen
   "Generates a non-empty name. Names repeat often, so siblings with one name and one kind occur, and so do names that
-  differ only in case or accents."
-  (gen/frequency [[4 (gen/elements ["Robin" "Toucan" "Heron" "Wren" "robin" "Wrén"])]
+  differ only in case, in accents, or as ß and ss."
+  (gen/frequency [[4 (gen/elements ["Robin" "Toucan" "Heron" "Wren" "robin" "Wrén" "Straße" "Strasse"])]
                   [1 (gen/fmap (fn [[c s]] (str c s)) (gen/tuple gen/char gen/string))]]))
+
+(defn code-points->string
+  "The string of the Unicode code points `code-points`."
+  ^String [code-points]
+  (let [a (int-array code-points)]
+    (String. a 0 (alength a))))
+
+(def ^:private special-code-points
+  "Code points where a fold by case and accents alone differs from utf8mb4_unicode_ci: expansions, final sigma, spaces,
+  ignorable characters and noncharacters."
+  (mapv int "ßẞςσΣŒœÆæﬁĲ\u00A0\u2002\u3000\u200B\u200D\u00AD\uFEFF\u0000\uFFFD\uFFFF"))
+
+(def ^:private code-point-gen
+  "Generates a Unicode scalar value (no surrogate), mostly ASCII and Latin letters, combining marks and
+  [[special-code-points]]."
+  (gen/frequency [[6 (gen/fmap int (gen/elements "aAbBsSeEoOiI0_ -"))]
+                  [3 (gen/choose 0xC0 0x24F)]
+                  [2 (gen/choose 0x300 0x36F)]
+                  [3 (gen/elements special-code-points)]
+                  [3 (gen/fmap #(if (< % 0xD800) % (+ % 0x800)) (gen/choose 0 0xF7FF))]
+                  [1 (gen/choose 0x10000 0x10FFFF)]]))
+
+(def unicode-name-gen
+  "Generates a name of 1 to 8 Unicode scalar values from any plane."
+  (gen/fmap code-points->string (gen/vector code-point-gen 1 8)))
+
+(defn- variant
+  "A string that utf8mb4_unicode_ci likely takes as equal to code point `cp`, by `how`."
+  ^String [cp how]
+  (let [s (String. (Character/toChars (int cp)))]
+    (case how
+      :same          s
+      :upper         (u/upper-case-en s)
+      :lower         (u/lower-case-en s)
+      :nfd           (Normalizer/normalize s Normalizer$Form/NFD)
+      :nfkc          (Normalizer/normalize s Normalizer$Form/NFKC)
+      :ignorable     (str "\u200B" s)
+      :supplementary (if (Character/isSupplementaryCodePoint (int cp)) "🦄" s))))
+
+(def ^:private small-alphabet
+  (into (mapv int "sSßaAáeEœŒoOσς \u200B") [0x1F600 0x1F603]))
+
+(def unicode-name-pair-gen
+  "Generates `[a b]`, two names that utf8mb4_unicode_ci often takes as equal: b is a with each code point changed in
+  case, normal form or supplementary character, or after an ignorable character, then trailing spaces; or both are
+  short names of a small alphabet."
+  (gen/one-of
+   [(gen/fmap (fn [[changes pad]]
+                [(code-points->string (map first changes))
+                 (str (str/join (map (fn [[cp how]] (variant cp how)) changes)) pad)])
+              (gen/tuple (gen/vector (gen/tuple code-point-gen
+                                                (gen/elements [:same :upper :lower :nfd :nfkc :ignorable :supplementary]))
+                                     1 8)
+                         (gen/elements ["" " " "  " "\u00A0" " \u3000"])))
+    (gen/fmap (fn [[a b]] [(code-points->string a) (code-points->string b)])
+              (gen/tuple (gen/vector (gen/elements small-alphabet) 1 4)
+                         (gen/vector (gen/elements small-alphabet) 1 4)))]))
 
 (def ^:private role-gen (gen/elements [:card :snippet :source-table :field]))
 
