@@ -337,9 +337,7 @@
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 
-(defn- ^:deprecated clause-order-fn-for-application-db
-  "DEPRECATED: this is only useful for compilation with Honey SQL, and we should be using Funny
-  SQL ([[metabase.funnysql.core]]) to compile app DB queries going forward."
+(defn- clause-order-fn-for-application-db
   [clauses]
   (case (mdb.connection/db-type)
     (:postgres :h2) clauses
@@ -351,7 +349,6 @@
  ::application-db
  ;; these functions are deprecated and should be removed entirely in the near future, but until then keep using them
  ;; for their intended purpose
- #_{:clj-kondo/ignore [:deprecated-var]}
  (assoc (sql/get-dialect :ansi)
         :quote           quote-for-application-db
         :clause-order-fn clause-order-fn-for-application-db))

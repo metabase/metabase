@@ -17,11 +17,11 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol ^:private Context
-  (^:private engine [this])
-  (^:private options [this])
+  (^:private engine      [this])
+  (^:private options     [this])
   (^:private append-sql! [this s])
   (^:private append-arg! [this arg])
-  (^:private result! [this]))
+  (^:private result!     [this]))
 
 (defn- default-context [engine options]
   (let [sb   (StringBuilder.)
