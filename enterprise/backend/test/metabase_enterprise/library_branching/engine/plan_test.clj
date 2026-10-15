@@ -30,12 +30,12 @@
 (defn- resolves? [s target] (or (lb.tu/env-target? target) (contains? s target)))
 
 (defn- reaches?
-  "True iff a chain of references among the items of `s` leads from `from` to `to`."
+  "True iff a chain of places and references among the items of `s` leads from `from` to `to`."
   [s from to]
   (loop [todo [from], seen #{}]
     (if-let [[x & more] (seq todo)]
       (cond (seen x) (recur more seen)
-            :else    (let [next (filter #(contains? s %) (ref-targets (get s x)))]
+            :else    (let [next (filter #(contains? s %) (cons (:place (get s x)) (ref-targets (get s x))))]
                        (if (some #{to} next) true (recur (into (vec more) next) (conj seen x)))))
       false)))
 
@@ -142,6 +142,21 @@
       (is (= #{[:card sub]} (:defer (first (filter #(= m2 (:id %)) steps)))))
       (is (= [] (:faults (simulate base steps)))))))
 
+(deftest ^:parallel trash-cycle-test
+  (testing "in a cycle of a place and references, an item is still trashed before its container"
+    ;; From a shrunk counterexample of plan-laws-test: collection e refers to table t, t refers to metric g, and g
+    ;; is in e.
+    (let [e     (engine.tu/eid "e")
+          g     (engine.tu/eid "g")
+          t     ["Sample Database" nil "ORDERS"]
+          l     (assoc base
+                       e (engine.tu/item :collection "E" nil #{[:card t]})
+                       t (engine.tu/item :published-table "Orders" nil #{[:card g]})
+                       g (engine.tu/item :metric "G" e))
+          steps (plan/plan l base l)]
+      (is (= [g e t] (map :id steps)))
+      (is (= [] (:faults (simulate l steps)))))))
+
 (deftest ^:parallel local-change-test
   (testing "TLA+ ABA trace: an item with a local change is never in a plan"
     ;; Base x. Remote r. Local a: a conflict. The person takes theirs, which is a save of r on the instance; then
@@ -201,7 +216,7 @@
   [{:name   :aba
     :doc    "The plan writes items with a local change (the TLA+ ABA trace of the first design)."
     :target `plan/plan
-    :edits  [[:remove '(check-base-equal! l m b changed)]]}
+    :edits  [[:remove '(check-base-equal! l b changed)]]}
    {:name   :unordered-writes
     :doc    "Writes are in the order of their identities, so content can come before its container or target."
     :target `plan/write-steps
@@ -210,6 +225,10 @@
     :doc    "Trashes are in the order of their identities, so a container can go before its content."
     :target `plan/trash-steps
     :edits  [[:replace '(ordered ids after) '(map vector (sort snapshot/compare-identities ids))]]}
+   {:name   :trash-cycle-unordered
+    :doc    "Inside a reference cycle, trashes ignore places, so a container can go before its content."
+    :target `plan/trash-steps
+    :edits  [[:replace '(dependencies l ids (cyclic-refs l ids)) '(dependencies l ids)]]}
    {:name   :trash-first
     :doc    "Trashes come before writes, so a container can be trashed with content that the plan moves out of it."
     :target `plan/plan
@@ -224,5 +243,6 @@
     :edits  [[:replace '(get b id) nil]]}])
 
 (deftest plan-mutations-test
-  (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'local-change-test
+  (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
+                                #'local-change-test
                                 #'plan-laws-test]}))
