@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
@@ -18,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;;; ---------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -175,10 +176,11 @@
                                                    :display       :scalar
                                                    :collection_id nil
                                                    :dataset_query (sum-query :venues :price)}
+                       :model/Collection app      {:name "An app" :namespace "data-apps" :location "/"}
                        :model/Card       question {:name          "A question"
                                                    :type          :question
                                                    :display       :table
-                                                   :collection_id (:id metrics)
+                                                   :collection_id (:id app)
                                                    :dataset_query (sum-query :venues :price)}
                        :model/Collection folder   {:name     "My folder"
                                                    :location (str "/" personal "/")}]
@@ -413,6 +415,48 @@
                                                :attrs {:description "Places"
                                                        :fields      {:NO_SUCH_FIELD {:display_name "None"}}}}))))
         (is (= before (tables)))))))
+
+(deftest library-content-rule-refusal-test
+  (testing "a write that the Library's content rule refuses is refused with the rule's message, and writes nothing"
+    (collections.tu/with-library [{:keys [library metrics]}]
+      (mt/with-temp [:model/Card       model-metric {:name          "Total price"
+                                                     :type          :metric
+                                                     :display       :scalar
+                                                     :collection_id (:id metrics)
+                                                     :dataset_query (sum-query :venues :price)}
+                     :model/Collection dashboards   {:name     "Dashboards"
+                                                     :type     "library-dashboards"
+                                                     :location (children-location library)}]
+        (t2/with-transaction [_ nil {:rollback-only true}]
+          (let [refused (fn [f]
+                          (try
+                            (f)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e
+                              (when (= ::instance/refused (:type (ex-data e)))
+                                [(:reason (ex-data e)) (ex-message e)]))))
+                folder  "lbContentRuleFolder01"]
+            (testing "a collection with no Library type in the Metrics section"
+              (is (= [:content-rule "Can only add metrics to the 'Metrics' collection"]
+                     (refused #(write! :collection folder {:kind :collection :name "Plain" :place (:entity_id metrics)
+                                                           :attrs {}}))))
+              (is (not (t2/exists? :model/Collection :entity_id folder))))
+            (testing "a collection at the Library root"
+              (is (= [:content-rule "Cannot add anything to the semantic layer"]
+                     (refused #(write! :collection folder {:kind :collection :name "Plain" :place (:entity_id library)
+                                                           :attrs {}}))))
+              (is (not (t2/exists? :model/Collection :entity_id folder))))
+            (testing "a metric in the Dashboards section"
+              (is (= [:content-rule "Can only add dashboards to the 'Dashboards' collection"]
+                     (refused #(write! :metric new-metric-id
+                                       (metric-item model-metric (:entity_id dashboards) "Misplaced")))))
+              (is (not (t2/exists? :model/Card :entity_id new-metric-id))))
+            (testing "a move of a metric to the Dashboards section"
+              (is (= [:content-rule "Can only add dashboards to the 'Dashboards' collection"]
+                     (refused #(write! :metric (:entity_id model-metric)
+                                       (metric-item model-metric (:entity_id dashboards) "Moved")))))
+              (is (= {:name "Total price" :collection_id (:id metrics)}
+                     (t2/select-one [:model/Card :name :collection_id] (:id model-metric)))))))))))
 
 ;;; ------------------------------------------------ Published tables -----------------------------------------------
 

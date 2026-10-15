@@ -178,7 +178,8 @@
   {library-id  (collection "Library" nil :type "library")
    data-id     (collection "Data" library-id :type "library-data")
    metrics-id  (collection "Metrics" library-id :type "library-metrics")
-   revenue-id  (collection "Revenue" metrics-id :description "Revenue metrics that finance signs off on.")
+   revenue-id  (collection "Revenue" metrics-id :description "Revenue metrics that finance signs off on."
+                           :type "library-metrics")
    filters-id  (collection "Filters" snippets-root :namespace "snippets")
    dashboards-id (collection "Dashboards" library-id :type "library-dashboards")
    finance-id  (collection "Finance" transforms-root :namespace "transforms")

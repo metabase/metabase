@@ -9,6 +9,7 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.api]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
@@ -27,18 +28,29 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;;; --------------------------------------------------- Task results ---------------------------------------------------
 
 (deftest deploy-task-result-test
-  (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 1}}
+  (is (= {:outcome {:kind           "deployed"
+                    :branch         "main"
+                    :commit         "h"
+                    :count          2
+                    :trashed        1
+                    :trashed_in_use [{:id "b" :kind "snippet" :name "Active" :users [{:kind "card" :id "x" :name "X"}]}]}}
          (operations/deploy-task-result "main" {:result         :deployed
                                                 :head           "h"
-                                                :steps          [{:id "a" :write {}} {:id "a" :link #{}} {:id "b" :trash true}]
+                                                :steps          [{:id "a" :write {}} {:id "a" :link #{}}
+                                                                 {:id "b" :trash true :pre {:kind :snippet :name "Active"}}]
                                                 :trashed-in-use {"b" [{:kind :card :id "x" :name "X"}]}})))
+  (testing "a deploy that discarded drift"
+    (is (=? {:outcome {:kind "deployed" :discarded 2 :trashed 0 :trashed_in_use []}}
+            (operations/deploy-task-result "main" {:result :deployed :head "h" :steps [] :trashed-in-use {}
+                                                   :discarded ["a" "b"]}))))
   (testing "a deploy that renamed items for their trash counts them"
-    (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 0 :discarded 1 :renamed 1}}
+    (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 0 :trashed_in_use []
+                      :discarded 1 :renamed 1}}
            (operations/deploy-task-result "main" {:result         :deployed
                                                   :head           "h"
                                                   :steps          [{:id "a" :interim {}} {:id "b" :write {}} {:id "a" :trash true}]
@@ -237,7 +249,7 @@
 ;;; ------------------------------------------------------- Routes -----------------------------------------------------
 
 (deftest deploy-route-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main"])
       (tasks.tu/with-no-tasks
@@ -258,7 +270,7 @@
                        (mt/user-http-request :crowberto :post 400 "ee/library-branching/pull" {})))))))))))
 
 (deftest settings-save-on-a-consumption-instance-starts-a-deploy-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main"])
       (tasks.tu/with-no-tasks

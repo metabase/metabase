@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.collections.core :as collections]
@@ -16,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- membership
   "`{label in-scope?}` for `items`, `{label [kind identity]}`, at one read of scope."
@@ -78,6 +79,7 @@
                                                    :location (children-location library)}
                      :model/Dashboard  dashboard  {:name "Overview" :collection_id (:id dashboards)}
                      :model/Card       question   {:name          "Orders by day"
+                                                   :type          :question
                                                    :collection_id (:id dashboards)
                                                    :dashboard_id  (:id dashboard)}
                      :model/Table      table      {:db_id         (mt/id)

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -10,10 +11,10 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (deftest count-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (collections.tu/with-library [{:keys [metrics]}]
       (mt/with-temp [:model/Card _ {:name          "Total revenue"
                                     :type          :metric

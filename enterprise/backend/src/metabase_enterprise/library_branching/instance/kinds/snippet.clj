@@ -151,5 +151,5 @@
     (read-all [_ ids] (read-snippets ids))
     (read-models [_] models-of-read)
     (current [_ id] (current-snippet id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-snippet! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-snippet! id)))))
+    (write! [_ id item] (content/do-in-write-transaction id #(write-snippet! id item)))
+    (trash! [_ id] (content/do-in-write-transaction id #(trash-snippet! id)))))

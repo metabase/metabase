@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.metric :as format.metric]
@@ -22,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defmacro ^:private enabled
   [& body]
@@ -382,12 +383,12 @@
   ;; Scenario M8-065.
   (enabled
    (with-remote [_repo s]
-     (let [[inst _c1] (pushed-instance! s ptu/sample)
+     (let [[inst c1]  (pushed-instance! s ptu/sample)
            reads      (atom 0)
            counted    (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot] (swap! reads inc) (read-snapshot))})]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Local"))
        (testing "the head is the base: no change, clean, no conflict, and no read of the instance"
-         (is (= {:diverged false :clean true :conflicts [] :violations [] :summary zero :branch-missing false
+         (is (= {:head c1 :diverged false :clean true :conflicts [] :violations [] :summary zero :branch-missing false
                  :base-lost false :head-findings nil}
                 (status/push-preview counted s ptu/branch {})))
          (is (= 0 @reads)))))))
@@ -396,16 +397,16 @@
   ;; Scenario M8-066.
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance! s ptu/sample)]
-       (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
-                                                       (ptu/renamed ptu/orders-id "Remote")
-                                                       (dissoc ptu/snippet-id)
-                                                       (assoc added-id (ptu/item added-id :snippet "Added"
-                                                                                 ptu/library-id {:content "x"}))))
+     (let [[inst c1] (pushed-instance! s ptu/sample)
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
+                                                                     (ptu/renamed ptu/orders-id "Remote")
+                                                                     (dissoc ptu/snippet-id)
+                                                                     (assoc added-id (ptu/item added-id :snippet "Added"
+                                                                                               ptu/library-id {:content "x"}))))]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Local"))
        (testing "a moved head with changes that do not conflict: diverged, clean, with a summary of what the merge
                 takes from the head"
-         (is (= {:diverged true :clean true :conflicts [] :violations [] :summary {:added 1 :updated 1 :removed 1}
+         (is (= {:head h :diverged true :clean true :conflicts [] :violations [] :summary {:added 1 :updated 1 :removed 1}
                  :branch-missing false :base-lost false :head-findings nil}
                 (status/push-preview inst s ptu/branch {}))))))))
 
@@ -413,13 +414,14 @@
   ;; Scenario M8-067.
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance! s ptu/sample)]
-       (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
-                                                       (ptu/renamed ptu/revenue-id "Remote")
-                                                       (ptu/renamed ptu/orders-id "Remote orders")))
+     (let [[inst c1] (pushed-instance! s ptu/sample)
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
+                                                                     (ptu/renamed ptu/revenue-id "Remote")
+                                                                     (ptu/renamed ptu/orders-id "Remote orders")))]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Local"))
-       (testing "both sides changed one item: diverged, not clean, the conflict named"
-         (is (= {:diverged true :clean false :conflicts [{:id ptu/revenue-id :kind :metric :name "Local"}]
+       (testing "both sides changed one item: diverged, not clean, the conflict named with the change of each side"
+         (is (= {:head h :diverged true :clean false
+                 :conflicts [{:id ptu/revenue-id :kind :metric :name "Local" :ours :updated :theirs :updated}]
                  :violations [] :summary {:added 0 :updated 1 :removed 0} :branch-missing false :base-lost false
                  :head-findings nil}
                 (status/push-preview inst s ptu/branch {}))))))))
@@ -444,9 +446,9 @@
   ;; of the head.
   (enabled
    (with-remote [repo s]
-     (let [inst (pltu/memory-instance (atom {:snapshot {}}))]
-       (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
-       (is (= {:diverged true :clean true :conflicts [] :violations [] :summary {:added 5 :updated 0 :removed 0}
+     (let [inst (pltu/memory-instance (atom {:snapshot {}}))
+           h    (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)]
+       (is (= {:head h :diverged true :clean true :conflicts [] :violations [] :summary {:added 5 :updated 0 :removed 0}
                :branch-missing false :base-lost false :head-findings nil}
               (status/push-preview inst s ptu/branch {})))))))
 
@@ -456,7 +458,7 @@
    (with-remote [repo s]
      (let [inst (pltu/memory-instance (atom {:snapshot ptu/sample}))]
        (testing "no base and no branch: a push creates the branch, so nothing diverged"
-         (is (=? {:diverged false :clean true :conflicts [] :branch-missing true}
+         (is (=? {:head nil :diverged false :clean true :conflicts [] :branch-missing true}
                  (status/push-preview inst s ptu/branch {}))))
        (testing "no base, and someone created the branch with other items: diverged, clean, no conflict"
          (pltu/commit-snapshot! repo ptu/branch []
@@ -470,7 +472,8 @@
      (let [[inst _c1] (pushed-instance! s ptu/sample)]
        (pltu/commit-snapshot! repo ptu/branch [] (ptu/renamed ptu/sample ptu/orders-id "Rewritten"))
        (testing "a base that no branch holds: every difference of the two sides is a conflict"
-         (is (=? {:diverged true :clean false :base-lost true :conflicts [{:id ptu/orders-id :name "Orders"}]}
+         (is (=? {:diverged true :clean false :base-lost true
+                  :conflicts [{:id ptu/orders-id :name "Orders" :ours :present :theirs :present}]}
                  (status/push-preview inst s ptu/branch {}))))))))
 
 (deftest push-preview-with-a-head-that-does-not-decode-test

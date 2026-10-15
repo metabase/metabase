@@ -413,6 +413,6 @@
     (read-all [_ ids] (read-published-tables ids))
     (read-models [_] models-of-read)
     (current [_ id] (current-published-table id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-published-table! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction
+    (write! [_ id item] (content/do-in-write-transaction id #(write-published-table! id item)))
+    (trash! [_ id] (content/do-in-write-transaction id
                     #(table-item/do-keeping-archive-closed (fn [] (trash-published-table! id)))))))

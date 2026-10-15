@@ -12,6 +12,7 @@
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.tree :as tree]
@@ -27,7 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- push!
   ([inst s]

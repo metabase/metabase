@@ -4,6 +4,7 @@
   The task functions commit their rows, so these tests are not parallel."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.init :as init]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
@@ -17,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private b0 "0000000000000000000000000000000000000000")
 (def ^:private c1 "1111111111111111111111111111111111111111")
@@ -377,9 +378,22 @@
                (:error_message (tasks/run-task! (:id task) (fn [_] (throw (NullPointerException.)))))))))
     (testing "an :error result ends the task as failed with it"
       (let [task (tasks/start! "push" nil)]
-        (is (= {:status "failed" :error_message "The remote moved"}
+        (is (= {:status "failed" :error_message "The remote moved" :outcome nil}
                (select-keys (tasks/run-task! (:id task) (fn [_] {:error "The remote moved"}))
-                            [:status :error_message])))))))
+                            [:status :error_message :outcome])))))
+    (testing "an :error result with an outcome ends the task as failed with both: the outcome tells why"
+      (let [task    (tasks/start! "pull" nil)
+            outcome {:kind "conflicts" :branch "main" :conflicts [{:id "a" :kind "metric" :ours "updated"}]}]
+        (is (= {:status "failed" :error_message "The pull has 1 conflict" :outcome outcome}
+               (select-keys (tasks/run-task! (:id task) (fn [_] {:error "The pull has 1 conflict" :outcome outcome}))
+                            [:status :error_message :outcome])))))
+    (testing "a failure past the commit point keeps the outcome too"
+      (let [push    (tasks/start! "push" nil)
+            outcome {:kind "remote-moved"}]
+        (tasks/mark-committing! (:id push))
+        (is (true? (tasks/fail! (:id push) "The remote moved" outcome)))
+        (is (= {:status "interrupted" :error_message "The remote moved" :outcome outcome}
+               (select-keys (tasks/task (:id push)) [:status :error_message :outcome])))))))
 
 (deftest worker-ends-the-task-when-the-bookkeeping-throws-test
   (testing "when recording the result throws, the task still ends, with the no-result message"

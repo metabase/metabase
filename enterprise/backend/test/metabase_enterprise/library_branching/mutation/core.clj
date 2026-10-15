@@ -39,7 +39,7 @@
    [rewrite-clj.node :as n]
    [rewrite-clj.zip :as z])
   (:import
-   (clojure.lang Compiler LineNumberingPushbackReader MultiFn Var)
+   (clojure.lang Compiler ExceptionInfo LineNumberingPushbackReader MultiFn Var)
    (java.io StringReader)
    (java.util.concurrent ExecutionException)))
 
@@ -198,6 +198,16 @@
                      (.addMethod mf dispatch method)
                      (remove-method mf dispatch)))})))
 
+(defn- mutated-text
+  "The source form of `located` (a result of [[locate]]) after `edits`. Throws when an edit matches no form, or several
+  forms and has no `{:nth n}`; the message names the edit, `target` and the source file and line of the form."
+  [{:keys [ns file line text]} target edits]
+  (try
+    (apply-edits ns text edits)
+    (catch ExceptionInfo e
+      (throw (ex-info (format "%s Target %s, source form at %s:%d." (ex-message e) (pr-str target) file line)
+                      (assoc (ex-data e) :target target :file file :line line))))))
+
 (defn- load-form! [{:keys [ns file line]} text]
   (let [rdr (doto (LineNumberingPushbackReader. (StringReader. text))
               (.setLineNumber (int line)))]
@@ -262,7 +272,7 @@
   (let [located (locate target)
         start   (System/nanoTime)
         result  (try
-                  (load-form! located (apply-edits (:ns located) (:text located) edits))
+                  (load-form! located (mutated-text located target edits))
                   (let [outcome (with-timeout timeout-ms #(run-tests vars))]
                     (cond
                       (= ::timeout outcome) {:result :timeout}
@@ -321,11 +331,12 @@
          (reset! running? false))))))
 
 (defn preview
-  "`{:original text :mutated text}`: the source form of the target of `mutation`, without and with its edits."
+  "`{:original text :mutated text}`: the source form of the target of `mutation`, without and with its edits. Throws
+  when an edit matches no form, or several forms and has no `{:nth n}`."
   [{:keys [target edits]}]
-  (let [{:keys [ns text]} (locate target)]
+  (let [{:keys [text] :as located} (locate target)]
     {:original text
-     :mutated  (apply-edits ns text edits)}))
+     :mutated  (mutated-text located target edits)}))
 
 ;;; Results
 

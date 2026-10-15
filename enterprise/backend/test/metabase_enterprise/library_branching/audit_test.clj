@@ -8,6 +8,7 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.audit :as audit]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.push-test-util :as ptu]
    [metabase-enterprise.library-branching.repository-test-util :as rtu :refer [with-remote with-settings]]
@@ -19,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (deftest details-test
   (testing "the branch, the commit as the version, and the kind of task; no auto flag for a task that a person started"
@@ -64,7 +65,7 @@
 
 (deftest each-operation-records-one-entry-test
   (testing (str "each operation whose task succeeds records one entry, after its task; app DB " (mdb/db-type))
-    (mt/with-premium-features #{:audit-app}
+    (mt/with-additional-premium-features #{:audit-app}
       (with-remote [repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/with-synchronous-tasks
@@ -112,7 +113,7 @@
 
 (deftest a-failure-of-the-audit-log-leaves-the-task-successful-test
   (testing "the audit log is down: the task that it records stays successful"
-    (mt/with-premium-features #{:audit-app}
+    (mt/with-additional-premium-features #{:audit-app}
       (with-remote [_repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/with-synchronous-tasks

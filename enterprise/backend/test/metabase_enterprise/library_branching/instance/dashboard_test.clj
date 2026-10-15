@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.kinds.dashboard :as format.dashboard]
@@ -23,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- venues-query
   "A query of all venues."
@@ -269,7 +270,9 @@
                     (with-attrs item dissoc :tabs :dashcards :parameters :width :description)]
                    ["the content again, in another collection of the Library"
                     (let [other (t2/insert-returning-instance! :model/Collection
-                                                               {:name "More dashboards" :location (children-location dashboards)})]
+                                                               {:name     "More dashboards"
+                                                                :type     "library-dashboards"
+                                                                :location (children-location dashboards)})]
                       (assoc item :place (:entity_id other)))]]]
        (doseq [[label step] steps]
          (testing label
@@ -476,6 +479,7 @@
                                                                 :dashboard_id  (:id d)
                                                                 :collection_id (:id dashboards)})
            other    (t2/insert-returning-instance! :model/Collection {:name     "More dashboards"
+                                                                      :type     "library-dashboards"
                                                                       :location (children-location dashboards)})]
        (testing "a write that moves the dashboard moves its questions with it, as a save of the dashboard does"
          (write! dashboard-id (assoc (content world) :place (:entity_id other)))

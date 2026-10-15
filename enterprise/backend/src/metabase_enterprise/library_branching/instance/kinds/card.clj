@@ -216,5 +216,5 @@
     (read-all [_ ids] (read-cards ids))
     (read-models [_] models-of-read)
     (current [_ id] (current-card kind id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-card! kind id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-card! id)))))
+    (write! [_ id item] (content/do-in-write-transaction id #(write-card! kind id item)))
+    (trash! [_ id] (content/do-in-write-transaction id #(trash-card! id)))))

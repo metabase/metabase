@@ -2,6 +2,7 @@
   "The current-task routes. The task functions commit their rows, so these tests are not parallel."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
    [metabase.test :as mt]
@@ -9,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- current-task [user status]
   (mt/user-http-request user :get status "ee/library-branching/current-task"))
@@ -18,7 +19,7 @@
   (mt/user-http-request user :post status "ee/library-branching/current-task/cancel"))
 
 (defmacro ^:private with-tasks [& body]
-  `(mt/with-premium-features #{:remote-sync}
+  `(mt/with-additional-premium-features #{:remote-sync}
      (tu/with-no-tasks ~@body)))
 
 (deftest current-task-is-for-superusers-test
@@ -68,7 +69,18 @@
     (testing "a failed task, with its error"
       (let [task (tasks/start! "push" nil)]
         (tasks/run-task! (:id task) (fn [_] {:error "The remote moved"}))
-        (is (=? {:status "failed" :error_message "The remote moved" :ended_at string?}
+        (is (=? {:status "failed" :error_message "The remote moved" :ended_at string? :outcome nil}
+                (current-task :crowberto 200)))))
+    (testing "a pull that failed on conflicts, with the outcome that lists them"
+      (let [task     (tasks/start! "pull" nil)
+            conflict {:id ["Sample Database" "PUBLIC" "ORDERS"] :kind "published-table" :name "Orders"
+                      :ours "updated" :theirs "deleted"}]
+        (tasks/run-task! (:id task) (fn [_] {:error   "The pull has 1 conflict and 0 violations, so nothing was pulled."
+                                             :outcome {:kind "conflicts" :branch "main" :commit "h"
+                                                       :conflicts [conflict] :violations []}}))
+        (is (=? {:status        "failed"
+                 :error_message "The pull has 1 conflict and 0 violations, so nothing was pulled."
+                 :outcome       {:kind "conflicts" :branch "main" :commit "h" :conflicts [conflict] :violations []}}
                 (current-task :crowberto 200)))))
     (testing "a cancelled task"
       (let [task (tasks/start! "push" nil)]

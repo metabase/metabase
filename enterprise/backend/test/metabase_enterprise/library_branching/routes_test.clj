@@ -7,6 +7,7 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.api]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.repository-test-util :as rtu :refer [with-remote with-settings]]
    [metabase-enterprise.library-branching.store :as store]
@@ -19,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private requests
   "A request of each route of the module: `{[method route] body}`. A body is valid, so that the route reaches its
@@ -37,6 +38,7 @@
    [:post "/create-branch"]       {:name "feature"}
    [:post "/switch-branch"]       {:branch "dev"}
    [:post "/deploy"]              {}
+   [:post "/discard-changes"]     {}
    [:get "/status"]               {}
    [:get "/is-dirty"]             {}
    [:get "/dirty"]                {}
@@ -55,7 +57,7 @@
 (deftest every-route-is-for-superusers-test
   (testing "the requests of this test cover every route of the module"
     (is (= (module-routes) (set (keys requests)))))
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (tasks.tu/with-no-tasks
       (with-settings {:remote-sync-url "https://git.example.com/a.git" :remote-sync-branch "main"}
         (let [before (rtu/saved)]
@@ -67,17 +69,17 @@
             (is (nil? (tasks/newest-task)))))))))
 
 (deftest repository-routes-need-a-repository-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-settings {}
       (is (= "Library branching is not configured." (request :crowberto :post "/test-connection" 400 {})))
       (is (= "Library branching is not configured." (request :crowberto :get "/branches" 400 nil)))
       (mt/with-temporary-setting-values [library-branching-enabled true]
-        (doseq [[route body] [["/push" {}] ["/pull" {}] ["/merge-branch" {:from "dev"}]]]
+        (doseq [[route body] [["/push" {}] ["/pull" {}] ["/merge-branch" {:from "dev"}] ["/discard-changes" {}]]]
           (testing route
             (is (= "Library branching is not configured." (request :crowberto :post route 400 body)))))))))
 
 (deftest repository-routes-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main" "dev"])
       (tasks.tu/with-no-tasks
@@ -110,7 +112,7 @@
                      (request :crowberto :post "/test-connection" 400 {}))))))))))
 
 (deftest operation-routes-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main" "dev"])
       (tasks.tu/with-no-tasks
@@ -119,7 +121,8 @@
             (rtu/with-synchronous-tasks
               (doseq [[route body kind] [["/push" {:message "From the API"} "push"]
                                          ["/pull" {} "pull"]
-                                         ["/merge-branch" {:from "dev"} "merge-branch"]]]
+                                         ["/merge-branch" {:from "dev"} "merge-branch"]
+                                         ["/discard-changes" {} "discard-changes"]]]
                 (testing route
                   (let [{:keys [task_id]} (request :crowberto :post route 200 body)]
                     (is (=? {:id task_id :task_type kind :initiated_by (mt/user->id :crowberto)}
@@ -134,7 +137,7 @@
   (repository/do-with-store store/branches))
 
 (deftest branch-routes-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main" "dev"])
       (tasks.tu/with-no-tasks
