@@ -48,7 +48,8 @@
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
-  construct-notebook-query-tool]
+  construct-notebook-query-tool
+  without-show-chart]
  [tools.run-query
   run-query-tool
   run-sql-query-tool]

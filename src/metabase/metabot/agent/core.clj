@@ -523,7 +523,11 @@
                                 :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+        ;; The show_chart argument only does anything alongside run_query, so a turn without run_query declares
+        ;; construct_notebook_query as it was before the argument existed.
+        tools        (update-vals (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+                                    (not (contains? base-tools "run_query"))
+                                    (m/update-existing "construct_notebook_query" tools/without-show-chart))
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
