@@ -7,7 +7,8 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.pull :as pull]
-   [metabase-enterprise.library-branching.push-test-util :as ptu])
+   [metabase-enterprise.library-branching.push-test-util :as ptu]
+   [metabase-enterprise.library-branching.snapshot :as snapshot])
   (:import
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId ObjectInserter PersonIdent Repository)))
@@ -21,7 +22,7 @@
   [st]
   {:current   (fn [kind id]
                 (let [item (get-in @st [:snapshot id])]
-                  (when (= kind (:kind item)) item)))
+                  (when (and item (snapshot/same-row? kind (:kind item))) item)))
    :write!    (fn [_kind id {:keys [place] :as content}]
                 (when (contains? (:outside @st) id)
                   (instance/refuse! :outside-library id "An item outside the Library has this identity."))
@@ -30,8 +31,11 @@
                 (vswap! st #(-> %
                                 (assoc-in [:snapshot id] content)
                                 (update :trash dissoc id))))
-   :trash!    (fn [_kind id]
-                (when-let [item (get-in @st [:snapshot id])]
+   ;; The state holds one item per identity: the write of a new item of another table replaced the old item, so the
+   ;; trash of the old item finds no item of its kind.
+   :trash!    (fn [kind id]
+                (when-let [item (let [it (get-in @st [:snapshot id])]
+                                  (when (and it (snapshot/same-row? kind (:kind it))) it))]
                   (vswap! st #(-> %
                                   (update :snapshot dissoc id)
                                   (assoc-in [:trash id] item)))))

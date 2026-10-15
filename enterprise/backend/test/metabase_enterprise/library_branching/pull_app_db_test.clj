@@ -243,6 +243,39 @@
              (is (= "Personal" (t2/select-one-fn :name :model/Card (:id personal))))
              (is (= c1 (instance/base inst))))))))))
 
+(deftest identity-of-another-kind-test
+  (testing (str "the head gives the identity of a collection to a glossary term: the pull writes the term and trashes "
+                "the collection; a later head with the collection again restores it and deletes the term; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! metrics]
+       (let [collection (insert! :model/Collection {:name     "lb kind change"
+                                                    :location (children-location metrics)})
+             id         (:entity_id collection)]
+         (try
+           (with-remote [repo s]
+             (let [[inst c1 base] (pushed! s)
+                   term           {:kind :glossary-term :name "lb kind change" :place nil :refs #{}
+                                   :attrs {:definition "A bird."}}
+                   remote         (assoc base id term)
+                   h1             (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+                   {:keys [result steps]} (pull! inst s)]
+               (is (= :pulled result))
+               (is (= [[id :write :glossary-term] [id :trash :collection]]
+                      (map (fn [{:keys [write pre]}] [id (if write :write :trash) (:kind (or write pre))]) steps)))
+               (is (= remote (read-snapshot inst)))
+               (is (= h1 (instance/base inst)))
+               (is (true? (t2/select-one-fn :archived :model/Collection (:id collection))))
+               (is (= "A bird." (t2/select-one-fn :definition :model/Glossary :entity_id id)))
+               (testing "and back"
+                 (pltu/commit-snapshot! repo ptu/branch [h1] base)
+                 (is (= :pulled (:result (pull! inst s))))
+                 (is (= base (read-snapshot inst)))
+                 (is (false? (t2/select-one-fn :archived :model/Collection (:id collection))))
+                 (is (not (t2/exists? :model/Glossary :entity_id id))))))
+           (finally
+             (t2/delete! :model/Glossary :entity_id id))))))))
+
 (deftest snippets-on-a-reference-cycle-test
   (testing (str "two new snippets that use each other: the apply writes the first one as a stub, the second one, and "
                 "then the whole first one; app DB " (mdb/db-type))
