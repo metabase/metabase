@@ -19,7 +19,7 @@
     :doc    "The deploy does not check the head against the environment of the instance (the TLA+ mutation trustci): a
             head that names a table that the instance does not have is applied."
     :target `deploy/check-head
-    :edits  [[:replace '(semantic/validate r env) []]]
+    :edits  [[:replace '(typing/semantic r env) []]]
     :tests  [#'deploy-test/deploy-validates-the-head-against-its-own-environment-test]}
    {:name   :deploy-novalidate
     :doc    "The deploy does not check the head at the structural level: an ill-formed text merge is applied."
