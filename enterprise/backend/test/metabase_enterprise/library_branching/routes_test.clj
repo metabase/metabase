@@ -31,7 +31,12 @@
    [:get "/branches"]             {}
    [:post "/push"]                {}
    [:post "/pull"]                {}
-   [:post "/merge-branch"]        {:from "dev"}})
+   [:post "/merge-branch"]        {:from "dev"}
+   [:get "/status"]               {}
+   [:get "/is-dirty"]             {}
+   [:get "/dirty"]                {}
+   [:get "/has-remote-changes"]   {}
+   [:get "/push-preview"]         {}})
 
 (defn- module-routes []
   (set (map (comp vec (partial take 2)) (keys (api.macros/ns-routes 'metabase-enterprise.library-branching.api)))))
