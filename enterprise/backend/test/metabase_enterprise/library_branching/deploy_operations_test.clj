@@ -243,7 +243,7 @@
                        (mt/user-http-request :crowberto :post 400 "ee/library-branching/deploy" {})))))
             (testing "a push and a pull are refused on a consumption instance"
               (with-settings {:remote-sync-url url :remote-sync-branch "main" :remote-sync-type :read-only}
-                (is (= "Push, pull and merge-branch are only allowed when remote-sync-type is read-write."
+                (is (= "Push, pull, merge-branch and the branch operations are only allowed when remote-sync-type is read-write."
                        (mt/user-http-request :crowberto :post 400 "ee/library-branching/pull" {})))))))))))
 
 (deftest settings-save-on-a-consumption-instance-starts-a-deploy-test

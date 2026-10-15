@@ -8,9 +8,5 @@ query:
   database: Sample Database
   stages:
   - aggregation:
-    - - sum
-      - {}
-      - - field
-        - {base-type: type/Float}
-        - [Sample Database, PUBLIC, ORDERS, TOTAL]
+    - [sum, {}, [field, {base-type: type/Float}, [Sample Database, PUBLIC, ORDERS, TOTAL]]]
     source-table: [Sample Database, PUBLIC, ORDERS]

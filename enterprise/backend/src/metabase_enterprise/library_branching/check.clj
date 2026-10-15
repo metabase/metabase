@@ -2,8 +2,7 @@
   "The checker of a checkout: it decodes the files of the tree, and checks the snapshot at the structural level and,
   with a manifest, at the semantic level. It needs no Metabase instance and no app DB, and it loads in babashka.
 
-    bb -Sdeps '{:paths [\"<metabase>/enterprise/backend/src\"] :deps {metosin/malli {:mvn/version \"0.17.0\"}}}' \\
-       -m metabase-enterprise.library-branching.check <checkout> [--manifest <file>]"
+    bb library-checker.jar <checkout> [--manifest <file>]"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

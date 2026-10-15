@@ -1,0 +1,29 @@
+;; The checker of library branching in babashka. Run each task from the root of the Metabase repository:
+;;
+;;   bb --config bin/library-checker/bb.edn test
+;;
+;; The JVM uses the Metabase fork of malli; the checker in babashka uses the release below, and the tests of this
+;; config run the checker with it.
+{:min-bb-version "1.12.212"
+ :paths ["src" "../../enterprise/backend/src"]
+ :deps {metosin/malli {:mvn/version "0.17.0"}}
+ :tasks
+ {build
+  {:doc      "Builds the uberjar of the checker: build [--out <jar>]; the default is target/library-checker/library-checker.jar"
+   :requires ([library-checker.build :as build])
+   :task     (apply build/-main *command-line-args*)}
+
+  agree
+  {:doc         "Compares the jar with the checker on the JVM on the golden variants: agree [--jar <jar>]"
+   :requires    ([library-checker.agree :as agree])
+   :task        (apply agree/-main *command-line-args*)}
+
+  test
+  {:doc         "Runs the checker's tests in babashka"
+   :extra-paths ["test" "../../enterprise/backend/test"]
+   :requires    ([clojure.test :as t])
+   :task        (let [nss '[metabase-enterprise.library-branching.check-golden-test
+                            library-checker.build-test]]
+                  (apply require nss)
+                  (let [{:keys [fail error]} (apply t/run-tests nss)]
+                    (System/exit (if (zero? (+ fail error)) 0 1))))}}}

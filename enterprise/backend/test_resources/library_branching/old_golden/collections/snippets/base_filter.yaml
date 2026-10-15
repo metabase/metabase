@@ -1,0 +1,7 @@
+name: Base filter
+entity_id: bAsEfIlTeRsNiPpEt0001
+created_at: '2026-10-15T08:58:11.961161Z'
+content: products.deleted_at IS NULL
+creator_id: crowberto@metabase.com
+serdes/meta:
+- model: NativeQuerySnippet
