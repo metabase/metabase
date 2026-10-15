@@ -185,6 +185,49 @@
       (is (= {:ids [m1]}
              (try (plan/plan local m base) (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
+(deftest ^:parallel unknown-base-test
+  (testing "an item with an unknown base that the target changes counts as a local change: the plan refuses it"
+    (let [b (assoc base m2 :unknown)
+          m (assoc base m2 (engine.tu/item :metric "Count" lib))]
+      (is (= {:ids [m2]} (try (plan/plan base m b) (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      (is (= {:ids [sn]} (try (plan/plan base (dissoc base sn) (assoc base sn :unknown))
+                              (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+  (testing "an item with an unknown base that is equal on both sides has no step"
+    (let [l (assoc base m2 (engine.tu/item :metric "Count" lib))]
+      (is (= [] (plan/plan base base (assoc base m2 :unknown))))
+      (is (= [] (plan/plan l l (assoc l m2 :unknown))))))
+  (testing "first pull: ours trashed an item, theirs has it; keep mine gives a target with no step for it"
+    (let [b {m2 :unknown}
+          o base
+          t (assoc base m2 (engine.tu/item :metric "Count" lib))
+          {:keys [ok]} (merge/merge b o t {m2 nil})]
+      (is (= [] (plan/plan o ok b))))))
+
+(def ^:private library-id "librarylibrarylibrary")
+(def ^:private metrics-id "librarylibrarymetrics")
+
+(def ^:private with-system
+  (assoc base
+         library-id (engine.tu/item :collection "Library" nil)
+         metrics-id (engine.tu/item :collection "Metrics" library-id)))
+
+(deftest ^:parallel system-item-test
+  (testing "a target that removes a system item is refused, with the system items it removes"
+    (is (= {:system-ids [library-id metrics-id]}
+           (try (plan/plan with-system base with-system) (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"system items"
+                          (plan/plan with-system (dissoc with-system metrics-id) with-system))))
+  (testing "a write of a system item is a step"
+    (let [m (assoc-in with-system [metrics-id :attrs :description] "All metrics")]
+      (is (= [{:id metrics-id :write (get m metrics-id) :pre (get with-system metrics-id)}]
+             (plan/plan with-system m with-system)))))
+  (testing "`:system` replaces the set of system items"
+    (is (= [{:id metrics-id :trash true :pre (get with-system metrics-id)}]
+           (plan/plan with-system (dissoc with-system metrics-id) with-system {:system #{}})))
+    (is (= {:system-ids [sn]}
+           (try (plan/plan base (dissoc base sn) base {:system #{sn}})
+                (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------
 
 (defn- merged
@@ -209,6 +252,14 @@
   (prop/for-all [[b l :as snaps] (engine.tu/related-snapshots-gen)]
     (if-let [m (merged snaps)]
       (empty? (set/intersection (engine.tu/changed b l) (set (map :id (plan/plan l m b)))))
+      true)))
+
+(defspec plan-unknown-base-test 300
+  ;; With unknown base values and keep-mine for every conflict, the plan of a merge never has a step for an item with
+  ;; an unknown base.
+  (prop/for-all [[b l :as snaps] (engine.tu/unknown-base-snapshots-gen)]
+    (if-let [m (merged snaps)]
+      (not-any? #(= :unknown (get b (:id %))) (plan/plan l m b))
       true)))
 
 (def mutations
@@ -240,9 +291,17 @@
    {:name   :pre-is-local
     :doc    "A step has no precondition."
     :target `plan/write-step
-    :edits  [[:replace '(get b id) nil]]}])
+    :edits  [[:replace '(get b id) nil]]}
+   {:name   :unknown-planned
+    :doc    "An unknown base counts as equal to the local content, so a plan writes over a trash before the first sync."
+    :target `plan/check-base-equal!
+    :edits  [[:replace '(not= (get l %) (get b %)) '(and (not= :unknown (get b %)) (not= (get l %) (get b %)))]]}
+   {:name   :system-trash
+    :doc    "A plan trashes a system item that the target lacks."
+    :target `plan/plan
+    :edits  [[:remove '(check-system-kept! system removed)]]}])
 
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
-                                #'local-change-test
-                                #'plan-laws-test]}))
+                                #'local-change-test #'unknown-base-test #'system-item-test
+                                #'plan-laws-test #'plan-unknown-base-test]}))

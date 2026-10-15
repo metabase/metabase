@@ -88,6 +88,88 @@
   (testing "without `:roots`, items at the root level need no check"
     (is (= [] (validate/validate (assoc-in library [snippet :place] nil))))))
 
+(def ^:private filter-2 (engine.tu/eid "filter2"))
+(def ^:private filter-3 (engine.tu/eid "filter3"))
+(def ^:private metric-2 (engine.tu/eid "metric2"))
+
+(deftest ^:parallel unique-key-test
+  (testing "two snippets with one name are one finding that names both, with the kind and the key"
+    (is (= [{:rule :unique-key :kind :snippet :key "Filter" :ids #{snippet filter-2}}]
+           (validate/validate (assoc library filter-2 (engine.tu/item :snippet "Filter" sub))))))
+  (testing "three snippets with one name are one finding"
+    (is (= [{:rule :unique-key :kind :snippet :key "Filter" :ids #{snippet filter-2 filter-3}}]
+           (validate/validate (assoc library
+                                     filter-2 (engine.tu/item :snippet "Filter" sub)
+                                     filter-3 (engine.tu/item :snippet "Filter" lib))))))
+  (testing "a key is compared as it is: names that differ only in case are two keys"
+    (is (= [] (validate/validate (assoc library filter-2 (engine.tu/item :snippet "filter" lib))))))
+  (testing "items of a kind with no unique key can share a name"
+    (is (= [] (validate/validate (assoc library metric-2 (engine.tu/item :metric "Revenue" sub))))))
+  (testing "`:unique-keys` replaces the table; an item whose key is nil has none"
+    (let [s (assoc library
+                   metric   (assoc-in (get library metric) [:attrs :path] "a.py")
+                   metric-2 (assoc-in (engine.tu/item :metric "Count" sub) [:attrs :path] "a.py")
+                   filter-2 (engine.tu/item :metric "Total" sub))]
+      (is (= [{:rule :unique-key :kind :metric :key "a.py" :ids #{metric metric-2}}]
+             (validate/validate s {:unique-keys {:metric [:attrs :path]}})))
+      (is (= [] (validate/validate (assoc library filter-2 (engine.tu/item :snippet "Filter" sub))
+                                   {:unique-keys {}}))))))
+
+(deftest ^:parallel namespace-test
+  (testing "a child collection in another namespace than its parent is a finding"
+    (is (= [{:rule :namespace :id sub :place lib}]
+           (validate/validate (assoc-in library [sub :attrs :namespace] "snippets")))))
+  (testing "a child of a collection of a namespace has that namespace"
+    (let [s (-> library
+                (assoc-in [lib :attrs :namespace] "snippets")
+                (assoc-in [sub :attrs :namespace] "snippets"))]
+      (is (= [] (validate/validate s)))
+      (is (= [{:rule :namespace :id sub :place lib}]
+             (validate/validate (update-in s [sub :attrs] dissoc :namespace))))))
+  (testing "a collection at the root level can have any namespace"
+    (is (= [] (validate/validate {lib (assoc-in (get library lib) [:attrs :namespace] "transforms")}))))
+  (testing "an item that is not a collection has no namespace"
+    (is (= [] (validate/validate (assoc-in library [snippet :attrs :namespace] "transforms"))))))
+
+;;; The kinds of the action-model rule are not in `snapshot/kinds` yet. Validate reads only the kind, the place and
+;;; the references of these items.
+
+(def ^:private model (engine.tu/eid "model"))
+(def ^:private question (engine.tu/eid "question"))
+(def ^:private action (engine.tu/eid "action"))
+
+(def ^:private with-actions
+  {lib      (engine.tu/item :collection "Library" nil)
+   model    (engine.tu/item :model "Orders model" lib)
+   question (engine.tu/item :question "Orders" lib)
+   action   (engine.tu/item :action "Mark shipped" lib #{[:model model]})})
+
+(defn- validate-actions
+  [s]
+  (validate/validate s {:may-contain {:collection #{:collection :model :question :action}}}))
+
+(deftest ^:parallel action-model-test
+  (testing "an action on a model is well formed"
+    (is (= [] (validate-actions with-actions))))
+  (testing "an action on a question is a finding"
+    (is (= [{:rule :ref-kind :id action :ref [:model question]}]
+           (validate-actions (assoc-in with-actions [action :refs] #{[:model question]})))))
+  (testing "an action with no model is well formed"
+    (is (= [] (validate-actions (assoc-in with-actions [action :refs] #{})))))
+  (testing "the model of an action is an item, never an environment object"
+    (is (= [{:rule :ref-kind :id action :ref [:model [:env orders]]}]
+           (validate-actions (assoc-in with-actions [action :refs] #{[:model [:env orders]]})))))
+  (testing "a model that is not in the snapshot is a dangling reference, and no kind finding"
+    (is (= [{:rule :refs-closed :id action :ref [:model model]}]
+           (validate-actions (dissoc with-actions model)))))
+  (testing "a reference of another role can name a question"
+    (is (= [] (validate-actions (update-in with-actions [action :refs] conj [:card question])))))
+  (testing "`:ref-kinds` replaces the table"
+    (is (= [{:rule :ref-kind :id metric :ref [:snippet snippet]}]
+           (validate/validate library {:ref-kinds {:metric {:snippet #{:metric}}}})))
+    (is (= [] (validate/validate (assoc-in with-actions [action :refs] #{[:model question]})
+                                 {:may-contain {:collection #{:model :question :action}} :ref-kinds {}})))))
+
 (deftest ^:parallel several-findings-test
   (testing "the findings of every rule are all reported"
     (is (= #{{:rule :place-inside :id sub :place gone}
@@ -112,9 +194,15 @@
                          :else                                      (recur (:place (get s at)) (dec n)))))
                (keys s))))
 
+(defn- key-holders
+  "The identities of the items of `s` of kind `kind` whose unique key (`snapshot/unique-keys`) is `k`."
+  [s kind k]
+  (let [path (get snapshot/unique-keys kind)]
+    (set (for [[id item] s :when (and path (= kind (:kind item)) (= k (get-in item path)))] id))))
+
 (defn- finding-holds?
-  "True iff finding `f` names a fault that snapshot `s` has."
-  [s {:keys [rule id place ids ref]}]
+  "True iff finding `f` names a fault that snapshot `s` has, with the reference kinds `ref-kinds`."
+  [s ref-kinds {:keys [rule id place ids ref kind key]}]
   (case rule
     :place-inside (and (= place (:place (get s id))) (not (contains? s place)))
     :kind-fits    (and (= place (:place (get s id))) (contains? s place)
@@ -125,15 +213,52 @@
     :acyclic      (and (seq ids)
                        (every? #(contains? ids (:place (get s %))) ids)
                        (every? (cycle-members s) ids))
+    :unique-key   (and (some? key) (< 1 (count ids)) (= ids (key-holders s kind key)))
+    :namespace    (and (= place (:place (get s id)))
+                       (= :collection (:kind (get s id)) (:kind (get s place)))
+                       (not= (:namespace (:attrs (get s id))) (:namespace (:attrs (get s place)))))
+    :ref-kind     (let [[role target] ref
+                        allowed       (get-in ref-kinds [(:kind (get s id)) role])]
+                    (and (contains? (:refs (get s id)) ref)
+                         (some? allowed)
+                         (or (lb.tu/env-target? target)
+                             (and (contains? s target) (not (contains? allowed (:kind (get s target))))))))
     :root         false))
 
+(def ^:private namespaced-attrs-gen
+  "Generates the `:attrs` of a collection: those of `lb.tu/attrs-gen`, with no namespace or one of two."
+  (gen/fmap (fn [[attrs n]] (cond-> attrs n (assoc :namespace n)))
+            (gen/tuple lb.tu/attrs-gen (gen/elements [nil "snippets" "transforms"]))))
+
+(def ^:private arbitrary-gen
+  (lb.tu/arbitrary-snapshot-gen {:max-items 20
+                                 :attrs     #(if (= :collection %) namespaced-attrs-gen lb.tu/attrs-gen)}))
+
 (defspec arbitrary-snapshot-findings-test 200
-  (prop/for-all [s (lb.tu/arbitrary-snapshot-gen {:max-items 20})]
+  (prop/for-all [s arbitrary-gen]
     (let [findings (validate/validate s)]
       (and (= (empty? findings) (lb.tu/well-formed? s))
-           (every? #(finding-holds? s %) findings)
+           (every? #(finding-holds? s snapshot/ref-kinds %) findings)
            (= (cycle-members s) (set (mapcat :ids (filter #(= :acyclic (:rule %)) findings))))
            (= (count findings) (count (set findings)))))))
+
+(def ^:private test-ref-kinds
+  "Reference kinds over the kinds of `snapshot/kinds` and the roles of the generators."
+  {:metric     {:snippet #{:snippet} :card #{:metric :published-table}}
+   :collection {:card #{:metric}}})
+
+(defspec ref-kinds-findings-test 200
+  (prop/for-all [s arbitrary-gen]
+    (let [findings (filterv #(= :ref-kind (:rule %)) (validate/validate s {:ref-kinds test-ref-kinds}))]
+      (and (= (empty? findings) (lb.tu/ref-kinds-fit? s test-ref-kinds))
+           (every? #(finding-holds? s test-ref-kinds %) findings)))))
+
+(deftest ^:parallel arbitrary-findings-coverage-test
+  (testing "the generator of the properties gives a finding of each rule"
+    (let [rules (set (for [seed (range 200)
+                           f    (validate/validate (gen/generate arbitrary-gen 20 seed) {:ref-kinds test-ref-kinds})]
+                       (:rule f)))]
+      (is (= #{:place-inside :acyclic :kind-fits :refs-closed :unique-key :namespace :ref-kind} rules)))))
 
 (defspec well-formed-snapshot-no-findings-test 100
   (prop/for-all [s (lb.tu/well-formed-snapshot-gen {:max-items 30})]
@@ -180,9 +305,30 @@
    {:name   :env-by-shape
     :doc    "Every vector target counts as the environment, so a reference to a missing published table closes."
     :target `validate/closed?
-    :edits  [[:replace '(env-target? target) '(vector? target)]]}])
+    :edits  [[:replace '(env-target? target) '(vector? target)]]}
+   {:name   :no-unique-key-rule
+    :doc    "Two snippets with one name are no finding."
+    :target `validate/validate
+    :edits  [[:remove '(unique-key-findings s unique-keys)]]}
+   {:name   :unique-key-per-place
+    :doc    "A key is unique only among siblings, so two snippets with one name in two collections pass."
+    :target `validate/unique-key-findings
+    :edits  [[:replace '[kind (get-in item path)] '[kind (:place item) (get-in item path)]]]}
+   {:name   :no-namespace-rule
+    :doc    "A child collection in another namespace than its parent is no finding."
+    :target `validate/validate
+    :edits  [[:remove '(namespace-findings s)]]}
+   {:name   :no-ref-kind-rule
+    :doc    "An action on a question is no finding."
+    :target `validate/validate
+    :edits  [[:remove '(ref-kind-findings s ref-kinds)]]}
+   {:name   :ref-kind-env-fits
+    :doc    "An environment object fits every role, so an action can name a table as its model."
+    :target `validate/ref-kind-findings
+    :edits  [[:replace '(env-target? target) false]]}])
 
 (deftest validate-mutations-test
   (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test
-                                #'refs-closed-test #'root-test #'several-findings-test
-                                #'arbitrary-snapshot-findings-test #'roots-test]}))
+                                #'refs-closed-test #'root-test #'unique-key-test #'namespace-test
+                                #'action-model-test #'several-findings-test
+                                #'arbitrary-snapshot-findings-test #'ref-kinds-findings-test #'roots-test]}))

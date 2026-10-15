@@ -18,6 +18,21 @@
    :published-table #{}
    :snippet         #{}})
 
+(def unique-keys
+  "`{kind path}`: the kinds whose key the app DB keeps unique over all rows of the kind, and the path of that key in
+  an item. An item whose key is nil has none."
+  {:snippet [:name]})
+
+(def ref-kinds
+  "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The
+  table can name kinds that are not in [[kinds]] yet."
+  {:action {:model #{:model}}})
+
+(def system-ids
+  "The identities of the system items that every instance of a release has from the install on: the Library
+  collection and its sections Data, Metrics and Dashboards."
+  #{"librarylibrarylibrary" "librarylibrarydatadat" "librarylibrarymetrics" "librarylibrarydashbrd"})
+
 (registry/def ::kind
   (into [:enum] (sort kinds)))
 

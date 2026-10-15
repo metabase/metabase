@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.engine.diff :as diff]
    [metabase-enterprise.library-branching.engine.merge :as merge]
@@ -49,6 +50,25 @@
            [nil nil nil {:ok {}}         "no item"]]]
     (testing why
       (is (= expected (merge-one b o t))))))
+
+(deftest ^:parallel unknown-base-test
+  (testing "a base value :unknown equals no content: each difference of the two sides is a conflict"
+    (doseq [[o t expected why]
+            [[x   x   {:ok (snap x)}          "equal on both sides"]
+             [nil nil {:ok {}}                "absent on both sides"]
+             [x   y   (conflict :unknown x y)   "two contents"]
+             [nil x   (conflict :unknown nil x) "ours has no item, theirs has one"]
+             [x   nil (conflict :unknown x nil) "ours has an item, theirs has none"]]]
+      (testing why
+        (is (= expected (merge-one :unknown o t))))))
+  (testing "a keep-mine decision resolves a conflict with an unknown base"
+    (is (= {:ok {}} (merge-one :unknown nil x {i nil})))
+    (is (= {:ok (snap y)} (merge-one :unknown y x {i y}))))
+  (testing "TLC run v4a: a trash before the first sync is not undone"
+    ;; The instance held the item with the remote's identity, and a person trashed it. With no base content, the
+    ;; first pull takes the remote content, and the item comes back. With an unknown base, it is a conflict.
+    (is (= {:ok (snap x)} (merge-one nil nil x)))
+    (is (= (conflict :unknown nil x) (merge-one :unknown nil x)))))
 
 (deftest ^:parallel keep-mine-test
   (testing "a keep-mine decision with the content of ours resolves the conflict to ours"
@@ -114,6 +134,32 @@
       (is (= {:conflicts  []
               :violations [{:rule :acyclic :ids #{id0 id3} :ours id0 :theirs id3}]}
              (merge/merge b o t {}))))))
+
+(deftest ^:parallel alloy-unique-keys-test
+  (let [lib (engine.tu/eid "lib")
+        b   {lib (engine.tu/item :collection "Library" nil) id1 (engine.tu/item :snippet "M" lib)}]
+    (testing (str "MergeKeepsUniqueKeysFails: ours renames snippet 1 to N; theirs creates snippet 2 named N. Each "
+                  "side has unique names; the result has two snippets named N, a violation that names the pair")
+      (let [o (assoc-in b [id1 :name] "N")
+            t (assoc b id2 (engine.tu/item :snippet "N" lib))]
+        (is (= {:conflicts  []
+                :violations [{:rule :unique-key :kind :snippet :key "N" :ids #{id1 id2} :ours id1 :theirs id2}]}
+               (merge/merge b o t {})))))
+    (testing "both sides create a snippet named N, each in another collection: the pair is the two new snippets"
+      (let [b (assoc b id0 (engine.tu/item :collection "Other" lib))
+            o (assoc b id2 (engine.tu/item :snippet "N" lib))
+            t (assoc b id3 (engine.tu/item :snippet "N" id0))]
+        (is (= {:conflicts  []
+                :violations [{:rule :unique-key :kind :snippet :key "N" :ids #{id2 id3} :ours id2 :theirs id3}]}
+               (merge/merge b o t {})))))
+    (testing "both sides make one snippet with one name: no clash"
+      (let [o (assoc b id2 (engine.tu/item :snippet "N" lib))]
+        (is (= {:ok o} (merge/merge b o o {})))))
+    (testing "ours renames snippet 1 away from N, theirs creates snippet 2 named N: no clash"
+      (let [b (assoc-in b [id1 :name] "N")
+            o (assoc-in b [id1 :name] "M")
+            t (assoc b id2 (engine.tu/item :snippet "N" lib))]
+        (is (= {:ok (assoc o id2 (get t id2))} (merge/merge b o t {})))))))
 
 (deftest ^:parallel violations-with-conflicts-test
   (testing "with a conflict, the check runs on the result in which the conflicted item keeps ours"
@@ -234,6 +280,35 @@
                (or (seq conflicts)
                    (not (lb.tu/well-formed? (one-side-merge b o t))))))))))
 
+(defspec violation-names-two-items-with-keys-test 300
+  ;; Alloy ViolationNamesTwoItemsWithKeys: a key clash of a merge names two items with the key, one changed on each
+  ;; side.
+  (prop/for-all [[b o t] (engine.tu/related-snapshots-gen)]
+    (every? (fn [{:keys [ids key] :as v}]
+              (and (violation-names-pair? b o t v)
+                   (contains? ids (:ours v)) (contains? ids (:theirs v))
+                   (= key (:name (get o (:ours v))) (:name (get t (:theirs v))))))
+            (filter #(= :unique-key (:rule %)) (:violations (merge/merge b o t {}))))))
+
+(deftest ^:parallel merge-violation-coverage-test
+  (testing "the related snapshots of the properties give a key clash, a dangling reference and an orphan"
+    (let [rules (set (for [seed (range 300)
+                           :let [[b o t] (gen/generate (engine.tu/related-snapshots-gen) 30 seed)]
+                           v    (:violations (merge/merge b o t {}))]
+                       (:rule v)))]
+      (is (set/subset? #{:unique-key :refs-closed :place-inside} rules)))))
+
+(defspec unknown-base-merge-test 300
+  ;; An item with an unknown base is equal on both sides, or a conflict.
+  (prop/for-all [[b o t] (engine.tu/unknown-base-snapshots-gen)]
+    (let [r         (merge/merge b o t {})
+          conflicts (set (map :id (:conflicts r)))]
+      (every? (fn [id]
+                (if (= (get o id) (get t id))
+                  (and (not (conflicts id)) (if-let [m (:ok r)] (= (get o id) (get m id)) true))
+                  (contains? conflicts id)))
+              (keep (fn [[id v]] (when (= :unknown v) id)) b)))))
+
 (defspec one-sided-merge-is-well-formed-test 100
   (prop/for-all [[b o t] (engine.tu/related-snapshots-gen)]
     (and (= {:ok t} (merge/merge b b t {}))
@@ -282,9 +357,15 @@
    {:name   :unnamed-pair
     :doc    "A violation names the item that it is about, not the pair of changes that made it."
     :target `merge/pair
-    :edits  [[:replace '(not= i j) true]]}])
+    :edits  [[:replace '(not= i j) true]]}
+   {:name   :unknown-is-none
+    :doc    "An unknown base is no content, so a remote item comes back over a trash before the first sync."
+    :target `merge/merge
+    :edits  [[:replace '(get b id) '(let [v (get b id)] (when-not (= :unknown v) v)) {:nth 0}]]}])
 
 (deftest merge-mutations-test
-  (mut/check mutations {:tests [#'per-item-table-test #'keep-mine-test #'alloy-dangling-reference-test
-                                #'alloy-orphan-test #'alloy-cycle-test #'violations-with-conflicts-test
-                                #'merge-laws-test #'one-sided-merge-is-well-formed-test]}))
+  (mut/check mutations {:tests [#'per-item-table-test #'unknown-base-test #'keep-mine-test
+                                #'alloy-dangling-reference-test #'alloy-orphan-test #'alloy-cycle-test
+                                #'alloy-unique-keys-test #'violations-with-conflicts-test
+                                #'merge-laws-test #'violation-names-two-items-with-keys-test
+                                #'unknown-base-merge-test #'one-sided-merge-is-well-formed-test]}))

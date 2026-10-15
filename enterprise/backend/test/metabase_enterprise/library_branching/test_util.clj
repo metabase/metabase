@@ -55,12 +55,53 @@
   (every? (fn [[_role target]] (or (env-target? target) (contains? s target)))
           (mapcat :refs (vals s))))
 
+(defn unique-keys?
+  "True iff no two items of snapshot `s` of one kind of `unique-keys` (`{kind path}`; default
+  [[snapshot/unique-keys]]) have one non-nil key."
+  ([s] (unique-keys? s snapshot/unique-keys))
+  ([s unique-keys]
+   (let [ks (keep (fn [{:keys [kind] :as item}]
+                    (when-let [path (get unique-keys kind)]
+                      (some->> (get-in item path) (vector kind))))
+                  (vals s))]
+     (= (count ks) (count (set ks))))))
+
+(defn namespaces-fit?
+  "True iff every collection of snapshot `s` whose container is a collection of `s` has the `:namespace` attribute of
+  its container: both absent, or equal."
+  [s]
+  (every? (fn [{:keys [kind place attrs]}]
+            (let [container (get s place)]
+              (or (not= :collection kind)
+                  (not= :collection (:kind container))
+                  (= (:namespace attrs) (:namespace (:attrs container))))))
+          (vals s)))
+
+(defn ref-kinds-fit?
+  "True iff, for every item of snapshot `s` and each of its references `[role target]` for which `ref-kinds`
+  (`{kind {role #{kind}}}`; default [[snapshot/ref-kinds]]) gives kinds, `target` is not in `s` or is an item of one of
+  those kinds. An environment target is no item, so it does not fit."
+  ([s] (ref-kinds-fit? s snapshot/ref-kinds))
+  ([s ref-kinds]
+   (every? (fn [{:keys [kind refs]}]
+             (every? (fn [[role target]]
+                       (if-let [allowed (get-in ref-kinds [kind role])]
+                         (cond
+                           (env-target? target)     false
+                           (contains? s target)     (contains? allowed (:kind (get s target)))
+                           :else                    true)
+                         true))
+                     refs))
+           (vals s))))
+
 (defn well-formed?
-  "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf`: [[places-inside?]], [[acyclic?]],
-  [[kinds-fit?]] and [[refs-closed?]]."
+  "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
+  [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the two rules that the
+  model does not have: [[namespaces-fit?]] and [[ref-kinds-fit?]]."
   ([s] (well-formed? s snapshot/may-contain))
   ([s may-contain]
-   (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s))))
+   (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s)
+        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s))))
 
 ;;; --------------------------------------------- Identities and values ----------------------------------------------
 
@@ -169,6 +210,22 @@
 
 (defn- sorted-kinds [ks] (vec (sort ks)))
 
+(defn- with-unique-keys
+  "Snapshot `s` in which each string key of `unique-keys` (`{kind path}`) that an item of the same kind and a lesser
+  identity has gets `_<n>` appended, with the least `n` that makes it unique."
+  [unique-keys s]
+  (first
+   (reduce (fn [[s seen] id]
+             (let [{:keys [kind] :as item} (get s id)
+                   path                    (get unique-keys kind)
+                   k                       (some->> path (get-in item))]
+               (if (string? k)
+                 (let [k (first (remove #(seen [kind %]) (cons k (map #(str k "_" %) (range)))))]
+                   [(assoc-in s (cons id path) k) (conj seen [kind k])])
+                 [s seen])))
+           [s #{}]
+           (sort snapshot/compare-identities (keys s)))))
+
 (defn- well-formed-structure
   "`[item-kinds item-places]`. Item i has its place at the root level or in an item before it whose kind can contain
   a kind of `kinds`; then its kind is one that the place allows. So places are inside, acyclic, and kinds fit."
@@ -204,6 +261,7 @@
   {:kinds       snapshot/kinds
    :may-contain snapshot/may-contain
    :root-kinds  snapshot/kinds
+   :unique-keys snapshot/unique-keys
    :attrs       (constantly attrs-gen)
    :max-items   50})
 
@@ -216,13 +274,15 @@
 (defn well-formed-snapshot-gen
   "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A snapshot has at most
   min(size, `:max-items`) items. Every root-level item has a kind of `:root-kinds`. A published table's identity is a
-  table natural key; every other identity is an entity id. Siblings with one name and one kind occur. With the
-  default options, every snapshot validates against `::snapshot/snapshot`.
+  table natural key; every other identity is an entity id. Siblings with one name and one kind occur, but no two
+  items of a kind of `:unique-keys` have one key. With the default options, every snapshot validates against
+  `::snapshot/snapshot` and satisfies [[well-formed?]].
 
   Options, each with a default:
   - `:kinds` (a set of kinds; [[snapshot/kinds]]);
   - `:may-contain` (`{kind #{kind}}`; [[snapshot/may-contain]]);
   - `:root-kinds` (a non-empty subset of `:kinds`; all of `:kinds`);
+  - `:unique-keys` (`{kind path}`, a path to a string key; [[snapshot/unique-keys]]);
   - `:attrs` (a function from a kind to a generator of its `:attrs`; [[attrs-gen]] for each kind);
   - `:max-items` (50)."
   ([] (well-formed-snapshot-gen {}))
@@ -232,7 +292,7 @@
      (assert (set/subset? (set (:root-kinds opts)) (set (:kinds opts))) "`:root-kinds` must be a subset of `:kinds`")
      (gen/fmap (fn [choices]
                  (let [[item-kinds item-places] (well-formed-structure opts choices)]
-                   (assemble choices item-kinds item-places)))
+                   (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
                (choices-gen opts gen/nat item-target-gen)))))
 
 (defn arbitrary-snapshot-gen

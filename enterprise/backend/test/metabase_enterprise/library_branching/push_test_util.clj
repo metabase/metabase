@@ -204,12 +204,12 @@
 ;;; ---------------------------------------------------- Generator -----------------------------------------------------
 
 (defn- acceptable
-  "Item `item` changed so that a push accepts it: a root-level collection is a Library root, and no attribute names
-  an item by identity."
+  "Item `item` changed so that a push accepts it: a root-level collection is a Library root, no collection has a
+  namespace (so each has the namespace of its parent), and no attribute names an item by identity."
   [{:keys [kind place] :as item}]
   (case kind
-    :collection (cond-> item
-                  (nil? place) (update :attrs #(-> % (assoc :type "library") (dissoc :namespace))))
+    :collection (cond-> (update item :attrs dissoc :namespace)
+                  (nil? place) (update :attrs assoc :type "library"))
     :metric     (update item :attrs #(-> %
                                          (assoc :query (count-query orders-table))
                                          (dissoc :visualization_settings :parameters :parameter_mappings

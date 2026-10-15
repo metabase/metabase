@@ -65,11 +65,28 @@
                            (sorted-ids s))]
     (assoc-in s [id :place] (nth-of (cons nil containers) k))))
 
+(defn- key-taken?
+  "True iff an item of `s` other than `id`, of the kind of item `it`, has the unique key of `it`
+  ([[snapshot/unique-keys]])."
+  [s id it]
+  (when-let [path (get snapshot/unique-keys (:kind it))]
+    (let [k (get-in it path)]
+      (and (some? k)
+           (some (fn [[j other]] (and (not= j id) (= (:kind it) (:kind other)) (= k (get-in other path)))) s)))))
+
+(defn- rename-edit
+  "Renames item `id`, unless an item of its kind has the new name as its unique key."
+  [s id item-name]
+  (let [it (assoc (get s id) :name item-name)]
+    (if (key-taken? s id it) s (assoc s id it))))
+
 (defn- restore-edit
-  "Adds the `k`th item of universe `u` that `s` lacks and whose container `s` holds, with its references that close."
+  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds, and whose unique key no item of `s`
+  has, with its references that close."
   [u s k]
   (let [candidates (filter (fn [i] (and (not (contains? s i))
-                                        (let [p (:place (get u i))] (or (nil? p) (contains? s p)))))
+                                        (let [p (:place (get u i))] (or (nil? p) (contains? s p)))
+                                        (not (key-taken? s i (get u i)))))
                            (sorted-ids u))]
     (if-let [i (nth-of candidates k)]
       (assoc s i (keep-refs s (get u i)))
@@ -82,7 +99,7 @@
   (if-let [id (nth-of (sorted-ids s) k)]
     (case op
       :delete   (delete-edit s id)
-      :rename   (assoc-in s [id :name] (nth-of names x))
+      :rename   (rename-edit s id (nth-of names x))
       :describe (assoc-in s [id :attrs :description] (str "d" (mod x 3)))
       :move     (move-edit s id x)
       :add-ref  (update-in s [id :refs] conj [:card (nth-of (sorted-ids s) x)])
@@ -110,6 +127,21 @@
                (let [b (apply-edits u u eb)]
                  [b (apply-edits u b eo) (apply-edits u b et)]))
              (gen/tuple (lb.tu/well-formed-snapshot-gen (merge {:max-items 12} opts)) edits-gen edits-gen edits-gen))))
+
+(defn with-unknown
+  "Base snapshot `b` in which the base value of the `k`th identity of `ids`, for each `k` of `ks`, is `:unknown`."
+  [b ids ks]
+  (let [ids (vec (sort snapshot/compare-identities (distinct ids)))]
+    (if (empty? ids)
+      b
+      (into b (map (fn [k] [(nth ids (mod k (count ids))) :unknown])) ks))))
+
+(defn unknown-base-snapshots-gen
+  "Generates `[b o t]` as [[related-snapshots-gen]] does, with an unknown base value for some identities of the three
+  snapshots."
+  []
+  (gen/fmap (fn [[[b o t] ks]] [(with-unknown b (concat (keys b) (keys o) (keys t)) ks) o t])
+            (gen/tuple (related-snapshots-gen) (gen/vector gen/nat 0 4))))
 
 (defn changed
   "The identities whose content differs between snapshots `x` and `y`."

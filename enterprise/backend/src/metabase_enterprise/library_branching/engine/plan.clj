@@ -131,10 +131,12 @@
 
   Of the steps that may come next, the step of the least identity comes first. Each `:pre` is the content that the
   item must have when the step runs (nil: no item)."
-  [l m b]
-  (let [changed (sort snapshot/compare-identities
-                      (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))]
-    (check-base-equal! l b changed)
-    (let [[writes links] (write-steps m b (filter #(contains? m %) changed))
-          trashes        (trash-steps l b (remove #(contains? m %) changed))]
-      (vec (concat writes links trashes)))))
+  ([l m b]
+   (plan l m b {}))
+  ([l m b _opts]
+   (let [changed (sort snapshot/compare-identities
+                       (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))]
+     (check-base-equal! l b changed)
+     (let [[writes links] (write-steps m b (filter #(contains? m %) changed))
+           trashes        (trash-steps l b (remove #(contains? m %) changed))]
+       (vec (concat writes links trashes))))))

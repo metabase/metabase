@@ -72,6 +72,7 @@
 (def ^:private by-month-path "library/metrics/revenue/total_revenue~Qx81tWm0aLpN2ZcB7yYgr.metric.yaml")
 (def ^:private base-filter-path "snippets/base_filter.snippet.yaml")
 (def ^:private active-filter-path "snippets/filters/active_product_filter.snippet.yaml")
+(def ^:private revenue-path "library/metrics/revenue/_collection.yaml")
 
 ;;; ------------------------------------------------------ Files ------------------------------------------------------
 
@@ -166,7 +167,15 @@
 
       ;; a metric at the root level, which is not a fixed root
       (edit total-revenue-path #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n" ""))
-      [{:level :structural :rule :root :id total-revenue-id :path total-revenue-path}])))
+      [{:level :structural :rule :root :id total-revenue-id :path total-revenue-path}]
+
+      ;; two snippets with one name
+      (edit active-filter-path #(str/replace % "name: Active product filter" "name: Base filter"))
+      [{:level :structural :rule :unique-key :kind :snippet :key "Base filter" :ids #{base-filter-id active-filter-id}}]
+
+      ;; a child collection in another namespace than its parent
+      (edit revenue-path #(str % "namespace: snippets\n"))
+      [{:level :structural :rule :namespace :id revenue-id :place metrics-id :path revenue-path}])))
 
 (deftest semantic-findings-test
   (testing "a reference to a table that the manifest does not have is red; the report names the table"
@@ -215,6 +224,21 @@
     (let [[line] (check/report (checked (edit base-filter-path #(str % "collection: IW8kbqZVaMxdGtCM2F4U6\n"))))]
       (is (str/includes? line "Base filter"))
       (is (str/includes? line "Total Revenue"))))
+  (testing "a key clash names the kind, the key and both items"
+    (let [[line] (check/report (checked (edit active-filter-path
+                                              #(str/replace % "name: Active product filter" "name: Base filter"))))]
+      (is (str/includes? line "snippet"))
+      (is (str/includes? line "\"Base filter\""))
+      (is (str/includes? line base-filter-id))
+      (is (str/includes? line active-filter-id))
+      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
+  (testing "a namespace finding names the collection and its parent"
+    (let [[line] (check/report (checked (edit revenue-path #(str % "namespace: snippets\n"))))]
+      (is (str/includes? line revenue-path))
+      (is (str/includes? line "Revenue"))
+      (is (str/includes? line "Metrics"))
+      (is (str/includes? line "namespace"))
+      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
   (testing "a decode finding names its file"
     (is (str/includes? (first (check/report (checked (golden-with {"library/notes.yaml" "a: ["}))))
                        "library/notes.yaml")))
