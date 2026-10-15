@@ -56,7 +56,7 @@
     :doc    "The key check takes a snippet that the plan trashes as free of its name, but the trash keeps the row and
             its name."
     :target `apply/key-clashes
-    :edits  [[:replace '(into #{} (comp (filter :write) (map :id)) plan) '(into #{} (map :id) plan)]]
+    :edits  [[:replace '(into #{} (map :id) steps) '(into #{} (map :id) plan)]]
     :tests  [#'apply-test/apply-keeps-unique-keys-fails-test]}
    {:name   :raw-key-at-apply
     :doc    "The key check compares the key of a written item as it is, not in the compared form of validate: a new
