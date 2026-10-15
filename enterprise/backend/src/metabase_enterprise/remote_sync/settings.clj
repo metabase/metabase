@@ -159,7 +159,7 @@
   :on-change sync-transform-tracking-on-change)
 
 (defsetting remote-sync-strict-mode
-  (deferred-tru "Whether remote sync always syncs the Library and transforms and hides the choice of other collections. Set once when remote sync starts without a value, and turned off when a pull syncs another collection.")
+  (deferred-tru "Whether remote sync always syncs the Library and transforms and hides the choice of other collections. Set at startup when it has no value, turned on or off when the remote sync settings are saved, and turned off when a pull syncs another collection.")
   :type :boolean
   :visibility :admin
   :export? false

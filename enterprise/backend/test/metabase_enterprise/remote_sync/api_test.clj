@@ -2250,23 +2250,24 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms false]
-          (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
-            (testing "can enable transforms sync"
-              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                     {:remote-sync-transforms true})]
-                (wait-for-task-completion task_id)
-                (is (=? {:success true} resp))
-                (is (true? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
-                    "Built-in transform tags should not be deleted by sync")))
-            (testing "can disable transforms sync"
-              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                     {:remote-sync-transforms false})]
-                (wait-for-task-completion task_id)
-                (is (=? {:success true} resp))
-                (is (false? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
-                    "Built-in transform tags should not be deleted by sync")))))))))
+          (mt/with-temp [:model/Collection _ {:name "Synced" :location "/" :is_remote_synced true}]
+            (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
+              (testing "can enable transforms sync"
+                (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                       {:remote-sync-transforms true})]
+                  (wait-for-task-completion task_id)
+                  (is (=? {:success true} resp))
+                  (is (true? (settings/remote-sync-transforms)))
+                  (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                      "Built-in transform tags should not be deleted by sync")))
+              (testing "can disable transforms sync"
+                (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                       {:remote-sync-transforms false})]
+                  (wait-for-task-completion task_id)
+                  (is (=? {:success true} resp))
+                  (is (false? (settings/remote-sync-transforms)))
+                  (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                      "Built-in transform tags should not be deleted by sync"))))))))))
 
 (deftest settings-preserves-transforms-when-not-specified-test
   (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
@@ -2448,22 +2449,28 @@
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
         (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
 
-(deftest settings-rejects-collections-in-strict-mode-test
-  (testing "PUT /api/ee/remote-sync/settings refuses collection changes in strict mode"
+(deftest settings-switch-strict-mode-test
+  (testing "PUT /api/ee/remote-sync/settings turns strict mode on when no collection outside the Library is synced, and
+            off otherwise"
     (mt/with-temporary-setting-values [remote-sync-strict-mode true]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Plain" :location "/" :is_remote_synced false}]
         (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                                    impl/finish-remote-config! (constantly nil)]
-          (is (= "Cannot change synced collections in strict mode, which always syncs the Library and transforms."
-                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-type :read-write
-                                        :collections      {coll-id true}})))
-          (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+                                    impl/finish-remote-config!               (constantly nil)]
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-type :read-write :collections {coll-id true}})
+          (is (false? (settings/remote-sync-strict-mode)))
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-type :read-write :collections {coll-id false}})
+          (is (true? (settings/remote-sync-strict-mode))))))))
 
 (deftest settings-ignores-transforms-in-strict-mode-test
   (testing "PUT /api/ee/remote-sync/settings ignores remote-sync-transforms in strict mode, which always syncs transforms"
     (mt/with-temporary-setting-values [remote-sync-strict-mode true
-                                       remote-sync-transforms  true]
+                                       remote-sync-transforms  true
+                                       remote-sync-url         nil
+                                       remote-sync-token       nil
+                                       remote-sync-branch      nil
+                                       remote-sync-type        :read-only]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
                                   impl/finish-remote-config!   (constantly nil)]
         (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"

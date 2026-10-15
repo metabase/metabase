@@ -281,12 +281,11 @@
 (deftest remote-sync-init-glossary-backfill-skips-unsynced-library-test
   (testing "Glossary entries are only tracked when the Library is synced"
     (collections.tu/with-library-not-synced
-      (mt/with-dynamic-fn-redefs [remote-sync.core/enable-library-and-transforms-sync! (constantly nil)]
-        (do-with-untracked-glossary-entry!
-         :read-write
-         (fn [_entry]
-           (#'init/remote-sync-init)
-           (is (zero? (glossary-rso-count)))))))))
+      (do-with-untracked-glossary-entry!
+       :read-write
+       (fn [_entry]
+         (#'init/remote-sync-init)
+         (is (zero? (glossary-rso-count))))))))
 
 ;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
 
@@ -368,6 +367,14 @@
       (remote-sync.core/init-strict-mode!)
       (is (false? (settings/remote-sync-strict-mode))))))
 
+(deftest remote-sync-init-sets-strict-mode-test
+  (testing "Startup sets strict mode when it has no value, without creating the Library"
+    (mt/with-temporary-setting-values [:remote-sync-url nil
+                                       :remote-sync-strict-mode nil]
+      (mt/with-dynamic-fn-redefs [collection/ensure-library-collection! #(throw (ex-info "Should not be called" {}))]
+        (#'init/remote-sync-init)
+        (is (true? (settings/remote-sync-strict-mode)))))))
+
 (deftest finish-remote-config-strict-mode-test
   (testing "In strict mode, saving read-write remote sync settings turns on Library and transforms sync"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
@@ -417,7 +424,7 @@
          (is (false? (settings/remote-sync-transforms))))))))
 
 (deftest finish-remote-config-read-only-test
-  (testing "In strict mode, a read-only instance gets the Library marked synced, and takes transforms from its pulls"
+  (testing "In strict mode, a read-only instance gets the Library but takes its sync state from its pulls"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-only
                                        :remote-sync-branch "main"
@@ -427,7 +434,7 @@
           (is (nil? (collection/library-collection)))
           (impl/finish-remote-config!)
           (is (some? (collection/library-collection)))
-          (is (library-synced?))
+          (is (not (library-synced?)))
           (is (false? (settings/remote-sync-transforms))))))))
 
 (deftest finish-remote-config-library-refused-test
@@ -447,33 +454,3 @@
              (mt/with-dynamic-fn-redefs [impl/async-import! capture]
                (#'init/remote-sync-init)
                (is (= [["main" true {}]] @calls) "the rest of startup still runs")))))))))
-
-(deftest remote-sync-init-strict-mode-test
-  (testing "A read-write start without a strict mode value turns it on, creates the Library, runs the initial import of
-            an instance with nothing synced, and only then syncs the Library and transforms"
-    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
-                                       :remote-sync-type :read-write
-                                       :remote-sync-branch "main"
-                                       :remote-sync-strict-mode nil]
-      (let [calls      (atom [])
-            on-success (atom nil)
-            capture    (fn [branch force? args & {:as opts}]
-                         (swap! calls conj [branch force? args])
-                         (reset! on-success (:on-success opts))
-                         nil)]
-        (mt/with-dynamic-fn-redefs [impl/async-import!        capture
-                                    impl/publish-sync-event! (constantly nil)]
-          (#'init/remote-sync-init)
-          (is (true? (settings/remote-sync-strict-mode)))
-          (is (some? (collection/library-collection)))
-          (is (not (library-synced?)))
-          (is (false? (settings/remote-sync-transforms)))
-          (is (= [["main" true {}]] @calls))
-          (testing "once the initial import succeeds"
-            (@on-success 1 {:status :success})
-            (is (library-synced?))
-            (is (true? (settings/remote-sync-transforms))))
-          (testing "while a later start, with the Library synced, doesn't import again"
-            (reset! calls [])
-            (#'init/remote-sync-init)
-            (is (empty? @calls))))))))

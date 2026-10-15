@@ -255,7 +255,8 @@
   (testing "Saving read-only settings with transforms on, as the setup guide does, leaves nothing unsaved"
     (mt/with-premium-features #{:remote-sync}
       (mt/with-temporary-setting-values [remote-sync-type :read-write
-                                         remote-sync-transforms false]
+                                         remote-sync-transforms false
+                                         remote-sync-strict-mode false]
         (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
                                     impl/finish-remote-config! (constantly nil)]
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"

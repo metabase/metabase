@@ -414,6 +414,7 @@
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
+        _                   (collection/ensure-library-collection!)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
                               (serialization/load-metabase! ingestable-snapshot :reindex? false))
@@ -441,11 +442,6 @@
         (track-user-settings! settings-table-ids sync-timestamp)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
-    (when (and (not has-transforms?)
-               (settings/remote-sync-transforms)
-               (not (settings/remote-sync-strict-mode)))
-      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
     (remote-sync.core/maybe-switch-out-of-strict-mode!)
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
