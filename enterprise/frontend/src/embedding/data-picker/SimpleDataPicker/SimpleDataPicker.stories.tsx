@@ -58,11 +58,13 @@ function createOptions(optionNames: string[]): Option[] {
   return optionNames.map((name, index) => ({
     id: index + 1,
     name,
+    model: "table",
   }));
 }
 interface Option {
   id: number;
   name: string;
+  model: "table";
 }
 
 const meta: Meta<typeof SimpleDataPickerView> = {

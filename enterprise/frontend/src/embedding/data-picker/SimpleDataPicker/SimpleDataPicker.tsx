@@ -38,7 +38,7 @@ export function SimpleDataPicker({
         return {
           ...entity,
           id:
-            entity.model === "dataset"
+            entity.model === "dataset" || entity.model === "metric"
               ? getQuestionVirtualTableId(entity.id)
               : entity.id,
         };
@@ -114,6 +114,10 @@ function translateEntityTypesToSearchModels(
 
   if (entityTypes.includes("table")) {
     searchModels.push("table");
+  }
+
+  if (entityTypes.includes("metric")) {
+    searchModels.push("metric");
   }
 
   return searchModels;

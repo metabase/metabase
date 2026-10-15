@@ -84,17 +84,19 @@ export function EmbeddingDataPicker({
     dataSourceCountData != null &&
     dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
+    const isJoinStep = !canChangeDatabase;
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
       "model",
       "table",
+      ...(isJoinStep ? [] : (["metric"] as const)),
     ];
-    const filteredEntityTypes = entityTypes.filter((entityType) =>
-      ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
-    );
+    const isAllowedEntityType = (entityType: EmbeddingEntityType) =>
+      ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType);
+    const filteredEntityTypes = entityTypes.filter(isAllowedEntityType);
     const simpleDataPickerEntityTypes =
       filteredEntityTypes.length > 0
         ? filteredEntityTypes
-        : DEFAULT_EMBEDDING_ENTITY_TYPES;
+        : DEFAULT_EMBEDDING_ENTITY_TYPES.filter(isAllowedEntityType);
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}

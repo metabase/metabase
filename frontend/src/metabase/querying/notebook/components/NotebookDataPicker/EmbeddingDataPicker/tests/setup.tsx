@@ -6,7 +6,10 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEmbeddingDataPickerState } from "__support__/state/embedding-data-picker";
 import { renderWithProviders } from "__support__/ui";
-import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import type {
+  EmbeddingDataPicker as EmbeddingDataPickerVariant,
+  EmbeddingEntityType,
+} from "metabase/redux/store/embedding-data-picker";
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -29,6 +32,8 @@ interface SetupOpts {
   hasMetrics?: boolean;
   entityTypes?: EmbeddingEntityType[];
   contextEntityTypes?: EmbeddingEntityType[];
+  dataPicker?: EmbeddingDataPickerVariant;
+  isJoinStep?: boolean;
 }
 
 const DEFAULT_OPTS: Partial<SetupOpts> = {
@@ -40,10 +45,12 @@ export function setup({
   hasMetrics = false,
   entityTypes,
   contextEntityTypes,
+  dataPicker = "staged",
+  isJoinStep = false,
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
 
-  setupEmbeddingDataPickerDecisionEndpoints("staged");
+  setupEmbeddingDataPickerDecisionEndpoints(dataPicker);
 
   setupSearchEndpoints([
     ...(hasModels ? createModelSearchResults() : []),
@@ -55,7 +62,7 @@ export function setup({
     <EmbeddingDataPicker
       query={query}
       stageIndex={0}
-      canChangeDatabase={true}
+      canChangeDatabase={!isJoinStep}
       isDisabled={false}
       onChange={jest.fn()}
       title="Pick your starting data"

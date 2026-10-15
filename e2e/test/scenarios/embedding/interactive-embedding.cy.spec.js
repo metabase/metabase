@@ -518,6 +518,26 @@ describe("scenarios > embedding > full app", () => {
         });
       });
     });
+
+    describe("metric", () => {
+      it("should select a metric as the starting data source", () => {
+        const metricDetails = {
+          ...ordersCardDetails,
+          name: "Orders count",
+          type: "metric",
+          query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+        };
+        H.createQuestion(metricDetails);
+        startNewEmbeddingQuestion();
+        selectDataSource(metricDetails.name);
+
+        // A metric becomes the aggregation on the table it is built from
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(metricDetails.name)
+          .should("be.visible");
+      });
+    });
   });
 
   describe("notebook multi-stage data picker", () => {

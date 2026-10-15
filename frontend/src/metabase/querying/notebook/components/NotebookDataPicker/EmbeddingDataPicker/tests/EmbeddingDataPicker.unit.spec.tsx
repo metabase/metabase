@@ -152,4 +152,28 @@ describe("EmbeddingDataPicker", () => {
        */
     });
   });
+
+  describe("simple data picker", () => {
+    it("should show metrics without configuring `entity_types`", async () => {
+      setup({ dataPicker: "flat", hasMetrics: true });
+
+      expect(
+        await screen.findByRole("link", { name: "Revenue" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Orders model" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show metrics at the join step", async () => {
+      setup({ dataPicker: "flat", hasMetrics: true, isJoinStep: true });
+
+      expect(
+        await screen.findByRole("link", { name: "Orders model" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
