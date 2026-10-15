@@ -10,6 +10,7 @@ import type {
 import { EnterpriseApi } from "./api";
 import {
   invalidateTags,
+  listTag,
   provideOAuthClientListTags,
   provideOAuthClientTags,
   tag,
@@ -47,10 +48,13 @@ export const oauthClientManagementApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/oauth-client-management/revoke",
         body,
       }),
-      // The whole type, not the list alone: a revoke by criteria can end a client it does not name, and the sidebar
-      // may be open on one of them
+      // Every client, since a revoke by criteria can end ones it doesn't name, and the
+      // Authorization logs, since each revoke is logged there
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("oauth-client")]),
+        invalidateTags(error, [
+          tag("oauth-client"),
+          listTag("oauth-authorization"),
+        ]),
     }),
   }),
 });

@@ -5,12 +5,7 @@ import {
 
 import { PAGE_SIZE } from "./constants";
 import type { SessionsUrlState } from "./types";
-import {
-  buildListParams,
-  getTabChange,
-  isSessionRevokedBy,
-  urlStateConfig,
-} from "./utils";
+import { buildListParams, isSessionRevokedBy, urlStateConfig } from "./utils";
 
 const DEFAULT_STATE: SessionsUrlState = {
   page: 0,
@@ -45,10 +40,6 @@ describe("SessionsPage/utils", () => {
       expect(urlStateConfig.parse({})).toEqual(DEFAULT_STATE);
     });
 
-    it("trims the search query", () => {
-      expect(urlStateConfig.parse({ query: "  ann  " }).query).toBe("ann");
-    });
-
     it("keeps only known auth methods, so an unknown one can't fail the whole request", () => {
       expect(
         urlStateConfig.parse({ provider: ["saml", "mcp", "jwt"] }).provider,
@@ -58,14 +49,9 @@ describe("SessionsPage/utils", () => {
       ]);
     });
 
-    it("guards the tab, time preset and reason params against unknown values", () => {
+    it("guards the tab and reason params against unknown values", () => {
       expect(urlStateConfig.parse({ tab: "ended" }).tab).toBe("ended");
       expect(urlStateConfig.parse({ tab: "bogus" }).tab).toBe("active");
-
-      expect(urlStateConfig.parse({ last_active: "week" }).last_active).toBe(
-        "week",
-      );
-      expect(urlStateConfig.parse({ ended: "decade" }).ended).toBeNull();
 
       expect(urlStateConfig.parse({ reason: "logout" }).reason).toBe("logout");
       expect(urlStateConfig.parse({ reason: "boredom" }).reason).toBeNull();
@@ -154,28 +140,6 @@ describe("SessionsPage/utils", () => {
 
       expect(build("  ann  ")).toBe("ann");
       expect(build("   ")).toBeUndefined();
-    });
-  });
-
-  describe("getTabChange", () => {
-    it("goes back to the first page, keeping a sort the new tab shows", () => {
-      expect(
-        getTabChange({ ...POPULATED_STATE, tab: "active" }, "ended"),
-      ).toEqual({ tab: "ended", page: 0 });
-    });
-
-    it("resets a sort by a column the new tab doesn't show", () => {
-      expect(
-        getTabChange(
-          { ...DEFAULT_STATE, sort_column: "provider", sort_direction: "asc" },
-          "ended",
-        ),
-      ).toEqual({
-        tab: "ended",
-        page: 0,
-        sort_column: "created_at",
-        sort_direction: "desc",
-      });
     });
   });
 

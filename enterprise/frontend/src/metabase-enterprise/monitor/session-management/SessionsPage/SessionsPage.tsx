@@ -20,6 +20,7 @@ import {
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { getTabChange } from "metabase/monitor/tab-change";
 import { getTimePresetCutoff } from "metabase/monitor/time-presets";
 import { useLocation, useParams } from "metabase/router";
 import { Button, Flex, Group } from "metabase/ui";
@@ -37,15 +38,11 @@ import {
   DEFAULT_SORT_DIRECTION,
   PAGE_SIZE,
   TAB_SORT_COLUMNS,
+  TAB_SORT_CONFIG,
 } from "./constants";
 import type { RouteParams } from "./types";
 import { useSessionRevocation } from "./use-session-revocation";
-import {
-  buildListParams,
-  getTabChange,
-  isSessionRevokedBy,
-  urlStateConfig,
-} from "./utils";
+import { buildListParams, isSessionRevokedBy, urlStateConfig } from "./utils";
 
 const getSessionId = (session: Session) => session.id;
 
@@ -192,7 +189,9 @@ export const SessionsPage = () => {
 
           <SessionsTabs
             tab={urlState.tab}
-            onChange={(tab) => patchUrlState(getTabChange(urlState, tab))}
+            onChange={(tab) =>
+              patchUrlState(getTabChange(urlState, tab, TAB_SORT_CONFIG))
+            }
           />
 
           <Group gap="md" align="center">

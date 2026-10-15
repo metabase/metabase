@@ -44,7 +44,8 @@ import {
 import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
 import S from "./OAuthAuthorizationsPage.module.css";
-import { OAUTH_PAGE_SIZE } from "./oauth-utils";
+
+export const OAUTH_PAGE_SIZE = 50;
 
 const ALL_EVENT_TYPES = "all";
 

@@ -3,24 +3,14 @@ import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "metabase/router";
 
 type DetailSidebarRoutingOptions<TItem, TId> = {
-  /** The rows of the page the sidebar opens beside, in the order they are shown, or undefined until they load. */
   items: TItem[] | undefined;
   getItemId: (item: TItem) => TId;
-  /** The id in the URL, or undefined when the sidebar is closed. */
   selectedId: TId | undefined;
-  /** The list's own URL, which closing returns to. */
   listPath: string;
   getDetailPath: (id: TId) => string;
 };
 
-/**
- * Routing for a Monitor list page whose detail sidebar is a child route: where previous and next go, which row the
- * sidebar opened on, and how to open and close it. The page's own state — page, search, filters, sort — lives in the
- * query string, which every navigation carries over, so closing the sidebar returns to exactly the list the admin
- * was reading.
- *
- * Previous and next step through the rows of the current page only. Paging to reach the next one is the list's job.
- */
+/** Previous/next and open/close for a detail sidebar that is a child route; previous and next stay on the page. */
 export function useDetailSidebarRouting<TItem, TId>({
   items,
   getItemId,

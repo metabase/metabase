@@ -1,39 +1,36 @@
 import { t } from "ttag";
 
-import {
-  SidebarNavButton,
-  useCopyDetailLink,
-} from "metabase/monitor/components/DetailSidebar";
 import { ActionIcon, Flex, Group, Icon } from "metabase/ui";
-import * as Urls from "metabase/urls";
 
-import type { SidebarHeaderProps } from "./types";
+import { SidebarNavButton } from "./SidebarNavButton";
+import type { DetailSidebarHeaderProps } from "./types";
+import { useCopyDetailLink } from "./use-copy-detail-link";
 
-export const SidebarHeader = ({
-  sessionId,
-  prevSessionId,
-  nextSessionId,
+export function DetailSidebarHeader<TId>({
+  prevId,
+  nextId,
+  previousLabel,
+  nextLabel,
+  detailPath,
   onNavigate,
   onClose,
-}: SidebarHeaderProps) => {
-  const handleCopyLink = useCopyDetailLink(
-    Urls.monitorSessionDetail(sessionId),
-  );
+}: DetailSidebarHeaderProps<TId>) {
+  const handleCopyLink = useCopyDetailLink(detailPath);
 
   return (
     <Flex justify="space-between" align="center">
       <Group gap="sm">
         <SidebarNavButton
           direction="previous"
-          label={t`Previous session`}
-          disabled={prevSessionId === undefined}
-          onClick={() => prevSessionId && onNavigate(prevSessionId)}
+          label={previousLabel}
+          disabled={prevId === undefined}
+          onClick={() => prevId !== undefined && onNavigate(prevId)}
         />
         <SidebarNavButton
           direction="next"
-          label={t`Next session`}
-          disabled={nextSessionId === undefined}
-          onClick={() => nextSessionId && onNavigate(nextSessionId)}
+          label={nextLabel}
+          disabled={nextId === undefined}
+          onClick={() => nextId !== undefined && onNavigate(nextId)}
         />
       </Group>
       <Group gap="sm">
@@ -56,4 +53,4 @@ export const SidebarHeader = ({
       </Group>
     </Flex>
   );
-};
+}

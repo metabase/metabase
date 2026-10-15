@@ -68,8 +68,7 @@ export function useClientRevocation({ onRevoked }: UseClientRevocationOptions) {
     [confirmRevoke],
   );
 
-  // An empty body, not the filters the page is showing: "revoke all" means every active client, and the endpoint
-  // holds back only the client the caller is acting through
+  // an empty body, not the page's filters: "revoke all" means every active client
   const revokeAll = useCallback(() => {
     confirmRevoke({
       title: t`Revoke all OAuth clients?`,

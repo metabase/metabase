@@ -1,3 +1,4 @@
+import type { TabSortConfig } from "metabase/monitor/tab-change";
 import type { OAuthClientSortColumn, SortDirection } from "metabase-types/api";
 
 import type { OAuthClientsTab } from "./types";
@@ -23,4 +24,13 @@ export const TAB_SORT_COLUMNS: Record<
     "last_used_at",
   ],
   revoked: ["created_at", "client_name", "revoked_at"],
+};
+
+export const TAB_SORT_CONFIG: TabSortConfig<
+  OAuthClientsTab,
+  OAuthClientSortColumn
+> = {
+  tabSortColumns: TAB_SORT_COLUMNS,
+  defaultSortColumn: DEFAULT_SORT_COLUMN,
+  defaultSortDirection: DEFAULT_SORT_DIRECTION,
 };

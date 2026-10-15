@@ -151,12 +151,23 @@ describe("OAuthClientsFilters", () => {
     });
   });
 
+  it("keeps the URL's user when applied before that user's name has loaded", async () => {
+    const { onChange } = setup({
+      state: { ...ACTIVE_TAB_STATE, user: RASTA.id },
+      selectedUser: null,
+    });
+    await openFilters();
+    await apply();
+
+    expect(onChange).toHaveBeenCalledWith({ ...NO_FILTERS, user: RASTA.id });
+  });
+
   it("applies a user as the id the URL carries", async () => {
     const { onChange } = setup();
     await openFilters();
 
     await userEvent.click(
-      within(await getPopover()).getByPlaceholderText("Any user"),
+      within(await getPopover()).getByRole("textbox", { name: "User" }),
     );
     await userEvent.click(
       await screen.findByRole("option", { name: "Rasta Toucan" }),

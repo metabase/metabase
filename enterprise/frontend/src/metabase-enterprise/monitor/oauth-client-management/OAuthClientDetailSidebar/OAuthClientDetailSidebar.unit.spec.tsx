@@ -6,7 +6,7 @@ import {
   setupGetOAuthClientNotFoundEndpoint,
   setupOAuthAuthorizationsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type {
   ListOAuthAuthorizationsResponse,
@@ -53,6 +53,7 @@ type SetupOpts = {
   /** `null` when the list did not hand a row over, so the sidebar has only what it fetches */
   clientFromPage?: OAuthClient | null;
   detail?: OAuthClientDetail | null;
+  isDetailPending?: boolean;
   activity?: ListOAuthAuthorizationsResponse;
   isRevoking?: boolean;
 };
@@ -61,11 +62,21 @@ const setup = ({
   clientId = ACTIVE_CLIENT.client_id,
   clientFromPage = ACTIVE_CLIENT,
   detail = ACTIVE_DETAIL,
+  isDetailPending = false,
   activity = createMockListOAuthAuthorizationsResponse({ data: [], total: 0 }),
   isRevoking = false,
 }: SetupOpts = {}) => {
+  let landDetail: () => void = () => undefined;
   if (detail === null) {
     setupGetOAuthClientNotFoundEndpoint(clientId);
+  } else if (isDetailPending) {
+    const pendingDetail = new Promise<OAuthClientDetail>((resolve) => {
+      landDetail = () => resolve(detail);
+    });
+    fetchMock.get(
+      `path:/api/ee/oauth-client-management/${clientId}`,
+      pendingDetail,
+    );
   } else {
     setupGetOAuthClientEndpoint(detail);
   }
@@ -84,6 +95,8 @@ const setup = ({
     />,
     { withUndos: true },
   );
+
+  return { landDetail };
 };
 
 const queryRevokeButton = () =>
@@ -92,7 +105,14 @@ const queryRevokeButton = () =>
 describe("OAuthClientDetailSidebar", () => {
   describe("details", () => {
     it("shows what the client registered, once the detail lands on top of the row", async () => {
-      setup();
+      setup({
+        detail: createMockOAuthClientDetail({
+          ...ACTIVE_DETAIL,
+          client_uri: "https://bot.example.com",
+          application_type: "web",
+          redirect_uris: ["https://bot.example.com/cb"],
+        }),
+      });
 
       expect(
         screen.getByRole("heading", { name: "Claude Code" }),
@@ -100,8 +120,24 @@ describe("OAuthClientDetailSidebar", () => {
       expect(screen.getByText(ACTIVE_CLIENT.client_id)).toBeInTheDocument();
       // `scopes` and `contacts` are the detail's own, so they are not on the handed-over row
       expect(await screen.findByText("mb:full")).toBeInTheDocument();
+      expect(screen.getByText("agent:content:read")).toBeInTheDocument();
       expect(screen.getByText("ops@claude.ai")).toBeInTheDocument();
+      expect(
+        await screen.findByText("https://bot.example.com"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("web")).toBeInTheDocument();
+      expect(screen.getByText("Dynamic")).toBeInTheDocument();
+      expect(
+        screen.getByText("https://bot.example.com/cb"),
+      ).toBeInTheDocument();
       expect(screen.queryByText("Revoked by")).not.toBeInTheDocument();
+    });
+
+    it("shows when the client was last used", async () => {
+      setup();
+
+      expect(screen.getByText("Last used")).toBeInTheDocument();
+      expect(await screen.findByText(/September 28, 2026/)).toBeInTheDocument();
     });
 
     it("shows when and who revoked a revoked client", async () => {
@@ -113,6 +149,8 @@ describe("OAuthClientDetailSidebar", () => {
 
       expect(await screen.findByText("Revoked by")).toBeInTheDocument();
       expect(screen.getByText("Ann Admin")).toBeInTheDocument();
+      expect(screen.getByText("Revoked")).toBeInTheDocument();
+      expect(screen.getByText(/September 16, 2026/)).toBeInTheDocument();
     });
 
     it("says so for a client that has never presented a token", async () => {
@@ -144,11 +182,56 @@ describe("OAuthClientDetailSidebar", () => {
   });
 
   describe("users", () => {
-    it("lists who is connected through the client", async () => {
-      setup();
+    it("names each connected user with their live tokens and when they last approved", async () => {
+      setup({
+        detail: createMockOAuthClientDetail({
+          ...ACTIVE_DETAIL,
+          users: [
+            createMockOAuthClientUser({
+              id: 1,
+              common_name: "Ada Admin",
+              live_tokens: 2,
+              last_approved_at: "2026-09-20T12:00:00Z",
+            }),
+            createMockOAuthClientUser({
+              id: 2,
+              common_name: null,
+              email: "bo@example.com",
+              live_tokens: 1,
+              last_approved_at: null,
+            }),
+          ],
+        }),
+      });
 
-      expect(await screen.findByText("Rasta Toucan")).toBeInTheDocument();
+      expect(await screen.findByText("Ada Admin")).toBeInTheDocument();
+      expect(screen.getByText("2 live tokens")).toBeInTheDocument();
+      expect(screen.getByText("Last approved")).toBeInTheDocument();
+      expect(screen.getByText("bo@example.com")).toBeInTheDocument();
       expect(screen.getByText("1 live token")).toBeInTheDocument();
+      expect(screen.getByText("No approval on record")).toBeInTheDocument();
+    });
+
+    it("says nobody is connected only once the detail has landed", async () => {
+      const { landDetail } = setup({
+        detail: createMockOAuthClientDetail({ ...ACTIVE_DETAIL, users: [] }),
+        isDetailPending: true,
+      });
+
+      const users = await screen.findByTestId("oauth-client-users");
+      expect(
+        within(users).queryByText(
+          "Nobody is connected through this client right now.",
+        ),
+      ).not.toBeInTheDocument();
+
+      landDetail();
+
+      expect(
+        await within(users).findByText(
+          "Nobody is connected through this client right now.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("says so when nobody is connected", async () => {
@@ -167,21 +250,35 @@ describe("OAuthClientDetailSidebar", () => {
   });
 
   describe("activity", () => {
-    it("shows the client's own events from the Authorization logs", async () => {
+    it("shows the client's own events from the Authorization logs, newest first", async () => {
       setup({
         activity: createMockListOAuthAuthorizationsResponse({
           data: [
             createMockOAuthAuthorization({
+              id: 2,
               event_type: "revoked",
               user_email: "ann@metabase.test",
             }),
+            createMockOAuthAuthorization({
+              id: 1,
+              event_type: "registered",
+              user_email: null,
+            }),
           ],
-          total: 1,
+          total: 2,
         }),
       });
 
-      expect(await screen.findByText("Revoked")).toBeInTheDocument();
-      expect(screen.getByText("ann@metabase.test")).toBeInTheDocument();
+      const section = screen.getByTestId("oauth-client-activity");
+      expect(await within(section).findByText("Revoked")).toBeInTheDocument();
+      expect(
+        within(section).getByText("ann@metabase.test"),
+      ).toBeInTheDocument();
+      expect(
+        within(section)
+          .getAllByText(/^(Revoked|Registered)$/)
+          .map((label) => label.textContent),
+      ).toEqual(["Revoked", "Registered"]);
       const [activity] = fetchMock.callHistory.calls(
         "path:/api/oauth/authorizations",
       );
@@ -202,17 +299,9 @@ describe("OAuthClientDetailSidebar", () => {
   describe("revoke action", () => {
     it.each([
       {
-        description: "an active client the caller is not acting through",
+        description: "an active client",
         client: ACTIVE_CLIENT,
         canRevoke: true,
-      },
-      {
-        description: "the client the caller's own token came from",
-        client: createMockOAuthClient({
-          client_id: "current-client",
-          current: true,
-        }),
-        canRevoke: false,
       },
       {
         description: "a client that is already revoked",
@@ -231,7 +320,7 @@ describe("OAuthClientDetailSidebar", () => {
           detail: createMockOAuthClientDetail(client),
         });
 
-        expect(await screen.findByText("Scopes")).toBeInTheDocument();
+        expect(await screen.findByText("mb:full")).toBeInTheDocument();
         expect(queryRevokeButton() !== null).toBe(canRevoke);
       },
     );
@@ -243,24 +332,30 @@ describe("OAuthClientDetailSidebar", () => {
         screen.getByRole("button", { name: "Revoke client" }),
       ).toBeDisabled();
     });
+
+    it("isn't offered while the detail shows an error", async () => {
+      fetchMock.get(
+        `path:/api/ee/oauth-client-management/${ACTIVE_CLIENT.client_id}`,
+        500,
+      );
+      setup();
+
+      expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+      expect(queryRevokeButton()).not.toBeInTheDocument();
+    });
   });
 
-  describe("header", () => {
-    it("copies a link to the client", async () => {
-      setup();
-      jest.mocked(navigator.clipboard.writeText).mockClear();
+  it("copies a link to the client's own page", async () => {
+    setup();
+    jest.mocked(navigator.clipboard.writeText).mockClear();
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Copy link to clipboard" }),
-      );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Copy link to clipboard" }),
+    );
 
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        `${window.location.origin}/monitor/oauth-clients/${ACTIVE_CLIENT.client_id}`,
-      );
-      expect(
-        await screen.findByText("Link copied to clipboard"),
-      ).toBeInTheDocument();
-    });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/monitor/oauth-clients/${ACTIVE_CLIENT.client_id}`,
+    );
   });
 
   describe("a client that is no longer registered", () => {

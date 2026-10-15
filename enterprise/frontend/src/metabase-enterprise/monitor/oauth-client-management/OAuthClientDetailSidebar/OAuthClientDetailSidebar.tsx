@@ -1,15 +1,20 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DetailSidebarShell } from "metabase/monitor/components/DetailSidebar";
+import {
+  DetailSidebarHeader,
+  DetailSidebarShell,
+  DetailSidebarTitle,
+} from "metabase/monitor/components/DetailSidebar";
 import { Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+
+import { getOAuthClientName } from "../utils";
 
 import { ClientActivity } from "./ClientActivity";
 import { ClientDetails } from "./ClientDetails";
-import { ClientTitle } from "./ClientTitle";
 import { ClientUsers } from "./ClientUsers";
 import { SidebarFooter } from "./SidebarFooter";
-import { SidebarHeader } from "./SidebarHeader";
 import type { OAuthClientDetailSidebarProps } from "./types";
 import { useShownClient } from "./use-shown-client";
 
@@ -28,9 +33,8 @@ export const OAuthClientDetailSidebar = ({
     clientFromPage,
   );
 
-  // Revoking the client the caller is acting through would cut them off mid-request, as on the list
   const revocableClient =
-    client?.status === "active" && !client.current ? client : undefined;
+    error === undefined && client?.status === "active" ? client : undefined;
 
   return (
     <DetailSidebarShell
@@ -45,17 +49,22 @@ export const OAuthClientDetailSidebar = ({
         )
       }
     >
-      <SidebarHeader
-        clientId={clientId}
-        prevClientId={prevClientId}
-        nextClientId={nextClientId}
+      <DetailSidebarHeader
+        prevId={prevClientId}
+        nextId={nextClientId}
+        previousLabel={t`Previous client`}
+        nextLabel={t`Next client`}
+        detailPath={Urls.monitorOAuthClientDetail(clientId)}
         onNavigate={onNavigate}
         onClose={onClose}
       />
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         {client ? (
           <>
-            <ClientTitle client={client} />
+            <DetailSidebarTitle
+              typeLabel={t`OAuth client`}
+              title={getOAuthClientName(client)}
+            />
             <ClientDetails client={client} detail={detail} />
             <ClientUsers users={detail?.users} />
             <ClientActivity clientId={clientId} />

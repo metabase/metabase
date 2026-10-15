@@ -26,7 +26,7 @@ import {
 } from "./constants";
 import type { OAuthClientsTab, OAuthClientsUrlState } from "./types";
 
-export const isTab = (value: string): value is OAuthClientsTab =>
+const isTab = (value: string): value is OAuthClientsTab =>
   OAUTH_CLIENT_STATUSES.some((status) => status === value);
 
 const parseTab = (param: QueryParam): OAuthClientsTab => {
@@ -77,7 +77,6 @@ export const urlStateConfig: UrlStateConfig<OAuthClientsUrlState> = {
   }),
 };
 
-/** The instants the relative presets in the URL resolve to, as the endpoint's `*-after` bounds. */
 type PresetCutoffs = {
   registeredAfter: string | undefined;
   lastUsedAfter: string | undefined;
@@ -90,47 +89,20 @@ export const buildListParams = (
 ): OAuthClientListParams => ({
   limit: pageSize,
   offset: state.page * pageSize,
-  // a tab is a status, so the list asks for exactly what the tab shows
   status: state.tab,
-  // the endpoint rejects a blank query, so send it only when there is something to search for
   query: state.query || undefined,
-  // `user-id` matches an unrevoked token and revoking a client stamps every token it held, so it could only ever
-  // come back empty on the Revoked tab; each tab sends only the filters it offers, as the Sessions page does.
-  // `registered-after` goes on both: a revoked client was registered at some point too.
+  // a revoked client has no live tokens, so neither token filter could match on the Revoked tab
   "user-id": state.tab === "revoked" ? undefined : (state.user ?? undefined),
-  // `last-used-after` is Active-only for the same reason the column is: a revoked client's tokens no longer
-  // resolve, so it cannot have been used since it went
   "last-used-after": state.tab === "revoked" ? undefined : lastUsedAfter,
   "registered-after": registeredAfter,
   "sort-column": state.sort_column,
   "sort-direction": state.sort_direction,
 });
 
-export const getTabChange = (
-  state: OAuthClientsUrlState,
-  tab: OAuthClientsTab,
-): Partial<OAuthClientsUrlState> => {
-  const isSortShown = TAB_SORT_COLUMNS[tab].includes(state.sort_column);
-  return {
-    tab,
-    page: 0,
-    ...(isSortShown
-      ? {}
-      : {
-          sort_column: DEFAULT_SORT_COLUMN,
-          sort_direction: DEFAULT_SORT_DIRECTION,
-        }),
-  };
-};
-
-// Mirrors the endpoint as far as a list row can be read: only an active client other than the caller's own is
-// revoked, and an `ids` list ends only the clients it names. Any other criterion is about something the row does
-// not carry -- which users hold its tokens -- so it counts as a hit rather than quietly keeping a row the revoke
-// may well have ended.
+// Any criterion but `ids` is about who holds the client's tokens, which the row doesn't carry, so it counts as a hit
 export const isOAuthClientRevokedBy = (
   client: OAuthClient,
   request: RevokeOAuthClientsRequest,
 ): boolean =>
   client.status === "active" &&
-  !client.current &&
   (request.ids === undefined || request.ids.includes(client.client_id));

@@ -50,10 +50,20 @@ const getColumnHeaders = () =>
 
 describe("OAuthClientsTable", () => {
   it("shows the active tab's columns, and the client id under each name", async () => {
-    const client = createMockOAuthClient();
+    const client = createMockOAuthClient({
+      redirect_uris: ["https://claude.ai/cb"],
+      user_count: 3,
+      live_tokens: 5,
+      last_used_at: "2026-09-28T08:30:00Z",
+    });
     setup({ clients: [client] });
 
-    expect(await getRow(client)).toHaveTextContent(client.client_id);
+    const row = await getRow(client);
+    expect(row).toHaveTextContent(client.client_id);
+    expect(within(row).getByText("https://claude.ai/cb")).toBeInTheDocument();
+    expect(within(row).getByText("3")).toBeInTheDocument();
+    expect(within(row).getByText("5")).toBeInTheDocument();
+    expect(row).toHaveTextContent(/September 28, 2026/);
     expect(getColumnHeaders()).toEqual([
       "Client",
       "Redirect URIs",
@@ -93,24 +103,6 @@ describe("OAuthClientsTable", () => {
     ).toBeInTheDocument();
     // nothing on this tab has anything left to revoke
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
-  });
-
-  it("badges the client the caller's own token came from, and doesn't let it be selected", async () => {
-    const current = createMockOAuthClient({
-      client_id: "current",
-      current: true,
-    });
-    const other = createMockOAuthClient({ client_id: "other" });
-    setup({ clients: [current, other] });
-
-    expect(
-      within(await getRow(current)).getByText("This client"),
-    ).toBeInTheDocument();
-    expect(within(await getRow(current)).getByRole("checkbox")).toBeDisabled();
-    expect(
-      within(await getRow(other)).queryByText("This client"),
-    ).not.toBeInTheDocument();
-    expect(within(await getRow(other)).getByRole("checkbox")).toBeEnabled();
   });
 
   it("says so for a client that has never presented a token", async () => {

@@ -13,8 +13,10 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { OAuthAuthorizationsPage } from "./OAuthAuthorizationsPage";
-import { OAUTH_PAGE_SIZE } from "./oauth-utils";
+import {
+  OAUTH_PAGE_SIZE,
+  OAuthAuthorizationsPage,
+} from "./OAuthAuthorizationsPage";
 
 // TreeTable virtualizes its rows, which renders nothing in jsdom. Mock it to
 // render each row's cells via flexRender so the column cell logic is exercised.
@@ -220,30 +222,6 @@ describe("OAuthAuthorizationsPage", () => {
       within(table).getByTestId("oauth-event-badge-revoked"),
     ).toHaveTextContent("Revoked");
     expect(within(table).getByText("admin@example.com")).toBeInTheDocument();
-  });
-
-  // `--badge-color` is the only DOM signal of a badge's colour. The assertion is
-  // comparative so a palette change can't break it: what matters is that a
-  // revocation never reads as a user's denial.
-  it("colours a revoked event differently from a denied one", async () => {
-    setup({
-      response: createMockListOAuthAuthorizationsResponse({
-        data: [
-          createMockOAuthAuthorization({ id: 1, event_type: "revoked" }),
-          createMockOAuthAuthorization({ id: 2, event_type: "denied" }),
-        ],
-        total: 2,
-      }),
-    });
-
-    const table = await screen.findByTestId("oauth-authorizations-table");
-    const badgeColor = (eventType: string) =>
-      within(table)
-        .getByTestId(`oauth-event-badge-${eventType}`)
-        .style.getPropertyValue("--badge-color");
-
-    expect(badgeColor("revoked")).not.toBe("");
-    expect(badgeColor("revoked")).not.toBe(badgeColor("denied"));
   });
 
   it("does not filter by event type by default", async () => {

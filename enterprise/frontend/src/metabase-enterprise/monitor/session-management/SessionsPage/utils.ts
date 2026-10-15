@@ -42,7 +42,7 @@ const isProvider = (value: string): value is SessionProvider =>
 const parseProviders = (param: QueryParam): SessionProvider[] =>
   getAllParamValues(param).filter(isProvider);
 
-export const isTab = (value: string): value is SessionsTab =>
+const isTab = (value: string): value is SessionsTab =>
   SESSIONS_TABS.some((tab) => tab === value);
 
 const parseTab = (param: QueryParam): SessionsTab => {
@@ -118,23 +118,6 @@ export const buildListParams = (
     reason: isEnded ? (state.reason ?? undefined) : undefined,
     "sort-column": state.sort_column,
     "sort-direction": state.sort_direction,
-  };
-};
-
-export const getTabChange = (
-  state: SessionsUrlState,
-  tab: SessionsTab,
-): Partial<SessionsUrlState> => {
-  const isSortShown = TAB_SORT_COLUMNS[tab].includes(state.sort_column);
-  return {
-    tab,
-    page: 0,
-    ...(isSortShown
-      ? {}
-      : {
-          sort_column: DEFAULT_SORT_COLUMN,
-          sort_direction: DEFAULT_SORT_DIRECTION,
-        }),
   };
 };
 

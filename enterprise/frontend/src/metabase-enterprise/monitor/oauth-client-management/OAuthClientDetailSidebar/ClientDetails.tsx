@@ -6,7 +6,7 @@ import {
   SidebarSection,
 } from "metabase/monitor/components/DetailSidebar";
 import { MonitorDateValue } from "metabase/monitor/components/MonitorDateValue";
-import { Box, Stack, Text } from "metabase/ui";
+import { Box, Skeleton, Stack, Text } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
 import { getRegistrationTypeLabel, getRevokerName } from "../utils";
@@ -30,6 +30,17 @@ const ListValue = ({ values }: { values: readonly string[] }) =>
     </Stack>
   );
 
+const DetailListValue = ({
+  values,
+}: {
+  values: readonly string[] | undefined;
+}) =>
+  values === undefined ? (
+    <Skeleton h={16} w="60%" my={4} />
+  ) : (
+    <ListValue values={values} />
+  );
+
 export const ClientDetails = ({ client, detail }: ClientDetailsProps) => {
   const isRevoked = client.status === "revoked";
 
@@ -42,13 +53,10 @@ export const ClientDetails = ({ client, detail }: ClientDetailsProps) => {
             label={t`Client URI`}
             value={client.client_uri ?? EMPTY_CELL_PLACEHOLDER}
           />
-          {/* `contacts` and `scopes` are the detail's own fields, so they arrive after the row the list handed over */}
-          {detail && (
-            <DetailsRow
-              label={t`Contacts`}
-              value={<ListValue values={detail.contacts} />}
-            />
-          )}
+          <DetailsRow
+            label={t`Contacts`}
+            value={<DetailListValue values={detail?.contacts} />}
+          />
           <DetailsRow
             label={t`Application type`}
             value={client.application_type ?? EMPTY_CELL_PLACEHOLDER}
@@ -61,12 +69,10 @@ export const ClientDetails = ({ client, detail }: ClientDetailsProps) => {
             label={t`Redirect URIs`}
             value={<ListValue values={client.redirect_uris} />}
           />
-          {detail && (
-            <DetailsRow
-              label={t`Scopes`}
-              value={<ListValue values={detail.scopes} />}
-            />
-          )}
+          <DetailsRow
+            label={t`Scopes`}
+            value={<DetailListValue values={detail?.scopes} />}
+          />
           <DetailsRow
             label={t`Last used`}
             value={

@@ -154,6 +154,7 @@ describe("MonitorLayout", () => {
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
       ["Session management", Urls.monitorSessions()],
+      ["OAuth clients", Urls.monitorOAuthClients()],
       ["API key usage", Urls.monitorApiKeyUsage()],
     ];
 
@@ -245,28 +246,6 @@ describe("MonitorLayout", () => {
   );
 
   describe("OAuth clients", () => {
-    const navLinkLabels = () =>
-      within(screen.getByTestId("monitor-nav"))
-        .getAllByRole("link")
-        .map((link) => link.getAttribute("aria-label"));
-
-    it("sits directly under Session management", async () => {
-      setup({ tokenFeatures: { "session-management": true } });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
-      });
-
-      const labels = navLinkLabels();
-      expect(labels).toContain("OAuth clients");
-      expect(labels.indexOf("OAuth clients")).toBe(
-        labels.indexOf("Session management") + 1,
-      );
-      expect(
-        screen.getByRole("link", { name: "OAuth clients" }),
-      ).toHaveAttribute("href", Urls.monitorOAuthClients());
-    });
-
     it("is gated without the session-management feature", async () => {
       setup({ tokenFeatures: { "session-management": false } });
 

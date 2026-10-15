@@ -2,14 +2,19 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getUser } from "metabase/current-user";
-import { DetailSidebarShell } from "metabase/monitor/components/DetailSidebar";
+import {
+  DetailSidebarHeader,
+  DetailSidebarShell,
+  DetailSidebarTitle,
+} from "metabase/monitor/components/DetailSidebar";
 import { useSelector } from "metabase/redux";
 import { Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+
+import { getSessionUserName } from "../utils";
 
 import { SessionDetails } from "./SessionDetails";
-import { SessionTitle } from "./SessionTitle";
 import { SidebarFooter } from "./SidebarFooter";
-import { SidebarHeader } from "./SidebarHeader";
 import type { SessionDetailSidebarProps } from "./types";
 import { useShownSession } from "./use-shown-session";
 
@@ -52,17 +57,22 @@ export const SessionDetailSidebar = ({
         )
       }
     >
-      <SidebarHeader
-        sessionId={sessionId}
-        prevSessionId={prevSessionId}
-        nextSessionId={nextSessionId}
+      <DetailSidebarHeader
+        prevId={prevSessionId}
+        nextId={nextSessionId}
+        previousLabel={t`Previous session`}
+        nextLabel={t`Next session`}
+        detailPath={Urls.monitorSessionDetail(sessionId)}
         onNavigate={onNavigate}
         onClose={onClose}
       />
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         {session ? (
           <>
-            <SessionTitle user={session.user} />
+            <DetailSidebarTitle
+              typeLabel={t`Session`}
+              title={getSessionUserName(session.user)}
+            />
             <SessionDetails session={session} />
           </>
         ) : (

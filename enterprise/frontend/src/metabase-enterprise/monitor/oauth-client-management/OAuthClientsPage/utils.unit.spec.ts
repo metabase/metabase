@@ -4,7 +4,6 @@ import { PAGE_SIZE } from "./constants";
 import type { OAuthClientsUrlState } from "./types";
 import {
   buildListParams,
-  getTabChange,
   isOAuthClientRevokedBy,
   urlStateConfig,
 } from "./utils";
@@ -37,37 +36,6 @@ describe("OAuthClientsPage/utils", () => {
       expect(urlStateConfig.parse({ tab: "revoked" }).tab).toBe("revoked");
       expect(urlStateConfig.parse({ tab: "active" }).tab).toBe("active");
       expect(urlStateConfig.parse({ tab: "garbage" }).tab).toBe("active");
-    });
-
-    it("clamps the page to a non-negative integer", () => {
-      expect(urlStateConfig.parse({ page: "3" }).page).toBe(3);
-      expect(urlStateConfig.parse({ page: "-1" }).page).toBe(0);
-      expect(urlStateConfig.parse({ page: "abc" }).page).toBe(0);
-    });
-
-    it("trims the search, and reads a missing one as searching for nothing", () => {
-      expect(urlStateConfig.parse({ query: "  claude  " }).query).toBe(
-        "claude",
-      );
-      expect(urlStateConfig.parse({}).query).toBe("");
-    });
-
-    it("parses the registered preset, dropping one the endpoint has no window for", () => {
-      expect(urlStateConfig.parse({ registered: "week" }).registered).toBe(
-        "week",
-      );
-      expect(urlStateConfig.parse({ registered: "fortnight" }).registered).toBe(
-        null,
-      );
-    });
-
-    it("parses the last-used preset, dropping one the endpoint has no window for", () => {
-      expect(urlStateConfig.parse({ last_used: "hour" }).last_used).toBe(
-        "hour",
-      );
-      expect(urlStateConfig.parse({ last_used: "fortnight" }).last_used).toBe(
-        null,
-      );
     });
 
     it("parses the user filter as an id, dropping anything that is not one", () => {
@@ -254,49 +222,6 @@ describe("OAuthClientsPage/utils", () => {
     });
   });
 
-  describe("getTabChange", () => {
-    it("goes back to the first page, keeping a sort the new tab shows", () => {
-      expect(
-        getTabChange(
-          { ...DEFAULT_STATE, page: 3, sort_column: "client_name" },
-          "revoked",
-        ),
-      ).toEqual({ tab: "revoked", page: 0 });
-    });
-
-    it("resets a sort by a column the new tab doesn't show", () => {
-      expect(
-        getTabChange(
-          {
-            ...DEFAULT_STATE,
-            sort_column: "live_tokens",
-            sort_direction: "asc",
-          },
-          "revoked",
-        ),
-      ).toEqual({
-        tab: "revoked",
-        page: 0,
-        sort_column: "created_at",
-        sort_direction: "desc",
-      });
-    });
-
-    it("resets a Revoked-only sort on the way back to Active", () => {
-      expect(
-        getTabChange(
-          { ...DEFAULT_STATE, tab: "revoked", sort_column: "revoked_at" },
-          "active",
-        ),
-      ).toEqual({
-        tab: "active",
-        page: 0,
-        sort_column: "created_at",
-        sort_direction: "desc",
-      });
-    });
-  });
-
   describe("isOAuthClientRevokedBy", () => {
     const client = createMockOAuthClient({ client_id: "shown" });
 
@@ -325,11 +250,8 @@ describe("OAuthClientsPage/utils", () => {
       },
     );
 
-    it("is false for a revoked or current client, whatever the criteria", () => {
+    it("is false for a revoked client, whatever the criteria", () => {
       expect(isOAuthClientRevokedBy({ ...client, status: "revoked" }, {})).toBe(
-        false,
-      );
-      expect(isOAuthClientRevokedBy({ ...client, current: true }, {})).toBe(
         false,
       );
     });

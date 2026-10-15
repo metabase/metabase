@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -24,14 +24,15 @@ const UserValue = ({ user }: { user: OAuthClientUser }) => (
       )}
     </Text>
     <Text size="sm" c="text-secondary">
-      {user.last_approved_at ? (
-        <>
-          {t`Last approved`}{" "}
-          <DateTime value={user.last_approved_at} unit="minute" />
-        </>
-      ) : (
-        t`No approval on record`
-      )}
+      {user.last_approved_at
+        ? c("{0} is a date and time").jt`Last approved ${(
+            <DateTime
+              key="last-approved"
+              value={user.last_approved_at}
+              unit="minute"
+            />
+          )}`
+        : t`No approval on record`}
     </Text>
   </Stack>
 );

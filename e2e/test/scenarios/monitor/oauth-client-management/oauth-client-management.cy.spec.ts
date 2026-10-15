@@ -111,8 +111,12 @@ describe("scenarios > monitor > oauth client management", () => {
     cy.get<string>("@clientId").then((clientId) => {
       clientRow(clientId)
         .should("contain", CLIENT_NAME)
-        .and("contain", ADMIN_NAME);
+        .and("contain", ADMIN_NAME)
+        .click();
     });
+
+    cy.log("Its activity shows the revoke, not the timeline from before it");
+    cy.findByTestId("oauth-client-activity").should("contain", "Revoked");
 
     cy.log("The token it issued no longer authenticates");
     cy.get<string>("@accessToken").then((accessToken) => {

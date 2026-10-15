@@ -7,11 +7,8 @@ import {
   FilterSection,
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
-import {
-  type MonitorTimePreset,
-  getTimePresetOptions,
-  toTimePreset,
-} from "metabase/monitor/time-presets";
+import { TimePresetFilter } from "metabase/monitor/components/TimePresetFilter";
+import type { MonitorTimePreset } from "metabase/monitor/time-presets";
 import { Select } from "metabase/ui";
 import {
   SESSION_END_REASONS,
@@ -70,18 +67,12 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
     }));
   };
 
-  const handleLastActiveChange = (value: string | null) => {
-    setDraft((prev) => ({
-      ...prev,
-      last_active: toTimePreset(value),
-    }));
+  const handleLastActiveChange = (last_active: MonitorTimePreset | null) => {
+    setDraft((prev) => ({ ...prev, last_active }));
   };
 
-  const handleEndedChange = (value: string | null) => {
-    setDraft((prev) => ({
-      ...prev,
-      ended: toTimePreset(value),
-    }));
+  const handleEndedChange = (ended: MonitorTimePreset | null) => {
+    setDraft((prev) => ({ ...prev, ended }));
   };
 
   const handleReasonChange = (value: string | null) => {
@@ -111,33 +102,19 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
       </FilterSection>
 
       {!isEndedTab && (
-        <FilterSection label={t`Last active`}>
-          <Select
-            w="100%"
-            data={getTimePresetOptions()}
-            value={draft.last_active}
-            aria-label={t`Last active`}
-            placeholder={t`Any time`}
-            clearable
-            comboboxProps={FILTER_POPOVER_COMBOBOX}
-            onChange={handleLastActiveChange}
-          />
-        </FilterSection>
+        <TimePresetFilter
+          label={t`Last active`}
+          value={draft.last_active}
+          onChange={handleLastActiveChange}
+        />
       )}
 
       {isEndedTab && (
-        <FilterSection label={t`Ended`}>
-          <Select
-            w="100%"
-            data={getTimePresetOptions()}
-            value={draft.ended}
-            aria-label={t`Ended`}
-            placeholder={t`Any time`}
-            clearable
-            comboboxProps={FILTER_POPOVER_COMBOBOX}
-            onChange={handleEndedChange}
-          />
-        </FilterSection>
+        <TimePresetFilter
+          label={t`Ended`}
+          value={draft.ended}
+          onChange={handleEndedChange}
+        />
       )}
 
       {isEndedTab && (

@@ -11,16 +11,12 @@ import type { UserOption } from "./types";
 type BaseProps = {
   value: UserOption | null;
   label?: string;
+  "aria-label"?: string;
   placeholder?: string;
   flex?: number | string;
-  /** Passed to the dropdown. Inside another popover, set `withinPortal: false` or picking an option closes it. */
   comboboxProps?: SelectProps["comboboxProps"];
 };
 
-/**
- * `clearable` decides whether un-picking is possible, so it also decides whether `onChange` has to handle it: a
- * picker without a cross never reports null, and its caller should not carry a branch for one.
- */
 type Props = BaseProps &
   (
     | { clearable: true; onChange: (next: UserOption | null) => void }
@@ -28,10 +24,16 @@ type Props = BaseProps &
   );
 
 export const UserPicker = (props: Props) => {
-  const { value, label, placeholder, flex, clearable, comboboxProps } = props;
-  // The union is narrowed once, here, so the body below has one callback that takes null. Mantine's own `onChange`
-  // is `string | null` whether or not it draws the clear button, so something has to absorb the null for a
-  // non-clearable picker; doing it here keeps that out of the body and out of every caller.
+  const {
+    value,
+    label,
+    "aria-label": ariaLabel,
+    placeholder,
+    flex,
+    clearable,
+    comboboxProps,
+  } = props;
+  // Mantine reports null even when not clearable, so drop it for callers that can't take one
   const notify: (next: UserOption | null) => void = props.clearable
     ? props.onChange
     : (next) => {
@@ -87,6 +89,7 @@ export const UserPicker = (props: Props) => {
     <Select
       flex={flex}
       label={label}
+      aria-label={ariaLabel}
       placeholder={placeholder ?? t`Select a user`}
       data={options}
       value={selectedOption?.value ?? null}

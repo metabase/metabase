@@ -17,18 +17,6 @@ export type OAuthClientDetailSidebarProps = {
   onClose: () => void;
 };
 
-export type SidebarHeaderProps = {
-  clientId: OAuthClientId;
-  prevClientId: OAuthClientId | undefined;
-  nextClientId: OAuthClientId | undefined;
-  onNavigate: (clientId: OAuthClientId) => void;
-  onClose: () => void;
-};
-
-export type ClientTitleProps = {
-  client: OAuthClient;
-};
-
 export type ClientDetailsProps = {
   client: OAuthClient;
   /** Absent until the detail request lands: `scopes` and `contacts` are not in the list item. */

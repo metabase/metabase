@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { MonitorDateCell } from "metabase/monitor/components/MonitorDateCell";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Badge, Ellipsified, Flex, Stack, Text } from "metabase/ui";
+import { Ellipsified, Stack, Text } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
 import { getOAuthClientName, getRevokerName } from "../utils";
@@ -24,16 +24,9 @@ const getClientColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
     const name = getOAuthClientName(row.original);
     return (
       <Stack gap={0} miw={0}>
-        <Flex gap="sm" align="center" miw={0}>
-          <Ellipsified tooltip={name} alwaysShowTooltip>
-            {name}
-          </Ellipsified>
-          {row.original.current && (
-            <Badge variant="light" color="brand" size="xs" flex="0 0 auto">
-              {t`This client`}
-            </Badge>
-          )}
-        </Flex>
+        <Ellipsified tooltip={name} alwaysShowTooltip>
+          {name}
+        </Ellipsified>
         {/* `fz`, not `size`: Ellipsified forwards text props over its own `fz="inherit"` */}
         <Ellipsified
           tooltip={row.original.client_id}
