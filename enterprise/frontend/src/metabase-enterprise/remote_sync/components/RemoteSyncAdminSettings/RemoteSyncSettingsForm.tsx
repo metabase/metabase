@@ -40,6 +40,7 @@ import {
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
 import { SyncModeSection } from "./SyncModeSection";
+import { SyncedContentSection } from "./SyncedContentSection";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -109,7 +110,11 @@ export const RemoteSyncSettingsForm = ({
                 {isReadOnly && <ReadOnlyBranchSection />}
                 {(isRemoteSyncEnabled || isReadWrite) &&
                   !isModalVariant &&
-                  !isStrictMode && <CollectionsToSyncSection />}
+                  (isStrictMode ? (
+                    <SyncedContentSection />
+                  ) : (
+                    <CollectionsToSyncSection />
+                  ))}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />
