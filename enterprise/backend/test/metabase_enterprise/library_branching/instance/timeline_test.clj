@@ -32,7 +32,13 @@
 
 (defn- write! [id item] (instance/write! (store) id item))
 
-(defn- current [id] (instance/current (store) id))
+(defn- current-state [id] (instance/current (store) id))
+
+(defn- current
+  "The content of timeline `id` when it is live, else nil."
+  [id]
+  (let [{:keys [state content]} (current-state id)]
+    (when (= :live state) content)))
 
 (defn- trash! [id] (instance/trash! (store) id))
 
@@ -336,8 +342,9 @@
      (fn [{:keys [dashboards outside]}]
        (let [item (timeline-item "lb trashed" (:entity_id dashboards) {:events [launch outage]})]
          (write! releases-id item)
-         (trash! releases-id)
-         (is (nil? (current releases-id)))
+         (let [live (current releases-id)]
+           (trash! releases-id)
+           (is (= {:state :trashed :content live} (current-state releases-id))))
          (is (not (contains? (app-db/read-current) releases-id)))
          (is (true? (t2/select-one-fn :archived :model/Timeline :entity_id releases-id)))
          (is (= [true true] (map (comp :archived event-row :id) [launch outage])))
