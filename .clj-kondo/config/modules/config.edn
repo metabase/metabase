@@ -3996,6 +3996,9 @@
            collections
            dashboards
            events
+           lib
+           lib.metadata
+           lib.schema
            models
            queries
            request
@@ -4024,6 +4027,7 @@
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/ParameterCard
+                    :model/Pulse
                     :model/QueryAction
                     :model/Segment
                     :model/Table

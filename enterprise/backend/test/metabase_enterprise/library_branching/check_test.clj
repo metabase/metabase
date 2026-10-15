@@ -37,7 +37,7 @@
                        "librarylibrarydashbrd" {:kind :collection :name "Dashboards" :place "librarylibrarylibrary"
                                                 :refs #{} :attrs {:type "library-dashboards"}}
                        "TeamDashboardsColl001" {:kind :collection :name "Team" :place "librarylibrarydashbrd"
-                                                :refs #{} :attrs {}}}))
+                                                :refs #{} :attrs {:type "library-dashboards"}}}))
 
 (deftest repository-that-predates-a-section-is-green-test
   (testing "a tree of the Library that lacks the Dashboards section reads as one that holds it: the collection in
@@ -135,7 +135,7 @@
    {:name   :semantic-skipped
     :doc    "The check never runs the semantic level, so a reference to a missing table passes CI."
     :target `check/check
-    :edits  [[:replace '(semantic/validate s env) []]]}
+    :edits  [[:replace '(semantic-check s env) []]]}
    {:name   :green-ignores-findings
     :doc    "A tree with findings is green."
     :target `check/check

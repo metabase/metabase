@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -17,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defmacro ^:private enabled
   [& body]

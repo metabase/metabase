@@ -6,8 +6,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
@@ -22,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
@@ -33,11 +35,14 @@
 
 (def ^:private created-ids
   "Entity ids of the rows that a pull of these tests creates."
-  ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001"])
+  ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001" "lbPullLinkedMetric001"
+   "lbPullMetricLinks0001" "lbPullPlainFolder0001"])
 
 (defn- delete-created! []
+  (t2/delete! :model/Dashboard :entity_id [:in created-ids])
   (t2/delete! :model/Card :entity_id [:in created-ids])
-  (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids]))
+  (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids])
+  (t2/delete! :model/Collection :entity_id [:in created-ids]))
 
 (defn- do-with-committed-content!
   "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and the metrics
@@ -121,7 +126,7 @@
                                     (dissoc (:entity_id removed))
                                     (assoc new-id (-> (get base (:entity_id renamed)) (assoc :name "New"))))
                  h1             (pltu/commit-snapshot! repo ptu/branch [c1] remote)
-                 {:keys [result trashed-in-use]} (pull! inst s)]
+                 {:keys [result trashed-in-use] :as pulled} (pull! inst s)]
              (is (= :pulled result))
              (testing "the app DB holds the head, and the base is the head"
                (is (= remote (read-snapshot inst)))
@@ -130,7 +135,13 @@
              (testing "the removed metric is in the trash, and the pull names the outside question that uses it"
                (is (true? (t2/select-one-fn :archived :model/Card (:id removed))))
                (is (= {(:entity_id removed) [{:kind :card :id (:entity_id outside) :name "Outside question"}]}
-                      trashed-in-use)))
+                      trashed-in-use))
+               (testing "the outcome of the pull task names the metric with its user"
+                 (is (= [{:id    (:entity_id removed)
+                          :kind  "metric"
+                          :name  "Removed"
+                          :users [{:kind "card" :id (:entity_id outside) :name "Outside question"}]}]
+                        (get-in (operations/pull-task-result ptu/branch pulled) [:outcome :trashed_in_use])))))
              (testing "a later head that holds the metric again restores the same row"
                (pltu/commit-snapshot! repo ptu/branch [h1] (assoc remote (:entity_id removed) (get base (:entity_id removed))))
                (is (= :pulled (:result (pull! inst s))))
@@ -243,6 +254,30 @@
              (is (= "Personal" (t2/select-one-fn :name :model/Card (:id personal))))
              (is (= c1 (instance/base inst))))))))))
 
+(deftest library-content-rule-refusal-writes-nothing-test
+  (testing (str "the head holds a collection with no Library type in the Metrics section, which the Library's content "
+                "rule refuses: the pull finds it in the head, before any write, and names the collection; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! metrics]
+       (let [metric (insert! :model/Card (metric-row metrics "Before" :entity_id "lbPullAaaMetric000001"))
+             folder "lbPullPlainFolder0001"]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1]
+                                                       (-> base
+                                                           (ptu/renamed (:entity_id metric) "After")
+                                                           (assoc folder {:kind  :collection :name "Plain folder"
+                                                                          :place (:entity_id metrics) :refs #{}
+                                                                          :attrs {}})))
+                 {:keys [result findings head]} (pull! inst s)]
+             (is (= :invalid result))
+             (is (= h head))
+             (is (= [{:rule :library-content :id folder :place (:entity_id metrics)}] findings))
+             (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
+             (is (not (t2/exists? :model/Collection :entity_id folder)))
+             (is (= c1 (instance/base inst))))))))))
+
 (deftest identity-of-another-kind-test
   (testing (str "the head gives the identity of a collection to a glossary term: the pull writes the term and trashes "
                 "the collection; a later head with the collection again restores it and deletes the term; app DB "
@@ -250,6 +285,7 @@
     (do-with-committed-content!
      (fn [insert! metrics]
        (let [collection (insert! :model/Collection {:name     "lb kind change"
+                                                    :type     "library-metrics"
                                                     :location (children-location metrics)})
              id         (:entity_id collection)]
          (try
@@ -303,3 +339,44 @@
            (is (= [[one-id :write] [two-id :write] [one-id :link] [two-id :link]]
                   (map (fn [{:keys [id link]}] [id (if link :link :write)]) steps)))
            (is (= remote (read-snapshot inst)))))))))
+
+(deftest link-card-to-a-metric-test
+  (testing (str "a dashboard with a link card to a metric, pushed from an instance and pulled into an instance where the "
+                "metric has another row id: the link card links to the metric's row on that instance; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! metrics]
+       (let [[metric-eid dashboard-eid] (drop 3 created-ids)
+             metric    (insert! :model/Card (metric-row metrics "Linked" :entity_id metric-eid))
+             ;; the Library's content rule keeps a dashboard in a Dashboards collection
+             section   (insert! :model/Collection {:name     "Pull dashboards"
+                                                   :type     "library-dashboards"
+                                                   :location (:location metrics)})
+             dashboard (insert! :model/Dashboard {:name          "Metric links"
+                                                  :entity_id     dashboard-eid
+                                                  :collection_id (:id section)
+                                                  :creator_id    (mt/user->id :crowberto)})
+             _         (insert! :model/DashboardCard {:dashboard_id (:id dashboard) :row 0 :col 0 :size_x 4 :size_y 2
+                                                      :visualization_settings
+                                                      {:virtual_card {:display "link"}
+                                                       :link         {:entity {:model "metric" :id (:id metric)
+                                                                               :name "Linked"}}}})
+             link      (fn []
+                         (let [d (t2/select-one :model/Dashboard :entity_id dashboard-eid)]
+                           (get-in (t2/select-one :model/DashboardCard :dashboard_id (:id d))
+                                   [:visualization_settings :link :entity])))]
+         (with-remote [_repo s]
+           (let [[inst _c1 base] (pushed! s)]
+             (testing "the commit holds the metric's identity, and the dashboard refers to the metric"
+               (is (= {:model "metric" :id metric-eid :name "Linked"}
+                      (get-in base [dashboard-eid :attrs :dashcards 0 :visualization_settings :link :entity])))
+               (is (contains? (get-in base [dashboard-eid :refs]) [:card metric-eid])))
+             ;; Another instance: the same metric at another row id, no dashboard, and no base.
+             (t2/delete! :model/Dashboard (:id dashboard))
+             (t2/delete! :model/Card (:id metric))
+             (let [other (t2/insert-returning-instance! :model/Card (metric-row metrics "Linked" :entity_id metric-eid))]
+               (is (not= (:id metric) (:id other)))
+               (reset-base!)
+               (is (= :pulled (:result (pull! inst s))))
+               (is (= {:model "metric" :id (:id other) :name "Linked"} (link)))
+               (is (= (get base dashboard-eid) (get (read-snapshot inst) dashboard-eid)))))))))))

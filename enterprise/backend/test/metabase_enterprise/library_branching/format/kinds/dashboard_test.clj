@@ -226,7 +226,7 @@
                                                                     :targetId collection-id}}}]}]
       (is (= [{:rule :ref-kind :id dashboard-id :ref [:dashboard collection-id]}]
              (validate/validate {collection-id {:kind :collection :name "Dashboards" :place nil :refs #{}
-                                                :attrs {:type "library"}}
+                                                :attrs {:type "library-dashboards"}}
                                  dashboard-id  (item a)}))))))
 
 ;;; ------------------------------------------------- Reference cycles ------------------------------------------------

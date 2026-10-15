@@ -23,13 +23,15 @@
     matches `id`. Instance-local attributes do not change. Laws: a write of the current content changes no row
     (GetPut); current after write returns `content` (PutGet). Throws ::refused, and writes nothing, when `content`
     is not an item of this kind, when `id` names a row outside the Library tree or of another kind, when the place
-    or an environment reference of `content` does not resolve on this instance, or when another item of a kind whose
-    names Metabase keeps unique (a glossary term) has the name of `content`.")
+    or an environment reference of `content` does not resolve on this instance, when another item of a kind whose
+    names Metabase keeps unique (a glossary term) has the name of `content`, or when a content rule of the instance
+    (the Library's) refuses `content` at its place.")
   (trash! [ks id]
     "Moves item `id` and the items under it to the trash. The identity and the content stay; content outside the
     Library that uses the item still resolves. An item of a kind that Metabase keeps no trash for (a glossary term) is
-    deleted. Nothing happens when no row has the identity, or when it is already in the trash. Throws ::refused when
-    `id` names a row outside the Library tree."))
+    deleted. Nothing happens when no row has the identity, or when it is already in the trash. Throws ::refused, and
+    trashes nothing, when `id` names a row outside the Library tree, or when a content rule of the instance refuses
+    the trash."))
 
 (defprotocol Stub
   "A kind whose items can be on a reference cycle: an apply writes a new item of the cycle first as a stub."
@@ -40,11 +42,12 @@
 (defprotocol Instance
   "One Metabase instance as library branching sees it."
   (read-snapshot [inst]
-    "`{:snapshot s :shadowed-tables ts}`: `s` is the synced snapshot of the instance, the content of every in-scope
-    item of the kinds of the instance, read in one read-only transaction: one read point for the whole snapshot. A
-    save that commits after the read point is not in `s`. `ts`, optional, holds the published tables that scope
-    leaves out because another published table owns their natural key (`scope/shadowed-tables`), at the same read
-    point. Throws when the calling thread holds an open transaction.")
+    "`{:snapshot s :shadowed-tables ts :env e}`: `s` is the synced snapshot of the instance, the content of every
+    in-scope item of the kinds of the instance, read in one read-only transaction: one read point for the whole
+    snapshot. A save that commits after the read point is not in `s`. `ts`, optional, holds the published tables that
+    scope leaves out because another published table owns their natural key (`scope/shadowed-tables`), at the same
+    read point. `e`, optional, is the environment of the instance (`format.manifest/env`), at the same read point.
+    Throws when the calling thread holds an open transaction.")
   (base [inst]
     "The base commit id, or nil before the first sync with the repository of the instance.")
   (base-digests [inst commit]
@@ -52,6 +55,9 @@
   (table-names [inst table-keys]
     "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys` on this
     instance, with no value that a user set. A key of no table of the instance has no entry.")
+  (card-entity-ids [inst row-ids]
+    "`{row-id entity-id}`: the entity id of the card of each row id of `row-ids` on this instance, in the trash or
+    not. A row id of no card has no entry.")
   (apply-plan! [inst plan opts]
     "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
     precondition, then write, link or trash each item, then move the base from `(:base opts)` to `(:new-base opts)`

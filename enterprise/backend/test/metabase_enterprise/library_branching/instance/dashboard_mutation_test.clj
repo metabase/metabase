@@ -4,6 +4,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
+   [metabase-enterprise.library-branching.format.kinds.visualization :as visualization]
    [metabase-enterprise.library-branching.instance.dashboard-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.dashboard-test :as dashboard-test]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
@@ -16,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the instance side of dashboards."
@@ -37,18 +39,16 @@
     :edits  [[:replace '(format.dashboard/dashcard-order tab-items entries) 'entries]]
     :tests  [#'dashboard-test/content-test]}
    {:name   :every-attribute-written
-    :doc    "A write sets every attribute, also one whose content did not change. Toucan skips an update to the values
-            that a row has, so no row changes: the mutation survives, and GetPut does not rest on this comparison."
+    :doc    "A write sets every attribute, also one whose content did not change, so a write of the current content
+            updates the dashboard row."
     :target `dashboard/write-dashboard!
     :edits  [[:replace '(content/changed-attrs format.dashboard/spec (:attrs old) attrs) '(set own)]]
-    :expect :survived
     :tests  [#'dashboard-test/get-put-test]}
    {:name   :every-card-written
-    :doc    "A write sets every column of each dashboard card that it keeps. Toucan skips an update to the values that a
-            row has, so no row changes: the mutation survives, and GetPut does not rest on this comparison."
+    :doc    "A write sets every column of each dashboard card that it keeps, so a write of the current content updates
+            the rows of the dashboard cards."
     :target `dashboard/write-dashcards!
     :edits  [[:replace '(not= (entry-v before k) (entry-v entry k)) true]]
-    :expect :survived
     :tests  [#'dashboard-test/get-put-test]}
    {:name   :series-not-written
     :doc    "A write of a dashboard card that it keeps leaves its series as they were."
@@ -134,21 +134,39 @@
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-users-in-scope
     :doc    "The in-use report of a trashed dashboard names a user in the Library."
-    :target `in-use/dashboard-users
+    :target `in-use/link-users
     :edits  [[:replace '(remove in-scope candidates) 'candidates]]
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-mentions-unchecked
     :doc    "The in-use report of a trashed dashboard names each card and dashboard whose settings text holds the id of
             the dashboard, also when it does not link to it."
-    :target `in-use/dashboard-users
-    :edits  [[:replace '(uses? :dashboard id refs) true]]
+    :target `in-use/link-users
+    :edits  [[:replace '(uses? kind id refs) true]]
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-link-cards-ignored
     :doc    "The in-use report of a trashed dashboard reads no dashboard outside the Library, so a link card is not
             reported."
-    :target `library-branching.db/dashboards-mentioning-dashboard
+    :target `library-branching.db/dashboards-with-settings-mentioning
     :edits  [[:replace '[:= :d.archived false] 'false]]
-    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}])
+    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
+   {:name   :metric-link-not-exported
+    :doc    "A read keeps the row id of the metric that a link card links to, so a pull into another instance links to
+            another row."
+    :target `dashboard/export-settings
+    :edits  [[:replace '(resolve-metric-link settings serdes/*export-fk*) 'settings]]
+    :tests  [#'dashboard-test/metric-link-card-test]}
+   {:name   :metric-link-not-imported
+    :doc    "A write stores the identity of the metric that a link card links to, not its row id."
+    :target `dashboard/import-settings
+    :edits  [[:replace '(resolve-metric-link settings serdes/*import-fk*) 'settings]]
+    :tests  [#'dashboard-test/metric-link-card-test]}
+   {:name   :metric-link-not-a-reference
+    :doc    "A link card to a metric gives no reference, so a push can leave the metric out and the in-use report of a
+            trashed metric does not name the dashboard."
+    :target `visualization/link-card-roles
+    :edits  [[:replace '(assoc item-roles "metric" :card) 'item-roles]]
+    :tests  [#'dashboard-test/metric-link-card-test
+             #'dashboard-test/trashed-metric-linked-by-a-link-card-in-use-test]}])
 
 (deftest dashboard-mutations-test
   (mut/check mutations {}))

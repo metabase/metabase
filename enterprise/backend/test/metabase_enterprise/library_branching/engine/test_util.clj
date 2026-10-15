@@ -62,7 +62,8 @@
   (let [kind       (:kind (get s id))
         below      (subtree s id)
         containers (filter (fn [c] (and (not (below c))
-                                        (contains? (get snapshot/may-contain (:kind (get s c)) #{}) kind)))
+                                        (contains? (get snapshot/may-contain (:kind (get s c)) #{}) kind)
+                                        (lb.tu/library-fits? (get s c) (get s id))))
                            (sorted-ids s))]
     (assoc-in s [id :place] (nth-of (cons nil containers) k))))
 
@@ -82,14 +83,15 @@
     (if (key-taken? s id it) s (assoc s id it))))
 
 (defn- restore-edit
-  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds with a kind that may contain it, and
-  whose unique key no item of `s` has, with its references that close."
+  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds with a kind that may contain it and
+  with the Library rules, and whose unique key no item of `s` has, with its references that close."
   [u s k]
   (let [candidates (filter (fn [i] (and (not (contains? s i))
                                         (let [{:keys [kind place]} (get u i)]
                                           (or (nil? place)
                                               (and (contains? s place)
-                                                   (contains? (get snapshot/may-contain (:kind (get s place)) #{}) kind))))
+                                                   (contains? (get snapshot/may-contain (:kind (get s place)) #{}) kind)
+                                                   (lb.tu/library-fits? (get s place) (get u i)))))
                                         (not (key-taken? s i (get u i)))))
                            (sorted-ids u))]
     (if-let [i (nth-of candidates k)]
@@ -103,17 +105,21 @@
   (vec (sort (disj snapshot/kinds :published-table))))
 
 (defn- rekind-edit
-  "Gives item `id` the `k`th kind of the kinds that its container may contain, that may contain its contents, and that
-  keep unique keys, other than its own; with no such kind, or for an item whose identity is not an entity id, `s`."
+  "Gives item `id` the `k`th kind of the kinds that its container may contain, that may contain its contents, that
+  keep the Library rules and unique keys, other than its own; with no such kind, or for an item whose identity is not
+  an entity id, `s`."
   [s id k]
   (let [{:keys [kind place] :as it} (get s id)
         allowed  (if place (get snapshot/may-contain (:kind (get s place)) #{}) (set entity-id-kinds))
-        contents (set (keep (fn [[_ c]] (when (= id (:place c)) (:kind c))) s))
+        contents (keep (fn [[_ c]] (when (= id (:place c)) c)) s)
         kinds    (filterv (fn [kd]
-                            (and (not= kd kind)
-                                 (contains? allowed kd)
-                                 (set/subset? contents (get snapshot/may-contain kd #{}))
-                                 (not (key-taken? s id (assoc it :kind kd)))))
+                            (let [it' (assoc it :kind kd)]
+                              (and (not= kd kind)
+                                   (contains? allowed kd)
+                                   (set/subset? (set (map :kind contents)) (get snapshot/may-contain kd #{}))
+                                   (lb.tu/library-fits? (get s place) it')
+                                   (every? (partial lb.tu/library-fits? it') contents)
+                                   (not (key-taken? s id it')))))
                           entity-id-kinds)]
     (if (and (string? id) (seq kinds))
       (assoc-in s [id :kind] (nth-of kinds k))
@@ -212,13 +218,24 @@
                 [local local (snapshot m refs)]))
             (key-moves-gen "Key")))
 
+(defn key-trash-snapshots-gen
+  "Generates `[b o t]` as [[key-move-snapshots-gen]], but `t` lacks some of the snippets of `b`, and its references to
+  them: so a write can take the key of a snippet that `t` removes."
+  []
+  (gen/fmap (fn [[[b o t] drops]]
+              (let [snippets (filter #(= :snippet (:kind (get b %))) (sorted-ids b))
+                    gone     (keep-indexed (fn [i id] (when (nth drops i false) id)) snippets)
+                    t        (apply dissoc t gone)]
+                [b o (update-vals t #(keep-refs t %))]))
+            (gen/tuple (key-move-snapshots-gen) (gen/vector gen/boolean 5))))
+
 (def ^:private cycle-kinds [:collection :metric :published-table])
 
 (defn- cycle-items
   "`{identity item}`: the cycle of items of `choices`, each `[kind place letter]`. Item `i` refers to item `i + 1`,
   and the last item to the first; `chords` (`[from to]` pairs of indices) add more references. The place of item `i`
-  is nil or a collection before it in the cycle. `letter` gives the identity, so the order of the identities is not
-  the order of the cycle."
+  is nil or a collection before it in the cycle; a published table is at the root level, as the collections hold no
+  type. `letter` gives the identity, so the order of the identities is not the order of the cycle."
   [choices chords]
   (let [n     (count choices)
         kinds (mapv #(nth cycle-kinds (mod (first %) (count cycle-kinds))) choices)
@@ -233,7 +250,9 @@
                             (keep (fn [[from to]] (when (= i (mod from n)) [:card (nth ids (mod to n))])))
                             chords))]
     (into {} (map-indexed (fn [i [_ k letter]]
-                            [(nth ids i) (item (kinds i) (str "Cycle " letter) (place i k) (refs i))])
+                            [(nth ids i) (item (kinds i) (str "Cycle " letter)
+                                               (when-not (= :published-table (kinds i)) (place i k))
+                                               (refs i))])
                           choices))))
 
 (def ^:private cycle-choices-gen
@@ -258,6 +277,63 @@
             (gen/tuple (related-snapshots-gen)
                        cycle-choices-gen
                        (gen/vector (gen/tuple gen/nat gen/nat) 0 3)
+                       gen/boolean)))
+
+(def ^:private content-kinds [:collection :dashboard :metric :question])
+
+(defn- container-items
+  "`{identity item}`: a collection at the root level and its content, one item for each `[kind place]` of `choices`.
+  The place of item `i` is the collection or a collection of the content before it. `refs` (`[from to]` pairs of
+  indices, 0 the collection) are the references among them."
+  [choices refs]
+  (let [ids   (mapv #(eid (str "kindchange" %)) (range (inc (count choices))))
+        kinds (into [:collection] (map #(nth content-kinds (mod (first %) (count content-kinds)))) choices)
+        n     (count ids)
+        place (fn [i k] (let [containers (filterv #(= :collection (kinds %)) (range i))]
+                          (nth ids (nth-of containers k))))]
+    (into {}
+          (map (fn [i]
+                 [(nth ids i)
+                  (item (kinds i)
+                        (str "Kind change " i)
+                        (when (pos? i) (place i (second (nth choices (dec i)))))
+                        (keep (fn [[from to]] (when (= i (mod from n)) [:card (nth ids (mod to n))])) refs))]))
+          (range n))))
+
+(defn- evict-and-rekind
+  "Snapshot `s` in which the collection `id` gives up its content, then takes the `k`th kind that [[rekind-edit]]
+  allows. Each item of the content goes to the trash with its own content (`(evictions i)` false) or moves out of
+  `id` ([[move-edit]] with `(evictions i)`, to the root level when that move keeps it in `id`)."
+  [s id evictions k]
+  (let [content (filter #(= id (:place (get s %))) (sorted-ids s))
+        s       (reduce (fn [s [i child]]
+                          (cond
+                            (not (contains? s child)) s
+                            (nth-of evictions i)      (let [s' (move-edit s child (nth-of evictions i))]
+                                                        (cond-> s'
+                                                          (= id (get-in s' [child :place])) (assoc-in [child :place] nil)))
+                            :else                     (delete-edit s child)))
+                        s
+                        (map-indexed vector content))]
+    (rekind-edit s id k)))
+
+(defn kind-change-snapshots-gen
+  "Generates `[b o t]`: `[b o t]` as [[related-snapshots-gen]] gives them, and a collection at the root level with a
+  content of 1 to 4 items, with references among them. In `t`, the content leaves the collection (to the trash, to the
+  root level, or to another container), and the collection takes a kind of another table. Either `b` and `o` hold the
+  collection and `t` the change, or the reverse. Each snapshot stays well formed."
+  []
+  (gen/fmap (fn [[[b o t] choices refs evictions k reverse?]]
+              (let [c      (container-items choices refs)
+                    change #(evict-and-rekind % (eid "kindchange0") evictions k)]
+                (if reverse?
+                  [(into b (change c)) (into o (change c)) (into t c)]
+                  [(into b c) (into o c) (change (into t c))])))
+            (gen/tuple (related-snapshots-gen)
+                       (gen/vector (gen/tuple gen/nat gen/nat) 1 4)
+                       (gen/vector (gen/tuple gen/nat gen/nat) 0 5)
+                       (gen/vector (gen/one-of [(gen/return false) gen/nat]) 1 4)
+                       gen/nat
                        gen/boolean)))
 
 (defn with-unknown

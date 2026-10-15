@@ -6,9 +6,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.engine.count :as engine.count]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
+   [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.instance.golden-test :as golden-test]
+   [metabase-enterprise.library-branching.manifest :as manifest]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.app-db.core :as mdb]
@@ -24,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- sum-query
   [table field]
@@ -68,6 +71,14 @@
         (instance/read-snapshot (app-db/app-db-instance))
         (is (= before [(.getTransactionIsolation conn) (.isReadOnly conn)]))
         (is (not (mdb/in-transaction?)))))))
+
+(deftest read-snapshot-gives-the-environment-test
+  (testing "the read gives the environment of the manifest export, at its read point"
+    (let [{:keys [env]} (instance/read-snapshot (app-db/app-db-instance))
+          venues        (t2/select-one :model/Table (mt/id :venues))]
+      (is (= (format.manifest/env (manifest/manifest)) env))
+      (is (= {:object :field :base-type "type/Integer" :effective-type "type/Integer"}
+             (get env [(:name (mt/db)) (:schema venues) (:name venues) "PRICE"]))))))
 
 (deftest count-equals-snapshot-count-test
   (testing "the count of scope equals the item count of read-snapshot, for each kind of the snapshot"

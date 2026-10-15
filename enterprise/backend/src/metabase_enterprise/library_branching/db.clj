@@ -541,35 +541,40 @@
   (t2/select :model/Card {:where [:and [:= :archived false] [:like :dataset_query (str "%" id "%")]]}))
 
 (mu/defn dashboards-showing :- [:sequential ::row]
-  "`{:entity_id :name}` of each dashboard not in the trash that has a card of the card `card-id`."
+  "`{:entity_id :name}` of each dashboard not in the trash that shows the card `card-id`: a dashboard card of the card,
+  or a dashboard card with the card as a series."
   [card-id :- pos-int?]
   (t2/query {:select-distinct [:d.entity_id :d.name]
              :from            [[(t2/table-name :model/Dashboard) :d]]
              :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
-             :where           [:and [:= :dc.card_id [:auto/param card-id]] [:= :d.archived false]]}))
+             :left-join       [[(t2/table-name :model/DashboardCardSeries) :dcs] [:= :dcs.dashboardcard_id :dc.id]]
+             :where           [:and
+                               [:or [:= :dc.card_id [:auto/param card-id]] [:= :dcs.card_id [:auto/param card-id]]]
+                               [:= :d.archived false]]}))
 
-(mu/defn cards-mentioning-dashboard :- [:sequential :string]
-  "The entity ids of the cards not in the trash whose stored visualization settings text holds the text of
-  `dashboard-id`: every card that links to the dashboard, and maybe others."
-  [dashboard-id :- pos-int?]
+(mu/defn cards-with-settings-mentioning :- [:sequential :string]
+  "The entity ids of the cards not in the trash whose stored visualization settings text holds the text of `id`: every
+  card whose settings link to the card or the dashboard of row `id`, and maybe others."
+  [id :- pos-int?]
   (mapv :entity_id
         (t2/query {:select [:entity_id]
                    :from   [(t2/table-name :model/Card)]
                    :where  [:and
                             [:= :archived false]
-                            [:like :visualization_settings [:auto/param (str "%" dashboard-id "%")]]]})))
+                            [:like :visualization_settings [:auto/param (str "%" id "%")]]]})))
 
-(mu/defn dashboards-mentioning-dashboard :- [:sequential :string]
+(mu/defn dashboards-with-settings-mentioning :- [:sequential :string]
   "The entity ids of the dashboards not in the trash with a dashboard card whose stored visualization settings text
-  holds the text of `dashboard-id`: every dashboard whose cards link to the dashboard, and maybe others."
-  [dashboard-id :- pos-int?]
+  holds the text of `id`: every dashboard whose cards link to the card or the dashboard of row `id`, and maybe others."
+  [id :- pos-int?]
   (mapv :entity_id
         (t2/query {:select-distinct [:d.entity_id]
                    :from            [[(t2/table-name :model/Dashboard) :d]]
                    :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
                    :where           [:and
                                      [:= :d.archived false]
-                                     [:like :dc.visualization_settings [:auto/param (str "%" dashboard-id "%")]]]})))
+                                     [:like :dc.visualization_settings [:auto/param (str "%" id "%")]]]})))
+
 (mu/defn dashboards-with-action :- [:sequential ::row]
   "`{:entity_id :name}` of each dashboard not in the trash that has a button of the action `action-id`."
   [action-id :- pos-int?]
@@ -629,6 +634,18 @@
   (when (seq rows)
     (t2/query {:insert-into (t2/table-name :model/ParameterCard)
                :values      rows})))
+
+(mu/defn rows-by-entity-id :- [:sequential ::row]
+  "`{:id :entity_id}` and the columns `columns` of each row of the table of `model` whose entity id is in
+  `entity-ids`, in or out of the trash."
+  [model      :- :keyword
+   columns    :- [:sequential :keyword]
+   entity-ids :- ::entity-ids]
+  (if (empty? entity-ids)
+    []
+    (t2/query {:select (into [:id :entity_id] columns)
+               :from   [(t2/table-name model)]
+               :where  [:in :entity_id entity-ids]})))
 
 (mu/defn row-id-by-entity-id :- [:maybe pos-int?]
   "The id of the row of the table of `model` whose entity id is `entity-id`, or nil."

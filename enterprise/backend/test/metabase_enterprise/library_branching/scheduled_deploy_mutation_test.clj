@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.audit :as audit]
    [metabase-enterprise.library-branching.audit-test :as audit-test]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.scheduled-deploy :as scheduled-deploy]
    [metabase-enterprise.library-branching.scheduled-deploy-test :as scheduled-deploy-test]
@@ -14,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the scheduled deploy or of the audit log."

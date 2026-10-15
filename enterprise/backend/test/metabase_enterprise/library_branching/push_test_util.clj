@@ -10,18 +10,14 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.push :as push]
+   [metabase-enterprise.library-branching.remote-test-util :as remote.tu]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.test-util :as lb.tu])
   (:import
-   (java.io File)
    (java.nio.charset StandardCharsets)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
-   (org.apache.commons.io FileUtils)
-   (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId ObjectInserter PersonIdent Repository)))
 
@@ -43,16 +39,13 @@
 (defn do-with-remote
   "Calls `(f repo store)`: `repo` is a new empty bare repository, and `store` a JGit store on it. Removes both after."
   [f]
-  (let [dir (.toFile (Files/createTempDirectory "library-branching-push-" (make-array FileAttribute 0)))]
-    (try
-      (with-open [git (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))]
-        (let [s (store.jgit/open-store (str "file://" (.getAbsolutePath ^File dir)))]
-          (try
-            (f (.getRepository git) s)
-            (finally
-              (store/close s)))))
-      (finally
-        (FileUtils/deleteDirectory dir)))))
+  (remote.tu/do-with-bare-remote
+   (fn [repo url]
+     (let [s (store.jgit/open-store url)]
+       (try
+         (f repo s)
+         (finally
+           (store/close s)))))))
 
 (defmacro with-remote
   "Binds `repo` to a new empty bare remote repository and `store` to a JGit store on it, for `body`."
@@ -111,6 +104,7 @@
     (let [{:keys [base digests]} @state]
       (when (and (some? commit) (= commit base)) digests)))
   (table-names [_ table-keys] (select-keys (:table-names @state) table-keys))
+  (card-entity-ids [_ row-ids] (select-keys (:card-ids @state) row-ids))
   (apply-plan! [_ _plan _opts] (instance/not-yet! `instance/apply-plan!))
   (set-base! [_ expected new digests]
     (let [[old] (swap-vals! state (fn [st] (cond-> st
@@ -118,8 +112,9 @@
       (if (= expected (:base old)) :ok {:moved (:base old)}))))
 
 (defn fake-instance
-  "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d :table-names n}`, where `n` is
-  `{table-key name}`, the display names of warehouse sync."
+  "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d :table-names n :card-ids c}`,
+  where `n` is `{table-key name}`, the display names of warehouse sync, and `c` is `{row-id entity-id}`, the entity
+  ids of the card rows."
   [state]
   (->FakeInstance state))
 
@@ -131,6 +126,7 @@
   (base [_] (instance/base inst))
   (base-digests [_ commit] (instance/base-digests inst commit))
   (table-names [_ table-keys] (instance/table-names inst table-keys))
+  (card-entity-ids [_ row-ids] (instance/card-entity-ids inst row-ids))
   (apply-plan! [_ plan opts] (instance/apply-plan! inst plan opts))
   (set-base! [_ expected new digests]
     (if-let [f (:set-base! overrides)]
@@ -208,6 +204,15 @@
   ([table metric-id]
    (assoc-in (count-query table) [:stages 0 :aggregation] [["metric" {} metric-id]])))
 
+(defn sum-query
+  "The portable query of a metric: the sum of field `field` (a field key) of its table, a field of type type/Float."
+  [field]
+  {:lib/type "mbql/query"
+   :database (first field)
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table (subvec field 0 3)
+               :aggregation  [["sum" {} ["field" {:base-type "type/Float"} field]]]}]})
+
 (defn item
   "The item of `kind` named `item-name` at `place` with attributes `attrs`, with the references of the attributes."
   [id kind item-name place attrs]
@@ -231,6 +236,22 @@
                                                            :query (count-query orders-table)})
    snippet-id (item snippet-id :snippet "Active" "snippetssnippetssnipp" {:content "active = true"})})
 
+(def snippets-root
+  "The identity of the root of the Snippets area."
+  "snippetssnippetssnipp")
+
+(def app-collection-id "SalesAppCollection001")
+
+(defn with-app-card
+  "Snapshot `s` with a collection of the Data apps area, and the Revenue item of [[sample]] in it as a card of `kind`
+  (:question or :model), which the Library cannot hold."
+  [s kind]
+  (-> s
+      (assoc app-collection-id (item app-collection-id :collection "Sales app" "dataappsdataappsdatap"
+                                     {:namespace "data-apps"}))
+      (assoc-in [revenue-id :place] app-collection-id)
+      (assoc-in [revenue-id :kind] kind)))
+
 (defn renamed
   "Snapshot `s` with item `id` named `item-name`."
   [s id item-name]
@@ -239,13 +260,12 @@
 ;;; ---------------------------------------------------- Generator -----------------------------------------------------
 
 (defn- acceptable
-  "Item `item` changed so that a push accepts it: a root-level collection is a Library root, no collection has a
-  namespace (so each has the namespace of its parent), and no attribute names an item by identity. `kinds.tu/complete`
-  then puts a root-level snippet or glossary term at its area root."
-  [{:keys [kind place] :as item}]
+  "Item `item` changed so that a push accepts it: no collection has a namespace (so each has the namespace of its
+  parent), and no attribute names an item by identity. `kinds.tu/complete` then puts a root-level snippet or glossary
+  term at its area root."
+  [{:keys [kind] :as item}]
   (case kind
-    :collection (cond-> (update item :attrs dissoc :namespace)
-                  (nil? place) (update :attrs assoc :type "library"))
+    :collection (update item :attrs dissoc :namespace)
     (:metric :question :model)
     (update item :attrs #(-> %
                              (assoc :query (count-query orders-table))
@@ -277,10 +297,11 @@
 
 (def pushable-snapshot-gen
   "Generates snapshots of the kinds that a push accepts, of at most 12 items: well formed, every root-level item
-  a fixed root, references only to the environment, and every item in the schema of its codec."
+  a fixed root (a root-level collection is a Library collection), references only to the environment, and every item
+  in the schema of its codec."
   (gen/fmap (fn [s] (kinds.tu/complete (update-vals s acceptable)))
             (lb.tu/well-formed-snapshot-gen {:kinds       snapshot/kinds
                                              :may-contain snapshot/may-contain
-                                             :root-kinds  #{:collection :glossary-term :snippet}
+                                             :root-kinds  #{lb.tu/library-root-kind :glossary-term :snippet}
                                              :attrs       kinds.tu/attrs-gens
                                              :max-items   12})))

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.instance.content
-  "Helpers that the kinds share to build the content of an item from app DB rows."
+  "Helpers that the kinds share to build the content of an item from app DB rows, and to write it."
   (:require
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.kinds.common :as format.common]
@@ -58,3 +59,17 @@
   (into #{}
         (filter #(not= (attr-value spec old %) (attr-value spec new %)))
         (keys (:attrs spec))))
+
+(defn do-in-write-transaction
+  "Calls `f` with no arguments in a transaction (a savepoint inside an open one) for a write or a trash of item `id`,
+  and returns its result. A throw of `f` rolls the transaction back. When the save path of the app DB model refuses
+  the change with status code 400 (the Library's content rule does), this throws ::instance/refused with reason
+  `:content-rule` and the message of the save path."
+  [id f]
+  (try
+    (library-branching.db/do-in-transaction f)
+    (catch clojure.lang.ExceptionInfo e
+      (let [{:keys [status-code type]} (ex-data e)]
+        (if (and (= 400 status-code) (not= ::instance/refused type))
+          (instance/refuse! :content-rule id (ex-message e))
+          (throw e))))))

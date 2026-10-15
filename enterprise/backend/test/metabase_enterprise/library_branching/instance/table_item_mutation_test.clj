@@ -4,15 +4,19 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.table-item :as table-item]
    [metabase-enterprise.library-branching.instance.lock-test :as lock-test]
    [metabase-enterprise.library-branching.instance.table-item-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.table-item-test :as table-item-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
-   [metabase-enterprise.library-branching.scope :as scope]))
+   [metabase-enterprise.library-branching.scope :as scope]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the instance side of segments and measures."

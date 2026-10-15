@@ -17,8 +17,21 @@
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
+(defn- key-holder
+  "An identity other than `id` of an item of the state `st` (in scope or in the trash) of the kind of `content` whose
+  unique key is the key of `content`, or nil."
+  [st id content]
+  (when-some [k (snapshot/unique-key snapshot/unique-keys content)]
+    (some (fn [[j item]]
+            (when (and (not= j id)
+                       (= (:kind content) (:kind item))
+                       (= k (snapshot/unique-key snapshot/unique-keys item)))
+              j))
+          (concat (:snapshot st) (:trash st)))))
+
 (defn- memory-ops!
-  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`."
+  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`. A write refuses a unique key
+  that another item has, also an item in the trash, as the app DB does."
   [st]
   {:current   (fn [kind id]
                 (let [item (get-in @st [:snapshot id])]
@@ -30,6 +43,8 @@
                            (not (contains? (:snapshot @st) place))
                            (not (contains? snapshot/area-roots place)))
                   (instance/refuse! :place id "The container is not in scope."))
+                (when-let [holder (key-holder @st id content)]
+                  (instance/refuse! :key-taken id (str "The item " holder " has the unique key of this item.")))
                 (vswap! st #(-> %
                                 (assoc-in [:snapshot id] content)
                                 (update :trash dissoc id))))
@@ -57,12 +72,14 @@
 
 (defrecord MemoryInstance [state]
   instance/Instance
-  (read-snapshot [_] (locking state {:snapshot (:snapshot @state)}))
+  (read-snapshot [_] (locking state (let [{:keys [snapshot env]} @state]
+                                      (cond-> {:snapshot snapshot} env (assoc :env env)))))
   (base [_] (:base @state))
   (base-digests [_ commit]
     (let [{:keys [base digests]} @state]
       (when (and (some? commit) (= commit base)) digests)))
   (table-names [_ table-keys] (select-keys (:table-names @state) table-keys))
+  (card-entity-ids [_ row-ids] (select-keys (:card-ids @state) row-ids))
   (apply-plan! [_ plan opts]
     ;; One lock for the whole instance stands for the row locks; the copy is the transaction.
     (locking state
@@ -80,8 +97,10 @@
 
 (defn memory-instance
   "An instance in memory over the atom `state`: `{:snapshot s :trash {id item} :outside #{id} :uses {user #{id}} :base b
-  :digests d :table-names n}`. `:outside` holds the identities of items outside the Library; `:uses` the items that
-  each user outside the Library uses; `:table-names` the display names of warehouse sync, `{table-key name}`."
+  :digests d :table-names n :card-ids c :env e}`. `:outside` holds the identities of items outside the Library; `:uses`
+  the items that each user outside the Library uses; `:table-names` the display names of warehouse sync, `{table-key
+  name}`; `:card-ids` the entity ids of the card rows, `{row-id entity-id}`; `:env`, optional, the environment that its
+  read gives."
   [state]
   (->MemoryInstance state))
 

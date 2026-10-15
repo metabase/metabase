@@ -100,9 +100,11 @@
       [{:level :structural :rule :place-inside :id golden/revenue-id :place golden/metrics-id
         :path "library/metrics/revenue/_collection.yaml"}]
 
-      ;; a containment cycle: the Library moves into one of its own subcollections
+      ;; a containment cycle: the Library moves into one of its own subcollections, which cannot hold it
       (golden/edit "library/_collection.yaml" #(str % "parent: cOlQuErIeS0ExAmPlE2x1\n"))
-      [{:level :structural :rule :acyclic :ids #{golden/library-id golden/metrics-id golden/revenue-id}}]
+      [{:level :structural :rule :acyclic :ids #{golden/library-id golden/metrics-id golden/revenue-id}}
+       {:level :structural :rule :library-content :id golden/library-id :place golden/revenue-id
+        :path "library/_collection.yaml"}]
 
       ;; a snippet inside a metric
       (golden/edit golden/base-filter-path
@@ -157,7 +159,13 @@
 
       ;; a child collection in another namespace than its parent
       (golden/edit golden/revenue-path #(str % "namespace: snippets\n"))
-      [{:level :structural :rule :namespace :id golden/revenue-id :place golden/metrics-id :path golden/revenue-path}])))
+      [{:level :structural :rule :namespace :id golden/revenue-id :place golden/metrics-id :path golden/revenue-path}]
+
+      ;; a metric in the Data section of the Library
+      (golden/edit golden/total-revenue-path
+                   #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n" "collection: dAtAcOlLeCtIoNiD00000\n"))
+      [{:level :structural :rule :library-content :id golden/total-revenue-id :place "dAtAcOlLeCtIoNiD00000"
+        :path golden/total-revenue-path}])))
 
 (deftest semantic-findings-test
   (testing "a reference to a table that the manifest does not have is red; the report names the table"
@@ -267,6 +275,17 @@
       (is (str/includes? (first lines) "x.yaml"))
       (is (str/includes? (first lines) golden/base-filter-path))
       (is (= "green" (peek lines))))))
+
+(deftest library-finding-report-test
+  (testing "a Library finding names the item, the collection and what a collection of its type holds"
+    (let [[line] (check/report (checked (golden/edit golden/total-revenue-path
+                                                     #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n"
+                                                                   "collection: dAtAcOlLeCtIoNiD00000\n"))))]
+      (is (str/includes? line golden/total-revenue-path))
+      (is (str/includes? line "Total Revenue"))
+      (is (str/includes? line "\"Data\""))
+      (is (str/includes? line "published tables"))
+      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data"))))
 
 ;;; ------------------------------------------------------- Run -------------------------------------------------------
 

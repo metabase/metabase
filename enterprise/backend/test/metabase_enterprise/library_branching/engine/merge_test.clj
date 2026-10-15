@@ -87,6 +87,16 @@
     (is (= {:ok (snap x)} (merge-one nil nil x)))
     (is (= (conflict :unknown nil x) (merge-one :unknown nil x)))))
 
+(deftest ^:parallel side-change-test
+  (testing "the change of one side of a conflict against a known base"
+    (doseq [[b side expected] [[nil x :created] [x y :updated] [x nil :deleted] [x x :unchanged] [nil nil :unchanged]]]
+      (testing (pr-str [b side])
+        (is (= expected (merge/side-change b side))))))
+  (testing "with a base that equals no content, only whether the side has content"
+    (doseq [[b side expected] [[:unknown x :present] [:unknown nil :absent] [::lost x :present] [::lost nil :absent]]]
+      (testing (pr-str [b side])
+        (is (= expected (merge/side-change b side)))))))
+
 (deftest ^:parallel keep-mine-test
   (testing "a keep-mine decision with the content of ours resolves the conflict to ours"
     (is (= {:ok (snap y)} (merge-one x y z {i y})))
@@ -150,6 +160,21 @@
              id3 (engine.tu/item :collection "N1" id0)}]
       (is (= {:conflicts  []
               :violations [{:rule :acyclic :ids #{id0 id3} :ours id0 :theirs id3}]}
+             (merge/merge b o t {}))))))
+
+(deftest ^:parallel library-content-violation-test
+  (testing (str "ours moves the empty collection Archive from Dashboards to Data and gives it the Data type; theirs "
+                "adds a dashboard in Archive. Each side obeys the Library rules; the result has a dashboard in a Data "
+                "collection, a violation that names the pair")
+    (let [archive (engine.tu/eid "archive")
+          board   (engine.tu/eid "board")
+          in      (fn [place t] (assoc-in (engine.tu/item :collection "Archive" place) [:attrs :type] t))
+          b       (assoc lb.tu/library-core archive (in "librarylibrarydashbrd" "library-dashboards"))
+          o       (assoc b archive (in "librarylibrarydatadat" "library-data"))
+          t       (assoc b board (engine.tu/item :dashboard "Board" archive))]
+      (is (and (lb.tu/library-content-fits? o) (lb.tu/library-content-fits? t)) "each side obeys the rules")
+      (is (= {:conflicts  []
+              :violations [{:rule :library-content :id board :place archive :ours archive :theirs board}]}
              (merge/merge b o t {}))))))
 
 (deftest ^:parallel alloy-unique-keys-test
@@ -316,6 +341,21 @@
                (or (seq conflicts)
                    (not (lb.tu/well-formed? (one-side-merge b o t))))))))))
 
+(defspec conflict-sides-test 300
+  ;; Both sides of a conflict changed the item against a known base, and a side with no content deleted it; with an
+  ;; unknown base, a side has content or has none.
+  (prop/for-all [[b o t] (gen/one-of [(engine.tu/related-snapshots-gen) (engine.tu/unknown-base-snapshots-gen)])]
+    (every? (fn [{:keys [base ours theirs]}]
+              (every? (fn [side]
+                        (let [change (merge/side-change base side)]
+                          (if (= :unknown base)
+                            (= change (if (some? side) :present :absent))
+                            (and (not= :unchanged change)
+                                 (= (= :deleted change) (nil? side))
+                                 (= (= :created change) (nil? base))))))
+                      [ours theirs]))
+            (:conflicts (merge/merge b o t {})))))
+
 (defspec merge-keeps-unique-keys-fails-test 200
   ;; Alloy MergeKeepsUniqueKeysFails: each side has unique keys, and the per-item merge gives two snippets one name.
   ;; The merge check reports the clash with its pair.
@@ -400,15 +440,30 @@
     :doc    "A violation names the item that it is about, not the pair of changes that made it."
     :target `merge/pair
     :edits  [[:replace '(not= i j) true]]}
+   {:name   :side-change-ignores-the-base
+    :doc    "The change of a side does not compare with the base: every side with content is an update."
+    :target `merge/side-change
+    :edits  [[:replace '(nil? b) false]]
+    :tests  [#'side-change-test #'conflict-sides-test]}
+   {:name   :side-change-of-an-unknown-base
+    :doc    "An unknown base is taken as a base with no content, so a side with content is a create."
+    :target `merge/side-change
+    :edits  [[:replace '(keyword? b) false]]
+    :tests  [#'side-change-test #'conflict-sides-test]}
    {:name   :unknown-is-none
     :doc    "An unknown base is no content, so a remote item comes back over a trash before the first sync."
     :target `merge/merge
-    :edits  [[:replace '(get b id) '(let [v (get b id)] (when-not (= :unknown v) v)) {:nth 0}]]}])
+    :edits  [[:replace '(get b id) '(let [v (get b id)] (when-not (= :unknown v) v)) {:nth 0}]]}
+   {:name   :library-rule-not-involved
+    :doc    "The merge does not know which items a Library finding is about, so a merge that breaks a Library rule throws."
+    :target `merge/involved
+    :edits  [[:replace '(:place-inside :kind-fits :namespace :library-content :table-collection)
+              '(:place-inside :kind-fits :namespace)]]}])
 
 (deftest merge-mutations-test
   (mut/check mutations {:tests [#'per-item-table-test #'unknown-base-test #'keep-mine-test
                                 #'alloy-dangling-reference-test #'alloy-orphan-test #'alloy-cycle-test
-                                #'alloy-unique-keys-test #'violations-with-conflicts-test
+                                #'alloy-unique-keys-test #'violations-with-conflicts-test #'library-content-violation-test
                                 #'merge-laws-test #'merge-keeps-unique-keys-fails-test
                                 #'violation-names-two-items-with-keys-test
                                 #'unknown-base-merge-test #'one-sided-merge-is-well-formed-test]}))

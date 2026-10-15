@@ -37,7 +37,7 @@
 
 (def kinds
   "The operations that run as a task."
-  #{"push" "pull" "merge-branch" "deploy" "branch-create" "branch-switch" "settings"})
+  #{"push" "pull" "merge-branch" "deploy" "branch-create" "branch-switch" "discard-changes" "settings"})
 
 (def open-statuses
   "The statuses of a task that has not ended."
@@ -52,7 +52,7 @@
 (mr/def ::status (into [:enum] (sort (into open-statuses ended-statuses))))
 
 (mr/def ::outcome
-  [:map {::mr/deliberately-open true, :description "the result of a successful task, such as {:kind \"pulled\" :count 3 :branch \"main\"}"}
+  [:map {::mr/deliberately-open true, :description "what a successful task did, such as {:kind \"pulled\" :count 3 :branch \"main\"}, or why a failed task failed, such as {:kind \"conflicts\" :conflicts [...]}"}
    [:kind :string]])
 
 (mr/def ::user
@@ -198,12 +198,17 @@
   (end-row! id open-statuses "successful" {:outcome (some-> outcome json/encode) :progress 1.0}))
 
 (mu/defn fail! :- :boolean
-  "Ends task `id` with the error message `message` iff it is open: a running task as failed, a committing task as
-  interrupted, because its push may have landed. True iff it ended it."
-  [id      :- pos-int?
-   message :- :string]
-  (or (end-row! id #{"running"} "failed" {:error_message message})
-      (end-row! id #{"committing"} "interrupted" {:error_message message})))
+  "Ends task `id` with the error message `message`, and `outcome` (default none) that tells why, iff it is open: a
+  running task as failed, a committing task as interrupted, because its push may have landed. True iff it ended it."
+  ([id      :- pos-int?
+    message :- :string]
+   (fail! id message nil))
+  ([id      :- pos-int?
+    message :- :string
+    outcome :- [:maybe ::outcome]]
+   (let [changes {:error_message message :outcome (some-> outcome json/encode)}]
+     (or (end-row! id #{"running"} "failed" changes)
+         (end-row! id #{"committing"} "interrupted" changes)))))
 
 (mu/defn fail-committing! :- :boolean
   "Ends task `id` as failed with the error message `message` iff it is committing: for a push past its commit point
@@ -325,6 +330,20 @@
               (+ lo (* (- hi lo) (min 1.0 (max 0.0 (/ (double done) total)))))
               lo))))
 
+(def phase-starts
+  "The progress of an operation at the start of each of its phases, in their order: read, plan, apply, commit."
+  {:read 0.0 :plan 0.25 :apply 0.5 :commit 0.75})
+
+(defn phase-checkpoints
+  "A function `(enter phase)` that reports, through `report` (a [[progress-reporter]]), the start of `phase`, a key of
+  [[phase-starts]], as a checkpoint: a forced report, so one app-DB write per phase. An operation that skips a phase
+  reports the start of the next one. A report on an ended task throws as [[report-progress!]]."
+  [report]
+  (fn enter [phase]
+    (report (or (phase-starts phase)
+                (throw (ex-info (str "No phase " phase) {:phase phase})))
+            {:force? true})))
+
 ;;; ----------------------------------------------------- Workers ---------------------------------------------------
 
 (defonce ^:private running-ids
@@ -373,9 +392,9 @@
 
 (defn run-task!
   "Runs `f` as the worker of the open task `id`, on this thread, and returns the task at its end. `(f id)` returns
-  `{:outcome o}` for a success, or `{:error message}` for a failure; a throw is a failure with the message of the
-  throwable, or its class name when it has none. The result ends the task iff it is still open: a result never
-  changes an ended task (a cancel, a supersede, or a [[commit!]] ended it).
+  `{:outcome o}` for a success, or `{:error message}` for a failure, with an optional `:outcome` that tells why; a
+  throw is a failure with the message of the throwable, or its class name when it has none. The result ends the task
+  iff it is still open: a result never changes an ended task (a cancel, a supersede, or a [[commit!]] ended it).
 
   While `f` runs, a heartbeat runs for the task, and `id` is in [[running-task-ids]]. On every exit the heartbeat
   stops, and a task that is still open ends as failed with [[no-result-message]].
@@ -394,7 +413,7 @@
                          (log/errorf e "Library branching task %d failed" id))
                        {:error (throwable-message e)}))]
         (if (contains? result :error)
-          (fail! id (str (:error result)))
+          (fail! id (str (:error result)) (:outcome result))
           (succeed! id (:outcome result)))
         (when (and on-success (= "successful" (:status (task id))))
           (try

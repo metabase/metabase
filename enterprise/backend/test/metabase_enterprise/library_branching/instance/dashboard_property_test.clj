@@ -13,6 +13,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [clojure.walk :as walk]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.kinds.dashboard :as format.dashboard]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -26,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- venues-query
   "A query of all venues."
@@ -54,7 +55,7 @@
     (let [query (count-query)]
       (mt/with-temp [:model/Collection dashboards {:name     "Dashboards" :type "library-dashboards"
                                                    :location (str (:location library) (:id library) "/")}
-                     :model/Collection more       {:name     "More dashboards"
+                     :model/Collection more       {:name     "More dashboards" :type "library-dashboards"
                                                    :location (str (:location library) (:id library) "/" (:id dashboards) "/")}
                      :model/Card       m1         {:name "m1" :type :metric :dataset_query query :collection_id (:id metrics)}
                      :model/Card       m2         {:name "m2" :type :metric :dataset_query query :collection_id (:id metrics)}

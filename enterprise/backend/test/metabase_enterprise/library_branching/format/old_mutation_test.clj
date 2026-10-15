@@ -3,12 +3,14 @@
   that it names must fail."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.old :as old]
    [metabase-enterprise.library-branching.format.old-sync-test :as old-sync-test]
    [metabase-enterprise.library-branching.format.old-test :as old-test]
    [metabase-enterprise.library-branching.format.old.card :as old.card]
    [metabase-enterprise.library-branching.format.old.collection :as old.collection]
+   [metabase-enterprise.library-branching.format.old.dashboard :as old.dashboard]
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
    [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
@@ -19,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;; The round-trip property test is in no list: it takes most of the time of a run, and the fixed tests kill each
 ;; mutation.
@@ -54,7 +56,7 @@
     :tests  [#'old-test/remote-sync-files-decode-to-the-golden-items-test]}
    {:name   :unknown-model-dropped
     :doc    "A file of a serdes model with no decoder is dropped, so a pull would trash its item."
-    :target `old/decode-file
+    :target `old/decode-doc
     :edits  [[:replace '(finding :unknown-kind (str "No old-format decoder for the model " model) :model model) nil]]
     :tests  [#'old-test/unknown-models-test]}
    {:name   :term-by-shape
@@ -124,6 +126,26 @@
     :target `old.published-table/assemble
     :edits  [[:replace '(get table-names table-key) nil]]
     :tests  [#'old-test/display-names-test]}
+   {:name   :metric-row-id-kept
+    :doc    "A link card to a metric keeps the row id that the export writes, so the dashboard does not decode."
+    :target `old.dashboard/with-metric-identity
+    :edits  [[:replace '(some->> (metric-row-id settings) (get card-ids)) nil]]
+    :tests  [#'old-test/metric-link-card-test]}
+   {:name   :unknown-row-id-unnamed
+    :doc    "A row id of no card gives no finding that names the dashboard and the row id."
+    :target `old.dashboard/decode
+    :edits  [[:replace '(seq unknown) false]]
+    :tests  [#'old-test/metric-link-card-test]}
+   {:name   :entity-id-as-row-id
+    :doc    "A link card to a metric that holds an entity id counts as one that holds a row id."
+    :target `old.dashboard/metric-row-id
+    :edits  [[:replace '(int? id) true]]
+    :tests  [#'old-test/metric-link-card-test]}
+   {:name   :trashed-dashboard-asks
+    :doc    "The decoder asks for the cards of the link cards of a dashboard in the trash too."
+    :target `old.dashboard/resolve-card-ids
+    :edits  [[:replace '(remove common/archived? docs) 'docs]]
+    :tests  [#'old-test/metric-link-card-test]}
    {:name   :namespace-collection-unplaced
     :doc    "A collection of a namespace with no parent is at the root level, not at the root of its area."
     :target `old.collection/decode

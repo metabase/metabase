@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.kinds.timeline :as kinds.timeline]
    [metabase-enterprise.library-branching.instance.lock-test :as lock-test]
    [metabase-enterprise.library-branching.instance.timeline-test :as timeline-test]
@@ -12,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the timeline kind store."

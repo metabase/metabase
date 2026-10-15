@@ -3,7 +3,9 @@
   references of a read against the serdes walk of master. Each test writes in a transaction that rolls back."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.kinds.dashboard :as format.dashboard]
@@ -13,6 +15,9 @@
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
@@ -23,7 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- venues-query
   "A query of all venues."
@@ -262,20 +267,51 @@
                     (with-attrs item dissoc :tabs :dashcards :parameters :width :description)]
                    ["the content again, in another collection of the Library"
                     (let [other (t2/insert-returning-instance! :model/Collection
-                                                               {:name "More dashboards" :location (children-location dashboards)})]
+                                                               {:name     "More dashboards"
+                                                                :type     "library-dashboards"
+                                                                :location (children-location dashboards)})]
                       (assoc item :place (:entity_id other)))]]]
        (doseq [[label step] steps]
          (testing label
            (write! dashboard-id step)
            (is (= (with-refs dashboard-id step) (current dashboard-id)))))))))
 
+(defn- spy
+  "A function that adds the name of var `v` to the atom `calls`, then calls the original function of `v`."
+  [calls v]
+  (let [f (mt/original-fn v)]
+    (fn [& args]
+      (swap! calls conj (:name (meta v)))
+      (apply f args))))
+
+(defn- record-writes!
+  "Calls `f`, and returns the names of the write functions of dashboards that it calls, in the order of the calls."
+  [f]
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [library-branching.db/insert-dashboard!     (spy calls #'library-branching.db/insert-dashboard!)
+                                library-branching.db/update-dashboard!     (spy calls #'library-branching.db/update-dashboard!)
+                                library-branching.db/insert-dashboard-tab! (spy calls #'library-branching.db/insert-dashboard-tab!)
+                                library-branching.db/update-dashboard-tab! (spy calls #'library-branching.db/update-dashboard-tab!)
+                                library-branching.db/insert-dashcard!      (spy calls #'library-branching.db/insert-dashcard!)
+                                library-branching.db/update-dashcard!      (spy calls #'library-branching.db/update-dashcard!)
+                                dashboard-tab/delete-tabs!                 (spy calls #'dashboard-tab/delete-tabs!)
+                                dashboard-card/delete-dashboard-cards!     (spy calls #'dashboard-card/delete-dashboard-cards!)
+                                dashboard-card/update-dashboard-cards-series!
+                                (spy calls #'dashboard-card/update-dashboard-cards-series!)
+                                dashboard/cascade-card-state-from-dashboard-update!
+                                (spy calls #'dashboard/cascade-card-state-from-dashboard-update!)]
+      (f))
+    @calls))
+
 (deftest get-put-test
   (do-with-world
    (fn [world]
      (write! dashboard-id (content world))
-     (testing "a write of the current content changes no row"
+     (testing "a write of the current content calls no write function and changes no row"
        (let [before (rows dashboard-id)]
-         (instance/write! (store) dashboard-id (current dashboard-id))
+         ;; The rows alone do not show an update of equal values on every app DB: the update moves only updated_at,
+         ;; and H2 and Postgres set it to the start of the transaction that the test runs in.
+         (is (= [] (record-writes! #(instance/write! (store) dashboard-id (current dashboard-id)))))
          (is (= before (rows dashboard-id))))))))
 
 (deftest instance-local-attributes-test
@@ -389,6 +425,73 @@
                                {:kind :dashboard :id (:entity_id links) :name "Links"}]}
                 (in-use/trashed-in-use [{:id dashboard-id :kind :dashboard}]))))))))
 
+(def ^:private metric-link-card "lbDcArDmEtRiClInK0006")
+
+(defn- insert-metric!
+  "A metric of the venues named `metric-name` in `collection`, with the entity id `eid`."
+  [collection metric-name eid]
+  (t2/insert-returning-instance! :model/Card {:name                   metric-name
+                                              :type                   :metric
+                                              :display                :scalar
+                                              :visualization_settings {}
+                                              :creator_id             (mt/user->id :crowberto)
+                                              :dataset_query          (metric-query)
+                                              :collection_id          (:id collection)
+                                              :entity_id              eid}))
+
+(defn- link-entity
+  "The `:entity` of the link card of dashboard card `dashcard-eid`, as the app DB stores it."
+  [dashcard-eid]
+  (get-in (t2/select-one :model/DashboardCard :entity_id dashcard-eid) [:visualization_settings :link :entity]))
+
+(deftest metric-link-card-test
+  (testing "a link card to a metric: a read gives the metric's identity and a reference to it, and a write on an
+            instance where the metric has another row id links to that row"
+    (do-with-world
+     (fn [{:keys [metrics] :as world}]
+       (write! dashboard-id (content world))
+       (let [metric-eid "lbMeTrIcLiNkEdTo00001"
+             metric     (insert-metric! metrics "Price" metric-eid)
+             d          (t2/select-one :model/Dashboard :entity_id dashboard-id)
+             _          (t2/insert! :model/DashboardCard {:dashboard_id (:id d) :entity_id metric-link-card
+                                                          :dashboard_tab_id (t2/select-one-pk :model/DashboardTab
+                                                                                              :entity_id tab-2)
+                                                          :row 2 :col 0 :size_x 4 :size_y 2
+                                                          :visualization_settings
+                                                          {:virtual_card {:display "link"}
+                                                           :link         {:entity {:model "metric" :id (:id metric)
+                                                                                   :name "Price"}}}})
+             item       (get (app-db/read-current) dashboard-id)
+             entry      (some #(when (= metric-link-card (:id %)) %) (get-in item [:attrs :dashcards]))]
+         (is (= {:model "metric" :id metric-eid :name "Price"}
+                (get-in entry [:visualization_settings :link :entity])))
+         (is (contains? (:refs item) [:card metric-eid]))
+         (let [c (first (filter #(= :dashboard (codec/kind %)) format.kinds/codecs))]
+           (is (mr/validate (codec/schema c) item)))
+         (testing "on an instance where the metric has another row id"
+           (t2/delete! :model/Dashboard (:id d))
+           (t2/delete! :model/Card (:id metric))
+           (let [other (insert-metric! metrics "Price" metric-eid)]
+             (is (not= (:id metric) (:id other)))
+             (instance/write! (store) dashboard-id item)
+             (is (= {:model "metric" :id (:id other) :name "Price"} (link-entity metric-link-card)))
+             (is (= item (current dashboard-id))))))))))
+
+(deftest trashed-metric-linked-by-a-link-card-in-use-test
+  (testing "a trash of a Library metric: the in-use report names a dashboard outside the Library whose link card links
+            to it"
+    (do-with-world
+     (fn [{:keys [metrics]}]
+       (let [metric  (insert-metric! metrics "Price" "lbMeTrIcLiNkEdTo00002")
+             outside (t2/insert-returning-instance! :model/Collection {:name "Not the Library" :location "/"})
+             links   (insert-dashboard! outside "Metric links" {:virtual_card {:display "link"}
+                                                                :link         {:entity {:model "metric"
+                                                                                        :id    (:id metric)
+                                                                                        :name  "Price"}}})]
+         (instance/trash! (get app-db/kind-stores :metric) (:entity_id metric))
+         (is (= {(:entity_id metric) [{:kind :dashboard :id (:entity_id links) :name "Metric links"}]}
+                (in-use/trashed-in-use [{:id (:entity_id metric) :kind :metric}]))))))))
+
 (deftest move-test
   (do-with-world
    (fn [{:keys [dashboards] :as world}]
@@ -402,6 +505,7 @@
                                                                 :dashboard_id  (:id d)
                                                                 :collection_id (:id dashboards)})
            other    (t2/insert-returning-instance! :model/Collection {:name     "More dashboards"
+                                                                      :type     "library-dashboards"
                                                                       :location (children-location dashboards)})]
        (testing "a write that moves the dashboard moves its questions with it, as a save of the dashboard does"
          (write! dashboard-id (assoc (content world) :place (:entity_id other)))

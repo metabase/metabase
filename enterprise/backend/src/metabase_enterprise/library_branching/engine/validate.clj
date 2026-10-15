@@ -128,6 +128,23 @@
                                                (not (contains? allowed (:kind (get s target)))))))]
     {:rule :ref-kind :id id :ref ref}))
 
+(defn- library-findings
+  [s library-content]
+  ;; One finding per item, the section rule first, as master checks the two in that order.
+  (for [[id {:keys [kind place] :as item}] (sorted-items s)
+        :let    [container (get s place)
+                 t         (:type (:attrs container))
+                 holds     (get library-content t)
+                 rule      (when (= :collection (:kind container))
+                             (cond
+                               (and holds (not (contains? holds (snapshot/content-type item))))
+                               :library-content
+
+                               (and (= :published-table kind) (not= snapshot/table-collection-type t))
+                               :table-collection))]
+        :when   rule]
+    {:rule rule :id id :place place}))
+
 (defn- area-root-findings
   [s areas]
   (for [[id _] (sorted-items s)
@@ -159,7 +176,11 @@
   - `{:rule :ref-kind :id i :ref [role target]}`: `target` is an environment object or an item of `s` whose kind
     `:ref-kinds` does not allow for `role` from the kind of `i`;
   - `{:rule :root :id i}`: item `i` is at the root level and is not one of `:roots`;
-  - `{:rule :area-root :id i}`: `s` holds an item with the identity `i` of an area root.
+  - `{:rule :area-root :id i}`: `s` holds an item with the identity `i` of an area root;
+  - `{:rule :library-content :id i :place p}`: `p` is a collection whose `:type` `:library-content` names, and that
+    type cannot hold the content type of `i` ([[snapshot/content-type]]);
+  - `{:rule :table-collection :id i :place p}`: the published table `i` is in the collection `p`, whose type is not
+    [[snapshot/table-collection-type]], and `p` has no `:library-content` finding for `i`.
 
   An area root is a place that names an identity of `:areas` and no item of `s`.
 
@@ -167,16 +188,18 @@
   `:areas`, `{identity {:kinds #{kind} :namespace ns}}`, the area roots ([[snapshot/area-roots]]);
   `:may-contain`, `{kind #{kind}}` ([[snapshot/may-contain]]); `:unique-keys`, `{kind {:path path :name? bool}}`
   ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]); `:nested-ids`, `{kind
-  path}` ([[snapshot/nested-ids]]). These tables can name kinds that are not in [[snapshot/kinds]]: validate reads only
-  the kind, place, references, `:namespace`, unique key and nested identities of an item."
+  path}` ([[snapshot/nested-ids]]); `:library-content`, `{collection-type #{content-type}}`
+  ([[snapshot/library-content]]). These tables can name kinds that are not in [[snapshot/kinds]]: validate reads only
+  the kind, place, references, `:namespace`, `:type`, `:dashboard_id`, unique key and nested identities of an item."
   ([s]
    (validate s {}))
-  ([s {:keys [roots areas may-contain unique-keys ref-kinds nested-ids]
-       :or   {areas       snapshot/area-roots
-              may-contain snapshot/may-contain
-              unique-keys snapshot/unique-keys
-              ref-kinds   snapshot/ref-kinds
-              nested-ids  snapshot/nested-ids}}]
+  ([s {:keys [roots areas may-contain unique-keys ref-kinds nested-ids library-content]
+       :or   {areas           snapshot/area-roots
+              may-contain     snapshot/may-contain
+              unique-keys     snapshot/unique-keys
+              ref-kinds       snapshot/ref-kinds
+              nested-ids      snapshot/nested-ids
+              library-content snapshot/library-content}}]
    (vec (concat (place-findings s areas)
                 (cycle-findings s)
                 (kind-findings s may-contain areas)
@@ -186,4 +209,5 @@
                 (namespace-findings s areas)
                 (ref-kind-findings s ref-kinds)
                 (root-findings s roots)
-                (area-root-findings s areas)))))
+                (area-root-findings s areas)
+                (library-findings s library-content)))))

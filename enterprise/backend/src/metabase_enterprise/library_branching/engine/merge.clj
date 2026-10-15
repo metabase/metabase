@@ -25,7 +25,8 @@
   "The items that structural finding `finding` is about."
   [{:keys [rule id place ids ref]}]
   (case rule
-    (:place-inside :kind-fits :namespace)   [id place]
+    (:place-inside :kind-fits :namespace
+                   :library-content :table-collection)    [id place]
     (:refs-closed :ref-kind)                [id (second ref)]
     (:acyclic :unique-key :nested-identity) (sort snapshot/compare-identities ids)
     (:root :area-root)                      [id]))
@@ -44,6 +45,18 @@
           (let [[i j] (pair b o t (involved finding))]
             (assoc finding :ours i :theirs j)))
         (validate/validate m opts)))
+
+(defn side-change
+  "The change of one side of a conflict, from the base content `b` to the content `x` of the side (nil: no content):
+  `:created`, `:updated` or `:deleted`, or `:unchanged` when `x` is `b`. A base that equals no content (a keyword,
+  such as `:unknown`) has no change to name: `:present` or `:absent`."
+  [b x]
+  (cond
+    (keyword? b) (if (some? x) :present :absent)
+    (= b x)      :unchanged
+    (nil? b)     :created
+    (nil? x)     :deleted
+    :else        :updated))
 
 (defn merge
   "The three-way merge of snapshots `o` (ours) and `t` (theirs) from their base `b`. A value of `b` can be

@@ -4,6 +4,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.repository :as repository]
@@ -14,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the instance roles."
@@ -45,6 +47,13 @@
     :target `deploy/deploy!
     :edits  [[:replace '(and (= b h) (not discard-drift?)) '(= b h)]]
     :tests  [#'roles-test/discard-with-the-head-at-the-base-restores-the-base-test]}
+   {:name   :discard-keeps-the-name
+    :doc    "A discard trashes a snippet of the drift with its name, which the head gives to a snippet of another
+            identity: the trash keeps the name, so the discard never reaches the head."
+    :target `plan/plan
+    :edits  [[:replace '(trash-renames unique-keys l m removed written) []]]
+    :tests  [#'roles-test/discard-frees-the-name-of-a-drift-snippet-test
+             #'roles-operations-test/discard-frees-the-name-of-a-drift-snippet-test]}
    {:name   :drift-trusts-equal-digests-of-nothing
     :doc    "The drift before a deploy is empty whenever the instance has a base: the boot and the role switch miss it."
     :target `deploy/instance-drift

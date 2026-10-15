@@ -3,6 +3,7 @@
   to the items that library branching reads from that content."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
@@ -19,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private library-tree
   "The entity ids of the collections of the Library in the golden content, each after its parent."

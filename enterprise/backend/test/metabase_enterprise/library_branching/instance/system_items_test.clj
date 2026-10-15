@@ -2,6 +2,7 @@
   "The release content of the system items is what an instance reads after a person creates the Library."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.instance.kinds.collection :as instance.collection]
    [metabase.collections.core :as collections]
@@ -10,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private library-id "librarylibrarylibrary")
 
