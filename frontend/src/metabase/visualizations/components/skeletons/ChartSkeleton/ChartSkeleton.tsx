@@ -22,6 +22,7 @@ export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   name?: string | null;
   description?: string | null;
   actionMenu?: JSX.Element | null;
+  gridWidth?: number;
 };
 
 // Returns just the chart-shaped skeleton image for a display type (no caption
@@ -74,6 +75,7 @@ const ChartSkeleton = ({
   display,
   name,
   className,
+  gridWidth,
 }: ChartSkeletonProps) => {
   if (display === "scalar" || display === "smartscalar") {
     return (
@@ -82,6 +84,7 @@ const ChartSkeleton = ({
         name={name}
         description={description}
         actionMenu={actionMenu}
+        gridWidth={gridWidth}
       />
     );
   }

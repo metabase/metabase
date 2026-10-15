@@ -155,7 +155,7 @@ export const CardLayoutSkeleton = ({
               isHeading={content.isHeading}
             />
           ) : (
-            <ChartSkeleton display={content.display} />
+            <ChartSkeleton display={content.display} gridWidth={size_x} />
           )}
         </Box>
       ))}

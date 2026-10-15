@@ -63,14 +63,9 @@ function ScalarComponent(
   const sublabel = settings["scalar.sublabel"];
   const isMetricsViewer = label !== undefined;
 
-  const {
-    tier,
-    availableWidth,
-    title,
-    titleElement,
-    showsTitleTooltip,
-    innerTooltipHoverHandlers,
-  } = useScalarCardShell(props, { hideTitle: isMetricsViewer });
+  const { tier, availableWidth, titleElement } = useScalarCardShell(props, {
+    hideTitle: isMetricsViewer,
+  });
 
   if (rawSeries.length > 1) {
     return (
@@ -131,18 +126,9 @@ function ScalarComponent(
     }
   };
 
-  const hasValueTooltip =
-    fullScalarValue !== displayValue || tooltipContent != null;
-
   return (
-    <ScalarCardShell
-      tier={tier}
-      title={title}
-      showsTitleTooltip={showsTitleTooltip}
-      actionButtons={actionButtons}
-      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
-    >
-      <Box maw="100%" {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}>
+    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
+      <Box maw="100%">
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}

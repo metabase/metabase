@@ -68,29 +68,29 @@ describe("Scalar", () => {
     expect(screen.getByText("12.3k")).toBeInTheDocument();
   });
 
-  it("should show one tooltip at a time on the smallest cards", async () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        series={series(12345.6)}
-        rawSeries={series(12345.6)}
-        settings={settings}
-        visualizationIsClickable={() => false}
-        width={80}
-      />,
-    );
+  it.each([82, 126, 170, 214])(
+    "should keep the title visible on a short card of width %s (#84334)",
+    async (width) => {
+      render(
+        <Scalar
+          {...mockedProps}
+          showTitle
+          series={series(12345.6)}
+          rawSeries={series(12345.6)}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={width}
+          height={82}
+        />,
+      );
 
-    // hovering the compacted value shows the full value, not the title
-    await userEvent.hover(screen.getByTestId("scalar-container"));
-    expect(await screen.findByText("12,345.6")).toBeInTheDocument();
-    expect(screen.queryByText("Scalar Title")).not.toBeInTheDocument();
-    await userEvent.unhover(screen.getByTestId("scalar-container"));
-
-    // hovering the rest of the card shows the title
-    await userEvent.hover(screen.getByTestId("scalar-content"));
-    expect(await screen.findByText("Scalar Title")).toBeInTheDocument();
-  });
+      expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+        "Scalar Title",
+      );
+      await userEvent.hover(screen.getByTestId("scalar-content"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    },
+  );
 
   it("should navigate to the question when the title is clicked", async () => {
     const onChangeCardAndRun = jest.fn();

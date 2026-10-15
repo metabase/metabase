@@ -18,6 +18,7 @@ import { LegendLabel } from "../legend/LegendLabel";
 import S from "./ScalarValue.module.css";
 
 interface ScalarTitleProps {
+  size?: "sm" | "md";
   children: ReactNode;
   description?: string | null;
   icon?: IconProps | null;
@@ -26,6 +27,7 @@ interface ScalarTitleProps {
 }
 
 export const ScalarTitle = ({
+  size = "md",
   children,
   description,
   icon,
@@ -48,6 +50,7 @@ export const ScalarTitle = ({
       justify="center"
       gap="xxs"
       maw="100%"
+      miw={0}
       data-testid="scalar-title"
     >
       {icon && (
@@ -59,7 +62,7 @@ export const ScalarTitle = ({
           tooltip={icon.tooltip}
         />
       )}
-      <Box fz="md" lh="md" fw={700} c="text-primary" ta="center" miw={0}>
+      <Box fz={size} lh={size} fw={700} c="text-primary" ta="center" miw={0}>
         {onSelectTitle ? (
           <LegendLabel
             className={S.titleLink}

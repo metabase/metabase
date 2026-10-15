@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -30,6 +30,36 @@ const createMockInsights = (insights: Partial<Insight>[]) => insights;
 
 const setup = (series: Series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
+
+function setupCompactTrend(
+  comparisonCount: number,
+  width = 170,
+  gridWidth?: number,
+) {
+  const comparisonTypes = [
+    { id: "1", type: "previousPeriod" as const },
+    { id: "2", type: "previousValue" as const },
+    { id: "3", type: "staticNumber" as const, value: 80, label: "Goal" },
+  ].slice(0, comparisonCount);
+  renderWithProviders(
+    <Visualization
+      rawSeries={series({
+        rows: [
+          ["2019-10-01T00:00:00", 100],
+          ["2019-11-01T00:00:00", 120],
+        ],
+        insights: createMockInsights([{ unit: "month", col: "Count" }]),
+        name: "Revenue",
+        comparisonTypes,
+        settings: { "card.description": "Monthly revenue" },
+      })}
+      width={width}
+      height={82}
+      gridSize={gridWidth == null ? undefined : { width: gridWidth, height: 2 }}
+      showTitle
+    />,
+  );
+}
 
 const getTrendSymbol = () => screen.getByTestId("trend-symbol");
 
@@ -416,35 +446,85 @@ describe("SmartScalar", () => {
       expect(screen.queryByTestId("trend-symbol")).not.toBeInTheDocument();
     });
 
-    it("should show one tooltip at a time on the smallest cards", async () => {
-      const rows = [
-        ["2019-10-01T00:00:00", 50],
-        ["2019-11-01T00:00:00", 100],
-      ];
-      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+    it.each([82, 126, 170, 214])(
+      "should keep the title visible alongside the compact comparison at width %s (#84334)",
+      async (width) => {
+        const rows = [
+          ["2019-10-01T00:00:00", 50],
+          ["2019-11-01T00:00:00", 100],
+        ];
+        const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      // narrow width forces the smallest tier, where the title only shows on hover
-      renderWithProviders(
-        <Visualization
-          rawSeries={series({ rows, insights, name: "Last invoice" })}
-          width={100}
-          showTitle
-        />,
+        renderWithProviders(
+          <Visualization
+            rawSeries={series({ rows, insights, name: "Last invoice" })}
+            width={width}
+            height={82}
+            showTitle
+          />,
+        );
+
+        expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+          "Last invoice",
+        );
+        expect(screen.getByText("+100%")).toBeVisible();
+        expect(screen.queryByTestId("trend-symbol")).not.toBeInTheDocument();
+        await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+        const tooltip = await screen.findByRole("tooltip");
+        expect(
+          within(tooltip).getByText("vs. previous month"),
+        ).toBeInTheDocument();
+        expect(
+          within(tooltip).queryByText("Last invoice"),
+        ).not.toBeInTheDocument();
+        await userEvent.unhover(screen.getByTestId("scalar-previous-value"));
+      },
+    );
+
+    it("should show the description for a single compact comparison", async () => {
+      setupCompactTrend(1);
+      await userEvent.hover(screen.getByLabelText("info icon"));
+      await waitFor(() =>
+        expect(screen.getByText("Monthly revenue")).toBeVisible(),
       );
+    });
 
-      // hovering the comparison shows its tooltip, not the title
+    it("should keep extra comparisons accessible on a narrow three-column dashboard card", async () => {
+      setupCompactTrend(3, 106, 3);
+      expect(screen.getByText("Revenue")).toBeVisible();
+      expect(screen.getByText("+20%")).toBeVisible();
+      expect(screen.getByText("+2")).toBeVisible();
+      expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
       await userEvent.hover(screen.getByTestId("scalar-previous-value"));
       const tooltip = await screen.findByRole("tooltip");
-      expect(
-        within(tooltip).getByText("vs. previous month"),
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Last invoice")).not.toBeInTheDocument();
-      await userEvent.unhover(screen.getByTestId("scalar-previous-value"));
-
-      // hovering the rest of the card shows the title
-      await userEvent.hover(screen.getByTestId("scalar-content"));
-      expect(await screen.findByText("Last invoice")).toBeInTheDocument();
+      expect(within(tooltip).getByText("vs. Goal")).toBeInTheDocument();
     });
+
+    it("should keep extra comparisons in the tooltip on the smallest cards", async () => {
+      setupCompactTrend(3, 82, 2);
+      expect(screen.getByText("Revenue")).toBeVisible();
+      expect(screen.queryByText("+2")).not.toBeInTheDocument();
+      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+      const tooltip = await screen.findByRole("tooltip");
+      expect(within(tooltip).getByText("vs. Goal")).toBeInTheDocument();
+    });
+
+    it.each([2, 3])(
+      "should show %s compact comparisons and hide the info icon",
+      async (count) => {
+        setupCompactTrend(count);
+        expect(screen.getByText("Revenue")).toBeVisible();
+        expect(screen.getByText("+20%")).toBeVisible();
+        expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
+        expect(screen.getByText(`+${count - 1}`)).toBeVisible();
+        await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+        const tooltip = await screen.findByRole("tooltip");
+        await waitFor(() =>
+          expect(within(tooltip).getByText("vs. previous month")).toBeVisible(),
+        );
+        expect(within(tooltip).getByText("vs. Oct")).toBeVisible();
+      },
+    );
 
     it("should not show a hover panel for a single fully-displayed comparison", async () => {
       const rows = [

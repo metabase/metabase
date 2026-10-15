@@ -1,7 +1,7 @@
-import { Children, type ReactNode, useState } from "react";
+import { Children, type ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { Stack, Tooltip } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { getRootFontScale } from "metabase/visualizations/lib/scalar_utils";
 import type {
   VisualizationPassThroughProps,
@@ -13,12 +13,11 @@ import { ScalarTitle } from "./ScalarTitle";
 import { ScalarWrapper } from "./ScalarValue";
 import { type ScalarSizeTier, getScalarSizeTier } from "./sizing";
 
-const TITLE_TOOLTIP_OFFSET = 1;
-
 type ScalarCardProps = VisualizationProps & VisualizationPassThroughProps;
 
 interface UseScalarCardShellOptions {
   hideTitle?: boolean;
+  shouldHideDescription?: (tier: ScalarSizeTier) => boolean;
 }
 
 export function useScalarCardShell(
@@ -27,6 +26,7 @@ export function useScalarCardShell(
     width,
     showTitle,
     height,
+    gridSize,
     getHref,
     onChangeCardAndRun,
     isVisualizerCard,
@@ -37,24 +37,18 @@ export function useScalarCardShell(
     isDashboard,
     isEditing,
   }: ScalarCardProps,
-  { hideTitle = false }: UseScalarCardShellOptions = {},
+  { hideTitle = false, shouldHideDescription }: UseScalarCardShellOptions = {},
 ) {
-  const [isInnerTooltipHovered, setIsInnerTooltipHovered] = useState(false);
-  const innerTooltipHoverHandlers = {
-    onMouseEnter: () => setIsInnerTooltipHovered(true),
-    onMouseLeave: () => setIsInnerTooltipHovered(false),
-  };
-
-  const tier = getScalarSizeTier(width, height);
+  const tier = getScalarSizeTier(width, height, gridSize?.width);
   const rootFontScale = getRootFontScale();
   const availableWidth = Math.max(width - 2 * tier.xPadding * rootFontScale, 0);
 
   const tc = useTranslateContent();
   const title = showTitle && !hideTitle ? tc(settings["card.title"]) : null;
-  const showsInlineTitle = Boolean(title) && tier.showsTitle;
-  const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
   const description =
-    isDashboard && isEditing ? null : settings["card.description"];
+    shouldHideDescription?.(tier) || (isDashboard && isEditing)
+      ? null
+      : settings["card.description"];
 
   const canSelectTitle =
     onChangeCardAndRun != null &&
@@ -64,10 +58,9 @@ export function useScalarCardShell(
       nextCard: (visualizerRawSeries ?? rawSeries)[0].card,
     });
 
-  const showsTitleTooltip = showsTitleOnHover && !isInnerTooltipHovered;
-
-  const titleElement = showsInlineTitle ? (
+  const titleElement = title ? (
     <ScalarTitle
+      size={tier.size < 200 ? "sm" : "md"}
       description={description}
       icon={headerIcon}
       getHref={canSelectTitle ? getHref : undefined}
@@ -81,54 +74,33 @@ export function useScalarCardShell(
     tier,
     rootFontScale,
     availableWidth,
-    title,
     titleElement,
-    showsTitleTooltip,
-    innerTooltipHoverHandlers,
   };
 }
 
 interface ScalarCardShellProps {
   tier: ScalarSizeTier;
-  title: ReactNode;
-  showsTitleTooltip: boolean;
   actionButtons: ReactNode;
-  innerTooltipHoverHandlers: {
-    onMouseEnter: () => void;
-    onMouseLeave: () => void;
-  };
   children: ReactNode;
 }
 
 export function ScalarCardShell({
   tier,
-  title,
-  showsTitleTooltip,
   actionButtons,
-  innerTooltipHoverHandlers,
   children,
 }: ScalarCardShellProps) {
   return (
-    <Tooltip
-      label={title}
-      disabled={!showsTitleTooltip}
-      position="top"
-      offset={TITLE_TOOLTIP_OFFSET}
-    >
-      <ScalarWrapper xPadding={tier.xPadding}>
-        <ScalarActionButtons tier={tier} {...innerTooltipHoverHandlers}>
-          {actionButtons}
-        </ScalarActionButtons>
-        <Stack
-          pos="relative"
-          align="center"
-          gap={tier.valueTitleGap}
-          maw="100%"
-          data-testid="scalar-content"
-        >
-          {children}
-        </Stack>
-      </ScalarWrapper>
-    </Tooltip>
+    <ScalarWrapper xPadding={tier.xPadding}>
+      <ScalarActionButtons tier={tier}>{actionButtons}</ScalarActionButtons>
+      <Stack
+        pos="relative"
+        align="center"
+        gap={tier.valueTitleGap}
+        maw="100%"
+        data-testid="scalar-content"
+      >
+        {children}
+      </Stack>
+    </ScalarWrapper>
   );
 }
