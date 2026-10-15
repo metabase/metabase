@@ -60,7 +60,7 @@ export const EditUserModal = ({
   };
 
   return (
-    <Modal opened title={t`Edit user`} padding="xxl" onClose={onClose}>
+    <Modal density="relaxed" opened title={t`Edit user`} onClose={onClose}>
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <UserForm
           onCancel={onClose}

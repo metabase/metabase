@@ -1,5 +1,5 @@
 .container {
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
 }
 
 .blocksContainer {
@@ -13,8 +13,8 @@
 }
 
 .block {
-  background: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-sm);
 }
 
@@ -65,13 +65,13 @@
   max-width: 100%;
   padding: 0.5rem 0.75rem;
   border-radius: var(--border-radius-xl);
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
   color: var(--mb-color-text-primary);
   font-weight: 600;
   line-height: 1rem;
 
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 
   &:disabled {
@@ -81,8 +81,8 @@
 }
 
 .togglePillSelected {
-  background: var(--mb-color-background-brand);
-  color: var(--mb-color-brand);
+  background: var(--mb-color-background_surface-brand-subtle);
+  color: var(--mb-color-core-brand);
 }
 
 .timelineTogglePill {

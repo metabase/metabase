@@ -11,9 +11,7 @@
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,9 +37,11 @@
   (task-history/with-task-history {:task "content-diagnostics-trimmer"}
     (trim-old-findings!)))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc                         "Content Diagnostics - delete invalidated findings past retention."}
-  ContentDiagnosticsFindingTrimmer [_ctx]
+(task/defjob ContentDiagnosticsFindingTrimmer
+  "Content Diagnostics - delete invalidated findings past retention."
+  {:saved-class "metabase_enterprise.content_diagnostics.task.finding_trimmer.ContentDiagnosticsFindingTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-with-history!))
 
 (defmethod task/init! ::ContentDiagnosticsFindingTrimmer [_]

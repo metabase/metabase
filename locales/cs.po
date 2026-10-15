@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 3;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Czech\n"
 "Language: cs_CZ\n"
-"PO-Revision-Date: 2026-10-06 05:42\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -275,7 +275,6 @@ msgid "User attribute"
 msgstr "Atribut uživatele"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -321,12 +320,11 @@ msgstr "Atribut uživatele"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -406,7 +404,6 @@ msgid "Cancel"
 msgstr "Zrušit"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1160,8 +1157,6 @@ msgid "Search for a group"
 msgstr "Hledat skupinu"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1213,7 +1208,6 @@ msgstr "Nepodařilo se exportovat analytiku"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1345,16 +1339,10 @@ msgid "Unit"
 msgstr "Jednotka"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "Mapování přidáno"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "Mapování aktualizováno"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "Uložte nastavení výše, abyste nastavili mapování skupin."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1383,36 +1371,43 @@ msgid "Off"
 msgstr "Vypnuto"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "Nové mapování"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "Používá se {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "Uživatelé budou přiřazeni do skupin {0} na základě názvů skupin v jejich JWT"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Při každém přihlášení jsou uživatelé přidáni do skupin {0} uvedených v jejich JWT a odebráni ze všech ostatních skupin, včetně Administrators."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "Skupiny se nepodařilo načíst"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "Název skupiny JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "Zadejte skupinu JWT..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "Chcete-li používat ruční mapování skupin, přidejte alespoň jedno mapování"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "Přidat mapování"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1424,90 +1419,42 @@ msgstr "Přepnout na automatické mapování skupin?"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "Vaše stávající mapování skupin budou smazána a uživatelé budou přiřazeni do skupin {0}, které odpovídají názvům skupin v jejich JWT."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Vaše stávající mapování skupin budou smazána. Od té chvíle jsou při každém přihlášení uživatelé přidáni do skupin {0} uvedených v jejich JWT a odebráni ze všech ostatních skupin, včetně Administrators."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "Smazat mapování a přepnout"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "Název skupiny JWT"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "Zadejte skupinu JWT..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "Mapování pro tuto skupinu už existuje"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} skupin"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "Vyberte skupinu {0}..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "Upravit mapování"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "Smazat mapování"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "Žádné skupiny"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "Změny uloženy"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Chyba při ukládání mapování skupin"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "Mapování smazáno, ale ne všechny jeho skupiny se podařilo aktualizovat"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "Mapování smazáno a mapování skupin vypnuto"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "Mapování smazáno"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "Chyba při ukládání nastavení JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "Změny uloženy. Mapování skupin je nastaveno na Automatic."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Chyba při načítání konfigurace JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "Před uložením nastavte podepisovací klíč"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1544,11 +1491,13 @@ msgid "Email attribute key"
 msgstr "Klíč atributu e-mailu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Klíč atributu křestního jména"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Klíč atributu příjmení"
@@ -1562,9 +1511,8 @@ msgid "Tenant assignment attribute key"
 msgstr "Klíč atributu přiřazení tenanta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Mapování skupin"
 
@@ -1608,6 +1556,19 @@ msgstr "Uložit a povolit"
 msgid "Save changes"
 msgstr "Uložit změny"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "Automaticky přiřazovat uživatele do skupin {0} na základě skupin z vašeho poskytovatele OIDC"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "Název skupiny OIDC"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "Zadejte skupinu OIDC..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "Výzva k přihlášení je povinná"
@@ -1629,6 +1590,10 @@ msgid "Client ID is required"
 msgstr "Client ID je povinné"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "Client secret je povinný"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "Zjištění OIDC proběhlo úspěšně, ale přihlašovací údaje se nepodařilo ověřit. Poskytovatel identity nepodporuje typ udělení použitý pro testování."
 
@@ -1641,25 +1606,8 @@ msgid "OIDC configuration check failed"
 msgstr "Kontrola konfigurace OIDC se nezdařila"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "Poskytovatel OIDC je vypnutý"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "Poskytovatel OIDC je zapnutý"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "Aktualizace poskytovatele OIDC se nezdařila"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "Poskytovatel OIDC byl smazán"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "Smazání poskytovatele OIDC se nezdařilo"
+msgid "Error loading OIDC configuration"
+msgstr "Chyba při načítání konfigurace OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1681,10 +1629,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "Identifikátor poskytovatele. Vaše OIDC URI přesměrování bude \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "např. okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "Výzva k přihlášení"
 
@@ -1694,8 +1638,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "Text tlačítka na přihlašovací obrazovce {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "např. Přihlásit se přes Okta"
+msgid "Sign in with Okta"
+msgstr "Přihlásit se přes Okta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1703,8 +1647,8 @@ msgstr "Issuer URI"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "OIDC issuer URI. Discovery endpoint \"${ 0 }/.well-known/openid-configuration\" by měl být dostupný."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "Discovery endpoint \"{0}/.well-known/openid-configuration\" by měl být dostupný"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1715,27 +1659,41 @@ msgstr "Client ID"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "Client ID nakonfigurované pro {0} ve vašem poskytovateli OIDC."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "Toto je pro {0} nastavené u vašeho poskytovatele OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
-msgstr "Client Secret"
+msgid "Client secret"
+msgstr "Tajný klíč klienta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "Client secret nakonfigurovaný ve vašem poskytovateli OIDC."
+msgid "This is configured in your OIDC provider"
+msgstr "Toto je nastavené u vašeho poskytovatele OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "Ponechte prázdné pro zachování aktuální hodnoty"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Scope"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "Seznam OIDC scopes k vyžádání, oddělený čárkami"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "Atributy"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "Abyste to povolili, budete muset vytvořit mapování, které {0} řekne, do které skupiny (skupin) mají být vaši uživatelé přidáni na základě SSO skupiny, ve které jsou."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "Namapujte OIDC claims na pole jména a příjmení v {0}. E-mail se vždy bere ze standardního claimu email."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1745,69 +1703,6 @@ msgstr "Název atributu skupiny"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "OIDC claim, který obsahuje informace o členství ve skupinách."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "Volitelná nastavení"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Scope"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "Seznam OIDC scope k vyžádání, oddělený čárkami."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "Mapování atributů"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "Mapujte OIDC claims na uživatelské atributy. Použijte standardní názvy OIDC claimů nebo vlastní claimy vašeho poskytovatele."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "Atribut e-mailu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "Atribut křestního jména"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "Atribut příjmení"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "Zakázat"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "Povolit"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "Smazat konfiguraci"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "Smazat tohoto poskytovatele OIDC?"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "Uživatelé se už nebudou moct přihlásit přes tohoto poskytovatele. Nelze to vrátit zpět."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1827,24 +1722,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "Pomocí níže uvedených nastavení si nakonfigurujte své SSO přes SAML. Pokud máte nějaké otázky, podívejte se do naší {0}."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "dokumentace"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "Nakonfigurujte svého poskytovatele identity (IdP)"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "Váš poskytovatel identity bude potřebovat následující informace o {0}."
+msgid "Identity provider (IdP) configuration"
+msgstr "Konfigurace poskytovatele identity (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1879,18 +1758,16 @@ msgid "Tenant assignment attribute"
 msgstr "Atribut přiřazení tenanta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "Sdělte {0} informace o vašem poskytovateli identity"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "{0} bude potřebovat následující informace o vašem poskytovateli."
+msgid "Identity provider info"
+msgstr "Informace o poskytovateli identity"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "URL poskytovatele identity SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "Toto je URL, na které se vaši uživatelé přihlašují u vašeho poskytovatele identity."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1905,8 +1782,16 @@ msgid "SAML identity provider issuer"
 msgstr "Issuer poskytovatele identity SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "Podepisovat požadavky SSO (volitelné)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "Toto je jedinečný identifikátor IdP. Často se označuje jako Entity ID nebo jednoduše 'Issuer'."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "Podepisovat požadavky SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "Použít úložiště klíčů k podepisování ověřovacích požadavků odesílaných vašemu poskytovateli identity"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1925,9 +1810,36 @@ msgstr "Pššt..."
 msgid "SAML keystore alias"
 msgstr "Alias úložiště klíčů SAML"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "Automaticky přiřazovat uživatele do skupin {0} na základě skupin z vašeho poskytovatele identity SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "Název skupiny SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "Zadejte skupinu SAML..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "Atribut SAML, který uvádí skupiny uživatele. Mapování skupin nepřiřazuje žádné skupiny, dokud není nastavené."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "Přihlásit se přes SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "Povolit přihlášení přes {0} vytvářet účty pro nové uživatele a reaktivovat deaktivované účty. Když je vypnuto, přihlásit se mohou jen uživatelé s aktivními účty {1}."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "Povolit přihlášení přes {0} pro vytváření účtů pro nové uživatele. Když je vypnuto, přihlásit se mohou jen uživatelé s aktivními účty {1}."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1936,14 +1848,13 @@ msgstr "Přihlásit se přes SSO"
 msgid "User provisioning"
 msgstr "Provisioning uživatelů"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "Povolit přihlášení přes {0} vytvářet účty pro nové uživatele a reaktivovat deaktivované účty. Když je vypnuto, přihlásit se mohou jen uživatelé s aktivními účty {1}."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Umožňuje uživatelům přihlásit se přes JWT poskytovatele identity."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "Aktualizace poskytovatele OIDC se nezdařila"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2594,6 +2505,12 @@ msgstr "URL vývojového serveru"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "URL lokálního vývojového serveru, který poskytuje balíček vizualizace, manifest a assety."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "Povolit"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2650,6 +2567,17 @@ msgstr "Akce pluginu"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "Nahradit balíček"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "Zakázat"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2794,7 +2722,6 @@ msgstr "Aktualizovat"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "Přidat"
@@ -2905,17 +2832,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "Mohly být vytvořené pro jinou verzi a možná je bude potřeba aktualizovat."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2949,6 +2872,19 @@ msgstr "Tabulky"
 msgid "No published tables in your library yet."
 msgstr "Ve vaší Knihovně zatím nejsou žádné publikované tabulky."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "Sémantická vrstva"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "Publikovaná tabulka"
@@ -2973,7 +2909,7 @@ msgid "Snippet"
 msgstr "Úryvek kódu"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3141,18 +3077,18 @@ msgstr[2] "Archivace těchto sbírek také zruší publikování tabulek v nich 
 msgstr[3] "Archivace těchto sbírek také zruší publikování tabulek v nich (a všech tabulek, které na nich závisí) a zaarchivuje všechny další podřízené položky."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "Vytvořte si Knihovnu"
+msgid "Create your semantic layer"
+msgstr "Vytvořte svou sémantickou vrstvu"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "Knihovna vytvořena"
+msgid "Semantic layer created"
+msgstr "Sémantická vrstva vytvořena"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "Knihovna vám pomůže vytvořit pro analytiku jednotný zdroj pravdy tím, že poskytuje centrálně spravovaný soubor kurátorovaného obsahu. Odděluje autoritativní, znovupoužitelné komponenty od ad-hoc analýz."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "Sémantická vrstva vám pomůže vytvořit pro analytiku jednotný zdroj pravdy tím, že poskytuje centrálně spravovanou sadu kurátorovaného obsahu. Odděluje autoritativní, znovupoužitelné komponenty od ad-hoc analýz."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3173,8 +3109,8 @@ msgstr "Správa verzí"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "Synchronizujte svou Knihovnu s Git"
+msgid "Sync your semantic layer to git"
+msgstr "Synchronizujte svou sémantickou vrstvu do git"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3188,8 +3124,8 @@ msgstr "Ve výchozím nastavení používejte spolehlivé zdroje, které předep
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "Vytvořit moji Knihovnu"
+msgid "Create my semantic layer"
+msgstr "Vytvořit moji sémantickou vrstvu"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3207,8 +3143,8 @@ msgid "Go to {0}"
 msgstr "Přejít na {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "Publikování tabulky ji uloží do Knihovny."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "Publikování tabulky ji uloží do sémantické vrstvy."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3276,12 +3212,12 @@ msgid "Unpublish these tables?"
 msgstr "Zrušit publikování těchto tabulek?"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "Tím se tato tabulka odebere z Knihovny."
+msgid "This will remove this table from the semantic layer."
+msgstr "Tím se tato tabulka odebere ze sémantické vrstvy."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "Tím se tyto tabulky odeberou z Knihovny."
+msgid "This will remove these tables from the semantic layer."
+msgstr "Tím se tyto tabulky odeberou ze sémantické vrstvy."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3712,16 +3648,16 @@ msgid "No published tables yet"
 msgstr "Zatím žádné publikované tabulky"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "Publikujte tabulky v Knihovně, aby se zde zobrazily."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "Publikujte tabulky v sémantické vrstvě, aby se zde zobrazily."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "Zatím žádné metriky"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "Dejte metriky do Knihovny, aby se zde zobrazily."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "Přidejte metriky do sémantické vrstvy, aby se zde zobrazily."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3735,6 +3671,7 @@ msgstr "Nepodařilo se odebrat uživatele"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "Datové aplikace"
 
@@ -3859,19 +3796,8 @@ msgid "Outdated"
 msgstr "Neaktuální"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "Synchronizace se nezdařila"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "Synchronizováno {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "Zatím nesynchronizováno"
+msgid "Draft"
+msgstr "Koncept"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4182,6 +4108,7 @@ msgstr "Proces běží na pozadí. V závislosti na velikosti databáze to můž
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4831,6 +4758,7 @@ msgstr "Pole"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6308,16 +6236,16 @@ msgid "Curated semantic layer"
 msgstr "Kurátorovaná sémantická vrstva"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "Metriky a publikované tabulky ve vaší Knihovně."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "Metriky a publikované tabulky ve vaší sémantické vrstvě."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "Plná sémantická vrstva"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "Entity Knihovny plus každá aktivní fyzická tabulka."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "Entity sémantické vrstvy plus každá aktivní fyzická tabulka."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7326,6 +7254,7 @@ msgid "Could not connect to repository"
 msgstr "K repozitáři se nepodařilo připojit"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "Otestovat připojení"
 
@@ -7536,6 +7465,12 @@ msgstr "Máte nesynchronizované změny. Co chcete udělat?"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "Nepodařilo se zrušit synchronizaci"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "Synchronizace se nezdařila"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8233,13 +8168,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Tento atribut se dědí z tenanta, ale můžete jeho hodnotu přepsat"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "Atributy"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "Duplicitní klíče přihlašovacích atributů"
 
@@ -8870,6 +8798,7 @@ msgstr "Přidat možnost:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "Nic nenalezeno"
 
@@ -9422,11 +9351,7 @@ msgstr "a"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "tabulka"
-msgstr[1] "tabulky"
-msgstr[2] "tabulek"
-msgstr[3] "tabulky"
+msgstr "tabulka"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9566,6 +9491,7 @@ msgstr "Zavřít kartu"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10439,7 +10365,6 @@ msgstr "Upozorníme vás, až dosáhnete {0}% svého limitu."
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "Souhlasit a pokračovat"
 
@@ -13293,6 +13218,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "Najdete to v nastavení {0} vaší Slack aplikace."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Podepisovací tajný klíč"
 
@@ -14322,13 +14251,16 @@ msgstr "Vytvořit skupinu"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Skupiny můžete používat k řízení přístupu uživatelů k vašim datům. Zařaďte uživatele do skupin a pak přejděte do sekce Oprávnění, kde budete řídit přístup každé skupiny. Skupiny Administrátoři a Všichni uživatelé jsou speciální výchozí skupiny, které nelze odebrat."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "Žádné skupiny"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15427,6 +15359,142 @@ msgstr "Povolte uživatelům, aby se sami zaregistrovali, pokud e-mailová adres
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "Povolte uživatelům, aby se sami zaregistrovali, pokud e-mailová adresa jejich Google účtu je z:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "Skupina {0} není ovlivněna."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "Tyto skupiny nejsou ovlivněny: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "Odebrat mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "Odebrat mapování a členy"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "Odebrat mapování a smazat skupiny"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "Odebrat mapování a smazat skupinu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "Toto mapování není propojeno s žádnou skupinou."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "Členství těchto skupin už se při přihlášení uživatelů nebude synchronizovat."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "Členství této skupiny už se při přihlášení uživatelů nebude synchronizovat."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "Odebrat toto mapování skupiny?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "Co se má stát se samotnými skupinami v {0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "Co se má stát se samotnou skupinou v {0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "Nic, jen odebrat mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "Také odebrat všechny členy z těchto skupin"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "Také odebrat všechny členy z této skupiny"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "Členové si ponechají své účty {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "Také smazat skupiny"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "Také smazat skupinu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "Přidat mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "Ruční mapování skupin"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "Zatím žádná mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} skupin"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "Vyberte skupinu {0}..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "Upravit mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "Smazat mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "Mapování smazáno, ale ne všechny jeho skupiny se podařilo aktualizovat"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "Mapování smazáno, ale jeho smazanou skupinu se nepodařilo odebrat z ostatních mapování"
+msgstr[1] "Mapování smazáno, ale jeho smazané skupiny se nepodařilo odebrat z ostatních mapování"
+msgstr[2] "Mapování smazáno, ale jeho smazané skupiny se nepodařilo odebrat z ostatních mapování"
+msgstr[3] "Mapování smazáno, ale jeho smazané skupiny se nepodařilo odebrat z ostatních mapování"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "Mapování smazáno"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "Mapování pro tuto skupinu už existuje"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "Mapování přidáno"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "Mapování aktualizováno"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15682,7 +15750,6 @@ msgid "Edit configuration"
 msgstr "Upravit konfiguraci"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "Nejdřív trochu právničiny"
 
@@ -15899,28 +15966,18 @@ msgstr "Tato instance je v režimu vývoje a lze ji používat pouze pro účely
 msgid "Get your token"
 msgstr "Získat token"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "Automaticky přiřazovat lidi do skupin {0} na základě jejich členství ve skupinách LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "Ruční mapování skupin"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "Název skupiny LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Zatím žádná mapování"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktivovat"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "Zkontrolujte závorky"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "Port musí být celé číslo mezi 1 a 65535"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15979,6 +16036,15 @@ msgstr "Filtr uživatelů"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "Namapujte atributy LDAP na pole e-mail, jméno a příjmení v {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Automaticky přiřazovat lidi do skupin {0} na základě jejich členství ve skupinách LDAP"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "Název skupiny LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16628,102 +16694,6 @@ msgstr "Měnová jednotka"
 msgid "Currency label style"
 msgstr "Styl popisku měny"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "Název nového mapování skupin"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "Odebrat mapování"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "Odebrat mapování a členy"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "Odebrat mapování a smazat skupiny"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "Odebrat mapování a smazat skupinu"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "Skupina Administrators není ovlivněna."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "Toto mapování není propojeno s žádnou skupinou."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "Členství těchto skupin už se při přihlášení uživatelů nebude synchronizovat."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "Členství této skupiny už se při přihlášení uživatelů nebude synchronizovat."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "Odebrat toto mapování skupiny?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "Co se má stát se samotnými skupinami v {0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "Co se má stát se samotnou skupinou v {0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "Nic, jen odebrat mapování"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "Také odebrat všechny členy z těchto skupin"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "Také odebrat všechny členy z této skupiny"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "Členové si ponechají své účty {0}."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "Také smazat skupiny"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "Také smazat skupinu"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "Mapování umožňují Metabase automaticky přidávat uživatele do skupin a odebírat je ze skupin podle informací o členství poskytnutých adresářovým serverem. Pokud skupina není namapovaná, její členství se nebude synchronizovat."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "Zatím žádná mapování, synchronizace skupin není zapnutá"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "Synchronizovat členství ve skupinách"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "O mapování"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "Smazat toto mapování?"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "Domovská stránka"
@@ -17280,6 +17250,7 @@ msgstr "Začalo z"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "Tato položka byla trvale smazána."
@@ -17376,6 +17347,7 @@ msgstr "složka"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "průzkum"
 
@@ -17765,6 +17737,7 @@ msgid "No items of the selected types."
 msgstr "Žádné položky vybraných typů."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "Vymazat hledání"
 
@@ -18159,6 +18132,10 @@ msgstr "Moje nová fantastická sbírka"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "Sbírka, ve které je to uložené"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "Přetáhněte sem pro připnutí"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19492,7 +19469,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "Minuta"
 msgstr[1] "{0} Minuty"
 msgstr[2] "{0} Minut"
@@ -20156,6 +20133,10 @@ msgstr "Všichni uživatelé tenantů"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "Datoví analytici"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "Přidávání členů do této skupiny vyžaduje plán, který zahrnuje skupinu Data Analysts. Členy lze pouze odebrat."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21969,11 +21950,6 @@ msgid "Data transformation"
 msgstr "Transformace dat"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "Sémantická vrstva"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22245,8 +22221,8 @@ msgstr "Tato tabulka nemá žádná pole"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "Nejprve vytvořme vaši Knihovnu"
+msgid "First, let's create your semantic layer"
+msgstr "Nejprve si vytvořme vaši sémantickou vrstvu"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22626,8 +22602,8 @@ msgid "Bring more order to your analytics"
 msgstr "Vneste do své analytiky více řádu"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "Vytvořte sdílenou knihovnu datasetů a metrik, na kterou se váš tým může spolehnout, aby věci zůstaly konzistentní, jak vaše data i navazující obsah porostou."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "Vytvořte sdílenou sémantickou vrstvu datasetů a metrik, na kterou se váš tým může spolehnout, aby věci zůstaly konzistentní s tím, jak rostou vaše data a navazující obsah."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22831,6 +22807,18 @@ msgstr "Svá vlastní data můžete přidat kdykoli."
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "Data přidám později"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "Připojení úspěšné"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "Připojení selhalo"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "Nepodařilo se připojit k databázi"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23341,6 +23329,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "Tyto možnosti vyžadují úpravu serverového kódu. Tady si je můžete vyzkoušet a prohlédnout. Pro více informací se podívejte do {0}."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "dokumentace"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "Použít font instance"
 
@@ -23627,7 +23620,6 @@ msgstr "Když vložíš grafy nebo dashboardy z Metabase do své\n"
 "Metabase\" viditelný."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Přesto byste si měli přečíst text licence uvedený výše, protože právě s touto licencí budete povolením této funkce souhlasit."
 
@@ -25405,10 +25397,6 @@ msgid "Remove provider"
 msgstr "Odebrat poskytovatele"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "Generování SQL také běží na tomto připojení a bez něj přestane fungovat."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "Sémantické vyhledávání také běží na tomto připojení a bez něj přestane fungovat."
 
@@ -25540,8 +25528,8 @@ msgid "AI explorations"
 msgstr "AI průzkumy"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "Ptejte se na svá data a pro zmínění položky napište @"
+msgid "Suggestions"
+msgstr "Návrhy"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25583,16 +25571,16 @@ msgid "Source is wrong"
 msgstr "Zdroj je špatný"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "Sbalit zdroje dat"
+msgid "Give feedback"
+msgstr "Poskytnout zpětnou vazbu"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "Rozbalit zdroje dat"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "Použité zdroje dat"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "Použitý zdroj dat"
+msgstr[1] "Použité zdroje dat"
+msgstr[2] "Použité zdroje dat"
+msgstr[3] "Použité zdroje dat"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25762,11 +25750,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "Prozkoumejte své metriky a modely s AI."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "Jak mohu pomoct? Pro zmínění položek napište @."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} není dokonalý. Zkontrolujte výsledky."
@@ -25776,41 +25759,10 @@ msgid "Fork conversation"
 msgstr "Rozvětvit konverzaci"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "Odpověď od {0} byla přerušena"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "Odpověď od {0} byla zkrácena, protože dosáhla maximální délky"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "Vaše poslední odpověď byla zkrácena. Pokračujte přesně tam, kde jste skončili. Neopakujte nic, co jste už napsali."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "Odpověď od {0} byla zastavena filtrem obsahu. Zkuste otázku přeformulovat."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} se pozastavil po dosažení limitu kroků pro tuto odpověď"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "Pokračuj v práci na mém posledním požadavku."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "Odpověď od {0} se zastavila před dokončením"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "Tato konverzace dosáhla maximální délky a nelze pokračovat. Začněte prosím nový chat."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25916,6 +25868,12 @@ msgstr "Tento chat se blíží k {0}."
 msgid "New chat"
 msgstr "Nový chat"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "Načítání"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "Chyba UI"
@@ -25953,6 +25911,11 @@ msgstr "Popište, jaké SQL chcete, pro zmínění položky napište @."
 msgid "Send to {0}"
 msgstr "Odeslat do {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "Zastavit generování"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "Přidat poskytovatele AI"
@@ -25977,6 +25940,10 @@ msgstr "Zahájit placené předplatné"
 msgid "Ask {0}"
 msgstr "Zeptat se {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "Ptejte se na svá data. Pro zmínění položek napište @."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "Váš Slack účet byl úspěšně připojen."
@@ -26000,10 +25967,6 @@ msgstr "Vytvořeno pomocí {0}"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} je vypnutý"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "Zastavit generování"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -26191,6 +26154,38 @@ msgstr "Neplatný formát požadavku"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "Omlouváme se, tuto konverzaci se nepodařilo načíst."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} se pozastavil po dosažení limitu kroků pro tuto odpověď"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "Odpověď od {0} byla zkrácena, protože dosáhla maximální délky"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "Tato konverzace dosáhla maximální délky a nelze pokračovat. Začněte prosím nový chat."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "Odpověď od {0} byla zastavena filtrem obsahu. Zkuste otázku přeformulovat."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "Odpověď od {0} se zastavila před dokončením"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "Pokračuj v práci na mém posledním požadavku."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "Vaše poslední odpověď byla zkrácena. Pokračujte přesně tam, kde jste skončili. Neopakujte nic, co jste už napsali."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -29170,19 +29165,6 @@ msgstr "Neukládat výsledky do cache"
 msgid "No caching"
 msgstr "Bez cache"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "Kliknutím na \"Souhlasit a pokračovat\" souhlasíte s {0}"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "naší licencí pro vkládání."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "Když vložíte grafy nebo dashboardy z Metabase do své vlastní aplikace, tato aplikace nepodléhá licenci Affero General Public License, která se vztahuje na zbytek Metabase, za předpokladu, že na těchto vloženích ponecháte viditelné logo Metabase a text \"Powered by Metabase\"."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "odesláno e-mailem"
@@ -30923,6 +30905,31 @@ msgstr "{0}+kliknutím otevřete na nové kartě"
 msgid "Pick columns"
 msgstr "Vyberte sloupce"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "Hledat sloupce"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "Hledat sloupce…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "Nalezen {0} sloupec"
+msgstr[1] "Nalezeny {0} sloupce"
+msgstr[2] "Nalezeno {0} sloupců"
+msgstr[3] "Nalezeno {0} sloupců"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "Vybrat všechny tyto"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "Nenalezeny žádné sloupce"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31898,6 +31905,11 @@ msgstr "Chyba synchronizace"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "Synchronizace…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "Synchronizace selhala: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33551,11 +33563,6 @@ msgstr "Proměnné v transformacích musí být buď volitelné, nebo mít vých
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "poté"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "Načítání"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35833,6 +35840,10 @@ msgid "You don''t have permissions to do that."
 msgstr "Nemáte oprávnění to udělat."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "Nemáte oprávnění tuto akci spustit."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "Chyba při spuštění akce."
 
@@ -35857,10 +35868,6 @@ msgid "Implicit parameters must be provided."
 msgstr "Implicitní parametry musí být poskytnuty."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "HTTP akce nelze spouštět z veřejných endpointů."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "Neznámý typ akce {0}."
 
@@ -35868,26 +35875,13 @@ msgstr "Neznámý typ akce {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "Hodnoty lze načíst pouze pro akce, které vyžadují primární klíč."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "Nepodařilo se dosadit parametry: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "Nelze zavolat službu: chybí povinné parametry: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "Vráceno příliš mnoho výsledků: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "HTTP akce jsou vypnuté."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "Akce se musí provádět s modely, ne s kartami."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "Implicitní akce nejsou podporované pro modely s klauzulemi."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35900,10 +35894,6 @@ msgstr "hodnota musí mapovat ID parametrů na skalární hodnoty."
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "Nepodporovaný typ akce"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "musí být platný json-query, například ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35934,16 +35924,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "Zda má databáze povolenou úpravu dat v tabulkách."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "Akce HTTP nejsou podporované."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "Pro dotazové akce musíte zadat database_id"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "Implicitní akce nejsou podporované pro modely s klauzulemi."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -36026,12 +36008,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "Klauzule `field` potřebuje ve třetí pozici přenosný FK, ne číselné id. Použijte vektor `[<database>, <schema>, <table>, <column>]` (vyřešený vůči poskytovateli metadat) nebo řetězec column-name (pro odkazy napříč stage)."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "`{0}` nepřežije cestu tam a zpět přes odkaz na otázku, který frontend otevře: otázka se buď nenačte, nebo potichu ztratí klauzuli a odpoví na něco jiného. Místo toho dejte jednotku na sloupec – jako volbu `temporal-unit` na referenci `field` / `expression`, porovnanou s prvním dnem období jako prostý řetězec data jako \"2025-01-01\" – nebo rozsah rozepsat jako `>=` jeho první den a `<` první den po něm, oboje jako prosté řetězce data (ne `between`, které zahodí všechno po půlnoci posledního dne). Rozsah použijte pro `year` na referenci `expression`, kterou query engine čte jako číslo, a uvnitř `aggregation:` (`count-where`, `sum-where`, `share`) a join `conditions:`, kde by přesunutí jednotky na sloupec změnilo odpověď."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "Editor výrazů ve tvůrci dotazů odmítá klauzuli {0} ve fázi {1}: {2}. Dotaz by se sestavil, ale nešlo by ho vizualizovat ani uložit – přepište problematickou klauzuli."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` je vlastní sloupec typu {1}, takže ho nelze seskupovat do intervalů podle {2}. Porovnejte ho s prostou hodnotou, nebo místo toho seskupujte do intervalů sloupec typu date / datetime."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` je sloupec typu {1}, takže ho nelze seskupovat do intervalů podle {2}. Porovnejte ho s prostou hodnotou, nebo místo toho seskupujte do intervalů sloupec typu date / datetime."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "Neplatný temporální literál {0} v :absolute-datetime — použijte datum, datum a čas, rok nebo rok-měsíc ve formátu ISO-8601."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "Neplatný časový literál {0} — použijte datum, datetime, rok nebo rok-měsíc ve formátu ISO-8601."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -36088,6 +36082,10 @@ msgstr "Zda už byl vygenerován graf jiný než tabulka. Vyžadováno pro analy
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "Povolte logování cesty vložení, parametrů dotazu, user agentu, IP adresy a metadat konverzací Metabot pro uživatele vašich interních dat a vložení. Tyto informace se zobrazí ve vaší analytice používání."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "Povolte nebo zakažte všechny experimenty s kódem. Když je to zakázané, běží jen produkční kódová větev."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36425,38 +36423,6 @@ msgstr "Obnovujte výsledky z cache tuto část jejich doby trvání cache před
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "Absolutní maximální doba uchování jakýchkoli výsledků dotazů v cache, v sekundách."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "Musí to být channel s namespace. Např.: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "Neplatné detaily kanálu"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "Neplatný token Slacku."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "neplatný token"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "Kanál Slacku nebyl nalezen."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "kanál nenalezen"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "Abyste mohli používat integraci se Slackem, musíte nastavit site-url."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "Hlášení chyb není povoleno."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "SMTP host není nastaven."
@@ -36656,6 +36622,38 @@ msgstr "Chyba při registraci fontů: Metabase nebude schopný odesílat Pulse."
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "Jde o známý problém u některých JVM. Více detailů najdete na {0}."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "Musí to být channel s namespace. Např.: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "Neplatné detaily kanálu"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "Neplatný token Slacku."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "neplatný token"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "Kanál Slacku nebyl nalezen."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "kanál nenalezen"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "Abyste mohli používat integraci se Slackem, musíte nastavit site-url."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "Hlášení chyb není povoleno."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37363,6 +37361,14 @@ msgstr "Chybí oprávnění ke čtení tabulky ve schématu {0}"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Chybí oprávnění k odstranění tabulky ve schématu {0}"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "Neplatné {0}."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "nesmí obsahovat mezery, uvozovky ani středníky"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "Connection String"
@@ -37715,6 +37721,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "Heslo pro tento soukromý klíč je nesprávné."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "Nebyl poskytnut žádný token OIDC. Vložte JWT nebo nastavte cestu k souboru s tokenem."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "Token OIDC není platný JWT. Zkontrolujte token, který jste vložili, nebo soubor na zadané cestě."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "Tokenu OIDC chybí požadovaný claim `iss` (issuer)."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "Tokenu OIDC chybí požadovaný claim `sub` (subject)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "Nenalezena žádná přihlašovací údaje AWS. Ujistěte se, že workload Metabase má přiřazenou IAM roli (instance profile, ECS task role, IRSA atd.)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "Nebyl nalezen žádný region AWS. Nastavte AWS_REGION v prostředí Metabase."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "Na hostiteli Metabase není nakonfigurovaná spravovaná identita Azure."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "Metabase se nepodařilo získat token z endpointu identity Azure."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "Metabase se nepodařilo získat GCP identity token. Zkontrolujte, že má workload přiřazený service account."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "Snowflake nepodporuje extract us week"
 
@@ -37741,6 +37783,10 @@ msgstr "Nelze parsovat nativní dotaz. V dotazu může být něco špatně."
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "Neplatný nativní dotaz s impersonací. Musí to být jediný příkaz {0}."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "Nepodařilo se dosadit parametry: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39759,22 +39805,6 @@ msgstr "{0} {1} {2} hodnot"
 msgid "{0} {1} values"
 msgstr "{0} {1} hodnot"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "Generování SQL přes LLM není nakonfigurováno. Nastavte prosím Anthropic API klíč v nastavení admin."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "Nepodařilo se parsovat SQL. Použijte @mentions k uvedení odkazů na tabulky."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "Nebyly nalezeny žádné tabulky. Použijte @mentions nebo zadejte zdrojové SQL s odkazy na tabulky."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "Nebyly nalezeny žádné přístupné tabulky. Zkontrolujte oprávnění k tabulkám."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "Připojení {0} je nakonfigurováno pomocí proměnných prostředí a nelze ho zde změnit."
@@ -39856,6 +39886,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "Kořen, od kterého se odvíjí obě rozhraní; nepřidávejte žádnou cestu /anthropic ani /v1."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39916,6 +39950,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "Token s krátkou platností, např. výstup z gcloud auth print-access-token. Užitečné pro testování."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "ID endpointu Model Garden"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "Volitelné. Použijte open model, který jste nasadili z Model Garden, místo modelu, který hostuje Google. Nastavte lokaci na region, do kterého jste ho nasadili."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "Pokud zůstane u globálního hostitele, odvodí se z lokality."
 
@@ -39970,6 +40012,14 @@ msgstr "Tajný přístupový klíč"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "Region"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "ID modelu"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "Volitelné. Použijte inference profile nebo model, který není pro tento region uvedený, podle jeho ID nebo ARN."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -40090,16 +40140,8 @@ msgid "The Anthropic API Key."
 msgstr "API klíč Anthropic."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "Anthropic model, který se má použít."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "Základní URL pro Anthropic API."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "Verze Anthropic API."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -40152,6 +40194,14 @@ msgstr "Základní URL API pro DeepSeek. Z tohoto kořene se obsluhuje jak Anthr
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "API klíč DeepSeek."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "Základní URL xAI API používaná pro Chat Completions."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "API klíč xAI."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -40240,14 +40290,6 @@ msgstr "Socket (inter-byte read) timeout v milisekundách pro LLM API požadavky
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "TCP connection timeout v milisekundách pro LLM API požadavky. Poskytovatel, který je nedostupný nebo neodpovídá, by měl rychle selhat místo toho, aby navždy blokoval worker vlákno."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "Maximální počet požadavků na generování SQL na uživatele za minutu."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "Maximální počet požadavků na generování SQL na IP adresu za minutu."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40344,6 +40386,14 @@ msgstr "Zjištěna neshoda mezi `collection_id` u Dashboardu ({0}) a `collection
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "Ověření obsahu"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "Dotaz selhal: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "Dotaz selhal: neznámá chyba"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40517,6 +40567,30 @@ msgstr "Vytvářet a upravovat todo"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "Není nakonfigurované žádné připojení k poskytovateli LLM s názvem {0}."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "{0} odmítl požadavek kvůli problému s fakturací, například došly kredity. Zkontrolujte nastavení fakturace pro svůj účet."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "Poskytovatel AI odmítl požadavek kvůli problému s fakturací. Obraťte se na svého administrátora."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "{0} právě omezuje požadavky z Metabase. Zkuste to za chvíli znovu a pokud se to bude opakovat, zkontrolujte limity požadavků pro svůj účet."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "Poskytovatel AI právě omezuje požadavky. Zkuste to za chvíli znovu."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "{0} odmítl API klíč nebo přihlašovací údaje, které Metabase odeslal. Zkontrolujte je v nastavení AI."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "Poskytovatel AI odmítl přihlašovací údaje, které Metabase odeslal. Obraťte se na svého administrátora."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "{0} chyba API (HTTP {1})"
@@ -40604,6 +40678,10 @@ msgstr "AWS Bedrock nás omezil kvůli limitu požadavků"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock nefunguje, ale neříká proč"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "AWS Bedrock vrátil neúplnou odpověď od {0}"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40730,8 +40808,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Neplatný Google model {0} — očekává se ID s kvalifikací vydavatele jako \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "Nepodporovaný Google model {0}. Podporovány jsou pouze modely google/* a anthropic/*."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "Nepodporovaný Google model {0}. Podporovány jsou pouze modely google/*, anthropic/* a endpoints/*."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40780,6 +40858,10 @@ msgstr "(endpoint: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "zkontrolujte, že \"{0}\" je platná lokalita"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "Na Google endpointu {0} není nic nasazeno"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40830,6 +40912,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "Moonshot vrátil interní chybu serveru"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "Poskytovateli modelu se nepodařilo dokončit odpověď"
 
@@ -41000,6 +41083,30 @@ msgstr "Připojení k serveru vLLM bylo přerušeno před dokončením odpovědi
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "Server vLLM neodpověděl do {0} ms. Zkontrolujte, že není přetížený, nebo zvyšte timeout požadavků vLLM."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "Chyba xAI API (HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "Klíč xAI API vypršel nebo je neplatný"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "Klíč xAI API nemá oprávnění nebo týmu došly kredity"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "Endpoint xAI API nebo model nebyl nalezen"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI nás omezil kvůli rate limitu"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI vrátil interní chybu serveru"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41693,6 +41800,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "Nemůžete odebrat posledního člena skupiny ''Admin''!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "Přidávání uživatelů do skupiny ''Data Analysts'' vyžaduje funkci Advanced Permissions, která na této instanci není zapnutá."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "Nemůžete přidávat ani odebírat uživatele do/ze skupiny ''All Users''."
 
@@ -41929,6 +42040,10 @@ msgstr "Token musí být platný token o 64 hexadecimálních znacích nebo airg
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "Ověření tokenu je momentálně nedostupné."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "Vypršel časový limit ověření tokenu."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42762,13 +42877,13 @@ msgstr "Cesta k souboru pro {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} odkazuje na neexistující soubor: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "Definice segmentu musí určovat zdrojovou tabulku."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "creator_id u Segmentu nelze aktualizovat."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "Definice segmentu musí určovat zdrojovou tabulku."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42853,6 +42968,10 @@ msgstr "Dvoufaktorové ověření identity je už nastavené. Před opětovným 
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "Neplatný reset token"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "Neověřený"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -43280,6 +43399,14 @@ msgstr "Zda se má po přidání další databázové konektivity zobrazit úvod
 msgid "Invalid timezone {0}: {1}"
 msgstr "Neplatné časové pásmo {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "Čtení z cesty není povoleno: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "Zápis do cesty není povolen: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "Čas startu v milisekundách"
@@ -43303,6 +43430,14 @@ msgstr "Neplatná lokalizace {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "E-mailová adresa, na kterou se mají uživatelé odkázat, pokud narazí na problém."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Seznam povolených adresářů oddělený čárkami, ze kterých Metabase smí číst soubory, např. pro databázová tajemství zadaná jako lokální cesta k souboru. Použijte NONE, aby nebyly povolené žádné cesty. Výchozí je /tmp na Metabase Cloud a / (každá cesta) při vlastním hostingu."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Seznam povolených adresářů oddělený čárkami, do kterých Metabase smí zapisovat soubory. Použijte NONE, aby nebyly povolené žádné cesty. Výchozí je /tmp na Metabase Cloud a / (každá cesta) při vlastním hostingu."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43835,10 +43970,6 @@ msgstr "Nevím, jak parsovat {0} pomocí formátu {1}"
 msgid "{0} must be at least 16 characters."
 msgstr "{0} musí mít alespoň 16 znaků."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "Povolte nebo zakažte všechny experimenty s kódem. Když je to zakázané, běží jen produkční kódová větev."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "Zdroj neexistuje."
@@ -44041,8 +44172,8 @@ msgstr "hodnota musí být platný typ entity (klíčové slovo nebo řetězec).
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "Tabulky lze publikovat pouze do sbírek Knihovna/Data."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "Tabulky lze publikovat pouze do Sbírek Semantic layer/Data."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44626,65 +44757,13 @@ msgstr "Tenant uživatele nelze přidat do data apps."
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Dotazy v data apps nemohou používat metriky, které odkazují na jiné uložené otázky nebo metriky: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: \"version\" musí být kladné celé číslo, například 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "Data aplikace s tímto slugem už existuje."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: \"description\" musí být jednorádkový řetězec."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: \"description\" je jednorázové shrnutí — musí mít {2} znaků nebo méně."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" není platná položka allowed_hosts — použijte origin jako https://api.example.com nebo https://*.example.com."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: \"allowed_hosts\" musí být seznam."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "Nepodařilo se parsovat {0}/{1}: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: název adresáře aplikace je jejím slugem, takže musí obsahovat jen malá písmena, číslice a pomlčky."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" je rezervovaný slug — přejmenujte adresář."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: \"name\" je povinné."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: \"path\" je povinné."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: \"path\" nesmí obsahovat \"..\"."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "Bundle ještě není synchronizovaný."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "Nepodařilo se přečíst {0}."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "Soubor balíčku \"{0}\" nebyl v repozitáři nalezen."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "Balíček pro \"{0}\" musí být menší než {1} MiB."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "Soubor bundle \"{0}\" nebyl nalezen."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44991,6 +45070,18 @@ msgstr "Sandbox Otázky nemohou vracet sloupce, které mají jiné typy než Tab
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "Nemáte oprávnění upravit otázku, která se používá pro zabezpečení na úrovni řádků a sloupců."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "Nemáte oprávnění upravit úryvek kódu, který se používá pro zabezpečení na úrovni řádků a sloupců."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "Nemáte oprávnění upravit Segment, který se používá pro zabezpečení na úrovni řádků a sloupců."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "Nemáte oprávnění upravit Metriku, která se používá pro zabezpečení na úrovni řádků a sloupců."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."

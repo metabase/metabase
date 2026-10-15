@@ -263,7 +263,6 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
   Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
@@ -963,10 +962,12 @@
               (is (= #{}
                      (into #{} (comp relevant-2 (map (juxt :name normalize)))
                            (search! "rom" :rasta))))))
-          (testing "Sandboxed users do not see indexed entities in search"
+          (testing "Sandboxed, impersonated and routed users do not see indexed entities in search"
             (mt/with-dynamic-fn-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
             (mt/with-dynamic-fn-redefs [perms-util/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (mt/with-dynamic-fn-redefs [perms-util/routed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]

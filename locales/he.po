@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Hebrew\n"
 "Language: he_IL\n"
-"PO-Revision-Date: 2026-10-06 05:42\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -275,7 +275,6 @@ msgid "User attribute"
 msgstr "מאפיין משתמש"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -321,12 +320,11 @@ msgstr "מאפיין משתמש"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -406,7 +404,6 @@ msgid "Cancel"
 msgstr "ביטול"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1158,8 +1155,6 @@ msgid "Search for a group"
 msgstr "חפש קבוצה"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1211,7 +1206,6 @@ msgstr "נכשל ייצוא האנליטיקה"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1343,16 +1337,10 @@ msgid "Unit"
 msgstr "יחידה"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "המיפוי נוסף"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "המיפוי עודכן"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "שמור/שמרי את ההגדרות למעלה כדי להגדיר מיפוי קבוצות."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1381,36 +1369,43 @@ msgid "Off"
 msgstr "כבוי"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "מיפוי חדש"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "משתמש ב-{0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "משתמשים ישויכו לקבוצות {0} על סמך שמות קבוצות ה-JWT שלהם"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "בכל כניסה, אנשים יתווספו לקבוצות של {0} ששמן מופיע ב-JWT שלהם, ויוסרו מכל שאר הקבוצות, כולל Administrators."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "לא ניתן היה לטעון קבוצות"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "שם קבוצת JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "הזן קבוצת JWT..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "הוסיפו לפחות מיפוי אחד כדי להשתמש במיפוי קבוצות ידני"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "הוסף מיפוי"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1422,90 +1417,42 @@ msgstr "לעבור למיפוי קבוצות אוטומטי?"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "מיפויי הקבוצות הקיימים יימחקו, ומשתמשים ישויכו לקבוצות {0} שתואמות לשמות קבוצות ה-JWT שלהם."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "מיפויי הקבוצות הקיימים שלך יימחקו. מעכשיו, בכל כניסה, אנשים יתווספו לקבוצות של {0} ששמן מופיע ב-JWT שלהם, ויוסרו מכל שאר הקבוצות, כולל Administrators."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "מחק מיפויים ועבור"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "שם קבוצת JWT"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "הזן קבוצת JWT..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "כבר קיים מיפוי עבור קבוצה זו"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} קבוצות"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "בחר קבוצה של {0}..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "ערוך מיפוי"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "מחק מיפוי"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "אין קבוצות"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "השינויים נשמרו"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "שגיאה בשמירת מיפוי הקבוצות"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "המיפוי נמחק, אבל לא ניתן היה לעדכן את כל הקבוצות שלו"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "המיפוי נמחק ומיפוי הקבוצות כובה"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "המיפוי נמחק"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "שגיאה בשמירת הגדרות JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "השינויים נשמרו. מיפוי הקבוצות הוגדר ל-Automatic."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "שגיאה בטעינת תצורת JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "הגדר/הגדירי מפתח חתימה לפני השמירה"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1542,11 +1489,13 @@ msgid "Email attribute key"
 msgstr "מפתח מאפיין האימייל"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "מפתח מאפיין שם פרטי"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "מפתח מאפיין שם משפחה"
@@ -1560,9 +1509,8 @@ msgid "Tenant assignment attribute key"
 msgstr "מפתח מאפיין להקצאת דייר"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "מיפוי קבוצות"
 
@@ -1606,6 +1554,19 @@ msgstr "שמור והפעל"
 msgid "Save changes"
 msgstr "שמור שינויים"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "שייך/שייכי אנשים אוטומטית לקבוצות של {0} על סמך קבוצות מספק ה-OIDC שלך"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "שם קבוצת OIDC"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "הזן/הזיני קבוצת OIDC..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "נדרשת בקשת התחברות"
@@ -1627,6 +1588,10 @@ msgid "Client ID is required"
 msgstr "נדרש Client ID"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "נדרש Client secret"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "גילוי OIDC הצליח, אבל לא ניתן היה לאמת את פרטי ההזדהות. ספק הזהויות לא תומך בסוג ה-grant שנעשה בו שימוש לבדיקה."
 
@@ -1639,25 +1604,8 @@ msgid "OIDC configuration check failed"
 msgstr "בדיקת קונפיגורציית OIDC נכשלה"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "ספק OIDC מושבת"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "ספק OIDC מופעל"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "עדכון ספק OIDC נכשל"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "ספק OIDC נמחק"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "מחיקת ספק OIDC נכשלה"
+msgid "Error loading OIDC configuration"
+msgstr "שגיאה בטעינת תצורת OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1679,10 +1627,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "מזהה ספק. ה-URI להפניה מחדש של ה-OIDC שלך יהיה \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "לדוגמה: okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "בקשת התחברות"
 
@@ -1692,8 +1636,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "טקסט הכפתור במסך ההתחברות של {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "לדוגמה: Sign in with Okta"
+msgid "Sign in with Okta"
+msgstr "היכנס/היכנסי עם Okta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1701,8 +1645,8 @@ msgstr "Issuer URI"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "ה-URI של מנפיק ה-OIDC. נקודת הקצה לגילוי \"${ 0 }/.well-known/openid-configuration\" צריכה להיות נגישה."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "נקודת הגילוי \"{0}/.well-known/openid-configuration\" צריכה להיות נגישה"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1713,27 +1657,41 @@ msgstr "מזהה לקוח"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "ה-Client ID שמוגדר עבור {0} אצל ספק ה-OIDC שלך."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "זה מוגדר עבור {0} בספק ה-OIDC שלך"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
-msgstr "Client Secret"
+msgid "Client secret"
+msgstr "סוד לקוח"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "ה-Client Secret שמוגדר אצל ספק ה-OIDC שלך."
+msgid "This is configured in your OIDC provider"
+msgstr "זה מוגדר בספק ה-OIDC שלך"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "השאר ריק כדי לשמור את הערך הנוכחי"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Scopes"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "רשימת scopes של OIDC מופרדת בפסיקים לבקשה"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "מאפיינים"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "כדי להפעיל זאת, תצטרכו ליצור מיפויים שיגידו ל-{0} לאיזו קבוצה(ות) יש להוסיף את המשתמשים שלכם בהתאם לקבוצת ה-SSO שבה הם נמצאים."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "מפה/מפי claims של OIDC לשדות השם הפרטי ושם המשפחה ב-{0}. האימייל תמיד מגיע מה-claim הסטנדרטי של email."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1743,69 +1701,6 @@ msgstr "שם מאפיין קבוצה"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "ה-claim של OIDC שמכיל מידע על חברות בקבוצה."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "הגדרות אופציונליות"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Scopes"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "רשימה מופרדת בפסיקים של Scopes של OIDC לבקשה."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "מיפוי מאפיינים"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "מפה Claims של OIDC למאפייני משתמש. השתמש בשמות Claim סטנדרטיים של OIDC או ב-Claims המותאמים אישית של הספק שלך."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "מאפיין אימייל"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "מאפיין שם פרטי"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "מאפיין שם משפחה"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "השבת"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "הפעל"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "מחק קונפיגורציה"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "למחוק את ספק ה-OIDC הזה?"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "משתמשים לא יוכלו יותר להתחבר באמצעות הספק הזה. אי אפשר לבטל את זה."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1825,24 +1720,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "השתמש בהגדרות שלמטה כדי להגדיר את ה-SSO שלך דרך SAML. אם יש לך שאלות, עיין/י ב-{0} שלנו."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "תיעוד"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "הגדר את ספק הזהויות (IdP) שלך"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "ספק הזהויות שלך יזדקק למידע הבא על {0}."
+msgid "Identity provider (IdP) configuration"
+msgstr "תצורת ספק זהויות (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1877,18 +1756,16 @@ msgid "Tenant assignment attribute"
 msgstr "מאפיין שיוך דייר"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "ספרו ל-{0} על ספק הזהויות שלכם"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "{0} יזדקק למידע הבא על הספק שלכם."
+msgid "Identity provider info"
+msgstr "פרטי ספק הזהויות"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "כתובת URL של ספק הזהות SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "זו ה-URL שאליו המשתמשים שלך נכנסים כדי להתחבר לספק הזהויות."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1903,8 +1780,16 @@ msgid "SAML identity provider issuer"
 msgstr "מנפיק ספק הזהות SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "חתום על בקשות SSO (אופציונלי)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "זהו מזהה ייחודי עבור ה-IdP. לעיתים קרובות נקרא Entity ID או פשוט 'Issuer'."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "חתום/חתמי על בקשות SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "השתמש/השתמשי ב-keystore כדי לחתום על בקשות אימות שנשלחות לספק הזהויות שלך"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1923,9 +1808,36 @@ msgstr "ששש..."
 msgid "SAML keystore alias"
 msgstr "כינוי מאגר מפתחות SAML"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "שייך/שייכי אנשים אוטומטית לקבוצות של {0} על סמך קבוצות מספק הזהויות SAML שלך"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "שם קבוצת SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "הזן/הזיני קבוצת SAML..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "מאפיין ה-SAML שמציג את רשימת הקבוצות של משתמש. מיפוי קבוצות לא משייך קבוצות עד שמגדירים אותו."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "התחבר/י עם SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "אפשר כניסה עם {0} כדי ליצור חשבונות למשתמשים חדשים ולהפעיל מחדש חשבונות שהושבתו. כשזה מושבת, רק משתמשים עם חשבונות {1} פעילים יכולים להיכנס."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "אפשר/אפשרי לכניסה עם {0} ליצור חשבונות למשתמשים חדשים. כשהאפשרות מושבתת, רק משתמשים עם חשבונות {1} פעילים יכולים להיכנס."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1934,14 +1846,13 @@ msgstr "התחבר/י עם SSO"
 msgid "User provisioning"
 msgstr "הקצאת משתמשים (Provisioning)"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "אפשר כניסה עם {0} כדי ליצור חשבונות למשתמשים חדשים ולהפעיל מחדש חשבונות שהושבתו. כשזה מושבת, רק משתמשים עם חשבונות {1} פעילים יכולים להיכנס."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "מאפשר למשתמשים להתחבר דרך ספק זהויות JWT."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "עדכון ספק OIDC נכשל"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2589,6 +2500,12 @@ msgstr "URL של שרת dev"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "ה-URL של שרת dev מקומי שמגיש את חבילת הוויזואליזציה, המניפסט והנכסים."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "הפעל"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2645,6 +2562,17 @@ msgstr "פעולות פלאגין"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "החלפת bundle"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "השבת"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2789,7 +2717,6 @@ msgstr "עדכן"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "הוסף"
@@ -2900,17 +2827,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "ייתכן שהם נבנו עבור גרסה אחרת וייתכן שצריך לעדכן אותם."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2944,6 +2867,19 @@ msgstr "טבלאות"
 msgid "No published tables in your library yet."
 msgstr "עדיין אין טבלאות שפורסמו בספרייה שלך."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "שכבה סמנטית"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "טבלה שפורסמה"
@@ -2968,7 +2904,7 @@ msgid "Snippet"
 msgstr "קטע קוד"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3135,18 +3071,18 @@ msgstr[1] "ארכוב האוספים האלה גם יבטל את פרסום הט
 msgstr[2] "ארכוב האוספים האלה גם יבטל את פרסום הטבלאות שבתוכם (וכל טבלה שתלויה בהן) ויארכב פריטי משנה נוספים."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "צור את הספרייה שלך"
+msgid "Create your semantic layer"
+msgstr "צור/צרי את שכבת הסמנטיקה שלך"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "הספרייה נוצרה"
+msgid "Semantic layer created"
+msgstr "שכבת הסמנטיקה נוצרה"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "הספרייה עוזרת לך ליצור מקור אמת לאנליטיקה באמצעות סט תוכן מאורגן ומנוהל מרכזית. היא מפרידה רכיבים מוסמכים לשימוש חוזר מניתוחים אד-הוק."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "שכבת הסמנטיקה עוזרת לך ליצור מקור אמת לאנליטיקה באמצעות סט תוכן נבחר שמנוהל באופן מרכזי. היא מפרידה רכיבים סמכותיים שניתנים לשימוש חוזר מניתוחים אד-הוק."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3167,8 +3103,8 @@ msgstr "בקרת גרסאות"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "סנכרנו את הספרייה שלכם ל-Git"
+msgid "Sync your semantic layer to git"
+msgstr "סנכרן/סנכרני את שכבת הסמנטיקה שלך ל-git"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3182,8 +3118,8 @@ msgstr "ברירת מחדל למקורות אמינים שצוות הדאטה ש
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "צור את הספרייה שלי"
+msgid "Create my semantic layer"
+msgstr "צור/צרי את שכבת הסמנטיקה שלי"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3201,8 +3137,8 @@ msgid "Go to {0}"
 msgstr "עבור אל {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "פרסום טבלה שומר אותה בספרייה."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "פרסום טבלה שומר אותה בשכבת הסמנטיקה."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3270,12 +3206,12 @@ msgid "Unpublish these tables?"
 msgstr "לבטל פרסום של הטבלאות האלה?"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "פעולה זו תסיר את הטבלה הזו מהספרייה."
+msgid "This will remove this table from the semantic layer."
+msgstr "זה יסיר את הטבלה הזו משכבת הסמנטיקה."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "פעולה זו תסיר את הטבלאות האלה מהספרייה."
+msgid "This will remove these tables from the semantic layer."
+msgstr "זה יסיר את הטבלאות האלה משכבת הסמנטיקה."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3706,16 +3642,16 @@ msgid "No published tables yet"
 msgstr "עדיין אין טבלאות שפורסמו"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "פרסמו טבלאות בספרייה כדי לראות אותן כאן."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "פרסם/פרסמי טבלאות בשכבת הסמנטיקה כדי לראות אותן כאן."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "אין מדדים עדיין"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "שימו מדדים בספרייה כדי לראות אותם כאן."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "שים/שימי מדדים בשכבת הסמנטיקה כדי לראות אותם כאן."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3729,6 +3665,7 @@ msgstr "נכשל בהסרת משתמש"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "אפליקציות נתונים"
 
@@ -3852,19 +3789,8 @@ msgid "Outdated"
 msgstr "לא מעודכן"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "הסנכרון נכשל"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "סונכרן {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "עדיין לא סונכרן"
+msgid "Draft"
+msgstr "טיוטה"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4175,6 +4101,7 @@ msgstr "התהליך רץ ברקע. בהתאם לגודל בסיס הנתוני�
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4812,6 +4739,7 @@ msgstr "שדה"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6277,16 +6205,16 @@ msgid "Curated semantic layer"
 msgstr "שכבה סמנטית מאוצרה"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "מדדים וטבלאות שפורסמו בתוך הספרייה שלך."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "מדדים וטבלאות שפורסמו בתוך שכבת הסמנטיקה שלך."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "שכבה סמנטית מלאה"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "ישויות מהספרייה ועוד כל טבלה פיזית פעילה."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "ישויות שכבת הסמנטיקה ועוד כל טבלה פיזית פעילה."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7288,6 +7216,7 @@ msgid "Could not connect to repository"
 msgstr "לא ניתן להתחבר לריפו"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "בדוק חיבור"
 
@@ -7496,6 +7425,12 @@ msgstr "יש לכם שינויים שלא סונכרנו. מה תרצו לעשו
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "ביטול הסנכרון נכשל"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "הסנכרון נכשל"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8188,13 +8123,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "המאפיין הזה עובר בירושה מהדייר, אבל אפשר לעקוף את הערך שלו"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "מאפיינים"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "מפתחות מאפייני התחברות כפולים"
 
@@ -8824,6 +8752,7 @@ msgstr "הוסף אפשרות:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "לא נמצא כלום"
 
@@ -9373,10 +9302,7 @@ msgstr "ו"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "טבלה"
-msgstr[1] "טבלאות"
-msgstr[2] "טבלאות"
+msgstr "טבלה"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9516,6 +9442,7 @@ msgstr "סגור טאב"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10387,7 +10314,6 @@ msgstr "נודיע לכם כשתגיעו ל-{0}% מההקצאה שלכם."
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "הסכם והמשך"
 
@@ -13237,6 +13163,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "תמצאו את זה בהגדרות {0} של אפליקציית ה-Slack שלכם."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Signing Secret"
 
@@ -14260,13 +14190,16 @@ msgstr "צור קבוצה"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "אפשר להשתמש בקבוצות כדי לשלוט בגישה של המשתמשים לנתונים שלך. שים משתמשים בקבוצות ואז עבור לסעיף הרשאות כדי לשלוט בגישה של כל קבוצה. הקבוצות Administrators וכל המשתמשים הן קבוצות ברירת מחדל מיוחדות שלא ניתן להסיר."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "אין קבוצות"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15359,6 +15292,141 @@ msgstr "אפשר למשתמשים להירשם בעצמם אם כתובת האי
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "אפשר למשתמשים להירשם בעצמם אם כתובת האימייל של חשבון ה-Google שלהם היא מ:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "הקבוצה {0} לא מושפעת."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "הקבוצות האלה לא מושפעות: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "הסר מיפוי"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "הסר מיפוי וחברים"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "הסר מיפוי ומחק קבוצות"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "הסר מיפוי ומחק קבוצה"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "המיפוי הזה לא מקושר לאף קבוצה."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "החברות בקבוצות האלה לא תסונכרן יותר כאשר משתמשים מתחברים."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "החברות בקבוצה הזו לא תסונכרן יותר כאשר משתמשים מתחברים."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "להסיר את מיפוי הקבוצה הזה?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "מה צריך לקרות לקבוצות עצמן ב-{0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "מה צריך לקרות לקבוצה עצמה ב-{0}?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "שום דבר, רק להסיר את המיפוי"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "וגם להסיר את כל החברים מהקבוצות האלה"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "וגם להסיר את כל החברים מהקבוצה הזו"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "החברים שומרים על חשבונות ה-{0} שלהם."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "וגם למחוק את הקבוצות"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "גם למחוק את הקבוצה"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "הוסף מיפוי"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "מיפויי קבוצות ידניים"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "עדיין אין מיפויים"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} קבוצות"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "בחר קבוצה של {0}..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "ערוך מיפוי"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "מחק מיפוי"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "המיפוי נמחק, אבל לא ניתן היה לעדכן את כל הקבוצות שלו"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "המיפוי נמחק, אבל לא ניתן היה להסיר את הקבוצה שנמחקה מהמיפויים האחרים"
+msgstr[1] "המיפוי נמחק, אבל לא ניתן היה להסיר את הקבוצות שנמחקו מהמיפויים האחרים"
+msgstr[2] "המיפוי נמחק, אבל לא ניתן היה להסיר את הקבוצות שנמחקו מהמיפויים האחרים"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "המיפוי נמחק"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "כבר קיים מיפוי עבור קבוצה זו"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "המיפוי נוסף"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "המיפוי עודכן"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15614,7 +15682,6 @@ msgid "Edit configuration"
 msgstr "ערוך תצורה"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "קודם כל, קצת משפטנות"
 
@@ -15831,28 +15898,18 @@ msgstr "המופע הזה נמצא במצב פיתוח וניתן להשתמש �
 msgid "Get your token"
 msgstr "קבל את הטוקן שלך"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "הקצה/י אנשים אוטומטית לקבוצות {0} על סמך החברות שלהם בקבוצות LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "מיפויי קבוצות ידניים"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "שם קבוצת LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "עדיין אין מיפויים"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "הפעל/הפעילי"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "בדוק/בדקי את הסוגריים שלך"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "הפורט חייב להיות מספר שלם בין 1 ל-65535"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15911,6 +15968,15 @@ msgstr "מסנן משתמשים"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "מיפוי מאפייני LDAP לשדות האימייל, השם הפרטי ושם המשפחה ב-{0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "הקצה/י אנשים אוטומטית לקבוצות {0} על סמך החברות שלהם בקבוצות LDAP"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "שם קבוצת LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16560,102 +16626,6 @@ msgstr "יחידת מטבע"
 msgid "Currency label style"
 msgstr "סגנון תווית מטבע"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "שם מיפוי קבוצה חדש"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "הסר מיפוי"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "הסר מיפוי וחברים"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "הסר מיפוי ומחק קבוצות"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "הסר מיפוי ומחק קבוצה"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "קבוצת Administrators לא מושפעת."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "המיפוי הזה לא מקושר לאף קבוצה."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "החברות בקבוצות האלה לא תסונכרן יותר כאשר משתמשים מתחברים."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "החברות בקבוצה הזו לא תסונכרן יותר כאשר משתמשים מתחברים."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "להסיר את מיפוי הקבוצה הזה?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "מה צריך לקרות לקבוצות עצמן ב-{0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "מה צריך לקרות לקבוצה עצמה ב-{0}?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "שום דבר, רק להסיר את המיפוי"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "וגם להסיר את כל החברים מהקבוצות האלה"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "וגם להסיר את כל החברים מהקבוצה הזו"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "החברים שומרים על חשבונות ה-{0} שלהם."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "וגם למחוק את הקבוצות"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "גם למחוק את הקבוצה"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "מיפויים מאפשרים ל-Metabase להוסיף ולהסיר משתמשים מקבוצות באופן אוטומטי, על סמך מידע החברות שסופק על ידי שרת הספרייה. אם קבוצה לא ממופה, החברות בה לא תסונכרן."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "עדיין אין מיפויים, סנכרון קבוצות לא מופעל"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "סנכרן חברות בקבוצות"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "אודות מיפויים"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "למחוק את המיפוי הזה?"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "דף הבית"
@@ -17212,6 +17182,7 @@ msgstr "התחיל מ-"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "הפריט הזה נמחק לצמיתות."
@@ -17308,6 +17279,7 @@ msgstr "תיקייה"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "מחקר"
 
@@ -17693,6 +17665,7 @@ msgid "No items of the selected types."
 msgstr "אין פריטים מהסוגים שנבחרו."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "נקה חיפוש"
 
@@ -18087,6 +18060,10 @@ msgstr "האוסף החדש והפנטסטי שלי"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "האוסף שבו זה נשמר"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "גרור/גררי לכאן כדי להצמיד"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19411,7 +19388,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "דקה"
 msgstr[1] "{0} דקות"
 msgstr[2] "{0} דקות"
@@ -20073,6 +20050,10 @@ msgstr "כל משתמשי הדייר"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "אנליסטי נתונים"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "הוספת חברים לקבוצה הזו דורשת תוכנית שכוללת את קבוצת Data Analysts. ניתן רק להסיר חברים."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21878,11 +21859,6 @@ msgid "Data transformation"
 msgstr "טרנספורמציית נתונים"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "שכבה סמנטית"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22154,8 +22130,8 @@ msgstr "לטבלה הזו אין שדות"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "קודם, בואו ניצור את הספרייה שלכם"
+msgid "First, let's create your semantic layer"
+msgstr "קודם, בוא/בואי ניצור את שכבת הסמנטיקה שלך"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22535,8 +22511,8 @@ msgid "Bring more order to your analytics"
 msgstr "הכנס יותר סדר לאנליטיקה שלך"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "צור ספרייה משותפת של דאטהסטים ומדדים שהצוות שלך יכול להסתמך עליהם, כדי לשמור על עקביות ככל שהנתונים והתוכן downstream גדלים."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "צור/צרי שכבת סמנטיקה משותפת של datasets ומדדים שהצוות שלך יכול להסתמך עליה, כדי שהדברים יישארו עקביים ככל שהנתונים והתוכן במורד הזרם גדלים."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22740,6 +22716,18 @@ msgstr "אפשר להוסיף את הנתונים שלכם בכל עת."
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "אוסיף את הנתונים שלי מאוחר יותר"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "החיבור הצליח"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "החיבור נכשל"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "לא ניתן היה להתחבר למסד הנתונים"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23250,6 +23238,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "האפשרויות האלה דורשות שינוי בקוד השרת. אפשר להתנסות באפשרויות כאן ולצפות בתצוגה מקדימה. למידע נוסף, בדוק את {0}."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "תיעוד"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "השתמש בפונט של המופע"
 
@@ -23535,7 +23528,6 @@ msgstr "כשאת/ה מטמיע/ה תרשימים או לוחות מחוונים 
 "Metabase\" גלויים בהטמעות האלה."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "עם זאת, מומלץ לקרוא את טקסט הרישיון שמקושר למעלה, שכן זהו הרישיון בפועל שאליו תסכים כאשר תפעיל את הפיצ'ר הזה."
 
@@ -25312,10 +25304,6 @@ msgid "Remove provider"
 msgstr "הסירו ספק"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "גם יצירת SQL רצה על החיבור הזה, ותפסיק לעבוד בלעדיו."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "גם חיפוש סמנטי רץ על החיבור הזה, ויפסיק לעבוד בלעדיו."
 
@@ -25447,8 +25435,8 @@ msgid "AI explorations"
 msgstr "חקירות בינה מלאכותית"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "שאלו על הנתונים שלכם, והקלידו @ כדי לאזכר פריט"
+msgid "Suggestions"
+msgstr "הצעות"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25490,16 +25478,15 @@ msgid "Source is wrong"
 msgstr "המקור שגוי"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "כווץ מקורות נתונים"
+msgid "Give feedback"
+msgstr "תן/תני משוב"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "הרחב מקורות נתונים"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "מקורות נתונים שבהם נעשה שימוש"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "מקור נתונים בשימוש"
+msgstr[1] "מקורות נתונים בשימוש"
+msgstr[2] "מקורות נתונים בשימוש"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25666,11 +25653,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "גלו את המדדים והמודלים שלכם בעזרת בינה מלאכותית."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "איך אפשר לעזור? הקלידו @ כדי לאזכר פריטים."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} אינו מושלם. בדקו שוב את התוצאות."
@@ -25680,41 +25662,10 @@ msgid "Fork conversation"
 msgstr "פצל שיחה"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "התגובה מ-{0} נקטעה"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "התשובה מ-{0} נקטעה כי היא הגיעה לאורך המקסימלי"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "התשובה האחרונה שלך נקטעה. המשך בדיוק מהמקום שבו עצרת. אל תחזור על שום דבר שכבר כתבת."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "התשובה מ-{0} נעצרה על ידי מסנן תוכן. נסו לנסח מחדש את השאלה."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} הושהה לאחר שהגיע למגבלת הצעדים שלו לתגובה הזו"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "המשיכו לעבוד על הבקשה האחרונה שלי."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "התשובה מ-{0} נעצרה לפני שסיימה"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "השיחה הזו הגיעה לאורך המקסימלי שלה ולא יכולה להמשיך. אנא התחילו צ'אט חדש."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25820,6 +25771,12 @@ msgstr "הצ'אט הזה מתקרב ל-{0}."
 msgid "New chat"
 msgstr "צ'אט חדש"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "טוען"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "באג ב-UI"
@@ -25857,6 +25814,11 @@ msgstr "תארו איזה SQL אתם רוצים, הקלידו @ כדי לאזכ�
 msgid "Send to {0}"
 msgstr "שלחו אל {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "הפסק ליצור"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "הוסיפו ספק בינה מלאכותית"
@@ -25881,6 +25843,10 @@ msgstr "התחל/י מנוי בתשלום"
 msgid "Ask {0}"
 msgstr "שאלו את {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "שאל/שאלי על הנתונים שלך. הקלד/הקלידי @ כדי לאזכר פריטים."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "חשבון ה-Slack שלך חובר בהצלחה."
@@ -25904,10 +25870,6 @@ msgstr "נוצר עם {0}"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} מושבת"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "הפסק ליצור"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -26093,6 +26055,38 @@ msgstr "פורמט בקשה לא תקין"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "מצטערים, לא הצלחנו לטעון את השיחה הזו."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} הושהה לאחר שהגיע למגבלת הצעדים שלו לתגובה הזו"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "התשובה מ-{0} נקטעה כי היא הגיעה לאורך המקסימלי"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "השיחה הזו הגיעה לאורך המקסימלי שלה ולא יכולה להמשיך. אנא התחילו צ'אט חדש."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "התשובה מ-{0} נעצרה על ידי מסנן תוכן. נסו לנסח מחדש את השאלה."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "התשובה מ-{0} נעצרה לפני שסיימה"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "המשיכו לעבוד על הבקשה האחרונה שלי."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "התשובה האחרונה שלך נקטעה. המשך בדיוק מהמקום שבו עצרת. אל תחזור על שום דבר שכבר כתבת."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -29066,19 +29060,6 @@ msgstr "אל תשמור תוצאות בקאש"
 msgid "No caching"
 msgstr "ללא קאש"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "בלחיצה על \"Agree and continue\" אתה מסכים ל-{0}"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "רישיון ההטמעה שלנו."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "כשאתה מטמיע תרשימים או לוחות מחוונים מ-Metabase באפליקציה שלך, האפליקציה הזו לא כפופה לרישיון Affero General Public License שמכסה את שאר Metabase, בתנאי שתשאיר את הלוגו של Metabase ואת \"Powered by Metabase\" גלויים בהטמעות האלה."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "נשלח באימייל"
@@ -30808,6 +30789,30 @@ msgstr "{0}+קליק כדי לפתוח בטאב חדש"
 msgid "Pick columns"
 msgstr "בחר/י עמודות"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "חפש/חפשי עמודות"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "חפש/חפשי עמודות…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "נמצאה {0} עמודה"
+msgstr[1] "נמצאו {0} עמודות"
+msgstr[2] "נמצאו {0} עמודות"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "בחר/בחרי את כל אלה"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "לא נמצאו עמודות"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31782,6 +31787,11 @@ msgstr "שגיאה בסנכרון"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "מסנכרן…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "הסנכרון נכשל: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33431,11 +33441,6 @@ msgstr "משתנים בטרנספורמציות חייבים להיות אופצ
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "ואז"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "טוען"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35703,6 +35708,10 @@ msgid "You don''t have permissions to do that."
 msgstr "אין לך הרשאות לעשות את זה."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "אין לך הרשאות לבצע את הפעולה הזו."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "שגיאה בביצוע פעולה."
 
@@ -35727,10 +35736,6 @@ msgid "Implicit parameters must be provided."
 msgstr "חובה לספק פרמטרים אימפליציטיים."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "אי אפשר לבצע פעולות HTTP מנקודות קצה ציבוריות."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "סוג פעולה לא מוכר {0}."
 
@@ -35738,26 +35743,13 @@ msgstr "סוג פעולה לא מוכר {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "אפשר לשלוף ערכים רק עבור פעולות שדורשות מפתח ישות."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "לא ניתן לבצע החלפת פרמטרים: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "לא ניתן לקרוא לשירות: חסרים פרמטרים נדרשים: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "הוחזרו יותר מדי תוצאות: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "פעולות HTTP מושבתות."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "פעולות חייבות להיעשות עם מודלים, לא כרטיסים."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "פעולות אימפליציטיות לא נתמכות עבור מודלים עם סעיפים."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35770,10 +35762,6 @@ msgstr "הערך חייב למפות מזהי פרמטרים לערכים סקא
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "סוג פעולה לא נתמך"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "חייב להיות json-query תקין, משהו כמו ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35804,16 +35792,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "האם עריכת נתוני טבלה מופעלת עבור מסד הנתונים."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "פעולות HTTP אינן נתמכות."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "חובה לספק database_id עבור פעולות שאילתה"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "פעולות אימפליציטיות לא נתמכות עבור מודלים עם סעיפים."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -35896,12 +35876,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "הסעיף `field` צריך FK נייד ב-slot השלישי שלו, לא מזהה מספרי. השתמש בוקטור `[<database>, <schema>, <table>, <column>]` (שנפתר מול ספק המטא-נתונים) או במחרוזת של שם עמודה (להפניות בין שלבים)."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "`{0}` לא שורד מעבר הלוך-ושוב דרך קישור השאלה שה-frontend פותח: השאלה או לא נטענת, או מאבדת בשקט את הסעיף ועונה משהו אחר. במקום זאת, שים/שימי את היחידה על העמודה — אפשרות `temporal-unit` על ה-reference של `field` / `expression`, בהשוואה ליום הראשון של התקופה כמחרוזת תאריך פשוטה כמו \"2025-01-01\" — או כתוב/כתבי את הטווח כ-`>=` היום הראשון שלו ו-`<` היום הראשון שאחריו, שתיהן כמחרוזות תאריך פשוטות (לא `between`, שמפיל הכל אחרי חצות ביום האחרון שלו). השתמש/השתמשי בטווח עבור `year` על reference של `expression`, שמנוע השאילתות קורא כמספר, ובתוך `aggregation:` (`count-where`, `sum-where`, `share`) ותנאי join `conditions:`, שבהם העברת היחידה לעמודה תשנה את התשובה."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "עורך הביטויים של בונה השאילתות דוחה סעיף {0} בשלב {1}: {2}. השאילתה תיבנה אבל לא ניתן יהיה להציג אותה או לשמור אותה - כתוב/י מחדש את הסעיף הבעייתי."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` היא עמודה מותאמת אישית מסוג {1}, ולכן אי אפשר לבצע לה קיבוץ לטווחים לפי {2}. השווה/השווי לערך פשוט, או בצע/בצעי קיבוץ לטווחים לעמודת date / datetime במקום זאת."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` היא עמודה מסוג {1}, ולכן אי אפשר לבצע לה קיבוץ לטווחים לפי {2}. השווה/השווי לערך פשוט, או בצע/בצעי קיבוץ לטווחים לעמודת date / datetime במקום זאת."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "ליטרל זמני לא תקין {0} ב-:absolute-datetime — השתמש/י בתאריך, תאריך-ושעה, שנה או שנה-חודש בתבנית ISO-8601."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "ליטרל זמני לא תקין {0} — השתמש/השתמשי בתאריך, datetime, שנה, או שנה-חודש בפורמט ISO-8601."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -35958,6 +35950,10 @@ msgstr "האם כבר נוצר תרשים שאינו טבלה. נדרש כדי �
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "אפשרו רישום לוג של נתיב ההטמעה, פרמטרים של השאילתה, user agent, כתובת IP ומטא-דאטה של שיחות Metabot עבור משתמשים של הנתונים הפנימיים וההטמעות שלכם. מידע זה יוצג באנליטיקת השימוש שלכם."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "הפעילו או השביתו את כל ניסויי הקוד. כשהאפשרות מושבתת, רק נתיב הקוד של פרודקשן רץ."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36293,38 +36289,6 @@ msgstr "רענן תוצאות שנשמרו בקאש בשיעור הזה ממשך
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "זמן המקסימום המוחלט לשמירת תוצאות שאילתות במטמון, בשניות."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "חייב להיות channel עם namespace. למשל: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "פרטי ערוץ לא תקינים"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "טוקן Slack לא תקין."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "טוקן לא תקין"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "ערוץ Slack לא נמצא."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "הערוץ לא נמצא"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "עליכם להגדיר site-url כדי שאינטגרציית Slack תפעל."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "דיווח על באגים לא מופעל."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "מארח SMTP לא הוגדר."
@@ -36524,6 +36488,38 @@ msgstr "שגיאה ברישום פונטים: Metabase לא יוכל לשלוח 
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "זו בעיה מוכרת עם JVM-ים מסוימים. ראו {0} לפרטים נוספים."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "חייב להיות channel עם namespace. למשל: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "פרטי ערוץ לא תקינים"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "טוקן Slack לא תקין."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "טוקן לא תקין"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "ערוץ Slack לא נמצא."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "הערוץ לא נמצא"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "עליכם להגדיר site-url כדי שאינטגרציית Slack תפעל."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "דיווח על באגים לא מופעל."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37231,6 +37227,14 @@ msgstr "אין הרשאה לקרוא טבלה בסכימה {0}"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "אין הרשאה למחוק טבלה בסכימה {0}"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "{0} לא תקין."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "לא חייב להכיל רווחים, מרכאות או נקודה-פסיק"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "מחרוזת חיבור"
@@ -37582,6 +37586,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "סיסמת הביטוי עבור המפתח הפרטי הזה שגויה."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "לא סופק טוקן OIDC. הדבק/הדביקי JWT או הגדר/הגדירי את נתיב קובץ הטוקן."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "טוקן ה-OIDC אינו JWT תקין. בדוק/בדקי את הטוקן שהדבקת או את הקובץ בנתיב שסופק."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "בטוקן ה-OIDC חסר ה-claim הנדרש `iss` (issuer)."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "בטוקן ה-OIDC חסר ה-claim הנדרש `sub` (subject)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "לא נמצאו פרטי גישה של AWS. ודא/ודאי של-workload של Metabase מוצמד תפקיד IAM (instance profile, ECS task role, IRSA וכו')."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "לא נמצא אזור AWS. הגדר/הגדירי AWS_REGION בסביבת Metabase."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "לא מוגדרת זהות מנוהלת של Azure על ה-host של Metabase."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "Metabase לא הצליח להשיג טוקן מנקודת הקצה לזהויות של Azure."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "Metabase לא הצליח להשיג טוקן זהות של GCP. בדוק/בדקי של-workload מוצמד service account."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "Snowflake לא תומך ב-extract us week"
 
@@ -37608,6 +37648,10 @@ msgstr "לא ניתן לנתח את השאילתה ה-Native. ייתכן שיש 
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "שאילתה Native בהתחזות לא תקינה. חייבת להיות הצהרת {0} יחידה."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "לא ניתן לבצע החלפת פרמטרים: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39594,22 +39638,6 @@ msgstr "{0} {1} {2} ערכים"
 msgid "{0} {1} values"
 msgstr "{0} {1} ערכים"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "יצירת SQL באמצעות LLM לא מוגדרת. נא להגדיר מפתח API של Anthropic בהגדרות המנהל."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "נכשל בפענוח SQL. השתמש ב-@mentions כדי לספק הפניות לטבלאות."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "לא נמצאו טבלאות. השתמש ב-@mentions או ספק source SQL עם הפניות לטבלאות."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "לא נמצאו טבלאות נגישות. בדוק את הרשאות הטבלאות."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "החיבור {0} מוגדר באמצעות משתני סביבה ולא ניתן לשנות אותו כאן."
@@ -39691,6 +39719,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "זהו כתובת ה-root שממנה שתי הממשקים מסתעפים; אל תכללו שום נתיב /anthropic או /v1."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39751,6 +39783,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "טוקן קצר-חיים, לדוגמה הפלט של gcloud auth print-access-token. שימושי לבדיקה."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "מזהה נקודת קצה של Model Garden"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "אופציונלי. השתמש/השתמשי במודל פתוח שפרסת מ-Model Garden במקום במודל ש-Google מארחת. הגדר/הגדירי את המיקום לאזור שאליו פרסת אותו."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "נגזר מהמיקום כאשר משאירים את זה ב-host הגלובלי."
 
@@ -39805,6 +39845,14 @@ msgstr "מפתח גישה סודי"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "אזור"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "מזהה מודל"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "אופציונלי. השתמש/השתמשי ב-inference profile, או במודל שלא מופיע עבור האזור הזה, לפי ה-ID או ה-ARN שלו."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -39925,16 +39973,8 @@ msgid "The Anthropic API Key."
 msgstr "מפתח ה-API של Anthropic."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "מודל ה-Anthropic לשימוש."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "כתובת ה-URL הבסיסית של ה-API של Anthropic."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "גרסת ה-API של Anthropic."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -39987,6 +40027,14 @@ msgstr "כתובת בסיס URL של ה-API של DeepSeek. גם ממשק Message
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "מפתח ה-API של DeepSeek."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "כתובת ה-URL הבסיסית של xAI API שמשמשת עבור Chat Completions."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "מפתח ה-API של xAI."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -40075,14 +40123,6 @@ msgstr "Timeout לסוקט (קריאה בין-בייטים) במילישניות
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "Timeout לחיבור TCP במילישניות עבור בקשות API של LLM. ספק שנפל או לא נגיש צריך להיכשל מהר במקום להחזיק תהליך רקע לנצח."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "מספר בקשות יצירת SQL המקסימלי למשתמש לדקה."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "מספר בקשות יצירת SQL המקסימלי לכל כתובת IP לדקה."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40179,6 +40219,14 @@ msgstr "זוהתה אי-התאמה בין ה-`collection_id` של לוח המח�
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "אימות תוכן"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "השאילתה נכשלה: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "השאילתה נכשלה: שגיאה לא ידועה"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40352,6 +40400,30 @@ msgstr "צרו וערכו משימות"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "לא הוגדר חיבור ספק LLM בשם {0}."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "{0} דחה את הבקשה בגלל בעיית חיוב, למשל כשהקרדיטים אזלו. בדוק/בדקי את הגדרות החיוב של החשבון שלך."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "ספק הבינה המלאכותית דחה את הבקשה בגלל בעיית חיוב. נא לפנות למנהל/ת המערכת שלך."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "{0} מגביל כרגע קצב לבקשות מ-Metabase. נסה/נסי שוב בעוד רגע, ואם זה ממשיך לקרות, בדוק/בדקי את מגבלות הקצב של החשבון שלך."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "ספק הבינה המלאכותית מגביל כרגע קצב לבקשות. נסה/נסי שוב בעוד רגע."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "{0} דחה את מפתח ה-API או את האישורים ש-Metabase שלח. בדוק/בדקי אותם בהגדרות הבינה המלאכותית."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "ספק הבינה המלאכותית דחה את האישורים ש-Metabase שלח. נא לפנות למנהל/ת המערכת שלך."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "שגיאת API של {0} ‏(HTTP {1})"
@@ -40439,6 +40511,10 @@ msgstr "AWS Bedrock הגביל אותנו לפי קצב"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock לא עובד אבל לא אומר למה"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "AWS Bedrock החזיר תשובה לא שלמה מ-{0}"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40565,8 +40641,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "מודל Google לא תקין {0} — ציפינו למזהה שמוגדר עם publisher כמו \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "מודל Google לא נתמך {0}. נתמכים רק מודלים google/* ו-anthropic/*."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "מודל Google לא נתמך {0}. נתמכים רק מודלים google/*, anthropic/* ו-endpoints/*."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40615,6 +40691,10 @@ msgstr "(endpoint: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "בדקו ש-\"{0}\" הוא מיקום תקין"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "לא נפרס דבר בנקודת הקצה של Google {0}"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40665,6 +40745,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "Moonshot החזיר שגיאת שרת פנימית"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "ספק המודל לא הצליח להשלים את התגובה"
 
@@ -40835,6 +40916,30 @@ msgstr "החיבור לשרת ה-vLLM הופסק לפני שהתגובה הסת�
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "שרת ה-vLLM לא הגיב בתוך {0}ms. בדקו שהוא לא עמוס, או הגדילו את timeout הבקשה של vLLM."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "שגיאת xAI API ‏(HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "מפתח ה-API של xAI פג תוקף או אינו תקין"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "למפתח ה-API של xAI אין הרשאה, או שלצוות נגמרו הקרדיטים"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "נקודת הקצה של xAI API או המודל לא נמצאו"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI הפעילה עלינו הגבלת קצב"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI החזירה שגיאת שרת פנימית"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41528,6 +41633,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "אי אפשר להסיר את החבר האחרון מקבוצת ה-''Admin''!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "הוספת אנשים לקבוצת ''Data Analysts'' דורשת את היכולת Advanced Permissions, שאינה מופעלת במופע הזה."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "אי אפשר להוסיף או להסיר משתמשים לקבוצת ''All Users''/ממנה."
 
@@ -41764,6 +41873,10 @@ msgstr "הטוקן צריך להיות טוקן תקין של 64 תווים הק
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "אימות הטוקן לא זמין כרגע."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "פג הזמן המוקצב לאימות הטוקן."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42593,13 +42706,13 @@ msgstr "נתיב קובץ עבור {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} מצביע על קובץ שלא קיים: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "הגדרת סגמנט חייבת לציין טבלת מקור."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "אי אפשר לעדכן את ה-creator_id של סגמנט."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "הגדרת סגמנט חייבת לציין טבלת מקור."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42684,6 +42797,10 @@ msgstr "אימות דו-גורמי כבר הוגדר. השביתו אותו לפ
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "טוקן איפוס לא תקין"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "לא מאומת"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -43111,6 +43228,14 @@ msgstr "האם להציג מודאל היכרות אחרי הוספת חיבור
 msgid "Invalid timezone {0}: {1}"
 msgstr "אזור זמן לא תקין {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "קריאה מהנתיב אינה מותרת: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "כתיבה לנתיב אינה מותרת: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "זמן ההפעלה במילישניות"
@@ -43134,6 +43259,14 @@ msgstr "לוקאל לא תקין {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "כתובת האימייל שאליה יש להפנות משתמשים אם הם נתקלים בבעיה."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "רשימת allowlist מופרדת בפסיקים של ספריות ש-Metabase רשאית לקרוא מהן קבצים, למשל עבור סודות של מסד נתונים שניתנים כנתיב קובץ מקומי. השתמש/השתמשי ב-NONE כדי לא לאפשר נתיבים כלל. ברירת המחדל היא /tmp ב-Metabase Cloud ו-/ (כל נתיב) בהתקנה עצמית."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "רשימת allowlist מופרדת בפסיקים של ספריות ש-Metabase רשאית לכתוב אליהן קבצים. השתמש/השתמשי ב-NONE כדי לא לאפשר נתיבים כלל. ברירת המחדל היא /tmp ב-Metabase Cloud ו-/ (כל נתיב) בהתקנה עצמית."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43665,10 +43798,6 @@ msgstr "לא יודע/ת איך לפרסר את {0} באמצעות פורמט {1
 msgid "{0} must be at least 16 characters."
 msgstr "{0} חייב להיות באורך של לפחות 16 תווים."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "הפעילו או השביתו את כל ניסויי הקוד. כשהאפשרות מושבתת, רק נתיב הקוד של פרודקשן רץ."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "המשאב לא קיים."
@@ -43871,8 +44000,8 @@ msgstr "הערך חייב להיות סוג ישות תקף (keyword או מחר
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "אפשר לפרסם טבלאות רק לאוספי Library/Data."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "אפשר לפרסם טבלאות רק לאוספים מסוג Semantic layer/Data."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44456,65 +44585,13 @@ msgstr "אי אפשר להוסיף משתמשי Tenant לאפליקציות נת
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "שאילתות של אפליקציות נתונים לא יכולות להשתמש במדדים שמפנים לשאלות שמורות או למדדים אחרים: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: \"version\" חייב להיות מספר שלם וחיובי, כגון 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "כבר קיימת אפליקציית נתונים עם ה-slug הזה."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: ‏\"description\" חייב להיות מחרוזת בשורה אחת."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: ‏\"description\" הוא סיכום בשורה אחת — הוא חייב להיות באורך של {2} תווים או פחות."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" אינו ערך תקין ב-allowed_hosts — השתמש ב-origin כמו https://api.example.com או https://*.example.com."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: \"allowed_hosts\" חייב להיות רשימה."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "לא ניתן לנתח את {0}/{1}: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: שם ספריית האפליקציה הוא ה-slug שלה, ולכן הוא חייב להיות אותיות קטנות, מספרים ומקפים."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" הוא slug שמור — שנה את שם הספרייה."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: \"name\" הוא שדה חובה."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: \"path\" הוא שדה חובה."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: \"path\" לא יכול להכיל \"..\"."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "ה-Bundle עדיין לא סונכרן."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "לא ניתן לקרוא את {0}."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "קובץ החבילה \"{0}\" לא נמצא בריפוזיטורי."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "החבילה עבור \"{0}\" חייבת להיות קטנה מ-{1} MiB."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "קובץ bundle \"{0}\" לא נמצא."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44821,6 +44898,18 @@ msgstr "שאלות ארגז חול לא יכולות להחזיר עמודות �
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "אין לך הרשאות לשנות שאלה שמשמשת לאבטחה ברמת השורה וברמת העמודה."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "אין לך הרשאות לשנות קטע קוד שמשמש לאבטחה ברמת שורה וברמת עמודה."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "אין לך הרשאות לשנות סגמנט שמשמש לאבטחה ברמת שורה וברמת עמודה."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "אין לך הרשאות לשנות מדד שמשמש לאבטחה ברמת שורה וברמת עמודה."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."

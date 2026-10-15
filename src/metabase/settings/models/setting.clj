@@ -1046,10 +1046,11 @@
          s-name (setting-name setting)]
      (when (and feature (not (has-feature? feature)))
        (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature)
-                       {:status-code 402
-                        :status      "error-premium-feature-not-available"
-                        :setting     s-name
-                        :feature     feature})))
+                       {:status-code   402
+                        :status        "error-premium-feature-not-available"
+                        :setting       s-name
+                        :feature       feature
+                        :response/keys #{:status}})))
      (when (and enabled? (not (enabled?)))
        (throw (ex-info (tru "Setting {0} is not enabled" s-name)
                        {:status-code 400

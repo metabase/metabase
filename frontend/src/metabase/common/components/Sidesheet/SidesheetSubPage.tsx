@@ -14,6 +14,8 @@ interface SidesheetSubPageProps {
   isOpen: boolean;
   onClose: () => void;
   onBack: () => void;
+  /** When false, the title is plain text instead of a button that calls `onBack` */
+  withBackButton?: boolean;
   children: React.ReactNode;
   size?: SidesheetSize;
   /** Whether to show a translucent backdrop */
@@ -44,6 +46,7 @@ export const SidesheetSubPage = ({
   title,
   onClose,
   onBack,
+  withBackButton = true,
   children,
   isOpen,
   size,
@@ -52,7 +55,13 @@ export const SidesheetSubPage = ({
 }: SidesheetSubPageProps) => (
   <Sidesheet
     isOpen={isOpen}
-    title={<SidesheetSubPageTitle title={title} onClick={onBack} />}
+    title={
+      withBackButton ? (
+        <SidesheetSubPageTitle title={title} onClick={onBack} />
+      ) : (
+        title
+      )
+    }
     onClose={onClose}
     size={size}
     withOverlay={withOverlay}

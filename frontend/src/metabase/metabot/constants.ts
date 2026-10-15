@@ -4,6 +4,10 @@ import { isEmbedding } from "metabase/embedding/config";
 
 export const CONTEXT_WINDOW_WARNING_PERCENT = 90;
 
+// The server sends this error code when it judges that a rejected turn did
+// not fit the model's context window.
+export const CONTEXT_FULL_ERROR_CODE = "ai_provider_context_full";
+
 export const FIXED_METABOT_ENTITY_IDS = {
   DEFAULT: "metabotmetabotmetabot" as const,
   EMBEDDED: "embeddedmetabotmetabo" as const,
@@ -150,6 +154,7 @@ export const TOOL_MESSAGES = {
             count,
           ),
   },
+  run_query: { active: () => t`Running a query`, done: () => t`Ran a query` },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {

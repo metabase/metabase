@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Finnish\n"
 "Language: fi_FI\n"
-"PO-Revision-Date: 2026-10-06 05:42\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -275,7 +275,6 @@ msgid "User attribute"
 msgstr "Käyttäjäattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -321,12 +320,11 @@ msgstr "Käyttäjäattribuutti"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -406,7 +404,6 @@ msgid "Cancel"
 msgstr "Peruuta"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1156,8 +1153,6 @@ msgid "Search for a group"
 msgstr "Hae ryhmää"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1209,7 +1204,6 @@ msgstr "Analytiikan vienti epäonnistui"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1341,16 +1335,10 @@ msgid "Unit"
 msgstr "Yksikkö"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "Määritys lisätty"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "Määritys päivitetty"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "Tallenna yllä olevat asetukset, jotta voit määrittää ryhmäkohdistuksen."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1379,36 +1367,43 @@ msgid "Off"
 msgstr "Pois päältä"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "Uusi yhdistämismääritys"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "Käytössä {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "Käyttäjät liitetään {0}-ryhmiin JWT-ryhmänimiensä perusteella"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Jokaisella kirjautumiskerralla käyttäjät lisätään JWT:ssä nimettyihin {0}-ryhmiin ja poistetaan kaikista muista ryhmistä, mukaan lukien Järjestelmänvalvojat."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "Ryhmien lataaminen epäonnistui"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "JWT-ryhmän nimi"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "Syötä JWT-ryhmä..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "Lisää vähintään yksi mapitus käyttääksesi manuaalista ryhmämapitusta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "Lisää mapitus"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1420,90 +1415,42 @@ msgstr "Vaihda automaattiseen ryhmämapitukseen?"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "Nykyiset ryhmämapituksesi poistetaan, ja käyttäjät liitetään {0}-ryhmiin, joiden nimet vastaavat heidän JWT-ryhmänimiään."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Nykyiset ryhmäkohdistuksesi poistetaan. Sen jälkeen jokaisella kirjautumiskerralla käyttäjät lisätään JWT:ssä nimettyihin {0}-ryhmiin ja poistetaan kaikista muista ryhmistä, mukaan lukien Järjestelmänvalvojat."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "Poista mapitukset ja vaihda"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "JWT-ryhmän nimi"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "Syötä JWT-ryhmä..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "Tälle ryhmälle on jo olemassa mapitus"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} ryhmää"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "Valitse {0}-ryhmä..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "Muokkaa kartoitusta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "Poista mapitus"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "Ei ryhmiä"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "Muutokset tallennettu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Virhe ryhmämapituksen tallentamisessa"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "Mapitus poistettiin, mutta kaikkia sen ryhmiä ei voitu päivittää"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "Mapitus poistettu ja ryhmämapitus poistettu käytöstä"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "Määritys poistettu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "Virhe JWT-asetusten tallentamisessa"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "Muutokset tallennettu. Ryhmäkohdistus on asetettu tilaan Automaattinen."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Virhe JWT-konfiguraation lataamisessa"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "Määritä allekirjoitusavain ennen tallentamista"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1540,11 +1487,13 @@ msgid "Email attribute key"
 msgstr "Sähköposti-attribuutin avain"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Etunimi-attribuutin avain"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Sukunimi-attribuutin avain"
@@ -1558,9 +1507,8 @@ msgid "Tenant assignment attribute key"
 msgstr "Tenant-määrityksen attribuuttiavain"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Ryhmäkartoitus"
 
@@ -1604,6 +1552,19 @@ msgstr "Tallenna ja ota käyttöön"
 msgid "Save changes"
 msgstr "Tallenna muutokset"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "Määritä käyttäjät automaattisesti {0}-ryhmiin OIDC-palveluntarjoajasi ryhmien perusteella"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "OIDC-ryhmän nimi"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "Syötä OIDC-ryhmä..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "Kirjautumiskehote on pakollinen"
@@ -1625,6 +1586,10 @@ msgid "Client ID is required"
 msgstr "Client ID on pakollinen"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "Client secret vaaditaan"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "OIDC discovery onnistui, mutta tunnistetietoja ei voitu vahvistaa. Identiteetin tarjoaja ei tue testauksessa käytettyä grant-tyyppiä."
 
@@ -1637,25 +1602,8 @@ msgid "OIDC configuration check failed"
 msgstr "OIDC-konfiguraation tarkistus epäonnistui"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "OIDC-palveluntarjoaja poistettu käytöstä"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "OIDC-palveluntarjoaja otettu käyttöön"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "OIDC-palveluntarjoajan päivitys epäonnistui"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "OIDC-palveluntarjoaja poistettu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "OIDC-palveluntarjoajan poisto epäonnistui"
+msgid "Error loading OIDC configuration"
+msgstr "Virhe OIDC-määrityksen lataamisessa"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1677,10 +1625,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "Palveluntarjoajan tunniste. OIDC-uudelleenohjaus-URI:si on \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "esim. okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "Kirjautumiskehote"
 
@@ -1690,8 +1634,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "Painikkeen teksti {0}-kirjautumisnäytössä"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "esim. Kirjaudu sisään Okta-tilillä"
+msgid "Sign in with Okta"
+msgstr "Kirjaudu Okta-tilillä"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1699,8 +1643,8 @@ msgstr "Issuer-URI"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "OIDC issuer -URI. Discovery-päätepisteen \"${ 0 }/.well-known/openid-configuration\" pitäisi olla käytettävissä."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "Discovery-päätepisteen \"{0}/.well-known/openid-configuration\" pitäisi olla käytettävissä"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1711,27 +1655,41 @@ msgstr "Client ID"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "OIDC-palveluntarjoajassasi {0}:lle määritetty Client ID."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "Tämä on määritetty {0}:lle OIDC-palveluntarjoajassasi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
-msgstr "Client Secret"
+msgid "Client secret"
+msgstr "Asiakkaan salaisuus"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "OIDC-palveluntarjoajassasi määritetty Client secret."
+msgid "This is configured in your OIDC provider"
+msgstr "Tämä on määritetty OIDC-palveluntarjoajassasi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "Jätä tyhjäksi säilyttääksesi nykyisen arvon"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Scopet"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "Pilkuin erotettu lista pyydettävistä OIDC scopeista"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "Attribuutit"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "Ottaaksesi tämän käyttöön sinun täytyy luoda mappaukset, jotta {0} tietää, mihin ryhm(i)in käyttäjäsi lisätään sen perusteella, mihin SSO-ryhmään he kuuluvat."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "Kohdista OIDC-claimit {0}:n etunimi- ja sukunimi-kenttiin. Sähköposti tulee aina vakiomuotoisesta email-claimista."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1741,69 +1699,6 @@ msgstr "Ryhmäattribuutin nimi"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "OIDC-claim, joka sisältää ryhmäjäsenyyden tiedot."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "Valinnaiset asetukset"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Scopet"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "Pilkuilla erotettu lista pyydettävistä OIDC-scopeista."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "Attribuuttien mappaus"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "Mapppaa OIDC-claimit käyttäjäattribuutteihin. Käytä standardeja OIDC-claim-nimiä tai palveluntarjoajasi omia claimeja."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "Sähköpostiattribuutti"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "Etunimiattribuutti"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "Sukunimiattribuutti"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "Poista käytöstä"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "Ota käyttöön"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "Poista konfiguraatio"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "Poistetaanko tämä OIDC-palveluntarjoaja?"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "Käyttäjät eivät enää voi kirjautua sisään tällä palveluntarjoajalla. Tätä ei voi perua."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1823,24 +1718,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "Määritä SSO SAML:n avulla alla olevilla asetuksilla. Jos sinulla on kysyttävää, tutustu {0}."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "dokumentaatio"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "Määritä identiteetintarjoajasi (IdP)"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "Identiteetintarjoajasi tarvitsee seuraavat tiedot {0}:sta."
+msgid "Identity provider (IdP) configuration"
+msgstr "Identity provider (IdP) -määritys"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1875,18 +1754,16 @@ msgid "Tenant assignment attribute"
 msgstr "Vuokralaisen määritysattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "Kerro {0}:lle identiteetintarjoajastasi"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "{0} tarvitsee seuraavat tiedot tarjoajastasi."
+msgid "Identity provider info"
+msgstr "Identity provider -tiedot"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "SAML-identiteetintarjoajan URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "Tämä on URL-osoite, johon käyttäjäsi menevät kirjautuakseen identity provider -palveluun."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1901,8 +1778,16 @@ msgid "SAML identity provider issuer"
 msgstr "SAML-identiteetintarjoajan issuer"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "Allekirjoita SSO-pyynnöt (valinnainen)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "Tämä on IdP:n yksilöllinen tunniste. Tätä kutsutaan usein nimellä Entity ID tai yksinkertaisesti \"Issuer\"."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "Allekirjoita SSO-pyynnöt"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "Käytä avainsäilöä allekirjoittamaan identity provider -palvelulle lähetettävät todennuspyynnöt"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1921,9 +1806,36 @@ msgstr "Shh..."
 msgid "SAML keystore alias"
 msgstr "SAML-avainsäilön alias"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "Määritä käyttäjät automaattisesti {0}-ryhmiin SAML identity provider -palveluntarjoajasi ryhmien perusteella"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "SAML-ryhmän nimi"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "Syötä SAML-ryhmä..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "SAML-attribuutti, joka listaa käyttäjän ryhmät. Ryhmäkohdistus ei lisää ryhmiä ennen kuin tämä on asetettu."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "Kirjaudu sisään SSO:lla"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "Salli {0}-kirjautumisen luoda tilit uusille käyttäjille ja aktivoida uudelleen käytöstä poistetut tilit. Kun pois käytöstä, vain käyttäjät, joilla on aktiivinen {1}-tili, voivat kirjautua sisään."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "Salli {0}-kirjautumisen luoda tilit uusille käyttäjille. Kun tämä on poistettu käytöstä, vain käyttäjät, joilla on aktiivinen {1}-tili, voivat kirjautua sisään."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1932,14 +1844,13 @@ msgstr "Kirjaudu sisään SSO:lla"
 msgid "User provisioning"
 msgstr "Käyttäjäprovisiointi"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "Salli {0}-kirjautumisen luoda tilit uusille käyttäjille ja aktivoida uudelleen käytöstä poistetut tilit. Kun pois käytöstä, vain käyttäjät, joilla on aktiivinen {1}-tili, voivat kirjautua sisään."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Sallii käyttäjien kirjautua sisään JWT Identity Providerin kautta."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "OIDC-palveluntarjoajan päivitys epäonnistui"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2583,6 +2494,12 @@ msgstr "Dev-palvelimen URL"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "Paikallisen dev-palvelimen URL, josta tarjoillaan visualisointibundle, manifesti ja resurssit."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "Ota käyttöön"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2639,6 +2556,17 @@ msgstr "Plugin-toiminnot"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "Korvaa bundle"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "Poista käytöstä"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2783,7 +2711,6 @@ msgstr "Päivitä"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "Lisää"
@@ -2894,17 +2821,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "Ne on saatettu rakentaa eri versiota varten, ja ne saattavat vaatia päivitystä."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2938,6 +2861,19 @@ msgstr "Taulut"
 msgid "No published tables in your library yet."
 msgstr "Kirjastossasi ei ole vielä julkaistuja tauluja."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "Semanttinen kerros"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "Julkaistu taulu"
@@ -2962,7 +2898,7 @@ msgid "Snippet"
 msgstr "Koodinpätkä"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3128,18 +3064,18 @@ msgstr[0] "Tämän kokoelman arkistointi poistaa myös sen sisällä olevien tau
 msgstr[1] "Näiden kokoelmien arkistointi poistaa myös niiden sisällä olevien taulujen julkaisun (sekä niistä riippuvat taulut) ja arkistoi kaikki muut alakohteet."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "Luo Kirjastosi"
+msgid "Create your semantic layer"
+msgstr "Luo semanttinen kerroksesi"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "Kirjasto luotu"
+msgid "Semantic layer created"
+msgstr "Semanttinen kerros luotu"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "Kirjasto auttaa sinua luomaan analytiikalle \"yhden totuuden\" tarjoamalla keskitetysti hallitun kokoelman kuratoitua sisältöä. Se erottaa auktoritatiiviset, uudelleenkäytettävät komponentit ad hoc -analyyseista."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "Semanttinen kerros auttaa sinua luomaan analytiikalle yhden totuuden lähteen tarjoamalla keskitetysti hallitun joukon kuratoitua sisältöä. Se erottaa autoritatiiviset, uudelleenkäytettävät komponentit ad hoc -analyyseistä."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3160,8 +3096,8 @@ msgstr "Versionhallinta"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "Synkronoi Kirjastosi Gitiin"
+msgid "Sync your semantic layer to git"
+msgstr "Synkkaa semanttinen kerroksesi gitiin"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3175,8 +3111,8 @@ msgstr "Oletuksena luotettavat lähteet, jotka datatiimisi määrittää"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "Luo Kirjastoni"
+msgid "Create my semantic layer"
+msgstr "Luo semanttinen kerrokseni"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3194,8 +3130,8 @@ msgid "Go to {0}"
 msgstr "Siirry kohteeseen {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "Taulun julkaiseminen tallentaa sen Kirjastoon."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "Taulun julkaiseminen tallentaa sen semanttiseen kerrokseen."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3263,12 +3199,12 @@ msgid "Unpublish these tables?"
 msgstr "Poistetaanko julkaisu näiltä tauluilta?"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "Tämä poistaa tämän taulun Kirjastosta."
+msgid "This will remove this table from the semantic layer."
+msgstr "Tämä poistaa tämän taulun semanttisesta kerroksesta."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "Tämä poistaa nämä taulut Kirjastosta."
+msgid "This will remove these tables from the semantic layer."
+msgstr "Tämä poistaa nämä taulut semanttisesta kerroksesta."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3699,16 +3635,16 @@ msgid "No published tables yet"
 msgstr "Ei julkaistuja tauluja vielä"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "Julkaise taulut Kirjastossa nähdäksesi ne täällä."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "Julkaise tauluja semanttisessa kerroksessa, jotta näet ne täällä."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "Ei mittareita vielä"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "Laita mittarit Kirjastoon nähdäksesi ne täällä."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "Lisää mittareita semanttiseen kerrokseen, jotta näet ne täällä."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3722,6 +3658,7 @@ msgstr "Käyttäjän poistaminen epäonnistui"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "Datasovellukset"
 
@@ -3844,19 +3781,8 @@ msgid "Outdated"
 msgstr "Vanhentunut"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "Synkronointi epäonnistui"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "Synkronoitu {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "Ei vielä synkronoitu"
+msgid "Draft"
+msgstr "Luonnos"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4167,6 +4093,7 @@ msgstr "Prosessi suoritetaan taustalla. Tietokannan koosta riippuen tämä voi k
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4792,6 +4719,7 @@ msgstr "Kenttä"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6245,16 +6173,16 @@ msgid "Curated semantic layer"
 msgstr "Kuratoitu semanttinen kerros"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "Kirjastossasi olevat mittarit ja julkaistut taulut."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "Mittarit ja julkaistut taulut semanttisessa kerroksessasi."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "Täysi semanttinen kerros"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "Kirjaston entiteetit sekä kaikki aktiiviset fyysiset taulut."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "Semanttisen kerroksen entiteetit sekä kaikki aktiiviset fyysiset taulut."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7249,6 +7177,7 @@ msgid "Could not connect to repository"
 msgstr "Yhteyttä repositorioon ei voitu muodostaa"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "Testaa yhteys"
 
@@ -7455,6 +7384,12 @@ msgstr "Sinulla on synkronoimattomia muutoksia. Mitä haluat tehdä?"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "Synkronoinnin peruminen epäonnistui"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "Synkronointi epäonnistui"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8142,13 +8077,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Tämä attribuutti periytyy vuokralaiselta, mutta voit ohittaa sen arvon"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "Attribuutit"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "Päällekkäiset kirjautumisattribuuttien avaimet"
 
@@ -8777,6 +8705,7 @@ msgstr "Lisää vaihtoehto:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "Ei tuloksia"
 
@@ -9323,9 +9252,7 @@ msgstr "ja"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "taulu"
-msgstr[1] "taulut"
+msgstr "taulu"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9465,6 +9392,7 @@ msgstr "Sulje välilehti"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10334,7 +10262,6 @@ msgstr "Ilmoitamme sinulle, kun olet saavuttanut {0}% käyttökiintiöstäsi."
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "Hyväksy ja jatka"
 
@@ -13180,6 +13107,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "Löydät tämän Slack-sovelluksesi {0} -asetuksista."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Allekirjoitussalaisuus"
 
@@ -14197,13 +14128,16 @@ msgstr "Luo ryhmä"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Voit käyttää ryhmiä hallitaksesi käyttäjiesi pääsyä dataan. Lisää käyttäjät ryhmiin ja siirry sitten Oikeudet-osioon hallitaksesi kunkin ryhmän pääsyä. Ylläpitäjät- ja Kaikki käyttäjät -ryhmät ovat erityisiä oletusryhmiä, joita ei voi poistaa."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "Ei ryhmiä"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15288,6 +15222,140 @@ msgstr "Salli käyttäjien rekisteröityä itse, jos heidän Google-tilinsä sä
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "Salli käyttäjien rekisteröityä itse, jos heidän Google-tilinsä sähköpostiosoite kuuluu:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "Ryhmä {0} ei muutu."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "Nämä ryhmät eivät muutu: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "Poista yhdistämismääritys"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "Poista yhdistämismääritys ja jäsenet"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "Poista yhdistämismääritys ja poista ryhmät"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "Poista yhdistämismääritys ja poista ryhmä"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "Tätä mapitusta ei ole linkitetty mihinkään ryhmään."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "Näiden ryhmien jäsenyyttä ei enää synkronoida, kun käyttäjät kirjautuvat sisään."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "Tämän ryhmän jäsenyyttä ei enää synkronoida, kun käyttäjät kirjautuvat sisään."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "Poistetaanko tämä ryhmäyhdistämismääritys?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "Mitä ryhmille itselleen pitäisi tapahtua {0}:ssa?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "Mitä itse ryhmälle pitäisi tapahtua {0}:ssa?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "Ei mitään, poista vain yhdistämismääritys"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "Poista myös kaikki jäsenet näistä ryhmistä"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "Poista myös kaikki jäsenet tästä ryhmästä"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "Jäsenet säilyttävät {0}-tilinsä."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "Poista myös ryhmät"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "Poista myös ryhmä"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "Lisää mapitus"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "Manuaaliset ryhmäkohdistukset"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "Ei vielä yhdistämismäärityksiä"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} ryhmää"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "Valitse {0}-ryhmä..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "Muokkaa kartoitusta"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "Poista mapitus"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "Mapitus poistettiin, mutta kaikkia sen ryhmiä ei voitu päivittää"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "Kohdistus poistettu, mutta sen poistettua ryhmää ei voitu poistaa muista kohdistuksista"
+msgstr[1] "Kohdistus poistettu, mutta sen poistettuja ryhmiä ei voitu poistaa muista kohdistuksista"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "Määritys poistettu"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "Tälle ryhmälle on jo olemassa mapitus"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "Määritys lisätty"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "Määritys päivitetty"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15543,7 +15611,6 @@ msgid "Edit configuration"
 msgstr "Muokkaa konfiguraatiota"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "Ensin juridiikkaa"
 
@@ -15760,28 +15827,18 @@ msgstr "Tämä instanssi on kehitystilassa, ja sitä voi käyttää vain kehitys
 msgid "Get your token"
 msgstr "Hae tokenisi"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "Määritä ihmiset automaattisesti {0}-ryhmiin LDAP-ryhmäjäsenyyden perusteella"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "Manuaaliset ryhmäkohdistukset"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "LDAP-ryhmän nimi"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Ei vielä yhdistämismäärityksiä"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktivoi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "Tarkista sulkusi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "Portin on oltava kokonaisluku välillä 1–65535"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15840,6 +15897,15 @@ msgstr "Käyttäjäsuodatin"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "Kohdista LDAP-attribuutit {0}:n sähköposti-, etunimi- ja sukunimikenttiin"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Määritä ihmiset automaattisesti {0}-ryhmiin LDAP-ryhmäjäsenyyden perusteella"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "LDAP-ryhmän nimi"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16489,102 +16555,6 @@ msgstr "Valuutan yksikkö"
 msgid "Currency label style"
 msgstr "Valuuttatunnisteen tyyli"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "Uuden ryhmämäärityksen nimi"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "Poista yhdistämismääritys"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "Poista yhdistämismääritys ja jäsenet"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "Poista yhdistämismääritys ja poista ryhmät"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "Poista yhdistämismääritys ja poista ryhmä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "Administrators-ryhmään ei vaikuteta."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "Tätä mapitusta ei ole linkitetty mihinkään ryhmään."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "Näiden ryhmien jäsenyyttä ei enää synkronoida, kun käyttäjät kirjautuvat sisään."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "Tämän ryhmän jäsenyyttä ei enää synkronoida, kun käyttäjät kirjautuvat sisään."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "Poistetaanko tämä ryhmäyhdistämismääritys?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "Mitä ryhmille itselleen pitäisi tapahtua {0}:ssa?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "Mitä itse ryhmälle pitäisi tapahtua {0}:ssa?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "Ei mitään, poista vain yhdistämismääritys"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "Poista myös kaikki jäsenet näistä ryhmistä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "Poista myös kaikki jäsenet tästä ryhmästä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "Jäsenet säilyttävät {0}-tilinsä."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "Poista myös ryhmät"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "Poista myös ryhmä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "Yhdistämismääritykset mahdollistavat sen, että Metabase voi automaattisesti lisätä ja poistaa käyttäjiä ryhmistä hakemistopalvelimen toimittamien jäsenyystietojen perusteella. Jos ryhmää ei ole yhdistetty, sen jäsenyyksiä ei synkronoida."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "Ei vielä määrityksiä, ryhmäsynkronointi ei ole päällä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "Synkronoi ryhmien jäsenyydet"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "Tietoja yhdistämismäärityksistä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "Poistetaanko tämä yhdistämismääritys?"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "Aloitussivu"
@@ -17141,6 +17111,7 @@ msgstr "Aloitettu lähteestä"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "Tämä kohde on poistettu pysyvästi."
@@ -17237,6 +17208,7 @@ msgstr "kansio"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "tutkimus"
 
@@ -17618,6 +17590,7 @@ msgid "No items of the selected types."
 msgstr "Ei kohteita valituista tyypeistä."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "Tyhjennä haku"
 
@@ -18012,6 +17985,10 @@ msgstr "Uusi fantastinen kokoelmani"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "Kokoelma, johon se tallennetaan"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "Vedä tähän kiinnittääksesi"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19327,7 +19304,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "Minuutti"
 msgstr[1] "{0} minuuttia"
 
@@ -19987,6 +19964,10 @@ msgstr "Kaikki vuokralaiskäyttäjät"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "Data-analyytikot"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "Jäsenten lisääminen tähän ryhmään vaatii paketin, joka sisältää Data Analysts -ryhmän. Jäseniä voi vain poistaa."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21784,11 +21765,6 @@ msgid "Data transformation"
 msgstr "Datan muunnos"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "Semanttinen kerros"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22060,8 +22036,8 @@ msgstr "Tässä taulussa ei ole kenttiä"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "Ensin luodaan Kirjastosi"
+msgid "First, let's create your semantic layer"
+msgstr "Ensin luodaan semanttinen kerroksesi"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22441,8 +22417,8 @@ msgid "Bring more order to your analytics"
 msgstr "Luo enemmän järjestystä analytiikkaasi"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "Luo jaettu kirjasto dataseteistä ja mittareista, joihin tiimisi voi luottaa, jotta asiat pysyvät yhdenmukaisina datan ja sitä seuraavan sisällön kasvaessa."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "Luo jaettu semanttinen kerros dataseteistä ja mittareista, joihin tiimisi voi luottaa, jotta asiat pysyvät yhdenmukaisina datan ja siitä eteenpäin rakentuvan sisällön kasvaessa."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22646,6 +22622,18 @@ msgstr "Lisää oma data milloin tahansa."
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "Lisään datani myöhemmin"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "Yhteys onnistui"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "Yhteys epäonnistui"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "Tietokantaan ei saatu yhteyttä"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23156,6 +23144,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "Nämä asetukset edellyttävät palvelinkoodin muuttamista. Voit kokeilla ja esikatsella asetuksia tässä. Katso {0} saadaksesi lisätietoja."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "dokumentaatio"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "Käytä instanssin fonttia"
 
@@ -23437,7 +23430,6 @@ msgid "When you embed charts or dashboards from Metabase in your\n"
 msgstr "Kun upotat Metabasesta kaavioita tai koontinäyttöjä omaan sovellukseesi, kyseinen sovellus ei kuulu Metabasen muun osan kattavan Affero General Public License -lisenssin piiriin, kunhan pidät Metabase-logon ja \"Powered by Metabase\" -tekstin näkyvissä näissä upotuksissa."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Sinun kannattaa kuitenkin lukea yllä linkitetty lisenssiteksti, sillä se on varsinainen lisenssi, jonka hyväksyt ottaessasi tämän ominaisuuden käyttöön."
 
@@ -25213,10 +25205,6 @@ msgid "Remove provider"
 msgstr "Poista palveluntarjoaja"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "SQL-generointi ajetaan myös tämän yhteyden kautta, ja se lakkaa toimimasta ilman sitä."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "Semanttinen haku ajetaan myös tämän yhteyden kautta, ja se lakkaa toimimasta ilman sitä."
 
@@ -25348,8 +25336,8 @@ msgid "AI explorations"
 msgstr "AI-tutkimukset"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "Kysy datastasi ja mainitse kohde kirjoittamalla @"
+msgid "Suggestions"
+msgstr "Ehdotukset"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25391,16 +25379,14 @@ msgid "Source is wrong"
 msgstr "Lähde on väärin"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "Kutista datalähteet"
+msgid "Give feedback"
+msgstr "Anna palautetta"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "Laajenna datalähteet"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "Käytetyt datalähteet"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "Käytetty tietolähde"
+msgstr[1] "Käytetyt tietolähteet"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25564,11 +25550,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "Tutki mittareitasi ja mallejasi AI:n avulla."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "Miten voin auttaa? Kirjoita @ mainitaksesi kohteita."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} ei ole täydellinen. Tarkista tulokset."
@@ -25578,41 +25559,10 @@ msgid "Fork conversation"
 msgstr "Haarauta keskustelu"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "Vastaus kohteesta {0} keskeytyi"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "Vastaus kohteelta {0} katkesi, koska se saavutti enimmäispituuden"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "Edellinen vastauksesi katkesi. Jatka täsmälleen siitä, mihin jäit. Älä toista mitään, mitä jo kirjoitit."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "Sisältösuodatin pysäytti vastauksen kohteelta {0}. Kokeile muotoilla kysymyksesi uudelleen."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} pysäytettiin, kun tämän vastauksen askelraja tuli vastaan"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "Jatka viimeisimmän pyyntöni käsittelyä."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "Vastaus kohteelta {0} pysähtyi ennen kuin se valmistui"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "Tämä keskustelu on saavuttanut enimmäispituutensa eikä voi jatkua. Aloita uusi chat."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25718,6 +25668,12 @@ msgstr "Tämä chat lähestyy rajaa {0}."
 msgid "New chat"
 msgstr "Uusi chat"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "Ladataan"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "Käyttöliittymäbugi"
@@ -25755,6 +25711,11 @@ msgstr "Kuvaile, millaista SQL:ää haluat; kirjoita @ mainitaksesi kohteen."
 msgid "Send to {0}"
 msgstr "Lähetä {0}:lle"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "Lopeta generointi"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "Lisää AI-palveluntarjoaja"
@@ -25779,6 +25740,10 @@ msgstr "Aloita maksullinen tilaus"
 msgid "Ask {0}"
 msgstr "Kysy {0}:lta"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "Kysy datastasi. Kirjoita @ mainitaksesi kohteita."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "Slack-tilisi on yhdistetty onnistuneesti."
@@ -25802,10 +25767,6 @@ msgstr "Luotu {0}:lla"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} on poistettu käytöstä"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "Lopeta generointi"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -25989,6 +25950,38 @@ msgstr "Virheellinen pyyntömuoto"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "Pahoittelut, emme voineet ladata tätä keskustelua."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} pysäytettiin, kun tämän vastauksen askelraja tuli vastaan"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "Vastaus kohteelta {0} katkesi, koska se saavutti enimmäispituuden"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "Tämä keskustelu on saavuttanut enimmäispituutensa eikä voi jatkua. Aloita uusi chat."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "Sisältösuodatin pysäytti vastauksen kohteelta {0}. Kokeile muotoilla kysymyksesi uudelleen."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "Vastaus kohteelta {0} pysähtyi ennen kuin se valmistui"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "Jatka viimeisimmän pyyntöni käsittelyä."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "Edellinen vastauksesi katkesi. Jatka täsmälleen siitä, mihin jäit. Älä toista mitään, mitä jo kirjoitit."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -28956,19 +28949,6 @@ msgstr "Älä välimuistita tuloksia"
 msgid "No caching"
 msgstr "Ei välimuistitusta"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "Klikkaamalla \"Agree and continue\" hyväksyt {0}"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "upotuslisenssimme."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "Kun upotat Metabasesta kaavioita tai koontinäyttöjä omaan sovellukseesi, kyseinen sovellus ei kuulu Affero General Public License -lisenssin piiriin, joka kattaa muun Metabasen, kunhan pidät Metabase-logon ja \"Powered by Metabase\" -tekstin näkyvissä näissä upotuksissa."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "lähetetty sähköpostilla"
@@ -30687,6 +30667,29 @@ msgstr "{0}+klikkaus avaa uuteen välilehteen"
 msgid "Pick columns"
 msgstr "Valitse sarakkeet"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "Hae sarakkeita"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "Hae sarakkeita…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "{0} sarake löytyi"
+msgstr[1] "{0} saraketta löytyi"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "Valitse kaikki nämä"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "Sarakkeita ei löytynyt"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31660,6 +31663,11 @@ msgstr "Virhe synkronoinnissa"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "Synkronoidaan…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "Synkronointi epäonnistui: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33312,11 +33320,6 @@ msgstr "Muunnoksissa olevien muuttujien on oltava joko valinnaisia tai niillä o
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "sitten"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "Ladataan"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35574,6 +35577,10 @@ msgid "You don''t have permissions to do that."
 msgstr "Sinulla ei ole oikeuksia tehdä sitä."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "Sinulla ei ole oikeuksia suorittaa tätä toimintoa."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "Virhe toiminnon suorittamisessa."
 
@@ -35598,10 +35605,6 @@ msgid "Implicit parameters must be provided."
 msgstr "Implisiittiset parametrit on annettava."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "HTTP-toimintoja ei voi suorittaa julkisista päätepisteistä."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "Tuntematon toimintotyyppi {0}."
 
@@ -35609,26 +35612,13 @@ msgstr "Tuntematon toimintotyyppi {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "Arvoja voi hakea vain toiminnoille, jotka edellyttävät entiteettiavainta."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "Parametreja ei voitu korvata: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "Palvelua ei voi kutsua: puuttuvat pakolliset parametrit: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "Liian monta tulosta palautui: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "HTTP-toiminnot on poistettu käytöstä."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "Toiminnot on tehtävä malleilla, ei korteilla."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "Implisiittisiä toimintoja ei tueta malleille, joissa on lausekkeita."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35641,10 +35631,6 @@ msgstr "arvon on mapattava parametrien tunnukset skalaarisiin arvoihin."
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "Toimintotyyppiä ei tueta"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "on oltava kelvollinen json-query, esimerkiksi ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35675,16 +35661,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "Onko tietokannassa tauludatan muokkaus käytössä."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "HTTP-toimintoja ei tueta."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "Kyselytoiminnoille on annettava database_id"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "Implisiittisiä toimintoja ei tueta malleille, joissa on lausekkeita."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -35767,12 +35745,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "`field`-lauseke tarvitsee kolmannessa kohdassaan portable FK:n, ei numeerista id:tä. Käytä vektoria `[<database>, <schema>, <table>, <column>]` (ratkaistaan metatietopalvelun avulla) tai sarakkeen nimeä merkkijonona (vaiheiden välisiin viittauksiin)."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "`{0}` ei selviä kierroksesta kysymyslinkin kautta, jonka frontend avaa: kysymys joko ei lataudu tai menettää ehdon hiljaa ja vastaa jotain muuta. Laita yksikkö sen sijaan sarakkeelle - `temporal-unit`-valinta `field` / `expression` -viitteeseen, verrattuna jakson ensimmäiseen päivään tavallisena päivämäärämerkkijonona kuten \"2025-01-01\" - tai kirjoita aikaväli auki muodossa `>=` sen ensimmäinen päivä ja `<` sitä seuraavan päivän ensimmäinen päivä, molemmat tavallisina päivämäärämerkkijonoina (ei `between`, joka tiputtaa kaiken keskiyön jälkeen sen viimeisenä päivänä). Käytä `year`-aikaväliä `expression`-viitteessä, jonka kyselymoottori lukee numerona, sekä `aggregation:`-kohdassa (`count-where`, `sum-where`, `share`) ja liitosten `conditions:`-ehdoissa, joissa yksikön siirtäminen sarakkeelle muuttaisi vastausta."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "Kyselyrakentajan lauseke-editori hylkää {0}-lausekkeen vaiheessa {1}: {2}. Kysely rakentuu, mutta sitä ei voi visualisoida tai tallentaa – kirjoita virheellinen lauseke uudelleen."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` on {1}-tyyppinen mukautettu sarake, joten sitä ei voi luokitella yksiköllä {2}. Vertaa sitä tavalliseen arvoon tai luokittele sen sijaan date-/datetime-sarake."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` on {1}-tyyppinen sarake, joten sitä ei voi luokitella yksiköllä {2}. Vertaa sitä tavalliseen arvoon tai luokittele sen sijaan date-/datetime-sarake."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "Virheellinen ajallinen literaali {0} kohdassa :absolute-datetime — käytä ISO-8601-muotoista päivämäärää, päivämäärä-kellonaikaa, vuotta tai vuosi-kuukautta."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "Virheellinen aikaliteraali {0} — käytä ISO-8601-päivämäärää, datetime-arvoa, vuotta tai year-month-muotoa."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -35829,6 +35819,10 @@ msgstr "Onko ei-taulukkomuotoinen kaavio jo luotu. Vaaditaan analytiikkaa varten
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "Ota käyttöön upotuspolun, kyselyparametrien, user agentin, IP-osoitteen ja Metabot-keskustelun metadatan lokitus sisäisen datasi ja upotusten käyttäjille. Nämä tiedot näytetään käyttöanalytiikassasi."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "Ota kaikki koodikokeilut käyttöön tai poista ne käytöstä. Kun pois käytöstä, vain tuotantokoodipolku suoritetaan."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36162,38 +36156,6 @@ msgstr "Päivitä välimuistissa olevat tulokset tämä osuus niiden välimuisti
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "Absoluuttinen enimmäisaika, jonka mitään välimuistissa olevia kyselytuloksia säilytetään, sekunteina."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "Täytyy olla nimialueellinen kanava. Esim: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "Virheelliset kanavan tiedot"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "Virheellinen Slack-token."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "virheellinen token"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "Slack-kanavaa ei löytynyt."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "kanavaa ei löytynyt"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "Sinun täytyy määrittää site-url, jotta Slack-integraatio toimii."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "Bugiraportointi ei ole käytössä."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "SMTP-hostia ei ole asetettu."
@@ -36393,6 +36355,38 @@ msgstr "Virhe fonttien rekisteröinnissä: Metabase ei pysty lähettämään Pul
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "Tämä on tunnettu ongelma tietyissä JVM:issä. Katso lisätietoja: {0}."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "Täytyy olla nimialueellinen kanava. Esim: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "Virheelliset kanavan tiedot"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "Virheellinen Slack-token."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "virheellinen token"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "Slack-kanavaa ei löytynyt."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "kanavaa ei löytynyt"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "Sinun täytyy määrittää site-url, jotta Slack-integraatio toimii."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "Bugiraportointi ei ole käytössä."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37098,6 +37092,14 @@ msgstr "Ei oikeutta lukea taulua skeemassa {0}"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Ei oikeutta poistaa taulua skeemassa {0}"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "Virheellinen {0}."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "ei saa sisältää välilyöntejä, lainausmerkkejä tai puolipisteitä"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "Yhteysmerkkijono"
@@ -37448,6 +37450,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "Tämän yksityisen avaimen tunnuslause on virheellinen."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "OIDC-tokenia ei annettu. Liitä JWT tai aseta token-tiedoston polku."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "OIDC-token ei ole kelvollinen JWT. Tarkista liittämäsi token tai tiedosto annetussa polussa."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "OIDC-tokenista puuttuu pakollinen `iss` (issuer) -claim."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "OIDC-tokenista puuttuu pakollinen `sub` (subject) -claim."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "AWS-tunnistetietoja ei löytynyt. Varmista, että Metabasen workloadiin on liitetty IAM-rooli (instance profile, ECS task role, IRSA jne.)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "AWS-aluetta ei löytynyt. Aseta AWS_REGION Metabasen ympäristöön."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "Metabasen hostissa ei ole määritetty Azure managed identityä."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "Metabase ei saanut tokenia Azuren identity endpointista."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "Metabase ei saanut GCP identity tokenia. Tarkista, että workloadiin on liitetty service account."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "Snowflake ei tue extract us week -toimintoa"
 
@@ -37474,6 +37512,10 @@ msgstr "Natiivikyselyä ei voitu jäsentää. Kyselyssäsi saattaa olla jotain v
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "Virheellinen roolittamalla suoritettava natiivikysely. Sen on oltava yksi ainoa {0}-lause."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "Parametreja ei voitu korvata: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39428,22 +39470,6 @@ msgstr "{0} {1} {2} arvoa"
 msgid "{0} {1} values"
 msgstr "{0} {1} arvoa"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "LLM SQL -generointia ei ole määritetty. Aseta Anthropic API -avain ylläpitoasetuksissa."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "SQL:n jäsentäminen epäonnistui. Käytä @mainintoja tauluviittausten antamiseen."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "Tauluja ei löytynyt. Käytä @mainintoja tai anna lähde-SQL tauluviittauksilla."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "Yhtään käytettävissä olevaa taulua ei löytynyt. Tarkista taulujen käyttöoikeudet."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "{0}-yhteys on määritetty ympäristömuuttujilla eikä sitä voi muuttaa täällä."
@@ -39525,6 +39551,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "Juuri, jonka alla molemmat rajapinnat ovat; älä lisää mitään /anthropic- tai /v1-polkuja."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39585,6 +39615,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "Lyhytikäinen tunnus, esim. komennon gcloud auth print-access-token tuloste. Hyödyllinen testaamiseen."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "Model Garden -päätepisteen ID"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "Valinnainen. Käytä Model Gardenista käyttöönotettua avointa mallia Googlen hostaaman mallin sijaan. Aseta sijainniksi se alue, johon otit sen käyttöön."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "Johdetaan sijainnista, kun se jätetään globaaliin isäntään."
 
@@ -39639,6 +39677,14 @@ msgstr "Salainen käyttöavain"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "Alue"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "Mallin ID"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "Valinnainen. Käytä inference-profiilia tai mallia, jota ei ole listattu tälle alueelle, sen ID:llä tai ARN:llä."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -39759,16 +39805,8 @@ msgid "The Anthropic API Key."
 msgstr "Anthropic API -avain."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "Käytettävä Anthropic-malli."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "Anthropic API:n perus-URL."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "Anthropic API -versio."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -39821,6 +39859,14 @@ msgstr "DeepSeek API:n perus-URL. Sekä Anthropic-yhteensopiva Messages-rajapint
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "DeepSeek API-avain."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "Chat Completions -toiminnossa käytettävän xAI API:n base URL."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "The xAI API Key."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -39909,14 +39955,6 @@ msgstr "Soketin (tavujen välinen luku) aikakatkaisu millisekunteina LLM API -py
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "TCP-yhteyden aikakatkaisu millisekunteina LLM API -pyynnöille. Alhaalla oleva tai tavoittamaton palveluntarjoaja pitäisi epäonnistua nopeasti sen sijaan, että se pitää työprosessisäikeen ikuisesti varattuna."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "SQL-generointipyyntöjen enimmäismäärä käyttäjää kohti minuutissa."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "SQL-generointipyyntöjen enimmäismäärä IP-osoitetta kohti minuutissa."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40013,6 +40051,14 @@ msgstr "Havaittu ristiriita koontinäytön `collection_id`:n ({0}) ja `collectio
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "Sisällön verifiointi"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "Kysely epäonnistui: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "Kysely epäonnistui: tuntematon virhe"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40186,6 +40232,30 @@ msgstr "Luo ja muokkaa tehtäviä"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "LLM-tarjoajayhteyttä nimeltä {0} ei ole määritetty."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "{0} hylkäsi pyynnön laskutusongelman vuoksi, kuten krediittien loppumisen takia. Tarkista tilisi laskutusasetukset."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "AI-palveluntarjoaja hylkäsi pyynnön laskutusongelman vuoksi. Ota yhteyttä järjestelmänvalvojaasi."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "{0} rajoittaa Metabasesta tulevien pyyntöjen määrää. Yritä hetken kuluttua uudelleen, ja jos tämä jatkuu, tarkista tilisi rate limitit."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "AI-palveluntarjoaja rajoittaa pyyntöjen määrää juuri nyt. Yritä hetken kuluttua uudelleen."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "{0} hylkäsi API-avaimen tai tunnistetiedot, jotka Metabase lähetti. Tarkista ne AI-asetuksista."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "AI-palveluntarjoaja hylkäsi tunnistetiedot, jotka Metabase lähetti. Ota yhteyttä järjestelmänvalvojaasi."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "{0} API-virhe (HTTP {1})"
@@ -40273,6 +40343,10 @@ msgstr "AWS Bedrock on rajoittanut pyyntötiheyttämme"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock ei toimi, mutta ei kerro miksi"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "AWS Bedrock palautti puutteellisen vastauksen kohteesta {0}"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40399,8 +40473,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Virheellinen Google-malli {0} — odotettiin julkaisijalla täydennettyä tunnusta, kuten \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "Google-mallia {0} ei tueta. Vain google/*- ja anthropic/*-malleja tuetaan."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "Ei tuettu Google-malli {0}. Vain google/*-, anthropic/*- ja endpoints/*-mallit ovat tuettuja."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40449,6 +40523,10 @@ msgstr "(päätepiste: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "tarkista, että \"{0}\" on kelvollinen sijainti"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "Google-päätepisteessä {0} ei ole otettu käyttöön mitään"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40499,6 +40577,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "Moonshot palautti sisäisen palvelinvirheen"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "Mallintarjoaja ei onnistunut viimeistelemään vastausta"
 
@@ -40669,6 +40748,30 @@ msgstr "Yhteys vLLM-palvelimeen keskeytyi ennen kuin vastaus valmistui."
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "The vLLM-palvelin ei vastannut {0}ms:n kuluessa. Tarkista, ettei se ole ylikuormittunut, tai nosta vLLM-pyynnön aikakatkaisua."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "xAI API -virhe (HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "xAI API -avain vanhentunut tai virheellinen"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "xAI API -avaimella ei ole oikeuksia tai tiimiltä on loppunut krediitit"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "xAI API -päätepistettä tai mallia ei löytynyt"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI on rajoittanut pyyntöjemme määrää"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI palautti sisäisen palvelinvirheen"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41362,6 +41465,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "Et voi poistaa ''Admin''-ryhmän viimeistä jäsentä!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "Henkilöiden lisääminen \"Data Analysts\" -ryhmään vaatii Advanced Permissions -ominaisuuden, jota ei ole otettu käyttöön tässä instanssissa."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "Et voi lisätä tai poistaa käyttäjiä ryhmään/ryhmästä ''All Users''."
 
@@ -41598,6 +41705,10 @@ msgstr "Tokenin pitää olla kelvollinen 64 merkin heksadesimaalitoken tai airga
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "Tokenin validointi ei ole tällä hetkellä käytettävissä."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "Tokenin validointi aikakatkaistiin."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42423,13 +42534,13 @@ msgstr "Tiedostopolku kohteelle {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} osoittaa tiedostoon, jota ei ole olemassa: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "Segmentin määritelmän on määritettävä lähdetaulu."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "Et voi päivittää Segmentti-objektin creator_id:tä."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "Segmentin määritelmän on määritettävä lähdetaulu."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42514,6 +42625,10 @@ msgstr "Kaksivaiheinen todennus on jo määritetty. Poista se käytöstä ennen 
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "Virheellinen palautustoken"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "Ei todennettu"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -42941,6 +43056,14 @@ msgstr "Näytetäänkö esittelymodal seuraavan tietokantayhteyden lisäämisen 
 msgid "Invalid timezone {0}: {1}"
 msgstr "Virheellinen aikavyöhyke {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "Lukeminen polusta ei ole sallittua: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "Kirjoittaminen polkuun ei ole sallittua: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "Käynnistysaika millisekunteina"
@@ -42964,6 +43087,14 @@ msgstr "Virheellinen lokaali {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "Sähköpostiosoite, johon käyttäjät ohjataan, jos he kohtaavat ongelman."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Pilkuin erotettu sallittujen hakemistojen lista, joista Metabase saa lukea tiedostoja, esim. tietokannan salaisuuksille, jotka annetaan paikallisena tiedostopolkuna. Käytä NONE, jos et halua sallia yhtään polkua. Oletuksena /tmp Metabase Cloudissa ja / (kaikki polut) itse ylläpidetyssä asennuksessa."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Pilkuin erotettu sallittujen hakemistojen lista, joihin Metabase saa kirjoittaa tiedostoja. Käytä NONE, jos et halua sallia yhtään polkua. Oletuksena /tmp Metabase Cloudissa ja / (kaikki polut) itse ylläpidetyssä asennuksessa."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43494,10 +43625,6 @@ msgstr "Ei tiedetä, miten {0} jäsennetään käyttäen muotoa {1}"
 msgid "{0} must be at least 16 characters."
 msgstr "{0} on oltava vähintään 16 merkkiä."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "Ota kaikki koodikokeilut käyttöön tai poista ne käytöstä. Kun pois käytöstä, vain tuotantokoodipolku suoritetaan."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "Resurssia ei ole olemassa."
@@ -43700,8 +43827,8 @@ msgstr "arvon on oltava kelvollinen entiteettityyppi (avainsana tai merkkijono).
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "Tauluja voidaan julkaista vain Kirjasto/Data-kokoelmiin."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "Tauluja voi julkaista vain Semantic layer/Data -kokoelmiin."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44285,65 +44412,13 @@ msgstr "Tenant-käyttäjiä ei voi lisätä data-sovelluksiin."
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Data-sovellusten kyselyt eivät voi käyttää mittareita, jotka viittaavat muihin tallennettuihin kysymyksiin tai mittareihin: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: \"version\" on oltava positiivinen kokonaisluku, kuten 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "Tällä slugilla on jo olemassa datasovellus."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: \"description\" on oltava yhden rivin merkkijono."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: \"description\" on yhden rivin yhteenveto — sen on oltava enintään {2} merkkiä."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" ei ole kelvollinen allowed_hosts-merkintä — käytä originia kuten https://api.example.com tai https://*.example.com."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: \"allowed_hosts\"-kentän on oltava lista."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "Ei voitu jäsentää {0}/{1}: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: sovellushakemiston nimi on sen slug, joten siinä saa olla vain pieniä kirjaimia, numeroita ja väliviivoja."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" on varattu slug — nimeä hakemisto uudelleen."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: \"name\" on pakollinen."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: \"path\" on pakollinen."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: \"path\" ei saa sisältää \"..\"."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "Bundlea ei ole vielä synkattu."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "Ei voitu lukea kohdetta {0}."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "Pakettitiedostoa \"{0}\" ei löytynyt repositoriosta."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "\"{0}\"-paketin on oltava alle {1} MiB."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "Bundle-tiedostoa \"{0}\" ei löytynyt."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44650,6 +44725,18 @@ msgstr "Hiekkalaatikon kysymykset eivät voi palauttaa sarakkeita, joiden tyypit
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "Sinulla ei ole oikeuksia muokata kysymystä, jota käytetään rivi- ja saraketason suojaukseen."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "Sinulla ei ole oikeuksia muokata koodinpätkää, jota käytetään rivi- ja saraketason tietoturvaan."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "Sinulla ei ole oikeuksia muokata segmenttiä, jota käytetään rivi- ja saraketason tietoturvaan."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "Sinulla ei ole oikeuksia muokata mittaria, jota käytetään rivi- ja saraketason tietoturvaan."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."

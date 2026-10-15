@@ -1,5 +1,5 @@
 (ns metabase.driver.sqlite
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -23,7 +23,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]])
+   [metabase.util.performance :refer [mapv some]])
   (:import
    (java.net MalformedURLException URL)
    (java.sql Connection ResultSet Types)
@@ -83,20 +83,103 @@
         (or (str/includes? line "SQLite format 3")
             (str/includes? line "This file contains an SQLite"))))))
 
-(defmethod driver/validate-db-details! :sqlite
-  [_driver _details]
-  ;; On hosted Metabase, SQLite is only valid for the bundled Sample Database. The internal flows that need to test
-  ;; connections to that DB (sync, schema refresh, fingerprinting, etc.) wrap their calls in
-  ;; `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`. Mirrors the H2 pattern.
-  (when (and (driver-api/is-hosted?)
-             (not driver.settings/*allow-testing-sqlite-connections*))
+(defn- sqlite-uri-decode
+  "`s` with each well-formed `%XX` escape decoded, as SQLite does for a `file:` URI. A malformed escape stays as it is
+  without affecting the others."
+  [^String s]
+  (str/replace s #"(?:%[0-9A-Fa-f]{2})+"
+               (fn [^String run]
+                 (String. (byte-array (map #(unchecked-byte (Integer/parseInt (subs run (inc %) (+ % 3)) 16))
+                                           (range 0 (count run) 3)))
+                          "UTF-8"))))
+
+(defn- file-uri-path
+  "The decoded path SQLite opens for a `file:` URI with no `?`, or nil when it opens no local file. `file:/a`,
+  `file:///a` and `file://localhost/a` are `/a` and `file:a` is `a`. SQLite ignores everything from `#` on, decodes
+  each `%XX` escape, ends the path at a decoded NUL, and refuses any authority but an empty one or (case-sensitively)
+  `localhost`."
+  [uri]
+  (let [path (subs (first (str/split uri #"#" 2)) (count "file:"))
+        path (if (str/starts-with? path "//")
+               (let [path-start (or (str/index-of path "/" 2) (count path))]
+                 (when (contains? #{"" "localhost"} (subs path 2 path-start))
+                   (subs path path-start)))
+               path)]
+    (some-> path sqlite-uri-decode (str/split #"\u0000" 2) first)))
+
+(defn- db-local-file
+  "The file on the Metabase host that SQLite opens for the `:db` detail, or nil when `:db` is not a form the driver
+  supports: a plain path, or a `file:` URI, with no `?` in either.
+
+  Every other form is unsupported: in-memory names, `:resource:` downloads, other URL schemes (`jar:`, `http:` ...), a
+  `file:` URI whose authority is neither empty nor `localhost`, and anything with a `?`. sqlite-jdbc reads its own
+  settings from after a `?` in a plain path as well as in a URI, and strips them from the name it opens, so with one
+  the file SQLite opens is not the one these checks see. Refusing these as a whole means no SQLite or sqlite-jdbc
+  option reaches a connection. SQLite matches the `file:` prefix case-sensitively, so another case is refused as a URL
+  scheme, and a value starting with `:` is refused as a special name."
+  [db]
+  (when (and (string? db) (not (str/blank? db)) (not (str/includes? db "?")))
+    (if (str/starts-with? db "file:")
+      (let [path (file-uri-path db)]
+        (when-not (or (str/blank? path) (= path ":memory:"))
+          path))
+      ;; a scheme of two or more characters, so a Windows drive letter is still a path
+      (when-not (or (str/starts-with? db ":")
+                    (re-find #"^[A-Za-z][A-Za-z0-9+.-]+:" db))
+        db))))
+
+(defn- db-local-files
+  "Every file [[db-local-file]] names for `db`, read both as given and trimmed, so a check does not depend on whether
+  whitespace around it reaches SQLite. Throws when either reading is not a supported form."
+  [db]
+  (let [files (map db-local-file (distinct [db (some-> db str/trim)]))]
+    (when (some nil? files)
+      (throw (ex-info (tru "SQLite database must be a file path or a file: URI without a \"?\".")
+                      {:status-code 400})))
+    (set files)))
+
+(defn- check-db-file!
+  "Throw unless SQLite may open the database `details` describe. On hosted Metabase, SQLite is only valid for the
+  bundled Sample Database, which callers exempt before calling this. Otherwise `:db` must be a supported form naming a
+  file on the Metabase host that `readable-paths` allows, and that `writable-paths` allows too unless the connection is
+  read-only."
+  [{:keys [db read-only?]}]
+  (when (driver-api/is-hosted?)
     (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
-                    {:status-code 400}))))
+                    {:status-code 400})))
+  (doseq [path (db-local-files db)]
+    (driver-api/ensure-readable-path! path)
+    (when-not read-only?
+      (driver-api/ensure-writable-path! path))))
+
+(defn- sample-database?
+  "Whether `details` open the bundled Sample Database the way Metabase does: read-only, at the exact path the
+  sample-data module registered."
+  [{:keys [db read-only?]}]
+  (boolean (and read-only?
+                (driver.settings/sqlite-sample-database-path? db))))
+
+(defmethod driver/validate-db-details! :sqlite
+  [_driver details]
+  ;; The bundled Sample Database is the one file Metabase itself opens, so it is exempt from the checks: it lives in the
+  ;; plugins directory, which neither `readable-paths` nor a hosted instance's allowlist need cover. Two things must
+  ;; both hold for the exemption here:
+  ;;   - the caller is an internal flow that needs it (sync, schema refresh, fingerprinting, etc.), which wraps its
+  ;;     calls in `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`, so that a user-facing
+  ;;     endpoint such as `POST /api/database` cannot create a connection to it, and
+  ;;   - the details are the Sample Database's own: read-only, at the exact path the sample-data module registered.
+  ;;     Sync binds the flag for every database, so the flag alone would let it open whatever `:db` a stored row
+  ;;     carries, such as one written by a serialization import.
+  (when-not (and driver.settings/*allow-testing-sqlite-connections*
+                 (sample-database? details))
+    (check-db-file! details))
+  nil)
 
 (defmethod driver/can-connect? :sqlite
   [driver details]
   (driver/validate-db-details! driver details)
-  (if (confirm-file-is-sqlite (:db details))
+  ;; read the header of the local file the checks above validated, opened as a plain file
+  (if (confirm-file-is-sqlite (io/file (db-local-file (:db details))))
     (sql-jdbc.conn/can-connect? driver details)
     false))
 
@@ -123,9 +206,12 @@
              (u/lower-case-en (if (instance? clojure.lang.Named k) (name k) (str k)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
-  [_ {:keys [db read-only?]
-      :or   {db "sqlite.db"}
-      :as   details}]
+  [_ {:keys [db read-only?] :as details}]
+  ;; Every connection is built from this spec, including one for a Database row that never went through a connection
+  ;; test (a serialization import, or a row stored before the path settings were set), so the file checks run here too.
+  ;; The Sample Database is exempt by its details alone: queries on it do not bind the testing flag.
+  (when-not (sample-database? details)
+    (check-db-file! details))
   (merge {:classname   "org.sqlite.JDBC"
           :subprotocol "sqlite"
           :subname     db}
@@ -162,7 +248,9 @@
   ;; Two things in `:db` have the client fetch the database file from a URL, and no SSH tunnel carries either, so they
   ;; are reported here, where they are checked whether or not a tunnel is in use, rather than as a connection host:
   ;;   - `:resource:<url>`, which SQLite-JDBC reads from that URL (after trying the classpath);
-  ;;   - a `:db` that is itself a URL, which the file check in [[can-connect?]] opens with `io/input-stream`.
+  ;;   - a `:db` that is itself a URL.
+  ;; The file checks in [[check-db-file!]] refuse both forms before a connection opens; reporting their hosts here keeps
+  ;; them under the network policy as well.
   (let [db       (when (string? db) db)
         resource (some-> db (str/trim) (->> (re-find #"(?i)^:resource:(.*)$")) second)]
     (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)

@@ -19,7 +19,7 @@ const FOLDER = createMockCollection({
 });
 
 describe("buildActiveActionTree", () => {
-  it("should put actions without a model under the root and their folders", () => {
+  it("should list the top-level folders and actions without a model, with folder actions nested", () => {
     const tree = buildActiveActionTree(
       [ROOT, FOLDER],
       [
@@ -29,18 +29,13 @@ describe("buildActiveActionTree", () => {
       true,
     );
 
-    expect(tree).toHaveLength(1);
-    expect(tree[0]).toMatchObject({
-      id: "collection:data-actions-root",
-      name: "Data actions",
-      children: [
-        {
-          id: "collection:10",
-          children: [{ id: "action:2", model: "action" }],
-        },
-        { id: "action:1", model: "action" },
-      ],
-    });
+    expect(tree).toMatchObject([
+      {
+        id: "collection:10",
+        children: [{ id: "action:2", model: "action" }],
+      },
+      { id: "action:1", model: "action" },
+    ]);
   });
 
   it("should leave out model actions and actions outside data actions folders", () => {
@@ -53,13 +48,11 @@ describe("buildActiveActionTree", () => {
       true,
     );
 
-    expect(tree[0].children).toEqual([
-      expect.objectContaining({ model: "empty-state" }),
-    ]);
+    expect(tree).toEqual([expect.objectContaining({ model: "empty-state" })]);
   });
 
-  it("should keep the root with an empty state without an action when no action can be created", () => {
-    expect(buildActiveActionTree([ROOT], [], false)[0].children).toEqual([
+  it("should show an empty state without an action when no action can be created", () => {
+    expect(buildActiveActionTree([ROOT], [], false)).toEqual([
       expect.objectContaining({
         model: "empty-state",
         data: expect.objectContaining({ actionUrl: undefined }),
@@ -68,7 +61,7 @@ describe("buildActiveActionTree", () => {
   });
 
   it("should show the empty state when an action can be created", () => {
-    expect(buildActiveActionTree([ROOT], [], true)[0].children).toEqual([
+    expect(buildActiveActionTree([ROOT], [], true)).toEqual([
       expect.objectContaining({ model: "empty-state" }),
     ]);
   });

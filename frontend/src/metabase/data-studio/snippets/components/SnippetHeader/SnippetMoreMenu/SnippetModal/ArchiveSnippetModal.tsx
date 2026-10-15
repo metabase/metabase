@@ -5,7 +5,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
@@ -55,20 +55,18 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
 
   return (
     <Modal opened onClose={onClose} title={t`Archive snippet?`}>
-      <Stack>
-        <Text>{t`Are you sure you want to archive "${snippet.name}"?`}</Text>
-        <Group gap="sm" justify="flex-end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            color="negative"
-            loading={isLoading}
-            onClick={handleArchive}
-            variant="filled"
-          >
-            {t`Archive`}
-          </Button>
-        </Group>
-      </Stack>
+      <Text>{t`Are you sure you want to archive "${snippet.name}"?`}</Text>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          color="negative"
+          loading={isLoading}
+          onClick={handleArchive}
+          variant="filled"
+        >
+          {t`Archive`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 }

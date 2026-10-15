@@ -1832,3 +1832,11 @@
                                      (respond response))
                                    raise))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))
+
+(defn defendpoint-scopes
+  "All defendpoint scopes from agent-api as a sorted set."
+  []
+  (into (sorted-set)
+        (comp (keep #(get-in % [:form :metadata :scope]))
+              (filter string?))
+        (vals (api.macros/ns-routes 'metabase.agent-api.api))))

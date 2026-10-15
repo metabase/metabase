@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.sandbox :as sandboxes]
+   [metabase-enterprise.sandbox.test-util :as sbx.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -207,9 +208,15 @@
   [{snippet-name :name}]
   (lib/native-query (mt/metadata-provider) (format "SELECT * FROM VENUES WHERE {{snippet: %s}}" snippet-name)))
 
+(defn- venues-cols
+  "The result metadata of a query on VENUES returning only the columns named by `col-names`."
+  [& col-names]
+  (filterv (comp (set col-names) :name) (qp.preprocess/query->expected-cols (mt/mbql-query venues))))
+
 (defn- with-card-policy [f]
   (mt/with-temp [:model/PermissionsGroup group {}
-                 :model/Card             card  {:dataset_query (mt/mbql-query venues)}
+                 :model/Card             card  {:dataset_query   (mt/mbql-query venues)
+                                                :result_metadata (venues-cols "ID" "NAME")}
                  :model/Card             other {:dataset_query (mt/mbql-query venues)}
                  :model/Sandbox          _     {:table_id (mt/id :venues), :group_id (:id group), :card_id (:id card)}]
     (f {:card card, :other other})))
@@ -219,8 +226,10 @@
     (guarded-writes-test
      with-card-policy
      (fn [{:keys [card]}]
-       [["query"   card-msg #(t2/update! :model/Card (:id card) {:dataset_query (mt/mbql-query venues {:limit 1})})]
-        ["archive" card-msg #(t2/update! :model/Card (:id card) {:archived true})]
+       [["query"           card-msg #(t2/update! :model/Card (:id card) {:dataset_query (mt/mbql-query venues {:limit 1})})]
+        ["result metadata" card-msg #(t2/update! :model/Card (:id card)
+                                                 {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")})]
+        ["archive"         card-msg #(t2/update! :model/Card (:id card) {:archived true})]
         ["delete"  card-msg #(t2/delete! :model/Card (:id card))]]))
     (untouched-test
      with-card-policy
@@ -384,10 +393,74 @@
                     (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues)))))]
             (is (= 1 (sandboxed-row-count)))
             (is (= "You do not have permissions to modify a snippet that is used for row and column level security."
-                   (:message (mt/user-http-request editor :put 403 (str "native-query-snippet/" (:id snippet))
-                                                   {:content "1 = 1"}))))
+                   (mt/user-http-request editor :put 403 (str "native-query-snippet/" (:id snippet))
+                                         {:content "1 = 1"})))
             (is (= "ID = 1" (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))
             (is (= 1 (sandboxed-row-count)))))))))
+
+(defn- api-venues-col
+  "The VENUES Field named `col-name`, as a client would send it in a Card's `:result_metadata`."
+  [col-name]
+  (let [{:keys [id base_type]} (t2/select-one [:model/Field :id :base_type] :table_id (mt/id :venues) :name col-name)]
+    {:id             id
+     :name           col-name
+     :display_name   col-name
+     :base_type      base_type
+     :effective_type base_type
+     :field_ref      [:field id nil]
+     :table_id       (mt/id :venues)
+     :source         :fields}))
+
+(defn- sandboxed-venues-field-names []
+  (mapv :name (:fields (mt/user-http-request :rasta :get 200 (str "table/" (mt/id :venues) "/query_metadata")))))
+
+(deftest non-admin-cannot-widen-a-policy-card-column-allow-list-through-the-api-test
+  (testing "a non-admin who curates the policy Card cannot widen the sandbox's column allow-list via :result_metadata"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (let [card-id  (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              original (t2/select-one-fn :result_metadata :model/Card :id card-id)
+              latitude (api-venues-col "LATITUDE")]
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
+          (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                 (mt/user-http-request :rasta :put 403 (str "card/" card-id)
+                                       {:result_metadata (conj (vec original) latitude)})))
+          (is (= original (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
+(deftest non-admin-may-still-make-cosmetic-edits-to-a-policy-card-test
+  (testing "a non-admin may rename a policy Card while sending back the result metadata it was served"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              served  (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
+          (is (= "Renamed"
+                 (:name (mt/user-http-request :rasta :put 200 (str "card/" card-id)
+                                              {:name            "Renamed"
+                                               :result_metadata (:result_metadata served)}))))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
+(deftest running-a-policy-card-with-drifted-metadata-as-a-non-admin-test
+  (testing "a non-admin running a policy Card whose stored metadata has drifted gets results, but the QP's metadata
+           write-back is refused so the Card's column allow-list is unchanged"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-read-permissions! (:id &group) collection/root-collection)
+        (let [card-id      (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              stored-names #(mapv :name (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              run-card     (fn [user]
+                             (mt/rows (mt/user-http-request user :post 202 (format "card/%d/query" card-id))))]
+          (mt/with-test-user :crowberto
+            (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME")}))
+          (testing "the non-admin's query succeeds"
+            (is (seq (run-card :rasta))))
+          (testing "the drifted metadata is not overwritten by the non-admin's run"
+            (is (= ["ID" "NAME"] (stored-names))))
+          (testing "an admin's run does write it back"
+            (is (seq (run-card :crowberto)))
+            (is (= ["ID" "NAME" "CATEGORY_ID"] (stored-names)))))))))
 
 (defn- with-mixed-policies!
   "Two sandboxes on VENUES, one per group, whose dependency chains mix every entity kind and are spread over six
