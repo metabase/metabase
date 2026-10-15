@@ -23,9 +23,12 @@
    [metabase-enterprise.library-branching.instance.write-test :as write-test]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; ---------------------------------------------------- The world ---------------------------------------------------
 

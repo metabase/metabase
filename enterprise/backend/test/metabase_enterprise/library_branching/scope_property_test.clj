@@ -9,9 +9,12 @@
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; ------------------------------------------------ The generated world ---------------------------------------------
 
