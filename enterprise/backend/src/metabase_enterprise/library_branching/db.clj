@@ -1,10 +1,13 @@
 (ns metabase-enterprise.library-branching.db
   "App DB queries of library branching."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,9 +40,25 @@
 ;;; --------------------------------------------------- Read point ---------------------------------------------------
 
 (defn do-with-read-point
-  "Calls `f` with no arguments."
+  "Calls `f` with no arguments in a new read-only transaction at REPEATABLE READ isolation, and returns its result:
+  every read of `f` on the app DB sees the database as of one moment. Throws when the calling thread holds an open
+  transaction, whose isolation cannot change."
   [f]
-  (f))
+  (when (mdb/in-transaction?)
+    (throw (ex-info "A read point needs a new transaction, and this thread holds an open one." {})))
+  (t2/with-connection [^Connection conn]
+    (let [isolation  (.getTransactionIsolation conn)
+          read-only? (.isReadOnly conn)]
+      ;; Both are properties of the next transaction, so they are set before it starts, and restored before the
+      ;; pool gets the connection back.
+      (.setTransactionIsolation conn Connection/TRANSACTION_REPEATABLE_READ)
+      (.setReadOnly conn true)
+      (try
+        (t2/with-transaction [_ conn]
+          (f))
+        (finally
+          (.setReadOnly conn read-only?)
+          (.setTransactionIsolation conn isolation))))))
 
 ;;; ------------------------------------------------ Reference lookups -----------------------------------------------
 

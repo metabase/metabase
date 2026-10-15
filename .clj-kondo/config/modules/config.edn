@@ -3992,9 +3992,24 @@
   {:team "UX West"
    :api #{metabase-enterprise.library-branching.api metabase-enterprise.library-branching.init}
    :uses #{api
+           app-db
+           models
            settings
            util
-           warehouse-schema-overlay}}
+           warehouse-schema-overlay}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Segment
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   enterprise/mcp
   {:team    "Metabot"
