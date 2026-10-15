@@ -9,11 +9,10 @@ import {
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { dependencyApi } from "metabase-enterprise/api/dependencies";
+import { useGetDependencyCountsQuery } from "metabase-enterprise/api/dependencies";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
-  const { currentData: counts, isError } =
-    dependencyApi.endpoints.getDependencyCounts.useQueryState(undefined);
+  const { currentData: counts, isError } = useGetDependencyCountsQuery();
   const tabs: PillTab[] = [
     {
       label: t`Broken dependencies`,

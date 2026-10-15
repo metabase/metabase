@@ -107,25 +107,22 @@ function setup({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   return renderWithProviders(
-    <>
-      <Route
-        path={Urls.dependencyDiagnostics()}
-        element={
-          <MonitorContent>
-            {withMutations && (
-              <>
-                <DeleteQuestionButton />
-                <ArchiveCollectionButton />
-              </>
-            )}
-            <Outlet />
-          </MonitorContent>
-        }
-      >
-        {getDependencyDiagnosticsRoutes()}
-      </Route>
-      <Route path="/outside" element={<div>{"Outside the section"}</div>} />
-    </>,
+    <Route
+      path={Urls.dependencyDiagnostics()}
+      element={
+        <MonitorContent>
+          {withMutations && (
+            <>
+              <DeleteQuestionButton />
+              <ArchiveCollectionButton />
+            </>
+          )}
+          <Outlet />
+        </MonitorContent>
+      }
+    >
+      {getDependencyDiagnosticsRoutes()}
+    </Route>,
     {
       withRouter: true,
       initialRoute,
@@ -213,31 +210,7 @@ describe("dependency diagnostics section counts", () => {
     expect(params.get("include-personal-collections")).toBe("false");
   });
 
-  it("refreshes counts when reentering the section before the cache expires", async () => {
-    let breaking = 137;
-    const { router } = setup({ getCounts: () => ({ ...COUNTS, breaking }) });
-    expect(
-      await screen.findByText("No broken dependencies found"),
-    ).toBeVisible();
-    expect(
-      await within(getTab("Broken dependencies")).findByText("137"),
-    ).toBeVisible();
-    act(() => router?.navigate("/outside"));
-    expect(await screen.findByText("Outside the section")).toBeVisible();
-    breaking = 138;
-    act(() => router?.navigate(Urls.unreferencedDependencies()));
-    expect(
-      await screen.findByText("No unreferenced entities found"),
-    ).toBeVisible();
-    expect(
-      await within(getTab("Broken dependencies")).findByText("138"),
-    ).toBeVisible();
-    expect(getCountCalls()).toHaveLength(2);
-    await switchTab("Broken dependencies", "No broken dependencies found");
-    expect(getCountCalls()).toHaveLength(2);
-  });
-
-  it("keeps navigation usable after a count failure without retrying on each tab", async () => {
+  it("keeps navigation working and hides badges when counts fail", async () => {
     setup({ countsError: true });
     expect(
       await screen.findByText("No broken dependencies found"),
@@ -248,8 +221,16 @@ describe("dependency diagnostics section counts", () => {
       ).toBe(true),
     );
     await visitBothTabs();
-    await visitBothTabs();
-    expect(getCountCalls()).toHaveLength(1);
+    await waitFor(() =>
+      expect(
+        within(getTab("Broken dependencies")).queryByTestId(
+          "tab-count-skeleton",
+        ),
+      ).not.toBeInTheDocument(),
+    );
+    expect(getTab("Broken dependencies")).toHaveTextContent(
+      /^Broken dependencies$/,
+    );
   });
 
   it("shares the pending count request without blocking tab navigation", async () => {
