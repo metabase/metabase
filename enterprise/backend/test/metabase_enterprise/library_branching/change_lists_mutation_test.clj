@@ -7,6 +7,7 @@
    [metabase-enterprise.library-branching.deploy-operations-test :as deploy-operations-test]
    [metabase-enterprise.library-branching.discard :as discard]
    [metabase-enterprise.library-branching.discard-test :as discard-test]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.rows :as rows]
    [metabase-enterprise.library-branching.instance.rows-test :as rows-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
@@ -20,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule."

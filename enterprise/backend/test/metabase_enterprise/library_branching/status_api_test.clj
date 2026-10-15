@@ -115,7 +115,7 @@
 
 (deftest dirty-names-the-rows-of-the-instance-test
   (testing (str "each local change names the row of the instance that holds it now; app DB " (mdb/db-type))
-    (mt/with-premium-features #{:remote-sync}
+    (mt/with-additional-premium-features #{:remote-sync}
       (with-remote [_repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/do-with-library-metric!

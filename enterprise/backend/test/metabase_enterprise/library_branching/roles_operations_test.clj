@@ -190,7 +190,7 @@
 (deftest discard-frees-the-name-of-a-drift-snippet-test
   (testing (str "the drift is a new snippet, and main has a new snippet of another identity with its name: the discard "
                 "trashes the snippet of the drift with a new name, and deploys main; app DB " (mdb/db-type))
-    (mt/with-premium-features #{:remote-sync}
+    (mt/with-additional-premium-features #{:remote-sync}
       (rtu/with-synchronous-tasks
         (do-with-pushed-metric!
          (fn [_metric c1 repo]
