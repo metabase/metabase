@@ -8,7 +8,6 @@
    [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.operations :as operations]
-   [metabase-enterprise.library-branching.operations-test :as operations-test]
    [metabase-enterprise.library-branching.progress-test :as progress-test]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.push :as push]
@@ -69,7 +68,7 @@
     :doc    "A worker whose report finds its task ended throws, and does not give the result of a fenced operation."
     :target `operations/reporting
     :edits  [[:replace '{:result :fenced :reason {:fenced (:status (ex-data e))}} '(throw e)]]
-    :tests  [#'operations-test/workers-on-the-app-db-test]}])
+    :tests  [#'progress-test/worker-of-an-ended-task-stops-at-its-first-phase-test]}])
 
 (deftest progress-mutations-test
   (mut/check mutations {:timeout-ms 120000}))

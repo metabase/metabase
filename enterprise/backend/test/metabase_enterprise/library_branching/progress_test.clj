@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.api]
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu]
@@ -172,3 +173,56 @@
                      (deliver release true)))
                  (is (=? {:status "cancelled" :error_message "Task cancelled"} (deref worker wait-ms nil)))
                  (is (= c1 (remote-head "main"))))))))))))
+
+(defn- cancelled-task-id
+  "The id of a new task of `kind` that an admin cancelled before its worker started."
+  [kind]
+  (let [{:keys [id]} (tasks/start! kind (mt/user->id :crowberto))]
+    (tasks/cancel! id)
+    id))
+
+(deftest worker-of-an-ended-task-stops-at-its-first-phase-test
+  (testing (str "a worker whose task ended before it started stops at the report of its first phase, changes
+                nothing, and gives the result of a fenced operation; app DB " (mdb/db-type))
+    (with-remote [repo url]
+      (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+        (rtu/do-with-library-metric!
+         (fn [metric]
+           (let [eid     (:entity_id metric)
+                 c1      (get-in (run-task! "push" #(operations/push-task! % "main" "First")) [:outcome :commit])
+                 name-of #(t2/select-one-fn :name :model/Card (:id metric))
+                 stops   (fn [kind work]
+                           (let [id                 (cancelled-task-id kind)
+                                 [result fractions] (recording! #(work id))]
+                             (testing "the first report finds the task ended, and the worker goes no further"
+                               (is (= [0.0] fractions)))
+                             (is (=? {:status "cancelled" :progress 0.0} (tasks/task id)))
+                             result))]
+             (t2/update! :model/Card (:id metric) {:name "Local"})
+             (testing "a push"
+               (is (= {:error "The task ended before the push reached its commit point, so nothing was pushed."}
+                      (stops "push" #(operations/push-task! % "main" "Second"))))
+               (is (= c1 (remote-head "main"))))
+             (let [h1 (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "After"))]
+               (pltu/commit-snapshot! repo "dev" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "From dev"))
+               (doseq [[kind work] [["pull" #(operations/pull-task! % "main")]
+                                    ["branch-switch" #(operations/switch-task! % "dev")]]]
+                 (testing kind
+                   (is (= {:error "The task ended before the pull applied, so nothing was pulled."} (stops kind work)))
+                   (is (= "Local" (name-of)))
+                   (is (= c1 (instance/base (operations/instance))))
+                   (is (= "main" (repository/branch)))))
+               (testing "a merge-branch"
+                 (is (= {:error "The task ended before the merge moved the branch, so nothing was merged."}
+                        (stops "merge-branch" #(operations/merge-branch-task! % "main" "dev"))))
+                 (is (= h1 (remote-head "main"))))
+               (testing "a discard"
+                 (is (= {:error "The task ended before the discard applied, so nothing was discarded."}
+                        (stops "discard-changes" #(operations/discard-task! % "main"))))
+                 (is (= "Local" (name-of))))
+               (testing "a deploy"
+                 (mt/with-temporary-setting-values [remote-sync-type :read-only]
+                   (is (= {:error "The task ended before the deploy applied, so nothing was deployed."}
+                          (stops "deploy" #(operations/deploy-task! % "main")))))
+                 (is (= "Local" (name-of)))
+                 (is (= c1 (instance/base (operations/instance)))))))))))))

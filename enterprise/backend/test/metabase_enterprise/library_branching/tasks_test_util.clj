@@ -3,6 +3,8 @@
   the same time, and starts and ends with no task row and no base."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.library-branching.tasks :as tasks]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -38,3 +40,23 @@
   "The status of task row `id`."
   [id]
   (:status (t2/query-one {:select [:status] :from [:library_branching_task] :where [:= :id id]})))
+
+(defn do-cancelling-at!
+  "Calls `(f)`. When a progress report (`tasks/report-progress!`) writes the start of `phase`, a key of
+  `tasks/phase-starts`, it cancels that task right after the write, as an admin who cancels at that moment. So the
+  operation passes its report of `phase`, and its task is cancelled before its next step."
+  [phase f]
+  (let [original (dynamic-redefs/original-fn #'tasks/report-progress!)
+        at       (tasks/phase-starts phase)]
+    (dynamic-redefs/with-dynamic-fn-redefs
+      [tasks/report-progress! (fn [id fraction]
+                                (original id fraction)
+                                (when (== at fraction)
+                                  (tasks/cancel! id))
+                                nil)]
+      (f))))
+
+(defmacro cancelling-at
+  "Runs `body` with [[do-cancelling-at!]] of `phase`."
+  [phase & body]
+  `(do-cancelling-at! ~phase (fn [] ~@body)))

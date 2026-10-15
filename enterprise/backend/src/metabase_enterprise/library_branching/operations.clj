@@ -284,10 +284,11 @@
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (let [{:keys [result head] :as pulled} (reporting id #(pull/pull! (instance) s branch
-                                                                       {:fence     (fn [] (tasks/fence id))
-                                                                        :on-commit (fn [] (write-branch! branch))
-                                                                        :on-phase  %}))]
+     (let [{:keys [result head] :as pulled} (reporting id (fn [on-phase]
+                                                            (pull/pull! (instance) s branch
+                                                                        {:fence     (fn [] (tasks/fence id))
+                                                                         :on-commit #(write-branch! branch)
+                                                                         :on-phase  on-phase})))]
        (cond
          (not= :up-to-date result) (switch-task-result branch pulled)
          ;; with no base, a branch that does not exist is "up to date"
