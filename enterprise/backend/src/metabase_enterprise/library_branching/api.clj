@@ -72,11 +72,14 @@
   (repository/test-connection! body)
   {:status "success"})
 
-(api.macros/defendpoint :put "/settings" :- [:map [:success [:= true]]]
+(api.macros/defendpoint :put "/settings" :- [:map
+                                             [:success [:= true]]
+                                             [:task_id {:optional true} pos-int?]]
   "Saves the repository settings that library branching shares with remote sync. A blank URL turns library branching
   off. The obfuscated saved token keeps the saved token, and a value from an environment variable stays. A change of
-  the URL, the token, the type or the branch is checked against the repository first. 400 while a task runs, and when
-  the check fails. Superuser only."
+  the URL, the token, the type or the branch is checked against the repository first. After the save, a consumption
+  instance with a branch starts a deploy, and the response has its task id. 400 while a task runs, and when the check
+  fails. Superuser only."
   [_route-params
    _query-params
    body :- [:map {:closed true}
@@ -87,7 +90,9 @@
             [:remote-sync-auto-import {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (repository/save-settings! body api/*current-user-id*)
-  {:success true})
+  (if-let [task (operations/start-deploy-after-save! api/*current-user-id*)]
+    {:success true :task_id (:id task)}
+    {:success true}))
 
 (api.macros/defendpoint :get "/branches" :- [:map [:items [:sequential :string]]]
   "The names of the branches of the repository now, with a fresh remote call. 400 when no repository is configured,
@@ -273,6 +278,13 @@
                            [:into {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (task-response (operations/start-merge-branch! api/*current-user-id* into from)))
+
+(api.macros/defendpoint :post "/deploy" :- [:map [:task_id pos-int?]]
+  "Starts a deploy of the configured branch onto this consumption instance, as a task, and returns its id. 400 when
+  library branching is off or not configured, on a creation instance, and while a task runs. Superuser only."
+  []
+  (api/check-superuser)
+  (task-response (operations/start-deploy! api/*current-user-id*)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library-branching` routes."
