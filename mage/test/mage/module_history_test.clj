@@ -89,10 +89,14 @@
                                                    :pages    [{:template "t.html", :path "p.html"}]
                                                    :metabase {:profile "p", :cards [:a], :card 1}}))))))
 
+(def ^:private native-card
+  "What `mb card get` returns for a native card the profile may change."
+  "{\"id\": 21, \"can_write\": true, \"dataset_query\": {\"database\": 1, \"stages\": [{\"native\": \"select 1\"}]}}")
+
 (defn- fake-sh
-  "A [[mage.shell/sh*]] stand-in that records each command in `calls` and answers `mb card get` with a native card.
+  "A [[mage.shell/sh*]] stand-in that records each command in `calls` and answers `mb card get` with the JSON `card`.
   A command that starts with a key of `failures` exits with that key's value."
-  [calls failures]
+  [calls failures card]
   (fn [& args]
     (let [args (vec (if (map? (first args)) (rest args) args))]
       (swap! calls conj (cond-> args
@@ -102,14 +106,14 @@
       {:exit (or (some (fn [[start exit]] (when (= start (take (count start) args)) exit)) failures) 0)
        :err  []
        :out  (if (= ["mb" "card" "get"] (take 3 args))
-               ["{\"id\": 21, \"dataset_query\": {\"database\": 1, \"stages\": [{\"native\": \"select 1\"}]}}"]
+               [card]
                [])})))
 
 (defn- publish!
   "Publish a directory holding `files` with `config`, on a machine where `tools` are installed and `failures` are the
   commands that fail. Returns the commands that ran with the directory's path replaced by `DIR` and the time by
   `STAMP`, the page it wrote, its exit code, and what it printed."
-  [{:keys [config files options tools failures]}]
+  [{:keys [config files options tools failures card]}]
   (let [dir (fs/create-temp-dir {:prefix "module-history-test"})]
     (doseq [[file-name content] (merge {"publish.edn" (pr-str config), "template.html" "/*COUNT*/ of /*ANCHORS*/"}
                                        files)]
@@ -117,7 +121,7 @@
     (let [calls   (atom [])
           exit    (atom 0)
           printed (with-out-str
-                    (with-redefs [shell/sh*  (fake-sh calls failures)
+                    (with-redefs [shell/sh*  (fake-sh calls failures card)
                                   u/can-run? (fn [tool] (contains? tools tool))]
                       (try
                         (module-history/cli-update
@@ -151,7 +155,8 @@
               "history.json" "{\"commits\": [{}, {}], \"today\": [], \"clusters\": [\"tardis\"]}"}
    :options  {}
    :tools    #{"mb" "share"}
-   :failures {}})
+   :failures {}
+   :card     native-card})
 
 (defn- naming
   "The `result` of [[publish!]] with what it printed cut down to the first match of `pattern`."
@@ -162,7 +167,7 @@
   (testing "measuring runs in a fresh JVM after fetching the ref it measures, when that ref is on origin"
     (let [calls (atom [])]
       (with-out-str
-        (with-redefs [shell/sh* (fake-sh calls {})]
+        (with-redefs [shell/sh* (fake-sh calls {} native-card)]
           (module-history/cli-update {:options {:dir "/tmp/out", :no-fetch true}})
           (module-history/cli-update {:options {:dir "/tmp/out"}})
           (module-history/cli-update {:options {:dir "/tmp/out", :ref "origin/stack-tip"}})
@@ -182,7 +187,7 @@
   ["mb" "card" "get" "21" "--full" "--profile" "stats" "--json" "--max-bytes" "0"])
 
 (deftest publish-test
-  (testing "pages are written, cards checked, then uploads replaced, cards refreshed and shares updated"
+  (testing "pages written, cards checked, uploads replaced, cards fetched again and refreshed, shares updated"
     (is (= {:exit  0
             :page  "2 of [\"tardis\"]"
             :calls [card-get
@@ -190,6 +195,8 @@
                      "--max-bytes" "0"]
                     ["mb" "upload" "replace" "11" "--file" "DIR/history.csv" "--profile" "stats" "--json"
                      "--max-bytes" "0"]
+                    ;; Fetched again, so an edit made during the uploads is kept.
+                    card-get
                     ;; Only the query is sent, with the rest of it unchanged.
                     ["mb" "card" "update" "21" "--file"
                      (str "{\"dataset_query\":{\"database\":1,\"stages\":"
@@ -217,7 +224,10 @@
            (select-keys (publish! (assoc run :failures {["mb" "upload" "replace" "11"] 3})) [:exit :calls]))))
   (testing "a card that cannot be fetched stops the run before any upload changes"
     (is (= {:exit 4, :calls [card-get]}
-           (select-keys (publish! (assoc run :failures {["mb" "card" "get"] 4})) [:exit :calls])))))
+           (select-keys (publish! (assoc run :failures {["mb" "card" "get"] 4})) [:exit :calls]))))
+  (testing "a card the profile may not change stops the run before any upload changes"
+    (is (= {:exit 1, :calls [card-get]}
+           (select-keys (publish! (assoc run :card (str/replace native-card "true" "false"))) [:exit :calls])))))
 
 (deftest publish-missing-file-test
   (testing "nothing is written or published when a file the config names is not there"
