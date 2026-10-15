@@ -150,6 +150,43 @@
                  theirs]))
             (gen/tuple (related-snapshots-gen) gen/nat gen/boolean)))
 
+(defn key-moves-gen
+  "Generates `{:l {id name} :m {id name} :refs #{[from to]}}`: the names of 1 to 5 snippets in `l`, and the names in
+  `m` of those snippets and of up to 2 new ones, all from one pool of names that start with `prefix`. A name of `m` can
+  be the name of another snippet in `l`, so the snippets of `m` take keys that others free: renames, swaps, rotations
+  and new holders of a freed key. A name of `m` can be in upper case, which is the same key. `:refs` are references
+  among the snippets of `m`. The new snippets have the least identities."
+  [prefix]
+  (gen/let [n-old   (gen/choose 1 5)
+            n-new   (gen/choose 0 2)
+            n-spare (gen/choose 0 2)
+            in-l    (gen/shuffle (range (+ n-old n-new n-spare)))
+            in-m    (gen/shuffle (range (+ n-old n-new n-spare)))
+            upper   (gen/vector gen/boolean (+ n-old n-new))
+            refs    (gen/vector (gen/tuple gen/nat gen/nat) 0 4)]
+    (let [old       (mapv #(eid (str "keyold" %)) (range n-old))
+          m-ids     (into (mapv #(eid (str "keynew" %)) (range n-new)) old)
+          item-name #(str prefix " " %)]
+      {:l    (zipmap old (map item-name in-l))
+       :m    (zipmap m-ids (map (fn [i upper?] (cond-> (item-name i) upper? u/upper-case-en)) in-m upper))
+       :refs (set (map (fn [[from to]] [(nth-of m-ids from) (nth-of m-ids to)]) refs))})))
+
+(defn key-move-snapshots-gen
+  "Generates `[b o t]`: `o` is `b`, and `t` moves the unique keys of the snippets of `b` as [[key-moves-gen]] gives
+  them. Every snippet is in one collection."
+  []
+  (gen/fmap (fn [{:keys [l m refs]}]
+              (let [lib       (eid "keylib")
+                    snapshot  (fn [names refs]
+                                (into {lib (item :collection "Library" nil)}
+                                      (map (fn [[id item-name]]
+                                             [id (item :snippet item-name lib
+                                                       (for [[from to] refs :when (= from id)] [:snippet to]))]))
+                                      names))
+                    local     (snapshot l #{})]
+                [local local (snapshot m refs)]))
+            (key-moves-gen "Key")))
+
 (def ^:private cycle-kinds [:collection :metric :published-table])
 
 (defn- cycle-items
