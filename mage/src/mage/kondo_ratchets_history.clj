@@ -824,6 +824,11 @@
               (update record :changes (partial remove (comp uncounted-linters peek :measure)))))
        (filter (comp seq :changes))))
 
+(defn changed?
+  "Did the commit of `record` change a counted budget at all, even by changes that cancel out?"
+  [{:keys [changes]}]
+  (not-every? (comp uncounted-linters peek :measure) changes))
+
 (defn settle
   "The `records`, the whole history newest first, as the summaries count them.
   That is with `verdicts` applied by [[pardon]], spare budget that was taken back counted as slack, without
@@ -1062,7 +1067,7 @@
                                (update (part kind) + (if key (numeric new) (- (numeric new) (numeric old))))))
                            {:introduced 0, :seeded 0, :unlimited 0, :excused 0}
                            changes))]
-    (rest (reductions (fn [point {:keys [sha changes], :as record}]
+    (rest (reductions (fn [point {:keys [sha], :as record}]
                         (let [{:keys [shrink grow]} (get credited sha {:shrink 0, :grow 0})
                               parts                 (raised record)]
                           (merge (commit-ref record)
@@ -1070,7 +1075,7 @@
                                  {:shrunk   shrink
                                   :grown    grow
                                   :level    (+ (:level point) (reduce + (vals parts)))
-                                  :changed? (not-every? (comp uncounted-linters peek :measure) changes)})))
+                                  :changed? (changed? record)})))
                       {:level 0}
                       (reverse records)))))
 
@@ -1294,11 +1299,12 @@
                      (cons (author-name row) (map (fn [k] ((:show (columns k)) (get row k))) column-keys))))))))
 
 (defn summary
-  "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`."
-  [period {:keys [commits totals total approximate best worst introduced seeded slack unlimited board unaccounted
-                  suspects]}]
+  "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`, in which
+  `changed` commits changed a budget ([[changed?]])."
+  [period changed {:keys [totals total approximate best worst introduced seeded slack unlimited board unaccounted
+                          suspects]}]
   (concat
-   [(c/bold (format "Ratchet changes %s: %d commits" period commits))]
+   [(c/bold (format "Ratchet changes %s: %d commits" period changed))]
    (section "Total deltas"
             (concat (totals-lines totals total)
                     (when (seq approximate)
@@ -1464,7 +1470,11 @@
                            :all   ["of all time" (map :sha records)]
                            :days  [(format "in the last %d days" arg)
                                    (ratchet-commits repo (format "--since=%d.days.ago" arg) (:head repo))])]
-        (run! println (summary title (report (filter (comp (set shas) :sha) settled))))))))
+        (let [in-range? (comp (set shas) :sha)]
+          ;; counted from the records before verdicts, since a commit can lose every change to them
+          (run! println (summary title
+                                 (count (filter (every-pred in-range? changed?) records))
+                                 (report (filter in-range? settled)))))))))
 
 (defn run
   "Do what the task's `options` and `arguments` ask for, on `repo` ([[repo]])."

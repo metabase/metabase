@@ -456,7 +456,7 @@
 
 (deftest summary-test
   (binding [c/*disable-colors* true]
-    (let [lines (history/summary "of all time" (history/report (history/settle {:judged #{}} records)))]
+    (let [lines (history/summary "of all time" 3 (history/report (history/settle {:judged #{}} records)))]
       (testing "has a section for each part of the report that holds something"
         (is (= ["Ratchet changes of all time: 3 commits"
                 "Total deltas"
@@ -479,19 +479,18 @@
                 "    :l5  starting at 5"
                 "    2 more budgets, starting at 13 in all"]
                (->> (history/summary "of all time"
-                                     {:commits 1
-                                      :seeded  [{:commit {:sha "seed", :author "Ada", :subject "Seed"}
-                                                 :items  (for [i (range 8)]
-                                                           {:measure (str ":l" i), :budget (str i), :size i})}]})
+                                     1
+                                     {:seeded [{:commit {:sha "seed", :author "Ada", :subject "Seed"}
+                                                :items  (for [i (range 8)]
+                                                          {:measure (str ":l" i), :budget (str i), :size i})}]})
                     (drop-while #(not= "New ratchets over existing debt" %))
                     rest))))
       (testing "sums the budgets past the first six of the biggest change and of a raise with no verdict"
         (let [commit   {:sha "big", :author "Ada", :subject "Big"}
               measures (for [i (range 8)] {:measure (str ":l" i), :delta (- i), :added 0})
-              lines    (history/summary "of all time" {:commits  1
-                                                       :best     {:commit commit, :net -28, :measures measures}
-                                                       :suspects [{:commit commit
-                                                                   :items  (map #(update % :delta -) measures)}]})]
+              lines    (history/summary "of all time" 1 {:best     {:commit commit, :net -28, :measures measures}
+                                                         :suspects [{:commit commit
+                                                                     :items  (map #(update % :delta -) measures)}]})]
           (is (= ["    -13  2 more budgets"
                   "    +13 over 2 more budgets, with 0 suppressions added"]
                  (filter #(str/includes? % "more budgets") lines)))))
@@ -681,7 +680,7 @@
           (testing "summarizes only the commits after the one given"
             (let [after (some #(when (= 4 (:pr %)) (:sha %)) (history/records repo))
                   lines (str/split-lines (with-out-str (history/run repo {:options {}, :arguments [after]})))]
-              (is (= [(str "Ratchet changes since " (subs after 0 10) ": 1 commits") ["total" "0" "+1" "+1"]]
+              (is (= [(str "Ratchet changes since " (subs after 0 10) ": 2 commits") ["total" "0" "+1" "+1"]]
                      [(first lines) (total lines)]))))
           (testing "writes the page, with the repository's GitHub URL taken from its SSH remote"
             (let [file (str (fs/path (fs/parent (:verdicts-file repo)) "page.html"))
