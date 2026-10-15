@@ -19,11 +19,6 @@
   scroll-margin: 6px 0;
   border-radius: 0.75rem;
   border: 1px solid var(--mb-color-border-neutral);
-  transition: border-color 0.15s ease-in-out;
-
-  &:hover {
-    border-color: var(--mb-color-border-neutral-strong);
-  }
 
   &.isAction {
     border: none !important;
