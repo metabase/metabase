@@ -5,6 +5,7 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_LIBRARY, type SimpleDataPickerProps } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { useSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
@@ -113,9 +114,11 @@ function useLibrarySearch({
   SimpleDataPickerProps,
   "entityTypes" | "filterByDatabaseId" | "isJoinStep"
 > & { searchModels: SearchModel[] }) {
-  const publishedModels: SearchModel[] = isJoinStep
-    ? ["table"]
-    : ["table", "metric"];
+  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
+  const canSelectMetric = !isJoinStep && hasNestedQueriesEnabled;
+  const publishedModels: SearchModel[] = canSelectMetric
+    ? ["table", "metric"]
+    : ["table"];
   // The general search already finds published tables and metrics when
   // `searchModels` asks for them, so only ask the Library for the rest
   const libraryModels = publishedModels.filter(
