@@ -94,12 +94,18 @@
     :target `operations/create-branch-task!
     :edits  [[:replace '(write-branch! branch-name) nil]]
     :tests  [#'operations-test/branch-operations-on-the-app-db-test]}
-   {:name   :new-branch-moves-the-base-alone
-    :doc    "A push to a new branch moves the base outside the record function, so the branch setting does not move with
-            it."
+   {:name   :new-branch-records-no-branch
+    :doc    "The record step of a push does not call its hook, so a push to a new branch leaves the branch setting."
     :target `push/commit!
-    :edits  [[:replace '(record #(instance/set-base! inst b c digests)) '(instance/set-base! inst b c digests)]]
+    :edits  [[:replace '(on-record) nil]]
     :tests  [#'branch-test/push-to-a-new-branch-records-in-one-step-test #'operations-test/branch-operations-on-the-app-db-test]}
+   {:name   :new-branch-records-on-a-moved-base
+    :doc    "The record step calls its hook also when another task moved the base: the branch setting changes with no
+            move of the base."
+    :target `push/commit!
+    :edits  [[:replace '{:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c)}
+              '(do (on-record) {:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c)})]]
+    :tests  [#'branch-test/push-to-a-new-branch-records-in-one-step-test]}
    {:name   :new-branch-from-the-base-ref
     :doc    "A push to a new branch moves the new ref from the base, as a push to the branch of the base does."
     :target `push/commit!
