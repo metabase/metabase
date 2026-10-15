@@ -275,11 +275,10 @@
                (is (=? {:status "successful" :outcome {:kind "up-to-date" :commit c1}}
                        (run-task! "pull" #(operations/pull-task! % "main")))))
              (let [h1 (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed base (:entity_id metric) "After"))]
-               (testing "a pull whose task ended before the apply writes nothing"
+               (testing "a pull whose task ended after the start of its apply writes nothing: the apply is fenced"
                  (let [{:keys [id]} (tasks/start! "pull" nil)]
-                   (tasks/cancel! id)
                    (is (= {:error "The task ended before the pull applied, so nothing was pulled."}
-                          (operations/pull-task! id "main")))
+                          (tasks.tu/cancelling-at :apply (operations/pull-task! id "main"))))
                    (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
                    (is (= c1 (instance/base (operations/instance))))
                    (is (= "cancelled" (:status (tasks/task id))))))
@@ -464,12 +463,12 @@
                              (run-task! "branch-switch" #(operations/switch-task! % "main"))))
                      (is (= "main" (repository/branch)))
                      (is (= m1 (instance/base (operations/instance)))))
-                   (testing "a switch whose task ended before it applied writes nothing, and the branch setting stays"
+                   (testing "a switch whose task ended after the start of its apply writes nothing, and the branch
+                            setting stays: the apply is fenced"
                      (pltu/commit-snapshot! repo "feature" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "Feature"))
                      (let [{:keys [id]} (tasks/start! "branch-switch" nil)]
-                       (tasks/cancel! id)
                        (is (= {:error "The task ended before the pull applied, so nothing was pulled."}
-                              (operations/switch-task! id "feature")))
+                              (tasks.tu/cancelling-at :apply (operations/switch-task! id "feature"))))
                        (is (= "From main" (t2/select-one-fn :name :model/Card (:id metric))))
                        (is (= "main" (repository/branch)))
                        (is (= "cancelled" (:status (tasks/task id))))))))))))))))

@@ -22,6 +22,7 @@
    [metabase-enterprise.library-branching.repository-test-util :as rtu]
    [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
@@ -268,7 +269,9 @@
              (let [a (pltu/commit-on! repo "main" [] (old-tree local))
                    m (pltu/commit-on! repo "main" [a] (old-tree ours))
                    d (pltu/commit-on! repo "dev" [a] (old-tree theirs))
-                   {:keys [outcome]} (operations/merge-branch-task! nil "main" "dev")
+                   {:keys [outcome]} (tasks.tu/with-no-tasks
+                                       (let [{:keys [id]} (tasks/start! "merge-branch" nil)]
+                                         (tasks/run-task! id #(operations/merge-branch-task! % "main" "dev"))))
                    ;; a store holds the commits of the branches that it fetched
                    merged (repository/do-with-store (fn [s]
                                                       (store/head s "main")

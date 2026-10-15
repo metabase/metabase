@@ -92,10 +92,11 @@
   "Read, the drift check, plan and apply of head `h` with snapshot `r`, against base commit `b`, again after a stale
   precondition, at most `retries` times. With `discard-drift?`, the drift does not stop the apply: the plan writes the
   head over it."
-  [inst store branch {:keys [codecs retries fence discard-drift?]} b h r]
+  [inst store branch {:keys [codecs retries fence discard-drift? on-phase]} b h r]
   (loop [attempt 0]
     (let [l   (:snapshot (instance/read-snapshot inst))
-          ids (drift inst store codecs b l r)]
+          ids (drift inst store codecs b l r)
+          _   (on-phase :plan)]
       (cond
         (and (seq ids) (not discard-drift?))
         {:result :drift :head h :ids (vec ids)}
@@ -108,6 +109,7 @@
         ;; discard takes the local content as the precondition too: the admin chose to write over it.
         :else
         (let [steps  (plan/plan l r l)
+              _      (on-phase :apply)
               result (instance/apply-plan! inst steps {:base     b
                                                        :new-base h
                                                        :digests  (writer/item-digests codecs r)
@@ -157,12 +159,16 @@
   `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in `apply/apply-plan`), `:retries` (default
   `pull/default-retries`), `:discard-drift?`: the admin's choice to discard the drift. Then no result is `:drift`: the
   deploy writes the head over the drift, also when the head is the base, and `:deployed` has `:discarded ids`, the drift
-  that it wrote over."
+  that it wrote over. `:on-phase`: a function of a key of `tasks/phase-starts`, called at the start of the read, the
+  plan and the apply; a throw of it stops the deploy, and nothing is written (default: none)."
   ([inst store branch env]
    (deploy! inst store branch env {}))
   ([inst store branch env opts]
-   (let [{:keys [codecs retries discard-drift?] :as opts} (merge {:codecs kinds/codecs :retries pull/default-retries}
-                                                                 opts)]
+   (let [{:keys [codecs retries discard-drift? on-phase] :as opts} (merge {:codecs   kinds/codecs
+                                                                           :retries  pull/default-retries
+                                                                           :on-phase (constantly nil)}
+                                                                          opts)
+         _ (on-phase :read)]
      (if-not (settings/library-branching-enabled)
        {:result :disabled}
        (loop [rewrites 0]

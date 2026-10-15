@@ -133,16 +133,18 @@
   "Steps 4 to 6 of the pull of head `h` with remote snapshot `r`, against base commit `b`: read, merge, plan and apply,
   again after a stale precondition, at most `retries` times. `(on-read env)` is called with the environment of each
   read of the instance (nil when the read gives none)."
-  [inst store branch {:keys [codecs decisions retries fence on-commit]} b h r base on-read]
+  [inst store branch {:keys [codecs decisions retries fence on-commit on-phase]} b h r base on-read]
   (loop [attempt 0]
     (let [{l :snapshot env :env} (instance/read-snapshot inst)
           _       (on-read env)
+          _       (on-phase :plan)
           lost    (:lost base)
           bs      (or (:snapshot base) (lost-base l r))
           merged  (merge/merge bs l r (decisions-for decisions h l))]
       (if-not (:ok merged)
         (assoc merged :result :conflicts :head h :base-lost lost)
         (let [steps  (plan/plan l (:ok merged) bs)
+              _      (on-phase :apply)
               result (instance/apply-plan! inst steps {:base     b
                                                        :new-base h
                                                        ;; The base cache holds the content of the base commit `h`,
@@ -203,11 +205,16 @@
   `(:env opts)`, else against the environment that the read of the instance gives, when there is one.
   `opts`: `:codecs` (default `kinds/codecs`), `:decisions` (the keep-mine decisions, see [[decide]]), `:env` (an
   environment of `format.manifest`), `:fence` and `:on-commit` (as in `apply/apply-plan`), `:retries` (default
-  [[default-retries]])."
+  [[default-retries]]), `:on-phase` (a function of a key of `tasks/phase-starts`, called at the start of the read, the
+  plan and the apply; a throw of it stops the pull, and nothing is written; default: none)."
   ([inst store branch]
    (pull! inst store branch {}))
   ([inst store branch opts]
-   (let [{:keys [codecs env retries] :as opts} (merge {:codecs kinds/codecs :retries default-retries} opts)]
+   (let [{:keys [codecs env retries on-phase] :as opts} (merge {:codecs   kinds/codecs
+                                                                :retries  default-retries
+                                                                :on-phase (constantly nil)}
+                                                               opts)
+         _ (on-phase :read)]
      (if-not (settings/library-branching-enabled)
        {:result :disabled}
        (loop [rewrites 0]

@@ -61,10 +61,15 @@
 
   Only `:merged` moves a ref. The merged foreign files stay at their paths; an item whose path one of them holds gets
   its identity as a suffix (`layout/layout`). `opts`: `:codecs` (default `kinds/codecs`), `:message` (default
-  [[default-message]]), `:table-names` and `:card-ids` (as `claims/decode`; see `pull/decode-opts`)."
+  [[default-message]]), `:table-names` and `:card-ids` (as `claims/decode`; see `pull/decode-opts`), `:on-phase` (a
+  function of a key of `tasks/phase-starts`, called at the start of the read, the plan, the apply (the write of the
+  commit) and the commit (the move of `into`); a throw of it stops the merge, and no ref moves; default: none)."
   ([store into from]
    (merge-branch! store into from {}))
-  ([store into from {:keys [codecs message] :or {codecs kinds/codecs message default-message} :as opts}]
+  ([store into from {:keys [codecs message on-phase]
+                     :or   {codecs kinds/codecs message default-message on-phase (constantly nil)}
+                     :as   opts}]
+   (on-phase :read)
    (if-not (settings/library-branching-enabled)
      {:result :disabled}
      (let [c1 (store/head store into)
@@ -80,6 +85,7 @@
            (if-let [[c {:keys [findings]}] (first (filter (comp :findings second) decoded))]
              {:result :invalid :commit c :findings findings}
              (let [[sa s1 s2] (map (comp :snapshot second) decoded)
+                   _          (on-phase :plan)
                    merged     (merge/merge sa s1 s2 {})
                    files      (merge-foreign (store/read-tree store a) (store/read-tree store c1) (store/read-tree store c2))]
                (cond
@@ -98,7 +104,9 @@
                            clashes (push/foreign-clashes kept written)]
                        (if (seq clashes)
                          {:result :invalid :commit nil :findings clashes}
-                         (let [c     (store/write-commit store [c1 c2] (merge kept written) message)
+                         (let [_     (on-phase :apply)
+                               c     (store/write-commit store [c1 c2] (merge kept written) message)
+                               _     (on-phase :commit)
                                moved (store/cas-ref! store into c1 c)]
                            (if (= :ok moved)
                              {:result :merged :commit c}
