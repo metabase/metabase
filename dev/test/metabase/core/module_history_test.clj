@@ -286,3 +286,11 @@
       (is (=? {:namespace 'metabase.util, :module 'util, :deps seq}
               (first (filter #(= 'metabase.util (:namespace %)) deps))))
       (is (contains? modules 'util)))))
+
+(deftest commits-to-measure-test
+  (testing "an explicit revision is measured once when the sample also picks it"
+    (let [head     (str/trim (#'module-history/git! ["rev-parse" "HEAD"]))
+          ;; A date after every commit samples only the tip of `ref`.
+          tomorrow (str (.plusDays (java.time.LocalDate/now java.time.ZoneOffset/UTC) 1))]
+      (is (= [head]
+             (#'module-history/commits-to-measure {:commits ["HEAD"], :ref "HEAD", :since tomorrow}))))))

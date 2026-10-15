@@ -618,6 +618,17 @@
    :retest-module-mean :retest-module-median :retest-namespace-mean :retest-namespace-median
    :leaf-modules :leaf-module-namespaces :leaf-namespaces])
 
+(defn- commits-to-measure
+  "The shas [[backfill!]] measures for `opts`: each of `commits` and, when a `-since` option is given or `commits`
+  is empty, the [[sample-commits]], without repeats."
+  [{:keys [commits], :as opts}]
+  (if (seq commits)
+    ;; Resolve first, so `HEAD` and the sampled tip it names are measured once.
+    (vec (distinct (concat (map resolve-commit commits)
+                           (when (some opts [:since :backend-since :weekly-since :monthly-since])
+                             (sample-commits opts)))))
+    (sample-commits opts)))
+
 (defn backfill!
   "Measure the commits [[sample-commits]] picks for `opts` and return the rows.
   With `:commits`, measure those, adding the sample only when a `-since` option is given.
@@ -625,12 +636,8 @@
 
     clojure -X:dev dev.module-history/backfill! \\
       :since '\"2025-10-01\"' :monthly-since '\"2023-12-01\"' :out '\"history.csv\"'"
-  [{:keys [commits out], :as opts}]
-  (let [shas   (if (seq commits)
-                 (vec (distinct (concat commits
-                                        (when (some opts [:since :backend-since :weekly-since :monthly-since])
-                                          (sample-commits opts)))))
-                 (sample-commits opts))
+  [{:keys [out], :as opts}]
+  (let [shas   (commits-to-measure opts)
         reader (open-object-reader)
         rows   (try
                  (into []
