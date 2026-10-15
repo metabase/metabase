@@ -489,18 +489,6 @@
                     {:status-code 403
                      :type        :metabot/permission-denied}))))
 
-(defn- without-show-chart
-  "`tools` with the `show_chart` argument left out of what the model is told about construct_notebook_query.
-   The argument only does anything alongside run_query, so a turn without run_query declares the tool as it was
-   before the argument existed."
-  [tools]
-  (m/update-existing-in tools ["construct_notebook_query" :schema]
-                        (fn [[arrow [cat params & more-args] output]]
-                          [arrow
-                           (into [cat (into [] (remove #(and (vector? %) (= :show_chart (first %)))) params)]
-                                 more-args)
-                           output])))
-
 (defn- init-agent
   "Initialize agent state.
 
@@ -533,8 +521,11 @@
                                 :tool-names (set (keys base-tools)))
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
+        ;; The show_chart argument only does anything alongside run_query, so a turn without run_query declares
+        ;; construct_notebook_query as it was before the argument existed.
         tools        (update-vals (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot profile-id)
-                                    (not (contains? base-tools "run_query")) without-show-chart)
+                                    (not (contains? base-tools "run_query"))
+                                    (m/update-existing "construct_notebook_query" tools/without-show-chart))
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)

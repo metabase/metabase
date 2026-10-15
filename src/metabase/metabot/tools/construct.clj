@@ -129,6 +129,16 @@
    [:title :string]
    [:description :string]])
 
+(defn without-show-chart
+  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
+   model is not told about the argument."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema & more] output]]
+                         [arrow
+                          (into [cat (into [] (remove #(and (vector? %) (= :show_chart (first %)))) args-schema)]
+                                more)
+                          output])))
+
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
 (defn- portable-table-fk
