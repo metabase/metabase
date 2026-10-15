@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import CS from "metabase/css/core/bordered.module.css";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Anchor, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
 import S from "../CollectionSyncList/CollectionSyncList.module.css";
+import { SyncListRow } from "../SyncListRow";
 
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
 
@@ -56,24 +56,18 @@ type SyncedContentRowProps = {
 };
 
 const SyncedContentRow = ({ icon, label, to }: SyncedContentRowProps) => (
-  <Box p="lg" className={CS.borderRowDivider}>
-    <Flex justify="space-between" align="center">
-      <Flex align="center" gap="sm">
-        <Icon name={icon} c="text-secondary" />
-        <Text fw="medium">{label}</Text>
+  <SyncListRow icon={icon} label={label}>
+    <Anchor
+      component={Link}
+      to={to}
+      target="_blank"
+      fw="bold"
+      aria-label={t`Open ${label}`}
+    >
+      <Flex align="center" gap="xs">
+        {t`Open`}
+        <Icon name="external" />
       </Flex>
-      <Anchor
-        component={Link}
-        to={to}
-        target="_blank"
-        fw="bold"
-        aria-label={t`Open ${label}`}
-      >
-        <Flex align="center" gap="xs">
-          {t`Open`}
-          <Icon name="external" />
-        </Flex>
-      </Anchor>
-    </Flex>
-  </Box>
+    </Anchor>
+  </SyncListRow>
 );
