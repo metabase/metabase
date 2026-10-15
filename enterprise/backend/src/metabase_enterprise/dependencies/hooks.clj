@@ -54,13 +54,15 @@
 
 (defn- mark-changed!
   "Mark the entity `entity-type` `entity-id` for recalculation, for re-analysis when analyzable, and for the result
-  metadata of the cards depending on it to be re-derived; the backfill job marks its dependents for re-analysis."
+  metadata of the cards depending on it to be re-derived when cards derive it from such entities; the backfill job
+  marks its dependents for re-analysis."
   [entity-type entity-id]
   (when entity-id
     (deps.dependency-status/mark-stale! {entity-type #{entity-id}})
     (when (contains? deps.findings/analyzable-entities entity-type)
       (deps.analysis-finding/mark-stale! {entity-type #{entity-id}}))
-    (deps.result-metadata-status/mark-stale! entity-type entity-id)
+    (when (contains? deps.result-metadata-status/entity-types entity-type)
+      (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
     (trigger-jobs!)))
 
 (defn- changed?
@@ -162,7 +164,7 @@
   dependents for re-analysis once the current transaction commits."
   [table-id]
   (when table-id
-    (deps.result-metadata-status/mark-stale! :table table-id)
+    (deps.result-metadata-status/mark-stale! {:table #{table-id}})
     (submit-after-commit! {:table-id table-id})))
 
 (defmethod before-insert* :model/TableUserSettings
@@ -234,8 +236,7 @@
           entity-id                entity-ids]
     (mark-changed! entity-type entity-id))
   (let [table-ids (dependencies.db/table-ids-with-outdated-findings database-id)]
-    (doseq [table-id table-ids]
-      (deps.result-metadata-status/mark-stale! :table table-id))
+    (deps.result-metadata-status/mark-stale! {:table table-ids})
     (when (or (deps.findings/mark-transitive-dependents-stale! {:table table-ids})
               (seq table-ids))
       (trigger-jobs!))))
@@ -247,7 +248,7 @@
   [transform-id table-id]
   (when table-id
     (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}})
-    (deps.result-metadata-status/mark-stale! :table table-id))
+    (deps.result-metadata-status/mark-stale! {:table #{table-id}}))
   (when (or (deps.findings/mark-transitive-dependents-stale! {:transform #{transform-id}})
             table-id)
     (trigger-jobs!)))

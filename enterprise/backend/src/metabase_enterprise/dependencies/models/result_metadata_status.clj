@@ -15,21 +15,31 @@
 
 (def entity-types
   "The entity types whose result columns the result metadata of dependent MBQL cards is derived from."
-  [:card :measure :table])
+  #{:card :measure :table})
+
+(def ^:private mark-stale-batch-size
+  "The number of statuses marked per query, below the bind-parameter limits of every app DB."
+  1000)
 
 (defn mark-stale!
-  "Mark the entity `entity-type` `entity-id` changed for the result metadata of the cards depending on it to be
-  re-derived, resetting its retry state, unless no card derives its result metadata from entities of that type."
-  [entity-type entity-id]
-  (when (some #{entity-type} entity-types)
-    (dependencies.db/mark-result-metadata-status-stale! entity-type entity-id)))
+  "Mark the entities in `type->ids`, `{entity-type ids}`, changed for the result metadata of the cards depending on
+  them to be re-derived, resetting their retry state."
+  [type->ids]
+  (doseq [[entity-type ids] type->ids
+          batch             (partition-all mark-stale-batch-size ids)
+          :let              [batch (vec batch)]]
+    (dependencies.db/mark-result-metadata-statuses-stale! entity-type batch)
+    (let [existing (set (dependencies.db/result-metadata-status-entity-ids entity-type batch))]
+      (doseq [entity-id batch
+              :when     (not (existing entity-id))]
+        (dependencies.db/mark-result-metadata-status-stale! entity-type entity-id)))))
 
 (defn mark-dependents-stale!
   "Mark the dependents in `type->ids`, `{entity-type ids}`, stale without touching the retry state of the ones that
   already are, so a dependent that keeps failing still backs off."
   [type->ids]
   (doseq [[entity-type ids] type->ids
-          batch             (partition-all 1000 ids)
+          batch             (partition-all mark-stale-batch-size ids)
           :let              [batch (vec batch)]]
     (dependencies.db/mark-fresh-result-metadata-statuses-stale! entity-type batch)
     (let [existing (set (dependencies.db/result-metadata-status-entity-ids entity-type batch))]

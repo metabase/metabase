@@ -879,6 +879,15 @@
    (fn [_existing]
      {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)})))
 
+(mu/defn mark-result-metadata-statuses-stale!
+  "Mark the existing ResultMetadataStatuses of `entity-type` `entity-ids` stale and reset their retry state, returning
+  the number updated."
+  [entity-type :- EntityType
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/ResultMetadataStatus
+              :entity_type entity-type :entity_id [:in entity-ids]
+              {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
+
 (mu/defn mark-fresh-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of `entity-type` `entity-ids` that are not stale stale, returning the number
   updated."

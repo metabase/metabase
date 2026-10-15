@@ -193,9 +193,9 @@
   (testing "a status marked again while it was processed stays stale"
     (mt/with-model-cleanup [:model/ResultMetadataStatus]
       (let [card-id Integer/MAX_VALUE]
-        (deps.result-metadata-status/mark-stale! :card card-id)
+        (deps.result-metadata-status/mark-stale! {:card #{card-id}})
         (let [status (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id)]
-          (deps.result-metadata-status/mark-stale! :card card-id)
+          (deps.result-metadata-status/mark-stale! {:card #{card-id}})
           (is (zero? (deps.result-metadata-status/clear-stale-if-unchanged! status)))
           (is (stale? :card card-id)))
         (let [status (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id)]
