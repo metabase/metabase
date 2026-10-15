@@ -359,7 +359,7 @@
        (testing "a sandbox on a branch made from main: an agent saves, and the sandbox pushes to the branch"
          (pltu/reset-branch! repo "feature" main)
          (pltu/save! sandbox (constantly work))
-         (is (= :pushed (:result (push/push! sandbox s "feature")))))
+         (is (= :pushed (:result (ptu/do-with-push-task! #(push/push! sandbox s "feature" %))))))
        (testing "production does not take the work of the branch"
          (is (= {:result :up-to-date :head main} (deploy! prod s))))
        (testing "the pull request merges the branch into main, and production deploys main"
