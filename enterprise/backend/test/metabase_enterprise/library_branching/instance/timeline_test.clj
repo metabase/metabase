@@ -7,6 +7,7 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.engine.diff :as diff]
    [metabase-enterprise.library-branching.format.kinds.timeline :as format.timeline]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -255,7 +256,17 @@
                before (rows ids)]
            (doseq [id ids]
              (write! id (current id)))
-           (is (= before (rows ids)))))))))
+           (is (= before (rows ids)))
+           (testing "and sends no update: on Postgres a time stamp that an update sets in this transaction equals the
+                    one of the insert, so only the statements show it"
+             (let [updates (atom [])
+                   spy     (fn [f] (fn [& args] (swap! updates conj f) 0))]
+               (mt/with-dynamic-fn-redefs [library-branching.db/update-timeline!        (spy :update-timeline!)
+                                           library-branching.db/update-timeline-event!  (spy :update-timeline-event!)
+                                           library-branching.db/archive-timeline-events! (spy :archive-timeline-events!)]
+                 (doseq [id ids]
+                   (write! id (current id))))
+               (is (= [] @updates))))))))))
 
 (deftest write-keeps-instance-local-attributes-test
   (testing "a write never changes the creators or the times of creation of the timeline and its events"
