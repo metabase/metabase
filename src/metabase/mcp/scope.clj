@@ -1,12 +1,9 @@
 (ns metabase.mcp.scope
   "The OAuth scopes the v2 MCP surface accepts, and scope matching for MCP tools and resources.
 
-   Only a named scope string grants anything, and only by exact match.
+  Only a named scope string grants anything, and only by exact match.
 
-   A leaf namespace with no requires, so the handler and OAuth server can read the scope sets without a dependency
-   cycle. Anything `metabase.mcp.core` reaches joins the load path of every namespace that loads it. Pulling
-   `metabot.scope`, and through it `premium-features`, onto that path has deadlocked namespace loading with a
-   methodical protocol error at web-server start. Keep this namespace dependency-free.")
+  Keep this namespace dependency-free.")
 
 (def v2-surface-scopes
   "Every OAuth scope the v2 MCP surface accepts in order from safest to most dangerous."
