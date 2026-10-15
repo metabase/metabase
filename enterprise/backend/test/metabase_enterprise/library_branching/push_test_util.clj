@@ -109,7 +109,7 @@
   (base-digests [_ commit]
     (let [{:keys [base digests]} @state]
       (when (and (some? commit) (= commit base)) digests)))
-  (apply-plan! [_ _plan _new-base] (instance/not-yet! `instance/apply-plan!))
+  (apply-plan! [_ _plan _opts] (instance/not-yet! `instance/apply-plan!))
   (set-base! [_ expected new digests]
     (let [[old] (swap-vals! state (fn [st] (cond-> st
                                              (= expected (:base st)) (assoc :base new :digests digests))))]
@@ -127,7 +127,7 @@
                        (instance/read-snapshot inst)))
   (base [_] (instance/base inst))
   (base-digests [_ commit] (instance/base-digests inst commit))
-  (apply-plan! [_ plan new-base] (instance/apply-plan! inst plan new-base))
+  (apply-plan! [_ plan opts] (instance/apply-plan! inst plan opts))
   (set-base! [_ expected new digests]
     (if-let [f (:set-base! overrides)]
       (f #(instance/set-base! inst expected new digests) expected new digests)
