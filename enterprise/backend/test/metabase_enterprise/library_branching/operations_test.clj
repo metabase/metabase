@@ -17,8 +17,6 @@
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.app-db.core :as mdb]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -141,43 +139,6 @@
 
 ;;; ---------------------------------------------- Workers on the app DB ----------------------------------------------
 
-(defn- children-location
-  [{:keys [id location]}]
-  (str location id "/"))
-
-(defn- sum-query []
-  (let [mp (mt/metadata-provider)]
-    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))))
-
-(defn- do-with-library-metric!
-  "Calls `(f metric)` with a committed metric in a committed metrics collection of the Library, with library branching
-  on, no task row and no base. Deletes the rows that it inserted afterwards."
-  [f]
-  (let [rows    (atom ())
-        insert! (fn [model row]
-                  (let [inserted (t2/insert-returning-instance! model row)]
-                    (swap! rows conj [model inserted])
-                    inserted))]
-    (tasks.tu/with-no-tasks
-      (try
-        (mt/with-temporary-setting-values [library-branching-enabled true]
-          (let [library (or (t2/select-one :model/Collection :type "library" :archived false)
-                            (insert! :model/Collection {:name "Library" :type "library" :location "/"}))
-                metrics (insert! :model/Collection {:name     "Operation metrics"
-                                                    :type     "library-metrics"
-                                                    :location (children-location library)})]
-            (f (insert! :model/Card {:name                   "Before"
-                                     :type                   :metric
-                                     :collection_id          (:id metrics)
-                                     :creator_id             (mt/user->id :crowberto)
-                                     :display                :scalar
-                                     :visualization_settings {}
-                                     :dataset_query          (sum-query)}))))
-        (finally
-          (doseq [[model row] @rows]
-            (t2/delete! model :id (:id row))))))))
-
 (defn- run-task!
   "Starts a task of `kind`, runs `(work id)` as its worker, and returns the ended task."
   [kind work]
@@ -195,7 +156,7 @@
   (testing (str "a push, a pull and a merge-branch, each as the worker of its task; app DB " (mdb/db-type))
     (with-remote [repo url]
       (with-settings {:remote-sync-url url :remote-sync-branch "main"}
-        (do-with-library-metric!
+        (rtu/do-with-library-metric!
          (fn [metric]
            (let [pushed (run-task! "push" #(operations/push-task! % "main" "First push"))
                  c1     (get-in pushed [:outcome :commit])
