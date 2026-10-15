@@ -9,6 +9,8 @@
    [clojure.string :as str]
    [library-checker.build :as build]))
 
+(set! *warn-on-reflection* true)
+
 (defn- bb-executable
   []
   (-> (java.lang.ProcessHandle/current) .info .command (.orElse "bb")))
@@ -55,7 +57,7 @@
                                           (for [n (keys results)]
                                             [n (jar-result jar cwd (fs/file dir n))]))
               diffs                 (differences results jar-results)]
-          (doseq [d diffs] (prn d))
+          (doseq [d diffs] (println (pr-str d)))
           (cond
             (empty? results) (do (println "no variant") (System/exit 2))
             (seq diffs)      (do (println "differ:" (count diffs) "of" (count results) "variants") (System/exit 1))

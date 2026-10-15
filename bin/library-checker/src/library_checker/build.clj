@@ -8,6 +8,8 @@
    [clojure.edn :as edn]
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (def entry-point
   "The namespace of the checker's `-main`."
   'metabase-enterprise.library-branching.check)
