@@ -549,10 +549,10 @@
     (enabled
      (with-remote [repo s]
        (let [trashed-id "TrashedActiveSnippet1"
-             trashed    (ptu/item trashed-id :snippet "Active orders" nil {:content "status = 'active'"})
+             trashed    (ptu/item trashed-id :snippet "Active orders" "snippetssnippetssnipp" {:content "status = 'active'"})
              [inst c1]  (pushed-instance! s ptu/sample :trash {trashed-id trashed})
              h          (pltu/commit-snapshot! repo ptu/branch [c1]
-                                               (assoc ptu/sample new-snippet-id (assoc (new-snippet nil) :name "Active orders")))]
+                                               (assoc ptu/sample new-snippet-id (assoc (new-snippet "snippetssnippetssnipp") :name "Active orders")))]
          (is (= {:result    :key-clash
                  :head      h
                  :key-clash [{:rule :unique-key :kind :snippet :key "Active orders" :ids #{new-snippet-id trashed-id}}]}

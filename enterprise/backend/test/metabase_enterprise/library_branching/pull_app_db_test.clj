@@ -317,7 +317,7 @@
              new-id  (second created-ids)]
          (with-remote [repo s]
            (let [[inst c1 base] (pushed! s)
-                 item           {:kind :snippet :name "lb pull clash" :place nil :refs #{} :attrs {:content "2 = 2"}}
+                 item           {:kind :snippet :name "lb pull clash" :place "snippetssnippetssnipp" :refs #{} :attrs {:content "2 = 2"}}
                  h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
              (is (= {:result    :key-clash
                      :head      h
@@ -340,7 +340,7 @@
              new-id  (second created-ids)]
          (with-remote [repo s]
            (let [[inst c1 base] (pushed! s)
-                 item           {:kind :snippet :name "lb pull cläsh" :place nil :refs #{} :attrs {:content "2 = 2"}}
+                 item           {:kind :snippet :name "lb pull cläsh" :place "snippetssnippetssnipp" :refs #{} :attrs {:content "2 = 2"}}
                  h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
              (is (= {:result    :key-clash
                      :head      h
@@ -369,7 +369,7 @@
                  new-id  (second created-ids)]
              (with-remote [repo s]
                (let [[inst c1 base] (pushed! s)
-                     item           {:kind :snippet :name new-name :place nil :refs #{} :attrs {:content "2 = 2"}}
+                     item           {:kind :snippet :name new-name :place "snippetssnippetssnipp" :refs #{} :attrs {:content "2 = 2"}}
                      h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
                  (is (= {:result    :key-clash
                          :head      h

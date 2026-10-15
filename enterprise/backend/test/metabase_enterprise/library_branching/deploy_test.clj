@@ -424,7 +424,7 @@
            [inst _] (deployed-instance! s)
            new-id   "NewOtherSnippet000001"
            h        (pltu/commit-snapshot! repo ptu/branch [c1]
-                                           (assoc ptu/sample new-id (ptu/item new-id :snippet "other" nil {:content "1 = 1"})))]
+                                           (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"})))]
        (testing "the head removes a snippet and adds one with a name of one key: the trash keeps the removed snippet with
                 its name, so the deploy refuses with the pair and writes nothing"
          (is (= {:result    :key-clash
