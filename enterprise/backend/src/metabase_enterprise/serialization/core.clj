@@ -45,10 +45,12 @@
  [metabase-enterprise.serialization.v2.storage.files
   file-writer]
  [metabase-enterprise.serialization.v2.storage.util
+  default-layout
   entity-file-path
   entity-yaml
   resolve-storage-path
   resource-files
   slugify-name
+  storage-context
   without-resources
   yaml-file-path])

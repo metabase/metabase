@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.layout :as remote-sync.layout]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.git :as git]
@@ -84,7 +85,7 @@
    :resources (vec (resource-specs path entity))})
 
 (defn entity->file-spec
-  "[[entity->file-spec-at]] the path storage context `opts` (from [[serdes/storage-base-context]]) gives `entity`."
+  "[[entity->file-spec-at]] the path storage context `opts` (from [[remote-sync.layout/storage-context]]) gives `entity`."
   [opts entity]
   (entity->file-spec-at (serialization/entity-file-path opts entity) entity))
 
@@ -108,7 +109,7 @@
   ({:model_type :model_id}), or nil if it can't be extracted."
   [row]
   (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (let [fspec (entity->file-spec (serdes/storage-base-context) entity)]
+    (let [fspec (entity->file-spec (remote-sync.layout/storage-context) entity)]
       {:path (:path fspec), :content-hash (file-spec-hash fspec)})))
 
 (defn row->content-hash
@@ -128,7 +129,7 @@
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream task-id & {:keys [total]}]
-  (let [opts   (serdes/storage-base-context)
+  (let [opts   (remote-sync.layout/storage-context)
         stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
         total  (or total (when task-id (count stream)))
         report (if (and task-id (pos? total))

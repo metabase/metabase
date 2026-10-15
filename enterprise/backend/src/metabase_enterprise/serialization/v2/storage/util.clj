@@ -46,11 +46,29 @@
         (recur (rest remaining)
                (conj resolved unique-name))))))
 
-(defn resolve-storage-path
-  "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings.
-  The last element is the filename (without extension)."
+(defn default-layout
+  "The layout every export writes unless its context names another: `entity`'s [[serdes/storage-path]] segments in
+  storage context `ctx`, slugified and deduplicated per folder in the order of resolution."
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
+
+(defn storage-context
+  "A storage context (see [[serdes/storage-base-context]]) whose paths come from `layout`, a function of a storage
+  context and an extracted entity that returns the entity's resolved path (a vector of strings, the last one the file
+  name without its extension). `:layout-cache` is an atom a layout may use for
+  data it reads once per context."
+  ([]
+   (storage-context default-layout))
+  ([layout]
+   (assoc (serdes/storage-base-context)
+          :layout       layout
+          :layout-cache (atom {}))))
+
+(defn resolve-storage-path
+  "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings, from the ctx's
+  `:layout` ([[default-layout]] when it has none). The last element is the filename (without extension)."
+  [ctx entity]
+  ((or (:layout ctx) default-layout) ctx entity))
 
 (defn yaml-file-path
   "The `/`-separated path of the YAML file at the `resolved` storage path."
