@@ -239,6 +239,10 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
       }
     }
   },
-  getDisplay: () => "table",
-  getVizSettings: () => ({}),
+  getDisplay: () => "cohort",
+  getVizSettings: (settings) => ({
+    "cohort.period":
+      settings.granularity === "hour" ? "day" : settings.granularity,
+    "cohort.value_format": settings["cohorts.display"],
+  }),
 };

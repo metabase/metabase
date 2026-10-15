@@ -51,6 +51,7 @@ import { registerJsxFormatting } from "./lib/register-jsx-formatting";
 import { AREA_CHART_DEFINITION } from "./visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "./visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "./visualizations/BoxPlot/definition";
+import { COHORT_TABLE_DEFINITION } from "./visualizations/CohortTable/definition";
 import { COMBO_CHART_DEFINITION } from "./visualizations/ComboChart/definition";
 import { FUNNEL_CHART_DEFINITION } from "./visualizations/Funnel/definition";
 import { GAUGE_CHART_DEFINITION } from "./visualizations/Gauge/definition";
@@ -179,6 +180,11 @@ function registerVisualizationComponents() {
     ).then((module) => module.TreemapChart),
   );
 
+  registerVisualization(COHORT_TABLE_DEFINITION, () =>
+    import(
+      /* webpackChunkName: "viz-cohort-table" */ "./visualizations/CohortTable"
+    ).then((module) => module.CohortTable),
+  );
   registerVisualization(LIST_DEFINITION, () =>
     import(
       /* webpackChunkName: "viz-list" */ "./visualizations/List/components/ListViz"

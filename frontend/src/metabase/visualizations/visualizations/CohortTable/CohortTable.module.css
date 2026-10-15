@@ -1,0 +1,48 @@
+.root {
+  display: grid;
+  align-content: start;
+  gap: 0.125rem;
+  min-width: max-content;
+  padding: 0.25rem;
+}
+
+.header {
+  padding: 0.5rem 0.75rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.headerLabel {
+  composes: header;
+  text-align: left;
+}
+
+.label {
+  padding: 0.5rem 0.75rem;
+  color: var(--mb-color-text-secondary);
+  align-self: center;
+  white-space: nowrap;
+}
+
+.size {
+  composes: label;
+  text-align: right;
+}
+
+.cell {
+  min-width: 4.5rem;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 0.125rem;
+  color: var(--mb-color-text-primary);
+  font-weight: 500;
+}
+
+.lightText {
+  color: var(--mb-color-text-white);
+}
