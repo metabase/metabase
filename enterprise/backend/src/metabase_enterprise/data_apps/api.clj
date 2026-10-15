@@ -264,9 +264,10 @@
   nil)
 
 (api.macros/defendpoint :post "/generate/app" :- ::data-apps.schema/app-files
-  "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
-  YAML a remote-sync export writes, with new entity IDs. For superusers: the files are written into the app's
-  repository, which only an admin works with."
+  "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
+  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app
+  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works
+  with."
   [_route-params
    _query-params
    body :- ::data-apps.schema/app-request]

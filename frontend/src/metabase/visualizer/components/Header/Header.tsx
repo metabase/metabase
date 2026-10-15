@@ -74,7 +74,10 @@ export function Header({
       className={className}
       data-testid="visualizer-header"
     >
-      <ActionIcon onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}>
+      <ActionIcon
+        variant="subtle"
+        onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}
+      >
         <Icon name="sidebar_open" />
       </ActionIcon>
       <EditableText
@@ -120,6 +123,7 @@ export function Header({
         {saveLabel ?? t`Add to dashboard`}
       </Button>
       <ActionIcon
+        variant="subtle"
         data-testid="visualizer-close-button"
         onClick={() => {
           trackVisualizerCloseClicked();

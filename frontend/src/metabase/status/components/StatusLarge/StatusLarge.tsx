@@ -58,7 +58,14 @@ export const StatusLarge = ({
       radius="xs"
       withBorder
     >
-      <Flex align="center" py="0.625rem" pl="lg" pr="md" bg="core-brand">
+      <Flex
+        align="center"
+        gap="xs"
+        py="0.375rem"
+        pl="lg"
+        pr="md"
+        bg="core-brand"
+      >
         <Box
           flex="1 1 auto"
           w="100%"
@@ -71,9 +78,8 @@ export const StatusLarge = ({
         </Box>
         {onCollapse && (
           <ActionIcon
-            variant="static"
-            size="xs"
-            c="text-primary-inverse"
+            variant="on-dark-secondary"
+            size="sm"
             onClick={onCollapse}
             aria-label={t`Collapse`}
           >
@@ -82,9 +88,8 @@ export const StatusLarge = ({
         )}
         {onDismiss && (
           <ActionIcon
-            variant="static"
-            size="xs"
-            c="text-primary-inverse"
+            variant="on-dark-secondary"
+            size="sm"
             onClick={onDismiss}
             aria-label={t`Dismiss`}
           >

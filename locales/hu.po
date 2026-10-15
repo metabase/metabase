@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Hungarian\n"
 "Language: hu_HU\n"
-"PO-Revision-Date: 2026-10-06 05:42\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -275,7 +275,6 @@ msgid "User attribute"
 msgstr "Felhasználói attribútum"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -321,12 +320,11 @@ msgstr "Felhasználói attribútum"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -406,7 +404,6 @@ msgid "Cancel"
 msgstr "Mégse"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1156,8 +1153,6 @@ msgid "Search for a group"
 msgstr "Csoport keresése"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1209,7 +1204,6 @@ msgstr "Nem sikerült exportálni az analitikát"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1341,16 +1335,10 @@ msgid "Unit"
 msgstr "Egység"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "Hozzárendelés hozzáadva"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "Hozzárendelés frissítve"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "Mentsd a fenti beállításokat a csoportleképezés beállításához."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1379,36 +1367,43 @@ msgid "Off"
 msgstr "Ki"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "Új leképezés"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "Használat: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "A felhasználók a JWT-csoportneveik alapján {0} csoportjaihoz lesznek hozzárendelve"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "Minden bejelentkezéskor a felhasználók hozzáadódnak a JWT-jükben megnevezett {0} csoportokhoz, és minden más csoportból eltávolításra kerülnek, beleértve az Adminisztrátorokat is."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "A csoportok betöltése nem sikerült"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "JWT-csoport neve"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "Add meg a JWT-csoportot..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "Adj hozzá legalább egy leképezést a manuális csoportleképezés használatához"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "Leképezés hozzáadása"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1420,90 +1415,42 @@ msgstr "Átváltasz automatikus csoportleképezésre?"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "A meglévő csoportleképezéseid törlődnek, és a felhasználók a JWT-csoportneveikkel egyező {0}-csoportokhoz lesznek hozzárendelve."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "A meglévő csoportleképezéseid törlésre kerülnek. Ettől kezdve minden bejelentkezéskor a felhasználók hozzáadódnak a JWT-jükben megnevezett {0} csoportokhoz, és minden más csoportból eltávolításra kerülnek, beleértve az Adminisztrátorokat is."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "Leképezések törlése és váltás"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "JWT-csoport neve"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "Add meg a JWT-csoportot..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "Ehhez a csoporthoz már létezik leképezés"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} csoport"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "Válassz {0} csoportot..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "Leképezés szerkesztése"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "Leképezés törlése"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "Nincsenek csoportok"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "Módosítások mentve"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Hiba a csoportleképezés mentésekor"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "A leképezés törlődött, de nem sikerült az összes csoportot frissíteni"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "A leképezés törölve, a csoportleképezés kikapcsolva"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "Hozzárendelés törölve"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "Hiba a JWT-beállítások mentésekor"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "Változások mentve. A csoportleképezés Automatikusra van állítva."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Hiba a JWT-konfiguráció betöltésekor"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "Állíts be aláírókulcsot mentés előtt"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1540,11 +1487,13 @@ msgid "Email attribute key"
 msgstr "E-mail attribútumkulcs"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Keresztnév attribútumkulcs"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Vezetéknév attribútumkulcs"
@@ -1558,9 +1507,8 @@ msgid "Tenant assignment attribute key"
 msgstr "Bérlő-hozzárendelési attribútumkulcs"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Csoportleképezés"
 
@@ -1604,6 +1552,19 @@ msgstr "Mentés és engedélyezés"
 msgid "Save changes"
 msgstr "Módosítások mentése"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "Felhasználók automatikus hozzárendelése {0} csoportjaihoz az OIDC-szolgáltatótól származó csoportok alapján"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "OIDC-csoport neve"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "Add meg az OIDC-csoportot..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "A login prompt kötelező"
@@ -1625,6 +1586,10 @@ msgid "Client ID is required"
 msgstr "A Client ID kötelező"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "A client secret kötelező"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "Az OIDC discovery sikeres volt, de a hitelesítő adatok nem ellenőrizhetők. Az identitásszolgáltató nem támogatja a teszteléshez használt grant típust."
 
@@ -1637,25 +1602,8 @@ msgid "OIDC configuration check failed"
 msgstr "Az OIDC-konfiguráció ellenőrzése sikertelen"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "Az OIDC-szolgáltató le van tiltva"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "Az OIDC-szolgáltató engedélyezve van"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "Nem sikerült frissíteni az OIDC-szolgáltatót"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "Az OIDC-szolgáltató törölve"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "Nem sikerült törölni az OIDC-szolgáltatót"
+msgid "Error loading OIDC configuration"
+msgstr "Hiba történt az OIDC-konfiguráció betöltésekor"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1677,10 +1625,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "Szolgáltatóazonosító. Az OIDC átirányítási URI-d ez lesz: \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "pl. okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "Login prompt"
 
@@ -1690,8 +1634,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "Gombszöveg a(z) {0} bejelentkezési képernyőn"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "pl. Sign in with Okta"
+msgid "Sign in with Okta"
+msgstr "Bejelentkezés Oktával"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1699,8 +1643,8 @@ msgstr "Issuer URI"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "Az OIDC issuer URI-ja. A discovery endpointnak elérhetőnek kell lennie: \"${ 0 }/.well-known/openid-configuration\"."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "A felfedezési végpontnak elérhetőnek kell lennie: \"{0}/.well-known/openid-configuration\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1711,27 +1655,41 @@ msgstr "Client ID"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "Az OIDC-szolgáltatónál a(z) {0} számára beállított Client ID."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "Ez {0} számára van beállítva az OIDC-szolgáltatónál"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
-msgstr "Client Secret"
+msgid "Client secret"
+msgstr "Kliens titok"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "Az OIDC-szolgáltatónál beállított Client secret."
+msgid "This is configured in your OIDC provider"
+msgstr "Ez az OIDC-szolgáltatódban van beállítva"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "Hagyd üresen az aktuális érték megtartásához"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Scope-ok"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "A kért OIDC scope-ok vesszővel elválasztott listája"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "Attribútumok"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "Ennek engedélyezéséhez megfeleltetéseket kell létrehoznod, hogy a(z) {0} tudja, mely csoport(ok)ba kerüljenek a felhasználóid az alapján, hogy melyik SSO-csoportban vannak."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "OIDC claim-ek leképezése a(z) {0} keresztnév- és vezetéknévmezőire. Az email mindig a standard email claim-ből származik."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1741,69 +1699,6 @@ msgstr "Csoportattribútum neve"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "Az OIDC claim, amely a csoporttagsági információkat tartalmazza."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "Opcionális beállítások"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Scope-ok"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "A kérendő OIDC scope-ok vesszővel elválasztott listája."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "Attribútumleképezés"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "OIDC claim-ek leképezése felhasználói attribútumokra. Használd a szabványos OIDC claim neveket vagy a szolgáltatód egyedi claim-jeit."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "E-mail attribútum"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "Keresztnév attribútum"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "Vezetéknév attribútum"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "Letiltás"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "Engedélyezés"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "Konfiguráció törlése"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "Törlöd ezt az OIDC-szolgáltatót?"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "A felhasználók többé nem fognak tudni ezzel a szolgáltatóval bejelentkezni. Ez nem vonható vissza."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1823,24 +1718,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "Az alábbi beállításokkal konfigurálhatja az SSO-t SAML-en keresztül. Ha kérdése van, nézze meg a(z) {0} oldalunkat."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "dokumentációt"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "Identitásszolgáltató (IdP) konfigurálása"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "Az identitásszolgáltatódnak a következő információkra lesz szüksége a(z) {0} kapcsán."
+msgid "Identity provider (IdP) configuration"
+msgstr "Identitásszolgáltató (IdP) konfiguráció"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1875,18 +1754,16 @@ msgid "Tenant assignment attribute"
 msgstr "Bérlő-hozzárendelési attribútum"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "Tájékoztasd a(z) {0}-t az identitásszolgáltatódról"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "A(z) {0} számára a következő információkra lesz szükség a szolgáltatódról."
+msgid "Identity provider info"
+msgstr "Identitásszolgáltató adatai"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "SAML identitásszolgáltató URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "Ez az az URL, ahová a felhasználóid az identitásszolgáltatónál történő bejelentkezéshez mennek."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1901,8 +1778,16 @@ msgid "SAML identity provider issuer"
 msgstr "SAML identitásszolgáltató kibocsátó"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "SSO-kérések aláírása (opcionális)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "Ez egy egyedi azonosító az IdP-hez. Gyakran Entity ID-ként vagy egyszerűen \"Issuer\"-ként emlegetik."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "SSO kérések aláírása"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "Használj kulcstárolót az identitásszolgáltatódnak küldött hitelesítési kérések aláírásához"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1921,9 +1806,36 @@ msgstr "Pszt..."
 msgid "SAML keystore alias"
 msgstr "SAML kulcstároló alias"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "Felhasználók automatikus hozzárendelése {0} csoportjaihoz a SAML identitásszolgáltatótól származó csoportok alapján"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "SAML-csoport neve"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "Add meg a SAML-csoportot..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "A SAML-attribútum, amely felsorolja a felhasználó csoportjait. A csoportleképezés a beállításáig nem rendel hozzá csoportokat."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "Bejelentkezés SSO-val"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "Engedélyezd, hogy a(z) {0} bejelentkezés új felhasználóknak fiókokat hozzon létre, és újraaktiválja a deaktivált fiókokat. Ha ki van kapcsolva, csak az aktív {1}-fiókkal rendelkező felhasználók tudnak bejelentkezni."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "Engedélyezd, hogy a(z) {0} bejelentkezés fiókokat hozzon létre új felhasználóknak. Ha ki van kapcsolva, csak aktív {1} fiókkal rendelkező felhasználók tudnak bejelentkezni."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1932,14 +1844,13 @@ msgstr "Bejelentkezés SSO-val"
 msgid "User provisioning"
 msgstr "Felhasználók automatikus kiépítése"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "Engedélyezd, hogy a(z) {0} bejelentkezés új felhasználóknak fiókokat hozzon létre, és újraaktiválja a deaktivált fiókokat. Ha ki van kapcsolva, csak az aktív {1}-fiókkal rendelkező felhasználók tudnak bejelentkezni."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Lehetővé teszi a felhasználóknak, hogy JWT Identity Provideren keresztül jelentkezzenek be."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "Nem sikerült frissíteni az OIDC-szolgáltatót"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2583,6 +2494,12 @@ msgstr "Dev szerver URL"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "A vizualizáció bundle-ját, manifestjét és assetjeit kiszolgáló helyi dev szerver URL-je."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "Engedélyezés"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2639,6 +2556,17 @@ msgstr "Plugin műveletek"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "Bundle cseréje"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "Letiltás"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2783,7 +2711,6 @@ msgstr "Frissítés"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "Hozzáadás"
@@ -2894,17 +2821,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "Lehet, hogy egy másik verzióhoz készültek, és frissíteni kell őket."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2938,6 +2861,19 @@ msgstr "Táblák"
 msgid "No published tables in your library yet."
 msgstr "Még nincsenek közzétett táblák a Könyvtáradban."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "Szemantikai réteg"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "Publikált tábla"
@@ -2962,7 +2898,7 @@ msgid "Snippet"
 msgstr "Kódrészlet"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3128,18 +3064,18 @@ msgstr[0] "A gyűjtemény archiválása a benne lévő táblák (és a tőlük f
 msgstr[1] "A gyűjtemények archiválása a bennük lévő táblák (és a tőlük függő táblák) közzétételének megszüntetésével jár, és archiválja az összes további gyermekelemet is."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "Hozd létre a Könyvtárad"
+msgid "Create your semantic layer"
+msgstr "Hozd létre a szemantikus rétegedet"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "Könyvtár létrehozva"
+msgid "Semantic layer created"
+msgstr "Szemantikus réteg létrehozva"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "A Könyvtár segít létrehozni az elemzések egyetlen igazságforrását azzal, hogy központilag kezelt, kurált tartalomkészletet biztosít. Szétválasztja a hiteles, újrahasznosítható komponenseket az ad-hoc elemzésektől."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "A szemantikus réteg segít létrehozni egyetlen igazságforrást az analitikához azáltal, hogy központilag kezelt, kurált tartalomkészletet biztosít. Elkülöníti a hiteles, újrafelhasználható komponenseket az ad hoc elemzésektől."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3160,8 +3096,8 @@ msgstr "Verziókezelés"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "Szinkronizáld a Könyvtáradat Gitre"
+msgid "Sync your semantic layer to git"
+msgstr "Szinkronizáld a szemantikus rétegedet git-be"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3175,8 +3111,8 @@ msgstr "Alapértelmezetten a data csapatod által előírt megbízható forráso
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "Saját Könyvtár létrehozása"
+msgid "Create my semantic layer"
+msgstr "Hozzam létre a szemantikus rétegemet"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3194,8 +3130,8 @@ msgid "Go to {0}"
 msgstr "Ugrás ide: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "Egy tábla közzététele elmenti azt a Könyvtárba."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "Egy tábla publikálása elmenti azt a szemantikus rétegbe."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3263,12 +3199,12 @@ msgid "Unpublish these tables?"
 msgstr "Visszavonod ezeknek a tábláknak a közzétételét?"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "Ezzel eltávolítod ezt a táblát a Könyvtárból."
+msgid "This will remove this table from the semantic layer."
+msgstr "Ez eltávolítja ezt a táblát a szemantikus rétegből."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "Ezzel eltávolítod ezeket a táblákat a Könyvtárból."
+msgid "This will remove these tables from the semantic layer."
+msgstr "Ez eltávolítja ezeket a táblákat a szemantikus rétegből."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3699,16 +3635,16 @@ msgid "No published tables yet"
 msgstr "Még nincsenek közzétett táblák"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "Tegyél közzé táblákat a Könyvtárban, hogy itt lásd őket."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "Publikálj táblákat a szemantikus rétegben, hogy itt lásd őket."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "Még nincsenek mutatók"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "Tedd a mutatókat a Könyvtárba, hogy itt lásd őket."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "Tegyél mutatókat a szemantikus rétegbe, hogy itt lásd őket."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3722,6 +3658,7 @@ msgstr "Nem sikerült eltávolítani a felhasználót"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "Adatappok"
 
@@ -3844,19 +3781,8 @@ msgid "Outdated"
 msgstr "Elavult"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "A szinkronizálás sikertelen"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "Szinkronizálva: {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "Még nincs szinkronizálva"
+msgid "Draft"
+msgstr "Piszkozat"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4167,6 +4093,7 @@ msgstr "A folyamat a háttérben fut. Az adatbázis méretétől függően ez ak
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4792,6 +4719,7 @@ msgstr "Mező"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6245,16 +6173,16 @@ msgid "Curated semantic layer"
 msgstr "Válogatott szemantikai réteg"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "Mutatók és közzétett táblák a Könyvtáradban."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "Mutatók és publikált táblák a szemantikus rétegeden belül."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "Teljes szemantikai réteg"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "Könyvtár-entitások plusz minden aktív fizikai tábla."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "Szemantikus réteg entitások, plusz minden aktív fizikai tábla."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7249,6 +7177,7 @@ msgid "Could not connect to repository"
 msgstr "Nem sikerült csatlakozni a repóhoz"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "Kapcsolat tesztelése"
 
@@ -7455,6 +7384,12 @@ msgstr "Nem szinkronizált változtatásaid vannak. Mit szeretnél tenni?"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "Nem sikerült megszakítani a szinkronizálást"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "A szinkronizálás sikertelen"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8142,13 +8077,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Ez az attribútum a bérlőtől öröklődik, de felülírhatod az értékét"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "Attribútumok"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "Duplikált bejelentkezési attribútumkulcsok"
 
@@ -8777,6 +8705,7 @@ msgstr "Opció hozzáadása:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "Nincs találat"
 
@@ -9323,9 +9252,7 @@ msgstr "és"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "tábla"
-msgstr[1] "táblák"
+msgstr "tábla"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9465,6 +9392,7 @@ msgstr "Fül bezárása"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10334,7 +10262,6 @@ msgstr "Értesítünk, amikor eléred a kereted {0}%-át."
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "Elfogadás és folytatás"
 
@@ -13179,6 +13106,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "Ezt a Slack appod {0} beállításaiban találod."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Aláírási titok"
 
@@ -14196,13 +14127,16 @@ msgstr "Csoport létrehozása"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "A csoportokkal szabályozhatja a felhasználói adatokhoz való hozzáférését. Tegye a felhasználókat csoportokba, majd lépjen az Engedélyek szakaszba az egyes csoportok hozzáférésének szabályozásához. Az Adminisztrátorok és a Minden felhasználó csoportok speciális alapértelmezett csoportok, amelyek nem távolíthatók el."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "Nincsenek csoportok"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15287,6 +15221,140 @@ msgstr "Engedélyezd, hogy a felhasználók maguk regisztráljanak, ha a Google-
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "Engedélyezd, hogy a felhasználók maguk regisztráljanak, ha a Google-fiókjuk email címe a következő domainből származik:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "A(z) {0} csoportot ez nem érinti."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "Ezeket a csoportokat ez nem érinti: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "Leképezés eltávolítása"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "Leképezés és tagok eltávolítása"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "Leképezés eltávolítása és csoportok törlése"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "Leképezés eltávolítása és csoport törlése"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "Ez a leképezés nincs egyetlen csoporthoz sem kapcsolva."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "Ezeknek a csoportoknak a tagsága többé nem lesz szinkronizálva, amikor a felhasználók bejelentkeznek."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "Ennek a csoportnak a tagsága többé nem lesz szinkronizálva, amikor a felhasználók bejelentkeznek."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "Eltávolítod ezt a csoportleképezést?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "Mi történjen a csoportokkal {0}-ban?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "Mi történjen a csoporttal {0}-ban?"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "Semmi, csak a leképezést távolítsd el"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "A tagok eltávolítása ezekből a csoportokból is"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "A tagok eltávolítása ebből a csoportból is"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "A tagok megtartják a {0}-fiókjukat."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "A csoportok törlése is"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "A csoport törlése is"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "Leképezés hozzáadása"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "Kézi csoportleképezések"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "Még nincs leképezés"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} csoport"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "Válassz {0} csoportot..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "Leképezés szerkesztése"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "Leképezés törlése"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "A leképezés törlődött, de nem sikerült az összes csoportot frissíteni"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "A leképezés törölve, de a törölt csoportját nem sikerült eltávolítani a többi leképezésből"
+msgstr[1] "A leképezés törölve, de a törölt csoportjait nem sikerült eltávolítani a többi leképezésből"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "Hozzárendelés törölve"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "Ehhez a csoporthoz már létezik leképezés"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "Hozzárendelés hozzáadva"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "Hozzárendelés frissítve"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15542,7 +15610,6 @@ msgid "Edit configuration"
 msgstr "Konfiguráció szerkesztése"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "Először jöjjön a jogi rész"
 
@@ -15759,28 +15826,18 @@ msgstr "Ez a példány fejlesztői módban van, és csak fejlesztési vagy teszt
 msgid "Get your token"
 msgstr "Token beszerzése"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "A felhasználók automatikus hozzárendelése {0} csoporthoz az LDAP-csoporttagságuk alapján"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "Kézi csoportleképezések"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "LDAP-csoport neve"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Még nincs leképezés"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktiválás"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "Ellenőrizd a zárójeleket"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "A portnak 1 és 65535 közötti egész számnak kell lennie"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15839,6 +15896,15 @@ msgstr "Felhasználószűrő"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "LDAP-attribútumok leképezése a(z) {0} e-mail-, keresztnév- és vezetéknév-mezőire"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "A felhasználók automatikus hozzárendelése {0} csoporthoz az LDAP-csoporttagságuk alapján"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "LDAP-csoport neve"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16488,102 +16554,6 @@ msgstr "Pénznem egysége"
 msgid "Currency label style"
 msgstr "Pénznemcímke stílusa"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "Új csoporthozzárendelés neve"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "Leképezés eltávolítása"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "Leképezés és tagok eltávolítása"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "Leképezés eltávolítása és csoportok törlése"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "Leképezés eltávolítása és csoport törlése"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "Az Adminisztrátorok csoportot ez nem érinti."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "Ez a leképezés nincs egyetlen csoporthoz sem kapcsolva."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "Ezeknek a csoportoknak a tagsága többé nem lesz szinkronizálva, amikor a felhasználók bejelentkeznek."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "Ennek a csoportnak a tagsága többé nem lesz szinkronizálva, amikor a felhasználók bejelentkeznek."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "Eltávolítod ezt a csoportleképezést?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "Mi történjen a csoportokkal {0}-ban?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "Mi történjen a csoporttal {0}-ban?"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "Semmi, csak a leképezést távolítsd el"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "A tagok eltávolítása ezekből a csoportokból is"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "A tagok eltávolítása ebből a csoportból is"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "A tagok megtartják a {0}-fiókjukat."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "A csoportok törlése is"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "A csoport törlése is"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "A leképezések lehetővé teszik, hogy a Metabase a címtárkiszolgáló által megadott tagsági információk alapján automatikusan hozzáadja a felhasználókat a csoportokhoz, illetve eltávolítsa őket onnan. Ha egy csoport nincs leképezve, a tagsága nem lesz szinkronizálva."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "Még nincsenek hozzárendelések, a csoportszinkronizálás nincs bekapcsolva"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "Csoporttagságok szinkronizálása"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "A leképezésekről"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "Törlöd ezt a leképezést?"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "Kezdőlap"
@@ -17140,6 +17110,7 @@ msgstr "Kiindulási kérdés:"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "Ez az elem véglegesen törölve lett."
@@ -17236,6 +17207,7 @@ msgstr "mappa"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "kutatás"
 
@@ -17617,6 +17589,7 @@ msgid "No items of the selected types."
 msgstr "Nincsenek elemek a kijelölt típusokból."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "Keresés törlése"
 
@@ -18011,6 +17984,10 @@ msgstr "Az én új fantasztikus gyűjteményem"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "A gyűjtemény, amelybe mentve van"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "Húzd ide a kitűzéshez"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19326,7 +19303,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "Perc"
 msgstr[1] "{0} perc"
 
@@ -19986,6 +19963,10 @@ msgstr "Összes bérlőfelhasználó"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "Adatelemzők"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "Tagok hozzáadásához ehhez a csoporthoz olyan csomag szükséges, amely tartalmazza a Data Analysts csoportot. Tagokat csak eltávolítani lehet."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21783,11 +21764,6 @@ msgid "Data transformation"
 msgstr "Adattranszformáció"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "Szemantikai réteg"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22059,8 +22035,8 @@ msgstr "Ennek a táblának nincsenek mezői"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "Először hozzuk létre a Könyvtárad"
+msgid "First, let's create your semantic layer"
+msgstr "Először hozzuk létre a szemantikus rétegedet"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22440,8 +22416,8 @@ msgid "Bring more order to your analytics"
 msgstr "Tegyél rendet az analitikádban"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "Hozz létre egy megosztott Könyvtárat adathalmazokból és mutatókból, amelyre a csapatod támaszkodhat, hogy a dolgok következetesek maradjanak, ahogy az adataid és a további tartalmak bővülnek."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "Hozz létre egy megosztott szemantikus réteget adatkészletekből és mutatókból, amire a csapatod támaszkodhat, hogy a dolgok következetesek maradjanak, ahogy a data és a downstream tartalom növekszik."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22645,6 +22621,18 @@ msgstr "Bármikor hozzáadhatod a saját adataidat."
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "Később adom hozzá az adataimat"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "Kapcsolódás sikeres"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "Kapcsolódás sikertelen"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "Nem sikerült csatlakozni az adatbázishoz"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23155,6 +23143,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "Ezek a beállítások a szerverkód módosítását igénylik. Itt kipróbálhatod és előnézetben megnézheted a lehetőségeket. Továbbiakért nézd meg a(z) {0} oldalt."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "dokumentációt"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "A példány betűtípusának használata"
 
@@ -23440,7 +23433,6 @@ msgstr "Amikor a Metabase diagramjait vagy irányítópultjait beágyazod a\n"
 "Metabase\" felirat látható marad ezeken a beágyazásokon."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Ennek ellenére érdemes elolvasnod a fent linkelt licencszöveget, mert ez az a tényleges licenc, amit a funkció engedélyezésével elfogadsz."
 
@@ -25216,10 +25208,6 @@ msgid "Remove provider"
 msgstr "Szolgáltató eltávolítása"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "Az SQL-generálás is ezen a kapcsolaton fut, és nélküle nem fog működni."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "A szemantikus keresés is ezen a kapcsolaton fut, és nélküle nem fog működni."
 
@@ -25351,8 +25339,8 @@ msgid "AI explorations"
 msgstr "MI-adatfeltárások"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "Kérdezz az adataidról, és elemek említéséhez írd be: @"
+msgid "Suggestions"
+msgstr "Javaslatok"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25394,16 +25382,14 @@ msgid "Source is wrong"
 msgstr "A forrás hibás"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "Adatforrások összecsukása"
+msgid "Give feedback"
+msgstr "Adj visszajelzést"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "Adatforrások kibontása"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "Felhasznált adatforrások"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "Felhasznált adatforrás"
+msgstr[1] "Felhasznált adatforrások"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25567,11 +25553,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "Fedezd fel a mutatóidat és modelljeidet MI-vel."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "Hogyan segíthetek? Elemek említéséhez írd be: @"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} nem tökéletes. Ellenőrizd a találatokat."
@@ -25581,41 +25562,10 @@ msgid "Fork conversation"
 msgstr "Beszélgetés elágaztatása"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "A(z) {0} válasza megszakadt"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "A(z) {0} válasza le lett vágva, mert elérte a maximális hosszúságot"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "Az előző válaszod le lett vágva. Pontosan ott folytasd, ahol abbahagytad. Ne ismételj semmit abból, amit már leírtál."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "A(z) {0} válaszát egy tartalomszűrő leállította. Próbáld meg másképp megfogalmazni a kérdésedet."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} szünetelt, miután elérte a válaszra vonatkozó lépéskorlátját"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "Folytasd a legutóbbi kérésemen a munkát."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "A(z) {0} válasza leállt, mielőtt befejeződött volna"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "Ez a beszélgetés elérte a maximális hosszát, és nem folytatható. Kérjük, indíts egy új chatet."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25721,6 +25671,12 @@ msgstr "Ez a chat közel van a(z) {0} értékhez."
 msgid "New chat"
 msgstr "Új chat"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "Betöltés"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "UI-hiba"
@@ -25758,6 +25714,11 @@ msgstr "Írd le, milyen SQL-t szeretnél, elemek említéséhez írd be: @"
 msgid "Send to {0}"
 msgstr "Küldés ide: {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "Generálás leállítása"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "MI-szolgáltató hozzáadása"
@@ -25782,6 +25743,10 @@ msgstr "Fizetős előfizetés indítása"
 msgid "Ask {0}"
 msgstr "Kérdezd {0}-t"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "Kérdezz az adataidról. Gépelj @-t elemek megemlítéséhez."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "A Slack-fiókod sikeresen csatlakoztatva lett."
@@ -25805,10 +25770,6 @@ msgstr "Készült ezzel: {0}"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} le van tiltva"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "Generálás leállítása"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -25992,6 +25953,38 @@ msgstr "Érvénytelen kérésformátum"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "Sajnáljuk, nem tudtuk betölteni ezt a beszélgetést."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} szünetelt, miután elérte a válaszra vonatkozó lépéskorlátját"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "A(z) {0} válasza le lett vágva, mert elérte a maximális hosszúságot"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "Ez a beszélgetés elérte a maximális hosszát, és nem folytatható. Kérjük, indíts egy új chatet."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "A(z) {0} válaszát egy tartalomszűrő leállította. Próbáld meg másképp megfogalmazni a kérdésedet."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "A(z) {0} válasza leállt, mielőtt befejeződött volna"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "Folytasd a legutóbbi kérésemen a munkát."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "Az előző válaszod le lett vágva. Pontosan ott folytasd, ahol abbahagytad. Ne ismételj semmit abból, amit már leírtál."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -28959,19 +28952,6 @@ msgstr "Ne gyorsítótárazd az eredményeket"
 msgid "No caching"
 msgstr "Nincs gyorsítótárazás"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "A \"Agree and continue\" gombra kattintva elfogadod a(z) {0}"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "a beágyazási licencünket."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "Ha a Metabase diagramjait vagy irányítópultjait beágyazod a saját alkalmazásodba, akkor az az alkalmazás nem tartozik az Affero General Public License hatálya alá, amely a Metabase többi részére vonatkozik, feltéve, hogy a Metabase logót és a \"Powered by Metabase\" feliratot láthatóan hagyod ezeken a beágyazásokon."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "emailben"
@@ -30690,6 +30670,29 @@ msgstr "{0}+kattintás új lapon nyitáshoz"
 msgid "Pick columns"
 msgstr "Oszlopok kiválasztása"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "Oszlopok keresése"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "Oszlopok keresése…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "{0} oszlop található"
+msgstr[1] "{0} oszlop található"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "Ezek mind kijelölése"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "Nem található oszlop"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31663,6 +31666,11 @@ msgstr "Szinkronizálási hiba"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "Szinkronizálás…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "Szinkronizálás sikertelen: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33308,11 +33316,6 @@ msgstr "A transzformációkban lévő változóknak vagy opcionálisnak kell len
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "majd"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "Betöltés"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35570,6 +35573,10 @@ msgid "You don''t have permissions to do that."
 msgstr "Nincs jogosultságod ehhez."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "Nincs jogosultságod a művelet futtatásához."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "Hiba a művelet végrehajtásakor."
 
@@ -35594,10 +35601,6 @@ msgid "Implicit parameters must be provided."
 msgstr "Implicit paramétereket meg kell adni."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "HTTP műveletek nem hajthatók végre nyilvános végpontokról."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "Ismeretlen művelettípus: {0}."
 
@@ -35605,26 +35608,13 @@ msgstr "Ismeretlen művelettípus: {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "Értékeket csak olyan műveletekhez lehet lekérni, amelyek Egyedkulcsot igényelnek."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "Nem sikerült behelyettesíteni a paramétereket: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "A szolgáltatás nem hívható: hiányzó kötelező paraméterek: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "Túl sok találat érkezett: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "A HTTP műveletek le vannak tiltva."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "A műveleteket modellekkel kell végezni, nem kártyákkal."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "Záradékokat tartalmazó modellekhez nem támogatottak az implicit műveletek."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35637,10 +35627,6 @@ msgstr "az értéknek a paraméterazonosítókat skalár értékekhez kell rende
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "Nem támogatott művelettípus"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "érvényes json-query-nak kell lennie, például: ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35671,16 +35657,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "Hogy az Adatbázisnál engedélyezve van-e a táblázatos adatszerkesztés."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "A HTTP-műveletek nem támogatottak."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "Query műveletekhez meg kell adni a database_id-t"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "Záradékokat tartalmazó modellekhez nem támogatottak az implicit műveletek."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -35763,12 +35741,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "A `field` clause harmadik helyén hordozható FK szükséges, nem numerikus id. Használj egy `[<database>, <schema>, <table>, <column>]` vektort (a metadata provider ellenében feloldva) vagy egy string oszlopnevet (cross-stage referenciákhoz)."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "A `{0}` nem éli túl azt az oda-vissza utat, amit a frontend által megnyitott kérdéslinken tesz meg: a kérdés vagy nem töltődik be, vagy észrevétlenül elveszíti a klózt, és valami másra válaszol. Inkább tedd a mértékegységet az oszlopra – `temporal-unit` opcióként a `field` / `expression` hivatkozáson, és hasonlítsd a periódus első napjához sima dátumsztringként, pl. \"2025-01-01\" – vagy írd ki a tartományt úgy, hogy `>=` az első napja és `<` az utána következő első nap, mindkettő sima dátumsztring (ne `between`, mert az az utolsó nap éjfél után mindent eldob). A `year` tartományt használd `expression` hivatkozáson, amit a lekérdezőmotor számként olvas, valamint `aggregation:`-ben (`count-where`, `sum-where`, `share`) és join `conditions:`-ben, ahol a mértékegység oszlopra mozgatása megváltoztatná a választ."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "A lekérdezésszerkesztő kifejezésszerkesztője elutasít egy {0} záradékot a(z) {1}. szakaszban: {2}. A lekérdezés összeállna, de nem lehetne megjeleníteni vagy menteni – írd át a problémás záradékot."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "A `{0}` egy {1} egyéni oszlop, ezért nem sorolható tartományokba {2} szerint. Hasonlítsd egy sima értékhez, vagy inkább egy dátum / dátum-idő oszlopot sorolj tartományokba."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "A `{0}` egy {1} oszlop, ezért nem sorolható tartományokba {2} szerint. Hasonlítsd egy sima értékhez, vagy inkább egy dátum / dátum-idő oszlopot sorolj tartományokba."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "Érvénytelen időbeli literál: {0} a :absolute-datetime mezőben — használj ISO-8601 dátumot, dátum-időt, évet vagy év-hónapot."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "Érvénytelen időbeli literál {0} — használj ISO-8601 dátumot, dátum-időt, évet vagy év-hónapot."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -35825,6 +35815,10 @@ msgstr "Hogy létrejött-e már nem táblázat típusú diagram. Szükséges ahh
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "Engedélyezd a beágyazás útvonalának, a query paramétereknek, a user agentnek, az IP-címnek és a Metabot beszélgetési metaadatainak naplózását a belső adataid és beágyazásaid felhasználói esetén. Ez az információ meg fog jelenni a használati analitikában."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "Az összes kódkísérlet engedélyezése vagy letiltása. Letiltva csak az éles kódút fut le."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36158,38 +36152,6 @@ msgstr "A gyorsítótárazott eredményeket a gyorsítótárazási időtartamuk 
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "A maximális idő, ameddig bármilyen cache-elt lekérdezéseredményt meg kell őrizni, másodpercben."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "Névtérrel rendelkező channelnek kell lennie. Pl.: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "Érvénytelen channel részletek"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "Érvénytelen Slack token."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "érvénytelen token"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "Slack channel nem található."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "channel nem található"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "A Slack-integráció működéséhez be kell állítanod egy site-url-t."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "A hibajelentés nincs engedélyezve."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "Az SMTP host nincs beállítva."
@@ -36389,6 +36351,38 @@ msgstr "Hiba a fontok regisztrálásakor: a Metabase nem fog tudni Pulse-okat k�
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "Ez ismert probléma bizonyos JVM-eknél. További részletekért lásd: {0}."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "Névtérrel rendelkező channelnek kell lennie. Pl.: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "Érvénytelen channel részletek"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "Érvénytelen Slack token."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "érvénytelen token"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "Slack channel nem található."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "channel nem található"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "A Slack-integráció működéséhez be kell állítanod egy site-url-t."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "A hibajelentés nincs engedélyezve."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37094,6 +37088,14 @@ msgstr "Nincs jogosultság tábla olvasásához a(z) {0} sémában"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Nincs jogosultság tábla törléséhez a(z) {0} sémában"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "Érvénytelen {0}."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "nem tartalmazhat szóközöket, idézőjeleket vagy pontosvesszőket"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "Connection string"
@@ -37444,6 +37446,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "A jelszó ehhez a privát kulcshoz helytelen."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "Nem lett megadva OIDC token. Illessz be egy JWT-t, vagy állítsd be a tokenfájl elérési útját."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "Az OIDC token nem érvényes JWT. Ellenőrizd a beillesztett tokent vagy a megadott elérési úton lévő fájlt."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "Az OIDC tokenből hiányzik a kötelező `iss` (issuer) claim."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "Az OIDC tokenből hiányzik a kötelező `sub` (subject) claim."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "Nem találhatók AWS hitelesítő adatok. Győződj meg róla, hogy a Metabase workloadjához van csatolva IAM role (instance profile, ECS task role, IRSA stb.)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "Nem található AWS régió. Állítsd be az AWS_REGION-t a Metabase környezetében."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "Nincs konfigurálva Azure managed identity a Metabase hostján."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "A Metabase nem tudott tokent lekérni az Azure identity végpontjáról."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "A Metabase nem tudott GCP identity tokent lekérni. Ellenőrizd, hogy a workloadhoz van csatolva service account."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "A Snowflake nem támogatja az extract us week-et"
 
@@ -37470,6 +37508,10 @@ msgstr "Nem sikerült feldolgozni a natív lekérdezést. Lehet, hogy valami gon
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "Érvénytelen megszemélyesített natív lekérdezés. Egyetlen {0} utasításnak kell lennie."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "Nem sikerült behelyettesíteni a paramétereket: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39424,22 +39466,6 @@ msgstr "{0} {1} {2} érték"
 msgid "{0} {1} values"
 msgstr "{0} {1} érték"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "Az LLM SQL-generálás nincs konfigurálva. Állíts be egy Anthropic API-kulcsot az admin beállításokban."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "Nem sikerült feldolgozni az SQL-t. Használj @említéseket a táblahivatkozások megadásához."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "Nem található tábla. Használj @említéseket, vagy adj meg forrás SQL-t táblahivatkozásokkal."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "Nem található elérhető tábla. Ellenőrizd a táblaengedélyeket."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "A(z) {0} kapcsolat környezeti változókkal van konfigurálva, és itt nem módosítható."
@@ -39521,6 +39547,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "The root both surfaces hang off; hagyd le az esetleges /anthropic vagy /v1 útvonalrészt."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39581,6 +39611,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "Rövid élettartamú token, pl. a gcloud auth print-access-token kimenete. Teszteléshez hasznos."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "Model Garden végpont ID"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "Opcionális. Használj egy Model Gardenből telepített nyílt modellt a Google által hosztolt helyett. A location mezőt arra a régióra állítsd, ahová telepítetted."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "A hely alapján származtatva, ha a globális hoston hagyod."
 
@@ -39635,6 +39673,14 @@ msgstr "Titkos hozzáférési kulcs"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "Régió"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "Modell ID"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "Opcionális. Használj inference profilt, vagy egy olyan modellt, ami nincs listázva ebben a régióban, az ID-ja vagy ARN-je alapján."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -39755,16 +39801,8 @@ msgid "The Anthropic API Key."
 msgstr "Az Anthropic API-kulcs."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "A használandó Anthropic modell."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "Az Anthropic API alap URL-je."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "Az Anthropic API verziója."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -39817,6 +39855,14 @@ msgstr "A DeepSeek API alap URL-je. Mind az Anthropic-kompatibilis Messages fel�
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "A DeepSeek API-kulcsa."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "Az xAI API base URL, amit a Chat Completions használ."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "Az xAI API Key."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -39905,14 +39951,6 @@ msgstr "Socket (inter-byte read) időtúllépés ezredmásodpercben az LLM API-k
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "TCP kapcsolódási időtúllépés ezredmásodpercben az LLM API-kérésekhez. Ha egy szolgáltató nem elérhető, gyorsan hibázzon, ahelyett hogy örökre lefoglalna egy worker szálat."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "Maximális SQL-generálási kérések száma felhasználónként percenként."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "Maximális SQL-generálási kérések száma IP-címenként percenként."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40009,6 +40047,14 @@ msgstr "Eltérést észleltünk az Irányítópult `collection_id`-ja ({0}) és 
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "Tartalom-ellenőrzés"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "Lekérdezés sikertelen: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "Lekérdezés sikertelen: ismeretlen hiba"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40182,6 +40228,30 @@ msgstr "Teendők létrehozása és szerkesztése"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "Nincs {0} nevű LLM-szolgáltatói kapcsolat konfigurálva."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "A(z) {0} számlázási probléma miatt elutasította a kérést, például mert elfogytak a kreditek. Ellenőrizd a fiókod számlázási beállításait."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "Az MI-szolgáltató számlázási probléma miatt elutasította a kérést. Vedd fel a kapcsolatot az adminisztrátoroddal."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "A(z) {0} korlátozza a Metabase felől érkező kérések számát. Próbáld meg újra egy pillanat múlva, és ha továbbra is előfordul, ellenőrizd a fiókod rate limitjeit."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "Az MI-szolgáltató épp korlátozza a kérések sebességét. Próbáld meg újra egy pillanat múlva."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "A(z) {0} elutasította a Metabase által küldött API key-t vagy hitelesítő adatokat. Ellenőrizd őket az MI-beállításokban."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "Az MI-szolgáltató elutasította a Metabase által küldött hitelesítő adatokat. Vedd fel a kapcsolatot az adminisztrátoroddal."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "{0} API-hiba (HTTP {1})"
@@ -40269,6 +40339,10 @@ msgstr "Az AWS Bedrock sebességkorlátozást alkalmazott velünk szemben"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "Az AWS Bedrock nem működik, de nem derül ki, miért"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "Az AWS Bedrock hiányos választ adott a következőtől: {0}"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40395,8 +40469,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Érvénytelen Google modell {0} — egy publisher-minősített azonosítót vártunk, például \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "Nem támogatott Google modell {0}. Csak a google/* és az anthropic/* modellek támogatottak."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "Nem támogatott Google modell: {0}. Csak a google/*, anthropic/* és endpoints/* modellek támogatottak."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40445,6 +40519,10 @@ msgstr "(végpont: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "ellenőrizd, hogy a(z) \"{0}\" érvényes hely-e"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "Nincs telepítve semmi a(z) {0} Google végponton"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40495,6 +40573,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "A Moonshot belső szerverhibát adott vissza"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "A modell szolgáltatója nem tudta befejezni a választ"
 
@@ -40665,6 +40744,30 @@ msgstr "A vLLM szerverhez való kapcsolat megszakadt, mielőtt a válasz befejez
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "A vLLM szerver nem válaszolt {0} ms-en belül. Ellenőrizd, hogy nincs-e túlterhelve, vagy növeld a vLLM kérés-időtúllépését."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "xAI API hiba (HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "xAI API key lejárt vagy érvénytelen"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "xAI API key nem rendelkezik jogosultsággal, vagy elfogytak a csapat kreditei"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "xAI API végpont vagy modell nem található"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI rate limitelt minket"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI belső szerverhibát adott vissza"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41358,6 +41461,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "Nem távolíthatod el az ''Admin'' csoport utolsó tagját!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "Felhasználók hozzáadása a ''Data Analysts'' csoporthoz az Advanced Permissions funkciót igényli, ami nincs engedélyezve ezen a példányon."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "Nem adhatsz hozzá vagy távolíthatsz el felhasználókat a(z) ''Minden felhasználó'' csoportból/csoportba."
 
@@ -41594,6 +41701,10 @@ msgstr "A tokennek érvényes, 64 hexadecimális karakterből álló tokennek va
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "A tokenellenőrzés jelenleg nem érhető el."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "A tokenellenőrzés túllépte az időkorlátot."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42419,13 +42530,13 @@ msgstr "Fájlútvonal ehhez: {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} nem létező fájlra mutat: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "A szegmens definíciójának meg kell adnia egy forrástáblát."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "A Szegmens creator_id-jét nem frissítheted."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "A szegmens definíciójának meg kell adnia egy forrástáblát."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42510,6 +42621,10 @@ msgstr "A kétfaktoros hitelesítés már be van állítva. Újraregisztrálás 
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "Érvénytelen visszaállítási token"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "Nem hitelesített"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -42937,6 +43052,14 @@ msgstr "Megjelenjen-e egy bevezető modal a következő adatbáziskapcsolat hozz
 msgid "Invalid timezone {0}: {1}"
 msgstr "Érvénytelen időzóna {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "Az elérési útról való olvasás nem engedélyezett: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "Az elérési útra írás nem engedélyezett: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "Indítási idő milliszekundumban"
@@ -42960,6 +43083,14 @@ msgstr "Érvénytelen területi beállítás {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "Az az email-cím, amelyre a felhasználókat irányítani kell, ha problémába ütköznek."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Vesszővel elválasztott engedélyezési lista azokról a könyvtárakról, amelyekből a Metabase fájlokat olvashat, pl. adatbázis-secretekhez, ha azok helyi fájl elérési útként vannak megadva. Használd a NONE-t, ha egyetlen elérési utat sem akarsz engedélyezni. Alapértelmezés: /tmp a Metabase Cloudon, és / (minden elérési út) saját üzemeltetésű esetben."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "Vesszővel elválasztott engedélyezési lista azokról a könyvtárakról, amelyekbe a Metabase fájlokat írhat. Használd a NONE-t, ha egyetlen elérési utat sem akarsz engedélyezni. Alapértelmezés: /tmp a Metabase Cloudon, és / (minden elérési út) saját üzemeltetésű esetben."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43490,10 +43621,6 @@ msgstr "Nem tudom feldolgozni ezt: {0}, a(z) {1} formátum használatával"
 msgid "{0} must be at least 16 characters."
 msgstr "A(z) {0} legalább 16 karakterből kell álljon."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "Az összes kódkísérlet engedélyezése vagy letiltása. Letiltva csak az éles kódút fut le."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "Az erőforrás nem létezik."
@@ -43696,8 +43823,8 @@ msgstr "az értéknek érvényes entitástípusnak kell lennie (keyword vagy str
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "A táblák csak Könyvtár/Adat gyűjteményekbe tehetők közzé."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "Táblákat csak a Szemantikus réteg/Adatek gyűjteményeibe lehet publikálni."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44281,65 +44408,13 @@ msgstr "A bérlői felhasználók nem adhatók hozzá data appokhoz."
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "A data app lekérdezései nem használhatnak olyan mutatókat, amelyek más mentett kérdésekre vagy mutatókra hivatkoznak: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: a \"version\" értékének pozitív egész számnak kell lennie, például 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "Már létezik ilyen slugú data app."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: a \"description\" mezőnek egysoros stringnek kell lennie."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: a \"description\" egy egysoros összefoglaló — legfeljebb {2} karakter lehet."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" nem érvényes allowed_hosts bejegyzés — használj egy origin-t, például https://api.example.com vagy https://*.example.com."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: az \"allowed_hosts\" mezőnek listának kell lennie."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "Nem sikerült értelmezni: {0}/{1}: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: az app könyvtárneve a slugja, ezért csak kisbetűket, számokat és kötőjeleket tartalmazhat."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" egy foglalt slug — nevezd át a könyvtárat."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: a \"name\" megadása kötelező."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: a \"path\" megadása kötelező."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: a \"path\" nem tartalmazhat \"..\"-t."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "A bundle még nincs szinkronizálva."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "Nem sikerült beolvasni: {0}."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "A(z) \"{0}\" bundle fájl nem található a repóban."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "A(z) \"{0}\" bundle méretének {1} MiB-nál kisebbnek kell lennie."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "A(z) \"{0}\" bundle fájl nem található."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44646,6 +44721,18 @@ msgstr "A sandbox kérdések nem adhatnak vissza olyan oszlopokat, amelyek típu
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "Nincs jogosultságod módosítani egy olyan kérdést, amelyet sor- és oszlopszintű biztonsághoz használnak."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "Nincs jogosultságod módosítani egy olyan kódrészletet, amelyet sor- és oszlopszintű biztonsághoz használnak."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "Nincs jogosultságod módosítani egy olyan szegmenst, amelyet sor- és oszlopszintű biztonsághoz használnak."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "Nincs jogosultságod módosítani egy olyan mértéket, amelyet sor- és oszlopszintű biztonsághoz használnak."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."
