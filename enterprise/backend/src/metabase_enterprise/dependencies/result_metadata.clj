@@ -45,6 +45,20 @@
   (not= (comparable-metadata before)
         (comparable-metadata after)))
 
+(defn- patch-result-metadata
+  "The inferred result metadata `inferred` with each column matching a stored column of `stored` by alias kept as the
+  stored column with only its [[compared-column-keys]] taken from the inferred one, so the fingerprints and types of a
+  run survive."
+  [stored inferred]
+  (let [column-key (some-fn :lib/desired-column-alias :name)
+        stored-by  (into {} (map (juxt column-key identity)) stored)]
+    (mapv (fn [col]
+            (if-let [stored-col (stored-by (column-key col))]
+              (merge (apply dissoc stored-col compared-column-keys)
+                     (select-keys col compared-column-keys))
+              col))
+          inferred)))
+
 (def ^:private query-batch-size
   "The number of entities read or walked per query, below the bind-parameter limits of every app DB."
   1000)
@@ -90,8 +104,10 @@
   (let [{query :dataset_query, :as card} (dependencies.db/card card-id)]
     (if (or (empty? query) (lib/any-native-stage? query))
       :unchanged
-      (let [metadata (or (queries/infer-metadata-with-model-overrides query card)
-                         (throw (ex-info "Could not infer the result metadata of the card" {:card-id card-id})))]
+      (let [metadata (patch-result-metadata
+                      (:result_metadata card)
+                      (or (queries/infer-metadata-with-model-overrides query card)
+                          (throw (ex-info "Could not infer the result metadata of the card" {:card-id card-id}))))]
         (cond
           (not (result-metadata-changed? (:result_metadata card) metadata))
           :unchanged

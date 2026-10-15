@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -75,7 +76,31 @@
         (is (some? (column nested-id "Grand total")))
         (testing "the native card and the card depending on it are left alone"
           (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id [:in [native-id after-native-id]]))))
-        (is (not-any? #(stale? :card %) [model-id question-id nested-id]))))))
+        (is (not-any? #(stale? :card %) [model-id question-id nested-id]))
+        (testing "a column no longer inferred is removed"
+          (t2/update! :model/Card model-id {:dataset_query (table-query :orders)})
+          (run-jobs!)
+          (is (nil? (column question-id "Grand total")))
+          (is (nil? (column nested-id "Grand total"))))))))
+
+(deftest run-metadata-test
+  (testing "re-deriving a card keeps the fingerprints and types its run stored for the columns it still has"
+    (with-clean-statuses
+      (let [mp    (mt/metadata-provider)
+            query (-> (table-query :orders)
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id))))]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+          (mt/with-test-user :crowberto
+            (qp/process-query (qp/userland-query query {:card-id card-id})))
+          (let [run-count (column card-id "count")]
+            (is (some? (:fingerprint run-count)))
+            (run-jobs!)
+            (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :product_id) :display_name "Item"}]
+              (run-jobs!)
+              (is (= "Item" (:display_name (column card-id "PRODUCT_ID"))))
+              (is (= (select-keys run-count [:base_type :fingerprint])
+                     (select-keys (column card-id "count") [:base_type :fingerprint]))))))))))
 
 (deftest native-parent-test
   (testing "a card depending on a changed model directly is re-derived even when it also depends on a native card"
