@@ -161,7 +161,7 @@
       ::full
 
       ;; an item of the base in a file that did not change stays in the head: a second file holds its identity
-      (some #(and (not (contains? at-b %)) (contains? base-ids %)) (keys at-h))
+      (some (fn [id] (and (not (contains? at-b id)) (contains? base-ids id))) (keys at-h))
       ::full
 
       :else
