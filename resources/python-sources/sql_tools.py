@@ -1961,6 +1961,10 @@ def _writes_or_locks(node: exp.Expression) -> bool:
         return True
     if isinstance(node, exp.Anonymous):
         return node.name.lower() in _SEQUENCE_WRITE_FUNCTIONS
+    # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
+    if isinstance(node, exp.PropertyEQ):
+        return isinstance(node.this, exp.Parameter)
     if isinstance(node, exp.Column):
         return bool(node.table) and node.name.lower() == "nextval"
     if isinstance(node, exp.WithTableHint):
@@ -2031,13 +2035,20 @@ def _hidden_sql(sql: str, dialect: str):
     return None
 
 
+def _unbracketed(stmt: exp.Expression) -> exp.Expression:
+    """`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."""
+    while isinstance(stmt, exp.Subquery) and not stmt.alias:
+        stmt = stmt.this
+    return stmt
+
+
 def _not_read_only_reason(stmts, sql: str, dialect: str):
     """`(reason, detail)` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else None."""
     if not stmts:
         return ("not-a-select", None)
     if len(stmts) != 1:
         return ("multiple-statements", None)
-    if not isinstance(stmts[0], (exp.Select, exp.SetOperation)):
+    if not isinstance(_unbracketed(stmts[0]), (exp.Select, exp.SetOperation)):
         return ("not-a-select", None)
     if not _read_only(stmts[0]):
         return ("writes-or-locks", None)
@@ -2071,7 +2082,7 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             result["reason"], result["reason_detail"] = problem
         if len(stmts) == 1:
             result["is_single_stmt?"] = True
-            if isinstance(stmts[0], allowed_types) and problem is None:
+            if isinstance(_unbracketed(stmts[0]), allowed_types) and problem is None:
                 result["allowed_stmt_type?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
