@@ -765,13 +765,13 @@
            (and (:authenticated-via-oauth? request) (empty? token-scopes))
            (respond @invalid-token)
 
-           ;; Dispatch with the scope set attached to an authenticated request. A cookie or API-key session carries
-           ;; none, and an `mb:full` token carries only the unrestricted sentinel; neither is an MCP scope, so such
-           ;; a session reaches no scoped tool.
+           ;; Dispatch with the scope strings attached to an authenticated request. A cookie or API-key session
+           ;; carries none, so it reaches no scoped tool. An `mb:full` token carries the unrestricted sentinel next to
+           ;; its other granted scopes; the sentinel is not an MCP scope, so only those strings reach MCP.
            session-auth
            ;; An OAuth bearer request lands here too — the session middleware resolves the token and
            ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
-           (dispatch session-auth (set token-scopes))
+           (dispatch session-auth (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
