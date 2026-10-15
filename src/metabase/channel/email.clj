@@ -6,7 +6,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -105,7 +104,7 @@
      {})))
 
 (defn- smtp-settings []
-  (merge (if (and (channel.settings/smtp-override-enabled) (premium-features/is-hosted?))
+  (merge (if (channel.settings/smtp-override-active?)
            (-> {:host         (channel.settings/email-smtp-host-override)
                 :user         (channel.settings/email-smtp-username-override)
                 :pass         (channel.settings/email-smtp-password-override)
@@ -159,7 +158,7 @@
   semantics in [[send-email-retrying!]]."
   [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
-    (when-not (channel.settings/email-smtp-host)
+    (when-not (channel.settings/email-configured?)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
     (let [to-type       (if bcc? :bcc :to)
