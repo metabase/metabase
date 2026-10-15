@@ -64,6 +64,8 @@ export type SidebarCacheFormProps = {
   overlayProps?: ModalOverlayProps;
   onClose: () => void;
   onBack: () => void;
+  /** When false, the form is not a sub-page with a title to go back by */
+  withBackButton?: boolean;
 } & StackProps;
 
 export type PreemptiveCachingSwitchProps = {

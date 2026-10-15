@@ -494,7 +494,9 @@
   {:name           "subscription_write"
    :default-access :allowed
    :scope          metabot.scope/agent-delivery-write
-   :annotations    {:readOnlyHint false :destructiveHint false}
+   ;; `destructiveHint`: `archived: true` trashes the subscription, and an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
    :args           subscription-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)

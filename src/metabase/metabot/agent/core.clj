@@ -17,6 +17,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
@@ -157,7 +158,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :internal-sql :sql :nlq :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -466,14 +467,21 @@
   "Map from profile-id to the metabot permission that must be `:yes` for a user
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
+   ;; This profile queries in SQL only.
+   :internal-sql              :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 
 (defn- check-metabot-access!
-  "Throw a 403 if the user's metabot permissions do not grant access to the
-  requested profile."
+  "Throw a 400 if `profile-id` is not available on this instance,
+  and a 403 if `perms` do not grant access to it."
   [profile-id perms]
+  ;; The same message and status as an unknown profile,
+  ;; so an eval-only profile refused here looks like one that doesn't exist.
+  ;; The streaming endpoint makes this check too, before it saves the turn.
+  (when-not (profiles/profile-available? profile-id)
+    (throw (ex-info "Unknown profile" {:status-code 400})))
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
     (throw (ex-info (if (= missing :permission/metabot)
                       "You do not have permission to use the AI assistant."
@@ -487,7 +495,7 @@
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
   does (see [[turn-input-parts]])."
-  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -495,16 +503,25 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/profile->tools profile capabilities)
+        ;; Where other people can read the conversation, or there is no conversation or user to check, run_query would
+        ;; refuse every call, so it is not offered and the prompt does not promise results. The tool checks again, for
+        ;; someone who joins mid-turn.
+        offered      (profiles/profile->tools profile capabilities)
+        base-tools   (cond-> offered
+                       (and (contains? offered "run_query")
+                            (or (not (and conversation-id api/*current-user-id*))
+                                (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)))
+                       (dissoc "run_query"))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)
                          (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
-                         (assoc :conversation-id conversation-id)
+                         (assoc :conversation-id conversation-id
+                                :tool-names (set (keys base-tools)))
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot profile-id)
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
@@ -543,7 +560,7 @@
   {:type :text, :id (str (random-uuid)), :text message})
 
 (defn- error-part [^Exception e]
-  {:type :error, :error (or (self/byok-provider-error e)
+  {:type :error, :error (or (self/provider-error e)
                             {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
 
 (defn- accumulate-usage-xf
@@ -704,7 +721,7 @@
   [opts :- [:map {:closed true}
             [:messages ::messages]
             [:profile-id ::profile-id]
-            [:metabot-id {:optional true} [:maybe :string]]
+            [:metabot ::metabot.schema/metabot]
             [:conversation-id {:optional true} [:maybe :string]]
             [:state {:optional true} [:maybe ::metabot.schema/state]]
             [:context {:optional true} [:maybe ::context]]
@@ -718,8 +735,7 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
-  (let [opts               (m/update-existing-in opts [:context :capabilities]
-                                                 capabilities/enforce-permissions)
+  (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
         profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}

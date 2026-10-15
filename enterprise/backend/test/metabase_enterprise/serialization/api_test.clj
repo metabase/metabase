@@ -184,17 +184,17 @@
                   res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
                                                  :collection fake-eid :data_model false :settings false)]
               (is (re-find #"Could not find Collection with entity ID"
-                           (str (:message res))))
+                           (str res)))
               (is (re-find #"abcdefghijklmnopqrstu"
-                           (str (:message res))))))
+                           (str res)))))
           (testing "Nonexistent collection ID names the collection the user asked for"
             (let [missing-id Integer/MAX_VALUE
                   res        (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
                                                    :collection missing-id :data_model false :settings false)]
               (is (re-find #"Could not find Collection with ID"
-                           (str (:message res))))
+                           (str res)))
               (is (re-find (re-pattern (str missing-id))
-                           (str (:message res))))))))
+                           (str res)))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
@@ -208,6 +208,7 @@
       :is-superuser?         true
       :is-impersonated-user? false
       :is-sandboxed-user?    false
+      :is-routed-user?       false
       :models                #{model}
       :current-user-perms    #{"/"}
       :search-string         search-string}))))

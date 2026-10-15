@@ -215,6 +215,7 @@ const getActualColors = (brand: BrandRamp) => ({
   "button_label-subtle-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
   "button_label-subtle-positive-default": baseColors.palm[30],
   "button_label-subtle-positive-hover": baseColors.palm[20],
+  "chart-axis": baseColors.orionAlphaInverse[20],
   "core-blue-saturated": baseColors.ocean[40],
   "core-brand-hover": brand[30],
   "core-filter-strong": baseColors.filter[20],
@@ -240,7 +241,8 @@ const getActualColors = (brand: BrandRamp) => ({
   "illustration-tertiary-brand": brand[90],
   "input-background": baseColors.orionAlphaInverse[10],
   "input-focus": baseColors.blue[70],
-  "modal-overlay": baseColors.orionAlpha[70],
+  "modal-border": baseColors.orionAlphaInverse[30], // Matches border-neutral-strong
+  "modal-overlay": baseColors.blackAlpha[35],
   "navbar-admin": baseColors.octopus[80],
   "navbar-admin-inverse": baseColors.octopus[60],
   "navbar-admin-secondary": baseColors.octopus[60],

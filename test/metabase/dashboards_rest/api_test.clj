@@ -386,6 +386,14 @@
                                    :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
 
+(deftest get-dashboard-creator-test
+  (testing "GET /api/dashboard/:id includes the dashboard's creator"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:creator_id (mt/user->id :rasta)}]
+      (is (=? {:creator {:id         (mt/user->id :rasta)
+                         :email      "rasta@metabase.com"
+                         :first_name "Rasta"}}
+              (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id)))))))
+
 (deftest get-dashboard-param-fields-has-target-test
   (testing "param-fields for fk has target (#44231)"
     (mt/with-temp
@@ -4538,9 +4546,8 @@
                                        dashcard-id)]
               (testing "Without actions enabled"
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 execute-path
-                                              {:parameters {"name" "Birds"}})))))
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"name" "Birds"}}))))
               ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file
@@ -4577,9 +4584,8 @@
                                        dashcard-id)]
               (testing "Fails with actions disabled"
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 execute-path
-                                              {:parameters {"id" 1}})))))
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"id" 1}}))))
               ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file.

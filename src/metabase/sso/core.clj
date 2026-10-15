@@ -8,6 +8,7 @@
    [metabase.sso.oidc.check]
    [metabase.sso.oidc.state]
    [metabase.sso.settings]
+   [metabase.sso.slack-connect]
    [potemkin :as p]))
 
 (p/import-vars
@@ -30,6 +31,10 @@
   send-new-sso-user-admin-email?
   sso-enabled?
   sso-source-enabled?]
+ [metabase.sso.slack-connect
+  disconnect-slack-account!
+  slack-account-status
+  slack-connect-identity-active?]
  [metabase.sso.ldap.settings
   ldap-enabled])
 

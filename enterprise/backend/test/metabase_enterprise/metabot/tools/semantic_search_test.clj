@@ -2,8 +2,7 @@
   "Semantic search tests specific to the Metabot search tool integration."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.metabot.db :as metabot.db]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -114,15 +113,12 @@
           (testing "search with metabot verified-or-curated content flag"
             (let [metabot {:entity_id "test-bot"
                            :use_verified_content true}]
-              (mt/with-dynamic-fn-redefs [metabot.db/metabot-by-entity-id (fn [entity-id]
-                                                                            (is (= "test-bot" entity-id) "Should look up the Metabot")
-                                                                            metabot)
-                                          search-core/ranked-results (fn [context]
+              (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                        ;; use_verified_content now drives the curated filter, not :verified
                                                                        (is (true? (:curated? context)))
                                                                        [dashboard])]
                 (let [results (search/search {:term-queries ["test"]
-                                              :metabot-id "test-bot"
+                                              :metabot metabot
                                               :entity-types ["dashboard"]})]
                   (is (= 1 (count results)))
                   (is (= 2 (:id (first results)))))))))))))
@@ -153,7 +149,7 @@
                              :model/Dashboard {id-3 :id} {:name "baseline"}]
                 (when semantic-support?
                   (semantic.tu/index-all!))
-                (let [test-entity? (comp #{id-1 id-2 id-3} :id)
+                (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3} :id))
                       query        (fn [base-query]
                                      (->> (search/search base-query)
                                           (filter test-entity?)
@@ -180,7 +176,7 @@
                            :model/Dashboard {id-5 :id} {:name "quixotic"}
                            :model/Dashboard {id-6 :id} {:name "baseline"}]
               (semantic.tu/index-all!)
-              (let [test-entity? (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id)
+              (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id))
                     query        (fn [base-query]
                                    (->> (search/search base-query)
                                         (filter test-entity?)

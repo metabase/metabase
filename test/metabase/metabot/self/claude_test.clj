@@ -88,7 +88,7 @@
                  {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
           parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
           err   (m/find-first #(= :error (:type %)) parts)]
-      (is (=? {:message "Overloaded"} (:error err)))
+      (is (=? {:type "overloaded_error" :message "Overloaded"} (:error err)))
       (is (= (self.core/format-sse-event {:type "error" :errorText "Overloaded"})
              (self.core/format-error-line err))))))
 
@@ -339,6 +339,27 @@
       (is (nil? (speed {:model "claude-haiku-4-5" :fast? true}))))
     (testing "no speed through the AI proxy"
       (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
+
+(deftest ^:parallel claude-request-body-nested-object-arguments-test
+  (testing "a replayed tool call whose arguments hold nested string-keyed objects is accepted and sent as-is"
+    ;; Replayed tool calls go through this instrumented entry point, so their arguments must validate here.
+    (let [arguments {:query         {"lib/type" "mbql/query"
+                                     "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                     :visualization {"chart_type" "line"}
+                     :title         "Orders per month"
+                     :description   "Monthly orders in 2025"}
+          body      (claude/claude-request-body
+                     {:input [{:role :user :content "How many orders were placed each month in 2025?"}
+                              {:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments arguments}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "construct_notebook_query"
+                               :result   {:output "query built"}}]})]
+      (is (=? [{:role "user"}
+               {:role    "assistant"
+                :content [{:type "tool_use" :id "call-1" :name "construct_notebook_query" :input arguments}]}
+               {:role "user" :content [{:type "tool_result" :tool_use_id "call-1"}]}]
+              (:messages body))))))
 
 (defn- close-tracking-json-body
   "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
@@ -854,7 +875,7 @@
                 "claude-haiku-4-5-20251001"]]
       (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
-    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
       (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test

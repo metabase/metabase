@@ -724,6 +724,7 @@ export const sendAgentRequest = createAsyncThunk<
                 "ai_provider_billing",
                 "ai_provider_rate_limit",
                 "ai_provider_auth",
+                "ai_provider_unavailable",
               ),
               message: P.string,
             },
@@ -925,8 +926,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
     if (error || !detail) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: t`Sorry, we couldn't load that conversation.`,
         }),
       );

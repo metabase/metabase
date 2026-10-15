@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
@@ -16,11 +17,13 @@ import { SettingsNav } from "./SettingsNav";
 
 const setup = async ({
   initialRoute,
+  isAdmin = true,
   isHosted,
   customVizDevModeEnabled,
   tokenFeatures,
 }: {
   initialRoute: string;
+  isAdmin?: boolean;
   isHosted?: boolean;
   customVizDevModeEnabled?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
@@ -46,7 +49,7 @@ const setup = async ({
     withRouter: true,
     initialRoute,
     storeInitialState: {
-      currentUser: createMockUser({ is_superuser: true }),
+      currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: createMockSettingsState(settings),
     },
   });
@@ -142,6 +145,82 @@ describe("SettingsNav", () => {
   it("should only show Updates nav item when hosted", async () => {
     await setup({ initialRoute: "/admin/settings/general", isHosted: true });
     expect(screen.queryByText("Updates")).not.toBeInTheDocument();
+  });
+
+  it("should show only allowlisted pages to settings managers", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      isAdmin: false,
+      tokenFeatures: {
+        "custom-viz": false,
+        "custom-viz-available": false,
+      },
+    });
+
+    expect(await screen.findByText("General")).toBeInTheDocument();
+    expect(screen.getByText("Domains")).toBeInTheDocument();
+    expect(screen.getByText("Email")).toBeInTheDocument();
+    expect(screen.getByText("Slack")).toBeInTheDocument();
+    expect(screen.getByText("Webhooks")).toBeInTheDocument();
+    expect(screen.getByText("Localization")).toBeInTheDocument();
+    expect(screen.getByText("Maps")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
+    expect(screen.getByText("Uploads")).toBeInTheDocument();
+    expect(screen.getByText("Public sharing")).toBeInTheDocument();
+
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(screen.queryByText("License")).not.toBeInTheDocument();
+    expect(screen.queryByText("Updates")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cloud")).not.toBeInTheDocument();
+    expect(screen.queryByText("Remote sync")).not.toBeInTheDocument();
+    expect(screen.queryByText("Custom visualizations")).not.toBeInTheDocument();
+    expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+    expect(screen.queryByText("Python Runner")).not.toBeInTheDocument();
+    expect(screen.queryByText("Branding")).not.toBeInTheDocument();
+  });
+
+  it("should show the Appearance folder to settings managers when whitelabel is enabled", async () => {
+    await setup({
+      initialRoute: "/admin/settings/whitelabel/branding",
+      isAdmin: false,
+      tokenFeatures: { whitelabel: true },
+    });
+
+    expect(await screen.findByText("Appearance")).toBeInTheDocument();
+    expect(screen.getByText("Branding")).toBeInTheDocument();
+    expect(screen.getByText("Conceal Metabase")).toBeInTheDocument();
+  });
+
+  it("should hide Authentication and Python Runner from settings managers even with related tokens", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      isAdmin: false,
+      tokenFeatures: {
+        scim: true,
+        sso_saml: true,
+        "transforms-python": true,
+      },
+    });
+
+    expect(await screen.findByText("General")).toBeInTheDocument();
+    expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
+    expect(screen.queryByText("Python Runner")).not.toBeInTheDocument();
+  });
+
+  it("should not request version-info for settings managers", async () => {
+    await setup({ initialRoute: "/admin/settings/general", isAdmin: false });
+
+    expect(await screen.findByText("General")).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/setting/version-info")).toBe(
+      false,
+    );
+  });
+
+  it("should show License and Updates to admins", async () => {
+    await setup({ initialRoute: "/admin/settings/general" });
+
+    expect(await screen.findByText("License")).toBeInTheDocument();
+    expect(screen.getByText("Updates")).toBeInTheDocument();
   });
 
   it("should show Development nav item when custom viz dev mode is enabled", async () => {

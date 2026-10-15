@@ -62,10 +62,10 @@
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
       (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-               "bedrock" "vllm" "ollama" "metabase"}
+               "bedrock" "vllm" "ollama" "openai-compatible" "metabase"}
              (set (map :type types))))
       (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-              "bedrock" "vllm" "ollama"]
+              "bedrock" "vllm" "ollama" "openai-compatible"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -384,7 +384,7 @@
                                   (throw (ex-info "The vLLM server answered with text instead of calling a tool."
                                                   {:api-error true :status-code 400})))]
       (mt/with-temporary-setting-values [llm-providers []]
-        (is (=? {:message "The vLLM server answered with text instead of calling a tool."}
+        (is (=? "The vLLM server answered with text instead of calling a tool."
                 (mt/user-http-request :crowberto :post 400 "llm/providers"
                                       {:type   "vllm"
                                        :config {:base-url "http://vllm.internal:8000/v1"}})))
@@ -397,10 +397,34 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (is (= (str "Could not reach the vLLM server at http://vllm.internal:8000/v1. "
                     "Check that it is running and that the base URL is correct.")
-               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                               {:type   "vllm"
-                                                :config {:base-url "http://vllm.internal:8000/v1"}}))))
+               (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                     {:type   "vllm"
+                                      :config {:base-url "http://vllm.internal:8000/v1"}})))
         (is (= [] (llm.provider/connections)))))))
+
+(deftest create-openai-compatible-connection-test
+  (testing "connecting checks the model the connection names, which Metabot then runs on, on a server with no model list"
+    (let [checked (atom #{})]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   (throw (ex-info "clj-http: status 404" {:status 404 :body "Not Found"}))
+                                                   (do (swap! checked conj (:model (json/decode+kw (str body))))
+                                                       {:status 200
+                                                        :body   {:choices [{:message       {:content    ""
+                                                                                            :tool_calls [{:id       "call-1"
+                                                                                                          :type     "function"
+                                                                                                          :function {:name      "record_table_name"
+                                                                                                                     :arguments "{\"table_name\": \"orders\"}"}}]}
+                                                                            :finish_reason "tool_calls"}]}})))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "openai-compatible"
+                                   :config {:base-url "https://inference.internal/v1" :model-id "gpt-oss-120b"}})
+            (is (= #{"gpt-oss-120b"} @checked))
+            (is (= {:base-url "https://inference.internal/v1" :model-id "gpt-oss-120b" :model-reasoning "false"}
+                   (stored-config "openai-compatible")))
+            (is (= "openai-compatible/gpt-oss-120b" (metabot.settings/llm-metabot-provider)))))))))
 
 (deftest create-rejects-a-malformed-model-catalog-test
   (testing (str "a 2xx whose body is not a model list means the base URL reached something that is not the API. "
@@ -410,8 +434,8 @@
     (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
       (mt/with-temporary-setting-values [llm-providers []]
         (is (= "Anthropic returned an unexpected model list response"
-               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                               {:type "anthropic" :config {:api-key "sk-ant-nope"}}))))
+               (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                     {:type "anthropic" :config {:api-key "sk-ant-nope"}})))
         (is (= [] (llm.provider/connections)))))))
 
 (deftest a-refused-listing-logs-only-a-malformed-catalog-test
@@ -580,8 +604,8 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (let [connect!   (fn [messages]
                          (mt/with-dynamic-fn-redefs [http/request (fn [_] (bedrock-test/runtime-response-for messages))]
-                           (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                                           bedrock-inference-profile-connection))))
+                           (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                 bedrock-inference-profile-connection)))
             incomplete "AWS Bedrock returned an incomplete response from \"eu.anthropic.claude-sonnet-4-6\""]
         (are [messages error] (= error (connect! messages))
           [bedrock-test/message-start bedrock-test/stream-error] "Model stream error"
@@ -623,7 +647,7 @@
 (deftest create-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]
-      (is (=? {:message "Anthropic API key expired or invalid"}
+      (is (=? "Anthropic API key expired or invalid"
               (mt/user-http-request :crowberto :post 400 "llm/providers"
                                     {:type "anthropic" :config {:api-key "sk-ant-nope"}})))
       (is (= [] (llm.provider/connections))))))
@@ -1061,7 +1085,7 @@
 (deftest update-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]
-      (is (=? {:message "Anthropic API key expired or invalid"}
+      (is (=? "Anthropic API key expired or invalid"
               (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
                                     {:config {:api-key "sk-ant-rotated"}})))
       (is (= {:api-key "sk-ant-stored"} (stored-config "anthropic"))))))
