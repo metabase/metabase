@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.table-item :as table-item]
    [metabase-enterprise.library-branching.instance.lock-test :as lock-test]
    [metabase-enterprise.library-branching.instance.table-item-property-test :as property-test]
@@ -67,7 +68,19 @@
     :doc    "current reads a segment or a measure with no row lock, so a save by another connection does not wait."
     :target `library-branching.db/lock-table-item
     :edits  [[:remove :for] [:remove '[:update]]]
-    :tests  [#'lock-test/current-locks-the-row-test]}])
+    :tests  [#'lock-test/current-locks-the-row-test]}
+   {:name   :segment-not-in-use
+    :doc    "The in-use report knows no segment, so a pull that trashes a segment that a question outside the Library
+            uses does not name the question."
+    :target `in-use/users
+    :edits  [[:replace '(model-of kind) '(get (dissoc model-of :segment) kind)]]
+    :tests  [#'table-item-test/trashed-segment-or-measure-in-use-test]}
+   {:name   :measure-not-in-use
+    :doc    "The in-use report knows no measure, so a pull that trashes a measure that a question outside the Library
+            uses does not name the question."
+    :target `in-use/users
+    :edits  [[:replace '(model-of kind) '(get (dissoc model-of :measure) kind)]]
+    :tests  [#'table-item-test/trashed-segment-or-measure-in-use-test]}])
 
 (deftest table-item-mutations-test
   (mut/check mutations {}))

@@ -28,11 +28,13 @@
   [{:name   :no-card-lock
     :doc    "current reads a card with no row lock, so a save of the card by another connection does not wait."
     :target `library-branching.db/lock-card
-    :edits  [[:replace '[:update] nil]]}
+    :edits  [[:remove :for] [:remove '[:update]]]
+    :tests  [#'metabase-enterprise.library-branching.instance.lock-test/current-locks-the-row-test]}
    {:name   :no-field-settings-lock
     :doc    "current of a published table locks the table's settings row but not the settings rows of its fields."
     :target `library-branching.db/lock-table-settings
-    :edits  [[:replace '[:update] nil {:nth 1}]]}
+    :edits  [[:remove :for {:nth 1}] [:remove '[:update] {:nth 1}]]
+    :tests  [#'metabase-enterprise.library-branching.instance.lock-test/current-locks-the-row-test]}
    {:name   :every-attribute-written
     :doc    "A write of a metric writes every attribute, also one whose content did not change, so a write of the
             current content changes rows (the query gets new uuids)."
