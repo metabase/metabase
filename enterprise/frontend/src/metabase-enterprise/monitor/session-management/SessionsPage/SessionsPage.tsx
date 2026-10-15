@@ -232,7 +232,7 @@ export const SessionsPage = () => {
             <SessionsFilters state={urlState} onChange={patchUrlState} />
             {!isEndedTab && (
               // not tied to the listed total: revoking all ignores the search and filters
-              <Button disabled={isRevoking} onClick={revokeAll}>
+              <Button size="lg" disabled={isRevoking} onClick={revokeAll}>
                 {t`Revoke all active sessions`}
               </Button>
             )}
