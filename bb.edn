@@ -369,7 +369,7 @@
    :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
   kondo-ratchets-history
-  {:doc "Report which commits, pull requests and authors shrank, grew and introduced ratchet budgets."
+  {:doc "Report which commits and pull requests shrank, grew and introduced ratchet budgets."
    :examples [["./bin/mage kondo-ratchets-history" "Summarize the last 7 days"]
               ["./bin/mage kondo-ratchets-history --days 30" "Summarize the last 30 days"]
               ["./bin/mage kondo-ratchets-history --all" "Summarize every change since the first ratchet"]

@@ -463,14 +463,10 @@
                 "Biggest improvement"
                 "Biggest regression"
                 "New linters and measures"
-                "Most shrunk"
-                "Most grown"
-                "Net, from most shrunk to most grown"
-                "Most introduced, by the budgets the new linters and measures started with"
                 "Shrinks no commit accounts for"]
                (headlines lines))))
       (testing "lists the first six budgets of a commit and sums the rest"
-        (is (= ["  seed  Ada  Seed"
+        (is (= ["  seed  Seed"
                 "    :l0  starting at 0"
                 "    :l1  starting at 1"
                 "    :l2  starting at 2"
@@ -494,17 +490,9 @@
           (is (= ["    -13  2 more budgets"
                   "    +13 over 2 more budgets, with 0 suppressions added"]
                  (filter #(str/includes? % "more budgets") lines)))))
-      (testing "ranks authors by net change and names what no commit explains"
-        (is (= ["                shrunk  grown  net"
-                "Cy                  -7      0   -7"
-                "Ada                 -6      0   -6"
-                "(unattributed)      -1      0   -1"
-                "Bob                  0     +4   +4"]
-               (->> lines
-                    (drop-while #(not= "Net, from most shrunk to most grown" %))
-                    rest
-                    (take-while #(str/starts-with? % " "))
-                    (map #(subs % 2)))))))))
+      (testing "names no author"
+        (is (= []
+               (filter #(re-find #"Ada|Bob|Cy|automation" %) lines)))))))
 
 ;;; ---------------------------------------------------- Task --------------------------------------------------
 

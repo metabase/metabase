@@ -908,6 +908,9 @@
                      :measures (update-vals (group-by :measure entries) #(reduce + (map :delta %))))))
        (sort-by (juxt :net :sha))))
 
+;; TODO (Chris 2026-10-10) -- also rank by team. The module config gives each module a `:team`, so a count could be
+;; charged to the team that owns the file. People move between teams, so a ranking by author's team needs a
+;; record of who was on which team when.
 (defn leaderboard
   "One row per author across `records`, in author order.
   A row holds how far they `:shrunk` and `:grown` budgets and the `:net` of the two, and the `:linters` they
@@ -1144,11 +1147,8 @@
 (defn- signed [n]
   (if (zero? n) "0" (format "%+d" n)))
 
-(defn- commit-line [{:keys [sha pr author subject]}]
-  (str (subs sha 0 (min 10 (count sha))) (when pr (str " #" pr)) "  " author "  " (c/dark subject)))
-
-(defn- author-name [{:keys [author]}]
-  (or author "(unattributed)"))
+(defn- commit-line [{:keys [sha pr subject]}]
+  (str (subs sha 0 (min 10 (count sha))) (when pr (str " #" pr)) "  " (c/dark subject)))
 
 (defn- table
   "Lines for `rows` of strings, the first of them the header.
@@ -1262,46 +1262,10 @@
        line)
      ["Settle each with: ./bin/mage kondo-ratchets-history --pardon|--confirm <commit or PR> --why <reason>"])))
 
-(def ^:private columns
-  {:shrunk  {:header "shrunk", :show signed, :color (tint c/green)}
-   :grown   {:header "grown", :show signed, :color (tint c/red)}
-   :net     {:header "net", :show signed, :color net-tint}
-   :ignores {:header "budget", :show str, :color (tint c/green)}
-   :linters {:header "new", :show str, :color (tint c/green)}})
-
-;; TODO (Chris 2026-10-10) -- also rank by team. The module config gives each module a `:team`, so a count could be
-;; charged to the team that owns the file. People move between teams, so a ranking by author's team needs a
-;; record of who was on which team when.
-(def ^:private rankings
-  "The author rankings of a [[summary]].
-  Each `:order` gives a [[leaderboard]] row its rank, as a vector to sort by, or nil to leave the row out."
-  [{:title   "Most shrunk"
-    :order   (fn [{:keys [shrunk]}] (when (neg? shrunk) [shrunk]))
-    :columns [:shrunk]}
-   {:title   "Most grown"
-    :order   (fn [{:keys [grown]}] (when (pos? grown) [(- grown)]))
-    :columns [:grown]}
-   {:title   "Net, from most shrunk to most grown"
-    :order   (fn [{:keys [shrunk grown net]}] (when-not (= 0 shrunk grown) [net]))
-    :columns [:shrunk :grown :net]}
-   {:title   "Most introduced, by the budgets the new linters and measures started with"
-    :order   (fn [{:keys [linters ignores]}] (when (pos? linters) [(- ignores) (- linters)]))
-    :columns [:ignores :linters]}])
-
-(defn- ranking-lines
-  "Table lines for one of the [[rankings]] of `board`, a [[leaderboard]]."
-  [board {:keys [order], column-keys :columns}]
-  (let [shown (map columns column-keys)]
-    (when-let [rows (seq (sort-by (juxt order author-name) (filter order board)))]
-      (table (into [nil] (map :color) shown)
-             (cons (cons "" (map :header shown))
-                   (for [row rows]
-                     (cons (author-name row) (map (fn [k] ((:show (columns k)) (get row k))) column-keys))))))))
-
 (defn summary
   "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`, in which
   `changed` commits changed a budget ([[changed?]])."
-  [period changed {:keys [totals total approximate best worst introduced seeded slack unlimited board unaccounted
+  [period changed {:keys [totals total approximate best worst introduced seeded slack unlimited unaccounted
                           suspects]}]
   (concat
    [(c/bold (format "Ratchet changes %s: %d commits" period changed))]
@@ -1322,7 +1286,6 @@
    (section "Moved into or out of :unlimited"
             (group-lines unlimited (fn [{:keys [measure old new]}]
                                      (str measure "  " old " -> " new))))
-   (mapcat (fn [ranking] (section (:title ranking) (ranking-lines board ranking))) rankings)
    (section "Shrinks no commit accounts for"
             (group-lines unaccounted (fn [{:keys [measure delta]}]
                                        (str (signed delta) " " measure))))
