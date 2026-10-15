@@ -5,12 +5,12 @@
   leaves; a `:leaf` contains nothing; a `:published-table` contains nothing and has a table natural key as its
   identity. The generators of [[toy-snapshot-gen]] give snapshots of these kinds."
   (:require
-   [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -93,7 +93,7 @@
 
 (def ^:private name-variants
   "Functions that change a name, so that two different names of siblings can give one slug."
-  [identity str/upper-case #(str % "?") #(str % ".") #(str "_" %) (constantly "Con") (constantly "nul")])
+  [identity u/upper-case-en #(str % "?") #(str % ".") #(str "_" %) (constantly "Con") (constantly "nul")])
 
 (defn- vary-names
   [s choices]

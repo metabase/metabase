@@ -5,8 +5,8 @@
   codec turns an item into a document and back; [[write-yaml]] and [[read-yaml]] turn a document into the bytes of a
   file and back, so every kind gets its canonical bytes from one writer."
   (:require
-   [clojure.string :as str]
-   [metabase.util.yaml :as u.yaml])
+   [clj-yaml.core :as yaml]
+   [clojure.string :as str])
   (:import
    (java.io StringWriter)
    (java.nio ByteBuffer)
@@ -206,10 +206,15 @@
          (Double/isFinite x)) x
     :else           (unreadable! (str "A value is not text, a number, a boolean or null: " (pr-str x)))))
 
+(def ^:private nesting-depth-limit
+  ;; SnakeYAML's default of 50 is too shallow for deeply nested MBQL; this is the limit of `metabase.util.yaml`.
+  10000)
+
 (defn parse
   "The YAML documents of `text`. A duplicate key and a tag that is not a YAML type throw."
   [^String text]
-  (u.yaml/parse-string text :keywords false :load-all true :allow-duplicate-keys false))
+  (yaml/parse-string text :keywords false :load-all true :allow-duplicate-keys false
+                     :nesting-depth-limit nesting-depth-limit))
 
 (defn read-yaml
   "The document of the YAML bytes `b`. Throws an ex-info of type ::unreadable when `b` is not UTF-8 text that holds
