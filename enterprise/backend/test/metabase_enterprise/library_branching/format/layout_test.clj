@@ -50,12 +50,26 @@
            (or (empty? paths) (apply distinct? (vals paths)))
            (not-any? dirs (vals paths))))))
 
+(defn- entry-dir
+  "The directory that holds the entry of item `id`."
+  [s paths id]
+  (parent-dir (if (directory-kind? (:kind (get s id))) (own-dir s paths id) (get paths id))))
+
+(defn- plain-entry
+  "The entry name of item `id` with no suffix: the slug of its name (or its home's fixed segment), and its word for a
+  file kind."
+  [s id]
+  (let [{:keys [kind name place] :as item} (get s id)
+        c    (get codecs kind)
+        base (or (when-not place (:segment (layout/home c item))) (layout/slug name))]
+    (if (layout/directory? c) base (str base "." (layout/word c)))))
+
 (defspec least-identity-has-no-suffix-test 300
+  ;; Of the siblings with one entry name (one name and one kind, or two names with one slug), the least identity has
+  ;; the plain entry, and each other one has its identity as the suffix.
   (prop/for-all [s (toy/toy-snapshot-gen)]
     (let [paths  (layout/layout toy/codecs s)
-          groups (vals (group-by (fn [[_ {:keys [kind name place] :as item}]]
-                                   [kind name place (when-not place (layout/home (get codecs kind) item))])
-                                 s))]
+          groups (vals (group-by (fn [[id _]] [(entry-dir s paths id) (plain-entry s id)]) s))]
       (every? (fn [group]
                 (let [[least & others] (sort-by (comp layout/identity-segment key) group)]
                   (and (not (str/includes? (entry s paths (key least)) "~"))
@@ -113,7 +127,7 @@
 (def ^:private example
   {area-id   (item :folder "The Area" nil :color true)
    birds-id  (item :folder "Birds" area-id)
-   birds2-id (item :folder "birds?" area-id)
+   birds2-id (item :folder "BIRDS" area-id)
    board-id  (item :board "Sightings" birds-id)
    leaf-id   (item :leaf "Robin" board-id)
    leaf2-id  (item :leaf "Robin" board-id)
@@ -131,8 +145,8 @@
             leaf-id   "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings.board/robin.leaf.yaml"
             leaf2-id  "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings.board/robin~lEaFlEaFlEaFlEaFlEaF1.leaf.yaml"
             loose-id  "area/_leaves/__wren.leaf.yaml"
-            orders2   "tables/orders.table.yaml"
-            orders    "tables/orders~+Sample%20Database+PUBLIC+ORDERS.table.yaml"}
+            orders    "tables/orders.table.yaml"
+            orders2   "tables/orders~+Sample%20Database+~+ORDERS%202.table.yaml"}
            (layout/layout toy/codecs example)))))
 
 (deftest identity-segment-test
@@ -141,7 +155,7 @@
     (is (= "+Sample%20Database+~+ORDERS" (layout/identity-segment ["Sample Database" nil "ORDERS"])))
     (is (= "+a%2Bb+c" (layout/identity-segment ["a+b" "c"])))
     (is (= "+%7E+%25" (layout/identity-segment ["~" "%"])))
-    (is (= "+%C3%A9t%C3%A9+x.y" (layout/identity-segment ["été" "x.y"]))
+    (is (= "+%C3%A9t%C3%A9+x%2Ey" (layout/identity-segment ["été" "x.y"]))
         "a dot is escaped too")))
 
 (deftest slug-test

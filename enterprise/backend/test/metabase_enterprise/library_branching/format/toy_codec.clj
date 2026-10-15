@@ -99,9 +99,9 @@
   [s choices]
   (into {}
         (map (fn [[id item] choice]
-               [id (update item :name (nth name-variants (mod choice (count name-variants))))]))
-        (sort-by (comp pr-str key) s)
-        (concat choices (repeat 0))))
+               [id (update item :name (nth name-variants (mod choice (count name-variants))))])
+             (sort-by (comp pr-str key) s)
+             (concat choices (repeat 0)))))
 
 (defn toy-snapshot-gen
   "Generates well-formed snapshots of the toy kinds, at most `max-items` (default 30) items. Some names of siblings
