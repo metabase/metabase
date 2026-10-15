@@ -2,7 +2,7 @@ import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 
-import { Box, Flex, Loader, Text } from "metabase/ui";
+import { Flex, Loader, Text } from "metabase/ui";
 import type {
   CollectionItem,
   CollectionSyncPreferences,
@@ -12,9 +12,8 @@ import type {
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 import { CollectionSyncRow } from "../CollectionSyncRow";
 import { LibrarySyncRow } from "../LibrarySyncRow";
+import { SyncList } from "../SyncList";
 import { TransformsSyncRow } from "../TransformsSyncRow";
-
-import S from "./CollectionSyncList.module.css";
 
 interface CollectionSyncListProps {
   collections: CollectionItem[];
@@ -121,5 +120,5 @@ export const CollectionSyncList = ({
     return <Text c="text-secondary">{emptyMessage}</Text>;
   }
 
-  return <Box className={S.collectionSyncList}>{syncRows}</Box>;
+  return <SyncList>{syncRows}</SyncList>;
 };

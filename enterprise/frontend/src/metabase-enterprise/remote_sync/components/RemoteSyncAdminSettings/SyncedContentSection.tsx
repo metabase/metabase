@@ -2,12 +2,11 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { Anchor, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Anchor, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
-import S from "../CollectionSyncList/CollectionSyncList.module.css";
-import { SyncListRow } from "../SyncListRow";
+import { SyncList, SyncListRow } from "../SyncList";
 
 import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
 
@@ -24,7 +23,7 @@ export const SyncedContentSection = () => {
       }
     >
       <Stack gap="lg">
-        <Box className={S.collectionSyncList}>
+        <SyncList>
           <SyncedContentRow
             label={t`Library`}
             icon="folder"
@@ -37,13 +36,13 @@ export const SyncedContentSection = () => {
               to={Urls.transformList()}
             />
           )}
-        </Box>
-        <Flex align="center" gap="sm">
+        </SyncList>
+        <Group gap="sm">
           <Icon name="info" c="text-secondary" />
           <Text c="text-secondary">
             {t`Other collections stay on this instance and aren't synced.`}
           </Text>
-        </Flex>
+        </Group>
       </Stack>
     </RemoteSyncSettingsSection>
   );
@@ -64,10 +63,10 @@ const SyncedContentRow = ({ label, icon, to }: SyncedContentRowProps) => (
       fw="bold"
       aria-label={t`Open ${label}`}
     >
-      <Flex align="center" gap="xs">
+      <Group gap="xs">
         {t`Open`}
         <Icon name="external" />
-      </Flex>
+      </Group>
     </Anchor>
   </SyncListRow>
 );

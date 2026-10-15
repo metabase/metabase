@@ -4,7 +4,7 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { Switch, Text } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
-import { SyncListRow } from "../SyncListRow";
+import { SyncListRow } from "../SyncList";
 
 interface CollectionSyncRowProps {
   collection: CollectionItem;

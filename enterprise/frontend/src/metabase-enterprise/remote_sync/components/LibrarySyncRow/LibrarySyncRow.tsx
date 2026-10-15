@@ -5,7 +5,7 @@ import { Switch, Text } from "metabase/ui";
 
 import { SYNC_LIBRARY_PENDING_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
-import { SyncListRow } from "../SyncListRow";
+import { SyncListRow } from "../SyncList";
 
 interface LibrarySyncRowProps {
   isReadOnly: boolean;

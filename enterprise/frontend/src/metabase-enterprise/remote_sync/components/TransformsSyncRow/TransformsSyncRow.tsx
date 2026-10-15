@@ -5,7 +5,7 @@ import { Switch, Text } from "metabase/ui";
 import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TRANSFORMS_KEY } from "../../constants";
-import { SyncListRow } from "../SyncListRow";
+import { SyncListRow } from "../SyncList";
 
 interface TransformsSyncRowProps {
   isReadOnly: boolean;
