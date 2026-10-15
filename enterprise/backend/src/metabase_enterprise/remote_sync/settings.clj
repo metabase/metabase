@@ -167,7 +167,7 @@
   :getter (fn []
             (not (remote-sync.db/other-remote-synced-collection-exists?
                   (vec collection/library-collection-types)
-                  ["snippets"
+                  [(name collection/snippets-ns)
                    (name collection/data-actions-ns)
                    (name collection/data-apps-ns)
                    (name collection/transforms-ns)])))

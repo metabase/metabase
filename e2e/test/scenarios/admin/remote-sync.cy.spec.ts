@@ -955,7 +955,7 @@ describe("Remote Sync", () => {
           cy.findByText("Collections to sync").should("not.exist");
         });
 
-        H.configureGitAndPullChanges("read-write");
+        H.configureGitWithNewSyncedCollection("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
@@ -1027,7 +1027,7 @@ describe("Remote Sync", () => {
 
     describe("syncing tenant collections", () => {
       it("lists shared tenant collections in settings and can push changes from a synced one", () => {
-        H.configureGitAndPullChanges("read-write");
+        H.configureGitWithNewSyncedCollection("read-write");
 
         // A second, unsynced tenant collection so the settings list shows more than one row
         H.createSharedTenantCollection("Second Tenant Collection");
@@ -1128,6 +1128,8 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
+      // Saving the settings in strict mode turns on transforms sync, which would track the local transform.
+      H.updateSetting("remote-sync-transforms", false);
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
