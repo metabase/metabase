@@ -6,15 +6,14 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]))
 
 (defn- col
   "The column in `cols` named `col-name` (ignoring case), from the join with `join-alias` if given."
@@ -73,7 +72,8 @@
                                         (lib/template-tags query)))))
 
 (defn- query-joining-card
-  "People joined to Card 1 on source, count by birth year and creation year, then a filter on the count."
+  "People joined to Card 1 on source, count by birth year and creation year, then a filter on the count, ordered by
+  birth year, creation year and count, limited to 5 rows."
   [mp]
   (let [field #(lib.metadata/field mp (mt/id %1 %2))
         card  (lib.metadata/card mp 1)
@@ -85,45 +85,49 @@
                   (lib/breakout (lib/with-temporal-bucket (field :people :birth_date) :year))
                   (lib/breakout (lib/with-temporal-bucket (field :people :created_at) :year))
                   lib/append-stage)]
-    (lib/filter query (lib/> (col (lib/filterable-columns query) "count") 11))))
-
-(defn- uses-stage-ctes? [query]
-  (boolean (re-find #"__mb_stage_" (:query (qp.compile/compile query)))))
+    (-> query
+        (lib/filter (lib/> (col (lib/filterable-columns query) "count") 11))
+        (lib/order-by (col (lib/orderable-columns query) "birth_date"))
+        (lib/order-by (col (lib/orderable-columns query) "created_at"))
+        (lib/order-by (col (lib/orderable-columns query) "count"))
+        (lib/limit 5))))
 
 (deftest ^:parallel multi-stage-questions-test
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql)
-                           (mt/normal-drivers-with-feature :nested-queries :left-join :native-parameter-card-reference))
-    ;; SQL Server allows ORDER BY in a subquery only with TOP, so Card 1 has a limit
+  (mt/test-drivers (mt/normal-driver-select {:+fns [#(isa? driver/hierarchy % :sql)]
+                                             :+features [:nested-queries :left-join :native-parameter-card-reference]})
     (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries
                       [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)])
-          use-ctes?  (sql.qp/use-ctes-for-stages? driver/*driver*)
           round-sums (partial mt/formatted-rows [str #(u/round-to-decimals 2 (double %))])]
       (testing "multi-stage question with joins"
         (let [query (multi-stage-query mp)]
           (mt/with-native-query-testing-context query
-            (is (= use-ctes? (uses-stage-ctes? query)))
-            (is (= [["Affiliate" 281997.3]
-                    ["Twitter"   302138.79]
-                    ["Organic"   305583.3]
-                    ["Google"    306376.03]
-                    ["Facebook"  314522.28]]
-                   (round-sums (qp/process-query query)))))))
+            (let [query-result (qp/process-query query)]
+              (is (= [["Affiliate" 281997.3]
+                      ["Twitter"   302138.79]
+                      ["Organic"   305583.3]
+                      ["Google"    306376.03]
+                      ["Facebook"  314522.28]]
+                     (round-sums query-result)))
+              (is (re-find #"WITH.*__mb_stage"
+                           (-> query-result :data :native_form :query)))))))
       (testing "native question selecting from the multi-stage question with a variable"
         (let [query (assoc (native-query-on-card mp)
                            :parameters [{:type   :number/=
                                          :target [:variable [:template-tag "sum_limit"]]
                                          :value  [305000]}])]
           (mt/with-native-query-testing-context query
-            (is (= use-ctes? (uses-stage-ctes? query)))
             ;; the native query has no ORDER BY, so the order of the rows is not defined
             (is (= [["Affiliate" 281997.3]
                     ["Twitter"   302138.79]]
                    (sort (round-sums (qp/process-query query))))))))
       (testing "question joining the multi-stage question, with more stages after the join"
-        (let [query  (query-joining-card mp)
-              counts (map (comp int last) (mt/rows (qp/process-query query)))]
+        (let [query  (query-joining-card mp)]
           (mt/with-native-query-testing-context query
-            (is (= use-ctes? (uses-stage-ctes? query)))
             ;; the year buckets depend on the report and database time zones, so only check the filter stage
-            (is (seq counts))
-            (is (every? #(> % 11) counts))))))))
+            (is (= [["1958-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 13]
+                    ["1958-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 17]
+                    ["1959-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 14]
+                    ["1959-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 19]
+                    ["1959-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 24]]
+                   (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
+                                      (qp/process-query query))))))))))
