@@ -4,9 +4,12 @@
    ;; loads the settings of every enterprise module, as at startup
    [metabase-enterprise.core.init]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest library-branching-enabled-default-test
   (testing "library-branching-enabled is false until an admin sets it"

@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -15,6 +16,8 @@
    (java.nio.file Files)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private golden-dir "enterprise/backend/test_resources/library_branching/golden")
 

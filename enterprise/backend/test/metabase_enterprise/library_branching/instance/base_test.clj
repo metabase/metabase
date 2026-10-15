@@ -7,9 +7,12 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase.app-db.core :as mdb]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private c1 "1111111111111111111111111111111111111111")
 (def ^:private c2 "2222222222222222222222222222222222222222")
