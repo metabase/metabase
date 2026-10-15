@@ -69,6 +69,23 @@
     (is (not (valid? (-> example (dissoc orders-key) (assoc ["Sample Database" "ORDERS"] (get example orders-key))))))
     (is (valid? (-> example (dissoc orders-key) (assoc ["Sample Database" nil "ORDERS"] (get example orders-key)))))))
 
+(deftest ^:parallel compare-identities-test
+  (testing "entity ids come before table keys; entity ids by string order; table keys part by part, nil first"
+    (is (= ["AAAAAAAAAAAAAAAAAAAAA" "zzzzzzzzzzzzzzzzzzzzz"
+            ["Aviary" nil "NESTS"] ["Aviary" "BIRDS" "NESTS"] ["Sample Database" "PUBLIC" "ORDERS"]]
+           (sort snapshot/compare-identities
+                 [["Sample Database" "PUBLIC" "ORDERS"] "zzzzzzzzzzzzzzzzzzzzz" ["Aviary" "BIRDS" "NESTS"]
+                  "AAAAAAAAAAAAAAAAAAAAA" ["Aviary" nil "NESTS"]])))))
+
+(defspec compare-identities-is-a-total-order-test 100
+  (prop/for-all [ids (gen/vector (gen/one-of [lb.tu/entity-id-gen lb.tu/table-key-gen]) 0 20)]
+    (let [sorted (sort snapshot/compare-identities ids)]
+      (and (every? (fn [[a b]] (<= (snapshot/compare-identities a b) 0)) (partition 2 1 sorted))
+           (every? (fn [a] (zero? (snapshot/compare-identities a a))) ids)
+           (every? (fn [[a b]] (= (Integer/signum (int (snapshot/compare-identities a b)))
+                                  (- (Integer/signum (int (snapshot/compare-identities b a))))))
+                   (for [a ids b ids] [a b]))))))
+
 (defspec well-formed-snapshots-validate-test 200
   (prop/for-all [s (lb.tu/well-formed-snapshot-gen)]
     (and (valid? s) (lb.tu/well-formed? s))))
