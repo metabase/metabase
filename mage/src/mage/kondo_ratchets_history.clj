@@ -133,7 +133,7 @@
           [[:modules :module]]))))
 
 (defn- readable
-  "`files`, the parsed ratchet files on one side of a commit, with each that is `::unreadable` taken to be what
+  "The parsed ratchet `files` on one side of a commit, with each that is `::unreadable` taken to be what
   it is in `others`, the other side, or absent when it is unreadable there too."
   [files others]
   (into {}
@@ -148,7 +148,7 @@
   The commit that adds or removes the test file is viewed with both sides merged.
   Moving a budget from one file to the other is then not a change.
   A file that is `::unreadable` on one side is taken to be unchanged: nothing can be read across it.
-  `:ratcheted` holds the `[side kind]` of the ratchets that existed before the commit."
+  Under `:ratcheted` are the `[side kind]` of the ratchets that existed before the commit."
   [before after]
   (let [[before after] [(readable before after) (readable after before)]
         merged? (not= (some? (:test before)) (some? (:test after)))
@@ -175,8 +175,9 @@
   The kinds are those the namespace docstring lists.
   A change to a measure that has per-symbol budgets is marked `:per-symbol?`.
   A newly discouraged symbol is its own `:introduce`, with the symbol as `:key`.
-  `new-measure?` says whether the commit also added what a measure counts: its linter, or the module measure.
-  `new-symbol?` says the same of a symbol under `linter`."
+  Given a measure, `new-measure?` says whether the commit also added what it counts: its linter, or the module
+  measure.
+  Given a linter and a symbol, `new-symbol?` says the same of the symbol."
   [{:keys [ratcheted before after symbols-before symbols-after]} {:keys [new-measure? new-symbol?]}]
   (let [symbolic (into #{}
                        (map (fn [[side linter _]] [side :ignore linter]))
@@ -220,7 +221,7 @@
            (assoc change :kind (if (neg? delta) :shrink :grow) :delta delta)))))))
 
 (defn- subtract
-  "`new` less `old`, per key, without the zeros."
+  "The difference of `new` less `old`, per key, without the zeros."
   [new old]
   (into {} (remove (comp zero? val)) (merge-with + new (update-vals old -))))
 
@@ -284,8 +285,8 @@
   "What a run works on and the state it keeps: the git repository in `:dir`, the `:head` commit it was on when
   the run began, the `:cache-dir` for its records, the `:verdicts-file`, the blob tallies so far and the last
   window loaded.
-  `dir` defaults to this repository, `cache` to its cache, and `verdicts` to the verdicts file in `dir`.
-  `env` adds variables to the environment of every git call."
+  By default `dir` is this repository, `cache` its cache, and `verdicts` the verdicts file in `dir`.
+  Any `env` adds variables to the environment of every git call."
   [{:keys [dir cache verdicts env]}]
   (let [dir  (or dir u/project-root-directory)
         repo {:dir           dir
@@ -355,7 +356,8 @@
                     "--raw" "--no-abbrev" log-format args)))
 
 (defn- ratchet-commits
-  "Shas of the commits that changed a ratchet file, newest first. `args` select the commits, as for `git log`."
+  "Shas of the commits that changed a ratchet file, newest first.
+  The `args` select the commits, as for `git log`."
   [repo & args]
   (vec (apply git repo (concat ["log" "--first-parent" "--format=%H"] args ["--"] ratchet-paths))))
 
@@ -442,7 +444,7 @@
 
 (defn tightening?
   "Did a commit only lower budgets, as the post-merge automation does?
-  `paths` are the files it changed and `kinds` the kinds of its budget changes."
+  It takes the `paths` of the files the commit changed and the `kinds` of its budget changes."
   [paths kinds]
   ;; a commit that also raises or adds a budget, as a seeding one does, may leave slack behind
   (boolean (and (seq paths)
@@ -459,7 +461,7 @@
                           (map :kind (commit-changes repo sha))))))
 
 (defn- blobs
-  "`f` of the sha and content of each of the git blobs `shas`, keyed by sha."
+  "A map from each of the git blobs `shas` to `f` of its sha and content."
   [repo f shas]
   (if (empty? shas)
     {}
@@ -482,7 +484,8 @@
        (some #(str/ends-with? path %) ratchet/source-extensions)))
 
 (defn counts
-  "What `content`, the file at `path`, adds to each measure's actual count. Sides are those of the file's path."
+  "What `content`, the file at `path`, adds to each measure's actual count.
+  Sides are those of the file's path."
   [path content]
   (cond
     (= path kondo-config-file)
@@ -568,7 +571,7 @@
       (nil? (:test (budgets-at repo sha)))))
 
 (defn- with-added
-  "`changes`, the budget changes of commit `sha`, with the suppressions it `:added` on each `:grow`."
+  "The budget `changes` of commit `sha`, with the suppressions it `:added` on each `:grow`."
   [repo sha changes]
   (if (not-any? #(= :grow (:kind %)) changes)
     changes
@@ -615,7 +618,8 @@
                  commits)))
 
 (defn- analyse
-  "The record for `sha`, a commit that changed a ratchet file. `history` is every such commit, newest first."
+  "The record for `sha`, a commit that changed a ratchet file.
+  The `history` is every such commit, newest first."
   [repo history sha]
   (let [changes  (commit-changes repo sha)
         shrunk   (into {} (for [{:keys [kind measure delta]} changes :when (= kind :shrink)] [measure delta]))
@@ -732,9 +736,10 @@
 
 (defn- split-causes
   "The `causes` of the shrinks in commit `sha`, per measure, split in two.
-  `:returned` is how much of them only takes back another commit's raise: the whole cause when that commit is
-  one `recount?` holds for, or else up to what is `left` of its pardoned raise, a map from commit to measure.
-  `:kept` holds the causes with what remains of each.
+  For each measure, `:returned` is how much of them only takes back another commit's raise: the whole cause
+  when that commit is one `recount?` holds for, or else up to what is `left` of its pardoned raise, a map from
+  commit to measure.
+  Next to it, `:kept` holds the causes with what remains of each.
   Returns `[left split]`, with what was taken back removed from `left`."
   [left recount? sha causes]
   (reduce-kv
@@ -774,14 +779,14 @@
           [sha spare])))
 
 (defn pardon
-  "`records`, the whole history newest first, with the verdicts applied.
+  "The `records`, the whole history newest first, with the verdicts applied.
   A raise in `pardons`, a map from commit to measure to the size of the raise, turns from `:grow` into `:pardon`.
   A shrink loses the part that only takes a pardoned raise back, and the credit for it.
   A raise is taken back once: the oldest shrinks after it use it up.
   A commit in `recounts` only changed how suppressions are counted, so its own shrinks go too, and so does any
   credit it has for a later shrink.
-  `spare`, as [[spare-budget]] gives it, is taken back in the same way without a verdict. The part of a raise
-  that a later shrink took back is its `:slack`, and a raise that was all slack turns from `:grow` into `:slack`."
+  Any `spare` budget, as [[spare-budget]] gives it, is taken back in the same way without a verdict.
+  The part of a raise a later shrink took back is its `:slack`; a raise that was all slack becomes a `:slack`."
   [{:keys [pardons recounts spare]} records]
   (let [recount?      (or recounts #{})
         settle-change (fn [split sha {:keys [kind measure delta], :as change}]
@@ -812,7 +817,7 @@
       (update record :changes #(map (partial loosen sha) %)))))
 
 (defn counted
-  "`records` without the changes to budgets of [[uncounted-linters]], and without the commits that leaves empty."
+  "The `records` without the changes to budgets of [[uncounted-linters]], or the commits that leaves empty."
   [records]
   (->> records
        (map (fn [record]
@@ -820,10 +825,10 @@
        (filter (comp seq :changes))))
 
 (defn settle
-  "`records`, the whole history newest first, as the summaries count them: with `verdicts` applied by [[pardon]],
-  with spare budget that was taken back counted as slack, without what [[counted]] leaves out, and with the
-  raises [[suspects]] still flags kept on each record as `:doubted`.
-  `verdicts` holds `:pardons` and `:recounts` as [[pardon]] takes them, and `:judged`, every commit with a
+  "The `records`, the whole history newest first, as the summaries count them.
+  That is with `verdicts` applied by [[pardon]], spare budget that was taken back counted as slack, without
+  what [[counted]] leaves out, and with the raises [[suspects]] still flags kept on each record as `:doubted`.
+  The `verdicts` hold `:pardons` and `:recounts` as [[pardon]] takes them, and `:judged`, every commit with a
   verdict."
   [{:keys [judged], :as verdicts} records]
   (let [records (pardon (assoc verdicts :spare (spare-budget judged records)) records)
@@ -838,9 +843,9 @@
   (.toInstant (OffsetDateTime/parse date)))
 
 (defn unify-authors
-  "`records` with one name per person.
-  Every commit, and every cause of a shrink, whose author email matches takes the author name of the newest of
-  them. Commits under one name already count as one person."
+  "The `records` with one name per person.
+  Every commit, and every cause of a shrink, whose author email matches takes the author name of the newest of them.
+  Commits under one name already count as one person."
   [records]
   (let [newest (reduce (fn [acc {:keys [email author date]}]
                          (cond-> acc
@@ -1068,8 +1073,8 @@
                       (reverse records)))))
 
 (defn- spans
-  "The `[start end]` dates of each `unit`, newest first, from the one holding `today` back to the one holding
-  `oldest`. `floor` moves a date to the start of its unit."
+  "The `[start end]` dates of each `unit`, newest first, from the one holding `today` back to the one holding `oldest`.
+  The function `floor` moves a date to the start of its unit."
   [floor ^ChronoUnit unit oldest today]
   (let [first-start ^LocalDate (floor oldest)]
     (for [^LocalDate start (take-while #(not (.isBefore ^LocalDate % first-start))
@@ -1080,7 +1085,8 @@
   "All time, then every week (from its Monday) and every calendar month from the first of `records` up to
   `today`, an ISO date, newest first.
   Each is a map of `:id`, `:kind`, `:label`, the `:from` date and the `:to` date it ends before, and the
-  [[report]] of the records committed in it. `records` are as [[settle]] returns them."
+  [[report]] of the records committed in it.
+  The `records` are as [[settle]] returns them."
   [today records]
   (let [day    (fn [record] (LocalDate/parse (subs (:date record) 0 10)))
         today  (LocalDate/parse today)
@@ -1116,7 +1122,7 @@
   "mage/resources/kondo-ratchets-history.html")
 
 (defn script-json
-  "`data` as JSON that is safe inside an HTML script element."
+  "The `data` as JSON that is safe inside an HTML script element."
   [data]
   ;; a `<` can end the element or, as `<!--<script>`, stop its real end from being seen
   (str/replace (json/write-str data) "<" "\\u003c"))
@@ -1140,7 +1146,7 @@
 (defn- table
   "Lines for `rows` of strings, the first of them the header.
   The first column is left-aligned and the rest right-aligned.
-  `colors` holds, per column, a function from a cell below the header to its color function, or nil."
+  The `colors` hold, per column, a function from a cell below the header to its color function, or nil."
   [colors rows]
   (let [widths (apply map (fn [& cells] (apply max (map count cells))) rows)]
     (map-indexed (fn [r row]
@@ -1171,7 +1177,7 @@
     identity))
 
 (defn- colored-delta
-  "`n` with its sign: green for a shrink and red for a raise."
+  "The number `n` with its sign: green for a shrink and red for a raise."
   [n]
   (cond
     (neg? n) (c/green (signed n))
@@ -1261,7 +1267,7 @@
 ;; record of who was on which team when.
 (def ^:private rankings
   "The author rankings of a [[summary]].
-  `:order` gives a [[leaderboard]] row its rank, as a vector to sort by, or nil to leave the row out."
+  Each `:order` gives a [[leaderboard]] row its rank, as a vector to sort by, or nil to leave the row out."
   [{:title   "Most shrunk"
     :order   (fn [{:keys [shrunk]}] (when (neg? shrunk) [shrunk]))
     :columns [:shrunk]}
@@ -1395,7 +1401,8 @@
       (println (str "  " (signed delta) " " (measure-name measure))))))
 
 (defn- verdict-options
-  "The verdicts [[settle]] takes, from the `entries` of the verdicts file. `record` gives the record of a sha."
+  "The verdicts [[settle]] takes, from the `entries` of the verdicts file.
+  The function `record` gives the record of a sha."
   [entries record]
   {:judged   (set (map :sha entries))
    :recounts (set (map :sha (filter #(= :recount (:verdict %)) entries)))
@@ -1409,7 +1416,8 @@
 
 (defn- rulings
   "The `entries` of the verdicts file for the page: each commit, its verdict and reason, and the changes the
-  verdict is about. `record` gives the record of a sha."
+  verdict is about.
+  The function `record` gives the record of a sha."
   [entries record]
   (for [{:keys [sha verdict why by on]} entries
         :let [commit (record sha)]]

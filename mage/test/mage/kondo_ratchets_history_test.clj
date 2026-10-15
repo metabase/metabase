@@ -12,7 +12,7 @@
 ;;; ------------------------------------------------- Budgets --------------------------------------------------
 
 (defn- changes
-  "[[history/budget-changes]] between the ratchet files `before` and `after`, where the commit added the linters
+  "The [[history/budget-changes]] between the ratchet files `before` and `after`, where the commit added the linters
   and discouraged symbols in `added`."
   [before after added]
   (history/budget-changes (history/budget-view before after)
@@ -258,8 +258,7 @@
     (testing "a raise nobody has taken back yet stays growth and is doubted"
       (is (= [["fresh" [[:grow 8 nil]] true]]
              (kinds (history/settle {:judged #{}} [(raise "fresh" 8 0)])))))
-    (testing "a commit that removed suppressions while raising the budget gives back the raise as slack, and
-             keeps the credit for what it removed"
+    (testing "a raise made while removing suppressions is all slack, and keeps the credit for the removal"
       (is (= [["tighten" [[:shrink -3 nil]] false] ["odd" [[:slack 5 nil]] false]]
              (kinds (history/settle {:judged #{}} [(tighten "tighten" -8 "odd") (raise "odd" 5 -3)])))))
     (testing "a raise of a budget kept per symbol is never slack or doubted, since its count is approximate"
