@@ -4,9 +4,9 @@
   (:require
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.engine.diff :as diff]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.test-util :as kinds.tu]
-   [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
@@ -95,10 +95,9 @@
     (mapv #(.name ^ObjectId %) (.getParents (.parseCommit rw (ObjectId/fromString commit))))))
 
 (defn commit-snapshot
-  "The snapshot that the managed files of `commit` hold, read through `store`, or `{:findings ...}`."
+  "The snapshot that the tree of `commit` holds (`claims/decode`), read through `store`, or nil."
   [s commit]
-  (let [t (store/read-tree s commit)]
-    (:snapshot (tree/decode-tree kinds/codecs (keep (fn [[p b]] (when (tree/managed-path? p) b)) t)))))
+  (:snapshot (claims/decode kinds/codecs (store/read-tree s commit))))
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
@@ -218,11 +217,11 @@
     item))
 
 (def pushable-snapshot-gen
-  "Generates snapshots of the four kinds that a push accepts, of at most 12 items: well formed, every root-level item
+  "Generates snapshots of the kinds that a push accepts, of at most 12 items: well formed, every root-level item
   a fixed root, references only to the environment, and every item in the schema of its codec."
   (gen/fmap (fn [s] (kinds.tu/with-refs (update-vals s acceptable)))
             (lb.tu/well-formed-snapshot-gen {:kinds       snapshot/kinds
                                              :may-contain snapshot/may-contain
-                                             :root-kinds  #{:collection :snippet}
+                                             :root-kinds  #{:collection :glossary-term :snippet}
                                              :attrs       kinds.tu/attrs-gens
                                              :max-items   12})))

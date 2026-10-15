@@ -4,6 +4,7 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.format.toy-codec :as toy]
@@ -54,7 +55,7 @@
   (prop/for-all [s (toy/toy-snapshot-gen)]
     (let [t (writer/encode-tree toy/codecs s)]
       (and (= (set (keys t)) (conj (set (vals (layout/layout toy/codecs s))) tree/format-path))
-           (not (tree/old-format? (keys t)))))))
+           (not (claims/old-format? (claims/item-claims t)))))))
 
 ;;; ---------------------------------------------------- Fixed cases --------------------------------------------------
 
@@ -169,15 +170,6 @@
       (testing "with the place in the file, they differ"
         (is (not= (vals (writer/encode-tree toy/codecs a)) (vals (writer/encode-tree toy/codecs b))))
         (is (= {:snapshot b} (tree/decode-tree toy/codecs (vals (writer/encode-tree toy/codecs b)))))))))
-
-(deftest old-format-test
-  (are [paths expected] (= expected (boolean (tree/old-format? paths)))
-    []                                                     false
-    ["README.md"]                                          false
-    ["collections/main/queries/total_revenue.yaml"]        true
-    ["README.md" ".github/workflows/ci.yaml"]              false
-    [".metabase/format.yaml" "library/x.metric.yaml"]      false
-    [".metabase/format.yaml"]                              false))
 
 ;;; ---------------------------------------------------- Mutations ----------------------------------------------------
 

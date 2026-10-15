@@ -101,8 +101,16 @@
            (validate/validate (assoc library
                                      filter-2 (engine.tu/item :snippet "Filter" sub)
                                      filter-3 (engine.tu/item :snippet "Filter" lib))))))
-  (testing "a key is compared as it is: names that differ only in case are two keys"
-    (is (= [] (validate/validate (assoc library filter-2 (engine.tu/item :snippet "filter" lib))))))
+  (testing "names that differ only in case, accents or compatibility forms are one key, as on MySQL and MariaDB"
+    (doseq [other ["filter" "FILTER" "Fïlter" "\uFB01lter" "\uFF26\uFF49\uFF4C\uFF54\uFF45\uFF52"]]
+      (testing (pr-str other)
+        ;; filter-2 has the lesser identity, so the finding gives its name.
+        (is (= [{:rule :unique-key :kind :snippet :key other :ids #{snippet filter-2}}]
+               (validate/validate (assoc library filter-2 (engine.tu/item :snippet other lib))))))))
+  (testing "names with another letter, or more letters, are two keys"
+    (doseq [other ["F\u0131lter" "Filter_1" "Filtre" "Ffilter"]]
+      (testing (pr-str other)
+        (is (= [] (validate/validate (assoc library filter-2 (engine.tu/item :snippet other lib))))))))
   (testing "items of a kind with no unique key can share a name"
     (is (= [] (validate/validate (assoc library metric-2 (engine.tu/item :metric "Revenue" sub))))))
   (testing "`:unique-keys` replaces the table; an item whose key is nil has none"
@@ -111,7 +119,10 @@
                    metric-2 (assoc-in (engine.tu/item :metric "Count" sub) [:attrs :path] "a.py")
                    filter-2 (engine.tu/item :metric "Total" sub))]
       (is (= [{:rule :unique-key :kind :metric :key "a.py" :ids #{metric metric-2}}]
-             (validate/validate s {:unique-keys {:metric [:attrs :path]}})))
+             (validate/validate s {:unique-keys {:metric {:path [:attrs :path]}}})))
+      (testing "a key that is not a name compares as it is"
+        (is (= [] (validate/validate (assoc-in s [metric-2 :attrs :path] "A.py")
+                                     {:unique-keys {:metric {:path [:attrs :path]}}}))))
       (is (= [] (validate/validate (assoc library filter-2 (engine.tu/item :snippet "Filter" sub))
                                    {:unique-keys {}}))))))
 
@@ -195,10 +206,13 @@
                (keys s))))
 
 (defn- key-holders
-  "The identities of the items of `s` of kind `kind` whose unique key (`snapshot/unique-keys`) is `k`."
-  [s kind k]
-  (let [path (get snapshot/unique-keys kind)]
-    (set (for [[id item] s :when (and path (= kind (:kind item)) (= k (get-in item path)))] id))))
+  "The identities of the items of `s` of kind `kind` that have the unique key (`snapshot/unique-key`) of key value `v`."
+  [s kind v]
+  (let [path (get-in snapshot/unique-keys [kind :path])
+        k    (when path (snapshot/unique-key snapshot/unique-keys (assoc-in {:kind kind} path v)))]
+    (set (for [[id item] s
+               :when (and path (= kind (:kind item)) (= k (snapshot/unique-key snapshot/unique-keys item)))]
+           id))))
 
 (defn- finding-holds?
   "True iff finding `f` names a fault that snapshot `s` has, with the reference kinds `ref-kinds`."
@@ -310,6 +324,10 @@
     :doc    "Two snippets with one name are no finding."
     :target `validate/validate
     :edits  [[:remove '(unique-key-findings s unique-keys)]]}
+   {:name   :unique-key-exact
+    :doc    "A name key is compared as it is, so two snippets named Filter and filter pass."
+    :target `validate/unique-key-findings
+    :edits  [[:replace '(snapshot/unique-key unique-keys item) '(some->> (get-in unique-keys [kind :path]) (get-in item))]]}
    {:name   :unique-key-per-place
     :doc    "A key is unique only among siblings, so two snippets with one name in two collections pass."
     :target `validate/unique-key-findings

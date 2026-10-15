@@ -56,13 +56,12 @@
           (mapcat :refs (vals s))))
 
 (defn unique-keys?
-  "True iff no two items of snapshot `s` of one kind of `unique-keys` (`{kind path}`; default
-  [[snapshot/unique-keys]]) have one non-nil key."
+  "True iff no two items of snapshot `s` of one kind of `unique-keys` (in the form of [[snapshot/unique-keys]], its
+  default) have one non-nil key ([[snapshot/unique-key]])."
   ([s] (unique-keys? s snapshot/unique-keys))
   ([s unique-keys]
    (let [ks (keep (fn [{:keys [kind] :as item}]
-                    (when-let [path (get unique-keys kind)]
-                      (some->> (get-in item path) (vector kind))))
+                    (some->> (snapshot/unique-key unique-keys item) (vector kind)))
                   (vals s))]
      (= (count ks) (count (set ks))))))
 
@@ -141,8 +140,9 @@
                (gen/fmap (fn [[k field]] (conj k field)) (gen/tuple table-key-gen (gen/elements field-names)))]))
 
 (def name-gen
-  "Generates a non-empty name. Names repeat often, so siblings with one name and one kind occur."
-  (gen/frequency [[4 (gen/elements ["Robin" "Toucan" "Heron" "Wren"])]
+  "Generates a non-empty name. Names repeat often, so siblings with one name and one kind occur, and so do names that
+  differ only in case or accents."
+  (gen/frequency [[4 (gen/elements ["Robin" "Toucan" "Heron" "Wren" "robin" "Wrén"])]
                   [1 (gen/fmap (fn [[c s]] (str c s)) (gen/tuple gen/char gen/string))]]))
 
 (def ^:private role-gen (gen/elements [:card :snippet :source-table :field]))
@@ -211,17 +211,19 @@
 (defn- sorted-kinds [ks] (vec (sort ks)))
 
 (defn- with-unique-keys
-  "Snapshot `s` in which each string key of `unique-keys` (`{kind path}`) that an item of the same kind and a lesser
-  identity has gets `_<n>` appended, with the least `n` that makes it unique."
+  "Snapshot `s` in which each string key of `unique-keys` (in the form of [[snapshot/unique-keys]]) that an item of the
+  same kind and a lesser identity has ([[snapshot/unique-key]]) gets `_<n>` appended, with the least `n` that makes it
+  unique."
   [unique-keys s]
   (first
    (reduce (fn [[s seen] id]
              (let [{:keys [kind] :as item} (get s id)
-                   path                    (get unique-keys kind)
-                   k                       (some->> path (get-in item))]
+                   path                    (get-in unique-keys [kind :path])
+                   k                       (some->> path (get-in item))
+                   key-of                  #(snapshot/unique-key unique-keys (assoc-in item path %))]
                (if (string? k)
-                 (let [k (first (remove #(seen [kind %]) (cons k (map #(str k "_" %) (range)))))]
-                   [(assoc-in s (cons id path) k) (conj seen [kind k])])
+                 (let [k (first (remove #(seen [kind (key-of %)]) (cons k (map #(str k "_" %) (range)))))]
+                   [(assoc-in s (cons id path) k) (conj seen [kind (key-of k)])])
                  [s seen])))
            [s #{}]
            (sort snapshot/compare-identities (keys s)))))
@@ -282,7 +284,7 @@
   - `:kinds` (a set of kinds; [[snapshot/kinds]]);
   - `:may-contain` (`{kind #{kind}}`; [[snapshot/may-contain]]);
   - `:root-kinds` (a non-empty subset of `:kinds`; all of `:kinds`);
-  - `:unique-keys` (`{kind path}`, a path to a string key; [[snapshot/unique-keys]]);
+  - `:unique-keys` (in the form of [[snapshot/unique-keys]], with a path to a string key; [[snapshot/unique-keys]]);
   - `:attrs` (a function from a kind to a generator of its `:attrs`; [[attrs-gen]] for each kind);
   - `:max-items` (50)."
   ([] (well-formed-snapshot-gen {}))

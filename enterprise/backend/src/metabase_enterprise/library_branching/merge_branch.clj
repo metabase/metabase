@@ -4,8 +4,8 @@
   (:require
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.engine.validate :as validate]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
-   [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.roots :as roots]
@@ -20,10 +20,11 @@
 
 (defn- foreign
   [t]
-  (into {} (remove (comp tree/managed-path? key)) t))
+  (claims/kept-files (claims/item-claims t)))
 
 (defn merge-foreign
-  "The three-way merge by path of the foreign files of the trees `a` (the merge base), `o` and `t`, `{path bytes}`:
+  "The three-way merge by path of the files that sync does not write (`claims/kept-files`) of the trees `a` (the merge
+  base), `o` and `t`, `{path bytes}`:
   `{:ok files}`, or `{:conflicts [path ...]}` for each path that both sides changed in different ways. A deleted file
   is no content."
   [a o t]
@@ -45,7 +46,7 @@
 (defn merge-branch!
   "Merges branch `from` into branch `into` of `store`. Returns one of:
 
-  - `{:result :merged :commit c}`: `c` is a commit with the parents `[head(into) head(from)]` whose managed files are
+  - `{:result :merged :commit c}`: `c` is a commit with the parents `[head(into) head(from)]` whose item files are
     the encoding of the merge of the two snapshots from their merge base, and `into` is at `c`;
   - `{:result :up-to-date :head h}`: the head of `from` is in the history of `into`;
   - `{:result :conflicts :conflicts [...] :violations [...] :foreign [path ...]}`: the merge of `merge/merge`, or of

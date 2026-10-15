@@ -155,6 +155,19 @@
                        g (engine.tu/item :metric "G" e))
           steps (plan/plan l base l)]
       (is (= [g e t] (map :id steps)))
+      (is (= [] (:faults (simulate l steps))))))
+  (testing "after the first trash of a reference cycle, the rest of the cycle is trashed users first"
+    ;; From a shrunk counterexample of plan-laws-test: table t refers to collection e, e refers to collection d, and d
+    ;; refers to t. After the trash of d, t still refers to e, so t goes to the trash before e.
+    (let [d     (engine.tu/eid "d")
+          e     (engine.tu/eid "e")
+          t     ["Sample Database" nil "ORDERS"]
+          l     (assoc base
+                       t (engine.tu/item :published-table "Orders" nil #{[:card e]})
+                       d (engine.tu/item :collection "D" nil #{[:card t]})
+                       e (engine.tu/item :collection "E" nil #{[:card d]}))
+          steps (plan/plan l base l)]
+      (is (= [d t e] (map :id steps)))
       (is (= [] (:faults (simulate l steps)))))))
 
 (deftest ^:parallel local-change-test
@@ -236,17 +249,29 @@
   (let [keep (into {} (map (juxt :id :ours)) (:conflicts (merge/merge b l r {})))]
     (:ok (merge/merge b l r keep))))
 
+(defn- plan-laws?
+  "True iff the plan of the merge of `[b l r]` writes each changed item once, with the base content as its
+  precondition, and the simulated apply reaches the merge result with no fault; or the merge has a violation."
+  [[b l :as snaps]]
+  (if-let [m (merged snaps)]
+    (let [steps   (plan/plan l m b)
+          written (set (map :id (remove :link steps)))]
+      (and (= written (engine.tu/changed l m))
+           (every? (fn [{:keys [id pre link]}] (or link (and (= pre (get b id)) (= pre (get l id))))) steps)
+           (= (count written) (count (remove :link steps)))
+           (let [{:keys [s faults]} (simulate l steps)]
+             (and (= [] faults) (= m s)))))
+    true))
+
 (defspec plan-laws-test 300
-  (prop/for-all [[b l :as snaps] (engine.tu/related-snapshots-gen)]
-    (if-let [m (merged snaps)]
-      (let [steps   (plan/plan l m b)
-            written (set (map :id (remove :link steps)))]
-        (and (= written (engine.tu/changed l m))
-             (every? (fn [{:keys [id pre link]}] (or link (and (= pre (get b id)) (= pre (get l id))))) steps)
-             (= (count written) (count (remove :link steps)))
-             (let [{:keys [s faults]} (simulate l steps)]
-               (and (= [] faults) (= m s)))))
-      true)))
+  (prop/for-all [snaps (engine.tu/related-snapshots-gen)]
+    (plan-laws? snaps)))
+
+(defspec plan-laws-ref-cycle-test 100
+  ;; The random edits of plan-laws-test give a trash of a reference cycle of three or more items rarely, so this
+  ;; property builds a cycle in each case.
+  (prop/for-all [snaps (engine.tu/ref-cycle-snapshots-gen)]
+    (plan-laws? snaps)))
 
 (defspec plan-never-writes-a-local-change-test 300
   (prop/for-all [[b l :as snaps] (engine.tu/related-snapshots-gen)]
@@ -275,11 +300,15 @@
    {:name   :unordered-trashes
     :doc    "Trashes are in the order of their identities, so a container can go before its content."
     :target `plan/trash-steps
-    :edits  [[:replace '(ordered ids after) '(map vector (sort snapshot/compare-identities ids))]]}
+    :edits  [[:replace '(ordered group (dependencies l group)) '(map vector (sort snapshot/compare-identities group))]]}
    {:name   :trash-cycle-unordered
-    :doc    "Inside a reference cycle, trashes ignore places, so a container can go before its content."
-    :target `plan/trash-steps
-    :edits  [[:replace '(dependencies l ids (cyclic-refs l ids)) '(dependencies l ids)]]}
+    :doc    "A cycle starts with its least item, so a container can go to the trash before its content."
+    :target `plan/cycle-start
+    :edits  [[:replace '(first (remove places ids)) '(first ids)]]}
+   {:name   :cycle-rest-unordered
+    :doc    "After the first trash of a cycle, the rest is in the order of the identities: a user after its target."
+    :target `plan/split-cycle
+    :edits  [[:replace '[[start] (vec (remove #{start} ids))] '(mapv vector (cons start (remove #{start} ids)))]]}
    {:name   :trash-first
     :doc    "Trashes come before writes, so a container can be trashed with content that the plan moves out of it."
     :target `plan/plan
@@ -304,4 +333,4 @@
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
                                 #'local-change-test #'unknown-base-test #'system-item-test
-                                #'plan-laws-test #'plan-unknown-base-test]}))
+                                #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-unknown-base-test]}))

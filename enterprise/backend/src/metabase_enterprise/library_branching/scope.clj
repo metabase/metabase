@@ -2,8 +2,8 @@
   "Scope: the items that library branching syncs, computed from the app DB alone.
 
   Scope is the containment closure of [[roots]] minus the trash. An item is in scope iff it is not archived, and its
-  collection is in scope or it is at the root level of a root namespace that holds its kind. Every reader of scope
-  calls [[scope-ids]] or [[scope-count]].
+  collection is in scope, or it is at the root level of a root namespace that holds its kind, or its kind is one of
+  the kinds with no container that the roots hold. Every reader of scope calls [[scope-ids]] or [[scope-count]].
 
   Precondition: archive is closed downward. An archived collection's subtree and the items in it, and a dashboard's
   questions, are archived with it; an archive on the instance keeps this."
@@ -20,8 +20,8 @@
 
 (def kinds
   "The kinds of the items that scope holds."
-  #{:action :collection :dashboard :data-app :document :metric :model :published-table :python-library :question
-    :snippet :transform :transform-job :transform-tag})
+  #{:action :collection :dashboard :data-app :document :glossary-term :metric :model :published-table :python-library
+    :question :snippet :transform :transform-job :transform-tag})
 
 (defmulti kind-query
   "HoneySQL that selects the in-scope items of `kind` for `roots`: the column `:id`, and `:entity_id` (or `:db`,
@@ -49,6 +49,11 @@
   (if (contains? namespaces (get root-level kind))
     condition
     false))
+
+(defn- unplaced
+  "True iff `roots` puts every item of `kind`, a kind with no container, in scope."
+  [{:keys [unplaced-kinds]} kind]
+  (contains? unplaced-kinds kind))
 
 (defn- in-namespaces
   "HoneySQL: the collection aliased `c` is in one of `namespaces`."
@@ -183,6 +188,13 @@
   (subquery {:select [:t.id :t.entity_id]
              :from   [[:python_library :t]]
              :where  (root-level roots :python-library true)}))
+
+;; A glossary term is in no collection, and Metabase has no trash for it.
+(defmethod kind-query :glossary-term
+  [roots kind]
+  (subquery {:select [:t.id :t.entity_id]
+             :from   [[:glossary :t]]
+             :where  (unplaced roots kind)}))
 
 (defn- row-identity
   [kind row]

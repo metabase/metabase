@@ -373,12 +373,63 @@
   (enabled
    (with-remote [repo s]
      (let [[inst c1] (pushed-instance! s ptu/sample)
-           files     (assoc (writer/encode-tree kinds/codecs ptu/sample) "library/broken.metric.yaml" (ptu/utf8 "kind: [\n"))
+           files     (assoc (writer/encode-tree kinds/codecs ptu/sample)
+                            "library/broken.metric.yaml" (ptu/utf8 "kind: metric\nid: BrokenMetric000000001\n"))
            _         (pltu/commit-on! repo ptu/branch [c1] files)
            {:keys [result findings]} (pltu/pull! inst s)]
-       (is (= :invalid result))
-       (is (= [:unreadable] (map :type findings)))
-       (is (= c1 (instance/base inst)))))))
+       (testing "a file that claims an item and does not decode: the pull refuses, and the instance stays on its base"
+         (is (= :invalid result))
+         (is (= [:invalid] (map :type findings)))
+         (is (= c1 (instance/base inst))))))))
+
+(deftest pull-ignores-foreign-files-test
+  (enabled
+   (with-remote [repo s]
+     (let [[inst c1] (pushed-instance! s ptu/sample)
+           remote    (ptu/renamed ptu/sample ptu/revenue-id "Revenue, net")
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] remote
+                                            {"library/broken.metric.yaml" (ptu/utf8 "kind: [\n")
+                                             "apps/sales/i18n/en.yaml"    (ptu/utf8 "hello: Hello\n")
+                                             "deploy/app.yaml"            (ptu/utf8 "kind: Deployment\nid: x\n")})
+           {:keys [result head]} (pltu/pull! inst s)]
+       (testing "a broken YAML file, an app's own YAML file and a Kubernetes manifest are foreign: the pull ignores
+                them and applies the head"
+         (is (= :pulled result))
+         (is (= h head))
+         (is (= remote (pltu/snapshot-of inst))))))))
+
+(def ^:private library-sections
+  "The Library and its three sections, with their fixed identities."
+  {"librarylibrarylibrary" (ptu/item "librarylibrarylibrary" :collection "Library" nil {:type "library"})
+   "librarylibrarydatadat" (ptu/item "librarylibrarydatadat" :collection "Data" "librarylibrarylibrary"
+                                     {:type "library-data"})
+   "librarylibrarymetrics" (ptu/item "librarylibrarymetrics" :collection "Metrics" "librarylibrarylibrary"
+                                     {:type "library-metrics"})
+   "librarylibrarydashbrd" (ptu/item "librarylibrarydashbrd" :collection "Dashboards" "librarylibrarylibrary"
+                                     {:type "library-dashboards"})})
+
+(deftest pull-keeps-a-section-that-the-head-lacks-test
+  ;; Scenario M8-075 (changed): a repository that predates the Library's Dashboards section. Decode completes the
+  ;; section, so the pull does not trash it.
+  (enabled
+   (with-remote [repo s]
+     (let [local     (assoc library-sections ptu/revenue-id
+                            (ptu/item ptu/revenue-id :metric "Revenue" "librarylibrarymetrics"
+                                      {:display "scalar" :query (ptu/count-query ptu/orders-table)}))
+           [inst c1] (pushed-instance! s local)
+           remote    (ptu/renamed local ptu/revenue-id "Revenue, net")
+           files     (dissoc (writer/encode-tree kinds/codecs remote) "library/dashboards/_collection.yaml")
+           h         (pltu/commit-on! repo ptu/branch [c1] files)
+           {:keys [result head steps]} (pltu/pull! inst s)]
+       (is (some? (get files "library/_collection.yaml")))
+       (testing "the head has no file of the Dashboards section: the pull applies the head and keeps the section"
+         (is (= :pulled result))
+         (is (= h head))
+         (is (= [ptu/revenue-id] (map :id steps)))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (not (contains? (:trash @(:state inst)) "librarylibrarydashbrd"))))
+       (testing "the section shows as synced"
+         (is (= none (ptu/local-changes inst))))))))
 
 (deftest pull-refuses-an-identity-outside-the-library-test
   (enabled

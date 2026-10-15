@@ -93,18 +93,20 @@
      (try ~@body (finally (FileUtils/deleteDirectory ~binding)))))
 
 (deftest tree-files-test
-  (testing "the YAML files outside directories that start with a dot, and the format version file"
+  (testing "every file of the checkout, with its relative path, except the files of the git directory"
     (with-temp-dir [dir]
-      (write-tree! dir (assoc (golden)
-                              "README.md"                       "# Library\n"
-                              ".github/workflows/check.yaml"    "on: pull_request\n"
-                              ".git/config.yaml"                "x: 1\n"
-                              ".metabase/manifest.yaml"         "format: x\n"
-                              "library/.hidden/x.metric.yaml"   "kind: metric\n"
-                              "library/notes.yml"               "x: 1\n"))
-      (is (= (set (keys (golden))) (set (keys (check/tree-files dir)))))
-      (is (= (map seq (vals (into (sorted-map) (golden))))
-             (map seq (vals (into (sorted-map) (check/tree-files dir)))))))))
+      (let [others {"README.md"                     "# Library\n"
+                    ".github/workflows/check.yaml"  "on: pull_request\n"
+                    ".metabase/manifest.yaml"       "format: x\n"
+                    "library/.hidden/x.metric.yaml" "kind: metric\n"
+                    "library/notes.yml"             "x: 1\n"}]
+        (write-tree! dir (assoc (merge (golden) others)
+                                ".git/config"          "[core]\n"
+                                "library/.git/HEAD"    "ref: refs/heads/main\n"))
+        (is (= (into (set (keys (golden))) (keys others)) (set (keys (check/tree-files dir)))))
+        (let [files (check/tree-files dir)]
+          (is (= (map seq (vals (into (sorted-map) (golden))))
+                 (map #(seq (get files %)) (sort (keys (golden)))))))))))
 
 ;;; ------------------------------------------------- Golden repositories ---------------------------------------------
 
@@ -122,9 +124,6 @@
                                (-> (checked (golden-with changes))
                                    (select-keys [:green? :findings])
                                    (update :findings (partial mapv shape))))
-      {"library/notes.yaml" "a: ["}
-      [{:level :decode :type :unreadable :path "library/notes.yaml"}]
-
       {"library/overview.dashboard.yaml" "kind: dashboard\nid: 7RZUq1g5o1C5ws_e3ppKf\nname: Overview\n"}
       [{:level :decode :type :unknown-kind :kind :dashboard :path "library/overview.dashboard.yaml"}]
 
@@ -207,6 +206,55 @@
                        :canonical total-revenue-path}]}
              (select-keys (checked moved) [:green? :findings :lints]))))))
 
+(def ^:private app-files
+  "The own files of a data app, a broken YAML file and a Kubernetes manifest: foreign files."
+  {"apps/sales/App.tsx"      "export default function App() { return null; }\n"
+   "apps/sales/package.json" "{\"name\": \"sales\"}\n"
+   "apps/sales/i18n/en.yaml" "hello: Hello\n"
+   "library/broken.yaml"     "kind: metric\nid: [\n"
+   "README.md"               "# Library\n"
+   "deploy/app.yaml"         "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: sales\n"})
+
+(deftest foreign-files-keep-the-checker-green-test
+  (testing "a README, an app's own files, a broken YAML file and a Kubernetes manifest change nothing: the tree is
+           green, with a lint for each foreign YAML file in an area directory"
+    (let [r (checked (golden-with app-files))]
+      (is (= {:green? true :findings []
+              :lints  [{:rule :foreign-file :path "apps/sales/i18n/en.yaml"}
+                       {:rule :foreign-file :path "library/broken.yaml"}]}
+             (select-keys r [:green? :findings :lints])))
+      (is (= (:snapshot (checked (golden))) (:snapshot r)))
+      (testing "the report names each lint, and the tree stays green"
+        (let [lines (check/report r)]
+          (is (str/includes? (first lines) "apps/sales/i18n/en.yaml"))
+          (is (= "green" (peek lines)))))))
+  (testing "a file with a known kind and an id is an item file: one that does not decode is red"
+    (is (= [{:level :decode :type :invalid :path "apps/sales/i18n/en.yaml"}]
+           (mapv shape (:findings (checked (golden-with (assoc app-files "apps/sales/i18n/en.yaml"
+                                                               "kind: snippet\nid: 12\nname: x\n")))))))))
+
+(def ^:private library-tree
+  "A tree of the Library with its three sections and a collection in its Dashboards section."
+  (writer/encode-tree kinds/codecs
+                      {"librarylibrarylibrary" {:kind :collection :name "Library" :place nil :refs #{}
+                                                :attrs {:type "library"}}
+                       "librarylibrarydatadat" {:kind :collection :name "Data" :place "librarylibrarylibrary"
+                                                :refs #{} :attrs {:type "library-data"}}
+                       "librarylibrarymetrics" {:kind :collection :name "Metrics" :place "librarylibrarylibrary"
+                                                :refs #{} :attrs {:type "library-metrics"}}
+                       "librarylibrarydashbrd" {:kind :collection :name "Dashboards" :place "librarylibrarylibrary"
+                                                :refs #{} :attrs {:type "library-dashboards"}}
+                       "TeamDashboardsColl001" {:kind :collection :name "Team" :place "librarylibrarydashbrd"
+                                                :refs #{} :attrs {}}}))
+
+(deftest repository-that-predates-a-section-is-green-test
+  (testing "a tree of the Library that lacks the Dashboards section reads as one that holds it: the collection in
+           the section has its place, and the section gets no lint"
+    (let [r (check/check (dissoc library-tree "library/dashboards/_collection.yaml") {})]
+      (is (contains? library-tree "library/dashboards/_collection.yaml"))
+      (is (= {:green? true :findings [] :lints []} (select-keys r [:green? :findings :lints])))
+      (is (= (:snapshot (check/check library-tree {})) (:snapshot r))))))
+
 ;;; ------------------------------------------------------ Report -----------------------------------------------------
 
 (deftest report-test
@@ -240,7 +288,7 @@
       (is (str/includes? line "namespace"))
       (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
   (testing "a decode finding names its file"
-    (is (str/includes? (first (check/report (checked (golden-with {"library/notes.yaml" "a: ["}))))
+    (is (str/includes? (first (check/report (checked (golden-with {"library/notes.yaml" "kind: metric\nid: 12\n"}))))
                        "library/notes.yaml")))
   (testing "a lint names the file and its canonical path, and the tree stays green"
     (let [moved (-> (golden) (dissoc base-filter-path) (assoc "x.yaml" (get (golden) base-filter-path)))

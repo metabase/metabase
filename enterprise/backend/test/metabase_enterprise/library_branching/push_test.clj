@@ -10,6 +10,7 @@
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.format.writer :as writer]
@@ -258,6 +259,9 @@
 
 ;;; -------------------------------------------- Foreign files and old format -----------------------------------------
 
+(def ^:private manifest
+  "format: library-branching-manifest/1\ndatabases: []\n")
+
 (deftest foreign-files-stay-and-moved-files-go-back-test
   (enabled
    (with-remote [repo s]
@@ -272,21 +276,32 @@
                                                    (assoc "elsewhere/revenue.yaml" (get t path)
                                                           "README.md" (ptu/utf8 "# Library")
                                                           ".github/workflows/check.yml" (ptu/utf8 "on: push")
-                                                          "notes/plan.txt" (ptu/utf8 "plan"))))]
+                                                          "notes/plan.txt" (ptu/utf8 "plan")
+                                                          "apps/sales/i18n/en.yaml" (ptu/utf8 "hello: Hello\n")
+                                                          "library/broken.yaml" (ptu/utf8 "kind: [\n")
+                                                          ".metabase/manifest.yaml" (ptu/utf8 manifest))))]
        (swap! state assoc :base moved :digests nil)
        (swap! state update :snapshot ptu/renamed ptu/orders-id "All orders")
        (let [{:keys [result commit]} (push! inst s)
              after                   (tree-of s commit)]
          (is (= :pushed result))
-         (testing "the files that sync does not own stay, with their bytes"
-           (is (= {"README.md" "# Library" ".github/workflows/check.yml" "on: push" "notes/plan.txt" "plan"}
-                  (select-keys after ["README.md" ".github/workflows/check.yml" "notes/plan.txt"]))))
+         (testing "the files that sync does not own stay, with their bytes: foreign files, YAML files that are not
+                  item files, and the manifest"
+           (is (= {"README.md"                   "# Library"
+                   ".github/workflows/check.yml" "on: push"
+                   "notes/plan.txt"              "plan"
+                   "apps/sales/i18n/en.yaml"     "hello: Hello\n"
+                   "library/broken.yaml"         "kind: [\n"
+                   ".metabase/manifest.yaml"     manifest}
+                  (select-keys after ["README.md" ".github/workflows/check.yml" "notes/plan.txt"
+                                      "apps/sales/i18n/en.yaml" "library/broken.yaml" ".metabase/manifest.yaml"]))))
          (testing "the moved file is written back at its canonical path"
            (is (contains? after path))
            (is (not (contains? after "elsewhere/revenue.yaml"))))
-         (testing "the managed files are exactly the encoding of the snapshot"
+         (testing "the item files and the format version file are exactly the encoding of the snapshot"
            (is (= (update-vals (writer/encode-tree kinds/codecs (:snapshot @state)) #(String. ^bytes % "UTF-8"))
-                  (into {} (filter (comp tree/managed-path? key)) after)))))))))
+                  (update-vals (claims/claimed-files (claims/item-claims (store/read-tree s commit)))
+                               #(String. ^bytes % "UTF-8"))))))))))
 
 (def ^:private old-format-files
   "A tree that remote sync wrote."
@@ -303,7 +318,7 @@
            state (atom {:snapshot ptu/sample :base old})
            inst  (ptu/fake-instance state)]
        (is (= old (store/head s ptu/branch)))
-       (is (tree/old-format? (keys (store/read-tree s old))))
+       (is (claims/old-format? (claims/item-claims (store/read-tree s old))))
        (let [{:keys [result commit]} (push! inst s)
              after                   (tree-of s commit)]
          (testing "the first push to a tree in the old format writes, in one commit on the old head, the new layout

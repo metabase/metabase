@@ -486,3 +486,43 @@
     (t2/query {:select [:id :first_name :last_name :email]
                :from   [(t2/table-name :model/User)]
                :where  [:in :id ids]})))
+
+(mu/defn glossary-terms-by-entity-id :- [:sequential ::row]
+  "`{:entity_id :term :definition}` of the glossary terms of `entity-ids`."
+  [entity-ids :- ::entity-ids]
+  (t2/query {:select [:entity_id :term :definition]
+             :from   [(t2/table-name :model/Glossary)]
+             :where  [:in :entity_id entity-ids]}))
+
+(mu/defn lock-glossary-term :- [:maybe ::row]
+  "`{:id :entity_id :term :definition}` of the glossary term of `entity-id`, after a lock on its row until the current
+  transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :entity_id :term :definition]
+                 :from   [(t2/table-name :model/Glossary)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn glossary-term-by-term :- [:maybe ::row]
+  "`{:id :entity_id}` of the glossary term whose term equals `term` by the comparison of the app DB, which its unique
+  key on the term also uses; nil when there is none."
+  [term :- :string]
+  (t2/query-one {:select [:id :entity_id]
+                 :from   [(t2/table-name :model/Glossary)]
+                 :where  [:= :term [:auto/param term]]}))
+
+(mu/defn insert-glossary-term! :- ::row
+  "Inserts a glossary term with the columns `row` through the Glossary model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Glossary row))
+
+(mu/defn update-glossary-term! :- :int
+  "Sets the columns `changes` of the glossary term `id` through the Glossary model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Glossary id changes))
+
+(mu/defn delete-glossary-term! :- :int
+  "Deletes the glossary term `id`; returns the number of rows."
+  [id :- pos-int?]
+  (t2/delete! :model/Glossary :id id))

@@ -151,6 +151,10 @@
                      :archived      false
                      :created_at    (java.time.OffsetDateTime/now)
                      :updated_at    (java.time.OffsetDateTime/now)})
+        (t2/insert! :model/Glossary {:term       "Churn"
+                                     :entity_id  (eid-of :glossary-term "Churn")
+                                     :definition "The share of customers who cancel in a month."
+                                     :creator_id (mt/user->id :crowberto)})
         (f snapshot)))))
 
 (deftest read-gives-golden-items-test

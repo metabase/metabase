@@ -8,8 +8,8 @@
    [metabase-enterprise.library-branching.engine.plan :as plan]
    [metabase-enterprise.library-branching.engine.semantic :as semantic]
    [metabase-enterprise.library-branching.engine.validate :as validate]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
-   [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.roots :as roots]
@@ -20,17 +20,11 @@
 
 ;;; ------------------------------------------------------ Commits ------------------------------------------------------
 
-(defn managed-files
-  "The bytes of the files of tree `t` (`{path bytes}`) that sync owns (`tree/managed-path?`), in the order of their
-  paths."
-  [t]
-  (into [] (keep (fn [[p b]] (when (tree/managed-path? p) b))) (sort-by key t)))
-
 (defn decode-commit
-  "`{:snapshot s}` of the managed files of `commit` in `store`, with the codecs `codecs`, or `{:findings [f ...]}` of
-  `tree/decode-tree`."
+  "`claims/decode` of the tree of `commit` in `store`, with the codecs `codecs`: `{:snapshot s}`, or
+  `{:findings [f ...]}`."
   [store codecs commit]
-  (tree/decode-tree codecs (managed-files (store/read-tree store commit))))
+  (claims/decode codecs (store/read-tree store commit)))
 
 (defn check-commit
   "[[decode-commit]], then the structural findings of its snapshot (`validate/validate`, with the fixed roots of

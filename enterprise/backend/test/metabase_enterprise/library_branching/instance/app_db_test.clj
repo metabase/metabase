@@ -88,6 +88,7 @@
          (insert! :model/NativeQuerySnippet {:name (str "Count folder snippet " (random-uuid)) :content "2 = 2" :creator_id user
                                              :collection_id (:id folder)})
          (insert! :model/TableUserSettings {:table_id (mt/id :venues) :is_published true :collection_id (:id data)})
+         (insert! :model/Glossary {:term (str "Count term " (random-uuid)) :definition "Counted." :creator_id user})
          (let [{:keys [snapshot]} (instance/read-snapshot (app-db/app-db-instance))
                counts             (engine.count/count-by-kind snapshot)]
            (is (= (select-keys (scope/scope-count) snapshot/kinds) counts))
