@@ -18,7 +18,9 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.derive :as mcp.derive]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
+   [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as metabot.scope]
@@ -181,11 +183,18 @@
   (let [row (api/check-404 (mcp.session/resolve-query-handle session-id api/*current-user-id* handle))]
     (assoc row :query (decode-stored-query (:encoded_query row)))))
 
+(defn- check-execute-sql-allowed!
+  "Throw a 403 unless the current user's groups allow the `execute_sql` tool."
+  []
+  (when-let [denial (registry/tool-denial "execute_sql" (message/raw "Running a native (SQL) query"))]
+    ;; Not a teaching error: the message record in its ex-data would turn this REST 403 into a stack trace.
+    (throw (ex-info (message/render denial) {:status-code 403}))))
+
 (defn- runnable-handle-query!
   "The normalized query stored under the route's handle, after the native-SQL gate for the credential `claims`."
   [{:keys [claims session-id] [handle] :route-params}]
   (let [{:keys [query]} (resolve-handle! session-id handle)]
-    (query-guards/check-mcp-ui-native-query! claims query)
+    (query-guards/check-mcp-ui-native-query! check-execute-sql-allowed! claims query)
     query))
 
 (defn- run-handle

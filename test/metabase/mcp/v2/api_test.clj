@@ -931,31 +931,27 @@
 
 (deftest ui-credential-native-query-honors-the-execute-sql-group-policy-test
   (testing "a user whose groups deny execute_sql must not run raw SQL through the iframe credential either, or
-            refresh_ui_credential plus POST /api/dataset rebuilds the tool an admin denied. The policy is read per
+            refresh_ui_credential plus a native handle rebuilds the tool an admin denied. The policy is read per
             request, so a credential minted while execute_sql was allowed stops working once it is denied"
     (mcp.ui-resource/with-fallback-template
-      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
-            mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
-        (do-with-bearer-token!
-         :rasta #{"agent:query:run" "agent:sql:run"}
-         (fn [headers]
-           (let [credential (ui-credential-for headers)
-                 post       (fn [status query]
-                              (client/client-full-response
-                               :post status "dataset"
-                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                               query))]
-             (is (string? credential)
-                 "the shell must render a credential — otherwise this test passes vacuously")
-             (testing "denied: the native query is refused with the execute_sql denial"
-               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
-                 (is (re-find #"needs the \"execute_sql\" tool, which is not enabled for your groups"
-                              (str (:body (post 403 native-query)))))
-                 (testing "while its MBQL queries are untouched"
-                   (is (= 202 (:status (post 202 mbql-query)))))))
-             (testing "allowed: the same credential runs the native query"
-               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "yes"}])]
-                 (is (= 202 (:status (post 202 native-query)))))))))))))
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+              mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
+          (do-with-bearer-token!
+           :rasta #{"agent:query:run" "agent:sql:run"}
+           (fn [headers]
+             (let [credential (ui-credential-for headers)]
+               (is (string? credential)
+                   "the shell must render a credential — otherwise this test passes vacuously")
+               (testing "denied: the native query is refused with the execute_sql denial"
+                 (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
+                   (is (re-find #"needs the \"execute_sql\" tool, which is not enabled for your groups"
+                                (str (:body (run-handle-with-credential! credential 403 native-query)))))
+                   (testing "while its MBQL queries are untouched"
+                     (is (= 202 (:status (run-handle-with-credential! credential 202 mbql-query)))))))
+               (testing "allowed: the same credential runs the native query"
+                 (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "yes"}])]
+                   (is (= 202 (:status (run-handle-with-credential! credential 202 native-query))))))))))))))
 
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the

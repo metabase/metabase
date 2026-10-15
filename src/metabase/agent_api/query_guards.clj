@@ -17,7 +17,6 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -188,10 +187,15 @@
 (defn check-mcp-ui-native-query!
   "Throw a 403 if an MCP Apps UI credential with verified `claims` may not run `query` as raw SQL.
 
-  Raw SQL needs the literal `agent:sql:run` scope in the claims' `:token-scopes`, which no wildcard satisfies, and
-  the `mcp-execute-sql-enabled` kill switch. Claims without a scope set are refused. A non-native `query` passes."
-  [claims query]
+  Raw SQL needs the user's groups to allow the `execute_sql` MCP tool, which `check-execute-sql-allowed!` (a no-arg
+  fn that throws when they do not) decides, the literal `agent:sql:run` scope in the claims' `:token-scopes`, which no
+  wildcard satisfies, and the `mcp-execute-sql-enabled` kill switch. Claims without a scope set are refused. A
+  non-native `query` passes."
+  [check-execute-sql-allowed! claims query]
   (when (native-query? query)
+    ;; Read per request rather than stamped on the credential, so an admin's denial applies to credentials already
+    ;; minted.
+    (check-execute-sql-allowed!)
     ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
     ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
     ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s

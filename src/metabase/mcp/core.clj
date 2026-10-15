@@ -5,9 +5,7 @@
    [clojure.string :as str]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.usage :as mcp.usage]
-   [metabase.mcp.v2.message :as message]
-   [metabase.mcp.v2.registry :as registry]))
+   [metabase.mcp.usage :as mcp.usage]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,14 +35,6 @@
    MCP Apps UI. See [[metabase.mcp.settings/inline-ui-enabled-for-client?]]."
   [client-info-name]
   (mcp.settings/inline-ui-enabled-for-client? (mcp.usage/detect-client client-info-name)))
-
-(defn check-execute-sql-allowed!
-  "Throw a 403 unless the current user's groups allow the `execute_sql` tool, for raw SQL reaching the REST API other
-   than through that tool."
-  []
-  (when-let [denial (registry/tool-denial "execute_sql" (message/raw "Running a native (SQL) query"))]
-    ;; Not a teaching error: the message record in its ex-data would turn this REST 403 into a stack trace.
-    (throw (ex-info (message/render denial) {:status-code 403}))))
 
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
