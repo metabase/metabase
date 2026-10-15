@@ -2,10 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [clojure.test.check :as tc]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [clojure.test.check.random :as random]
+   [clojure.test.check.rose-tree :as rose]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
    [metabase.util.log :as log]
@@ -117,14 +118,22 @@
     (is (every? #(<= (count %) 5) (map #(gen/generate (lb.tu/well-formed-snapshot-gen) 5 %) (range 50))))
     (is (every? #(<= (count %) 3) (samples (lb.tu/well-formed-snapshot-gen {:max-items 3}))))))
 
+(defn- smallest-failure
+  "Shrinks the first value of generator `g` (size 30, seeds 0 to 199) that fails `pred` as test.check does: it moves
+  to the first shrink that still fails, until no shrink fails."
+  [g pred]
+  (loop [tree (some (fn [seed]
+                      (let [tree (gen/call-gen g (random/make-random seed) 30)]
+                        (when-not (pred (rose/root tree)) tree)))
+                    (range 200))]
+    (if-let [child (first (remove #(pred (rose/root %)) (rose/children tree)))]
+      (recur child)
+      (rose/root tree))))
+
 (deftest ^:parallel well-formed-snapshot-gen-shrinks-test
   (testing "a failure on a snapshot with an item two levels deep shrinks to three items"
-    (let [result (tc/quick-check 200
-                   (prop/for-all [s (lb.tu/well-formed-snapshot-gen)]
-                     (not-any? #(<= 2 (depth s %)) (keys s)))
-                   :seed 1)
-          [smallest] (get-in result [:shrunk :smallest])]
-      (is (false? (:pass? result)))
+    (let [smallest (smallest-failure (lb.tu/well-formed-snapshot-gen)
+                                     (fn [s] (not-any? #(<= 2 (depth s %)) (keys s))))]
       (is (= 3 (count smallest)))
       (is (every? #(and (= :collection (:kind %)) (empty? (:refs %)) (empty? (:attrs %))) (vals smallest))))))
 
