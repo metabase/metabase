@@ -13,7 +13,8 @@
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.instance.portable :as portable]
-   [metabase-enterprise.library-branching.mutation.core :as mut]))
+   [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase.app-db.core :as mdb]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +35,16 @@
    {:name   :no-read-transaction
     :doc    "The read runs its queries with autocommit, one transaction per query."
     :target `library-branching.db/do-with-read-point
-    :edits  [[:replace '(t2/with-transaction [_ conn] (f)) '(f)]]
+    :edits  [[:replace '(t2/with-transaction [_ conn] (run! touch-table (into (sorted-set) (map t2/table-name) models)) (f))
+              '(f)]]
+    :tests  read-point-tests}
+   {:name   :no-table-touch
+    :doc    "The read point reads no table before the read. On H2 the snapshot of a table starts at its first read in the
+            transaction, so a table that the read reads after a save sees the save. The other app DBs start the
+            snapshot of every table at the first read of the transaction."
+    :target `library-branching.db/do-with-read-point
+    :edits  [[:remove '(run! touch-table (into (sorted-set) (map t2/table-name) models))]]
+    :expect (if (= :h2 (mdb/db-type)) :killed :survived)
     :tests  read-point-tests}
    {:name   :read-in-open-transaction
     :doc    "The read point runs inside an open transaction of the caller, whose isolation it cannot set."

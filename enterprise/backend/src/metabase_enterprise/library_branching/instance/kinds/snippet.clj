@@ -120,6 +120,7 @@
 
     instance/KindStore
     (read-all [_ ids] (read-snippets ids))
+    (read-models [_] #{})
     (current [_ id] (current-snippet id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-snippet! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-snippet! id)))))

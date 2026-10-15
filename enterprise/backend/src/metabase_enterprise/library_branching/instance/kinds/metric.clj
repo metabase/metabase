@@ -138,6 +138,7 @@
   "The `KindStore` of metrics."
   (reify instance/KindStore
     (read-all [_ ids] (read-metrics ids))
+    (read-models [_] #{})
     (current [_ id] (current-metric id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-metric! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-metric! id)))))

@@ -280,6 +280,7 @@
   "The `KindStore` of published tables."
   (reify instance/KindStore
     (read-all [_ ids] (read-published-tables ids))
+    (read-models [_] #{})
     (current [_ id] (current-published-table id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-published-table! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-published-table! id)))))

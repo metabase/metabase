@@ -11,6 +11,9 @@
     "`{identity item}`: the content of each item of `ids`, the identities of in-scope items of this kind. Content is
     portable: identities and natural keys, no database id, no instance-local attribute (public link, embedding,
     bookkeeping columns) and no derived value. A constant number of queries per batch of ids, not one per item.")
+  (read-models [ks]
+    "The models whose app DB tables a read of this kind reads: the scope query of the kind, and [[read-all]] with the
+    lookups of the references that its items can hold. A read point reads each of these tables first.")
   (current [ks id]
     "Content of item `id`, after a lock on its row and its child rows until the current transaction ends, or nil when
     it is not in scope: it does not exist, is in the trash, or is outside the Library tree.")

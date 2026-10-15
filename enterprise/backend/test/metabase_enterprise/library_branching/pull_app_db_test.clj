@@ -183,6 +183,7 @@
   [ks id f]
   (reify instance/KindStore
     (read-all [_ ids] (instance/read-all ks ids))
+    (read-models [_] (instance/read-models ks))
     (current [_ x] (let [r (instance/current ks x)] (when (= id x) (f)) r))
     (write! [_ x content] (instance/write! ks x content))
     (trash! [_ x] (instance/trash! ks x))))
