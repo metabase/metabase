@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 
-import { useSearchQuery } from "metabase/api";
+import { skipToken, useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import type { SimpleDataPickerProps } from "metabase/plugins";
+import { PLUGIN_LIBRARY, type SimpleDataPickerProps } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -14,6 +14,7 @@ import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
 export function SimpleDataPicker({
   filterByDatabaseId,
+  isJoinStep,
   selectedEntity,
   isInitiallyOpen,
   setSourceTableFn,
@@ -22,19 +23,32 @@ export function SimpleDataPicker({
 }: SimpleDataPickerProps) {
   const [isDataPickerOpened, { toggle, close }] =
     useDisclosure(isInitiallyOpen);
-  const { data, isLoading, error } = useSearchQuery({
-    table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
-    models: translateEntityTypesToSearchModels(entityTypes),
-    context: "data-picker",
+  const searchModels = translateEntityTypesToSearchModels(entityTypes);
+  const { data, isLoading, error } = useSearchQuery(
+    searchModels.length > 0
+      ? {
+          table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
+          models: searchModels,
+          context: "data-picker",
+        }
+      : skipToken,
+  );
+  const {
+    data: libraryData,
+    isLoading: isLibraryLoading,
+    error: libraryError,
+  } = useLibrarySearch({
+    entityTypes,
+    searchModels,
+    filterByDatabaseId,
+    isJoinStep,
   });
 
   const options = useMemo(() => {
-    if (!data) {
-      return [];
-    }
+    const entities = [...(data?.data ?? []), ...(libraryData?.data ?? [])];
 
     return sortEntities(
-      data.data.map((entity) => {
+      entities.map((entity) => {
         return {
           ...entity,
           id:
@@ -45,7 +59,7 @@ export function SimpleDataPicker({
       }),
       { sort_column: "name", sort_direction: "asc" },
     );
-  }, [data]);
+  }, [data, libraryData]);
 
   return (
     <Popover
@@ -67,7 +81,10 @@ export function SimpleDataPicker({
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
+        <DelayedLoadingAndErrorWrapper
+          loading={isLoading || isLibraryLoading}
+          error={error ?? libraryError}
+        >
           <SimpleDataPickerView
             selectedEntity={selectedEntity}
             onClick={(tableId) => {
@@ -80,6 +97,46 @@ export function SimpleDataPicker({
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+/**
+ * Searches the tables and metrics published in the Library when `entityTypes`
+ * includes `library`, skipping those `searchModels` already finds everywhere.
+ * Returns no data without a Library the user can read.
+ */
+function useLibrarySearch({
+  entityTypes,
+  searchModels,
+  filterByDatabaseId,
+  isJoinStep,
+}: Pick<
+  SimpleDataPickerProps,
+  "entityTypes" | "filterByDatabaseId" | "isJoinStep"
+> & { searchModels: SearchModel[] }) {
+  const publishedModels: SearchModel[] = isJoinStep
+    ? ["table"]
+    : ["table", "metric"];
+  // The general search already finds published tables and metrics when
+  // `searchModels` asks for them, so only ask the Library for the rest
+  const libraryModels = publishedModels.filter(
+    (model) => !searchModels.includes(model),
+  );
+  const { data: libraryCollection, isLoading: isLibraryCollectionLoading } =
+    PLUGIN_LIBRARY.useGetLibraryCollection({
+      skip: !entityTypes.includes("library") || libraryModels.length === 0,
+    });
+  const { data, isLoading, error } = useSearchQuery(
+    libraryCollection && libraryModels.length > 0
+      ? {
+          table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
+          models: libraryModels,
+          collection: libraryCollection.id,
+          context: "data-picker",
+        }
+      : skipToken,
+  );
+
+  return { data, isLoading: isLibraryCollectionLoading || isLoading, error };
 }
 
 type SortColumn = keyof SearchResult;

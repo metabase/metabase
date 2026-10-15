@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
   setupLibraryEndpoints,
+  setupLibrarySearchEndpoint,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -71,22 +72,23 @@ export function setup({
       "token-features": createMockTokenFeatures({ library: true }),
     }),
   });
-  if (hasLibrary) {
-    setupEnterpriseOnlyPlugin("library");
-  }
   setupLibraryEndpoints({
     hasLibrary,
     library: { below: createLibraryCollection().below },
   });
-  setupCollectionsEndpoints({
-    collections: hasLibrary ? [createLibraryCollection()] : [],
-  });
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+    setupCollectionsEndpoints({ collections: [createLibraryCollection()] });
+    setupLibrarySearchEndpoint(createLibrarySearchResults());
+  }
 
   setupEmbeddingDataPickerDecisionEndpoints(dataPicker);
 
   setupSearchEndpoints([
     ...(hasModels ? createModelSearchResults() : []),
     ...(hasMetrics ? createMetricSearchResults() : []),
+    // The general search finds published tables and metrics too
+    ...(hasLibrary ? createLibrarySearchResults() : []),
   ]);
   setupDatabasesEndpoints([createDatabase()]);
 
@@ -188,6 +190,21 @@ function createLibraryCollection() {
       }),
     ],
   });
+}
+
+function createLibrarySearchResults() {
+  return [
+    createMockSearchResult({
+      id: 4,
+      name: "Published Orders",
+      model: "table",
+    }),
+    createMockSearchResult({
+      id: 5,
+      name: "Published Revenue",
+      model: "metric",
+    }),
+  ];
 }
 
 function createMetricSearchResults() {
