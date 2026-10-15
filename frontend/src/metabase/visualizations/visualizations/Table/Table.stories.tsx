@@ -1,5 +1,8 @@
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
+import { expect, waitFor } from "@storybook/test";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -178,6 +181,27 @@ export const TableWithImages = {
   render: DefaultTemplate,
   args: {
     series: data.images,
+  },
+
+  // The cells load external images, which React 19 mounts after the fixed
+  // resize-settle delay, so loki would capture the table before they paint.
+  // Hold the snapshot until every image has finished loading.
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const asyncCallback = createAsyncCallback();
+    try {
+      await waitFor(
+        () => {
+          const images = [
+            ...canvasElement.querySelectorAll<HTMLImageElement>("img"),
+          ];
+          expect(images.length).toBeGreaterThan(0);
+          expect(images.every((image) => image.complete)).toBe(true);
+        },
+        { timeout: 10000 },
+      );
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
