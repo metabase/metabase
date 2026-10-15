@@ -4,9 +4,9 @@
   (:require
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.engine.diff :as diff]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.test-util :as kinds.tu]
-   [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
@@ -95,10 +95,9 @@
     (mapv #(.name ^ObjectId %) (.getParents (.parseCommit rw (ObjectId/fromString commit))))))
 
 (defn commit-snapshot
-  "The snapshot that the managed files of `commit` hold, read through `store`, or `{:findings ...}`."
+  "The snapshot that the tree of `commit` holds (`claims/decode`), read through `store`, or nil."
   [s commit]
-  (let [t (store/read-tree s commit)]
-    (:snapshot (tree/decode-tree kinds/codecs (keep (fn [[p b]] (when (tree/managed-path? p) b)) t)))))
+  (:snapshot (claims/decode kinds/codecs (store/read-tree s commit))))
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 

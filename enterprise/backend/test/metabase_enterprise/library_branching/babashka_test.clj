@@ -29,6 +29,7 @@
      java.nio.charset.StandardCharsets
      java.nio.file.Files
      java.nio.file.Path
+     java.security.MessageDigest
      java.text.Normalizer
      java.text.Normalizer$Form
      java.util.Locale})
@@ -71,9 +72,10 @@
 
 (deftest checker-loads-in-babashka-test
   (let [nss (closure entry-point)]
-    (testing "the checker loads the reader, the codecs, the manifest reader and the engine"
+    (testing "the checker loads the reader, the claims, the codecs, the manifest reader and the engine"
       (is (every? (set (keys nss))
                   '[metabase-enterprise.library-branching.format.tree
+                    metabase-enterprise.library-branching.format.claims
                     metabase-enterprise.library-branching.format.kinds
                     metabase-enterprise.library-branching.format.manifest
                     metabase-enterprise.library-branching.engine.validate

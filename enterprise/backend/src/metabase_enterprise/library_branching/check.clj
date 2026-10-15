@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [metabase-enterprise.library-branching.engine.semantic :as semantic]
    [metabase-enterprise.library-branching.engine.validate :as validate]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.format.manifest :as manifest]
@@ -22,18 +23,23 @@
 
 ;;; ------------------------------------------------------ Files ------------------------------------------------------
 
+(defn- git-dir?
+  [^File f]
+  (= ".git" (.getName f)))
+
 (defn tree-files
-  "`{path bytes}` of the files of directory `dir` that the checker decodes, with relative paths separated by /: each
-  regular file whose name ends in .yaml and whose path has no segment that starts with a dot, and the format version
-  file `tree/format-path`."
+  "`{path bytes}` of the files of the checkout in directory `dir`, with relative paths separated by /: every regular
+  file, except the files of the git directory `.git`."
   [dir]
-  (let [^Path root (.toPath (io/file dir))]
+  (let [^File top  (io/file dir)
+        ^Path root (.toPath top)]
     (into {}
-          (comp (filter #(.isFile ^File %))
-                (map (fn [^File f] [(str/join "/" (map str (.relativize root (.toPath f)))) f]))
-                (filter (comp tree/managed-path? first))
-                (map (fn [[p ^File f]] [p (Files/readAllBytes (.toPath f))])))
-          (file-seq (io/file dir)))))
+          (comp (filter #(and (.isFile ^File %) (not (git-dir? %))))
+                (map (fn [^File f] [(str/join "/" (map str (.relativize root (.toPath f))))
+                                    (Files/readAllBytes (.toPath f))])))
+          (tree-seq #(and (.isDirectory ^File %) (not (git-dir? %)))
+                    #(seq (.listFiles ^File %))
+                    top))))
 
 ;;; ------------------------------------------------------ Check ------------------------------------------------------
 
@@ -47,14 +53,17 @@
 
 (defn- with-path
   [level path-of finding]
-  (cond-> (assoc finding :level level)
-    (:id finding) (assoc :path (path-of (:id finding)))))
+  (let [path (some-> (:id finding) path-of)]
+    (cond-> (assoc finding :level level)
+      path (assoc :path path))))
 
 (defn- lints
+  "The canonical-path lints of `s`. An item with no file (a system item that decode completed) has none."
   [codecs s path-of]
   (vec (for [[id p] (sort-by (comp path-of key) (layout/layout codecs s))
-             :when  (not= p (path-of id))]
-         {:rule :canonical-path :id id :path (path-of id) :canonical p})))
+             :let   [at (path-of id)]
+             :when  (and at (not= p at))]
+         {:rule :canonical-path :id id :path at :canonical p})))
 
 (defn check
   "The result of the check of the tree `files`, `{path bytes}`, with the codecs `codecs` (default `kinds/codecs`):
@@ -65,20 +74,23 @@
      :semantic? true iff a manifest was given
      :snapshot  the snapshot of the tree, or nil when it does not decode}
 
-  Each finding has `:level`: `:decode` (a finding of `tree/decode-tree`, with `:path` or `:paths` in place of
-  `:file` or `:files`), `:manifest` (a finding of `manifest/decode`), `:structural` (a finding of
-  `validate/validate`, with the fixed roots of `roots/root-ids`) or `:semantic` (a finding of
-  `semantic/validate`). A structural or semantic finding has `:path`, the path of the file of its `:id`. The
-  semantic check runs only when the tree decodes and `opts` has `:manifest`, the bytes of a manifest. Each lint is
-  `{:rule :canonical-path :id i :path p :canonical q}`: an item whose file is not at the path that the layout gives;
-  lints are computed only when there is no finding, and they do not change `:green?`."
+  The check decodes the item files and the format version file of `claims/item-claims`, and completes the snapshot
+  with `claims/with-system-items`. Each finding has `:level`: `:decode` (a finding of `tree/decode-tree`, with
+  `:path` or `:paths` in place of `:file` or `:files`), `:manifest` (a finding of `manifest/decode`), `:structural`
+  (a finding of `validate/validate`, with the fixed roots of `roots/root-ids`) or `:semantic` (a finding of
+  `semantic/validate`). A structural or semantic finding has `:path`, the path of the file of its `:id`, when the
+  item has a file. The semantic check runs only when the tree decodes and `opts` has `:manifest`, the bytes of a
+  manifest. The lints do not change `:green?`: first `claims/foreign-lints`, then, when there is no finding,
+  `{:rule :canonical-path :id i :path p :canonical q}` for each item whose file is not at the path that the layout
+  gives."
   ([files opts]
    (check kinds/codecs files opts))
   ([codecs files {manifest-bytes :manifest}]
-   (let [paths    (vec (sort (keys files)))
+   (let [claims   (claims/item-claims files)
+         paths    (vec (sort (keys (claims/claimed-files claims))))
          decoded  (tree/decode-files codecs (mapv files paths))
-         s        (:snapshot decoded)
-         path-of  (comp paths (:files decoded))
+         s        (some-> (:snapshot decoded) claims/with-system-items)
+         path-of  (fn [id] (some-> (get (:files decoded) id) paths))
          env      (some-> manifest-bytes manifest/decode)
          findings (vec (if s
                          (concat (map (partial with-path :structural path-of)
@@ -90,7 +102,7 @@
          green?   (empty? findings)]
      {:green?    green?
       :findings  findings
-      :lints     (if (and s green?) (lints codecs s path-of) [])
+      :lints     (into (claims/foreign-lints claims) (when (and s green?) (lints codecs s path-of)))
       :semantic? (some? manifest-bytes)
       :snapshot  s})))
 
@@ -134,8 +146,10 @@
          :structural         (structural-text s finding))))
 
 (defn- lint-text
-  [s {:keys [id path canonical]}]
-  (str path ": the canonical path of " (item-text s id) " is " canonical "; the next push moves it."))
+  [s {:keys [rule id path canonical]}]
+  (case rule
+    :canonical-path (str path ": the canonical path of " (item-text s id) " is " canonical "; the next push moves it.")
+    :foreign-file   (str path ": this YAML file is not an item file, so sync ignores it.")))
 
 (defn report
   "The lines of text that describe `result` (of [[check]]) to a person: one line for each finding and each lint, then
