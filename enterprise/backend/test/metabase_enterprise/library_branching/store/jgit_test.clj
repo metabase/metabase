@@ -440,6 +440,21 @@
       (testing "close removes the directory"
         (is (not (.exists dir)))))))
 
+(deftest parent-dir-test
+  (testing "open-store makes its directory under :parent-dir, and close removes it"
+    (with-remote [_remote url]
+      (let [parent (temp-dir "library-branching-parent-")]
+        (try
+          (let [s (store.jgit/open-store url :parent-dir parent)]
+            (try
+              (is (= (.getCanonicalFile parent)
+                     (.getCanonicalFile (.getParentFile (store.jgit/directory s)))))
+              (finally
+                (store/close s))))
+          (is (empty? (.list parent)))
+          (finally
+            (FileUtils/deleteDirectory parent)))))))
+
 (deftest no-hooks-test
   (testing "a push runs no hook, also with a refusing pre-push hook at the default place"
     (with-remote [remote url]
@@ -551,18 +566,20 @@
          (nil? (store.jgit/url-error url))))))
 
 (deftest open-store-refuses-a-bad-url-test
-  (let [tmp    (io/file (System/getProperty "java.io.tmpdir"))
-        before (set (.list tmp))
-        result (try
-                 (store.jgit/open-store "ssh://git@github.com/foo/bar.git")
-                 (catch clojure.lang.ExceptionInfo e e))]
-    (when (satisfies? store/Store result)
-      (store/close result))
-    (is (instance? clojure.lang.ExceptionInfo result))
-    (is (= (store.jgit/url-error "ssh://git@github.com/foo/bar.git") (ex-message result)))
-    (testing "and makes no local directory"
-      (is (empty? (filter #(str/starts-with? % "metabase-library-branching-")
-                          (remove before (.list tmp))))))))
+  ;; a parent directory of this test's own: other processes make store directories in java.io.tmpdir at any time
+  (let [parent (temp-dir "library-branching-parent-")]
+    (try
+      (let [result (try
+                     (store.jgit/open-store "ssh://git@github.com/foo/bar.git" :parent-dir parent)
+                     (catch clojure.lang.ExceptionInfo e e))]
+        (is (instance? clojure.lang.ExceptionInfo result))
+        (is (= (store.jgit/url-error "ssh://git@github.com/foo/bar.git") (ex-message result)))
+        (testing "and makes no local directory"
+          (is (empty? (.list parent))))
+        (when (satisfies? store/Store result)
+          (store/close result)))
+      (finally
+        (FileUtils/deleteDirectory parent)))))
 
 (deftest token-user-test
   (testing "each host gets the user name that it expects with an access token"

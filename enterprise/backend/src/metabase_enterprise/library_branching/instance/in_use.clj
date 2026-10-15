@@ -5,27 +5,30 @@
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.format.kinds.portable :as format.portable]
    [metabase-enterprise.library-branching.instance.kinds.card :as kinds.card]
+   [metabase-enterprise.library-branching.instance.kinds.dashboard :as kinds.dashboard]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.scope :as scope]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private model-of
-  {:measure  :model/Measure
-   :metric   :model/Card
-   :model    :model/Card
-   :question :model/Card
-   :segment  :model/Segment
-   :snippet  :model/NativeQuerySnippet})
+  {:dashboard :model/Dashboard
+   :measure   :model/Measure
+   :metric    :model/Card
+   :model     :model/Card
+   :question  :model/Card
+   :segment   :model/Segment
+   :snippet   :model/NativeQuerySnippet})
 
 (def ^:private roles
   "The roles of a reference that uses an item of each kind."
-  {:measure  #{:measure}
-   :metric   #{:metric :card :source-card}
-   :model    #{:card :source-card}
-   :question #{:card :source-card}
-   :segment  #{:segment}
-   :snippet  #{:snippet}})
+  {:dashboard #{:dashboard}
+   :measure   #{:measure}
+   :metric    #{:metric :card :source-card}
+   :model     #{:card :source-card}
+   :question  #{:card :source-card}
+   :segment   #{:segment}
+   :snippet   #{:snippet}})
 
 (def ^:private card-kinds
   "The kinds of the cards, which a dashboard can show."
@@ -38,25 +41,50 @@
     (zipmap cards (portable/export-batch (fn [card] (format.portable/query-refs (portable/document (export card (:dataset_query card)))))
                                          cards))))
 
+(defn- uses?
+  "True iff the references `refs` hold one to item `id` of `kind`."
+  [kind id refs]
+  (some (fn [[role target]] (and (= id target) (contains? (roles kind) role))) refs))
+
+(defn- query-users
+  "The users of item `id` of `kind`, with row id `row-id`, outside `in-scope`: the cards whose queries refer to it, and
+  for a card, the dashboards that show it."
+  [in-scope id kind row-id]
+  (concat
+   (for [[card refs] (card-refs (library-branching.db/cards-mentioning row-id))
+         :when (and (not (contains? in-scope (:entity_id card))) (uses? kind id refs))]
+     {:kind :card :id (:entity_id card) :name (:name card)})
+   (when (contains? card-kinds kind)
+     (for [{:keys [entity_id name]} (library-branching.db/dashboards-showing row-id)
+           :when (not (contains? in-scope entity_id))]
+       {:kind :dashboard :id entity_id :name name}))))
+
+(defn- dashboard-users
+  "The users of dashboard `id`, with row id `row-id`, outside `in-scope`: the cards and dashboards whose content refers
+  to it by a click behavior or a link card."
+  [in-scope id row-id]
+  ;; A question of the dashboard is no user: a trash of the dashboard puts its questions in the trash.
+  (let [users (fn [user-kind read-items candidates]
+                (for [[eid {:keys [name refs]}] (read-items (remove in-scope candidates))
+                      :when (uses? :dashboard id refs)]
+                  {:kind user-kind :id eid :name name}))]
+    (concat (users :card kinds.card/read-cards (library-branching.db/cards-mentioning-dashboard row-id))
+            (users :dashboard kinds.dashboard/read-dashboards (library-branching.db/dashboards-mentioning-dashboard row-id)))))
+
 (defn- users
   "The users outside the Library of the trashed item `id` of `kind`. `in-scope` is the set of the identities of the
   in-scope cards and dashboards."
   [in-scope {:keys [id kind]}]
   (when-let [row-id (some-> (model-of kind) (library-branching.db/row-id-by-entity-id id))]
-    (let [uses?      (fn [refs] (some (fn [[role target]] (and (= id target) (contains? (roles kind) role))) refs))
-          cards      (for [[card refs] (card-refs (library-branching.db/cards-mentioning row-id))
-                           :when (and (not (contains? in-scope (:entity_id card))) (uses? refs))]
-                       {:kind :card :id (:entity_id card) :name (:name card)})
-          dashboards (when (contains? card-kinds kind)
-                       (for [{:keys [entity_id name]} (library-branching.db/dashboards-showing row-id)
-                             :when (not (contains? in-scope entity_id))]
-                         {:kind :dashboard :id entity_id :name name}))]
-      (not-empty (vec (sort-by (juxt :kind :name :id) (concat cards dashboards)))))))
+    (not-empty (vec (sort-by (juxt :kind :name :id)
+                             (if (= :dashboard kind)
+                               (dashboard-users in-scope id row-id)
+                               (query-users in-scope id kind row-id)))))))
 
 (defn trashed-in-use
   "`{identity [{:kind :id :name} ...]}`: of the trashed items `trashed` (`[{:id :kind}]`), each one that a card or a
   dashboard outside the scope of `roots` (default `scope/roots`) uses, with those users, sorted. Only cards,
-  snippets, segments and measures have such users. Reads in the current transaction."
+  dashboards, snippets, segments and measures have such users. Reads in the current transaction."
   ([trashed]
    (trashed-in-use scope/roots trashed))
   ([roots trashed]

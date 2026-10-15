@@ -10,6 +10,7 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -336,6 +337,64 @@
          (write! dashboard-id (content world))
          (is (= (with-refs dashboard-id (content world)) (current dashboard-id)))
          (is (:archived (t2/select-one :model/Card (:id question)))))))))
+
+(defn- insert-card!
+  "A question of the venues with the attributes `attrs`."
+  [attrs]
+  (t2/insert-returning-instance! :model/Card (merge {:type                   :question
+                                                     :display                :table
+                                                     :visualization_settings {}
+                                                     :creator_id             (mt/user->id :crowberto)
+                                                     :dataset_query          (venues-query)}
+                                                    attrs)))
+
+(defn- insert-dashboard!
+  "A dashboard named `dashboard-name` in `collection`, with one dashboard card of the visualization settings
+  `settings`."
+  [collection dashboard-name settings]
+  (let [d (t2/insert-returning-instance! :model/Dashboard {:name          dashboard-name
+                                                           :collection_id (:id collection)
+                                                           :creator_id    (mt/user->id :crowberto)})]
+    (t2/insert! :model/DashboardCard {:dashboard_id (:id d) :row 0 :col 0 :size_x 4 :size_y 4
+                                      :visualization_settings settings})
+    d))
+
+(deftest trashed-dashboard-in-use-test
+  (testing "a trash of a Library dashboard: the in-use report names each card and dashboard outside the Library that
+            links to it, by a click behavior, a column's click behavior or a link card, and a dashboard question of
+            another dashboard that links to it"
+    (do-with-world
+     (fn [{:keys [dashboards] :as world}]
+       (write! dashboard-id (content world))
+       (let [d       (t2/select-one :model/Dashboard :entity_id dashboard-id)
+             link    {:type "link" :linkType "dashboard" :targetId (:id d)}
+             outside (t2/insert-returning-instance! :model/Collection {:name "Not the Library" :location "/"})
+             card    (insert-card! {:name "Linking question" :collection_id (:id outside)
+                                    :visualization_settings {:click_behavior link}})
+             column  (insert-card! {:name                   "Column link"
+                                    :visualization_settings {:column_settings {"[\"name\",\"PRICE\"]" {:click_behavior link}}}})
+             host    (insert-dashboard! outside "Host" {:text "Host" :virtual_card {:display "text"}})
+             dq      (insert-card! {:name "Dashboard question link" :collection_id (:id outside) :dashboard_id (:id host)
+                                    :visualization_settings {:click_behavior link}})
+             clicks  (insert-dashboard! outside "Clicks" {:click_behavior link})
+             links   (insert-dashboard! outside "Links" {:virtual_card {:display "link"}
+                                                         :link         {:entity {:model "dashboard" :id (:id d)
+                                                                                 :name "Venue overview"}}})
+             own     (insert-card! {:name "Own question" :collection_id (:id dashboards) :dashboard_id (:id d)
+                                    :visualization_settings {:click_behavior link}})]
+         ;; Not users: a trashed card, a dashboard whose text holds the id of the dashboard, and a dashboard in the
+         ;; Library.
+         (insert-card! {:name "Archived link" :archived true :visualization_settings {:click_behavior link}})
+         (insert-dashboard! outside "Mentions the id" {:text (str "See row " (:id d)) :virtual_card {:display "text"}})
+         (insert-dashboard! dashboards "Library neighbor" {:click_behavior link})
+         (trash! dashboard-id)
+         (is (:archived (t2/select-one :model/Card (:id own))) "the dashboard's own question is in the trash with it")
+         (is (= {dashboard-id [{:kind :card :id (:entity_id column) :name "Column link"}
+                               {:kind :card :id (:entity_id dq) :name "Dashboard question link"}
+                               {:kind :card :id (:entity_id card) :name "Linking question"}
+                               {:kind :dashboard :id (:entity_id clicks) :name "Clicks"}
+                               {:kind :dashboard :id (:entity_id links) :name "Links"}]}
+                (in-use/trashed-in-use [{:id dashboard-id :kind :dashboard}]))))))))
 
 (deftest move-test
   (do-with-world
