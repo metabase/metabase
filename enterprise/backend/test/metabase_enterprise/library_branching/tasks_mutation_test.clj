@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase-enterprise.library-branching.operations :as operations]
+   [metabase-enterprise.library-branching.operations-test :as operations-test]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-property-test :as property]
    [metabase-enterprise.library-branching.tasks-test :as tasks-test]
@@ -27,6 +29,12 @@
     :tests  (tests #'tasks-test/cancel-then-apply-is-fenced-test
                    #'tasks-test/superseded-pull-is-fenced-test
                    #'property/task-lease-properties-test)}
+   {:name   :apply-leaves-its-task-open
+    :doc    "The apply transaction checks its task, but does not end it: the task ends after the commit, and a cancel
+            between the commit and the end of the task says cancelled, although the apply had its effect."
+    :target `operations/end-in-apply
+    :edits  [[:remove '(tasks/succeed-fenced! id (:outcome (task-result result)))]]
+    :tests  (tests #'operations-test/apply-ends-its-task-test)}
    {:name   :nocommitpoint
     :doc    "A push has no commit point: mark-committing! does not move the task, so a cancel before the remote
             compare-and-swap does not stop the push (TaskLease nocommitpoint)."
