@@ -21,6 +21,31 @@
   [type reason & {:as more}]
   (merge {:type type :reason reason} more))
 
+(defn decode-item
+  "What the document `doc`, a map with a `:kind`, holds: `{:item [id item]}`, or `{:finding f}` when no codec has its
+  kind (`:unknown-kind`, with `:kind`) or when its codec refuses it (`:invalid`). `by-name` maps the name of each kind
+  to its codec."
+  [by-name doc]
+  (let [k (:kind doc)]
+    (if-let [c (when (string? k) (get by-name k))]
+      (try
+        (let [[id item] (codec/decode c doc)]
+          (cond
+            (not (registry/validate ::snapshot/identity id))
+            {:finding (finding :invalid (str "The identity is not an entity id or a table key: " (pr-str id)))}
+
+            (not (registry/validate (codec/schema c) item))
+            {:finding (finding :invalid (str "The item does not fit the schema of its kind: "
+                                             (pr-str (me/humanize (registry/explain (codec/schema c) item)))))}
+
+            :else
+            {:item [id item]}))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= ::codec/invalid (:type (ex-data e)))
+            {:finding (finding :invalid (ex-message e))}
+            (throw e))))
+      {:finding (finding :unknown-kind (str "No codec for the kind " (pr-str k)) :kind (if (string? k) (keyword k) k))})))
+
 (defn decode-file
   "What the bytes `b` of one file hold: `{:item [id item]}`, `{:format doc}` for a format version file, or
   `{:finding f}`. `by-name` maps the name of each kind to its codec."
@@ -32,20 +57,7 @@
         {:finding (finding :unreadable "The file is not a YAML map.")}
 
         (contains? doc :kind)
-        (let [k (:kind doc)]
-          (if-let [c (when (string? k) (get by-name k))]
-            (let [[id item] (codec/decode c doc)]
-              (cond
-                (not (registry/validate ::snapshot/identity id))
-                {:finding (finding :invalid (str "The identity is not an entity id or a table key: " (pr-str id)))}
-
-                (not (registry/validate (codec/schema c) item))
-                {:finding (finding :invalid (str "The item does not fit the schema of its kind: "
-                                                 (pr-str (me/humanize (registry/explain (codec/schema c) item)))))}
-
-                :else
-                {:item [id item]}))
-            {:finding (finding :unknown-kind (str "No codec for the kind " (pr-str k)) :kind (if (string? k) (keyword k) k))}))
+        (decode-item by-name doc)
 
         (contains? doc :format)
         {:format doc}

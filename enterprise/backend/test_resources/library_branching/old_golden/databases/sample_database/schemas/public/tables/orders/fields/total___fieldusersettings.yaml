@@ -1,0 +1,11 @@
+created_at: '2026-10-15T08:58:11.876231Z'
+display_name: Total
+field_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+- TOTAL
+semantic_type: type/Currency
+semantic_type_set: true
+serdes/meta:
+- model: FieldUserSettings

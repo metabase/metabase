@@ -1,0 +1,22 @@
+name: Active product filter
+description: Products that are for sale.
+entity_id: aCtIvEpRoDuCtFiLtEr01
+created_at: '2026-10-15T08:58:11.961854Z'
+collection_id: sNiPpEtFiLtErScOlL001
+content: 'products.active = true AND price > {{min_price}} AND {{snippet: Base filter}}'
+creator_id: crowberto@metabase.com
+template_tags:
+  min_price:
+    display-name: Min price
+    id: 5f0a3c55-1f0b-4e0e-8c62-2b8f8a9e7d20
+    name: min_price
+    type: number
+  'snippet: Base filter':
+    display-name: Base filter
+    id: 0b1d6e0e-6c55-4c1a-9a43-6d5a8b2f6a11
+    name: 'snippet: Base filter'
+    snippet-id: bAsEfIlTeRsNiPpEt0001
+    snippet-name: Base filter
+    type: snippet
+serdes/meta:
+- model: NativeQuerySnippet

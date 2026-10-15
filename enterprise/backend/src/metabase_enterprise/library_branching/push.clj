@@ -44,7 +44,7 @@
 
 (defn tree-digests
   "The item digests of the snapshot that tree `t` holds (`claims/decode`), with the codecs `codecs`, or nil when it
-  does not decode (a tree in the old format, for example)."
+  does not decode (a tree with a file of a kind that has no codec, for example)."
   [codecs t]
   (some->> (claims/decode codecs t)
            :snapshot
