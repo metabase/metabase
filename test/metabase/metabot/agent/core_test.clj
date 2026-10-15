@@ -152,9 +152,9 @@
           (is (contains? tools "replace_sql_query")))))))
 
 (defn- run-query-offered-at-turn-start
-  "Whether the turn starts with `run_query` among its tools, and whether its system message says results can be read.
-   Reads them where the decision is made rather than running a turn. The bindings stand in for the ones the agent
-   loop makes."
+  "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
+   whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
+   running a turn. The bindings stand in for the ones the agent loop makes."
   [conversation-id capabilities]
   (let [{:keys [tools system-msg]}
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
@@ -163,8 +163,13 @@
                                :profile-id      :internal
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
-    {:tool?   (contains? tools "run_query")
-     :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))
+    {:tool?       (contains? tools "run_query")
+     :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
+     :show-chart? (-> (get tools "construct_notebook_query")
+                      :declaration
+                      deref
+                      (get-in [:parameters :properties])
+                      (contains? :show_chart))}))
 
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
@@ -185,15 +190,15 @@
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
         (mt/with-current-user rasta
-          (testing "the user's own conversation offers run_query and says results can be read"
-            (is (= {:tool? true, :prompt? true} (offered own))))
-          (testing "a conversation other people can read offers neither"
+          (testing "the user's own conversation offers run_query, says results can be read, and declares show_chart"
+            (is (= {:tool? true, :prompt? true, :show-chart? true} (offered own))))
+          (testing "a conversation other people can read does none of them"
             (testing "a Slack thread"
-              (is (= {:tool? false, :prompt? false} (offered thread))))
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered thread))))
             (testing "a conversation someone else started"
-              (is (= {:tool? false, :prompt? false} (offered someone)))))
-          (testing "no conversation offers neither"
-            (is (= {:tool? false, :prompt? false} (offered nil)))))))))
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
+          (testing "no conversation does none of them"
+            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!

@@ -21,6 +21,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -126,8 +127,22 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
+   [:show_chart {:optional true
+                 :description (str "Pass false for a query you build only to read its values with run_query: "
+                                   "the user is then shown no chart. Defaults to true.")}
+    [:maybe :boolean]]
    [:title :string]
    [:description :string]])
+
+(defn without-show-chart
+  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
+   model is not told about the argument."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema & more] output]]
+                         [arrow
+                          (into [cat (into [] (remove #(and (vector? %) (= :show_chart (first %)))) args-schema)]
+                                more)
+                          output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -976,6 +991,12 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- tool-output
+  "The text the model sees: `result-xml` followed by `instruction-text`."
+  [result-xml instruction-text]
+  (str "<result>\n" result-xml "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
@@ -988,7 +1009,7 @@
   one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
   any notable filter); it is used as the saved question's description. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization show_chart title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -996,8 +1017,30 @@
           query-result            (execute-representations-query
                                    query
                                    {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
+          structured              (or (:structured-output query-result) (:structured_output query-result))
+          ;; A query built only to be read needs run_query, so without it the chart is the one way the user sees
+          ;; anything and is always shown.
+          show-chart?             (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+      (cond
+        (not (and structured (:query-id structured) (:query structured)))
+        ;; query-result may already have :output (error) or only :structured-output
+        (if structured
+          (let [query-xml        (llm-shape/query->xml (structured->query-data structured))
+                instruction-text (instructions/query-created-instructions-for (:query-id structured) false)]
+            (assoc query-result :output (tool-output query-xml instruction-text)))
+          query-result)
+
+        (not show-chart?)
+        (let [instruction-text (te/lines
+                                "Your query has been created. The user has not been shown it."
+                                ""
+                                (str "To read its values, call `run_query` with `query_id` `"
+                                     (:query-id structured) "`."))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured)) instruction-text)
+           :structured-output (assoc structured :result-type :query)
+           :instructions      instruction-text})
+
+        :else
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
@@ -1017,8 +1060,7 @@
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
+          {:output            (tool-output chart-xml instruction-text)
            :data-parts        [(streaming/viz-part
                                 {:entity-id   (:chart-id chart-result)
                                  :query-id    (:query-id structured)
@@ -1027,14 +1069,6 @@
                                  :title       title
                                  :description description})]
            :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s) false)]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
+           :instructions      instruction-text})))
     (catch Exception e
       (tools.u/handle-agent-or-api-error e))))
