@@ -140,6 +140,34 @@
          (is (= ptu/sample (pltu/snapshot-of inst)))
          (is (= h (instance/base inst))))))))
 
+(def ^:private toucan-local-id "ToucanLocalSnippet001")
+(def ^:private toucan-head-id "ToucanHeadSnippet0001")
+
+(defn- toucan [id]
+  (ptu/item id :snippet "Toucan" "snippetssnippetssnipp" {:content "toucan = true"}))
+
+(deftest discard-frees-the-name-of-a-drift-snippet-test
+  ;; The shrunk case of deploy-never-writes-over-drift-property-test: the drift is a new snippet, and the head has a
+  ;; new snippet of another identity with the same name.
+  (enabled
+   (with-remote [repo s]
+     (let [c1       (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
+           [inst _] (deployed-instance! s)
+           remote   (assoc ptu/sample toucan-head-id (toucan toucan-head-id))
+           h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           new-name (str "Toucan (trashed " toucan-local-id ")")]
+       (pltu/save! inst #(assoc % toucan-local-id (toucan toucan-local-id)))
+       (testing "with no choice of the admin, the deploy stops on the drift"
+         (is (= :drift (:result (deploy! inst s)))))
+       (testing "the discard trashes the snippet of the drift with a new name, so the snippet of the head takes the name:
+                production converges on the head"
+         (is (=? {:result :deployed :head h :discarded [toucan-local-id] :renamed {toucan-local-id new-name}}
+                 (discard! inst s)))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (= h (instance/base inst))))
+       (testing "the trash keeps the snippet of the drift, with its identity and its content, under the new name"
+         (is (= (assoc (toucan toucan-local-id) :name new-name) (get-in @(:state inst) [:trash toucan-local-id]))))))))
+
 ;;; ---------------------------------------------- Drift before a deploy -----------------------------------------------
 
 (defn- counting-with-store

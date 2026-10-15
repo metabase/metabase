@@ -34,9 +34,9 @@
   (:codecs opts kinds/codecs))
 
 (defn- decode
-  "`claims/decode` of the tree `files` with the codecs and the option `:table-names` of `opts`."
+  "`claims/decode` of the tree `files` with the codecs and the options of `pull/decode-keys` in `opts`."
   [opts files]
-  (claims/decode (codecs-of opts) files (select-keys opts [:table-names])))
+  (claims/decode (codecs-of opts) files (select-keys opts pull/decode-keys)))
 
 (defn- with-instance-names
   "`opts` with the options of `pull/decode-opts` of instance `inst`, unless `opts` has them."
@@ -68,7 +68,7 @@
 
 (defn base-snapshot
   "The snapshot of base commit `b`, read through `store` after a fetch of branch `branch`, or nil when the repository no
-  longer holds `b` or its tree does not decode. `opts`: `:codecs`, `:table-names` (as `claims/decode`)."
+  longer holds `b` or its tree does not decode. `opts`: `:codecs`, `:table-names` and `:card-ids` (as `claims/decode`)."
   [store branch b opts]
   (some->> (fetched-tree store branch b)
            (decode opts)
@@ -105,7 +105,7 @@
   "The remote changes from base commit `b` to head `h` of `store`, from a decode of every item file of `h`: `{:changes
   c}`, `{:findings f}` when the tree of `h` does not decode, or `{:unknown :base}` when the content of `b` is not known.
   The content of `b` is `(:base-digests opts)` when given, else the decode of the tree of `b`; `b` nil has no items.
-  `opts`: `:codecs`, `:base-digests`, `:table-names` (as `claims/decode`)."
+  `opts`: `:codecs`, `:base-digests`, `:table-names` and `:card-ids` (as `claims/decode`)."
   [store b h opts]
   (let [codecs (codecs-of opts)
         {r :snapshot :keys [findings]} (decode opts (store/read-tree store h))]
@@ -179,7 +179,7 @@
   result. When `h` is `b`, no change, with no read of the store. Else it decodes only the files that
   `store/changed-paths` names, at both commits, when that is exact: every changed file is a foreign file or an item file
   that decodes, no changed file holds a system item or the Library, and no new file holds an item of the base
-  (`(:base-digests opts)`, required for this path). `opts`: `:codecs`, `:base-digests`, `:table-names`."
+  (`(:base-digests opts)`, required for this path). `opts`: `:codecs`, `:base-digests`, `:table-names`, `:card-ids`."
   [store b h opts]
   (let [codecs  (codecs-of opts)
         digests (:base-digests opts)
@@ -216,7 +216,7 @@
         codecs   (codecs-of opts)
         h        (store/head store branch)
         {b :base l :local local :changes shadowed :shadowed-tables} (local-changes inst (fn [f] (f store)) branch opts)
-        checked  (when h (pull/check-commit store codecs h (select-keys opts [:table-names])))
+        checked  (when h (pull/check-commit store codecs h (select-keys opts pull/decode-keys)))
         findings (:findings checked)
         remote   (when (:snapshot checked)
                    (:changes (remote-changes store b h (assoc opts :base-digests (base-digests-of inst b)))))]
@@ -284,7 +284,7 @@
                 :head-findings  nil}]
     (if (or (= b h) (nil? h))
       result
-      (let [{r :snapshot :keys [findings]} (pull/check-commit store codecs h (select-keys opts [:table-names]))]
+      (let [{r :snapshot :keys [findings]} (pull/check-commit store codecs h (select-keys opts pull/decode-keys))]
         (if-not r
           (assoc result :clean false :head-findings findings)
           (let [l      (:snapshot (instance/read-snapshot inst))

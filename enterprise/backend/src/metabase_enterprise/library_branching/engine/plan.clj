@@ -155,27 +155,52 @@
         (recur (into interim picks))
         interim))))
 
+(defn- trash-renames
+  "The items of `removed` whose key in `l` the item of an identity of `written` has in `m`. A trashed item keeps its
+  key, so each of these takes a new key before every write."
+  [unique-keys l m removed written]
+  (let [taken (into #{} (keep #(key-of unique-keys (get m %))) written)]
+    (filterv #(contains? taken (key-of unique-keys (get l %))) removed)))
+
+(defn- trash-key
+  "The first key that item `item` of identity `id` tries before its trash: its key with a suffix that names `id`, cut
+  so that the whole has at most as many characters as the `:max-length` of its kind in `unique-keys` (none: no cut)."
+  [unique-keys id item]
+  (let [{:keys [path max-length]} (get unique-keys (:kind item))
+        ^String k      (get-in item path)
+        ^String suffix (str " (trashed " id ")")
+        room           (when max-length (max 0 (- max-length (.codePointCount suffix 0 (.length suffix)))))]
+    (str (if (and room (> (.codePointCount k 0 (.length k)) room))
+           (subs k 0 (.offsetByCodePoints k 0 room))
+           k)
+         suffix)))
+
 (defn- temporary-keys
-  "`{id name}`: for each item of `ids`, a temporary name that is the key of no item of `l` or `m`, and of no other item
-  of `ids`."
-  [unique-keys l m ids]
-  (loop [[id & more :as todo] (sort snapshot/compare-identities ids)
-         taken                (set (keep #(snapshot/unique-key unique-keys %) (concat (vals l) (vals m))))
-         out                  {}]
+  "`{id name}`: for each `[id start]` of `starts`, the first of `start`, `start~`, `start~~` and so on that is the key
+  of no item of `l` or `m`, and of no other item of `starts`."
+  [unique-keys l m starts]
+  (loop [[[id start] & more :as todo] (sort-by key snapshot/compare-identities starts)
+         taken                        (set (keep #(snapshot/unique-key unique-keys %) (concat (vals l) (vals m))))
+         out                          {}]
     (if (empty? todo)
       out
-      (let [candidates (iterate #(str % "~") (str "Library branching temporary name " id))
+      (let [candidates (iterate #(str % "~") start)
             temp       (first (remove (comp taken snapshot/fold-name) candidates))]
         (recur more (conj taken (snapshot/fold-name temp)) (assoc out id temp))))))
 
 (defn- interim-steps
-  [unique-keys l m ids]
-  (for [[id temp] (sort-by key snapshot/compare-identities (temporary-keys unique-keys l m ids))
-        :let [item (get l id)]]
-    {:id id :interim (assoc-in item (:path (get unique-keys (:kind item))) temp)}))
+  "The interim steps of the items of `interim`, which free their keys for a key move, and of the items of `renamed`,
+  which free their keys before their trash."
+  [unique-keys l m interim renamed]
+  (let [starts (merge (into {} (map (fn [id] [id (str "Library branching temporary name " id)])) interim)
+                      (into {} (map (fn [id] [id (trash-key unique-keys id (get l id))])) renamed))]
+    (for [[id temp] (sort-by key snapshot/compare-identities (temporary-keys unique-keys l m starts))
+          :let [item (get l id)]]
+      {:id id :interim (assoc-in item (:path (get unique-keys (:kind item))) temp)})))
 
 (defn- write-steps
-  "`[interims writes links]` for the items of `ids`, which `m` holds."
+  "`[interim writes links]` for the items of `ids`, which `m` holds: `interim` is the set of the items that free their
+  keys in an interim step."
   [unique-keys stub-kinds l m b ids]
   (let [deferred (cyclic-refs m ids stub-kinds)
         after    (invert (dependencies m ids deferred))
@@ -185,7 +210,7 @@
         late?    #(and (some? (get b %)) (seq (deferred %)))
         interim  (interim-ids ids after moves late?)
         order    (apply concat (ordered ids (add-edges after (remove (comp interim first) moves))))]
-    [(vec (interim-steps unique-keys l m interim))
+    [interim
      (mapv #(write-step m b % (deferred %)) order)
      (into [] (keep #(when-let [refs (not-empty (deferred %))] {:id % :link refs})) order)]))
 
@@ -251,13 +276,16 @@
     with a kind of the same table ([[snapshot/same-row?]]); else this throws an ex-info with `:system-ids`, the
     identities of those that it lacks.
 
-  `opts` `:unique-keys` (default [[snapshot/unique-keys]]) names the keys that no two items may have at one time; a
-  key is a name.
+  `opts` `:unique-keys` (default [[snapshot/unique-keys]]) names the keys that no two items may have at one time, in
+  the trash too; a key is a name.
 
   Steps, in this order:
-  - interims `{:id i :interim c}`: `c` is `l(i)` with a temporary name, which frees the key of `i` for a write that
-    takes it. An item has one when the moves of keys among the writes make a cycle (a swap), or when its write leaves
-    it as it is (see `:defer`) and another write takes its key;
+  - interims `{:id i :interim c}`: `c` is `l(i)` with a new name, which frees the key of `i` for a write that takes
+    it. An item has one when the moves of keys among the writes make a cycle (a swap), or when its write leaves it as
+    it is (see `:defer`) and another write takes its key: then the name is a temporary one. An item that the plan
+    trashes has one when a write takes its key, because a trashed item keeps its key: then the name is its name with
+    the suffix ` (trashed i)`, cut to the `:max-length` of its key, and the trash keeps that name. Each new name is
+    the key of no item of `l` or `m`;
   - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them, and a
     write that frees a key before the write that takes it. In a reference cycle, a write has `:defer #{ref}`, the
     references that it leaves out: those of the items of a kind of `opts` `:stub-kinds` (default
@@ -272,7 +300,7 @@
     before their users.
 
   Of the steps that may come next, the step of the least identity comes first. Each `:pre` is the content that the
-  item must have before the first step (nil: no item). A trash does not free a key: a trashed item keeps it."
+  item must have before the first step (nil: no item)."
   ([l m b]
    (plan l m b {}))
   ([l m b {:keys [system unique-keys stub-kinds]
@@ -284,7 +312,10 @@
      (check-base-equal! l b changed)
      (check-system-kept! system removed)
      ;; The write of a replaced item makes a new item: no local content, and no base content as its precondition.
-     (let [[interims writes links] (write-steps unique-keys stub-kinds (apply dissoc l replaced) m
-                                                (apply dissoc b replaced) (filter #(contains? m %) changed))
-           trashes                 (trash-steps l b removed)]
+     (let [written                (filter #(contains? m %) changed)
+           [interim writes links] (write-steps unique-keys stub-kinds (apply dissoc l replaced) m
+                                               (apply dissoc b replaced) written)
+           interims               (interim-steps unique-keys l m interim
+                                                 (trash-renames unique-keys l m removed written))
+           trashes                (trash-steps l b removed)]
        (vec (concat interims writes links trashes))))))

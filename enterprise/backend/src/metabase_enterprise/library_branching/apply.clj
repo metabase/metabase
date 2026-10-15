@@ -79,6 +79,14 @@
                   {:id id :reason :system-item :message "A system item of the Library cannot go to the trash."})))
         plan))
 
+(defn- trash-renames
+  "`{identity name}`: the name that each item of `plan` takes in an interim step before its trash step."
+  [plan]
+  (let [trashed (into #{} (comp (filter :trash) (map :id)) plan)]
+    (into {}
+          (keep (fn [{:keys [id interim]}] (when (and interim (contains? trashed id)) [id (:name interim)])))
+          plan)))
+
 (defn- run-steps!
   "Writes, links and trashes the items of `plan`, in its order. An interim step writes its content. A write with
   `:defer` leaves an item that exists as it is, and writes a new one as the stub of its kind; its link step writes the
@@ -98,9 +106,10 @@
 (defn apply-plan
   "Carries out `plan` with the item operations `ops`, in the caller's transaction, and returns one of:
 
-  - `{:ok {:trashed-in-use m}}`: every step ran, and the base moved from `:base` to `:new-base` with `:digests`; `m` is
-    `{identity [user ...]}`, the items that the apply trashed and that content outside the Library uses, from
-    `(:in-use ops)`;
+  - `{:ok {:trashed-in-use m :renamed r}}`: every step ran, and the base moved from `:base` to `:new-base` with
+    `:digests`; `m` is `{identity [user ...]}`, the items that the apply trashed and that content outside the Library
+    uses, from `(:in-use ops)`; `r` is `{identity name}`, the items that the apply trashed with a new name, and is
+    absent when there is none;
   - `{:fenced reason}`: `(:fence opts)` returned `reason`: the task of the apply may not commit; no step ran;
   - `{:refused [{:id :reason :message}]}`: a step trashes a system item (reason `:system-item`), and no step ran; or
     the instance refused a step (an `instance/refused` throw);
@@ -109,11 +118,11 @@
   - `{:base-moved actual}`: the base is not `:base`;
   - `{:rewritten new-base}`: `(:head-ok? opts)` returned false: the planned head left the branch history.
 
-  A trash step whose item is already out of scope does nothing. The caller rolls its transaction back unless the result
-  is `:ok`. `opts`: `:base` (nil: the instance has no base), `:new-base`, `:digests`, `:head-ok?` (a function of no
-  argument), `:fence` (a function of no argument that returns nil while the task may commit, else the reason;
-  default: always nil), and `:on-commit` (a function of no argument that is called last, only for an `:ok` result, so
-  that its writes commit with the apply; default: none). `ops`:
+  A trash step whose item is already out of scope does nothing, and the interim step of that item too. The caller
+  rolls its transaction back unless the result is `:ok`. `opts`: `:base` (nil: the instance has no base), `:new-base`,
+  `:digests`, `:head-ok?` (a function of no argument), `:fence` (a function of no argument that returns nil while the
+  task may commit, else the reason; default: always nil), and `:on-commit` (a function of no argument that is called
+  last, only for an `:ok` result, so that its writes commit with the apply; default: none). `ops`:
 
   - `:current`     `(fn [kind id])`, as in [[check-steps]];
   - `:key-holders` `(fn [kind k])`, as in [[key-clashes]];
@@ -128,7 +137,8 @@
       {:refused (vec refused)}
       (let [{:keys [stale gone]} (check-steps (:current ops) plan (some? base))
             gone                 (set gone)
-            plan                 (into [] (remove #(and (:trash %) (contains? gone (:id %)))) plan)
+            ;; The interim step of an item that is gone would make the item again.
+            plan                 (into [] (remove #(and (or (:trash %) (:interim %)) (contains? gone (:id %)))) plan)
             clashes              (when (empty? stale) (key-clashes (:key-holders ops) plan))]
         (cond
           (seq stale)   {:stale (vec (distinct stale))}
@@ -145,8 +155,10 @@
                                   ;; Last: a write that an app DB rollback cannot undo in full (a setting keeps its new
                                   ;; value in the cache of this process) happens only when nothing more can refuse the
                                   ;; apply.
-                                  (do (on-commit)
-                                      {:ok {:trashed-in-use in-use}})
+                                  (let [renamed (trash-renames plan)]
+                                    (on-commit)
+                                    {:ok (cond-> {:trashed-in-use in-use}
+                                           (seq renamed) (assoc :renamed renamed))})
                                   {:rewritten new-base}))))
                           (catch clojure.lang.ExceptionInfo e
                             (let [{:keys [type reason id]} (ex-data e)]

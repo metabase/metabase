@@ -222,6 +222,16 @@
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump! path (get-parsed-options #'export options)))
 
+(defn ^:command library-branching-check
+  {:doc      "Check the library branching repository in directory `checkout`, with no app DB and no web server: decode
+  its files, check its structure, and with a manifest check its references and the types of its queries. Prints one
+  line for each finding; exits with code 1 when there is one."
+   :arg-spec [["-m" "--manifest FILE" "The manifest file. Default: .metabase/manifest.yaml in the checkout, when it exists."]]}
+  [checkout & options]
+  (call-enterprise 'metabase-enterprise.library-branching.external/command!
+                   checkout
+                   (get-parsed-options #'library-branching-check options)))
+
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
   the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars."

@@ -72,6 +72,7 @@
        (base [_] (instance/base inst))
        (base-digests [_ c] (instance/base-digests inst c))
        (table-names [_ ks] (instance/table-names inst ks))
+       (card-entity-ids [_ ids] (instance/card-entity-ids inst ids))
        (apply-plan! [_ plan opts] (swap! plans conj plan) (instance/apply-plan! inst plan opts))
        (set-base! [_ e n d] (instance/set-base! inst e n d)))
      plans]))
@@ -179,6 +180,31 @@
        (testing "with the table in its environment, the instance deploys the head"
          (pltu/commit-snapshot! repo ptu/branch [(instance/base inst)] remote)
          (is (= :deployed (:result (deploy! inst s {:env (env-of remote)}))))
+         (is (= remote (pltu/snapshot-of inst))))))))
+
+(deftest deploy-types-the-queries-of-the-head-test
+  (enabled
+   (with-remote [repo s]
+     (let [c1       (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
+           [inst _] (deployed-instance! s)
+           total    (conj ptu/orders-table "TOTAL")
+           sum-id   "SumOfTotalMetric00001"
+           remote   (assoc ptu/sample sum-id (ptu/item sum-id :metric "Sum" ptu/metrics-id
+                                                       {:display "scalar" :query (ptu/sum-query total)}))
+           h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           env-with (fn [t] (assoc (env-of remote)
+                                   ["Sample Database"] {:object :database}
+                                   total               {:object :field :base-type t :effective-type t}))]
+       (testing "the environment of the instance has TOTAL as text: the deploy refuses the head that sums it, whatever
+                CI said, and writes nothing"
+         (let [{:keys [result head findings]} (deploy! inst s {:env (env-with "type/Text")})]
+           (is (= :invalid result))
+           (is (= h head))
+           (is (= [{:rule :query-typed :id sum-id}] (mapv #(select-keys % [:rule :id]) findings)))
+           (is (= ptu/sample (pltu/snapshot-of inst)))
+           (is (= c1 (instance/base inst)))))
+       (testing "with TOTAL a number, the instance deploys the head"
+         (is (= :deployed (:result (deploy! inst s {:env (env-with "type/Float")}))))
          (is (= remote (pltu/snapshot-of inst))))))))
 
 ;;; ------------------------------------------------------ The trash ---------------------------------------------------
@@ -392,6 +418,22 @@
          (is (= [{:id ptu/revenue-id :write (get remote ptu/revenue-id) :pre (get local ptu/revenue-id)}] steps))
          (is (= remote (pltu/snapshot-of inst)))
          (is (= h (instance/base inst))))))))
+
+(deftest deploy-frees-the-name-of-a-removed-snippet-test
+  (enabled
+   (with-remote [repo s]
+     (let [c1       (pltu/commit-snapshot! repo ptu/branch [] (assoc ptu/sample other-id (other-snippet)))
+           [inst _] (deployed-instance! s)
+           new-id   "NewOtherSnippet000001"
+           remote   (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"}))
+           h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           new-name (str "Other (trashed " other-id ")")]
+       (testing "the head removes a snippet and adds one with a name of one key: the removed snippet goes to the trash
+                with a new name, and the deploy shows the head"
+         (is (=? {:result :deployed :head h :renamed {other-id new-name}} (deploy! inst s)))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (= h (instance/base inst)))
+         (is (= new-name (get-in @(:state inst) [:trash other-id :name]))))))))
 
 ;;; ------------------------------------------------- The whole workflow -----------------------------------------------
 
