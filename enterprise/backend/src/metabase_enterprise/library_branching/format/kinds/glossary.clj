@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.format.kinds.glossary
   "The codec of the kind :glossary-term: a term of the glossary and its definition, as the file `<term>.term.yaml` in
-  `glossary/`. A glossary term is in no collection, so it has no place."
+  `glossary/`. A glossary term is in no collection: its place is the root of the Glossary area, which the file does
+  not hold."
   (:require
    [metabase-enterprise.library-branching.format.kinds.common :as common]
    [metabase-enterprise.library-branching.registry :as registry]
@@ -29,6 +30,7 @@
    :name-key    :term
    :name-schema [:string {:min 1 :max 255}]
    :place-key   nil
+   :fixed-place (snapshot/area-root :glossary)
    :attrs       {:definition {:schema :string :required? true}}
    :refs        #'refs})
 

@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -15,6 +16,13 @@
   [s]
   (str/replace (u/lower-case-en s) #"[^a-z0-9]+" "_"))
 
+(defn- container
+  "The collection id of the old format for `place`: nil for an area root, as master writes an item at the root level
+  of its namespace."
+  [place]
+  (when-not (contains? snapshot/area-roots place)
+    place))
+
 (defn collection-doc
   "The old document of collection `id`."
   [id {:keys [name place attrs]}]
@@ -24,7 +32,7 @@
           :created_at       created-at
           :archived         false
           :is_remote_synced true
-          :parent_id        place
+          :parent_id        (container place)
           :serdes/meta      [{:model "Collection"}]}
          (select-keys attrs [:description :type :namespace :authority_level])))
 
@@ -61,7 +69,7 @@
           :created_at    created-at
           :creator_id    "crowberto@metabase.com"
           :archived      false
-          :collection_id place
+          :collection_id (container place)
           :template_tags (:template_tags attrs)
           :serdes/meta   [{:model "NativeQuerySnippet"}]}
          (select-keys attrs [:description :content])))

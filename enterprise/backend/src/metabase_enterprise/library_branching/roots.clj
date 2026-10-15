@@ -9,8 +9,8 @@
   - `:namespaces`: each collection of one of these namespaces is a root.
   - `:root-level`: `{kind namespace}`. The items of `kind` at the root level of `namespace` are in scope, when
     `:namespaces` holds `namespace`.
-  - `:unplaced-kinds`: kinds whose items are in no collection. Every item of these kinds is in scope, at the root
-    level."
+  - `:unplaced-kinds`: kinds whose items are in no collection. Every item of these kinds is in scope; its place is
+    the root of its area."
   {:collection-types #{"library"}
    :namespaces       #{:data-actions :data-apps :snippets :transforms}
    :root-level       {:action         :data-actions
@@ -24,17 +24,13 @@
 
 (defn root-ids
   "The identities of the root-level items of snapshot `s` that are fixed roots of `roots` (default [[roots]]), by
-  their content: a collection whose `:type` is one of the `:collection-types` or whose `:namespace` is one of the
-  `:namespaces`, an item whose kind's `:root-level` namespace is one of the `:namespaces`, and an item of one of the
-  `:unplaced-kinds`."
+  their content: the collections whose `:type` is one of the `:collection-types`. Every other top-level item of an
+  area has its area root as its place (`snapshot/area-roots`), so it is not at the root level."
   ([s]
    (root-ids roots s))
-  ([{:keys [collection-types namespaces root-level unplaced-kinds]} s]
+  ([{:keys [collection-types]} s]
    (set (for [[id {:keys [kind place attrs]}] s
               :when (and (nil? place)
-                         (if (= :collection kind)
-                           (or (contains? collection-types (:type attrs))
-                               (contains? namespaces (some-> (:namespace attrs) keyword)))
-                           (or (contains? unplaced-kinds kind)
-                               (contains? namespaces (get root-level kind)))))]
+                         (= :collection kind)
+                         (contains? collection-types (:type attrs)))]
           id))))

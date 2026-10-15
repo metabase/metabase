@@ -92,6 +92,53 @@
 (def ^:private filter-3 (engine.tu/eid "filter3"))
 (def ^:private metric-2 (engine.tu/eid "metric2"))
 
+(def ^:private snippets-root "snippetssnippetssnipp")
+(def ^:private glossary-root "glossaryglossarygloss")
+(def ^:private transforms-root "transformstransformst")
+(def ^:private folder (engine.tu/eid "folder"))
+(def ^:private base (engine.tu/eid "base"))
+(def ^:private finance (engine.tu/eid "finance"))
+(def ^:private term (engine.tu/eid "term"))
+
+(def ^:private with-areas
+  "The Library, and items at the top level of the Snippets, Transforms and Glossary areas."
+  (assoc library
+         folder  (assoc-in (engine.tu/item :collection "Filters" snippets-root) [:attrs :namespace] "snippets")
+         base    (engine.tu/item :snippet "Base" snippets-root)
+         finance (assoc-in (engine.tu/item :collection "Finance" transforms-root) [:attrs :namespace] "transforms")
+         term    (engine.tu/item :glossary-term "Churn" glossary-root)))
+
+(deftest ^:parallel area-root-test
+  (testing "the area roots are the five fixed identities"
+    (is (= #{"transformstransformst" "snippetssnippetssnipp" "dataactionsdataaction" "dataappsdataappsdatap"
+             "glossaryglossarygloss"}
+           (set (keys snapshot/area-roots)))))
+  (testing "a place that names an area root is inside, with no item of that identity"
+    (is (= [] (validate/validate with-areas)))
+    (is (= [] (validate/validate with-areas {:roots #{lib}}))))
+  (testing "a place that names no item and no area root is a finding"
+    (is (= [{:rule :place-inside :id base :place gone}]
+           (validate/validate (assoc-in with-areas [base :place] gone)))))
+  (testing "without the area roots, a place that names one is a finding"
+    (is (= #{{:rule :place-inside :id folder :place snippets-root}
+             {:rule :place-inside :id base :place snippets-root}
+             {:rule :place-inside :id finance :place transforms-root}
+             {:rule :place-inside :id term :place glossary-root}}
+           (set (validate/validate with-areas {:areas {}})))))
+  (testing "an area root holds only the kinds of its area"
+    (is (= [{:rule :kind-fits :id term :place snippets-root}]
+           (validate/validate (assoc-in with-areas [term :place] snippets-root))))
+    (is (= [{:rule :kind-fits :id metric :place glossary-root}]
+           (validate/validate (assoc-in with-areas [metric :place] glossary-root)))))
+  (testing "a collection at an area root has the namespace of the area"
+    (is (= [{:rule :namespace :id folder :place snippets-root}]
+           (validate/validate (assoc-in with-areas [folder :attrs :namespace] "transforms"))))
+    (is (= [{:rule :namespace :id finance :place transforms-root}]
+           (validate/validate (update-in with-areas [finance :attrs] dissoc :namespace)))))
+  (testing "an item with the identity of an area root is a finding; the items at that place are in the item"
+    (is (= #{{:rule :area-root :id snippets-root} {:rule :namespace :id folder :place snippets-root}}
+           (set (validate/validate (assoc with-areas snippets-root (engine.tu/item :collection "Fake" lib))))))))
+
 (deftest ^:parallel unique-key-test
   (testing "two snippets with one name are one finding that names both, with the kind and the key"
     (is (= [{:rule :unique-key :kind :snippet :key "Filter" :ids #{snippet filter-2}}]
@@ -255,9 +302,13 @@
   "True iff finding `f` names a fault that snapshot `s` has, with the reference kinds `ref-kinds`."
   [s ref-kinds {:keys [rule id place ids ref kind key]}]
   (case rule
-    :place-inside (and (= place (:place (get s id))) (not (contains? s place)))
-    :kind-fits    (and (= place (:place (get s id))) (contains? s place)
-                       (not (contains? (get snapshot/may-contain (:kind (get s place)) #{}) (:kind (get s id)))))
+    :place-inside (and (= place (:place (get s id))) (not (contains? s place))
+                       (not (contains? snapshot/area-roots place)))
+    :kind-fits    (and (= place (:place (get s id)))
+                       (not (contains? (if (contains? s place)
+                                         (get snapshot/may-contain (:kind (get s place)) #{})
+                                         (get-in snapshot/area-roots [place :kinds]))
+                                       (:kind (get s id)))))
     :refs-closed  (and (contains? (:refs (get s id)) ref)
                        (not (lb.tu/env-target? (second ref)))
                        (not (contains? s (second ref))))
@@ -266,15 +317,20 @@
                        (every? (cycle-members s) ids))
     :unique-key   (and (some? key) (< 1 (count ids)) (= ids (key-holders s kind key)))
     :namespace    (and (= place (:place (get s id)))
-                       (= :collection (:kind (get s id)) (:kind (get s place)))
-                       (not= (:namespace (:attrs (get s id))) (:namespace (:attrs (get s place)))))
+                       (= :collection (:kind (get s id)))
+                       (if (contains? s place)
+                         (and (= :collection (:kind (get s place)))
+                              (not= (:namespace (:attrs (get s id))) (:namespace (:attrs (get s place)))))
+                         (and (contains? snapshot/area-roots place)
+                              (not= (:namespace (:attrs (get s id))) (get-in snapshot/area-roots [place :namespace])))))
     :ref-kind     (let [[role target] ref
                         allowed       (get-in ref-kinds [(:kind (get s id)) role])]
                     (and (contains? (:refs (get s id)) ref)
                          (some? allowed)
                          (or (lb.tu/env-target? target)
                              (and (contains? s target) (not (contains? allowed (:kind (get s target))))))))
-    :root         false))
+    :root         false
+    :area-root    (and (contains? s id) (contains? snapshot/area-roots id))))
 
 (def ^:private namespaced-attrs-gen
   "Generates the `:attrs` of a collection: those of `lb.tu/attrs-gen`, with no namespace or one of two."
@@ -336,7 +392,7 @@
   [{:name   :no-place-rule
     :doc    "A place that is not in the snapshot is no finding."
     :target `validate/validate
-    :edits  [[:remove '(place-findings s)]]}
+    :edits  [[:remove '(place-findings s areas)]]}
    {:name   :no-cycle-rule
     :doc    "A containment cycle is no finding."
     :target `validate/validate
@@ -344,7 +400,7 @@
    {:name   :no-kind-rule
     :doc    "A kind that its container cannot contain is no finding."
     :target `validate/validate
-    :edits  [[:remove '(kind-findings s may-contain)]]}
+    :edits  [[:remove '(kind-findings s may-contain areas)]]}
    {:name   :no-ref-rule
     :doc    "A dangling reference is no finding."
     :target `validate/validate
@@ -372,7 +428,7 @@
    {:name   :no-namespace-rule
     :doc    "A child collection in another namespace than its parent is no finding."
     :target `validate/validate
-    :edits  [[:remove '(namespace-findings s)]]}
+    :edits  [[:remove '(namespace-findings s areas)]]}
    {:name   :no-ref-kind-rule
     :doc    "An action on a question is no finding."
     :target `validate/validate
@@ -385,13 +441,33 @@
     :doc    "An event twice in one timeline is a finding of two holders, which names one item twice."
     :target `validate/nested-identity-findings
     :edits  [[:replace '(distinct (snapshot/nested-identities nested-ids item)) '(snapshot/nested-identities nested-ids item)]]}
+   {:name   :no-area-roots
+    :doc    "A place that names an area root is a finding, so every item at the top level of an area is refused."
+    :target `validate/place-findings
+    :edits  [[:replace '(not (contains? areas place)) true]]}
+   {:name   :area-id-dropped
+    :doc    "The identity of the Snippets area root is not a fixed root, so every snippet at the top level is refused."
+    :target `snapshot/area-roots
+    :edits  [[:replace "snippetssnippetssnipp" "snippetssnippetssnipX"]]}
+   {:name   :no-area-kinds
+    :doc    "An area root holds an item of any kind, so a glossary term can be at the root of the Snippets area."
+    :target `validate/kind-findings
+    :edits  [[:replace '(:kinds area) nil]]}
+   {:name   :no-area-namespace
+    :doc    "A collection at an area root can have any namespace."
+    :target `validate/namespace-findings
+    :edits  [[:replace '(not= (:namespace attrs) (:namespace area)) false]]}
+   {:name   :no-area-root-rule
+    :doc    "An item with the identity of an area root is no finding."
+    :target `validate/validate
+    :edits  [[:remove '(area-root-findings s areas)]]}
    {:name   :ref-kind-env-fits
     :doc    "An environment object fits every role, so an action can name a table as its model."
     :target `validate/ref-kind-findings
     :edits  [[:replace '(env-target? target) false]]}])
 
 (deftest validate-mutations-test
-  (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test
+  (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test #'area-root-test
                                 #'refs-closed-test #'root-test #'unique-key-test #'nested-identity-test #'namespace-test
                                 #'action-model-test #'several-findings-test
                                 #'arbitrary-snapshot-findings-test #'ref-kinds-findings-test #'roots-test]}))

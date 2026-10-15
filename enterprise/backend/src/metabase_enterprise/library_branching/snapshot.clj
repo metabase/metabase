@@ -93,6 +93,28 @@
   collection and its sections Data, Metrics and Dashboards."
   #{"librarylibrarylibrary" "librarylibrarydatadat" "librarylibrarymetrics" "librarylibrarydashbrd"})
 
+(def area-roots
+  "`{identity area}`: the root of each area other than the Library, a system item with a fixed identity that no
+  snapshot, file or app-DB row holds. A place that names an area root and no item of the snapshot is inside: an item
+  at the top level of an area has the area root as its place. An area has `:area`, its keyword; `:name`, its name for
+  a person; `:kinds`, the kinds of the items that its root can contain, also kinds outside [[kinds]]; and
+  `:namespace`, the `:namespace` attribute of a collection at its root (the Glossary holds no collection)."
+  {"dataactionsdataaction" {:area :data-actions :name "Data actions" :namespace "data-actions"
+                            :kinds #{:action :collection}}
+   "dataappsdataappsdatap" {:area :data-apps :name "Data apps" :namespace "data-apps"
+                            :kinds #{:collection :data-app}}
+   "glossaryglossarygloss" {:area :glossary :name "Glossary"
+                            :kinds #{:glossary-term}}
+   "snippetssnippetssnipp" {:area :snippets :name "Snippets" :namespace "snippets"
+                            :kinds #{:collection :snippet}}
+   "transformstransformst" {:area :transforms :name "Transforms" :namespace "transforms"
+                            :kinds #{:collection :python-library :transform :transform-job :transform-tag}}})
+
+(defn area-root
+  "The identity of the root of the area whose `:area` is `area` (of [[area-roots]]), or nil."
+  [area]
+  (some (fn [[id a]] (when (= area (:area a)) id)) area-roots))
+
 (registry/def ::kind
   (into [:enum] (sort kinds)))
 

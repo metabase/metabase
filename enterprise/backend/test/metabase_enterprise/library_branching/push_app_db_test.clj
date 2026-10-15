@@ -330,7 +330,7 @@
              (is (contains? (paths s commit) "glossary/churn_for_library_branching.term.yaml"))
              (is (= {:kind  :glossary-term
                      :name  "Churn for library branching"
-                     :place nil
+                     :place "glossaryglossarygloss"
                      :refs  #{}
                      :attrs {:definition "The share of customers who cancel."}}
                     (get (ptu/commit-snapshot s commit) (:entity_id term))))

@@ -6,6 +6,7 @@
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance.dashboard-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.dashboard-test :as dashboard-test]
+   [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.dashboard :as dashboard]
    [metabase-enterprise.library-branching.instance.lock-test :as lock-test]
    [metabase-enterprise.library-branching.instance.portable :as portable]
@@ -125,7 +126,29 @@
     :doc    "The stub of a dashboard keeps its cards, so a new dashboard on a reference cycle cannot be written first."
     :target `dashboard/stub-dashboard
     :edits  [[:replace '(dissoc (:attrs content) :dashcards :parameters) '(:attrs content)]]
-    :tests  [#'dashboard-test/stub-test]}])
+    :tests  [#'dashboard-test/stub-test]}
+   {:name   :no-dashboard-users
+    :doc    "The in-use report looks for the users of a trashed dashboard as for a card, so a link to it is not reported."
+    :target `in-use/users
+    :edits  [[:replace '(= :dashboard kind) false]]
+    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
+   {:name   :dashboard-users-in-scope
+    :doc    "The in-use report of a trashed dashboard names a user in the Library."
+    :target `in-use/dashboard-users
+    :edits  [[:replace '(remove in-scope candidates) 'candidates]]
+    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
+   {:name   :dashboard-mentions-unchecked
+    :doc    "The in-use report of a trashed dashboard names each card and dashboard whose settings text holds the id of
+            the dashboard, also when it does not link to it."
+    :target `in-use/dashboard-users
+    :edits  [[:replace '(uses? :dashboard id refs) true]]
+    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
+   {:name   :dashboard-link-cards-ignored
+    :doc    "The in-use report of a trashed dashboard reads no dashboard outside the Library, so a link card is not
+            reported."
+    :target `library-branching.db/dashboards-mentioning-dashboard
+    :edits  [[:replace '[:= :d.archived false] 'false]]
+    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}])
 
 (deftest dashboard-mutations-test
   (mut/check mutations {}))
