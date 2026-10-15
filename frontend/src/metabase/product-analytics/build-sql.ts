@@ -2,6 +2,7 @@ import {
   COLUMN_ROLES,
   type ColumnRoles,
   PLANNER_COLUMN_NAMES,
+  type ProjectedColumn,
 } from "./columns";
 import type { AnalysisSpec } from "./spec/types";
 import { planCohorts } from "./sql/analyses/cohorts";
@@ -23,6 +24,7 @@ export interface BuiltSql {
 export type BaseColumns = {
   columns: ColumnRoles;
   flags: string[];
+  extraColumns: ProjectedColumn[];
 };
 
 const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
@@ -53,13 +55,17 @@ const MISSING_COLUMN_SQL: Record<keyof ColumnRoles, string> = {
 };
 
 /** Renames the mapped table columns to the names the planners read. */
-const projectBase = (baseSql: string, { columns, flags }: BaseColumns) => {
+const projectBase = (
+  baseSql: string,
+  { columns, flags, extraColumns }: BaseColumns,
+) => {
   const projected = [
     ...COLUMN_ROLES.map((role) => {
       const source = columns[role];
       const sql = source !== null ? ident(source) : MISSING_COLUMN_SQL[role];
       return `${sql} AS ${PLANNER_COLUMN_NAMES[role]}`;
     }),
+    ...extraColumns.map(({ as, alias }) => `${ident(alias)} AS ${as}`),
     ...flags.map(flagSql),
   ];
   return [

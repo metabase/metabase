@@ -105,6 +105,7 @@ export function getSettingWidgets<TContext, S>(
         section,
         group: definitions[id].group,
         inline: definitions[id].inline,
+        secondary: definitions[id].secondary,
         title: widget.title,
         hint: definitions[id].getHint?.(),
         hidden: widget.hidden,

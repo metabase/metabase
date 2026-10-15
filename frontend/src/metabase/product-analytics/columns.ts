@@ -1,3 +1,5 @@
+import type { TableId } from "metabase-types/api";
+
 export const COLUMN_ROLES = [
   "timestamp",
   "person",
@@ -20,4 +22,28 @@ export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
   event_id: "event_id",
   event_name: "event_name",
   url_path: "url_path",
+};
+
+/** How the event table reaches the users table its person column links to. */
+export type UsersTableLink = {
+  tableId: TableId;
+  /** The event table column that holds the users table key. */
+  foreignKey: string;
+  /** The users table column the foreign key points to. */
+  primaryKey: string;
+};
+
+/** A column an analysis reads on `events_base` beyond the roles. */
+export type ExtraColumn = {
+  /** The name the planners read it under. */
+  as: string;
+  column: string;
+  from: "events" | "users";
+};
+
+/** An extra column as the compiled base query returns it. */
+export type ProjectedColumn = {
+  as: string;
+  /** The column's alias in the compiled base SQL. */
+  alias: string;
 };

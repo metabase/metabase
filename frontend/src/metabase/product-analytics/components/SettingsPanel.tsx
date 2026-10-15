@@ -1,7 +1,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { Paper } from "metabase/ui";
+import { Divider, Paper } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
@@ -23,6 +23,8 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
   // Column role settings still pick their defaults from the table; they just
   // aren't editable here.
   const ungrouped = visible.filter((widget) => widget.group === undefined);
+  const primary = ungrouped.filter((widget) => !widget.secondary);
+  const secondary = ungrouped.filter((widget) => widget.secondary);
 
   return (
     <Paper
@@ -33,7 +35,11 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
       mah="100%"
       className={cx(CS.alignSelfStart, CS.overflowYAuto)}
     >
-      {ungrouped.map((widget) => (
+      {primary.map((widget) => (
+        <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
+      ))}
+      {secondary.length > 0 && <Divider mb="xl" />}
+      {secondary.map((widget) => (
         <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
       ))}
     </Paper>

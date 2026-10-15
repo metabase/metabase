@@ -4,7 +4,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { ColumnRole } from "../columns";
+import type { ColumnRole, ExtraColumn, UsersTableLink } from "../columns";
 import type { EventDefinition, EventFlags } from "../events/types";
 import type { SettingDefinitions } from "../settings/types";
 import type {
@@ -21,9 +21,17 @@ import type {
   PathsSpec,
 } from "../spec/types";
 
+/** The table the person column links to, with its metadata loaded. */
+export type UsersTable = {
+  link: UsersTableLink;
+  table: Table;
+};
+
 /** Facts the settings are computed from. Choices belong in settings. */
 export type AnalysisContext = {
   table: Table | undefined;
+  /** Undefined until the event table and the users table are both loaded. */
+  usersTable: UsersTable | undefined;
 };
 
 export type ColumnRoleSettings = {
@@ -74,12 +82,15 @@ export type LifecycleSettings = CommonSettings & {
 };
 
 export type CohortsSettings = CommonSettings & {
-  "cohorts.start": EventDefinition | null;
+  "cohorts.by": CohortsSpec["by"];
+  /** An event table column; the earliest value per actor starts their clock. */
+  "cohorts.start_column": string | null;
+  /** A users table column when there is a users table, else an event table column. */
+  "cohorts.attribute": string | null;
   "cohorts.return": EventDefinition | null;
   "cohorts.return_rule": CohortsSpec["returnRule"];
+  /** How many periods after their start to follow each cohort: the columns. */
   "cohorts.horizon": number;
-  "cohorts.row_mode": CohortsSpec["rowMode"];
-  "cohorts.start_periods": number;
   "cohorts.display": NonNullable<OutputSpec["cohortsDisplay"]>;
 };
 
@@ -117,6 +128,11 @@ export type AnalysisConfig<K extends AnalysisKind> = {
     settings: AnalysisSettingsByKind[K],
     events: EventFlags,
   ) => SpecResult;
+  /** Table columns the planner reads beyond the roles. */
+  getExtraColumns?: (
+    settings: AnalysisSettingsByKind[K],
+    context: AnalysisContext,
+  ) => ExtraColumn[];
   getDisplay: (settings: AnalysisSettingsByKind[K]) => CardDisplayType;
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
