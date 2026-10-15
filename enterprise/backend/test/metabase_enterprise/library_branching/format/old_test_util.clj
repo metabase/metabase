@@ -182,6 +182,29 @@
           :serdes/meta             [{:model "Dashboard" :id id}]}
          (dissoc attrs :parameters :tabs :dashcards)))
 
+(defn action-doc
+  "The old document of action `id`: its query row under `query`, or its implicit row under `implicit`. An action with
+  a model has the collection of its model, which a snapshot does not hold; here it has none."
+  [id {:keys [name place attrs]}]
+  (let [{:keys [model dataset_query implicit_kind]} attrs]
+    (merge {:name                   name
+            :entity_id              id
+            :created_at             created-at
+            :creator_id             "crowberto@metabase.com"
+            :archived               false
+            :archived_directly      false
+            :model_id               model
+            :collection_id          (when-not model (container place))
+            :public_uuid            nil
+            :made_public_by_id      nil
+            :parameters             []
+            :parameter_mappings     []
+            :visualization_settings (merge {:column_settings nil} (:visualization_settings attrs))
+            :query                  (if dataset_query [{:database_id (:database dataset_query) :dataset_query dataset_query}] [])
+            :implicit               (if implicit_kind [{:kind implicit_kind}] [])
+            :serdes/meta            [{:model "Action"}]}
+           (select-keys attrs [:description :type :parameters :parameter_mappings]))))
+
 (def ^:private table-flags
   {:description        :description_set
    :caveats            :caveats_set
@@ -252,6 +275,7 @@
   [s]
   (vec (mapcat (fn [[id {:keys [kind attrs] :as item}]]
                  (case kind
+                   :action          [(action-doc id item)]
                    :collection      [(collection-doc id item)]
                    (:metric :question :model) [(card-doc id item)]
                    :dashboard       [(dashboard-doc id item)]

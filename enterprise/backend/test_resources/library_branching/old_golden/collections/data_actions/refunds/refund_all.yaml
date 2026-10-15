@@ -1,0 +1,19 @@
+collection_id: rEfUnDsCoLlEcTiOn0001
+created_at: '2026-10-15T10:20:22.519157Z'
+creator_id: crowberto@metabase.com
+entity_id: rEfUnDaLlAcTiOn000001
+implicit: []
+name: Refund all
+parameter_mappings: []
+parameters: []
+query:
+- database_id: Sample Database
+  dataset_query:
+    database: Sample Database
+    stages:
+    - native: UPDATE orders SET refunded = true
+      lib/type: mbql.stage/native
+    lib/type: mbql/query
+type: query
+serdes/meta:
+- model: Action

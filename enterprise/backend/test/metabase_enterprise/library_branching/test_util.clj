@@ -123,6 +123,26 @@
                    (vals s))]
     (= (count ks) (count (set ks)))))
 
+(defn- model-ref?
+  [[role]]
+  (= :model role))
+
+(defn actions-in-areas?
+  "True iff every action of snapshot `s` with no reference of role `:model`, whose container is an item of `s` that
+  `may-contain` (default [[snapshot/may-contain]]) lets hold it, is in a collection of the data actions or data apps
+  namespace."
+  ([s] (actions-in-areas? s snapshot/may-contain))
+  ([s may-contain]
+   (every? (fn [{:keys [kind place refs]}]
+             (let [container (get s place)]
+               (or (not= :action kind)
+                   (nil? container)
+                   (not (contains? (get may-contain (:kind container) #{}) :action))
+                   (some model-ref? refs)
+                   (and (= :collection (:kind container))
+                        (contains? #{"data-actions" "data-apps"} (:namespace (:attrs container)))))))
+           (vals s))))
+
 (def library-holds
   "`{collection-type #{content}}`: what a collection of each Library type can hold, by the Library's rules. A content
   is a kind, `:dashboard-question` (a question of a dashboard), or `[:collection type]` (a collection of that `:type`,
@@ -168,13 +188,13 @@
 (defn well-formed?
   "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
   [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the rules that the
-  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]], [[area-ids-free?]], [[nested-ids-unique?]] and
-  [[library-content-fits?]]."
+  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]], [[area-ids-free?]], [[nested-ids-unique?]],
+  [[library-content-fits?]] and [[actions-in-areas?]]."
   ([s] (well-formed? s snapshot/may-contain))
   ([s may-contain]
    (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s)
         (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (area-ids-free? s) (nested-ids-unique? s)
-        (library-content-fits? s))))
+        (library-content-fits? s) (actions-in-areas? s may-contain))))
 
 ;;; --------------------------------------------- Identities and values ----------------------------------------------
 
@@ -339,13 +359,19 @@
    ::metrics-collection    {:type "library-metrics" :holds #{::metrics-collection :metric}}
    ::dashboards-collection {:type "library-dashboards" :holds #{::dashboards-collection :dashboard :timeline}}})
 
+(def ^:private data-actions-collection-kind
+  "The kind that the generators of well-formed snapshots use for a collection of the data actions namespace: it holds
+  only such collections and actions."
+  ::data-actions-collection)
+
 (def library-root-kind
   "The kind of [[library-collection-kinds]] of the Library collection."
   ::library-root)
 
 (defn- assemble
   "The snapshot of `choices`, given the kind, the place (an `[:item k]` or `[:dangling k]` choice, or nil) and the
-  attributes of each item. A kind of [[library-collection-kinds]] is a collection of its type."
+  attributes of each item. A kind of [[library-collection-kinds]], and [[data-actions-collection-kind]], is a
+  collection."
   [choices item-kinds item-places item-attrs]
   (let [ids (identities choices item-kinds)]
     (into {}
@@ -353,7 +379,11 @@
            (fn [i {:keys [id name refs]}]
              (let [kind (nth item-kinds i)]
                [(nth ids i)
-                {:kind  (if (or (contains? library-collection-kinds kind) (= :collection kind)) :collection kind)
+                {:kind  (if (or (contains? library-collection-kinds kind)
+                                (= data-actions-collection-kind kind)
+                                (= :collection kind))
+                          :collection
+                          kind)
                  :name  name
                  :place (some->> (nth item-places i) (resolve-target ids id))
                  :refs  (into #{} (map (fn [[role target]] [role (resolve-target ids id target)])) refs)
@@ -367,14 +397,19 @@
   (gen/fmap f (apply gen/tuple (map attrs item-kinds))))
 
 (defn- library-attrs-gen
-  "A generator of the attributes of an item of `kind`, a kind of the options or of [[library-collection-kinds]], from
-  `attrs` (a function from a kind to a generator): those of a collection with the Library type of `kind`, or with no
-  Library type for `:collection`."
+  "A generator of the attributes of an item of `kind`, a kind of the options, of [[library-collection-kinds]] or
+  [[data-actions-collection-kind]], from `attrs` (a function from a kind to a generator): those of a collection with
+  the Library type of `kind`; of a collection of the data actions namespace with no Library type; or with no Library
+  type for `:collection`."
   [attrs kind]
-  (if-let [{t :type} (get library-collection-kinds kind)]
-    (gen/fmap #(assoc % :type t) (attrs :collection))
-    (cond->> (attrs kind)
-      (= :collection kind) (gen/fmap #(cond-> % (contains? library-holds (:type %)) (dissoc :type))))))
+  (let [no-library-type (fn [a] (cond-> a (contains? library-holds (:type a)) (dissoc :type)))]
+    (if-let [{t :type} (get library-collection-kinds kind)]
+      (gen/fmap #(assoc % :type t) (attrs :collection))
+      (condp = kind
+        data-actions-collection-kind (gen/fmap #(assoc (no-library-type %) :namespace "data-actions")
+                                               (attrs :collection))
+        :collection                  (gen/fmap no-library-type (attrs kind))
+        (attrs kind)))))
 
 (defn- sorted-kinds [ks] (vec (sort ks)))
 
@@ -395,6 +430,29 @@
                  [s seen])))
            [s #{}]
            (sort snapshot/compare-identities (keys s)))))
+
+(defn- with-model-refs
+  "Snapshot `s` in which each action whose place is a model of `s` refers to that model as its model."
+  [s]
+  (update-vals s (fn [{:keys [kind place] :as item}]
+                   (cond-> item
+                     (and (= :action kind) (= :model (:kind (get s place)))) (update :refs conj [:model place])))))
+
+(defn- with-data-actions-collections
+  "Options `opts` in which a collection of the data actions namespace is a kind of its own
+  ([[data-actions-collection-kind]]): it holds only collections of its kind and actions, and it can be at the root
+  level. A collection of the kind `:collection` holds no action. So every action outside a model is in a collection of
+  the data actions namespace, or at the root level."
+  [{:keys [kinds may-contain root-kinds] :as opts}]
+  (if (and (contains? (set kinds) :collection) (contains? (set (get may-contain :collection)) :action))
+    (assoc opts
+           :kinds       (conj (set kinds) data-actions-collection-kind)
+           :may-contain (-> may-contain
+                            (update :collection #(disj (set %) :action))
+                            (assoc data-actions-collection-kind #{data-actions-collection-kind :action}))
+           :root-kinds  (cond-> (set root-kinds)
+                          (contains? (set root-kinds) :collection) (conj data-actions-collection-kind)))
+    opts))
 
 (defn- with-library-collections
   "Options `opts` in which the collections of the Library types are kinds of their own ([[library-collection-kinds]])
@@ -468,11 +526,12 @@
 
 (defn well-formed-snapshot-gen
   "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A collection has a Library
-  type only as a kind of [[library-collection-kinds]], and holds what that type holds. A snapshot has at most
-  min(size, `:max-items`) items. Every root-level item has a kind of `:root-kinds`. A published table's identity is a
-  table natural key; every other identity is an entity id. Two snapshots of the generator share identities now and
-  then, also for items of two kinds. Siblings with one name and one kind occur, but no two items of a kind of
-  `:unique-keys` have one key. With the default options, every snapshot validates against
+  type only as a kind of [[library-collection-kinds]], and holds what that type holds. An action in a model refers to
+  it as its model; an action outside a model is in a collection of the data actions namespace, or at the root level.
+  A snapshot has at most min(size, `:max-items`) items. Every root-level item has a kind of `:root-kinds`. A published
+  table's identity is a table natural key; every other identity is an entity id. Two snapshots of the generator share
+  identities now and then, also for items of two kinds. Siblings with one name and one kind occur, but no two items of
+  a kind of `:unique-keys` have one key. With the default options, every snapshot validates against
   `::snapshot/snapshot` and satisfies [[well-formed?]].
 
   Options, each with a default:
@@ -493,11 +552,13 @@
      ;; choices draws the attributes again from the same seed, and then the attributes shrink.
      (gen/bind (choices-gen opts place-choice-gen item-target-gen)
                (fn [choices]
-                 (let [[item-kinds item-places] (well-formed-structure (with-library-collections opts) choices)]
+                 (let [structure-opts           (-> opts with-library-collections with-data-actions-collections)
+                       [item-kinds item-places] (well-formed-structure structure-opts choices)]
                    (with-attrs-gen (partial library-attrs-gen (:attrs opts)) item-kinds
                      (fn [item-attrs]
-                       (with-unique-keys (:unique-keys opts)
-                         (assemble choices item-kinds item-places item-attrs))))))))))
+                       (with-model-refs
+                         (with-unique-keys (:unique-keys opts)
+                           (assemble choices item-kinds item-places item-attrs)))))))))))
 
 (defn arbitrary-snapshot-gen
   "Generates snapshots with no structural guarantee: a place or a reference can name an identity that is not in the

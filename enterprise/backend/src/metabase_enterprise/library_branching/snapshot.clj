@@ -10,17 +10,18 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :dashboard :glossary-term :measure :metric :model :published-table :question :segment :snippet
-    :timeline})
+  #{:action :collection :dashboard :glossary-term :measure :metric :model :published-table :question :segment
+    :snippet :timeline})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
-  {:collection      #{:collection :dashboard :metric :model :published-table :question :snippet :timeline}
+  {:action          #{}
+   :collection      #{:action :collection :dashboard :metric :model :published-table :question :snippet :timeline}
    :dashboard       #{}
    :glossary-term   #{}
    :measure         #{}
    :metric          #{}
-   :model           #{}
+   :model           #{:action}
    :published-table #{:measure :segment}
    :question        #{}
    :segment         #{}
@@ -83,6 +84,11 @@
   table can name kinds outside [[kinds]]."
   {:action    {:model #{:model}}
    :dashboard {:action #{:action} :dashboard #{:dashboard}}})
+
+(def action-namespaces
+  "The `:namespace` attributes of the collections that can hold an action with no model: the data actions and data
+  apps namespaces."
+  #{"data-actions" "data-apps"})
 
 (def library-content
   "`{collection-type #{content-type}}`: the content types that a collection of each Library type can hold, as master's

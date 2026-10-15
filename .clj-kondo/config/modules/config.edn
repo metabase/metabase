@@ -4023,10 +4023,12 @@
                     :model/FieldUserSettings
                     :model/FieldValues
                     :model/Glossary
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/ParameterCard
                     :model/Pulse
+                    :model/QueryAction
                     :model/Segment
                     :model/Table
                     :model/TableUserSettings

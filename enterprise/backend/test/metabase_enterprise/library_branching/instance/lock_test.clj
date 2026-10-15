@@ -61,6 +61,7 @@
             (case model
               :model/TableUserSettings (t2/delete! :model/TableUserSettings :table_id (:table_id row))
               :model/FieldUserSettings (t2/delete! :model/FieldUserSettings :field_id (:field_id row))
+              :model/QueryAction       (t2/delete! :model/QueryAction :action_id (:action_id row))
               (t2/delete! model :id (:id row)))))))))
 
 (defn- with-short-lock-wait!
@@ -164,6 +165,10 @@
              tab     (insert! :model/DashboardTab {:dashboard_id (:id dash) :name "Locked tab" :position 0})
              dashcard (insert! :model/DashboardCard {:dashboard_id (:id dash) :card_id (:id metric)
                                                      :dashboard_tab_id (:id tab) :row 0 :col 0 :size_x 4 :size_y 4})
+             action  (insert! :model/Action {:name "Locked action" :type :query :creator_id user})
+             _       (insert! :model/QueryAction {:action_id     (:id action)
+                                                  :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                   "UPDATE venues SET name = 'x'")})
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -195,7 +200,12 @@
                   ["a tab of a dashboard" :dashboard (:entity_id dash)
                    #(t2/query-one {:update :dashboard_tab :set {:name "Saved"} :where [:= :id (:id tab)]})]
                   ["a card of a dashboard" :dashboard (:entity_id dash)
-                   #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]]]
+                   #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]
+                  ["an action" :action (:entity_id action)
+                   #(t2/query-one {:update :action :set {:name "Saved"} :where [:= :id (:id action)]})]
+                  ["the query row of an action" :action (:entity_id action)
+                   #(t2/query-one {:update :query_action :set {:legacy_query "Saved"}
+                                   :where  [:= :action_id (:id action)]})]]]
            (testing label
              (let [[current during after] (while-current-holds! (get stores kind) id save!)]
                (is (= :live (:state current)))

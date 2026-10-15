@@ -168,6 +168,8 @@
                             (get library-holds t "other content") "."))
     :table-collection (str (item-text s id) " is in " (place-text s place) ", and a published table can be only in a"
                            " collection of type " snapshot/table-collection-type ".")
+    :action-area  (str (item-text s id) " has no model and is in " (place-text s place) ", and an action with no model"
+                       " is only in the Data actions area or in a data app collection.")
     (pr-str (dissoc finding :level :path))))
 
 (defn- semantic-text

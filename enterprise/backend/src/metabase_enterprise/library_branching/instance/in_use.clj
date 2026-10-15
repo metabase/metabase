@@ -12,7 +12,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private model-of
-  {:dashboard :model/Dashboard
+  {:action    :model/Action
+   :dashboard :model/Dashboard
    :measure   :model/Measure
    :metric    :model/Card
    :model     :model/Card
@@ -71,6 +72,13 @@
             (users :dashboard kinds.dashboard/read-dashboards
                    (library-branching.db/dashboards-with-settings-mentioning row-id)))))
 
+(defn- action-users
+  "The users of the action with row id `row-id` outside `in-scope`: the dashboards with a button of it."
+  [in-scope row-id]
+  (for [{:keys [entity_id name]} (library-branching.db/dashboards-with-action row-id)
+        :when (not (contains? in-scope entity_id))]
+    {:kind :dashboard :id entity_id :name name}))
+
 (defn- users
   "The users outside the Library of the trashed item `id` of `kind`. `in-scope` is the set of the identities of the
   in-scope cards and dashboards."
@@ -78,8 +86,9 @@
   (when-let [row-id (some-> (model-of kind) (library-branching.db/row-id-by-entity-id id))]
     ;; A question of a dashboard is no user of it: a trash of the dashboard puts its questions in the trash. A card
     ;; that uses a card by its query and links to it is one user.
-    (->> (if (= :dashboard kind)
-           (link-users in-scope kind id row-id)
+    (->> (case kind
+           :action    (action-users in-scope row-id)
+           :dashboard (link-users in-scope kind id row-id)
            (concat (query-users in-scope id kind row-id)
                    (when (contains? card-kinds kind)
                      (link-users in-scope kind id row-id))))
@@ -91,7 +100,7 @@
 (defn trashed-in-use
   "`{identity [{:kind :id :name} ...]}`: of the trashed items `trashed` (`[{:id :kind}]`), each one that a card or a
   dashboard outside the scope of `roots` (default `scope/roots`) uses, with those users, sorted. Only cards,
-  dashboards, snippets, segments and measures have such users. Reads in the current transaction."
+  dashboards, snippets, segments, measures and actions have such users. Reads in the current transaction."
   ([trashed]
    (trashed-in-use scope/roots trashed))
   ([roots trashed]

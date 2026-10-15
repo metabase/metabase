@@ -253,8 +253,9 @@
   (testing "an action on a question is a finding"
     (is (= [{:rule :ref-kind :id action :ref [:model question]}]
            (validate-actions (assoc-in with-actions [action :refs] #{[:model question]})))))
-  (testing "an action with no model is well formed"
-    (is (= [] (validate-actions (assoc-in with-actions [action :refs] #{})))))
+  (testing "an action with no model in a collection of no namespace is a finding of the place rule of actions"
+    (is (= [{:rule :action-area :id action :place lib}]
+           (validate-actions (assoc-in with-actions [action :refs] #{})))))
   (testing "the model of an action is an item, never an environment object"
     (is (= [{:rule :ref-kind :id action :ref [:model [:env orders]]}]
            (validate-actions (assoc-in with-actions [action :refs] #{[:model [:env orders]]})))))
@@ -268,6 +269,49 @@
            (validate/validate library {:ref-kinds {:metric {:snippet #{:metric}}}})))
     (is (= [] (validate/validate (assoc-in with-actions [action :refs] #{[:model question]})
                                  {:may-contain {:collection #{:model :question :action}} :ref-kinds {}})))))
+
+(def ^:private refunds (engine.tu/eid "refunds"))
+(def ^:private app (engine.tu/eid "app"))
+(def ^:private data-actions-root "dataactionsdataaction")
+
+(defn- action-at
+  "The findings of [[with-actions]] with the action moved to `place`, with the references `refs`, and with a
+  collection of the data actions namespace at the area root and a collection of the data apps namespace at the root
+  level."
+  [place refs]
+  (validate/validate (assoc with-actions
+                            refunds (assoc-in (engine.tu/item :collection "Refunds" data-actions-root)
+                                              [:attrs :namespace] "data-actions")
+                            app     (assoc-in (engine.tu/item :collection "App" nil) [:attrs :namespace] "data-apps")
+                            action  (engine.tu/item :action "Refund" place refs))))
+
+(deftest ^:parallel action-area-test
+  (testing "an action with no model is in the Data actions area or in a data app collection"
+    (doseq [place [data-actions-root refunds app]]
+      (is (= [] (action-at place #{})) place)))
+  (testing "an action with no model in a collection of another namespace, or of none, is a finding"
+    (is (= [{:rule :action-area :id action :place lib}] (action-at lib #{})))
+    (let [s (assoc with-actions
+                   sub    (assoc-in (engine.tu/item :collection "Filters" nil) [:attrs :namespace] "snippets")
+                   action (engine.tu/item :action "Refund" sub #{}))]
+      (is (= [{:rule :action-area :id action :place sub}] (validate/validate s)))))
+  (testing "an action with no model in a model is a finding: the model of an action names it"
+    (is (= [{:rule :action-area :id action :place model}] (action-at model #{}))))
+  (testing "an action with a model can be in its model; the codec checks that the place is the model"
+    (is (= [] (action-at model #{[:model model]})))
+    (is (= [] (action-at lib #{[:model model]}))))
+  (testing "a reference of another role is no model"
+    (is (= [{:rule :action-area :id action :place lib}] (action-at lib #{[:card model]}))))
+  (testing "a place that cannot hold an action, an area root of another area or the root level is no finding of this
+           rule"
+    (is (= [{:rule :kind-fits :id action :place question}] (action-at question #{})))
+    (is (= [{:rule :kind-fits :id action :place "snippetssnippetssnipp"}] (action-at "snippetssnippetssnipp" #{})))
+    (is (= [] (action-at nil #{})))
+    (is (= [{:rule :place-inside :id action :place gone}] (action-at gone #{}))))
+  (testing "the rule reads the kinds that a container can hold from `:may-contain`"
+    (is (= [{:rule :kind-fits :id action :place lib}]
+           (validate/validate (assoc with-actions action (engine.tu/item :action "Refund" lib #{}))
+                              {:may-contain {:collection #{:model :question}}})))))
 
 ;;; The Library rules of master: what a Library collection can hold, by its type, and where a published table can be.
 
@@ -479,6 +523,14 @@
                              (and (contains? s target) (not (contains? allowed (:kind (get s target))))))))
     :root         false
     :area-root    (and (contains? s id) (contains? snapshot/area-roots id))
+    :action-area  (let [{:keys [kind refs] :as item} (get s id)
+                        container                    (get s place)]
+                    (and (= place (:place item))
+                         (= :action kind)
+                         (contains? (get snapshot/may-contain (:kind container) #{}) :action)
+                         (not-any? #(= :model (first %)) refs)
+                         (not (and (= :collection (:kind container))
+                                   (contains? #{"data-actions" "data-apps"} (:namespace (:attrs container)))))))
     (:library-content :table-collection)
     (and (= place (:place (get s id))) (= rule (lb.tu/library-fault s (get s id))))))
 
@@ -527,7 +579,7 @@
                            f    (validate/validate (gen/generate arbitrary-gen 20 seed) {:ref-kinds test-ref-kinds})]
                        (:rule f)))]
       (is (= #{:place-inside :acyclic :kind-fits :refs-closed :unique-key :namespace :ref-kind :library-content
-               :table-collection}
+               :table-collection :action-area}
              rules)))))
 
 (defspec well-formed-snapshot-no-findings-test 100
@@ -624,6 +676,23 @@
     :doc    "An item with the identity of an area root is no finding."
     :target `validate/validate
     :edits  [[:remove '(area-root-findings s areas)]]}
+   {:name   :no-action-area-rule
+    :doc    "An action with no model can be in any collection."
+    :target `validate/validate
+    :edits  [[:remove '(action-area-findings s may-contain)]]}
+   {:name   :action-area-data-actions-only
+    :doc    "An action with no model cannot be in a data app collection."
+    :target `snapshot/action-namespaces
+    :edits  [[:replace '#{"data-actions" "data-apps"} '#{"data-actions"}]]}
+   {:name   :action-area-any-model-role
+    :doc    "A reference of any role counts as the model of an action, so an action that refers to a card is in any
+            collection."
+    :target `validate/action-area-findings
+    :edits  [[:replace '(not-any? model-ref? refs) '(empty? refs)]]}
+   {:name   :action-area-collections-only
+    :doc    "The rule reads only collections, so an action with no model can be in a model."
+    :target `validate/action-area-findings
+    :edits  [[:replace '(contains? (get may-contain (:kind container) #{}) kind) '(= :collection (:kind container))]]}
    {:name   :ref-kind-env-fits
     :doc    "An environment object fits every role, so an action can name a table as its model."
     :target `validate/ref-kind-findings
@@ -680,5 +749,5 @@
 (deftest validate-mutations-test
   (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test #'area-root-test
                                 #'refs-closed-test #'root-test #'unique-key-test #'nested-identity-test #'namespace-test
-                                #'action-model-test #'several-findings-test
+                                #'action-model-test #'action-area-test #'several-findings-test
                                 #'arbitrary-snapshot-findings-test #'ref-kinds-findings-test #'roots-test]}))

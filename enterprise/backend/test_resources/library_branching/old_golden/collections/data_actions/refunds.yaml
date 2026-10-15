@@ -1,0 +1,7 @@
+name: Refunds
+entity_id: rEfUnDsCoLlEcTiOn0001
+slug: refunds
+created_at: '2026-10-15T10:20:22.519157Z'
+namespace: data-actions
+serdes/meta:
+- model: Collection

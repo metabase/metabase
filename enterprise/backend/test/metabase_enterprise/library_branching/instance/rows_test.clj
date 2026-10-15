@@ -37,7 +37,8 @@
                  :model/Timeline           timeline   {:name "T" :collection_id (:id collection)}
                  :model/Glossary           term       {:term "lb rows term" :definition "A term."}
                  :model/Segment            segment    {:name "S" :table_id (mt/id :venues)}
-                 :model/Measure            measure    {:name "Me" :table_id (mt/id :venues)}]
+                 :model/Measure            measure    {:name "Me" :table_id (mt/id :venues)}
+                 :model/Action             action     {:name "Ac" :type :query :model_id (:id model)}]
     (let [venues (table-key (mt/id :venues))
           items  [{:id (:entity_id collection) :kind :collection}
                   {:id (:entity_id question) :kind :question}
@@ -49,6 +50,7 @@
                   {:id (:entity_id term) :kind :glossary-term}
                   {:id (:entity_id segment) :kind :segment}
                   {:id (:entity_id measure) :kind :measure}
+                  {:id (:entity_id action) :kind :action}
                   {:id venues :kind :published-table}]
           venues-collection (t2/select-one-fn :collection_id :model/Table (mt/id :venues))]
       (is (= {(:entity_id collection) {:model "collection" :model_id (:id collection) :collection_id (:id collection)
@@ -69,6 +71,8 @@
                                        :table_id (mt/id :venues)}
               (:entity_id measure)    {:model "measure" :model_id (:id measure) :collection_id venues-collection
                                        :table_id (mt/id :venues)}
+              (:entity_id action)     {:model "action" :model_id (:id action) :collection_id (:id collection)
+                                       :table_id nil}
               venues                  {:model "table" :model_id (mt/id :venues) :collection_id venues-collection
                                        :table_id (mt/id :venues)}}
              (rows/details items))))))
