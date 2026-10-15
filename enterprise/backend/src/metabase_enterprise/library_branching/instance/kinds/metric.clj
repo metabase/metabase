@@ -134,7 +134,7 @@
     (when-not (:archived row)
       (values-source/do-keeping-outside-values-sources
        (library-branching.db/values-source-users-of-card (:id row))
-       #(library-branching.db/update-card! (:id row) {:archived true :archived_directly true})))
+       (fn [] (library-branching.db/update-card! (:id row) {:archived true :archived_directly true}))))
     nil))
 
 (def ^:private models-of-read

@@ -8,10 +8,12 @@
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
+   [metabase-enterprise.library-branching.instance.cascade-test]
    [metabase-enterprise.library-branching.instance.lock-test]
    [metabase-enterprise.library-branching.instance.save-rule :as save-rule]
    [metabase-enterprise.library-branching.instance.save-rule-test]
    [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.instance.write-property-test]
    [metabase-enterprise.library-branching.instance.write-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]))
@@ -82,6 +84,20 @@
     :doc    "A field setting that the content no longer has is not cleared."
     :target `kinds.published-table/field-changes
     :edits  [[:replace '(into (set (keys old)) (keys new)) '(keys new)]]}
+   {:name   :outside-values-sources-cleared
+    :doc    "A trash keeps no ParameterCard row of a user outside the Library tree, so the Card save path clears the
+            values source of each parameter outside the Library that takes its values from a trashed card."
+    :target `values-source/do-keeping-outside-values-sources
+    :edits  [[:replace '(remove (comp in-tree? :user_collection_id)) '(filter (constantly false))]]}
+   {:name   :library-values-sources-kept
+    :doc    "A trash also keeps the ParameterCard rows of users in the Library tree, so a parameter of Library content
+            keeps the values source of a trashed card."
+    :target `values-source/do-keeping-outside-values-sources
+    :edits  [[:replace '(remove (comp in-tree? :user_collection_id)) '(map identity)]]}
+   {:name   :collection-trash-clears-outside-values-sources
+    :doc    "A trash of a collection does not keep the values sources outside the Library of the cards in its subtree."
+    :target `kinds.collection/trash-collection!
+    :edits  [[:replace '(library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row)) []]]}
    {:name   :save-rule-sees-no-trash
     :doc    "The save rule finds no reference to an item that is not in scope."
     :target `save-rule/findings
@@ -93,7 +109,11 @@
     :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]}])
 
 (def ^:private tests
-  [#'metabase-enterprise.library-branching.instance.write-test/metric-write-test
+  [#'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-outside-values-sources-test
+   #'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-the-cascade-inside-the-library-test
+   #'metabase-enterprise.library-branching.instance.cascade-test/collection-trash-keeps-outside-values-sources-test
+   #'metabase-enterprise.library-branching.instance.cascade-test/metric-write-keeps-outside-values-sources-test
+   #'metabase-enterprise.library-branching.instance.write-test/metric-write-test
    #'metabase-enterprise.library-branching.instance.write-test/write-keeps-instance-local-attributes-test
    #'metabase-enterprise.library-branching.instance.write-test/no-take-over-outside-the-library-test
    #'metabase-enterprise.library-branching.instance.write-test/trash-keeps-outside-content-working-test

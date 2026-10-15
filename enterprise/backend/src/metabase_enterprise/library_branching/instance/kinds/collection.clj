@@ -101,9 +101,10 @@
     (when-not (:archived row)
       (values-source/do-keeping-outside-values-sources
        (library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row))
-       #(request/as-admin
-          (collections/archive-or-unarchive-collection! (library-branching.db/select-collection (:id row))
-                                                        {:archived true}))))
+       (fn []
+         (request/as-admin
+           (collections/archive-or-unarchive-collection! (library-branching.db/select-collection (:id row))
+                                                         {:archived true})))))
     nil))
 
 (def kind-store
