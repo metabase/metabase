@@ -65,10 +65,18 @@
     :fenced               {:error "The task ended before the push reached its commit point, so nothing was pushed."}
     :disabled             {:error disabled-message}))
 
+(defn- key-clash-message
+  "The error message of the key clash findings `key-clash` of the head of branch `branch`, when nothing was `verb`
+  (\"pulled\", \"deployed\")."
+  [branch key-clash verb]
+  (str "The head of branch " branch " gives " (n-of (count key-clash) "item") " the name of another item on this "
+       "instance, also one in the trash (" (str/join ", " (map (comp pr-str :key) key-clash)) "), so nothing was "
+       verb "."))
+
 (defn pull-task-result
   "The task result of `result`, a result of `pull/pull!` of branch `branch`: `{:outcome o}` when the pull applied or
   was up to date, else `{:error message}`."
-  [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused]}]
+  [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused key-clash]}]
   (case result
     :pulled     {:outcome {:kind    "pulled"
                            :branch  branch
@@ -86,6 +94,7 @@
                                 branch)}
     :refused    {:error (format "The instance refused %s (%s), so nothing was pulled."
                                 (n-of (count refused) "item") (str/join "; " (map :message refused)))}
+    :key-clash  {:error (key-clash-message branch key-clash "pulled")}
     :base-moved {:error "Another task moved the base, so nothing was pulled."}
     :fenced     {:error "The task ended before the pull applied, so nothing was pulled."}
     :no-branch  {:error (format "The repository has no branch %s." branch)}
@@ -112,7 +121,7 @@
 (defn deploy-task-result
   "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
   or was up to date, else `{:error message}`."
-  [branch {:keys [result head steps trashed-in-use findings ids refused]}]
+  [branch {:keys [result head steps trashed-in-use findings ids refused key-clash]}]
   (case result
     :deployed   {:outcome {:kind    "deployed"
                            :branch  branch
@@ -130,6 +139,7 @@
                                 branch)}
     :refused    {:error (format "The instance refused %s (%s), so nothing was deployed."
                                 (n-of (count refused) "item") (str/join "; " (map :message refused)))}
+    :key-clash  {:error (key-clash-message branch key-clash "deployed")}
     :base-moved {:error "Another task moved the base, so nothing was deployed."}
     :fenced     {:error "The task ended before the deploy applied, so nothing was deployed."}
     :no-branch  {:error (format "The repository has no branch %s." branch)}

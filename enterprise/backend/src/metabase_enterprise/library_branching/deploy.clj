@@ -93,6 +93,7 @@
             (:fenced result)    {:result :fenced :head h :reason (:fenced result)}
             (:rewritten result) {:result :rewritten :head h}
             (:refused result)   {:result :refused :head h :refused (:refused result)}
+            (:key-clash result) {:result :key-clash :head h :key-clash (:key-clash result)}
             :else               {:result :base-moved :head h :base (:base-moved result)}))))))
 
 (defn deploy!
@@ -108,7 +109,8 @@
   - `{:result :drift :head h :ids ids}`: the items `ids` of the instance have content that its base does not hold
     ([[drift]]);
   - `{:result :stale :head h :ids ids}`, `{:result :rewritten :head h}`, `{:result :refused :head h :refused [...]}`,
-    `{:result :base-moved :head h :base actual}`, `{:result :fenced :head h :reason r}`: as for `pull/pull!`;
+    `{:result :key-clash :head h :key-clash [f ...]}`, `{:result :base-moved :head h :base actual}`, `{:result :fenced
+    :head h :reason r}`: as for `pull/pull!`;
   - `{:result :no-branch}`: the branch does not exist;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
