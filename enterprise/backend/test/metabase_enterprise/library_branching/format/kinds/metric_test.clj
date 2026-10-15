@@ -74,11 +74,11 @@
   [{:name   :query-implied-not-restored
     :doc    "The metric codec does not restore the implied keys of its query."
     :target `metric/decode-attrs
-    :edits  [[:replace '(update attrs :query portable/restore-implied) 'attrs]]}
+    :edits  [[:replace '(update :query portable/restore-implied) '(identity)]]}
    {:name   :query-implied-written
     :doc    "The metric codec writes the implied keys of its query."
     :target `metric/encode-attrs
-    :edits  [[:replace '(update attrs :query portable/omit-implied) 'attrs]]}
+    :edits  [[:replace '(update :query portable/omit-implied) '(identity)]]}
    {:name   :only-query-refs
     :doc    "Only the query gives references, so a parameter's values source card is not checked."
     :target `metric/refs

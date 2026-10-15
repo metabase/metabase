@@ -91,6 +91,27 @@
     (let [paths (vals (layout/layout kinds/codecs s))]
       (or (empty? paths) (apply distinct? paths)))))
 
+(deftest snapshot-gen-coverage-test
+  (testing "the generator gives the cases that the laws must cover"
+    (let [ss    (mapv #(gen/generate (kinds.tu/snapshot-gen) 30 %) (range 100))
+          items (mapcat vals ss)
+          trees (mapv #(text-tree (tree/encode-tree kinds/codecs %)) ss)
+          paths (mapcat keys trees)
+          texts (mapcat vals trees)]
+      (is (= snapshot/kinds (set (map :kind items))) "every kind")
+      (doseq [prefix ["library/_collection.yaml" "snippets/" "transforms/" "actions/" "apps/"]]
+        (is (some #(str/starts-with? % prefix) paths) prefix))
+      (is (some #(re-find #"\.table\.yaml$" %) paths) "a published table")
+      (is (some #(str/includes? % "~") paths) "an identity suffix")
+      (is (some #(str/includes? % "native:") texts) "a native stage")
+      (is (some #(str/includes? % "joins:") texts) "a join")
+      (is (some #(str/includes? % "lib/type: mbql.stage/other") texts) "a stage type that its structure does not imply")
+      (is (some #(str/includes? % "template_tags:") texts) "template tags")
+      (is (some #(get-in % [:attrs :fields]) items) "field settings")
+      (is (some #(some (comp :fields val) (get-in % [:attrs :fields])) items) "a nested field")
+      (is (some #(some (fn [[role]] (= :fk-target role)) (:refs %)) items) "a foreign-key target")
+      (is (some #(< 3 (count (:refs %))) items) "an item with several references"))))
+
 ;;; ---------------------------------------------------- Golden files -------------------------------------------------
 
 (def ^:private golden-dir "enterprise/backend/test_resources/library_branching/golden")
