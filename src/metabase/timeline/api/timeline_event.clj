@@ -4,14 +4,15 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
+   [metabase.timeline.event-update :as event-update]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.validated :as validated]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -86,17 +87,22 @@
                                       [:icon         {:optional true} [:maybe timeline-event/Icon]]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/TimelineEvent id)
-        timeline-event-updates (cond-> timeline-event-updates
-                                 (boolean timestamp) (update :timestamp u.date/parse))]
-    (collection/check-allowed-to-change-collection existing timeline-event-updates)
-    (when (api/column-will-change? (:timeline_id existing) (get timeline-event-updates :timeline_id ::api/not-provided))
-      (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
+  (let [timeline-event-updates (cond-> timeline-event-updates
+                                 (boolean timestamp) (update :timestamp u.date/parse))
+        ;; the event's own 404 or 403 comes before anything about the destination, as it always did
+        _                      (api/write-check :model/TimelineEvent id)
+        new-timeline           (when (contains? timeline-event-updates :timeline_id)
+                                 (validated/validate
+                                  (event-update/->TimelineWrite api/*current-user-id* (:timeline_id timeline-event-updates))))
+        validated-update       (validated/validate
+                                (event-update/->EventUpdate api/*current-user-id*
+                                                            id
+                                                            (u/select-keys-when timeline-event-updates
+                                                                                :present #{:description :timestamp :time_matters :timezone :icon :archived}
+                                                                                :non-nil #{:name})
+                                                            new-timeline))]
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (timeline.db/update-timeline-event! id
-                                        (u/select-keys-when timeline-event-updates
-                                                            :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-                                                            :non-nil #{:name}))
+    (timeline.db/update-timeline-event! validated-update)
     (u/prog1 (timeline.db/timeline-event id)
       (events/publish-event! :event/timeline-update {:object (timeline.db/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))
 
