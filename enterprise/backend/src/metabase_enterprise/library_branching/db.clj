@@ -627,6 +627,18 @@
     (t2/query {:insert-into (t2/table-name :model/ParameterCard)
                :values      rows})))
 
+(mu/defn rows-by-entity-id :- [:sequential ::row]
+  "`{:id :entity_id}` and the columns `columns` of each row of the table of `model` whose entity id is in
+  `entity-ids`, in or out of the trash."
+  [model      :- :keyword
+   columns    :- [:sequential :keyword]
+   entity-ids :- ::entity-ids]
+  (if (empty? entity-ids)
+    []
+    (t2/query {:select (into [:id :entity_id] columns)
+               :from   [(t2/table-name model)]
+               :where  [:in :entity_id entity-ids]})))
+
 (mu/defn row-id-by-entity-id :- [:maybe pos-int?]
   "The id of the row of the table of `model` whose entity id is `entity-id`, or nil."
   [model     :- :keyword

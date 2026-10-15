@@ -32,13 +32,24 @@
 ;;; --------------------------------------------------- Task results ---------------------------------------------------
 
 (deftest deploy-task-result-test
-  (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 1}}
+  (is (= {:outcome {:kind           "deployed"
+                    :branch         "main"
+                    :commit         "h"
+                    :count          2
+                    :trashed        1
+                    :trashed_in_use [{:id "b" :kind "snippet" :name "Active" :users [{:kind "card" :id "x" :name "X"}]}]}}
          (operations/deploy-task-result "main" {:result         :deployed
                                                 :head           "h"
-                                                :steps          [{:id "a" :write {}} {:id "a" :link #{}} {:id "b" :trash true}]
+                                                :steps          [{:id "a" :write {}} {:id "a" :link #{}}
+                                                                 {:id "b" :trash true :pre {:kind :snippet :name "Active"}}]
                                                 :trashed-in-use {"b" [{:kind :card :id "x" :name "X"}]}})))
+  (testing "a deploy that discarded drift"
+    (is (=? {:outcome {:kind "deployed" :discarded 2 :trashed 0 :trashed_in_use []}}
+            (operations/deploy-task-result "main" {:result :deployed :head "h" :steps [] :trashed-in-use {}
+                                                   :discarded ["a" "b"]}))))
   (testing "a deploy that renamed items for their trash counts them"
-    (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 0 :discarded 1 :renamed 1}}
+    (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 0 :trashed_in_use []
+                      :discarded 1 :renamed 1}}
            (operations/deploy-task-result "main" {:result         :deployed
                                                   :head           "h"
                                                   :steps          [{:id "a" :interim {}} {:id "b" :write {}} {:id "a" :trash true}]

@@ -246,10 +246,22 @@
           no-summary
           (distinct (concat (keys l) (keys r)))))
 
-(defn- conflict-entry
+(defn conflict-entry
+  "The entry of conflict `{:id :base :ours :theirs}` of `merge/merge`: `{:id :kind :name :ours :theirs}`. The kind
+  and the name are of the local content, else of the remote content, else of the base. `:ours` and `:theirs` are the
+  changes of the two sides against the base (`merge/side-change`)."
   [{:keys [id base ours theirs]}]
   (let [item (some #(when (map? %) %) [ours theirs base])]
-    {:id id :kind (:kind item) :name (:name item)}))
+    {:id     id
+     :kind   (:kind item)
+     :name   (:name item)
+     :ours   (merge/side-change base ours)
+     :theirs (merge/side-change base theirs)}))
+
+(defn violation-entry
+  "The entry of violation `v` of `merge/merge`: `{:rule :ours :theirs}`."
+  [v]
+  (select-keys v [:rule :ours :theirs]))
 
 (defn- lost-base
   "A base in which each item of `l` and `r` is unknown, so that every difference of the two sides is a conflict."
@@ -260,11 +272,12 @@
   "What a push of instance `inst` to branch `branch` of `store` meets: the status, plus a merge of the base, the synced
   snapshot and the head, with no keep-mine decision. Pure apart from the reads.
 
-    {:diverged d :clean c :conflicts [...] :violations [...] :summary s :branch-missing m :base-lost l
+    {:head h :diverged d :clean c :conflicts [...] :violations [...] :summary s :branch-missing m :base-lost l
      :head-findings f}
 
-  `d` is true iff the head is not the base. With `d` false, no conflict, and no read of the instance. A conflict is
-  `{:id :kind :name}`; a violation is `{:rule :ours :theirs}`. `s` is `{:added :updated :removed}`: the numbers of
+  `h` is the head that the merge reads, nil when the branch does not exist: a keep-mine decision names it. `d` is true
+  iff the head is not the base. With `d` false, no conflict, and no read of the instance. A conflict is
+  [[conflict-entry]]; a violation is [[violation-entry]]. `s` is `{:added :updated :removed}`: the numbers of
   items that the merge takes from the head over an unchanged local item. A base that no branch holds is lost: every
   difference of the two sides is a conflict. A head with findings is not clean, and has no merge. Each commit decodes
   with `pull/decode-opts` of `inst`. `opts`: `:codecs`."
@@ -274,7 +287,8 @@
         b      (instance/base inst)
         h      (store/head store branch)
         lost?  (boolean (and b (not (pull/held? store b branch h))))
-        result {:diverged       (not= b h)
+        result {:head           h
+                :diverged       (not= b h)
                 :clean          true
                 :conflicts      []
                 :violations     []
@@ -297,7 +311,7 @@
             (assoc result
                    :clean      (contains? merged :ok)
                    :conflicts  (mapv conflict-entry (:conflicts merged))
-                   :violations (mapv #(select-keys % [:rule :ours :theirs]) (:violations merged))
+                   :violations (mapv violation-entry (:violations merged))
                    :summary    (summary base l r))))))))
 
 ;;; ------------------------------------------------- Has remote changes ----------------------------------------------
