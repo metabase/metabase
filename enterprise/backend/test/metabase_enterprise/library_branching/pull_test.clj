@@ -58,7 +58,7 @@
            remote    (-> ptu/sample
                          (ptu/renamed ptu/revenue-id "Revenue, net")
                          (dissoc ptu/orders-id)
-                         (assoc new-snippet-id (new-snippet ptu/library-id)))
+                         (assoc new-snippet-id (new-snippet ptu/snippets-root)))
            h         (pltu/commit-snapshot! repo ptu/branch [c1] remote)]
        (pltu/save! inst #(described % ptu/snippet-id "Local edit."))
        (let [{:keys [result head]} (pltu/pull! inst s)]
@@ -629,7 +629,7 @@
 (deftest pull-of-an-identity-of-another-kind-test
   (enabled
    (with-remote [repo s]
-     (let [collection (ptu/item kind-change-id :collection "Robin" ptu/library-id {})
+     (let [collection (ptu/item kind-change-id :collection "Robin" ptu/library-id {:type "library-metrics"})
            term       (ptu/item kind-change-id :glossary-term "Robin" "glossaryglossarygloss" {:definition "A bird."})
            local      (assoc ptu/sample kind-change-id collection)
            [inst c1]  (pushed-instance! s local)
@@ -651,7 +651,7 @@
 (deftest pull-of-a-local-kind-change-and-a-remote-edit-test
   (enabled
    (with-remote [repo s]
-     (let [local     (assoc-in ptu/sample [ptu/revenue-id :kind] :question)
+     (let [local     (ptu/with-app-card ptu/sample :question)
            [inst c1] (pushed-instance! s local)
            _         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed local ptu/revenue-id "Theirs"))]
        (testing "the instance makes a question a model, and the head renames the question: a conflict of the item"

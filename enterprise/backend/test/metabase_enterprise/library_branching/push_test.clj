@@ -100,7 +100,7 @@
                       (assoc-in [ptu/revenue-id :attrs :description] "Sum of revenue.")
                       (ptu/renamed ptu/snippet-id "Active rows")
                       (dissoc ptu/orders-id)
-                      (assoc added (ptu/item added :snippet "Recent" ptu/library-id {:content "recent = true"})))]
+                      (assoc added (ptu/item added :snippet "Recent" ptu/snippets-root {:content "recent = true"})))]
        (swap! state assoc :snapshot local)
        (let [{:keys [result commit]} (push! inst s)
              after                   (tree-of s commit)]

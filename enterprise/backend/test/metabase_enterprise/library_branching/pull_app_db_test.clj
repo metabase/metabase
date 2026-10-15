@@ -256,7 +256,7 @@
 
 (deftest library-content-rule-refusal-writes-nothing-test
   (testing (str "the head holds a collection with no Library type in the Metrics section, which the Library's content "
-                "rule refuses: the pull is refused with the rule's message, and rolls back the writes before it; app DB "
+                "rule refuses: the pull finds it in the head, before any write, and names the collection; app DB "
                 (mdb/db-type))
     (do-with-committed-content!
      (fn [insert! metrics]
@@ -270,11 +270,10 @@
                                                            (assoc folder {:kind  :collection :name "Plain folder"
                                                                           :place (:entity_id metrics) :refs #{}
                                                                           :attrs {}})))
-                 {:keys [result refused head]} (pull! inst s)]
-             (is (= :refused result))
+                 {:keys [result findings head]} (pull! inst s)]
+             (is (= :invalid result))
              (is (= h head))
-             (is (= [[folder :content-rule "Can only add metrics to the 'Metrics' collection"]]
-                    (map (juxt :id :reason :message) refused)))
+             (is (= [{:rule :library-content :id folder :place (:entity_id metrics)}] findings))
              (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
              (is (not (t2/exists? :model/Collection :entity_id folder)))
              (is (= c1 (instance/base inst))))))))))

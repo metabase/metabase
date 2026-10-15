@@ -4026,6 +4026,7 @@
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/ParameterCard
+                    :model/Pulse
                     :model/Segment
                     :model/Table
                     :model/TableUserSettings
