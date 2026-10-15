@@ -804,3 +804,103 @@
   (if (empty? entity-ids)
     0
     (t2/update! model {:entity_id [:in entity-ids]} {:archived true})))
+
+;;; ---------------------------------------------------- Dashboards --------------------------------------------------
+
+(def ^:private dashboard-columns
+  [:id :entity_id :name :collection_id :archived :description :caveats :points_of_interest :collection_position
+   :position :width :auto_apply_filters :show_in_getting_started :parameters])
+
+(mu/defn dashboards-by-entity-id :- [:sequential ::row]
+  "The dashboards of `entity-ids`, as instances of `:model/Dashboard` with their content columns."
+  [entity-ids :- ::entity-ids]
+  (t2/select (into [:model/Dashboard] dashboard-columns) :entity_id [:in entity-ids]))
+
+(mu/defn tabs-of-dashboards :- [:sequential ::row]
+  "`{:id :entity_id :dashboard_id :name}` of each tab of the dashboards `ids`, by dashboard, then position, then id."
+  [ids :- ::ids]
+  (t2/query {:select   [:id :entity_id :dashboard_id :name]
+             :from     [(t2/table-name :model/DashboardTab)]
+             :where    [:in :dashboard_id ids]
+             :order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
+
+(mu/defn dashcards-of-dashboards :- [:sequential ::row]
+  "The dashboard cards of the dashboards `ids`, as instances of `:model/DashboardCard` with their content columns."
+  [ids :- ::ids]
+  (t2/select [:model/DashboardCard :id :entity_id :dashboard_id :card_id :action_id :dashboard_tab_id :row :col
+              :size_x :size_y :parameter_mappings :visualization_settings :inline_parameters]
+             :dashboard_id [:in ids]
+             {:order-by [[:id :asc]]}))
+
+(mu/defn series-of-dashcards :- [:sequential ::row]
+  "`{:dashboardcard_id :card_id}` of each series of the dashboard cards `ids`, by dashboard card, then position, then
+  id."
+  [ids :- ::ids]
+  (t2/query {:select   [:dashboardcard_id :card_id]
+             :from     [(t2/table-name :model/DashboardCardSeries)]
+             :where    [:in :dashboardcard_id ids]
+             :order-by [[:dashboardcard_id :asc] [:position :asc] [:id :asc]]}))
+
+(mu/defn lock-dashboard :- [:maybe ::row]
+  "`{:id :collection_id :archived}` of the dashboard of `entity-id`, after a lock on its row, the rows of its tabs, its
+  dashboard cards and their series until the current transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (when-let [row (t2/query-one {:select [:id :collection_id :archived]
+                                :from   [(t2/table-name :model/Dashboard)]
+                                :where  [:= :entity_id [:auto/param entity-id]]
+                                :for    [:update]})]
+    (let [dashcards ^:allow-subquery {:select [:id]
+                                      :from   [(t2/table-name :model/DashboardCard)]
+                                      :where  [:= :dashboard_id [:auto/param (:id row)]]}]
+      (t2/query {:select [:id]
+                 :from   [(t2/table-name :model/DashboardTab)]
+                 :where  [:= :dashboard_id [:auto/param (:id row)]]
+                 :for    [:update]})
+      (t2/query (assoc dashcards :for [:update]))
+      (t2/query {:select [:id]
+                 :from   [(t2/table-name :model/DashboardCardSeries)]
+                 :where  [:in :dashboardcard_id dashcards]
+                 :for    [:update]}))
+    row))
+
+(mu/defn insert-dashboard! :- ::row
+  "Inserts a dashboard with the columns `row` through the Dashboard model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Dashboard row))
+
+(mu/defn update-dashboard! :- :int
+  "Sets the columns `changes` of the dashboard `id` through the Dashboard model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Dashboard id changes))
+
+(mu/defn insert-dashboard-tab! :- pos-int?
+  "Inserts a dashboard tab with the columns `row` through the DashboardTab model, and returns its id."
+  [row :- ::row]
+  (t2/insert-returning-pk! :model/DashboardTab row))
+
+(mu/defn update-dashboard-tab! :- :int
+  "Sets the columns `changes` of the dashboard tab `id` through the DashboardTab model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/DashboardTab id changes))
+
+(mu/defn insert-dashcard! :- pos-int?
+  "Inserts a dashboard card with the columns `row` through the DashboardCard model, and returns its id."
+  [row :- ::row]
+  (t2/insert-returning-pk! :model/DashboardCard row))
+
+(mu/defn update-dashcard! :- :int
+  "Sets the columns `changes` of the dashboard card `id` through the DashboardCard model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/DashboardCard id changes))
+
+(mu/defn values-source-users-of-dashboard-questions :- [:sequential ::row]
+  "The ParameterCard rows of the parameters that take their values from a question of the dashboard `dashboard-id`,
+  each with `:user_collection_id`, the collection of the card or dashboard of the parameter."
+  [dashboard-id :- pos-int?]
+  (let [cards ^:allow-subquery {:select [:id]
+                                :from   [(t2/table-name :model/Card)]
+                                :where  [:= :dashboard_id [:auto/param dashboard-id]]}]
+    (t2/query (values-source-users [:in :pc.card_id cards]))))

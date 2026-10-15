@@ -36,6 +36,15 @@
   [opts id]
   [:field (merge {:lib/uuid (str (random-uuid))} opts) id])
 
+(defn- nested-id
+  "The id of the `i`th entry of attribute `k` (`:tabs` or `:dashcards`) of the dashboard named `dashboard-name` of
+  `snapshot`."
+  [snapshot dashboard-name k i]
+  (some (fn [{:keys [kind name attrs]}]
+          (when (and (= :dashboard kind) (= dashboard-name name))
+            (get-in attrs [k i :id])))
+        (vals snapshot)))
+
 (defn do-with-golden-content
   "Calls `f` with the content of the golden tree written to the app DB, in a transaction that rolls back."
   [f]
@@ -70,6 +79,9 @@
                                                :entity_id (eid-of :collection "Filters")}
                    :model/Collection _finance {:name "Finance" :namespace "transforms" :location "/"
                                                :entity_id (eid-of :collection "Finance")}
+                   :model/Collection dashboards {:name      "Dashboards" :type "library-dashboards"
+                                                 :location  (children-location library)
+                                                 :entity_id (eid-of :collection "Dashboards")}
                    :model/Card       total-revenue
                    {:name          "Total Revenue"
                     :type          :metric
@@ -121,7 +133,32 @@
                                                :semantic_type :type/Currency}
                    :model/FieldUserSettings _ {:field_id           (:id user-id)
                                                :visibility_type    :hidden
-                                               :fk_target_field_id (:id people-id)}]
+                                               :fk_target_field_id (:id people-id)}
+                   :model/Dashboard  overview {:name          "Revenue overview"
+                                               :entity_id     (eid-of :dashboard "Revenue overview")
+                                               :collection_id (:id dashboards)
+                                               :description   "Revenue at a glance."
+                                               :width         "full"
+                                               :parameters    [{:id "b0000001" :name "Month" :slug "month"
+                                                                :type "date/all-options"}]}
+                   :model/DashboardTab overview-tab {:dashboard_id (:id overview) :name "Overview" :position 0
+                                                     :entity_id    (nested-id snapshot "Revenue overview" :tabs 0)}
+                   :model/DashboardTab details-tab {:dashboard_id (:id overview) :name "Details" :position 1
+                                                    :entity_id    (nested-id snapshot "Revenue overview" :tabs 1)}
+                   :model/DashboardCard _ {:dashboard_id       (:id overview)
+                                           :entity_id          (nested-id snapshot "Revenue overview" :dashcards 0)
+                                           :card_id            (:id total-revenue)
+                                           :dashboard_tab_id   (:id overview-tab)
+                                           :row 0 :col 0 :size_x 12 :size_y 6
+                                           :parameter_mappings [{:parameter_id "b0000001"
+                                                                 :card_id      (:id total-revenue)
+                                                                 :target       [:dimension [:field (:id created-at) nil]]}]}
+                   :model/DashboardCard _ {:dashboard_id           (:id overview)
+                                           :entity_id              (nested-id snapshot "Revenue overview" :dashcards 1)
+                                           :dashboard_tab_id       (:id details-tab)
+                                           :row 0 :col 0 :size_x 12 :size_y 2
+                                           :visualization_settings {:text         "Revenue is in US dollars."
+                                                                    :virtual_card {:display "text"}}}]
       (let [large-orders (t2/insert-returning-instance!
                           :model/Segment
                           {:name        "Large orders"

@@ -98,6 +98,55 @@
           :serdes/meta [{:model "Measure"}]}
          attrs))
 
+(defn dashboard-doc
+  "The old document of dashboard `id`: the parameters sorted by id with their positions, each tab with its position,
+  each dashboard card with the serdes path of its tab and its series with their positions."
+  [id {:keys [name place attrs]}]
+  (merge {:name                    name
+          :entity_id               id
+          :created_at              created-at
+          :creator_id              "crowberto@metabase.com"
+          :archived                false
+          :archived_directly       false
+          :collection_id           place
+          :enable_embedding        false
+          :embedding_params        nil
+          :public_uuid             nil
+          :auto_apply_filters      true
+          :show_in_getting_started false
+          :width                   "fixed"
+          :parameters              (->> (:parameters attrs)
+                                        (map-indexed (fn [i p] (assoc p :position i)))
+                                        (sort-by :id)
+                                        vec)
+          :tabs                    (vec (map-indexed (fn [i {tab-id :id tab-name :name}]
+                                                       {:entity_id   tab-id
+                                                        :name        tab-name
+                                                        :position    i
+                                                        :created_at  created-at
+                                                        :serdes/meta [{:model "Dashboard" :id id}
+                                                                      {:model "DashboardTab" :id tab-id}]})
+                                                     (:tabs attrs)))
+          :dashcards               (mapv (fn [{dc-id :id :keys [dashboard_tab_id series visualization_settings] :as dc}]
+                                           (merge {:parameter_mappings []
+                                                   :inline_parameters  []
+                                                   :card_id            nil
+                                                   :action_id          nil
+                                                   :created_at         created-at
+                                                   :serdes/meta        [{:model "Dashboard" :id id}
+                                                                        {:model "DashboardCard" :id dc-id}]}
+                                                  (dissoc dc :id :dashboard_tab_id :series :visualization_settings)
+                                                  {:entity_id              dc-id
+                                                   :dashboard_tab_id       (some->> dashboard_tab_id (vector id))
+                                                   :visualization_settings (merge {:column_settings nil}
+                                                                                  visualization_settings)
+                                                   :series                 (vec (map-indexed (fn [i card-id]
+                                                                                               {:card_id card-id :position i})
+                                                                                             series))}))
+                                         (:dashcards attrs))
+          :serdes/meta             [{:model "Dashboard" :id id}]}
+         (dissoc attrs :parameters :tabs :dashcards)))
+
 (def ^:private table-flags
   {:description        :description_set
    :caveats            :caveats_set
@@ -170,6 +219,7 @@
                  (case kind
                    :collection      [(collection-doc id item)]
                    (:metric :question :model) [(card-doc id item)]
+                   :dashboard       [(dashboard-doc id item)]
                    :snippet         [(snippet-doc id item)]
                    :glossary-term   [(glossary-doc id item)]
                    :segment         [(segment-doc id item)]

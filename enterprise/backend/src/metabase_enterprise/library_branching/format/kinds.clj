@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.library-branching.format.kinds.collection :as collection]
    [metabase-enterprise.library-branching.format.kinds.common :as common]
+   [metabase-enterprise.library-branching.format.kinds.dashboard :as dashboard]
    [metabase-enterprise.library-branching.format.kinds.glossary :as glossary]
    [metabase-enterprise.library-branching.format.kinds.measure :as measure]
    [metabase-enterprise.library-branching.format.kinds.metric :as metric]
@@ -16,6 +17,7 @@
 
 (def ^:private specs
   {:collection      collection/spec
+   :dashboard       dashboard/spec
    :glossary-term   glossary/spec
    :measure         measure/spec
    :metric          metric/spec
@@ -27,8 +29,8 @@
 
 (def codecs
   "One codec for each kind of `snapshot/kinds`, for `writer/encode-tree`, `tree/decode-tree` and `layout/layout`."
-  [collection/codec glossary/codec measure/codec metric/codec model/codec published-table/codec question/codec
-   segment/codec snippet/codec])
+  [collection/codec dashboard/codec glossary/codec measure/codec metric/codec model/codec published-table/codec
+   question/codec segment/codec snippet/codec])
 
 (defn refs
   "The `:refs` of the item of kind `kind` with identity `id` and attributes `attrs`. Throws for an unknown kind."

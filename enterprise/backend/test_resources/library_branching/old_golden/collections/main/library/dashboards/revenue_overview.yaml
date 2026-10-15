@@ -1,0 +1,67 @@
+name: Revenue overview
+description: Revenue at a glance.
+entity_id: 7RZUq1g5o1C5ws_e3ppKf
+created_at: '2026-10-15T10:05:51.957811Z'
+creator_id: rasta@metabase.com
+collection_id: dAsHbOaRdScOlLeCtIoN1
+parameters:
+- id: b0000001
+  name: Month
+  position: 0
+  slug: month
+  type: date/all-options
+serdes/meta:
+- model: Dashboard
+dashcards:
+- entity_id: _Bv8Qc16SHr8CtmMHBEub
+  card_id: IW8kbqZVaMxdGtCM2F4U6
+  created_at: '2026-10-15T10:05:51.970266Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - 7RZUq1g5o1C5ws_e3ppKf
+  - XcmNByL-bsDQ15jLHBUwr
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: IW8kbqZVaMxdGtCM2F4U6
+    parameter_id: b0000001
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: nOtEsCaRdNoTeScArD001
+  created_at: '2026-10-15T10:05:51.972263Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 2
+  dashboard_tab_id:
+  - 7RZUq1g5o1C5ws_e3ppKf
+  - frlnbZFzBEzun9_GwdiZd
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: Revenue is in US dollars.
+    virtual_card:
+      display: text
+tabs:
+- created_at: '2026-10-15T10:05:51.967228Z'
+  entity_id: XcmNByL-bsDQ15jLHBUwr
+  name: Overview
+  position: 0
+- created_at: '2026-10-15T10:05:51.969835Z'
+  entity_id: frlnbZFzBEzun9_GwdiZd
+  name: Details
+  position: 1
+width: full

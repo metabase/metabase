@@ -58,14 +58,15 @@
   (-> git .commit (.setMessage message) (.setAuthor ident) (.setCommitter ident) (.setSign false) .call))
 
 (deftest text-merge-breaks-a-reference-test
-  ;; Ours adds a metric that uses Total Revenue; theirs removes Total Revenue, which nothing used. Each branch is
-  ;; green, and git merges them as text with no conflict, because they change different files. The merge is red.
+  ;; Ours adds a metric that uses Total Revenue; theirs removes Total Revenue, which nothing used (the base has no
+  ;; dashboard that shows it). Each branch is green, and git merges them as text with no conflict, because they change
+  ;; different files. The merge is red.
   (let [dir (fs/file (fs/create-temp-dir {:prefix "library-branching-check-"}))]
     (try
       (with-open [git (-> (Git/init) (.setDirectory dir) (.setInitialBranch "main") .call)]
         (let [by-month (get (golden/tree) golden/by-month-path)
               run-dir  (fn [] (check/check (check/tree-files dir) {:manifest (golden/manifest-bytes)}))]
-          (golden/write-tree! dir (dissoc (golden/tree) golden/by-month-path))
+          (golden/write-tree! dir (dissoc (golden/tree) golden/by-month-path golden/overview-path))
           (commit! git "base")
           (is (:green? (run-dir)) "the base is green")
           (-> git .branchCreate (.setName "theirs") .call)
