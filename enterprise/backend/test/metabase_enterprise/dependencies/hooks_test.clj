@@ -172,3 +172,19 @@
             (testing "the load triggers the jobs once, after it finishes"
               (is (= [] @submitted))
               (is (= 1 @triggered)))))))))
+
+(deftest serdes-reload-of-unchanged-dashboard-test
+  (testing "reloading an unchanged dashboard export, including empty visualization settings, does not mark it"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/DependencyStatus]
+        (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (table-query :products)}
+                       :model/Dashboard     {dashboard-id :id} {}
+                       :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id
+                                                                :visualization_settings {}}]
+          (let [exported (ts/extract-one "Dashboard" dashboard-id)]
+            (deps.dependency-status/upsert-status! :dashboard dashboard-id)
+            (mt/with-dynamic-fn-redefs [task.backfill/trigger-backfill-job! (fn [])]
+              (deps.test/do-with-immediate-hook-writes
+               #(serdes/with-cache
+                  (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
+            (is (not (stale? :dashboard dashboard-id)))))))))
