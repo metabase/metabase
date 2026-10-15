@@ -4,11 +4,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance.cascade-test]
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
-   [metabase-enterprise.library-branching.instance.cascade-test]
    [metabase-enterprise.library-branching.instance.lock-test]
    [metabase-enterprise.library-branching.instance.save-rule :as save-rule]
    [metabase-enterprise.library-branching.instance.save-rule-test]
