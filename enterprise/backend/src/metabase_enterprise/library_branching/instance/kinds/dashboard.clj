@@ -101,11 +101,12 @@
                contents))))
 
 (defn current-dashboard
-  "The content of the in-scope dashboard `id`, after a lock on its rows, or nil."
+  "The state of dashboard `id` (`instance/current`), after a lock on its rows."
   [id]
-  (library-branching.db/lock-dashboard id)
-  (when (scope/in-scope? :dashboard id)
-    (get (read-dashboards [id]) id)))
+  (let [row (library-branching.db/lock-dashboard id)]
+    (content/current-state (boolean (and row (tree/collection-id-in-tree? (:collection_id row))))
+                           #(scope/in-scope? :dashboard id)
+                           #(get (read-dashboards [id]) id))))
 
 ;;; ------------------------------------------------------ Write -----------------------------------------------------
 
