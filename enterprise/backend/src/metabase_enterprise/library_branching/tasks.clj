@@ -330,6 +330,20 @@
               (+ lo (* (- hi lo) (min 1.0 (max 0.0 (/ (double done) total)))))
               lo))))
 
+(def phase-starts
+  "The progress of an operation at the start of each of its phases, in their order: read, plan, apply, commit."
+  {:read 0.0 :plan 0.25 :apply 0.5 :commit 0.75})
+
+(defn phase-checkpoints
+  "A function `(enter phase)` that reports, through `report` (a [[progress-reporter]]), the start of `phase`, a key of
+  [[phase-starts]], as a checkpoint: a forced report, so one app-DB write per phase. An operation that skips a phase
+  reports the start of the next one. A report on an ended task throws as [[report-progress!]]."
+  [report]
+  (fn enter [phase]
+    (report (or (phase-starts phase)
+                (throw (ex-info (str "No phase " phase) {:phase phase})))
+            {:force? true})))
+
 ;;; ----------------------------------------------------- Workers ---------------------------------------------------
 
 (defonce ^:private running-ids
