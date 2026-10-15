@@ -1042,7 +1042,9 @@
 
 (defn- default-ee-snowplow-settings-data
   []
-  [{:key "remote_sync_strict_mode" :value nil :tags ["remote-sync"]}])
+  [{:key   "remote_sync_strict_mode"
+    :value nil
+    :tags  ["remote-sync"]}])
 
 (defenterprise ee-snowplow-settings-data
   "OSS values to use for settings which require calling EE code to read."
