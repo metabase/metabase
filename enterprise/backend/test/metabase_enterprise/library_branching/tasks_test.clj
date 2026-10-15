@@ -313,7 +313,8 @@
         (report 0.33 {:force? true})
         (report 0.9 {:force? true})
         (is (= [0.1 0.33 0.9] @written))
-        (is (= 0.9 (:progress (tasks/task (:id task)))))))))
+        ;; the column is a float, so MySQL and MariaDB store the fraction with single precision
+        (is (< (abs (- 0.9 (:progress (tasks/task (:id task))))) 1e-6))))))
 
 (deftest progress-on-an-ended-task-stops-the-worker-test
   (testing "a report on a cancelled task throws, so the worker stops at that step; the row stays cancelled"
