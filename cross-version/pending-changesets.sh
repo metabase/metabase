@@ -1,4 +1,32 @@
 #!/usr/bin/env bash
+#
+# Finds out if a downgrade will fail because master has a migration for an already released version.
+#
+# Example: master is on v66, and someone adds a v63 changeset to master. The cross-version test
+# downgrades from master, so the app DB has the new v63 changeset. The v1.63.x image that the test
+# downgrades to does not have that changeset yet, so it cannot roll it back and the downgrade fails.
+# This is expected until a v63 release has the changeset.
+#
+# Usage:
+#   ./pending-changesets.sh MAJOR
+#
+# The script compares the vMAJOR changesets on master with the latest vMAJOR release tag and with
+# release-x.MAJOR.x. For each changeset that the release does not have, it prints "<id> <state>":
+#
+#   awaiting-release   The release branch has it. The next release will have it too. The line also
+#                      gives the migration file, so that the workflow can find the commit to release.
+#   awaiting-backport  The release branch does not have it, and it was added to master in the grace period.
+#   missing            The release branch does not have it, and it was added to master before the grace period.
+#
+# The grace period gives the backport PR time to merge. PENDING_BACKPORT_GRACE_DAYS sets it (default: 3).
+# The script gets the master history for that time span and uses `git log -S <id>` to find the commit
+# that added the changeset. If no commit in that span added it, the changeset has been on master for
+# longer than the grace period without a backport, so the state is "missing". cross-version.yml leaves out
+# the downgrades that go through a major with awaiting-release or awaiting-backport changesets, and keeps
+# them for missing. This way a changeset that nobody backports cannot be skipped forever.
+#
+# RELEASE_TAG and RELEASE_BRANCH override the release tag and branch, to test the script.
+
 set -euo pipefail
 
 major="${1:?Usage: $0 MAJOR}"
