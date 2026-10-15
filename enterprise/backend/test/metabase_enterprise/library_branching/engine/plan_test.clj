@@ -32,12 +32,14 @@
 (defn- resolves? [s target] (or (lb.tu/env-target? target) (contains? s target)))
 
 (defn- reaches?
-  "True iff a chain of places and references among the items of `s` leads from `from` to `to`."
-  [s from to]
+  "True iff a chain of places and references among the items of `s` and the old items `old` leads from `from` to `to`.
+  An identity with an old item stands for both of its items."
+  [s old from to]
   (loop [todo [from], seen #{}]
     (if-let [[x & more] (seq todo)]
       (cond (seen x) (recur more seen)
-            :else    (let [next (filter #(contains? s %) (cons (:place (get s x)) (ref-targets (get s x))))]
+            :else    (let [next (filter #(or (contains? s %) (contains? old %))
+                                        (mapcat #(cons (:place %) (ref-targets %)) (keep #(get % x) [s old])))]
                        (if (some #{to} next) true (recur (into (vec more) next) (conj seen x)))))
       false)))
 
@@ -74,7 +76,7 @@
   "Applies `step` to the simulated instance `{:s snapshot :old {id item} :content {id write} :later #{ids to trash
   later} :faults []}` as the apply does, and records each order rule that the step breaks. A write with `:defer` leaves an item that exists
   as it is, and writes a new one without the deferred references; its link writes the whole content."
-  [{:keys [s later content] :as state} {:keys [id write pre defer link interim trash]}]
+  [{:keys [s old later content] :as state} {:keys [id write pre defer link interim trash]}]
   (let [fault (fn [state why] (update state :faults conj [why id]))]
     (cond
       write
@@ -103,21 +105,26 @@
 
       trash
       (let [it    (get s id)
-            later (disj later id)]
+            later (disj later id)
+            old'  (dissoc old id)]
         (if (and it (not (one-row? (:kind it) (:kind pre))))
           ;; the old item of another table: the item of `id` in `s` is the new one, and stays
-          (cond-> (-> state (update :old dissoc id) (assoc :later later))
-            (not (contains? (:old state) id))
+          (cond-> (assoc state :old old' :later later)
+            (not (contains? old id))
             (fault :trash-of-no-old-item)
 
-            (some #(and (= id (:place %)) (not (contains? (get snapshot/may-contain (:kind it)) (:kind %)))) (vals s))
+            (or (some #(and (= id (:place %)) (not (contains? (get snapshot/may-contain (:kind it)) (:kind %)))) (vals s))
+                ;; An old item came from `l`, so its place names the old item of a replaced identity.
+                (some #(= id (:place %)) (vals old')))
             (fault :container-before-content))
           (let [s' (dissoc s id)]
             (cond-> (assoc state :s s' :later later)
-              (some #(= id (:place %)) (vals s'))
+              (some #(= id (:place %)) (concat (vals s') (vals old)))
               (fault :container-before-content)
 
-              (some (fn [[j c]] (and (contains? (ref-targets c) id) (not (and (later j) (reaches? s id j))))) s')
+              ;; An old item is a user of its targets until its trash.
+              (some (fn [[j c]] (and (contains? (ref-targets c) id) (not (and (later j) (reaches? s old id j)))))
+                    (concat s' old))
               (fault :target-before-user))))))))
 
 (defn- simulate
@@ -424,6 +431,35 @@
       (is (= {:system-ids [metrics-id]}
              (try (plan/plan with-system m with-system) (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
+(deftest ^:parallel kind-change-cycle-test
+  (testing "a container that changes kind, in a cycle of places and references with the content that leaves it"
+    ;; From a shrunk counterexample of plan-laws-test: collection a refers to dashboard d, d is in a and refers to
+    ;; collection b, b is in a, and e is in b. The target has a as a dashboard at the root level. Until its trash, the
+    ;; old collection a closes the cycle b, a, d, so the trash of b can come before the trash of its user d.
+    (let [a     (engine.tu/eid "a")
+          b     (engine.tu/eid "b")
+          d     (engine.tu/eid "d")
+          e     (engine.tu/eid "e")
+          l     {a (engine.tu/item :collection "A" nil #{[:card d]})
+                 b (engine.tu/item :collection "B" a)
+                 d (engine.tu/item :dashboard "D" a #{[:card b]})
+                 e (engine.tu/item :collection "E" b)}
+          m     {a (engine.tu/item :dashboard "A" nil)}
+          steps (plan/plan l m l)]
+      (is (= [[a :write] [e :trash] [b :trash] [d :trash] [a :trash]] (step-forms steps)))
+      (is (reaches-target? l m steps))))
+  (testing "the old item of a replaced identity is a user of its targets until its trash"
+    (let [x     (engine.tu/eid "x")
+          y     (engine.tu/eid "y")
+          l     {x (engine.tu/item :collection "X" nil #{[:card y]})
+                 y (engine.tu/item :collection "Y" nil)}
+          m     {x (engine.tu/item :dashboard "X" nil)}
+          steps (plan/plan l m l)
+          [write-x trash-x trash-y] steps]
+      (is (= [[x :write] [x :trash] [y :trash]] (step-forms steps)))
+      (is (reaches-target? l m steps))
+      (is (= [[:target-before-user y]] (:faults (simulate l [write-x trash-y trash-x])))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------
 
 (defn- merged
@@ -474,6 +510,12 @@
   ;; The random renames of plan-laws-test rarely move a name from one item to another, so this property builds the
   ;; moves: renames, swaps, rotations, new holders of a freed name, and references among the items.
   (prop/for-all [snaps (engine.tu/key-move-snapshots-gen)]
+    (plan-laws? snaps)))
+
+(defspec plan-laws-kind-change-test 300
+  ;; The random edits of plan-laws-test give a container another kind, after its content left it, rarely, so this
+  ;; property builds such a change in each case, with references between the container and its content.
+  (prop/for-all [snaps (engine.tu/kind-change-snapshots-gen)]
     (plan-laws? snaps)))
 
 (defspec plan-never-writes-a-local-change-test 300
@@ -550,6 +592,11 @@
             apply reads the new kind, finds no item, and the precondition fails on each attempt."
     :target `plan/plan
     :edits  [[:replace '(kind-changes l m changed) ()]]}
+   {:name   :replaced-trash-by-new-content
+    :doc    "The trash order reads the target content of a replaced item, so the references of its old item do not put
+            its trash before the trash of their targets."
+    :target `plan/plan
+    :edits  [[:replace '(trash-steps l b removed) '(trash-steps (merge l m) b removed)]]}
    {:name   :system-trash
     :doc    "A plan trashes a system item that the target lacks."
     :target `plan/plan
@@ -558,6 +605,7 @@
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
                                 #'local-change-test #'unknown-base-test #'system-item-test #'key-move-test
-                                #'kind-change-test
+                                #'kind-change-test #'kind-change-cycle-test
                                 #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-laws-key-move-test
+                                #'plan-laws-kind-change-test
                                 #'plan-unknown-base-test]}))
