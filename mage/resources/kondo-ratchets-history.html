@@ -191,6 +191,11 @@ function people(title, body) {
     `${body}</details>`;
 }
 
+// Side-by-side sections, or nothing when every one of them is empty.
+function grid2(body) {
+  return body ? `<div class="grid2">${body}</div>` : "";
+}
+
 function groups(list, item, cls) {
   if (!list.length) return "";
   return `<div class="card ${cls || ""}">` +
@@ -404,10 +409,9 @@ function render(p) {
       section("Net by author", "From most shrunk to most grown. A shrink is credited to whoever removed the suppressions.",
         ranking(r.board, x => x.shrunk || x.grown, x => x.net,
           [["shrunk", "shrunk", n => num(n)], ["grown", "grown", n => num(n)], ["net", "net", n => num(n, "net")]])) +
-      `<div class="grid2">` +
+      grid2(
         section("Most shrunk", "", ranking(r.board, x => x.shrunk < 0, x => x.shrunk, [["shrunk", "shrunk", n => num(n)]])) +
-        section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]])) +
-      `</div>` +
+        section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]]))) +
       section("Most introduced", "Ranked by the budgets the new linters and measures started with: more debt put under a ratchet is better.",
         ranking(r.board, x => x.linters > 0, x => -x.ignores, [["budget", "ignores", good], ["new", "linters", good]])));
 }
