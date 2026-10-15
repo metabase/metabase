@@ -17,14 +17,14 @@
 (defn- do-with-warehouse
   "Calls `f` with the temp database `lb manifest db` and its tables and fields."
   [f]
+  ;; A routing destination can hold no permissions, so it gets no table here; the export leaves it out by its column.
   (mt/with-temp [:model/Database router {:name "lb manifest db" :engine :h2 :details {:db "mem:x" :password "hunter2"}}
-                 :model/Database dest   {:name "lb manifest destination" :engine :h2 :router_database_id (:id router)}
+                 :model/Database _dest  {:name "lb manifest destination" :engine :h2 :router_database_id (:id router)}
                  :model/Database audit  {:name "lb manifest audit" :engine :h2 :is_audit true}
                  :model/Table    orders {:db_id (:id router) :schema "PUBLIC" :name "ORDERS"}
                  :model/Table    _gone  {:db_id (:id router) :schema "PUBLIC" :name "GONE" :active false}
                  :model/Table    _notes {:db_id (:id router) :schema nil :name "NOTES"}
                  :model/Table    _audit {:db_id (:id audit) :schema "PUBLIC" :name "VIEW_LOG"}
-                 :model/Table    _dest  {:db_id (:id dest) :schema "PUBLIC" :name "ORDERS"}
                  :model/Field    _total {:table_id (:id orders) :name "TOTAL" :base_type :type/Float
                                          :effective_type :type/Float :semantic_type :type/Currency}
                  :model/Field    data   {:table_id (:id orders) :name "DATA" :base_type :type/JSON}

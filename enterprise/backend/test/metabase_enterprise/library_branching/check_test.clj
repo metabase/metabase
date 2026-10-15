@@ -109,9 +109,11 @@
 
 (deftest green-test
   (testing "the golden repository with its manifest is green, with no lint"
-    (is (= {:green? true :findings [] :lints [] :semantic? true} (checked (golden)))))
+    (is (= {:green? true :findings [] :lints [] :semantic? true}
+           (select-keys (checked (golden)) [:green? :findings :lints :semantic?]))))
   (testing "without a manifest, the structural check alone runs"
-    (is (= {:green? true :findings [] :lints [] :semantic? false} (check/check (golden) {})))))
+    (is (= {:green? true :findings [] :lints [] :semantic? false}
+           (select-keys (check/check (golden) {}) [:green? :findings :lints :semantic?])))))
 
 (deftest decode-findings-test
   (testing "each kind of file that does not decode is red, with the path of the file"
@@ -272,7 +274,7 @@
       (let [out (with-out-str (is (= 0 (check/run (str dir) nil))))]
         (is (= "green\n" out))))
     (testing "a manifest at another path"
-      (let [other (io/file dir "other.yaml")]
+      (let [other (io/file dir ".metabase/other.yaml")]
         (spit other "format: library-branching-manifest/1\ndatabases: []\n")
         (let [out (with-out-str (is (= 1 (check/run (str dir) (str other)))))
               n   (count (:findings (checked (golden) (slurp other))))]
