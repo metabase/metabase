@@ -91,7 +91,7 @@ breadcrumbs=false
 
 The default behavior for the data picker is:
 
-- Show tables, models, and metrics.
+- Show tables, models, metrics, and the Library.
 - Exclude questions.
 - Display a simple dropdown menu. If people have access to 100 or more tables, models, and metrics, Metabase shows the full data picker instead.
 
@@ -123,7 +123,7 @@ Available entity types are:
 - `model`
 - `question` (only works with `data_picker=staged`)
 
-Setting `entity_types` always leaves metrics out, because `metric` isn't an `entity_types` value. To keep metrics in the picker, don't set `entity_types`.
+Setting `entity_types` always leaves metrics and the Library out, because `metric` and `library` aren't `entity_types` values. To keep them in the picker, don't set `entity_types`.
 
 You can separate entity types with a comma:
 
