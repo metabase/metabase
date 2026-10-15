@@ -3,6 +3,7 @@
   references of a read against the serdes walk of master. Each test writes in a transaction that rolls back."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.engine.plan :as plan]
    [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
@@ -14,6 +15,9 @@
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
@@ -272,13 +276,42 @@
            (write! dashboard-id step)
            (is (= (with-refs dashboard-id step) (current dashboard-id)))))))))
 
+(defn- spy
+  "A function that adds the name of var `v` to the atom `calls`, then calls the original function of `v`."
+  [calls v]
+  (let [f (mt/original-fn v)]
+    (fn [& args]
+      (swap! calls conj (:name (meta v)))
+      (apply f args))))
+
+(defn- record-writes!
+  "Calls `f`, and returns the names of the write functions of dashboards that it calls, in the order of the calls."
+  [f]
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [library-branching.db/insert-dashboard!     (spy calls #'library-branching.db/insert-dashboard!)
+                                library-branching.db/update-dashboard!     (spy calls #'library-branching.db/update-dashboard!)
+                                library-branching.db/insert-dashboard-tab! (spy calls #'library-branching.db/insert-dashboard-tab!)
+                                library-branching.db/update-dashboard-tab! (spy calls #'library-branching.db/update-dashboard-tab!)
+                                library-branching.db/insert-dashcard!      (spy calls #'library-branching.db/insert-dashcard!)
+                                library-branching.db/update-dashcard!      (spy calls #'library-branching.db/update-dashcard!)
+                                dashboard-tab/delete-tabs!                 (spy calls #'dashboard-tab/delete-tabs!)
+                                dashboard-card/delete-dashboard-cards!     (spy calls #'dashboard-card/delete-dashboard-cards!)
+                                dashboard-card/update-dashboard-cards-series!
+                                (spy calls #'dashboard-card/update-dashboard-cards-series!)
+                                dashboard/cascade-card-state-from-dashboard-update!
+                                (spy calls #'dashboard/cascade-card-state-from-dashboard-update!)]
+      (f))
+    @calls))
+
 (deftest get-put-test
   (do-with-world
    (fn [world]
      (write! dashboard-id (content world))
-     (testing "a write of the current content changes no row"
+     (testing "a write of the current content calls no write function and changes no row"
        (let [before (rows dashboard-id)]
-         (instance/write! (store) dashboard-id (current dashboard-id))
+         ;; The rows alone do not show an update of equal values on every app DB: the update moves only updated_at,
+         ;; and H2 and Postgres set it to the start of the transaction that the test runs in.
+         (is (= [] (record-writes! #(instance/write! (store) dashboard-id (current dashboard-id)))))
          (is (= before (rows dashboard-id))))))))
 
 (deftest instance-local-attributes-test
