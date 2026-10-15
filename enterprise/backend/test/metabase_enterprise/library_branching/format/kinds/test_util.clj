@@ -292,6 +292,17 @@
              :dimensions             [false (gen/vector document-map-gen 0 2)]
              :dimension_mappings     [false (gen/vector document-map-gen 0 2)]}))
 
+(def ^:private remapping-gen
+  "Generates the remapping of a field: a foreign-key remapping to a field, or an internal remapping with or without
+  its values."
+  (gen/one-of
+   [(gen/fmap (fn [[n k]] {:type "external" :name n :field k}) (gen/tuple non-empty-text-gen field-key-gen))
+    (gen/fmap (fn [[n values]] (cond-> {:type "internal" :name n} (seq values) (assoc :values values)))
+              (gen/tuple non-empty-text-gen
+                         (gen/vector (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean])
+                                                (gen/one-of [non-empty-text-gen (gen/return nil)]))
+                                     0 3)))]))
+
 (def ^:private field-settings-gen
   (gen/recursive-gen
    (fn [inner]
@@ -306,7 +317,8 @@
                         :fk_target       [false field-key-gen]
                         :settings        [false document-map-gen]
                         :custom_position [false gen/large-integer]
-                        :json_unfolding  [false gen/boolean]}))))
+                        :json_unfolding  [false gen/boolean]
+                        :remapping       [false remapping-gen]}))))
 
 (def published-table-attrs-gen
   "Generates the `:attrs` of a published table."

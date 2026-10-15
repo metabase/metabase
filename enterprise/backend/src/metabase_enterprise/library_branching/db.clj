@@ -274,6 +274,28 @@
   [ids :- ::ids]
   (t2/select :model/FieldUserSettings {:where [:in :field_id (fields-of-tables ids)]}))
 
+(mu/defn dimensions-by-table-id :- [:sequential ::row]
+  "`{:field_id :table_id :type :name :human_readable_field_id}` of the Dimension row of each field of the tables of
+  `ids`. `:type` is \"internal\" or \"external\"."
+  [ids :- ::ids]
+  (t2/query {:select [:d.field_id :f.table_id :d.type :d.name :d.human_readable_field_id]
+             :from   [[(t2/table-name :model/Dimension) :d]]
+             :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
+             :where  [:in :f.table_id ids]}))
+
+(defn- full-field-values-condition
+  "The condition of the full field values rows, which the human-readable values of a remapping live in."
+  []
+  [:and [:= :type "full"] [:= :hash_key nil]])
+
+(mu/defn remapped-values-by-field-id :- [:sequential ::row]
+  "`{:id :field_id :values :human_readable_values}` of the full field values rows of the fields of `ids`, in the order
+  of their ids, as instances of `:model/FieldValues`."
+  [ids :- ::ids]
+  (t2/select [:model/FieldValues :id :field_id :values :human_readable_values]
+             {:where    [:and [:in :field_id ids] (full-field-values-condition)]
+              :order-by [[:id :asc]]}))
+
 ;;; ------------------------------------------------- Locks and writes -------------------------------------------------
 
 (mu/defn lock-collection :- [:maybe ::row]
@@ -365,17 +387,22 @@
   (t2/update! :model/NativeQuerySnippet id changes))
 
 (mu/defn lock-table-settings :- [:sequential ::row]
-  "`{:table_id}` of the user settings row of table `table-id` and `{:field_id}` of the user settings rows of its fields,
-  after a lock on each of these rows until the current transaction ends."
+  "`{:table_id}` of the user settings row of table `table-id`, and `{:field_id}` of the user settings rows, the
+  Dimension rows and the full field values rows of its fields, after a lock on each of these rows until the current
+  transaction ends."
   [table-id :- pos-int?]
   (into (vec (t2/query {:select [:table_id]
                         :from   [(t2/table-name :model/TableUserSettings)]
                         :where  [:= :table_id [:auto/param table-id]]
                         :for    [:update]}))
-        (t2/query {:select [:field_id]
-                   :from   [(t2/table-name :model/FieldUserSettings)]
-                   :where  [:in :field_id (fields-of-tables [table-id])]
-                   :for    [:update]})))
+        (mapcat (fn [[model condition]]
+                  (t2/query {:select [:field_id]
+                             :from   [(t2/table-name model)]
+                             :where  [:and [:in :field_id (fields-of-tables [table-id])] condition]
+                             :for    [:update]})))
+        [[:model/FieldUserSettings nil]
+         [:model/Dimension nil]
+         [:model/FieldValues (full-field-values-condition)]]))
 
 (mu/defn table-fields :- [:sequential ::row]
   "`{:id :name :parent_id :active}` of each field of table `table-id`, by the values that warehouse sync writes."
@@ -424,6 +451,41 @@
   [field-id :- pos-int?
    changes  :- ::row]
   (t2/update! :model/FieldUserSettings field-id changes))
+
+(mu/defn set-dimension! :- :any
+  "Makes the Dimension row of field `field-id` have the columns `row` (`:type`, `:name`, `:human_readable_field_id`),
+  through the Dimension model: an update of its row, or an insert."
+  [field-id :- pos-int?
+   row      :- ::row]
+  (if (t2/exists? :model/Dimension :field_id field-id)
+    (t2/update! :model/Dimension :field_id field-id row)
+    (t2/insert! :model/Dimension (assoc row :field_id field-id))))
+
+(mu/defn delete-dimension! :- :int
+  "Deletes the Dimension row of field `field-id`; returns the number of rows."
+  [field-id :- pos-int?]
+  (t2/delete! :model/Dimension :field_id field-id))
+
+(mu/defn set-remapped-values! :- :any
+  "Sets the values and the human-readable values of the newest full field values row of field `field-id` through the
+  FieldValues model; with no such row, inserts one with them."
+  [field-id              :- pos-int?
+   values                :- [:sequential [:maybe [:or :string number? :boolean]]]
+   human-readable-values :- [:maybe [:sequential [:maybe :string]]]]
+  (if-let [id (:id (last (remapped-values-by-field-id [field-id])))]
+    (t2/update! :model/FieldValues id {:values values :human_readable_values human-readable-values})
+    (t2/insert! :model/FieldValues {:field_id              field-id
+                                    :type                  :full
+                                    :values                values
+                                    :human_readable_values human-readable-values})))
+
+(mu/defn clear-remapped-values! :- :any
+  "Removes the human-readable values of the newest full field values row of field `field-id`, if it has any, through
+  the FieldValues model."
+  [field-id :- pos-int?]
+  (let [{:keys [id human_readable_values]} (last (remapped-values-by-field-id [field-id]))]
+    (when (seq human_readable_values)
+      (t2/update! :model/FieldValues id {:human_readable_values nil}))))
 
 ;;; ----------------------------------------------------- Users ------------------------------------------------------
 
