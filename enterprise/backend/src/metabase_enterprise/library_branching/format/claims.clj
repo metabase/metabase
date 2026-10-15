@@ -167,7 +167,9 @@
   "The snapshot that the tree `files` (`{path bytes}`) holds, with the codecs `codecs`: `tree/decode-tree` of its
   [[claimed-files]] in the order of their paths, then [[with-system-items]]. `{:snapshot s}`, or `{:findings [f ...]}`
   of `tree/decode-tree`."
-  [codecs files]
-  (let [r (tree/decode-tree codecs (vals (into (sorted-map) (claimed-files (item-claims files)))))]
-    (cond-> r
-      (:snapshot r) (update :snapshot with-system-items))))
+  ([codecs files]
+   (decode codecs files {}))
+  ([codecs files _opts]
+   (let [r (tree/decode-tree codecs (vals (into (sorted-map) (claimed-files (item-claims files)))))]
+     (cond-> r
+       (:snapshot r) (update :snapshot with-system-items)))))
