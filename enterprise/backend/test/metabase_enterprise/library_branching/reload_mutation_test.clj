@@ -2,11 +2,15 @@
   "Mutations of the rules of the reload order. Each mutation removes one rule, and a test must fail."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.reload-test :as reload-test]
-   [metabase-enterprise.library-branching.reload-test-util :as reload-test-util]))
+   [metabase-enterprise.library-branching.reload-test-util :as reload-test-util]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes one rule of the reload order."
