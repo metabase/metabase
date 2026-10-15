@@ -179,6 +179,25 @@
               :where     [:in :series.dashboardcard_id dashcard-ids]
               :order-by  [[:series.position :asc]]}))
 
+(mu/defn dashcard-cards-for-dashboards
+  "The `:dashboard_id` and `:card_id` of every DashboardCard of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/DashboardCard :dashboard_id :card_id] :dashboard_id [:in dashboard-ids]))
+
+(mu/defn dashcard-series-cards-for-dashboards
+  "The owning Dashboard id and the series `:card_id` of every DashboardCardSeries on a DashboardCard of the Dashboards
+  with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (mdb/query {:select [[:dashcard.dashboard_id :dashboard_id] [:series.card_id :card_id]]
+              :from   [[:dashboardcard_series :series]]
+              :join   [[:report_dashboardcard :dashcard] [:= :dashcard.id :series.dashboardcard_id]]
+              :where  [:in :dashcard.dashboard_id dashboard-ids]}))
+
+(mu/defn parameters-for-dashboards
+  "The id, `:parameters`, and `:embedding_params` of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/Dashboard :id :parameters :embedding_params] :id [:in dashboard-ids]))
+
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]

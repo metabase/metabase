@@ -34,6 +34,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.public-sharing.reach :as public-sharing.reach]
    [metabase.pulse.core :as pulse]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
@@ -1793,6 +1794,27 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+
+(defmethod public-sharing.reach/rendered-card-ids :model/Card
+  [_model id->surfaces]
+  ;; A question anonymous traffic can open executes its own query, and each filter whose value list is drawn from
+  ;; another question executes that question's query too -- the public and guest-embed parameter-value routes run it.
+  ;; `:parameters` is read rather than the ParameterCard rows derived from it, because `:parameters` is what those
+  ;; routes themselves resolve the value list from.
+  ;;
+  ;; Not an edge: a question this one is built on, or references from a native query, is saved against the same
+  ;; database, so following it reaches nothing new.
+  (let [cards (queries.db/card-parameters-for-cards (keys id->surfaces))]
+    (public-sharing.reach/edges
+     (into {} (map (fn [{:keys [id]}] [id #{id}])) cards)
+     (into {}
+           (map (fn [{:keys [id parameters embedding_params]}]
+                  [id (public-sharing.reach/value-list-card-ids-by-surface
+                       (get id->surfaces id)
+                       embedding_params
+                       parameters
+                       parameter-card/values-source-card-ids)]))
+           cards))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

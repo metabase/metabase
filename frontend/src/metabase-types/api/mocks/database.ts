@@ -1,5 +1,6 @@
 import type {
   Database,
+  DatabaseAnonymousReach,
   DatabaseData,
   DatabaseFeature,
   SavedQuestionDatabase,
@@ -24,6 +25,14 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "full-join",
   "saved-question-sandboxing",
 ];
+
+export const createMockDatabaseAnonymousReach = (
+  opts?: Partial<DatabaseAnonymousReach>,
+): DatabaseAnonymousReach => ({
+  total: 0,
+  data: [],
+  ...opts,
+});
 
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   ...createMockDatabaseData(opts),

@@ -21,6 +21,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.public-sharing.reach :as public-sharing.reach]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
@@ -490,6 +491,37 @@
      ;; parameter with values_source_type = "card" will depend on a card
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
+
+(defmethod public-sharing.reach/rendered-card-ids :model/Dashboard
+  [_model id->surfaces]
+  ;; A dashboard anonymous traffic can open renders the Card of each of its DashboardCards and each Card added to one
+  ;; of those as a series, and runs the query of any Card one of its filters draws its value list from. That last one
+  ;; is the only edge whose Card need not appear on the dashboard at all, so it is the only way a dashboard reaches a
+  ;; database none of the questions on it are saved against.
+  ;;
+  ;; Not edges: a DashboardCard's `action_id`, and a click-behaviour target or link card inside its visualization
+  ;; settings. See [[metabase.public-sharing.reach]] for what excluding an action form rests on, and for why a
+  ;; hyperlink is not reach.
+  ;;
+  ;; A filter with no value-list question of its own draws its values from the fields its parameter mappings target,
+  ;; which the filter wiring only ever points at fields of the Cards on the dashboard -- already counted above, and on
+  ;; their database. A mapping written by hand can point elsewhere; that gap is mb-5ei.10.
+  (let [dashboard-ids (keys id->surfaces)]
+    (public-sharing.reach/edges
+     (merge-with into
+                 (public-sharing.reach/card-ids-by :dashboard_id :card_id
+                                                   (dashboards.db/dashcard-cards-for-dashboards dashboard-ids))
+                 (public-sharing.reach/card-ids-by :dashboard_id :card_id
+                                                   (dashboards.db/dashcard-series-cards-for-dashboards dashboard-ids)))
+     (into {}
+           (keep (fn [{:keys [id parameters embedding_params]}]
+                   (when-let [by-surface (not-empty (public-sharing.reach/value-list-card-ids-by-surface
+                                                     (get id->surfaces id)
+                                                     embedding_params
+                                                     parameters
+                                                     queries/values-source-card-ids))]
+                     [id by-surface])))
+           (dashboards.db/parameters-for-dashboards dashboard-ids)))))
 
 (defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps

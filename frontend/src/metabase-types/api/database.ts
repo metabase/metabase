@@ -1,3 +1,4 @@
+import type { CollectionItemModel } from "./collection";
 import type { ScheduleSettings } from "./settings";
 import type { SchemaName, Table } from "./table";
 
@@ -84,6 +85,8 @@ export interface Database extends DatabaseData {
   is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
+  /** Whether an admin has granted anonymous traffic permission to query this router database. */
+  router_anonymous_access_granted?: boolean | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -126,6 +129,33 @@ export interface DatabaseUsageInfo {
   metric: number;
   segment: number;
   transform: number;
+}
+
+/** One of the two anonymous surfaces: a public link, or a published guest embed. */
+export type AnonymousSurface = "public-link" | "guest-embed";
+
+export type AnonymouslyReachingModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document"
+>;
+
+/**
+ * A published question, dashboard or document through which anonymous traffic can get data from a
+ * database. `reaches_indirectly` is there only when the connection is not self-evident: nothing the
+ * entity shows is saved against the database, and it reaches it through a filter's value list.
+ */
+export interface AnonymouslyReachingEntity {
+  id: number;
+  model: AnonymouslyReachingModel;
+  name: string;
+  surfaces: AnonymousSurface[];
+  reaches_indirectly?: true;
+}
+
+/** The server caps `data`; `total` says how many there are in all. */
+export interface DatabaseAnonymousReach {
+  total: number;
+  data: AnonymouslyReachingEntity[];
 }
 
 export interface GetDatabaseRequest {
@@ -284,4 +314,5 @@ export interface CreateDestinationDatabaseRequest {
 export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
+  anonymous_access_granted?: boolean;
 }

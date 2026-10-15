@@ -125,6 +125,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
+                    :model/DatabaseRouter
                     :model/Field
                     :model/QueryExecution
                     :model/Table
@@ -2046,13 +2047,18 @@
   {:team "UX West"
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
+           metabase.public-sharing.reach
            metabase.public-sharing.validation}
    :uses #{api
+           database-routing
+           embedding
+           lib.schema
            settings
            util}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/Document}}
 
   public-sharing.rest
@@ -2064,6 +2070,7 @@
            api
            dashboards
            dashboards.rest
+           database-routing
            documents
            events
            lib
@@ -3331,6 +3338,7 @@
            models
            permissions
            premium-features
+           public-sharing
            queries
            request
            sample-data
@@ -3865,6 +3873,7 @@
            models
            premium-features
            query-processor
+           request
            settings
            util
            warehouses

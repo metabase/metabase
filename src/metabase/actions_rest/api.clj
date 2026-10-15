@@ -137,6 +137,12 @@
                     [:id ::actions.schema/id]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
+  ;; No anonymous-reach refusal here, unlike the Card, Dashboard and Document public links: enabling actions on a
+  ;; router database, or routing a database with actions enabled, is refused, so on a database configured from that
+  ;; guard onwards there is no router for a public action form to sit on. The guard fires on the write and not the
+  ;; read, so a database configured both ways beforehand still executes this action form under the anonymous-access
+  ;; grant -- a known gap, accepted deliberately as too rare to chase. Relaxing that guard means adding the refusal
+  ;; here and widening `metabase.public-sharing.reach` to match.
   (let [action (api/read-check :model/Action id :archived false)]
     (actions/check-actions-enabled action)
     {:uuid (or (:public_uuid action)
