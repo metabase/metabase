@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.specialization.postgres
   (:require
    [clojure.string :as str]
+   [honey.sql.pg-ops]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
    [metabase.search.util :as search.util]
@@ -39,7 +40,7 @@
              :query] [:= 1 1]]
    :where  (if (str/blank? search-term)
              [:= [:inline 1] [:inline 1]]
-             [:metabase.funnysql.core/postgres-full-text-search-match
+             [honey.sql.pg-ops/atat
               (if (:search-native-query search-ctx)
                 :with_native_query_vector
                 :search_vector)

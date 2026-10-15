@@ -1,7 +1,8 @@
 (ns metabase.funnysql.core-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [is are deftest testing]]
+   [clojure.test :refer [are deftest is testing]]
+   [honey.sql.pg-ops]
    [metabase.funnysql.core :as funnysql]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -1630,10 +1631,10 @@
 
 (deftest ^:parallel postgres-full-text-search-match-test
   (is (= ["\"search_vector\" @@ \"query\""]
-         (funnysql/format [::funnysql/postgres-full-text-search-match :search_vector :query] :postgres)))
+         (funnysql/format [honey.sql.pg-ops/atat :search_vector :query] :postgres)))
   (testing "an argument that is not an identifier is rejected"
     (are [lhs rhs] (thrown? clojure.lang.ExceptionInfo
-                            (funnysql/format [::funnysql/postgres-full-text-search-match lhs rhs] :postgres))
+                            (funnysql/format [honey.sql.pg-ops/atat lhs rhs] :postgres))
       "abc"             :query
       :search_vector    "abc"
       [:to_tsvector :a] :query)))

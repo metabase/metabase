@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
+   [honey.sql.pg-ops]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
@@ -701,7 +702,7 @@
     :not-like
     :not=
     :or
-    :metabase.funnysql.core/postgres-full-text-search-match})
+    honey.sql.pg-ops/atat})
 
 (defn- unwrap-h2x-typed
   "`x` without its `::h2x/typed` wrappers, if any. `h2x/+` and friends wrap their result in one when an argument carries
@@ -1137,7 +1138,7 @@
     ::h2x/mysql-interval    (h2x-interval! :mysql args context)
 
     ;; other custom operators
-    :metabase.funnysql.core/postgres-full-text-search-match
+    honey.sql.pg-ops/atat
     (postgres-full-text-search-match args context)
 
     (:abs
