@@ -25,7 +25,7 @@
 
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The
-  table can name kinds that are not in [[kinds]] yet."
+  table can name kinds outside [[kinds]]."
   {:action {:model #{:model}}})
 
 (def system-ids

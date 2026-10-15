@@ -295,7 +295,7 @@
    {:name   :unknown-planned
     :doc    "An unknown base counts as equal to the local content, so a plan writes over a trash before the first sync."
     :target `plan/check-base-equal!
-    :edits  [[:replace '(not= (get l %) (get b %)) '(and (not= :unknown (get b %)) (not= (get l %) (get b %)))]]}
+    :edits  [[:replace '(not= (get l id) (get b id)) '(and (not= :unknown (get b id)) (not= (get l id) (get b id)))]]}
    {:name   :system-trash
     :doc    "A plan trashes a system item that the target lacks."
     :target `plan/plan

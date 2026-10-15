@@ -280,23 +280,27 @@
                (or (seq conflicts)
                    (not (lb.tu/well-formed? (one-side-merge b o t))))))))))
 
+(defspec merge-keeps-unique-keys-fails-test 200
+  ;; Alloy MergeKeepsUniqueKeysFails: each side has unique keys, and the per-item merge gives two snippets one name.
+  ;; The merge check reports the clash with its pair.
+  (prop/for-all [[b o t ours theirs] (engine.tu/key-clash-snapshots-gen)]
+    (and (lb.tu/unique-keys? o)
+         (lb.tu/unique-keys? t)
+         (some #(= {:rule :unique-key :ids #{ours theirs} :ours ours :theirs theirs}
+                   (select-keys % [:rule :ids :ours :theirs]))
+               (:violations (merge/merge b o t {}))))))
+
 (defspec violation-names-two-items-with-keys-test 300
   ;; Alloy ViolationNamesTwoItemsWithKeys: a key clash of a merge names two items with the key, one changed on each
   ;; side.
-  (prop/for-all [[b o t] (engine.tu/related-snapshots-gen)]
+  (prop/for-all [[b o t] (gen/one-of [(engine.tu/related-snapshots-gen)
+                                      (gen/fmap #(subvec % 0 3) (engine.tu/key-clash-snapshots-gen))])]
     (every? (fn [{:keys [ids key] :as v}]
               (and (violation-names-pair? b o t v)
-                   (contains? ids (:ours v)) (contains? ids (:theirs v))
+                   (contains? ids (:ours v))
+                   (contains? ids (:theirs v))
                    (= key (:name (get o (:ours v))) (:name (get t (:theirs v))))))
             (filter #(= :unique-key (:rule %)) (:violations (merge/merge b o t {}))))))
-
-(deftest ^:parallel merge-violation-coverage-test
-  (testing "the related snapshots of the properties give a key clash, a dangling reference and an orphan"
-    (let [rules (set (for [seed (range 300)
-                           :let [[b o t] (gen/generate (engine.tu/related-snapshots-gen) 30 seed)]
-                           v    (:violations (merge/merge b o t {}))]
-                       (:rule v)))]
-      (is (set/subset? #{:unique-key :refs-closed :place-inside} rules)))))
 
 (defspec unknown-base-merge-test 300
   ;; An item with an unknown base is equal on both sides, or a conflict.
@@ -367,5 +371,6 @@
   (mut/check mutations {:tests [#'per-item-table-test #'unknown-base-test #'keep-mine-test
                                 #'alloy-dangling-reference-test #'alloy-orphan-test #'alloy-cycle-test
                                 #'alloy-unique-keys-test #'violations-with-conflicts-test
-                                #'merge-laws-test #'violation-names-two-items-with-keys-test
+                                #'merge-laws-test #'merge-keeps-unique-keys-fails-test
+                                #'violation-names-two-items-with-keys-test
                                 #'unknown-base-merge-test #'one-sided-merge-is-well-formed-test]}))

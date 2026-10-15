@@ -131,8 +131,8 @@
   (testing "an item that is not a collection has no namespace"
     (is (= [] (validate/validate (assoc-in library [snippet :attrs :namespace] "transforms"))))))
 
-;;; The kinds of the action-model rule are not in `snapshot/kinds` yet. Validate reads only the kind, the place and
-;;; the references of these items.
+;;; The kinds of the action-model rule are outside `snapshot/kinds`. Validate reads only the kind, the place and the
+;;; references of these items.
 
 (def ^:private model (engine.tu/eid "model"))
 (def ^:private question (engine.tu/eid "question"))
@@ -313,7 +313,7 @@
    {:name   :unique-key-per-place
     :doc    "A key is unique only among siblings, so two snippets with one name in two collections pass."
     :target `validate/unique-key-findings
-    :edits  [[:replace '[kind (get-in item path)] '[kind (:place item) (get-in item path)]]]}
+    :edits  [[:replace '[kind k] '[kind (:place item) k] {:nth 0}]]}
    {:name   :no-namespace-rule
     :doc    "A child collection in another namespace than its parent is no finding."
     :target `validate/validate

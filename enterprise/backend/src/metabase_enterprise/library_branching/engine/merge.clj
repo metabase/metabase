@@ -25,10 +25,10 @@
   "The items that structural finding `finding` is about."
   [{:keys [rule id place ids ref]}]
   (case rule
-    (:place-inside :kind-fits) [id place]
-    :refs-closed               [id (second ref)]
-    :acyclic                   (sort snapshot/compare-identities ids)
-    :root                      [id]))
+    (:place-inside :kind-fits :namespace) [id place]
+    (:refs-closed :ref-kind)              [id (second ref)]
+    (:acyclic :unique-key)                (sort snapshot/compare-identities ids)
+    :root                                 [id]))
 
 (defn- pair
   "`[i j]`: two different items of `ids`, `i` changed in `o` and `j` changed in `t` against `b`; nil when there are
@@ -46,19 +46,21 @@
         (validate/validate m opts)))
 
 (defn merge
-  "The three-way merge of snapshots `o` (ours) and `t` (theirs) from their base `b`.
+  "The three-way merge of snapshots `o` (ours) and `t` (theirs) from their base `b`. A value of `b` can be
+  `:unknown`, a base that equals no content (the base of an identity in the trash of an instance with no base).
 
   Per item: if `o` and `t` agree, or only one side changed it against `b`, the result takes that content; a delete is
-  no content. `decisions` is `{identity content}`, the person's keep-mine decisions: a decision holds while its
+  no content. So an item with an unknown base takes the content of `o` and `t` when they agree, and is a conflict
+  when they differ. `decisions` is `{identity content}`, the person's keep-mine decisions: a decision holds while its
   content equals the item's content in `o`, and takes it. Any other item is a conflict. Then the result gets the
   structural check of `validate`, with `opts`.
 
   Returns `{:ok m}`, or `{:conflicts [...] :violations [...]}`:
   - a conflict is `{:id i :base b(i) :ours o(i) :theirs t(i)}`, in the order of the identities;
   - a violation is a finding of `validate` with `:ours i` and `:theirs j`, two different items that the finding is
-    about, `i` changed in `o` and `j` in `t`. With well-formed inputs and no conflict, these always exist; otherwise
-    they can be nil. With conflicts, the check runs on the result in which each conflicted item has its content of
-    `o`."
+    about, `i` changed in `o` and `j` in `t` (for a key clash, two items with the key). With well-formed inputs and
+    no conflict, these always exist; otherwise they can be nil. With conflicts, the check runs on the result in which
+    each conflicted item has its content of `o`."
   ([b o t decisions]
    (merge b o t decisions {}))
   ([b o t decisions opts]

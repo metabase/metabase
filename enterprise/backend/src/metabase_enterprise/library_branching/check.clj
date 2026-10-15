@@ -115,7 +115,7 @@
          (item-text s target))))
 
 (defn- structural-text
-  [s {:keys [rule id place ids ref] :as finding}]
+  [s {:keys [rule id place ids ref kind key] :as finding}]
   (case rule
     :place-inside (str (item-text s id) " is in " (id-text place) ", which is not in the tree.")
     :acyclic      (str "These items contain each other: "
@@ -123,6 +123,11 @@
     :kind-fits    (str (item-text s id) " is in " (item-text s place) ", which cannot contain it.")
     :refs-closed  (str (item-text s id) " refers to " (target-text s ref) ", which is not in the tree.")
     :root         (str (item-text s id) " is at the root level, and it is not a fixed root.")
+    :unique-key   (str "These items of kind " (name kind) " have one key " (pr-str key) ", which must be unique: "
+                       (str/join ", " (map (partial item-text s) (sort-by id-text ids))) ".")
+    :namespace    (str (item-text s id) " is in " (item-text s place) ", which is in another namespace.")
+    :ref-kind     (str (item-text s id) " refers to " (target-text s ref) ", which is not of a kind that the reference"
+                       " allows.")
     (pr-str (dissoc finding :level :path))))
 
 (defn- finding-text

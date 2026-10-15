@@ -128,6 +128,26 @@
                  [b (apply-edits u b eo) (apply-edits u b et)]))
              (gen/tuple (lb.tu/well-formed-snapshot-gen (merge {:max-items 12} opts)) edits-gen edits-gen edits-gen))))
 
+(defn key-clash-snapshots-gen
+  "Generates `[b o t ours theirs]`: `[b o t]` as [[related-snapshots-gen]] gives them, then `o` renames its snippet
+  `ours` or adds it, and `t` adds the snippet `theirs`, both with a name that no item of `b`, `o` and `t` has. So
+  each side keeps unique keys, and the per-item merge gives `ours` and `theirs` one name."
+  []
+  (gen/fmap (fn [[[b o t] k]]
+              (let [taken    (set (map :name (concat (vals b) (vals o) (vals t))))
+                    clash    (first (remove taken (map #(str "Clash " %) (range))))
+                    snippets (filterv #(= :snippet (:kind (get o %))) (sorted-ids o))
+                    ours     (if (and (seq snippets) (even? k)) (nth-of snippets (quot k 2)) (eid "clashours"))
+                    theirs   (eid "clashtheirs")]
+                [b
+                 (if (contains? o ours)
+                   (assoc-in o [ours :name] clash)
+                   (assoc o ours (item :snippet clash nil)))
+                 (assoc t theirs (item :snippet clash nil))
+                 ours
+                 theirs]))
+            (gen/tuple (related-snapshots-gen) gen/nat)))
+
 (defn with-unknown
   "Base snapshot `b` in which the base value of the `k`th identity of `ids`, for each `k` of `ks`, is `:unknown`."
   [b ids ks]
