@@ -27,6 +27,11 @@
                      cols)
        (throw (ex-info "Column not found" {:name col-name, :join-alias join-alias})))))
 
+(defn- join-alias
+  "The alias of the last join in the last stage of `query`. Join aliases come from table names, which differ by driver."
+  [query]
+  (:alias (last (lib/joins query))))
+
 (defn- multi-stage-query
   "Total order amount per user and product category, then per user source, sorted by the total:
 
@@ -46,20 +51,21 @@
         query (-> query
                   (lib/aggregate (lib/sum (col (lib/visible-columns query) "sum")))
                   (lib/breakout (col (lib/breakoutable-columns query) "user_id"))
-                  (lib/breakout (col (lib/breakoutable-columns query) "category" "Products"))
+                  (lib/breakout (col (lib/breakoutable-columns query) "category" (join-alias query)))
                   lib/append-stage)
         query (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id :people))
                                                [(lib/= (col (lib/visible-columns query) "user_id")
                                                        (field :people :id))]))
         query (-> query
                   (lib/aggregate (lib/sum (col (lib/visible-columns query) "sum")))
-                  (lib/breakout (col (lib/breakoutable-columns query) "source" "People - User")))]
+                  (lib/breakout (col (lib/breakoutable-columns query) "source" (join-alias query))))]
     (lib/order-by query (lib/aggregation-ref query 0))))
 
 (defn- native-query-on-card
   "A native query that selects from Card 1 with a required number variable in the `WHERE` clause."
   [mp]
-  (let [sql   (str "SELECT * FROM {{#1-card-1}} WHERE " (sql.u/quote-name driver/*driver* :field "sum") " < {{sum_limit}}")
+  ;; some databases (e.g. MySQL and Postgres before 16) require an alias for a subquery in FROM
+  (let [sql   (str "SELECT * FROM {{#1-card-1}} source_card WHERE " (sql.u/quote-name driver/*driver* :field "sum") " < {{sum_limit}}")
         query (lib/native-query mp sql)]
     (lib/with-template-tags query (mapv (fn [tag]
                                           (cond-> tag
