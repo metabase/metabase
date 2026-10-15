@@ -38,7 +38,7 @@ export function EmbeddingDataPicker({
 }: EmbeddingDataPickerProps) {
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
     useSearchQuery({
-      models: ["dataset", "table"],
+      models: ["dataset", "table", "metric"],
       limit: 0,
       context: "data-picker",
     });

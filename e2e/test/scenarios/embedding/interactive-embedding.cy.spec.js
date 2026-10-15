@@ -520,7 +520,7 @@ describe("scenarios > embedding > full app", () => {
     });
 
     describe("metric", () => {
-      it("should select a metric as the starting data source", () => {
+      it("should select a metric, and switch to the full data picker at 100 tables, models, and metrics", () => {
         const metricDetails = {
           ...ordersCardDetails,
           name: "Orders count",
@@ -528,7 +528,15 @@ describe("scenarios > embedding > full app", () => {
           query: { ...ordersCardDetails.query, aggregation: [["count"]] },
         };
         H.createQuestion(metricDetails);
+
+        cy.log("show the simple data picker below 100 data sources");
         startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByRole("link", { name: "Orders" }).should("be.visible");
+          cy.findByText("Raw Data").should("not.exist");
+        });
+
+        cy.log("select a metric as the starting data source");
         selectDataSource(metricDetails.name);
 
         // A metric becomes the aggregation on the table it is built from
@@ -536,6 +544,24 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("summarize")
           .findByText(metricDetails.name)
           .should("be.visible");
+
+        cy.log("switch to the full data picker at 100 data sources");
+        // Tables and models alone stay under 100, so only the metrics can
+        // push the count over
+        Cypress._.times(100, (index) => {
+          H.createQuestion({
+            ...ordersCardDetails,
+            name: `Orders count ${index}`,
+            type: "metric",
+            query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+          });
+        });
+
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("be.visible");
+        });
       });
     });
   });

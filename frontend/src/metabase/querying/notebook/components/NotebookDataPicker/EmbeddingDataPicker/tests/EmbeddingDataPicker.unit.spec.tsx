@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { screen } from "__support__/ui";
@@ -8,6 +9,18 @@ import { setup } from "./setup";
 describe("EmbeddingDataPicker", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
+  });
+
+  it("should count tables, models, and metrics to choose between the simple and full data pickers", async () => {
+    setup({ dataPicker: "staged" });
+
+    expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+    const [entityCountCall] = fetchMock.callHistory.calls("entity-count");
+    expect(new URL(entityCountCall.url).searchParams.getAll("models")).toEqual([
+      "dataset",
+      "table",
+      "metric",
+    ]);
   });
 
   describe("multi-stage data picker", () => {

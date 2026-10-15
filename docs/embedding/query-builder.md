@@ -40,15 +40,13 @@ With the SDK:
 
 ### Customize the data picker in the query builder
 
-The visual query builder uses one of two data pickers. If people have access to fewer than 100 tables and models, they get the simple data picker, a dropdown list of tables, models, and metrics. Otherwise, they get the full data picker, which groups data into **Raw Data**, **Models**, and **Metrics**. With the SDK, you can always use the full data picker by setting `dataPicker="staged"`.
+The visual query builder uses one of two data pickers. If people have access to fewer than 100 tables, models, and metrics, they get the simple data picker, which lists them all in one dropdown. Otherwise, they get the full data picker, which groups data into **Raw Data**, **Models**, and **Metrics**. With the SDK, you can always use the full data picker by setting `dataPicker="staged"`. The `<metabase-question>` web component can't, so it always switches at 100 tables, models, and metrics.
 
 To show fewer entity types, set the `entity-types` attribute (web component), or the `entityTypes` prop (SDK). For example, `entity-types="['table']"` limits the picker to raw tables. Options include:
 
 - `"table"`
 - `"model"`
 - `"metric"`
-
-There's no `<metabase-question>` attribute that picks the data picker, the way `data_picker` does in [full-app embedding](./full-app-ui-components.md#data_picker). With the web component, people with access to fewer than 100 tables and models always get the simple data picker.
 
 ## Embed the SQL editor
 
