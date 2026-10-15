@@ -4,6 +4,7 @@
   app DB; they are not parallel."
   {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
@@ -13,6 +14,7 @@
    [metabase-enterprise.library-branching.store :as store]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -21,16 +23,18 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(def ^:private created-id
-  "The entity id of the action that a pull of these tests creates."
-  "lbPullNewAction000001")
+(def ^:private created-ids
+  "The entity ids of the actions that a pull of these tests creates."
+  ["lbPullNewAction000001" "lbPullModelAction0001"])
+
+(def ^:private created-id (first created-ids))
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
 
 (defn- do-with-committed-content!
   "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it. Deletes every
-  inserted row and the action of [[created-id]] afterwards, the last first, and clears the base row before and after."
+  inserted row and the actions of [[created-ids]] afterwards, the last first, and clears the base row before and after."
   [f]
   (let [rows    (atom ())
         insert! (fn [model row]
@@ -42,9 +46,10 @@
       (mt/with-temporary-setting-values [library-branching-enabled true]
         (f insert!))
       (finally
-        (t2/delete! :model/Action :entity_id created-id)
+        (t2/delete! :model/Action :entity_id [:in created-ids])
+        ;; The query and implicit rows of an action go with it.
         (doseq [[model row] @rows
-                :when (not= :model/QueryAction model)]
+                :when (not (contains? #{:model/QueryAction :model/ImplicitAction} model))]
           (t2/delete! model :id (:id row)))
         (reset-base!)))))
 
@@ -57,9 +62,22 @@
     action))
 
 (defn- paths
-  "The paths of the action and collection files of the data actions area in `commit`."
-  [s commit]
-  (into (sorted-set) (filter #(re-find #"^actions/" %)) (keys (store/read-tree s commit))))
+  "The paths of the files of the data actions area in `commit`, or of the area of `prefix`."
+  ([s commit] (paths s commit "actions/"))
+  ([s commit prefix]
+   (into (sorted-set) (filter #(str/starts-with? % prefix)) (keys (store/read-tree s commit)))))
+
+(defn- insert-model!
+  "Inserts and commits a model card in the collection `collection`, through `insert!`."
+  [insert! collection model-name]
+  (insert! :model/Card {:name                   model-name
+                        :type                   :model
+                        :collection_id          (:id collection)
+                        :creator_id             (mt/user->id :rasta)
+                        :display                :table
+                        :visualization_settings {}
+                        :dataset_query          (let [mp (mt/metadata-provider)]
+                                                  (lib/query mp (lib.metadata/table mp (mt/id :venues))))}))
 
 (def ^:private none {:created #{} :deleted #{} :updated #{}})
 
@@ -134,3 +152,50 @@
                       trashed-in-use)))
              (testing "the new action is in the collection of the head"
                (is (= (:id refunds) (t2/select-one-fn :collection_id :model/Action :entity_id created-id)))))))))))
+
+(deftest push-and-pull-of-model-actions-test
+  (testing (str "a push writes the actions of a model in the directory of the model, and a pull creates an action on "
+                "its model; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert!]
+       (let [apps     (insert! :model/Collection {:name "lb Sales portal" :namespace "data-apps" :location "/"})
+             model    (insert-model! insert! apps "lb Orders model")
+             query    (insert-action! insert! {:name "lb Refund" :model_id (:id model)} "UPDATE venues SET name = 'x'")
+             implicit (insert! :model/Action {:name "lb Create" :type :implicit :model_id (:id model)
+                                              :creator_id (mt/user->id :rasta)})
+             _        (insert! :model/ImplicitAction {:action_id (:id implicit) :kind :row/create})
+             inst     (app-db/app-db-instance)]
+         (with-remote [repo s]
+           (let [{:keys [result commit]} (ptu/push! inst s)
+                 pushed                  (ptu/commit-snapshot s commit)]
+             (is (= :pushed result))
+             (testing "the commit holds the model and both of its actions, in the directory of the model"
+               (is (= #{"apps/lb_sales_portal/_collection.yaml" "apps/lb_sales_portal/lb_orders_model.model.yaml"
+                        "apps/lb_sales_portal/lb_orders_model.model/lb_create.action.yaml"
+                        "apps/lb_sales_portal/lb_orders_model.model/lb_refund.action.yaml"}
+                      (paths s commit "apps/")))
+               (is (= (:entity_id model) (get-in pushed [(:entity_id query) :place])))
+               (is (= "row/create" (get-in pushed [(:entity_id implicit) :attrs :implicit_kind]))))
+             (is (= none (ptu/local-changes inst)))
+             (testing "a pull of a head with a new action on the model creates it on the model"
+               (let [new-id (second created-ids)
+                     remote (assoc pushed new-id (assoc (get pushed (:entity_id query)) :name "lb Refund all"))
+                     head   (pltu/commit-snapshot! repo ptu/branch [commit] remote)]
+                 (is (= :pulled (:result (pull/pull! inst s ptu/branch))))
+                 (is (= head (instance/base inst)))
+                 (is (= {:model_id (:id model) :collection_id (:id apps)}
+                        (t2/select-one [:model/Action :model_id :collection_id] :entity_id new-id)))
+                 (is (= none (ptu/local-changes inst)))
+                 (testing "a model that becomes a question takes its actions out of scope: the next push removes their
+                           files (the query actions go to the trash, the implicit action is deleted)"
+                   (t2/update! :model/Card (:id model) {:type :question})
+                   (is (= {:created #{}
+                           :deleted #{(:entity_id query) (:entity_id implicit) new-id}
+                           :updated #{(:entity_id model)}}
+                          (ptu/local-changes inst)))
+                   (let [{:keys [result commit]} (ptu/push! inst s)]
+                     (is (= :pushed result))
+                     (is (= #{"apps/lb_sales_portal/_collection.yaml" "apps/lb_sales_portal/lb_orders_model.question.yaml"}
+                            (paths s commit "apps/")))
+                     (is (true? (t2/select-one-fn :archived :model/Action (:id query))))
+                     (is (nil? (t2/select-one :model/Action (:id implicit)))))))))))))))
