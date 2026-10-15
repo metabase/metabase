@@ -11,10 +11,13 @@
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private b0 "0000000000000000000000000000000000000000")
 (def ^:private c1 "1111111111111111111111111111111111111111")
