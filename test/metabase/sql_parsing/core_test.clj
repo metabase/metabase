@@ -102,9 +102,6 @@
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
     (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
       (testing name
-        ;; Classification is the same question however the answer will be used: the two entry points differ
-        ;; only in what they spend and what they do when the SQL cannot be checked, never in what counts as
-        ;; a single statement of a type. None of these cases goes near either one's limits.
         (is (=? expected (sql-parsing/validate-executable-stmt dialect sql stmt-type))
             (pr-str sql))
         (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
