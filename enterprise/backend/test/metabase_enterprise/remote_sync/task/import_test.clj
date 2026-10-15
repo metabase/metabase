@@ -65,3 +65,16 @@
           (#'task.import/auto-import!)
           (is (= (inc before) (t2/count :model/RemoteSyncTask))
               "the next tick at the same source version skips instead of recording another conflict"))))))
+
+(deftest auto-import-does-not-run-while-library-branching-is-on-test
+  (testing "while library branching is on, its scheduled deploy deploys the branch, so the auto-import starts no task"
+    (mt/with-temporary-setting-values [remote-sync-url           "https://github.com/test/repo.git"
+                                       remote-sync-token         "test-token"
+                                       remote-sync-branch        "main"
+                                       remote-sync-type          :read-only
+                                       remote-sync-auto-import   true
+                                       library-branching-enabled true]
+      (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
+        (let [before (t2/count :model/RemoteSyncTask)]
+          (#'task.import/auto-import!)
+          (is (= before (t2/count :model/RemoteSyncTask))))))))
