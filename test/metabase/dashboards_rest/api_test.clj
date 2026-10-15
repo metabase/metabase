@@ -5284,12 +5284,13 @@
      :model/DashboardCard dc2 {:dashboard_id       (:id d)
                                :card_id            (:id c2)}]
     (let [uncached-calls-count (atom 0)
-          cached-calls-count   (atom 0)]
+          cached-calls-count   (atom 0)
+          select               (mt/original-fn #'t2/select)]
       ;; Get _uncached_ call count of t2/select count for :metadata/table
       (mt/with-dynamic-fn-redefs [t2/select (fn [& args]
                                               (when (= :metadata/table (first args))
                                                 (swap! uncached-calls-count inc))
-                                              (apply (mt/original-fn #'t2/select) args))]
+                                              (apply select args))]
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id d)))
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id d))))
       ;; Get _cached_ call count of t2/select count for :metadata/table
@@ -5297,7 +5298,7 @@
         (mt/with-dynamic-fn-redefs [t2/select (fn [& args]
                                                 (when (= :metadata/table (first args))
                                                   (swap! cached-calls-count inc))
-                                                (apply (mt/original-fn #'t2/select) args))]
+                                                (apply select args))]
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d?dashboard_load_id=%s" (:id d) load-id))
           (mt/user-http-request :crowberto :get 200
