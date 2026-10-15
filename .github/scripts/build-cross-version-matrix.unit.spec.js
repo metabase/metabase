@@ -1,4 +1,7 @@
-const { buildCrossVersionMatrix } = require("./build-cross-version-matrix");
+const {
+  buildCrossVersionMatrix,
+  excludeBlockedDowngrades,
+} = require("./build-cross-version-matrix");
 
 describe("buildCrossVersionMatrix", () => {
   describe("supported versions", () => {
@@ -212,5 +215,32 @@ describe("buildCrossVersionMatrix", () => {
         target: "HEAD",
       });
     });
+  });
+});
+
+describe("excludeBlockedDowngrades", () => {
+  const { config } = buildCrossVersionMatrix([65, 64, 63, 62]);
+
+  it("keeps every entry when no major is blocked", () => {
+    expect(excludeBlockedDowngrades(config, [])).toEqual(config);
+  });
+
+  it("drops downgrades whose cascade passes through a blocked major", () => {
+    expect(excludeBlockedDowngrades(config, [63])).toEqual([
+      { source: "HEAD", target: "v1.65.x" },
+      { source: "v1.65.x", target: "HEAD" },
+      { source: "HEAD", target: "v1.64.x" },
+      { source: "v1.64.x", target: "HEAD" },
+      { source: "HEAD", target: "v1.63.x" },
+      { source: "v1.63.x", target: "HEAD" },
+      { source: "v1.62.x", target: "HEAD" },
+    ]);
+  });
+
+  it("never drops upgrades", () => {
+    const upgrades = excludeBlockedDowngrades(config, [65]).filter(
+      (entry) => entry.target === "HEAD",
+    );
+    expect(upgrades).toHaveLength(4);
   });
 });

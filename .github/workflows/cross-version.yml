@@ -27,6 +27,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      awaiting-release: ${{ steps.set-matrix.outputs.awaiting-release }}
     steps:
       - name: Require HEAD digest
         if: inputs.digest == ''
@@ -39,6 +40,8 @@ jobs:
           sparse-checkout: |
             release
             .github
+            cross-version
+            resources/migrations
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
@@ -51,17 +54,99 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           script: | # js
+            const { execFileSync } = require('child_process');
             const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const { buildCrossVersionMatrix } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
+            const { buildCrossVersionMatrix, excludeBlockedDowngrades } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
 
             // run against all supported versions
             const supportedMajors = await getSupportedMajors();
             console.log("supported majors:", supportedMajors);
 
+            const pending = {};
+            for (const major of supportedMajors) {
+              try {
+                const output = execFileSync('cross-version/pending-changesets.sh', [String(major)], { encoding: 'utf8' });
+                const changesets = output
+                  .split('\n')
+                  .filter(Boolean)
+                  .map((line) => line.split(' '))
+                  .filter(([, status]) => status !== 'missing');
+                if (changesets.length > 0) {
+                  pending[major] = changesets;
+                }
+              } catch (error) {
+                core.warning(`Could not check v${major} for unreleased migrations: ${error.message}`);
+              }
+            }
+
+            const blockedMajors = Object.keys(pending).map(Number);
             const { config } = buildCrossVersionMatrix(supportedMajors);
-            const matrix = JSON.stringify({ include: config });
+            const gatedConfig = excludeBlockedDowngrades(config, blockedMajors);
+
+            if (blockedMajors.length > 0) {
+              const skipped = config.filter((entry) => !gatedConfig.includes(entry));
+              core.warning(`Skipping ${skipped.map((e) => `${e.source} → ${e.target}`).join(', ')}: master has migrations that these releases do not have yet`);
+              await core.summary
+                .addHeading('Cross-version downgrades skipped until release', 3)
+                .addTable([
+                  [{ data: 'Major', header: true }, { data: 'Changeset', header: true }, { data: 'Status', header: true }],
+                  ...Object.entries(pending).flatMap(([major, changesets]) =>
+                    changesets.map(([id, status]) => [`v${major}`, id, status])),
+                ])
+                .addList(skipped.map((e) => `${e.source} → ${e.target}`))
+                .write();
+            }
+
+            const awaitingRelease = Object.entries(pending)
+              .filter(([, changesets]) => changesets.some(([, status]) => status === 'awaiting-release'))
+              .map(([major]) => Number(major));
+            core.setOutput("awaiting-release", JSON.stringify(awaitingRelease));
+
+            const matrix = JSON.stringify({ include: gatedConfig });
             core.setOutput("matrix", matrix);
             console.log("matrix:", matrix);
+
+  request-release:
+    needs: generate-test-matrix
+    if: >-
+      vars.CROSS_VERSION_AUTO_RELEASE == 'true'
+      && needs.generate-test-matrix.outputs.awaiting-release != '[]'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch a patch release for majors with unreleased migrations
+        uses: actions/github-script@v9
+        env:
+          MAJORS: ${{ needs.generate-test-matrix.outputs.awaiting-release }}
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const majors = JSON.parse(process.env.MAJORS);
+            const active = [];
+            for (const status of ['queued', 'in_progress']) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-auto.yml',
+                status,
+              });
+              active.push(...data.workflow_runs.map((run) => run.display_title));
+            }
+
+            for (const version of majors) {
+              if (active.some((title) => title.includes(`release for v${version}`))) {
+                console.log(`A release for v${version} is already running`);
+                continue;
+              }
+              console.log(`Dispatching a patch release for v${version}`);
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-auto.yml',
+                ref: 'refs/heads/master',
+                inputs: { version: String(version), kind: 'patch' },
+              });
+            }
 
   test:
     needs: generate-test-matrix

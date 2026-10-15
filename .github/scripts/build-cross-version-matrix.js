@@ -63,4 +63,14 @@ function buildCrossVersionMatrix(supportedMajors) {
   return { config };
 }
 
-module.exports = { buildCrossVersionMatrix };
+function excludeBlockedDowngrades(config, blockedMajors) {
+  return config.filter(({ source, target }) => {
+    if (source !== "HEAD") {
+      return true;
+    }
+    const targetMajor = Number(target.match(/^v\d+\.(\d+)\.x$/)[1]);
+    return !blockedMajors.some((major) => major > targetMajor);
+  });
+}
+
+module.exports = { buildCrossVersionMatrix, excludeBlockedDowngrades };
