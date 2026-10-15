@@ -7,7 +7,6 @@ export interface ScalarSizeTier {
   symbolSize: number;
   symbolGap: number;
   comparisonGap: number;
-  // a card at least this tall lists every comparison instead of the "+N" badge
   multiComparisonMinHeight: number | null;
   menuOffset: { top: number; right: number };
   showsTitle: boolean;
