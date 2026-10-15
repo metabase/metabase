@@ -6,8 +6,11 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 ### Features
 
-- Coding agent skill for building custom visualizations. `init` now scaffolds a Claude Code skill (`.claude/skills/custom-viz`) with builder and tester subagents, plus an `AGENTS.md` for other coding agents. The skill interviews you for what to build, writes the visualization, tests it, and walks you through iterating, debugging, connecting a local Metabase, and packaging the `.tgz` for upload. Its instructions ship with the package under `dist/skill`, so `npm update` brings the latest version.
-- New `@metabase/custom-viz/testing` entry point renders a visualization outside Metabase against a mocked host (`mockColumn`, `mockSeries`, `checkViz`, `renderViz`). The mock matches Metabase's column type predicates and color names, and throws where Metabase would silently misbehave. Scaffolded projects get an `npm test` script (Vitest with happy-dom) that the bundled agent skill uses for its tests.
+- New `@metabase/custom-viz/host-contract.json` describes what Metabase provides to and restricts for custom visualizations: the sandbox blocklists (tags, global event listeners, API calls, URL-valued attributes), theme color names with their light and dark values, and the type predicates each kind of column passes. Coding agents and other tools can read it from the installed package, so it always matches the package version. `contractVersion` changes when its shape changes.
+
+### Bug Fixes
+
+- The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes.
 
 ## 2.0.0
 

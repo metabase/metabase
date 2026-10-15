@@ -3,9 +3,8 @@
 /* eslint-disable no-console */
 
 import { existsSync } from "node:fs";
-import { cp, mkdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 import { Command } from "commander";
 
@@ -22,12 +21,6 @@ import {
   generateTsConfig,
   generateViteConfig,
 } from "./templates";
-
-const TEMPLATES_DIR = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "templates",
-);
-const AGENT_FILES = ["AGENTS.md", ".claude"];
 
 const program = new Command();
 
@@ -72,9 +65,6 @@ program
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(join(name, ".gitignore"), generateGitignore()),
       writeFile(join(name, "README.md"), generateReadme(name, displayName)),
-      ...AGENT_FILES.map((file) =>
-        cp(join(TEMPLATES_DIR, file), join(name, file), { recursive: true }),
-      ),
     ]);
 
     console.log("Created files:");
@@ -86,8 +76,6 @@ program
     console.log(`  ${name}/public/assets/icon.svg`);
     console.log(`  ${name}/.gitignore`);
     console.log(`  ${name}/README.md`);
-    console.log(`  ${name}/AGENTS.md`);
-    console.log(`  ${name}/.claude/ (skill + agents)`);
     console.log();
     console.log("Next steps:");
     console.log(`  cd ${name}`);

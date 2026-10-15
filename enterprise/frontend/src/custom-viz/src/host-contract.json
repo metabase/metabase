@@ -1,0 +1,575 @@
+{
+  "contractVersion": 1,
+  "sandbox": {
+    "blockedTags": [
+      "script",
+      "iframe",
+      "object",
+      "embed",
+      "link",
+      "meta",
+      "base",
+      "frame",
+      "form",
+      "a",
+      "map",
+      "area",
+      "style",
+      "video",
+      "audio",
+      "source",
+      "track",
+      "input",
+      "use",
+      "image",
+      "feimage",
+      "foreignobject"
+    ],
+    "blockedGlobalEventTypes": [
+      "keydown",
+      "keyup",
+      "keypress",
+      "beforeinput",
+      "input",
+      "paste",
+      "copy",
+      "cut",
+      "beforepaste",
+      "beforecopy",
+      "beforecut",
+      "compositionstart",
+      "compositionupdate",
+      "compositionend",
+      "storage"
+    ],
+    "blockedNavigatorGetters": [
+      "clipboard",
+      "geolocation",
+      "mediaDevices",
+      "serviceWorker",
+      "credentials",
+      "permissions",
+      "usb",
+      "bluetooth",
+      "share",
+      "hid",
+      "serial",
+      "xr",
+      "wakeLock",
+      "locks",
+      "storage",
+      "presentation"
+    ],
+    "urlValuedAttributes": [
+      "href",
+      "src",
+      "xlink:href",
+      "action",
+      "formaction",
+      "poster",
+      "cite",
+      "background",
+      "manifest"
+    ],
+    "blockedApiCalls": [
+      "window.fetch",
+      "window.XMLHttpRequest",
+      "window.WebSocket",
+      "window.EventSource",
+      "window.Worker",
+      "window.SharedWorker",
+      "window.RTCPeerConnection",
+      "WebTransport",
+      "BroadcastChannel",
+      "Navigator.sendBeacon",
+      "FontFace.load",
+      "Document.get adoptedStyleSheets",
+      "Document.set adoptedStyleSheets",
+      "ShadowRoot.get adoptedStyleSheets",
+      "ShadowRoot.set adoptedStyleSheets",
+      "CSSStyleSheet.replace",
+      "CSSStyleSheet.replaceSync",
+      "Document.write",
+      "Document.writeln",
+      "Document.open",
+      "Document.close",
+      "Document.execCommand",
+      "Document.set designMode",
+      "HTMLElement.set contentEditable",
+      "Document.get cookie",
+      "Document.set cookie",
+      "Document.set domain",
+      "Window.get cookieStore",
+      "CookieStore.get",
+      "CookieStore.getAll",
+      "CookieStore.set",
+      "CookieStore.delete",
+      "Document.set <handler>",
+      "window.set <handler>",
+      "HTMLBodyElement.set <handler>",
+      "HTMLFrameSetElement.set <handler>",
+      "Document.get referrer",
+      "Document.get URL",
+      "Document.get documentURI",
+      "Node.get baseURI",
+      "Window.get localStorage",
+      "Window.get sessionStorage",
+      "Window.get indexedDB",
+      "Window.get caches",
+      "StorageEvent.get key",
+      "StorageEvent.get oldValue",
+      "StorageEvent.get newValue",
+      "StorageEvent.get url",
+      "StorageEvent.get storageArea",
+      "window.open",
+      "window.close",
+      "window.open",
+      "window.close",
+      "window.alert",
+      "window.confirm",
+      "window.prompt",
+      "window.print",
+      "window.alert",
+      "window.confirm",
+      "window.prompt",
+      "window.print",
+      "window.Notification",
+      "HTMLDialogElement.showModal",
+      "Element.requestFullscreen",
+      "PaymentRequest",
+      "Navigator.get <key>",
+      "Navigator.share",
+      "History.pushState",
+      "History.replaceState",
+      "History.go",
+      "History.back",
+      "History.forward",
+      "History.get state",
+      "Performance.getEntries",
+      "Performance.getEntriesByType",
+      "Performance.getEntriesByName",
+      "PerformanceObserver",
+      "Document.caretRangeFromPoint",
+      "Document.caretPositionFromPoint",
+      "Range.createContextualFragment",
+      "DOMParser.parseFromString",
+      "Element.setHTMLUnsafe",
+      "ShadowRoot.setHTMLUnsafe",
+      "Document.parseHTMLUnsafe",
+      "XSLTProcessor",
+      "XSLTProcessor.importStylesheet",
+      "XSLTProcessor.transformToFragment",
+      "XSLTProcessor.transformToDocument",
+      "HTMLElement.click",
+      "HTMLAnchorElement.set href",
+      "HTMLAnchorElement.set target",
+      "HTMLFormElement.submit",
+      "HTMLFormElement.requestSubmit"
+    ]
+  },
+  "colors": {
+    "light": {
+      "text-primary": "hsla(204, 66%, 8%, 0.84)",
+      "text-secondary": "hsla(204, 66%, 8%, 0.62)",
+      "text-tertiary": "hsla(204, 66%, 8%, 0.44)",
+      "background-primary": "hsla(0, 0%, 100%, 1.00)",
+      "background-secondary": "hsla(240, 11%, 98%, 1)",
+      "border": "hsla(195, 6%, 87%, 1)",
+      "brand": "hsla(208, 72%, 60%, 1.00)",
+      "success": "hsla(89, 48%, 40%, 1)",
+      "error": "hsla(358, 71%, 62%, 1)",
+      "warning": "hsla(46, 81%,  52%, 1)",
+      "accent0": "#509EE3",
+      "accent1": "#88BF4D",
+      "accent2": "#A989C5",
+      "accent3": "#EF8C8C",
+      "accent4": "#F9D45C",
+      "accent5": "#F2A86F",
+      "accent6": "#98D9D9",
+      "accent7": "#7172AD",
+      "accent0-light": "#87BCEC",
+      "accent1-light": "#A7D07C",
+      "accent2-light": "#C8B4DA",
+      "accent3-light": "#F7C4C4",
+      "accent4-light": "#FBE499",
+      "accent5-light": "#F7CBA9",
+      "accent6-light": "#C7EAEA",
+      "accent7-light": "#999AC4",
+      "accent0-dark": "#227FD2",
+      "accent1-dark": "#689636",
+      "accent2-dark": "#8A5EB0",
+      "accent3-dark": "#E75454",
+      "accent4-dark": "#F7C41F",
+      "accent5-dark": "#ED8535",
+      "accent6-dark": "#69C8C8",
+      "accent7-dark": "#51528D"
+    },
+    "dark": {
+      "text-primary": "hsla(0, 0%, 100%, 0.95)",
+      "text-secondary": "hsla(0, 0%, 100%, 0.69)",
+      "text-tertiary": "hsla(0, 0%, 100%, 0.46)",
+      "background-primary": "hsla(204, 66%, 8%, 1)",
+      "background-secondary": "hsla(205, 63%, 5%, 1)",
+      "border": "hsla(0, 0%, 100%, 0.21)",
+      "brand": "hsla(208, 72%, 60%, 1.00)",
+      "success": "hsla(89, 48%, 40%, 1)",
+      "error": "hsla(358, 71%, 62%, 1)",
+      "warning": "hsla(46, 81%,  52%, 1)",
+      "accent0": "#509EE3",
+      "accent1": "#88BF4D",
+      "accent2": "#A989C5",
+      "accent3": "#EF8C8C",
+      "accent4": "#F9D45C",
+      "accent5": "#F2A86F",
+      "accent6": "#98D9D9",
+      "accent7": "#7172AD",
+      "accent0-light": "#87BCEC",
+      "accent1-light": "#A7D07C",
+      "accent2-light": "#C8B4DA",
+      "accent3-light": "#F7C4C4",
+      "accent4-light": "#FBE499",
+      "accent5-light": "#F7CBA9",
+      "accent6-light": "#C7EAEA",
+      "accent7-light": "#999AC4",
+      "accent0-dark": "#227FD2",
+      "accent1-dark": "#689636",
+      "accent2-dark": "#8A5EB0",
+      "accent3-dark": "#E75454",
+      "accent4-dark": "#F7C41F",
+      "accent5-dark": "#ED8535",
+      "accent6-dark": "#69C8C8",
+      "accent7-dark": "#51528D"
+    }
+  },
+  "columns": {
+    "text": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": null
+      },
+      "predicates": ["isAny", "isString"]
+    },
+    "category": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": "type/Category"
+      },
+      "predicates": ["isAny", "isCategory", "isString"]
+    },
+    "title": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": "type/Title"
+      },
+      "predicates": ["isAny", "isCategory", "isString", "isTitle"]
+    },
+    "url": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": "type/URL"
+      },
+      "predicates": ["isAny", "isString", "isURL"]
+    },
+    "email": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": "type/Email"
+      },
+      "predicates": ["isAny", "isEmail", "isString"]
+    },
+    "integer": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Integer",
+        "effective_type": "type/Integer",
+        "semantic_type": null
+      },
+      "predicates": [
+        "isAny",
+        "isInteger",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "float": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": null
+      },
+      "predicates": [
+        "isAny",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "count": {
+      "column": {
+        "source": "aggregation",
+        "base_type": "type/Integer",
+        "effective_type": "type/Integer",
+        "semantic_type": "type/Quantity"
+      },
+      "predicates": [
+        "isAny",
+        "isInteger",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isQuantity",
+        "isSummable"
+      ]
+    },
+    "sum": {
+      "column": {
+        "source": "aggregation",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": null
+      },
+      "predicates": [
+        "isAny",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "currency": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": "type/Currency"
+      },
+      "predicates": [
+        "isAny",
+        "isCurrency",
+        "isFloat",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "percentage": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": "type/Percentage"
+      },
+      "predicates": [
+        "isAny",
+        "isFloat",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isPercentage",
+        "isSummable"
+      ]
+    },
+    "score": {
+      "column": {
+        "source": "aggregation",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": "type/Score"
+      },
+      "predicates": [
+        "isAny",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isScore",
+        "isSummable"
+      ]
+    },
+    "boolean": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Boolean",
+        "effective_type": "type/Boolean",
+        "semantic_type": null
+      },
+      "predicates": ["isAny", "isBoolean"]
+    },
+    "date": {
+      "column": {
+        "source": "native",
+        "base_type": "type/Date",
+        "effective_type": "type/Date",
+        "semantic_type": null
+      },
+      "predicates": ["isAny", "isDate", "isDateWithoutTime"]
+    },
+    "datetime": {
+      "column": {
+        "source": "native",
+        "base_type": "type/DateTime",
+        "effective_type": "type/DateTime",
+        "semantic_type": null
+      },
+      "predicates": ["isAny", "isDate"]
+    },
+    "date-breakout": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/DateTime",
+        "effective_type": "type/DateTime",
+        "semantic_type": "type/CreationTimestamp",
+        "unit": "day"
+      },
+      "predicates": ["isAny", "isDate"]
+    },
+    "month-breakout": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/DateTime",
+        "effective_type": "type/DateTime",
+        "semantic_type": "type/CreationTimestamp",
+        "unit": "month"
+      },
+      "predicates": ["isAny", "isDate"]
+    },
+    "day-of-week": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/Integer",
+        "effective_type": "type/Integer",
+        "semantic_type": "type/CreationTimestamp",
+        "unit": "day-of-week"
+      },
+      "predicates": [
+        "isAny",
+        "isInteger",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "hour-of-day": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/Integer",
+        "effective_type": "type/Integer",
+        "semantic_type": "type/CreationTimestamp",
+        "unit": "hour-of-day"
+      },
+      "predicates": [
+        "isAny",
+        "isInteger",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "pk": {
+      "column": {
+        "source": "fields",
+        "base_type": "type/BigInteger",
+        "effective_type": "type/BigInteger",
+        "semantic_type": "type/PK"
+      },
+      "predicates": [
+        "isAny",
+        "isID",
+        "isInteger",
+        "isNumeric",
+        "isNumericBaseType",
+        "isPK"
+      ]
+    },
+    "fk": {
+      "column": {
+        "source": "fields",
+        "base_type": "type/Integer",
+        "effective_type": "type/Integer",
+        "semantic_type": "type/FK"
+      },
+      "predicates": [
+        "isAny",
+        "isFK",
+        "isID",
+        "isInteger",
+        "isNumeric",
+        "isNumericBaseType"
+      ]
+    },
+    "latitude": {
+      "column": {
+        "source": "fields",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": "type/Latitude"
+      },
+      "predicates": [
+        "isAny",
+        "isCoordinate",
+        "isFloat",
+        "isLatitude",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "longitude": {
+      "column": {
+        "source": "fields",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "semantic_type": "type/Longitude"
+      },
+      "predicates": [
+        "isAny",
+        "isCoordinate",
+        "isFloat",
+        "isLongitude",
+        "isNumber",
+        "isNumeric",
+        "isNumericBaseType",
+        "isSummable"
+      ]
+    },
+    "country": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": "type/Country"
+      },
+      "predicates": [
+        "isAddress",
+        "isAny",
+        "isCategory",
+        "isCountry",
+        "isString"
+      ]
+    },
+    "state": {
+      "column": {
+        "source": "breakout",
+        "base_type": "type/Text",
+        "effective_type": "type/Text",
+        "semantic_type": "type/State"
+      },
+      "predicates": ["isAddress", "isAny", "isCategory", "isState", "isString"]
+    }
+  }
+}

@@ -33,17 +33,17 @@ bun run format
 bun run format:check
 ```
 
-## Skill docs and testing module host data
+## Host contract
 
-`src/testing/host-data.json` holds what the `@metabase/custom-viz/testing` mocks need from Metabase: column type predicate results for each preset in `src/testing/column-presets.json`, and light/dark values for the color names listed in `src/skill/references/api-contract.md`.
+`src/host-contract.json` ships as `@metabase/custom-viz/host-contract.json`. It holds what tools need to know about the Metabase host:
 
-`custom-viz-skill-docs.unit.spec.ts` in `metabase-enterprise/custom_viz` checks the skill docs and this file against the host:
+- `sandbox` — every blocklist from `frontend/src/metabase/utils/scripts-sandbox`
+- `colors` — light and dark values for the color names a visualization may use
+- `columns` — a representative column for each kind, with the column type predicates it passes
 
-- `host-data.json` matches the host predicates and color names; on drift the test prints the up-to-date file to paste in.
-- `sandbox-restrictions.md` lists every entry blocked in `frontend/src/metabase/utils/scripts-sandbox`.
-- `testing.md` lists every `mockColumn` kind.
+Bump `contractVersion` when the shape of the file changes.
 
-It runs in the main frontend unit tests, not in the package's own `bun run test`.
+`custom-viz-host-contract.unit.spec.ts` in `metabase-enterprise/custom_viz` checks the file against the host. On drift it prints the up-to-date file to paste in. It runs in the main frontend unit tests, not in the package's own `bun run test`.
 
 ## Releasing
 
