@@ -263,7 +263,9 @@
                     (with-attrs item dissoc :tabs :dashcards :parameters :width :description)]
                    ["the content again, in another collection of the Library"
                     (let [other (t2/insert-returning-instance! :model/Collection
-                                                               {:name "More dashboards" :location (children-location dashboards)})]
+                                                               {:name     "More dashboards"
+                                                                :type     "library-dashboards"
+                                                                :location (children-location dashboards)})]
                       (assoc item :place (:entity_id other)))]]]
        (doseq [[label step] steps]
          (testing label
@@ -403,6 +405,7 @@
                                                                 :dashboard_id  (:id d)
                                                                 :collection_id (:id dashboards)})
            other    (t2/insert-returning-instance! :model/Collection {:name     "More dashboards"
+                                                                      :type     "library-dashboards"
                                                                       :location (children-location dashboards)})]
        (testing "a write that moves the dashboard moves its questions with it, as a save of the dashboard does"
          (write! dashboard-id (assoc (content world) :place (:entity_id other)))

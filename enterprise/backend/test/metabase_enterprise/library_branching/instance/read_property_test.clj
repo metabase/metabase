@@ -25,7 +25,14 @@
 
 ;;; ------------------------------------------------ The generated world ---------------------------------------------
 
-(def ^:private root-places [:library :plain :snippets])
+(def ^:private root-places
+  "The places of a collection at the top level: a section of the Library (`:metrics`, `:data`), the root level outside
+  the Library, and the root of the snippets namespace."
+  [:metrics :data :plain :snippets])
+
+(def ^:private section-types
+  "`{root type}`: the collection type that the Library's content rule needs in each section of the Library."
+  {:metrics "library-metrics" :data "library-data"})
 
 (def ^:private archive-gen (gen/frequency [[4 (gen/return false)] [1 (gen/return true)]]))
 
@@ -65,8 +72,9 @@
 
 (defn- fold
   "The world of `choices`. Collection i has its parent among the root places and the collections before it, and is
-  archived iff it or an ancestor is (archive is closed downward). An item is archived iff it or its collection is. A
-  metric is in no snippet collection, and a snippet in no other collection."
+  archived iff it or an ancestor is (archive is closed downward). An item is archived iff it or its collection is. As
+  the Library's content rule needs, a metric is in a Metrics or a plain collection, a snippet in a snippet
+  collection, and a published table in a Data collection or at the root level."
   [{:keys [collections metrics snippets] table-choices :tables}]
   (let [colls (reduce (fn [acc [i {:keys [parent archive description]}]]
                         (let [p  (pick (into root-places (range i)) parent)
@@ -79,7 +87,7 @@
                       []
                       (map-indexed vector collections))
         in    (fn [pred] (into [nil] (filter #(pred (:root (nth colls %)))) (range (count colls))))
-        place (fn [k] (pick (in any?) k))
+        place (fn [k] (pick (in #{:data}) k))
         item  (fn [prefix candidates i {p :place :keys [archive] :as choice}]
                 (let [p (pick candidates p)]
                   (assoc choice
@@ -87,8 +95,7 @@
                          :place     p
                          :archived  (boolean (or archive (some-> p (->> (nth colls)) :archived))))))]
     {:collections colls
-     ;; A card cannot be in a snippet collection; a snippet is only in one.
-     :metrics     (vec (map-indexed (partial item "m" (in #(not= :snippets %))) metrics))
+     :metrics     (vec (map-indexed (partial item "m" (in #{:metrics :plain})) metrics))
      :snippets    (vec (map-indexed (partial item "s" (in #{:snippets})) snippets))
      :tables      (mapv (fn [table {:keys [publish] p :place :as choice}]
                           (assoc choice :table table :publish publish :place (place p)))
@@ -110,9 +117,9 @@
 
 (defn- expected-snapshot
   "The snapshot of `world`, by the rules of scope and content. A metric's `:query` is left out: its references stand
-  for it. `library` is the Library collection."
-  [{:keys [collections metrics snippets] world-tables :tables} library]
-  (let [in?     (fn [c] (and (not (:archived c)) (contains? #{:library :snippets} (:root c))))
+  for it. `sections` holds the Metrics and Data collections of the Library under `:metrics` and `:data`."
+  [{:keys [collections metrics snippets] world-tables :tables} sections]
+  (let [in?     (fn [c] (and (not (:archived c)) (contains? #{:metrics :data :snippets} (:root c))))
         eid-of  (fn [i] (when i (:entity-id (nth collections i))))
         in-coll (fn [i] (and i (in? (nth collections i))))
         attrs   (fn [m] (into {} (remove (comp nil? val)) m))]
@@ -122,12 +129,13 @@
                  (map (fn [{:keys [entity-id parent root description]}]
                         [entity-id {:kind  :collection
                                     :name  entity-id
-                                    :place (cond (int? parent)        (eid-of parent)
-                                                 (= :library parent) (:entity_id library)
-                                                 (= :snippets root)  "snippetssnippetssnipp")
+                                    :place (cond (int? parent)           (eid-of parent)
+                                                 (contains? sections parent) (:entity_id (get sections parent))
+                                                 (= :snippets root)          "snippetssnippetssnipp")
                                     :refs  #{}
                                     :attrs (attrs {:description description
-                                                   :namespace   (when (= :snippets root) "snippets")})}])))
+                                                   :namespace   (when (= :snippets root) "snippets")
+                                                   :type        (section-types root)})}])))
            collections)
      (into {}
            (comp (filter #(and (not (:archived %)) (in-coll (:place %))))
@@ -180,19 +188,23 @@
         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id table field)))))))
 
 (defn- insert-collections!
-  "Inserts the collections of `world` as rows, in order, and returns their ids."
-  [{:keys [collections]} library]
+  "Inserts the collections of `world` as rows, in order, and returns their ids. `sections` is as for
+  [[expected-snapshot]]."
+  [{:keys [collections]} sections]
   (reduce (fn [ids {:keys [entity-id parent root archived description]}]
             (let [location (cond
-                             (int? parent)       (let [{:keys [id location]} (nth ids parent)] (str location id "/"))
-                             (= :library parent) (str (:location library) (:id library) "/")
-                             :else               "/")
+                             (int? parent)               (let [{:keys [id location]} (nth ids parent)]
+                                                           (str location id "/"))
+                             (contains? sections parent) (let [{:keys [id location]} (get sections parent)]
+                                                           (str location id "/"))
+                             :else                       "/")
                   id       (first (t2/insert-returning-pks! :collection
                                                             {:name        entity-id
                                                              :slug        entity-id
                                                              :entity_id   entity-id
                                                              :location    location
                                                              :namespace   (when (= :snippets root) "snippets")
+                                                             :type        (section-types root)
                                                              :description description
                                                              :archived    archived}))]
               (conj ids {:id id :location location})))
@@ -200,8 +212,8 @@
           collections))
 
 (defn- write-world!
-  [world library]
-  (let [ids   (insert-collections! world library)
+  [world sections]
+  (let [ids   (insert-collections! world sections)
         coll  (fn [place] (some-> place (->> (nth ids)) :id))
         user  (mt/user->id :crowberto)]
     (doseq [{:keys [entity-id place archived description display field]} (:metrics world)]
@@ -253,14 +265,15 @@
 
 (defn- check-choices!
   [choices]
-  (collections.tu/with-library [{:keys [library]}]
+  (collections.tu/with-library [{:keys [data metrics]}]
     (t2/with-transaction [_conn nil {:rollback-only true}]
       ;; The published tables of the world are the only ones.
       (t2/delete! :model/TableUserSettings :table_id [:in (map mt/id tables)])
-      (let [world (fold choices)]
-        (write-world! world library)
+      (let [world    (fold choices)
+            sections {:metrics metrics :data data}]
+        (write-world! world sections)
         (let [s (app-db/read-current)]
-          (and (= (expected-snapshot world library) (without-queries (ours s world)))
+          (and (= (expected-snapshot world sections) (without-queries (ours s world)))
                (every? #(map? (get-in % [:attrs :query])) (filter (comp #{:metric} :kind) (vals (ours s world))))
                (= (select-keys (scope/scope-count) snapshot/kinds) (engine.count/count-by-kind s))))))))
 
@@ -272,8 +285,10 @@
   (testing "the generated worlds hold the cases that the read must decide"
     (let [worlds (mapv #(fold (gen/generate world-gen 8 %)) (range 50))
           some-w (fn [k pred] (some #(some pred (get % k)) worlds))]
-      (is (some-w :collections #(and (int? (:parent %)) (= :library (:root %)))) "a nested Library collection")
-      (is (some-w :collections #(and (:archived %) (= :library (:root %)))) "an archived Library collection")
+      (is (some-w :collections #(and (int? (:parent %)) (contains? section-types (:root %))))
+          "a nested Library collection")
+      (is (some-w :collections #(and (:archived %) (contains? section-types (:root %))))
+          "an archived Library collection")
       (is (some-w :collections #(= :snippets (:root %))) "a snippet collection")
       (is (some-w :metrics #(and (:place %) (not (:archived %)))) "a metric in a collection")
       (is (some-w :snippets #(nil? (:place %))) "a snippet at the root level")

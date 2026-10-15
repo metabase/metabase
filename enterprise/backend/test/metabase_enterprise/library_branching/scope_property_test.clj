@@ -284,7 +284,8 @@
   :snapshot-agrees?}`."
   [rows data]
   (t2/with-transaction [_conn nil {:rollback-only true}]
-    (let [outside (first (t2/insert-returning-pks! :collection {:name "lb outside" :slug "lb_outside" :entity_id "lboutsidecollection01" :location "/"}))]
+    (let [outside (first (t2/insert-returning-pks! :collection {:name "lb outside" :slug "lb_outside" :entity_id "lboutsidecollection01"
+                                                                 :type "library-data" :location "/"}))]
       (doseq [{:keys [name schema archived published place]} rows]
         (t2/insert! :model/Table {:db_id         (mt/id)
                                   :schema        schema

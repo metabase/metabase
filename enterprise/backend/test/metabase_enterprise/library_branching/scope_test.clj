@@ -79,6 +79,7 @@
                                                    :location (children-location library)}
                      :model/Dashboard  dashboard  {:name "Overview" :collection_id (:id dashboards)}
                      :model/Card       question   {:name          "Orders by day"
+                                                   :type          :question
                                                    :collection_id (:id dashboards)
                                                    :dashboard_id  (:id dashboard)}
                      :model/Table      table      {:db_id         (mt/id)

@@ -55,7 +55,7 @@
     (let [query (count-query)]
       (mt/with-temp [:model/Collection dashboards {:name     "Dashboards" :type "library-dashboards"
                                                    :location (str (:location library) (:id library) "/")}
-                     :model/Collection more       {:name     "More dashboards"
+                     :model/Collection more       {:name     "More dashboards" :type "library-dashboards"
                                                    :location (str (:location library) (:id library) "/" (:id dashboards) "/")}
                      :model/Card       m1         {:name "m1" :type :metric :dataset_query query :collection_id (:id metrics)}
                      :model/Card       m2         {:name "m2" :type :metric :dataset_query query :collection_id (:id metrics)}

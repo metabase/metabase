@@ -169,10 +169,11 @@
                                                    :display       :scalar
                                                    :collection_id nil
                                                    :dataset_query (sum-query :venues :price)}
+                       :model/Collection app      {:name "An app" :namespace "data-apps" :location "/"}
                        :model/Card       question {:name          "A question"
                                                    :type          :question
                                                    :display       :table
-                                                   :collection_id (:id metrics)
+                                                   :collection_id (:id app)
                                                    :dataset_query (sum-query :venues :price)}
                        :model/Collection folder   {:name     "My folder"
                                                    :location (str "/" personal "/")}]

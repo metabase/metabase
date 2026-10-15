@@ -73,7 +73,8 @@
                    :model/Collection metrics  {:name "Metrics" :type "library-metrics"
                                                :location (children-location library)
                                                :entity_id (eid-of :collection "Metrics")}
-                   :model/Collection revenue  {:name "Revenue" :location (children-location metrics)
+                   :model/Collection revenue  {:name "Revenue" :type "library-metrics"
+                                               :location (children-location metrics)
                                                :description "Revenue metrics that finance signs off on."
                                                :entity_id (eid-of :collection "Revenue")}
                    :model/Collection filters  {:name "Filters" :namespace "snippets" :location "/"

@@ -277,6 +277,7 @@
     (do-with-committed-content!
      (fn [insert! metrics]
        (let [collection (insert! :model/Collection {:name     "lb kind change"
+                                                    :type     "library-metrics"
                                                     :location (children-location metrics)})
              id         (:entity_id collection)]
          (try
