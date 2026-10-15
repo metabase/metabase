@@ -329,8 +329,7 @@
    and a message that names only the tool leaves the caller with nothing to act on, against the server's own
    `initialize` instructions promising that a failed call always names its fix.
 
-   `required` is a scope string. `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its
-   strings, which is not an MCP scope, so only strings are listed back."
+   `required` is a scope string."
   [action required token-scopes]
   (let [held (sort (filter string? token-scopes))]
     (if (seq held)
