@@ -8,35 +8,19 @@ query:
   database: Sample Database
   stages:
   - aggregation:
-    - - metric
-      - {}
-      - IW8kbqZVaMxdGtCM2F4U6
+    - [metric, {}, IW8kbqZVaMxdGtCM2F4U6]
     breakout:
-    - - field
-      - {base-type: type/DateTime, temporal-unit: month}
-      - [Sample Database, PUBLIC, ORDERS, CREATED_AT]
+    - [field, {base-type: type/DateTime, temporal-unit: month}, [Sample Database, PUBLIC, ORDERS, CREATED_AT]]
     joins:
     - alias: Products
       conditions:
-      - - =
-        - {}
-        - - field
-          - {base-type: type/Integer}
-          - [Sample Database, PUBLIC, ORDERS, PRODUCT_ID]
-        - - field
-          - {base-type: type/BigInteger, join-alias: Products}
-          - [Sample Database, PUBLIC, PRODUCTS, ID]
+      - [=, {}, [field, {base-type: type/Integer}, [Sample Database, PUBLIC, ORDERS, PRODUCT_ID]], [field, {base-type: type/BigInteger, join-alias: Products}, [Sample Database, PUBLIC, PRODUCTS, ID]]]
       fields: all
       stages:
       - source-table: [Sample Database, PUBLIC, PRODUCTS]
     source-table: [Sample Database, PUBLIC, ORDERS]
   - filters:
-    - - '>'
-      - {}
-      - - field
-        - {base-type: type/Float}
-        - count
-      - 10
+    - ['>', {}, [field, {base-type: type/Float}, count], 10]
 visualization_settings:
   graph.dimensions: [CREATED_AT]
   graph.metrics: [count]

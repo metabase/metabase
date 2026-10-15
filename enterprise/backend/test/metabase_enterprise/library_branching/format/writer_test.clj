@@ -43,11 +43,25 @@
                gen/boolean
                (gen/return nil)]))
 
+(defn- clause-of
+  "Generates clauses `[tag opts & args]`: a string tag, an options map, and up to 3 arguments from `arg-gen`."
+  [arg-gen]
+  (gen/let [tag  string-gen
+            opts (gen/map key-gen (gen/one-of [scalar-gen (gen/vector string-gen 0 3)]) {:max-elements 3})
+            args (gen/vector arg-gen 0 3)]
+    (into [tag opts] args)))
+
+(def ^:private clause-gen
+  "Generates clauses: the arguments are scalars, natural keys (vectors of strings) and clauses."
+  (gen/recursive-gen (fn [inner] (clause-of (gen/one-of [scalar-gen (gen/vector string-gen 1 4) inner])))
+                     (clause-of scalar-gen)))
+
 (def document-gen
-  "Generates documents: maps with keyword keys, vectors, strings, integers, finite doubles, booleans and nil."
+  "Generates documents: maps with keyword keys, vectors, clauses, strings, integers, finite doubles, booleans and nil."
   (gen/recursive-gen (fn [inner]
                        (gen/one-of [(gen/vector inner 0 4)
-                                    (gen/map key-gen inner {:max-elements 4})]))
+                                    (gen/map key-gen inner {:max-elements 4})
+                                    (clause-of inner)]))
                      scalar-gen))
 
 (def ^:private input-gen
@@ -55,7 +69,8 @@
   (gen/recursive-gen (fn [inner]
                        (gen/one-of [(gen/vector inner 0 4)
                                     (gen/set scalar-gen {:max-elements 4})
-                                    (gen/map key-gen inner {:max-elements 4})]))
+                                    (gen/map key-gen inner {:max-elements 4})
+                                    (clause-of inner)]))
                      scalar-gen))
 
 (defn- scramble
@@ -79,6 +94,17 @@
     (let [scrambled (scramble doc)]
       (and (= doc scrambled)
            (= (seq (writer/write-yaml doc)) (seq (writer/write-yaml scrambled)))))))
+
+(def ^:private yaml-line-break
+  #{\newline \return \u0085 \u2028 \u2029})
+
+(defspec clause-is-one-line-test 300
+  (prop/for-all [c clause-gen]
+    (let [b (writer/write-yaml {:k [c]})
+          t (text b)]
+      (and (str/starts-with? t "k:\n- [")
+           (= 2 (count (filter yaml-line-break t)))
+           (= {:k [c]} (codec/read-yaml b))))))
 
 (defspec written-text-is-utf-8-with-final-newline-test 100
   (prop/for-all [doc (gen/map key-gen document-gen {:max-elements 4})]
@@ -121,19 +147,16 @@
        "query:\n"
        "  stages:\n"
        "  - aggregation:\n"
-       "    - - sum\n"
-       "      - {}\n"
-       "      - - field\n"
-       "        - {base-type: type/Float}\n"
-       "        - [Sample Database, PUBLIC, ORDERS, TOTAL]\n"
+       "    - [sum, {}, [field, {base-type: type/Float}, [Sample Database, PUBLIC, ORDERS, TOTAL]]]\n"
        "    source-table: [Sample Database, PUBLIC, ORDERS]\n"
        "quoted: '123'\n"
        "ratio: 0.0\n"
        "tags: [a, b]\n"))
 
 (deftest write-yaml-test
-  (testing "the canonical text: kind and id first, then sorted keys; flow style for a collection of scalars; a
-            literal block for text with a line break; a set as a sorted sequence; 0.0 for -0.0; UTF-8 with no escape"
+  (testing "the canonical text: kind and id first, then sorted keys; flow style for a collection of scalars and for a
+            clause; a literal block for text with a line break; a set as a sorted sequence; 0.0 for -0.0; UTF-8 with
+            no escape"
     (is (= golden-text (text (writer/write-yaml golden-doc))))
     (is (= golden-text (text (writer/write-yaml (scramble golden-doc))))))
   (testing "a file is in block style also when it holds only scalars; an empty map or vector is in flow style"
@@ -147,6 +170,39 @@
                  {:k (list 1 2)}]]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in the document model" (writer/write-yaml bad))
           (pr-str bad)))))
+
+(def ^:private long-name
+  "A name that takes a line past 80 columns."
+  "Total of every order that a customer placed after the discount and before the tax")
+
+(deftest clause-test
+  (testing "a clause is one flow sequence on one line; a vector of clauses has one clause on each line"
+    (is (= (str "aggregation:\n"
+                "- [sum, {}, [field, {base-type: type/Float}, [Sample Database, PUBLIC, ORDERS, TOTAL]]]\n"
+                "- [count, {}]\n")
+           (text (writer/write-yaml {:aggregation [["sum" {} ["field" {:base-type "type/Float"}
+                                                              ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                                   ["count" {}]]})))))
+  (testing "a legacy clause, with no options map in second place, is a clause"
+    (is (= "target: [dimension, [field, [Sample Database, PUBLIC, ORDERS, TOTAL], null]]\n"
+           (text (writer/write-yaml {:target ["dimension" ["field" ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"] nil]]})))))
+  (testing "a vector of maps stays in block style, with its clauses in flow style"
+    (is (= "joins:\n- alias: P\n  conditions:\n  - [=, {}, [field, {}, A], [field, {}, B]]\n"
+           (text (writer/write-yaml {:joins [{:alias "P" :conditions [["=" {} ["field" {} "A"] ["field" {} "B"]]]}]})))))
+  (testing "a line past 80 columns is not split: not in a clause, not in a flow map, not in a string"
+    (is (= (str "- [=, {}, [field, {}, " long-name "], '" long-name ": " long-name "']\n")
+           (text (writer/write-yaml [["=" {} ["field" {} long-name] (str long-name ": " long-name)]]))))
+    (is (= (str "tag: {display-name: " long-name ", name: n}\n")
+           (text (writer/write-yaml {:tag {:name "n" :display-name long-name}}))))
+    (is (= (str "description: " long-name " " long-name "\n")
+           (text (writer/write-yaml {:description (str long-name " " long-name)})))))
+  (testing "text with a line break and a key of 140 characters stay on the line of their clause"
+    (doseq [doc [{:k [["=" {} ["field" {} "NOTE"] "a\nb"]]}
+                 {:k [["=" {(keyword "a\nb") "c"} "d"]]}
+                 {:k [["=" {(keyword (apply str (repeat 140 "k"))) "v"} "d"]]}]]
+      (let [b (writer/write-yaml doc)]
+        (is (= 2 (count (filter yaml-line-break (text b)))) (text b))
+        (is (= doc (codec/read-yaml b)))))))
 
 (def ^:private writer-mutations
   [{:name   :unsorted-keys
