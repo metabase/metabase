@@ -5,7 +5,11 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.metabot.scope :as metabot.scope]))
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
+   [metabase.test :as mt]
+   [oidc-provider.util :as oidc.util]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,6 +17,26 @@
   "Token scopes holding every scope the v2 MCP surface accepts. Tests that exercise a tool rather than its scope
    gate call it with these."
   (set mcp.paths/v2-surface-scopes))
+
+(defn do-with-bearer-token!
+  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
+  ([scopes f]
+   (do-with-bearer-token! :crowberto scopes f))
+  ([user scopes f]
+   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+     (oauth-server.tu/with-oauth-client [client-id]
+       (mt/with-model-cleanup [:model/OAuthAccessToken]
+         (let [token (str (random-uuid))]
+           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+           ;; up, so the row has to be written the same way a real issued token would be — including a
+           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+           (t2/insert! :model/OAuthAccessToken
+                       {:token     (oidc.util/hash-token token)
+                        :user_id   (mt/user->id user)
+                        :client_id client-id
+                        :scope     (vec scopes)
+                        :expiry    (+ (System/currentTimeMillis) 3600000)})
+           (f {"authorization" (str "Bearer " token)})))))))
 
 (defn data-parts
   "`[boundary json after]` of tool result `text` that opens with a data section: the section's boundary, the JSON text

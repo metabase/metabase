@@ -8,11 +8,9 @@
    [metabase.mcp.usage :as usage]
    [metabase.mcp.v2.registry :as v2.registry]
    [metabase.mcp.v2.test-util :as v2.tu]
-   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -335,28 +333,12 @@
   (cond-> {:jsonrpc "2.0" :method method :params params}
     id (assoc :id id)))
 
-(defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
-  [scopes f]
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (oauth-server.tu/with-oauth-client [client-id]
-      (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [token (str (random-uuid))]
-          ;; stored hashed, with a live client row, as a real issued token would be
-          (t2/insert! :model/OAuthAccessToken
-                      {:token     (oidc.util/hash-token token)
-                       :user_id   (mt/user->id :crowberto)
-                       :client_id client-id
-                       :scope     (vec scopes)
-                       :expiry    (+ (System/currentTimeMillis) 3600000)})
-          (f {"authorization" (str "Bearer " token)}))))))
-
 ;; not ^:parallel: the bearer token needs a temporary `site-url`
 (deftest three-write-points-integration-test
   (testing "initialize -> tools/call -> DELETE records session, tool-call, and ended_at"
     ;; Collection runs on any EE instance (:feature :none), so no premium feature is needed here.
     ;; GHY-4942: a cookie session reaches no scope-gated tool, so the calls carry a scoped bearer token.
-    (do-with-bearer-token!
+    (v2.tu/do-with-bearer-token!
      v2.tu/all-scopes
      (fn [headers]
        (let [crowberto (mt/user->id :crowberto)

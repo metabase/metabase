@@ -57,34 +57,14 @@
                                   {:request-options {:headers extra-headers}}
                                   body))))
 
-(defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
-  ([scopes f]
-   (do-with-bearer-token! :crowberto scopes f))
-  ([user scopes f]
-   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-     (oauth-server.tu/with-oauth-client [client-id]
-       (mt/with-model-cleanup [:model/OAuthAccessToken]
-         (let [token (str (random-uuid))]
-           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-           ;; up, so the row has to be written the same way a real issued token would be — including a
-           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-           (t2/insert! :model/OAuthAccessToken
-                       {:token     (oidc.util/hash-token token)
-                        :user_id   (mt/user->id user)
-                        :client_id client-id
-                        :scope     (vec scopes)
-                        :expiry    (+ (System/currentTimeMillis) 3600000)})
-           (f {"authorization" (str "Bearer " token)})))))))
-
 (defn- do-with-mcp-scopes!
   "Call `thunk` with [[mcp-request]] presenting a bearer token for `user` (default crowberto) holding `scopes`."
   ([scopes thunk]
    (do-with-mcp-scopes! :crowberto scopes thunk))
   ([user scopes thunk]
-   (do-with-bearer-token! user scopes (fn [headers]
-                                        (binding [*auth-headers* headers]
-                                          (thunk))))))
+   (v2.tu/do-with-bearer-token! user scopes (fn [headers]
+                                              (binding [*auth-headers* headers]
+                                                (thunk))))))
 
 (defn- jsonrpc-request
   ([method] (jsonrpc-request method {}))
@@ -955,7 +935,7 @@
       (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
             mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
         (testing "a client without agent:sql:run is refused, and told which scope it needs"
-          (do-with-bearer-token!
+          (v2.tu/do-with-bearer-token!
            #{"agent:query:run"}
            (fn [headers]
              (let [credential (ui-credential-for headers)]
@@ -967,7 +947,7 @@
                                native-query)]
                  (is (re-find #"agent:sql:run" (str (:body response)))))))))
         (testing "the same client's non-native queries are untouched — the gate is on raw SQL, not on the credential"
-          (do-with-bearer-token!
+          (v2.tu/do-with-bearer-token!
            #{"agent:query:run"}
            (fn [headers]
              (let [credential (ui-credential-for headers)]
@@ -976,7 +956,7 @@
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     mbql-query))))))))
         (testing "a client that WAS granted agent:sql:run runs the same native query"
-          (do-with-bearer-token!
+          (v2.tu/do-with-bearer-token!
            #{"agent:query:run" "agent:sql:run"}
            (fn [headers]
              (let [credential (ui-credential-for headers)]
@@ -991,7 +971,7 @@
             execute_sql runs raw SQL through POST /api/dataset instead"
     (doseq [wildcard ["*" "agent:*" "agent:sql:*"]]
       (testing (pr-str wildcard)
-        (do-with-bearer-token!
+        (v2.tu/do-with-bearer-token!
          #{"agent:query:run" wildcard}
          (fn [headers]
            (let [session-id (-> (client/client-full-response :post 200 endpoint
@@ -1018,7 +998,7 @@
     (mcp.ui-resource/with-fallback-template
       (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
             mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
-        (do-with-bearer-token!
+        (v2.tu/do-with-bearer-token!
          :rasta #{"agent:query:run" "agent:sql:run"}
          (fn [headers]
            (let [credential (ui-credential-for headers)
@@ -1146,7 +1126,7 @@
             challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
             scope, and mcp-remote only starts a step-up, on that response; an in-body error over HTTP 200 does
             neither."
-    (do-with-bearer-token!
+    (v2.tu/do-with-bearer-token!
      #{"agent:content:read" "agent:question:create"}
      (fn [headers]
        (let [post! (bearer-session-post! headers)
@@ -1203,7 +1183,7 @@
             can still carry one, and it must not reach every tool on the surface"
     (doseq [wildcard ["*" "agent:*"]]
       (testing (pr-str wildcard)
-        (do-with-bearer-token!
+        (v2.tu/do-with-bearer-token!
          #{"agent:content:read" wildcard}
          (fn [headers]
            (let [post!    (bearer-session-post! headers)
@@ -1216,7 +1196,7 @@
   (testing "GHY-4543: the scope checks inside tool handlers (here alert_write's deferred agent:query:run check) answer
             with the same 403 challenge as the registry gate, naming their own required scope"
     (mt/with-temp [:model/Card {card-id :id} {}]
-      (do-with-bearer-token!
+      (v2.tu/do-with-bearer-token!
        #{"agent:content:read" "agent:delivery:write"}
        (fn [headers]
          (let [post!     (bearer-session-post! headers)
@@ -1241,7 +1221,7 @@
 (deftest baseline-token-steps-up-from-a-write-tool-test
   (testing "GHY-4543: a client holding only the always-granted baseline is challenged, on a write, for the
             baseline plus the scope that write needs, so its step-up keeps what it already holds"
-    (do-with-bearer-token!
+    (v2.tu/do-with-bearer-token!
      (set mcp.paths/v2-baseline-scopes)
      (fn [headers]
        (let [post!    (bearer-session-post! headers)
@@ -1268,7 +1248,7 @@
             first chart after a step-up could never embed. The baseline therefore carries agent:query:run: a freshly
             connected client queries and charts without a 403."
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (do-with-bearer-token!
+      (v2.tu/do-with-bearer-token!
        (set mcp.paths/v2-baseline-scopes)
        (fn [headers]
          (let [session-id (-> (client/client-full-response :post 200 endpoint
@@ -1304,7 +1284,7 @@
             `tools/call`, so a client learns which scope to step up to. Driven over a bearer token because a cookie
             session is unrestricted and never exercises scopes at all."
     (mcp.ui-resource/with-fallback-template
-      (do-with-bearer-token!
+      (v2.tu/do-with-bearer-token!
        #{"agent:query:run"}
        (fn [headers]
          (let [post!   (bearer-session-post! headers)
@@ -1347,7 +1327,7 @@
 (deftest baseline-token-reads-the-fields-catalog-test
   (testing "GHY-4543, GHY-4939: the locked baseline carries agent:content:read, so a client that unticked everything
             else still reads the fields catalog without stepping up"
-    (do-with-bearer-token!
+    (v2.tu/do-with-bearer-token!
      (set mcp.paths/v2-baseline-scopes)
      (fn [headers]
        (let [response ((bearer-session-post! headers)
@@ -1365,7 +1345,7 @@
             its scope, no credential, so it is served to any token; the data stays gated by the tool call and
             `refresh_ui_credential`."
     (mcp.ui-resource/with-fallback-template
-      (do-with-bearer-token!
+      (v2.tu/do-with-bearer-token!
        #{"agent:content:read"}
        (fn [headers]
          (let [post!   (bearer-session-post! headers)
@@ -1397,9 +1377,9 @@
     (mcp.ui-resource/with-fallback-template
       (let [minted     (atom 0)
             shell-text (fn [scopes]
-                         ;; An atom because `do-with-bearer-token!` does not return `f`'s value.
+                         ;; An atom because `v2.tu/do-with-bearer-token!` does not return `f`'s value.
                          (let [text (atom nil)]
-                           (do-with-bearer-token!
+                           (v2.tu/do-with-bearer-token!
                             scopes
                             (fn [headers]
                               (let [read     (jsonrpc-request "resources/read"
@@ -1426,7 +1406,7 @@
               (is (zero? @minted)))
             (testing "a token holding every scope a read could need reads the fields catalog, and mints none: only
                       a shell embeds a credential"
-              (do-with-bearer-token!
+              (v2.tu/do-with-bearer-token!
                #{"agent:content:read" "agent:query:run"}
                (fn [headers]
                  (let [response ((bearer-session-post! headers)
@@ -1447,7 +1427,7 @@
 (deftest refresh-ui-credential-without-query-run-is-a-403-challenge-test
   (testing "GHY-4543: with shell reads open to every token, `refresh_ui_credential` is how the iframe gets a credential.
             A capable client without agent:query:run is challenged for it, and handed nothing."
-    (do-with-bearer-token!
+    (v2.tu/do-with-bearer-token!
      #{"agent:content:read"}
      (fn [headers]
        (let [session-id (-> (client/client-full-response :post 200 endpoint
@@ -1485,7 +1465,7 @@
              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
                                 "error_description=\"scope_probe_sql requires agent:sql:run"))))
          (testing "mb:full bearer token"
-           (do-with-bearer-token!
+           (v2.tu/do-with-bearer-token!
             #{"mb:full"}
             (fn [headers]
               (let [response ((bearer-session-post! headers) 403 call)]
@@ -1510,7 +1490,7 @@
           (is (= 403 (:status response)))
           (is (nil? (get-in response [:body :result :_meta :com.metabase/mcp-apps :credential])))))
       (testing "an mb:full session cannot mint a credential"
-        (do-with-bearer-token!
+        (v2.tu/do-with-bearer-token!
          #{"mb:full"}
          (fn [headers]
            (let [session-id (-> (client/client-full-response :post 200 endpoint
@@ -1577,7 +1557,7 @@
   (testing "GHY-4543: question_write checks agent:sql:run inside the handler, once the source resolves to native
             SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry gate sends, or a
             client records no step-up scope and the user can never grant it."
-    (do-with-bearer-token!
+    (v2.tu/do-with-bearer-token!
      content-write-scopes
      (fn [headers]
        (let [post!     (bearer-session-post! headers)
@@ -1607,7 +1587,7 @@
             single agent:query:run, and a handle resolves by user, so holding a drill handle is not proof the SQL
             gates were spent. Saving one through question_write is still charged agent:sql:run."
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (do-with-bearer-token!
+      (v2.tu/do-with-bearer-token!
        content-write-scopes
        (fn [headers]
          (let [session-id  (mcp-app-session-id! headers)
