@@ -76,7 +76,8 @@
   "The base snapshot of a pull when the instance has no base: empty, so every item of one side only is kept."
   []
   ;; An identity in the trash of the instance should have an unknown base here, so that a delete before the first
-  ;; sync is not undone; and the apply should refuse to write an identity in the trash. Neither rule exists yet.
+  ;; sync is not undone; this rule does not exist yet. With no base, the apply already refuses to write an identity in
+  ;; the trash, so a delete during the pull is not undone.
   {})
 
 (defn- base-snapshot
@@ -127,6 +128,7 @@
             (:fenced result)   {:result :fenced :head h :reason (:fenced result)}
             (:rewritten result) {:result :rewritten :head h}
             (:refused result)  {:result :refused :head h :refused (:refused result)}
+            (:key-clash result) {:result :key-clash :head h :key-clash (:key-clash result)}
             :else              {:result :base-moved :head h :base (:base-moved result)}))))))
 
 (defn pull!
@@ -145,6 +147,8 @@
   - `{:result :stale :head h :ids ids}`: local saves changed the items `ids` during each of the attempts;
   - `{:result :rewritten :head h}`: the branch was rewritten during each of the attempts;
   - `{:result :refused :head h :refused [...]}`: the instance refused a write (`instance/refused`);
+  - `{:result :key-clash :head h :key-clash [f ...]}`: a written item has the unique key of a row that stays on the
+    instance, a trashed row included (the findings of `apply/key-clashes`);
   - `{:result :base-moved :head h :base actual}`: another task moved the base;
   - `{:result :fenced :head h :reason r}`: `(:fence opts)` returned `r` in the apply (the task may not commit);
   - `{:result :no-branch}`: the branch does not exist, and the instance has a base;

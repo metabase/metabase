@@ -44,11 +44,17 @@
                contents))))
 
 (defn current-snippet
-  "The content of the in-scope snippet `id`, after a lock on its row, or nil."
+  "The state of snippet `id` (`instance/current`), after a lock on its row."
   [id]
-  (library-branching.db/lock-snippet id)
-  (when (scope/in-scope? :snippet id)
-    (get (read-snippets [id]) id)))
+  ;; Every snippet is in the snippets namespace, a root namespace: a snippet row is always in the Library tree.
+  (content/current-state (some? (library-branching.db/lock-snippet id))
+                         #(scope/in-scope? :snippet id)
+                         #(get (read-snippets [id]) id)))
+
+(defn snippet-key-holders
+  "The entity ids of the snippets named `snippet-name` by the comparison of the app DB, in the trash or not."
+  [snippet-name]
+  (set (library-branching.db/snippet-entity-ids-by-name snippet-name)))
 
 (defn- columns
   "The snippet columns of the attributes `ks` of `attrs`, an absent one at its default, through the imports of the
@@ -117,6 +123,9 @@
   (reify
     instance/Stub
     (stub [_ id content refs] (stub-snippet id content refs))
+
+    instance/UniqueKey
+    (key-holders [_ k] (snippet-key-holders k))
 
     instance/KindStore
     (read-all [_ ids] (read-snippets ids))

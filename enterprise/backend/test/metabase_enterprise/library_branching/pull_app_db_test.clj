@@ -16,11 +16,14 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
@@ -267,3 +270,26 @@
            (is (= [[one-id :write] [two-id :write] [one-id :link] [two-id :link]]
                   (map (fn [{:keys [id link]}] [id (if link :link :write)]) steps)))
            (is (= remote (read-snapshot inst)))))))))
+
+(deftest pull-refuses-the-name-of-a-trashed-snippet-test
+  (testing (str "Alloy ApplyKeepsUniqueKeysFails on the app DB: the head adds a snippet with the name of a snippet in "
+                "the trash, which the app DB keeps unique over all rows. The apply refuses with the pair before it "
+                "writes, and the base stays; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _metrics]
+       (let [trashed (insert! :model/NativeQuerySnippet {:name       "lb pull clash"
+                                                         :content    "1 = 1"
+                                                         :archived   true
+                                                         :creator_id (mt/user->id :crowberto)})
+             new-id  (second created-ids)]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 item           {:kind :snippet :name "lb pull clash" :place nil :refs #{} :attrs {:content "2 = 2"}}
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
+             (is (= {:result    :key-clash
+                     :head      h
+                     :key-clash [{:rule :unique-key :kind :snippet :key "lb pull clash"
+                                  :ids  #{new-id (:entity_id trashed)}}]}
+                    (pull! inst s)))
+             (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
+             (is (= c1 (instance/base inst))))))))))
