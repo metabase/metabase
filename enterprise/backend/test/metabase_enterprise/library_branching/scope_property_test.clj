@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.scope-property-test
   "Property tests of scope against a reference model: generated trees of collections and items, written to the app DB
-  in a transaction that rolls back, and the scope that the reference model computes from the same choices."
+  in a transaction that rolls back, and the scope that the reference model computes from the same choices. Each test var
+  makes the Library collections once, and its trials share them."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -19,6 +20,20 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
+
+(def ^:private ^:dynamic *library*
+  "The Library collections of the current test var, or nil."
+  nil)
+
+;; An :each fixture, so a run of the :once fixtures alone makes no rows.
+(use-fixtures :each (fn [t] (collections.tu/with-library [library] (binding [*library* library] (t)))))
+
+(defn- do-with-library
+  "Calls `f` with the Library collections of the current test var, or of this call when there are none."
+  [f]
+  (if *library*
+    (f *library*)
+    (collections.tu/with-library [library] (f library))))
 
 ;;; ------------------------------------------------ The generated world ---------------------------------------------
 
@@ -180,10 +195,10 @@
                                :expectations "[]"}))
 
 (defn- actual-scope
-  "The in-scope identities of `world`, by kind, after it is written."
-  [world]
+  "The in-scope identities of `world` in `scope-ids`, by kind."
+  [world scope-ids]
   (let [ours (into #{} (map :entity-id) (concat (:collections world) (:items world) (:tests world)))]
-    (-> (scope/scope-ids)
+    (-> scope-ids
         (select-keys (concat [:collection :transform-test] item-kinds))
         (update-vals #(into #{} (filter ours) %)))))
 
@@ -198,17 +213,19 @@
                          (:items world))]
       (doseq [{:keys [transform] :as test} (:tests world)]
         (insert-test! test (get item-ids transform)))
-      {:expected      (expected-scope world)
-       :actual        (actual-scope world)
-       :counts-agree? (= (update-vals (scope/scope-ids) count) (scope/scope-count))})))
+      (let [scope-ids (scope/scope-ids)]
+        {:expected      (expected-scope world)
+         :actual        (actual-scope world scope-ids)
+         :counts-agree? (= (update-vals scope-ids count) (scope/scope-count))}))))
 
 (defn- check-choices!
   [choices]
-  (collections.tu/with-library [{:keys [library]}]
-    (let [roots {:library  library
-                 :personal (collections.tu/personal-collection (mt/user->id :rasta))}
-          {:keys [expected actual counts-agree?]} (check-world! (fold choices) roots)]
-      (and (= expected actual) counts-agree?))))
+  (do-with-library
+   (fn [{:keys [library]}]
+     (let [roots {:library  library
+                  :personal (collections.tu/personal-collection (mt/user->id :rasta))}
+           {:keys [expected actual counts-agree?]} (check-world! (fold choices) roots)]
+       (and (= expected actual) counts-agree?)))))
 
 (defspec scope-matches-reference-model-test 100
   (prop/for-all [choices world-gen]
@@ -309,9 +326,10 @@
 
 (defspec published-table-keys-match-reference-model-test 50
   (prop/for-all [world table-world-gen]
-    (collections.tu/with-library [{:keys [data]}]
-      (let [{:keys [expected actual counts-agree? snapshot-agrees?]} (check-tables! (fold-tables world) data)]
-        (and (= expected actual) counts-agree? snapshot-agrees?)))))
+    (do-with-library
+     (fn [{:keys [data]}]
+       (let [{:keys [expected actual counts-agree? snapshot-agrees?]} (check-tables! (fold-tables world) data)]
+         (and (= expected actual) counts-agree? snapshot-agrees?))))))
 
 (deftest table-world-gen-coverage-test
   (testing "the generated histories hold the cases of key ownership that scope must decide"

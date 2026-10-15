@@ -1,9 +1,10 @@
 (ns metabase-enterprise.library-branching.test-util
   "test.check generators of snapshots, and predicates of the structural rules that they obey.
 
-  Every generator is one `gen/fmap` over a vector of random choices, one per item, folded into a snapshot by a pure
-  function. The generators filter nothing and retry nothing, and test.check shrinks the choices directly: a shrunk
-  snapshot has fewer items, items at the root level, and the first kind."
+  Every generator draws a vector of random choices, one per item, folds it into the kind and the place of each item by
+  a pure function, and then draws the attributes of each item for its kind. The generators filter nothing and retry
+  nothing, and test.check shrinks the choices directly: a shrunk snapshot has fewer items, items at the root level, the
+  first kind, and fewer attributes."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -343,24 +344,37 @@
   ::library-root)
 
 (defn- assemble
-  "The snapshot of `choices`, given the kind and the place (an `[:item k]` or `[:dangling k]` choice, or nil) of each
-  item. A kind of [[library-collection-kinds]] is a collection of its type."
-  [choices item-kinds item-places]
+  "The snapshot of `choices`, given the kind, the place (an `[:item k]` or `[:dangling k]` choice, or nil) and the
+  attributes of each item. A kind of [[library-collection-kinds]] is a collection of its type."
+  [choices item-kinds item-places item-attrs]
   (let [ids (identities choices item-kinds)]
     (into {}
           (map-indexed
-           (fn [i {:keys [id name refs attrs]}]
-             (let [kind  (nth item-kinds i)
-                   typed (get library-collection-kinds kind)]
+           (fn [i {:keys [id name refs]}]
+             (let [kind (nth item-kinds i)]
                [(nth ids i)
-                {:kind  (if (or typed (= :collection kind)) :collection kind)
+                {:kind  (if (or (contains? library-collection-kinds kind) (= :collection kind)) :collection kind)
                  :name  name
                  :place (some->> (nth item-places i) (resolve-target ids id))
                  :refs  (into #{} (map (fn [[role target]] [role (resolve-target ids id target)])) refs)
-                 :attrs (if typed
-                          (assoc (get attrs :collection) :type (:type typed))
-                          (get attrs kind))}])))
+                 :attrs (nth item-attrs i)}])))
           choices)))
+
+(defn- with-attrs-gen
+  "A generator of `(f item-attrs)`, where `item-attrs` holds a value of `(attrs kind)` for each kind of `item-kinds`, in
+  order."
+  [attrs item-kinds f]
+  (gen/fmap f (apply gen/tuple (map attrs item-kinds))))
+
+(defn- library-attrs-gen
+  "A generator of the attributes of an item of `kind`, a kind of the options or of [[library-collection-kinds]], from
+  `attrs` (a function from a kind to a generator): those of a collection with the Library type of `kind`, or with no
+  Library type for `:collection`."
+  [attrs kind]
+  (if-let [{t :type} (get library-collection-kinds kind)]
+    (gen/fmap #(assoc % :type t) (attrs :collection))
+    (cond->> (attrs kind)
+      (= :collection kind) (gen/fmap #(cond-> % (contains? library-holds (:type %)) (dissoc :type))))))
 
 (defn- sorted-kinds [ks] (vec (sort ks)))
 
@@ -420,19 +434,18 @@
             choices)))
 
 (defn- item-choice-gen
-  [{:keys [kinds attrs]} place-gen target-gen]
+  [place-gen target-gen]
   (gen/hash-map :place place-gen
                 :kind  gen/nat
                 :id    item-id-prefix
                 :table table-key-gen
                 :name  name-gen
-                :refs  (gen/vector (gen/tuple role-gen target-gen) 0 3)
-                :attrs (apply gen/hash-map (mapcat (fn [kind] [kind (attrs kind)]) (sorted-kinds kinds)))))
+                :refs  (gen/vector (gen/tuple role-gen target-gen) 0 3)))
 
 (defn- choices-gen
-  [{:keys [max-items] :as opts} place-gen target-gen]
+  [{:keys [max-items]} place-gen target-gen]
   (gen/sized (fn [size]
-               (gen/vector (item-choice-gen opts place-gen target-gen) 0 (min size max-items)))))
+               (gen/vector (item-choice-gen place-gen target-gen) 0 (min size max-items)))))
 
 (def ^:private default-options
   {:kinds       snapshot/kinds
@@ -476,17 +489,15 @@
      (assert (seq (:root-kinds opts)) "`:root-kinds` must not be empty")
      (assert (set/subset? (set (:root-kinds opts)) (into (set (:kinds opts)) (keys library-collection-kinds)))
              "`:root-kinds` must be a subset of `:kinds` and the Library collection kinds")
-     (gen/fmap (fn [choices]
-                 (let [[item-kinds item-places] (well-formed-structure (with-library-collections opts) choices)
-                       ;; A collection of the kind :collection has no Library type.
-                       choices (mapv (fn [choice kind]
-                                       (cond-> choice
-                                         (and (= :collection kind)
-                                              (contains? library-holds (get-in choice [:attrs :collection :type])))
-                                         (update-in [:attrs :collection] dissoc :type)))
-                                     choices item-kinds)]
-                   (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
-               (choices-gen opts place-choice-gen item-target-gen)))))
+     ;; The attributes come after the fold, so each item draws the attributes of its own kind only. A shrink of the
+     ;; choices draws the attributes again from the same seed, and then the attributes shrink.
+     (gen/bind (choices-gen opts place-choice-gen item-target-gen)
+               (fn [choices]
+                 (let [[item-kinds item-places] (well-formed-structure (with-library-collections opts) choices)]
+                   (with-attrs-gen (partial library-attrs-gen (:attrs opts)) item-kinds
+                     (fn [item-attrs]
+                       (with-unique-keys (:unique-keys opts)
+                         (assemble choices item-kinds item-places item-attrs))))))))))
 
 (defn arbitrary-snapshot-gen
   "Generates snapshots with no structural guarantee: a place or a reference can name an identity that is not in the
@@ -506,11 +517,11 @@
                                     [4 (gen/tuple (gen/return :item) gen/nat)]
                                     [1 (gen/tuple (gen/return :dangling) gen/nat)]
                                     [1 (gen/tuple (gen/return :area) gen/nat)]])]
-     (gen/fmap (fn [choices]
-                 (assemble choices
-                           (mapv #(nth kinds (mod (:kind %) (count kinds))) choices)
-                           (mapv :place choices)))
-               (choices-gen opts place-gen ref-gen)))))
+     (gen/bind (choices-gen opts place-gen ref-gen)
+               (fn [choices]
+                 (let [item-kinds (mapv #(nth kinds (mod (:kind %) (count kinds))) choices)]
+                   (with-attrs-gen (:attrs opts) item-kinds
+                     #(assemble choices item-kinds (mapv :place choices) %))))))))
 
 ;;; ------------------------------------------------ The Library ------------------------------------------------------
 

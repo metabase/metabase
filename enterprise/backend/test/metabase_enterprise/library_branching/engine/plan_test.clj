@@ -637,8 +637,10 @@
     :edits  [[:replace '(and room (> (.codePointCount k 0 (.length k)) room)) false]]}
    {:name   :no-defer
     :doc    "A reference cycle is written in one step per item, so a write refers to an item that does not exist yet."
-    :target `plan/write-steps
-    :edits  [[:replace '(cyclic-refs m ids stub-kinds) '(constantly #{})]]}
+    ;; The write step, not the cycle search: with no deferred reference, the order of the writes has a cycle, and
+    ;; `interim-ids` loops with no end, also after the timeout of the run.
+    :target `plan/write-step
+    :edits  [[:replace '(seq defer) false]]}
    {:name   :pre-is-local
     :doc    "A step has no precondition."
     :target `plan/write-step
