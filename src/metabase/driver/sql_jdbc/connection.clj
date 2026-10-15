@@ -378,7 +378,7 @@
          (catch Exception _
            false))))
 
-(defn discard-pool-after-failed-checkout!
+(defn invalidate-empty-pool!
   "Close the cached pool of `database-id` that has `data-source` if the pool has no Connections. Call this function
   after a checkout from that pool fails. If the pool stays open, c3p0 continues to try to connect in the background."
   [database-id data-source]
