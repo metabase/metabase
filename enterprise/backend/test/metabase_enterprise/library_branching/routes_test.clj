@@ -38,6 +38,7 @@
    [:post "/create-branch"]       {:name "feature"}
    [:post "/switch-branch"]       {:branch "dev"}
    [:post "/deploy"]              {}
+   [:post "/discard-changes"]     {}
    [:get "/status"]               {}
    [:get "/is-dirty"]             {}
    [:get "/dirty"]                {}
@@ -73,7 +74,7 @@
       (is (= "Library branching is not configured." (request :crowberto :post "/test-connection" 400 {})))
       (is (= "Library branching is not configured." (request :crowberto :get "/branches" 400 nil)))
       (mt/with-temporary-setting-values [library-branching-enabled true]
-        (doseq [[route body] [["/push" {}] ["/pull" {}] ["/merge-branch" {:from "dev"}]]]
+        (doseq [[route body] [["/push" {}] ["/pull" {}] ["/merge-branch" {:from "dev"}] ["/discard-changes" {}]]]
           (testing route
             (is (= "Library branching is not configured." (request :crowberto :post route 400 body)))))))))
 
@@ -120,7 +121,8 @@
             (rtu/with-synchronous-tasks
               (doseq [[route body kind] [["/push" {:message "From the API"} "push"]
                                          ["/pull" {} "pull"]
-                                         ["/merge-branch" {:from "dev"} "merge-branch"]]]
+                                         ["/merge-branch" {:from "dev"} "merge-branch"]
+                                         ["/discard-changes" {} "discard-changes"]]]
                 (testing route
                   (let [{:keys [task_id]} (request :crowberto :post route 200 body)]
                     (is (=? {:id task_id :task_type kind :initiated_by (mt/user->id :crowberto)}
