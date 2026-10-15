@@ -554,28 +554,28 @@
              :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
              :where           [:and [:= :dc.card_id [:auto/param card-id]] [:= :d.archived false]]}))
 
-(mu/defn cards-mentioning-dashboard :- [:sequential :string]
-  "The entity ids of the cards not in the trash whose stored visualization settings text holds the text of
-  `dashboard-id`: every card that links to the dashboard, and maybe others."
-  [dashboard-id :- pos-int?]
+(mu/defn cards-with-settings-mentioning :- [:sequential :string]
+  "The entity ids of the cards not in the trash whose stored visualization settings text holds the text of `id`: every
+  card whose settings link to the card or the dashboard of row `id`, and maybe others."
+  [id :- pos-int?]
   (mapv :entity_id
         (t2/query {:select [:entity_id]
                    :from   [(t2/table-name :model/Card)]
                    :where  [:and
                             [:= :archived false]
-                            [:like :visualization_settings [:auto/param (str "%" dashboard-id "%")]]]})))
+                            [:like :visualization_settings [:auto/param (str "%" id "%")]]]})))
 
-(mu/defn dashboards-mentioning-dashboard :- [:sequential :string]
+(mu/defn dashboards-with-settings-mentioning :- [:sequential :string]
   "The entity ids of the dashboards not in the trash with a dashboard card whose stored visualization settings text
-  holds the text of `dashboard-id`: every dashboard whose cards link to the dashboard, and maybe others."
-  [dashboard-id :- pos-int?]
+  holds the text of `id`: every dashboard whose cards link to the card or the dashboard of row `id`, and maybe others."
+  [id :- pos-int?]
   (mapv :entity_id
         (t2/query {:select-distinct [:d.entity_id]
                    :from            [[(t2/table-name :model/Dashboard) :d]]
                    :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
                    :where           [:and
                                      [:= :d.archived false]
-                                     [:like :dc.visualization_settings [:auto/param (str "%" dashboard-id "%")]]]})))
+                                     [:like :dc.visualization_settings [:auto/param (str "%" id "%")]]]})))
 
 (defn- values-source-users
   "The ParameterCard rows that `card-condition` (HoneySQL on `pc.card_id`) selects, each with `:user_collection_id`:

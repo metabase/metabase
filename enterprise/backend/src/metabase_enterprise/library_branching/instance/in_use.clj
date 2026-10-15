@@ -59,27 +59,34 @@
            :when (not (contains? in-scope entity_id))]
        {:kind :dashboard :id entity_id :name name}))))
 
-(defn- dashboard-users
-  "The users of dashboard `id`, with row id `row-id`, outside `in-scope`: the cards and dashboards whose content refers
-  to it by a click behavior or a link card."
-  [in-scope id row-id]
-  ;; A question of the dashboard is no user: a trash of the dashboard puts its questions in the trash.
+(defn- link-users
+  "The users of item `id` of `kind`, with row id `row-id`, outside `in-scope`: the cards and dashboards whose
+  visualization settings refer to it, by a click behavior or a link card."
+  [in-scope kind id row-id]
   (let [users (fn [user-kind read-items candidates]
                 (for [[eid {:keys [name refs]}] (read-items (remove in-scope candidates))
-                      :when (uses? :dashboard id refs)]
+                      :when (uses? kind id refs)]
                   {:kind user-kind :id eid :name name}))]
-    (concat (users :card kinds.card/read-cards (library-branching.db/cards-mentioning-dashboard row-id))
-            (users :dashboard kinds.dashboard/read-dashboards (library-branching.db/dashboards-mentioning-dashboard row-id)))))
+    (concat (users :card kinds.card/read-cards (library-branching.db/cards-with-settings-mentioning row-id))
+            (users :dashboard kinds.dashboard/read-dashboards
+                   (library-branching.db/dashboards-with-settings-mentioning row-id)))))
 
 (defn- users
   "The users outside the Library of the trashed item `id` of `kind`. `in-scope` is the set of the identities of the
   in-scope cards and dashboards."
   [in-scope {:keys [id kind]}]
   (when-let [row-id (some-> (model-of kind) (library-branching.db/row-id-by-entity-id id))]
-    (not-empty (vec (sort-by (juxt :kind :name :id)
-                             (if (= :dashboard kind)
-                               (dashboard-users in-scope id row-id)
-                               (query-users in-scope id kind row-id)))))))
+    ;; A question of a dashboard is no user of it: a trash of the dashboard puts its questions in the trash. A card
+    ;; that uses a card by its query and links to it is one user.
+    (->> (if (= :dashboard kind)
+           (link-users in-scope kind id row-id)
+           (concat (query-users in-scope id kind row-id)
+                   (when (contains? card-kinds kind)
+                     (link-users in-scope kind id row-id))))
+         distinct
+         (sort-by (juxt :kind :name :id))
+         vec
+         not-empty)))
 
 (defn trashed-in-use
   "`{identity [{:kind :id :name} ...]}`: of the trashed items `trashed` (`[{:id :kind}]`), each one that a card or a
