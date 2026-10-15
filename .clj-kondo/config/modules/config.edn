@@ -3993,9 +3993,12 @@
    :api #{metabase-enterprise.library-branching.api metabase-enterprise.library-branching.init}
    :uses #{api
            app-db
+           collections
            models
+           request
            settings
            util
+           util.config
            warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection

@@ -214,3 +214,16 @@
    (into {}
          (map (fn [kind] [kind (library-branching.db/row-count (kind-query roots kind))]))
          kinds)))
+
+(defn in-scope?
+  "True iff the item of `kind` with identity `id` is in scope for `roots` (default [[roots]]). Reads the app DB in the
+  current transaction, with one query."
+  ([kind id]
+   (in-scope? roots kind id))
+  ([roots kind id]
+   (let [match (if (= :published-table kind)
+                 (let [[db schema table] id]
+                   [:and [:= :s.db db] [:= :s.schema schema] [:= :s.table table]])
+                 [:= :s.entity_id id])]
+     (pos? (library-branching.db/row-count
+            (subquery {:select [:s.id] :from [[(kind-query roots kind) :s]] :where match}))))))

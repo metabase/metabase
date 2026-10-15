@@ -12,15 +12,19 @@
     portable: identities and natural keys, no database id, no instance-local attribute (public link, embedding,
     bookkeeping columns) and no derived value. A constant number of queries per batch of ids, not one per item.")
   (current [ks id]
-    "Content of item `id`, after a lock on its row and its child rows, or nil when it does not exist or is in the
-    trash.")
-  (write! [ks content]
-    "Makes the item's content equal to `content`: every content attribute is set, an absent one to its default; a
-    trashed item with this identity is restored. Instance-local attributes do not change. Laws: a write of the
-    current content changes nothing (GetPut); current after write returns `content` (PutGet).")
+    "Content of item `id`, after a lock on its row and its child rows until the current transaction ends, or nil when
+    it is not in scope: it does not exist, is in the trash, or is outside the Library tree.")
+  (write! [ks id content]
+    "Makes the content of item `id` equal to `content`, an item of this kind: every content attribute is set, an
+    absent one to its default; a trashed item with this identity is restored. Only a row inside the Library tree
+    matches `id`. Instance-local attributes do not change. Laws: a write of the current content changes no row
+    (GetPut); current after write returns `content` (PutGet). Throws ::refused, and writes nothing, when `content`
+    is not an item of this kind, when `id` names a row outside the Library tree or of another kind, or when the place
+    or an environment reference of `content` does not resolve on this instance.")
   (trash! [ks id]
-    "Moves the item and the items under it to the trash. The identity and the content stay; content outside the
-    Library that uses the item still resolves."))
+    "Moves item `id` and the items under it to the trash. The identity and the content stay; content outside the
+    Library that uses the item still resolves. Nothing happens when no row has the identity, or when it is already in
+    the trash. Throws ::refused when `id` names a row outside the Library tree."))
 
 (defprotocol Instance
   "One Metabase instance as library branching sees it."
@@ -39,6 +43,14 @@
     "Moves the base from `expected` to `new` (`expected` nil: there is no base), and stores `digests`, the
     `{identity digest}` of the content of `new`, with it, in one compare-and-swap. Returns :ok, or {:moved actual} and
     changes nothing; `actual` is the base, or nil when there is none. Runs in the current transaction, if any."))
+
+(defn refuse!
+  "Throws ::refused: the instance refuses a write of item `id` for `reason`, a keyword, with the message `message`
+  and the data `data`."
+  ([reason id message]
+   (refuse! reason id message {}))
+  ([reason id message data]
+   (throw (ex-info message (merge data {:type ::refused :reason reason :id id})))))
 
 (defn not-yet!
   "Throws: the instance does not implement `method` yet."

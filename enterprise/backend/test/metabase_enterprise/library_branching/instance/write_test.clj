@@ -1,0 +1,419 @@
+(ns metabase-enterprise.library-branching.instance.write-test
+  "The write side of the instance for each kind: `write!`, `current` and `trash!`. Each test writes in a transaction
+  that rolls back."
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.format.kinds :as format.kinds]
+   [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------------- Helpers ---------------------------------------------------
+
+(defn- store [kind] (get app-db/kind-stores kind))
+
+(defn write!
+  "Writes `item` as item `id` of `kind`, with the references of its attributes."
+  [kind id item]
+  (instance/write! (store kind) id (assoc item :refs (format.kinds/refs kind id (:attrs item)))))
+
+(defn current [kind id] (instance/current (store kind) id))
+
+(defn trash! [kind id] (instance/trash! (store kind) id))
+
+(defn refusal
+  "The reason of the ::instance/refused that `(f)` throws, or nil when it throws none."
+  [f]
+  (try
+    (f)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (when (= ::instance/refused (:type (ex-data e)))
+        (:reason (ex-data e))))))
+
+(defn children-location
+  [{:keys [id location]}]
+  (str location id "/"))
+
+(defn db-name [] (t2/select-one-fn :name :model/Database (mt/id)))
+
+(defn table-key
+  [table]
+  (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id table))]
+    [(db-name) schema name]))
+
+(defn field-key
+  [table field]
+  (conj (table-key table) (t2/select-one-fn :name :model/Field (mt/id table field))))
+
+(defn sum-query
+  [table field]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id table field)))))))
+
+(defn metric-item
+  "The content of a metric at `place` named `item-name`, whose query is the portable query of the metric `card`."
+  [card place item-name]
+  (-> (current :metric (:entity_id card))
+      (assoc :name item-name :place place)))
+
+(def ^:private new-metric-id "lbWriteMetric00000001")
+
+;;; ---------------------------------------------------- Metrics ---------------------------------------------------
+
+(deftest metric-write-test
+  (collections.tu/with-library [{:keys [metrics]}]
+    (mt/with-temp [:model/Card       model-metric {:name          "Total price"
+                                                   :type          :metric
+                                                   :display       :scalar
+                                                   :collection_id (:id metrics)
+                                                   :dataset_query (sum-query :venues :price)}
+                   :model/Collection sub          {:name     "Revenue"
+                                                   :type     "library-metrics"
+                                                   :location (children-location metrics)}]
+      (let [item (-> (metric-item model-metric (:entity_id metrics) "Revenue")
+                     (assoc-in [:attrs :description] "All revenue."))]
+        (testing "a write of a new identity creates the metric, and current returns the content"
+          (write! :metric new-metric-id item)
+          (is (= (assoc item :refs (format.kinds/refs :metric new-metric-id (:attrs item)))
+                 (current :metric new-metric-id)))
+          (is (= {:type :metric :collection_id (:id metrics) :archived false}
+                 (t2/select-one [:model/Card :type :collection_id :archived] :entity_id new-metric-id))))
+        (let [card-id (t2/select-one-pk :model/Card :entity_id new-metric-id)]
+          (testing "a write changes every attribute that differs, and an absent attribute goes to its default"
+            (let [changed (-> item
+                              (assoc :name "Revenue, all")
+                              (update :attrs dissoc :description)
+                              (update :attrs assoc
+                                      :display "line"
+                                      :collection_preview false
+                                      :visualization_settings {:graph.metrics ["sum"]}))]
+              (write! :metric new-metric-id changed)
+              (is (= (:attrs changed) (:attrs (current :metric new-metric-id))))
+              (is (nil? (t2/select-one-fn :description :model/Card card-id)))))
+          (testing "a write of another place moves the metric"
+            (write! :metric new-metric-id (assoc item :place (:entity_id sub)))
+            (is (= (:entity_id sub) (:place (current :metric new-metric-id))))
+            (is (= (:id sub) (t2/select-one-fn :collection_id :model/Card card-id))))
+          (testing "trash! moves the metric to the trash: current is nil, and it is not in the synced snapshot"
+            (trash! :metric new-metric-id)
+            (is (nil? (current :metric new-metric-id)))
+            (is (not (contains? (app-db/read-current) new-metric-id)))
+            (is (= {:archived true :archived_directly true}
+                   (t2/select-one [:model/Card :archived :archived_directly] card-id))))
+          (testing "a trash of an item in the trash, and of an identity that no row has, does nothing"
+            (is (nil? (trash! :metric new-metric-id)))
+            (is (nil? (trash! :metric "lbNoSuchMetric0000001"))))
+          (testing "a write of a trashed identity restores the same row with the content"
+            (write! :metric new-metric-id item)
+            (is (= (:attrs item) (:attrs (current :metric new-metric-id))))
+            (is (= card-id (t2/select-one-pk :model/Card :entity_id new-metric-id)))
+            (is (= {:archived false :archived_directly false}
+                   (t2/select-one [:model/Card :archived :archived_directly] card-id)))))))))
+
+(deftest write-keeps-instance-local-attributes-test
+  (testing "a write never changes the public link, the embedding settings or the creator"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (mt/with-temp [:model/Card card {:name              "Shared"
+                                       :type              :metric
+                                       :display           :scalar
+                                       :collection_id     (:id metrics)
+                                       :dataset_query     (sum-query :venues :price)
+                                       :creator_id        (mt/user->id :rasta)
+                                       :public_uuid       (str (random-uuid))
+                                       :made_public_by_id (mt/user->id :crowberto)
+                                       :enable_embedding  true
+                                       :embedding_params  {:category "enabled"}}]
+        (let [local   [:public_uuid :made_public_by_id :enable_embedding :embedding_params :creator_id]
+              before  (t2/select-one (into [:model/Card] local) (:id card))
+              other   (:attrs (current :metric (:entity_id card)))
+              changed (-> (current :metric (:entity_id card))
+                          (assoc :name "Shared, renamed")
+                          (assoc :attrs (assoc other :description "Changed" :display "line")))]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (write! :metric (:entity_id card) changed))
+          (is (= "Shared, renamed" (:name (current :metric (:entity_id card)))))
+          (is (= before (t2/select-one (into [:model/Card] local) (:id card)))))))))
+
+;;; -------------------------------------------------- Identity rule ------------------------------------------------
+
+(deftest no-take-over-outside-the-library-test
+  (testing "a write cannot take over an item outside the Library tree that has the same identity, and writes nothing"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (let [personal (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+        (mt/with-temp [:model/Card       model    {:name          "Library metric"
+                                                   :type          :metric
+                                                   :display       :scalar
+                                                   :collection_id (:id metrics)
+                                                   :dataset_query (sum-query :venues :price)}
+                       :model/Card       mine     {:name          "My metric"
+                                                   :type          :metric
+                                                   :display       :scalar
+                                                   :collection_id personal
+                                                   :dataset_query (sum-query :venues :price)}
+                       :model/Card       at-root  {:name          "Root metric"
+                                                   :type          :metric
+                                                   :display       :scalar
+                                                   :collection_id nil
+                                                   :dataset_query (sum-query :venues :price)}
+                       :model/Card       question {:name          "A question"
+                                                   :type          :question
+                                                   :display       :table
+                                                   :collection_id (:id metrics)
+                                                   :dataset_query (sum-query :venues :price)}
+                       :model/Collection folder   {:name     "My folder"
+                                                   :location (str "/" personal "/")}]
+          (let [item     (metric-item model (:entity_id metrics) "Taken over")
+                row      #(t2/select-one [:model/Card :name :type :collection_id :archived] (:id %))
+                rows     (mapv row [mine at-root question])]
+            (is (= :outside-library (refusal #(write! :metric (:entity_id mine) item))))
+            (is (= :outside-library (refusal #(write! :metric (:entity_id at-root) item))))
+            (is (= :other-kind (refusal #(write! :metric (:entity_id question) item))))
+            (is (= :outside-library (refusal #(trash! :metric (:entity_id mine)))))
+            (is (= :outside-library
+                   (refusal #(write! :collection (:entity_id folder)
+                                     {:kind :collection :name "Taken" :place (:entity_id metrics) :refs #{}
+                                      :attrs {:type "library-metrics"}}))))
+            (is (= rows (mapv row [mine at-root question])))
+            (is (= {:name "My folder" :location (str "/" personal "/")}
+                   (t2/select-one [:model/Collection :name :location] (:id folder))))))))))
+
+;;; ----------------------------------------------------- Trash ----------------------------------------------------
+
+(deftest trash-keeps-outside-content-working-test
+  (testing "after trash! of a Library metric, a question outside the Library that uses it still runs"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (mt/with-temp [:model/Card metric {:name          "Price total"
+                                         :type          :metric
+                                         :display       :scalar
+                                         :collection_id (:id metrics)
+                                         :dataset_query (sum-query :venues :price)}]
+        (let [mp       (mt/metadata-provider)
+              query    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                           (lib/aggregate (lib.metadata/metric mp (:id metric))))
+              run      #(-> (qp/process-query query) :data :rows)
+              expected (run)]
+          (is (seq expected))
+          (trash! :metric (:entity_id metric))
+          (is (nil? (current :metric (:entity_id metric))))
+          (is (= expected (run))))))))
+
+(deftest collection-trash-and-restore-test
+  (collections.tu/with-library [{:keys [metrics]}]
+    (mt/with-temp [:model/Collection folder {:name     "Folder"
+                                             :type     "library-metrics"
+                                             :location (children-location metrics)}
+                   :model/Collection sub    {:name     "Sub"
+                                             :type     "library-metrics"
+                                             :location (children-location folder)}
+                   :model/Card       metric {:name          "Price total"
+                                             :type          :metric
+                                             :display       :scalar
+                                             :collection_id (:id folder)
+                                             :dataset_query (sum-query :venues :price)}]
+      (let [ids    (map :entity_id [folder sub metric])
+            before (app-db/read-current)]
+        (testing "trash! of a collection moves its subtree and its items to the trash"
+          (trash! :collection (:entity_id folder))
+          (is (= [nil nil nil] (map #(current %1 %2) [:collection :collection :metric] ids)))
+          (is (every? :archived (t2/select [:model/Collection :archived] :id [:in (map :id [folder sub])])))
+          (is (t2/select-one-fn :archived :model/Card (:id metric))))
+        (testing "a write of the trashed collection restores it alone, at its place"
+          (write! :collection (:entity_id folder) (get before (:entity_id folder)))
+          (is (= (get before (:entity_id folder)) (current :collection (:entity_id folder))))
+          (is (nil? (current :collection (:entity_id sub))))
+          (is (nil? (current :metric (:entity_id metric)))))
+        (testing "a write of each item under it restores the item"
+          (write! :collection (:entity_id sub) (get before (:entity_id sub)))
+          (write! :metric (:entity_id metric) (get before (:entity_id metric)))
+          (is (= (select-keys before ids) (select-keys (app-db/read-current) ids))))))))
+
+;;; ---------------------------------------------------- Places ----------------------------------------------------
+
+(deftest move-to-the-root-level-test
+  (testing "a write with no place moves an item to the root level of its namespace"
+    (mt/with-temp [:model/Collection         outer   {:name "Outer" :namespace "snippets" :location "/"}
+                   :model/Collection         inner   {:name "Inner" :namespace "snippets" :location (children-location outer)}
+                   :model/Collection         leaf    {:name "Leaf" :namespace "snippets" :location (children-location inner)}
+                   :model/NativeQuerySnippet snippet {:name          "Root move snippet"
+                                                      :content       "1 = 1"
+                                                      :collection_id (:id inner)}]
+      (let [inner-item (current :collection (:entity_id inner))]
+        (testing "a collection, with its subtree"
+          (write! :collection (:entity_id inner) (assoc inner-item :place nil))
+          (is (nil? (:place (current :collection (:entity_id inner)))))
+          (is (= "/" (t2/select-one-fn :location :model/Collection (:id inner))))
+          (is (= (str "/" (:id inner) "/") (t2/select-one-fn :location :model/Collection (:id leaf))))
+          (is (= (:entity_id inner) (:place (current :collection (:entity_id leaf))))))
+        (testing "a snippet"
+          (write! :snippet (:entity_id snippet) (assoc (current :snippet (:entity_id snippet)) :place nil))
+          (is (nil? (:place (current :snippet (:entity_id snippet)))))
+          (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet (:id snippet))))))))
+  (testing "a collection that is not a fixed root cannot be at the root level"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (mt/with-temp [:model/Collection folder {:name     "Folder"
+                                               :type     "library-metrics"
+                                               :location (children-location metrics)}]
+        (is (= :place (refusal #(write! :collection (:entity_id folder)
+                                        (assoc (current :collection (:entity_id folder)) :place nil)))))
+        (is (= (children-location metrics) (t2/select-one-fn :location :model/Collection (:id folder))))))))
+
+(deftest refused-writes-write-nothing-test
+  (collections.tu/with-library [{:keys [metrics data]}]
+    (mt/with-temp [:model/Card       model-metric {:name          "Total price"
+                                                   :type          :metric
+                                                   :display       :scalar
+                                                   :collection_id (:id metrics)
+                                                   :dataset_query (sum-query :venues :price)}
+                   :model/Collection trashed      {:name     "Trashed"
+                                                   :type     "library-metrics"
+                                                   :location (children-location metrics)
+                                                   :archived true}
+                   :model/Collection outside      {:name "Outside" :location "/"}]
+      (let [item   (metric-item model-metric (:entity_id metrics) "New")
+            table  (table-key :venues)
+            tables #(t2/select-one [:model/TableUserSettings :is_published :collection_id] :table_id (mt/id :venues))
+            before (tables)]
+        (is (= :invalid-content (refusal #(instance/write! (store :metric) new-metric-id (assoc item :kind :snippet)))))
+        (is (= :invalid-content (refusal #(write! :metric new-metric-id (update item :attrs dissoc :query)))))
+        (is (= :invalid-content (refusal #(instance/write! (store :metric) new-metric-id (assoc item :refs #{})))))
+        (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place (:entity_id trashed))))))
+        (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place (:entity_id outside))))))
+        (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place "lbNoSuchCollection001")))))
+        (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place nil)))))
+        (is (not (t2/exists? :model/Card :entity_id new-metric-id)))
+        (is (= :environment (refusal #(write! :published-table [(db-name) "PUBLIC" "NO_SUCH_TABLE"]
+                                              {:kind :published-table :name "None" :place (:entity_id data)
+                                               :attrs {}}))))
+        (is (= :environment (refusal #(write! :published-table table
+                                              {:kind  :published-table :name "Venues" :place (:entity_id data)
+                                               :attrs {:description "Places"
+                                                       :fields      {:NO_SUCH_FIELD {:display_name "None"}}}}))))
+        (is (= before (tables)))))))
+
+;;; ------------------------------------------------ Published tables -----------------------------------------------
+
+(deftest published-table-write-test
+  (collections.tu/with-library [{:keys [data]}]
+    (t2/with-transaction [_ nil {:rollback-only true}]
+      (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
+      (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-set :model/Field :table_id (mt/id :venues))])
+      (let [id      (table-key :venues)
+            item    {:kind  :published-table
+                     :name  "Places"
+                     :place (:entity_id data)
+                     :attrs {:description "Places to eat."
+                             :fields      {:PRICE       {:display_name "Price level" :semantic_type "type/Category"}
+                                           :CATEGORY_ID {:fk_target (field-key :categories :id)}}}}
+            refs    #(assoc % :refs (format.kinds/refs :published-table id (:attrs %)))]
+        (is (nil? (current :published-table id)))
+        (testing "a write publishes the table into its place, with the values that users set"
+          (write! :published-table id item)
+          (is (= (refs item) (current :published-table id)))
+          (is (= (mt/id :categories :id)
+                 (t2/select-one-fn :fk_target_field_id :model/FieldUserSettings :field_id (mt/id :venues :category_id)))))
+        (testing "an absent field setting is cleared"
+          (let [changed (update-in item [:attrs :fields] dissoc :PRICE)]
+            (write! :published-table id changed)
+            (is (= (refs changed) (current :published-table id)))))
+        (testing "a name equal to the table's own display name is no user value"
+          (let [own     (t2/select-one-fn :display_name :model/Table (mt/id :venues))
+                changed (assoc item :name own)]
+            (write! :published-table id changed)
+            (is (= (refs changed) (current :published-table id)))
+            (is (nil? (t2/select-one-fn :display_name :model/TableUserSettings :table_id (mt/id :venues))))))
+        (testing "a consistent visibility type and data layer, written together, read back"
+          (let [changed (update item :attrs assoc :visibility_type "hidden" :data_layer "hidden")]
+            (write! :published-table id changed)
+            (is (= (refs changed) (current :published-table id)))
+            (write! :published-table id item)
+            (is (= (refs item) (current :published-table id)))))
+        (testing "trash! unpublishes the table, and a write publishes it again"
+          (trash! :published-table id)
+          (is (nil? (current :published-table id)))
+          (write! :published-table id item)
+          (is (= (refs item) (current :published-table id))))))))
+
+;;; ---------------------------------------------------- Snippets ---------------------------------------------------
+
+(deftest snippet-write-test
+  (mt/with-temp [:model/Collection         folder {:name "Writes" :namespace "snippets" :location "/"}
+                 :model/NativeQuerySnippet base   {:name "Base for library writes" :content "x > 1"}
+                 :model/NativeQuerySnippet combo  {:name          "Combo for library writes"
+                                                   :collection_id (:id folder)
+                                                   :content       "{{snippet: Base for library writes}} AND y = 2"}]
+    (let [item (current :snippet (:entity_id combo))
+          id   "lbWriteSnippet0000001"]
+      (testing "a new snippet with a reference to another snippet"
+        (write! :snippet id (assoc item :name "Copy for library writes"))
+        (is (= (assoc item :name "Copy for library writes") (current :snippet id)))
+        (is (= #{[:snippet (:entity_id base)]} (:refs (current :snippet id)))))
+      (testing "a change of the content and of the description"
+        (let [changed (-> item
+                          (assoc :name "Copy for library writes")
+                          (assoc :attrs {:content "z = 3" :description "Plain."}))]
+          (write! :snippet id changed)
+          (is (= (assoc changed :refs #{}) (current :snippet id)))))
+      (testing "trash! and a restore"
+        (trash! :snippet id)
+        (is (nil? (current :snippet id)))
+        (write! :snippet id (assoc item :name "Copy for library writes"))
+        (is (= (assoc item :name "Copy for library writes") (current :snippet id)))))))
+
+;;; ----------------------------------------------------- Laws -----------------------------------------------------
+
+(defn- rows
+  "Every column of the app DB rows that hold the content of the items of `ids` of the synced snapshot."
+  [s]
+  (let [ids (keys s)]
+    {:cards       (t2/select :report_card :entity_id [:in (filter string? ids)] {:order-by [:id]})
+     :collections (t2/select :collection :entity_id [:in (filter string? ids)] {:order-by [:id]})
+     :snippets    (t2/select :native_query_snippet :entity_id [:in (filter string? ids)] {:order-by [:id]})
+     :tables      (t2/select :metabase_table_user_settings {:order-by [:table_id]})
+     :fields      (t2/select :metabase_field_user_settings {:order-by [:field_id]})}))
+
+(deftest write-of-current-content-changes-no-row-test
+  (testing "GetPut: a write of the current content of each item changes no row, not even a time stamp"
+    (collections.tu/with-library [{:keys [data metrics]}]
+      (mt/with-temp [:model/Card              _ {:name                   "Price"
+                                                 :type                   :metric
+                                                 :display                :scalar
+                                                 :description            "The sum."
+                                                 :visualization_settings {:graph.metrics ["sum"]}
+                                                 :collection_id          (:id metrics)
+                                                 :dataset_query          (sum-query :venues :price)}
+                     :model/Collection        f {:name "Filters" :namespace "snippets" :location "/"}
+                     :model/NativeQuerySnippet _ {:name "Getput snippet" :collection_id (:id f) :content "{{x}} > 1"}
+                     :model/TableUserSettings _ {:table_id      (mt/id :venues)
+                                                 :is_published  true
+                                                 :collection_id (:id data)
+                                                 :description   "Places."}
+                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}]
+        (let [s      (app-db/read-current)
+              before (rows s)]
+          (doseq [[id item] (sort-by (comp str key) s)]
+            (instance/write! (store (:kind item)) id item))
+          (is (= before (rows s)))
+          (is (= s (app-db/read-current))))))))
+
+(deftest take-theirs-over-a-local-change-test
+  (testing "a write of the pushed content over a local rename gives the pushed content, and one row has the identity"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (mt/with-temp [:model/Card card {:name          "Pushed name"
+                                       :type          :metric
+                                       :display       :scalar
+                                       :collection_id (:id metrics)
+                                       :dataset_query (sum-query :venues :price)}]
+        (let [pushed (current :metric (:entity_id card))]
+          (t2/update! :model/Card (:id card) {:name "Local name"})
+          (write! :metric (:entity_id card) pushed)
+          (is (= pushed (current :metric (:entity_id card))))
+          (is (= 1 (t2/count :model/Card :entity_id (:entity_id card)))))))))

@@ -10,6 +10,8 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.portable :as portable]
+   [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.scope :as scope]
    [metabase.models.serialization :as serdes]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]))
 
@@ -122,10 +124,176 @@
                tables
                contents))))
 
+(defn- table-of-key
+  "The table row (`{:id :db :schema :table :display_name :collection_id}`) of natural key `k`, or nil."
+  [k]
+  (some #(when (= k (table-key %)) %) (library-branching.db/tables-by-key [k])))
+
+(defn- the-table
+  "[[table-of-key]] of `id`; throws ::instance/refused when this instance has no such table."
+  [id]
+  (or (table-of-key id)
+      (instance/refuse! :environment id "This instance has no table with this natural key.")))
+
+(defn current-published-table
+  "The content of the in-scope published table `id`, after a lock on its settings row and the settings rows of its
+  fields, or nil."
+  [id]
+  (when-let [table (table-of-key id)]
+    (library-branching.db/lock-table-settings (:id table))
+    (when (scope/in-scope? :published-table id)
+      (get (read-published-tables [id]) id))))
+
+(defn- field-ids
+  "`{[name ...] field-id}`: the path of names from the top-level field down to each field of table `table-id`. Of two
+  fields with one path, the active one."
+  [table-id]
+  (let [fields (library-branching.db/table-fields table-id)
+        by-id  (into {} (map (juxt :id identity)) fields)
+        path   (fn [field]
+                 (loop [at field, names ()]
+                   (if-let [parent (get by-id (:parent_id at))]
+                     (recur parent (cons (:name at) names))
+                     (vec (cons (:name at) names)))))]
+    (into {}
+          (map (juxt path :id))
+          (sort-by #(boolean (:active %)) fields))))
+
+(defn- flatten-fields
+  "`{[name ...] settings}`: the settings of each entry of the `:fields` attribute `fields`, by the path of names."
+  ([fields] (flatten-fields [] fields))
+  ([path fields]
+   (into {}
+         (mapcat (fn [[k entry]]
+                   (let [path (conj path (subs (str k) 1))]
+                     (cons [path (dissoc entry :fields)]
+                           (flatten-fields path (:fields entry))))))
+         fields)))
+
+(defn- field-id-of-key
+  "The id of the field of natural key `field-key`; throws ::instance/refused for item `id` when there is none."
+  [id field-key]
+  (let [table (table-of-key (vec (take 3 field-key)))]
+    (or (when table (get (field-ids (:id table)) (vec (drop 3 field-key))))
+        (instance/refuse! :environment id (str "This instance has no field " (pr-str field-key) ".")
+                          {:field field-key}))))
+
+(defn- with-flag
+  "`changes` with `column` set to `v`, and its flag in `flags`, if any, set to whether `v` is a value."
+  [changes flags column v]
+  (cond-> (assoc changes column v)
+    (contains? flags column) (assoc (get flags column) (some? v))))
+
+(defn- field-changes
+  "The settings row columns that turn the field settings `old` into `new`, for item `id`."
+  [id old new]
+  (reduce (fn [changes k]
+            (let [v (get new k)]
+              (if (= :fk_target k)
+                (with-flag changes warehouse-schema-overlay/field-user-settings-flags :fk_target_field_id
+                  (some->> v (field-id-of-key id)))
+                (with-flag changes warehouse-schema-overlay/field-user-settings-flags k v))))
+          {}
+          (filter #(not= (get old %) (get new %)) (into (set (keys old)) (keys new)))))
+
+(defn- field-writes
+  "`[[field-id changes] ...]`: the settings row changes of the fields of table `table-id` that turn the `:fields`
+  attribute `old` into `new`, for item `id`. Throws ::instance/refused for a field that the table does not have."
+  [id table-id old new]
+  (let [old (flatten-fields old)
+        new (flatten-fields new)
+        ids (field-ids table-id)]
+    (into []
+          (keep (fn [path]
+                  (let [field-id (or (get ids path)
+                                     (instance/refuse! :environment id (str "The table has no field " (pr-str path) ".")
+                                                       {:field path}))
+                        changes  (field-changes id (get old path) (get new path))]
+                    (when (seq changes) [field-id changes]))))
+          (sort (filter #(not= (get old %) (get new %)) (into (set (keys old)) (keys new)))))))
+
+(defn- write-field!
+  [[field-id changes]]
+  (if (library-branching.db/field-settings-exist? field-id)
+    (library-branching.db/update-field-settings! field-id changes)
+    (library-branching.db/insert-field-settings! (assoc changes :field_id field-id))))
+
+(def ^:private keyword-columns
+  "The table settings columns whose model transform takes a keyword, not its name."
+  #{:entity_type :visibility_type :field_order :data_layer :data_source :data_authority})
+
+(defn- column-value
+  "The settings row value of table column `k` for the document value `v`."
+  [k v]
+  (cond-> v
+    (and (string? v) (contains? keyword-columns k)) keyword))
+
+(defn- settings-row
+  [table-id]
+  (first (library-branching.db/table-user-settings-by-table-id [table-id])))
+
+(defn- update-table-settings!
+  "Sets the settings row columns `changes` of table `table-id`. Metabase keeps `visibility_type` and `data_layer` as
+  one choice: a save of one sets the other to the value that it implies, and a save of both is refused. So a change
+  of both is two saves, `data_layer` first, and the second save is left out when the first one gave the content's
+  `visibility_type`."
+  [table-id changes]
+  (let [save!  (fn [u]
+                 (if (library-branching.db/table-settings-exist? table-id)
+                   (library-branching.db/update-table-settings! table-id u)
+                   (library-branching.db/insert-table-settings! (assoc u :table_id table-id))))
+        visibility (select-keys changes [:visibility_type :visibility_type_set])]
+    (if (every? (partial contains? changes) [:visibility_type :data_layer])
+      (do (save! (apply dissoc changes (keys visibility)))
+          (when (not= (:visibility_type changes)
+                      (some-> (settings-row table-id) :visibility_type))
+            (save! visibility)))
+      (save! changes))))
+
+(defn write-published-table!
+  "Makes the content of published table `id` equal to `item`, by the contract of `instance/write!`: the table is
+  published into the collection `place`, and the values that users set on it and on its fields are those of `item`."
+  [id {:keys [name place attrs] :as item}]
+  (content/check-item! :published-table id item)
+  (let [table  (the-table id)
+        _      (library-branching.db/lock-table-settings (:id table))
+        _      (when (nil? place)
+                 (instance/refuse! :place id "A published table is in a collection of the Library."))
+        parent (tree/place-collection id place)
+        old    (get (read-published-tables [id]) id)
+        flags  warehouse-schema-overlay/table-user-settings-flags
+        sync   (library-branching.db/table-row (:id table))
+        attrs* (dissoc attrs :fields)
+        old*   (dissoc (:attrs old) :fields)
+        changes (cond-> (reduce (fn [m k] (with-flag m flags k (column-value k (get attrs* k))))
+                                {}
+                                (disj (content/changed-attrs format.published-table/spec old* attrs*) :fields))
+                  (not= name (:name old))
+                  (assoc :display_name (when (not= name (:display_name sync)) name))
+
+                  (not (and (= (:id parent) (:collection_id table))
+                            (scope/in-scope? :published-table id)))
+                  (assoc :is_published true :collection_id (:id parent)))]
+    (let [fields (field-writes id (:id table) (:fields (:attrs old)) (:fields attrs))]
+      (when (seq changes)
+        (update-table-settings! (:id table) changes))
+      (run! write-field! fields))
+    nil))
+
+(defn trash-published-table!
+  "Unpublishes table `id`: a published table leaves the Library as an archive of its collection makes it leave.
+  The values that users set stay."
+  [id]
+  (when-let [table (table-of-key id)]
+    (library-branching.db/lock-table-settings (:id table))
+    (when (scope/in-scope? :published-table id)
+      (update-table-settings! (:id table) {:is_published false :collection_id nil}))
+    nil))
+
 (def kind-store
   "The `KindStore` of published tables."
   (reify instance/KindStore
     (read-all [_ ids] (read-published-tables ids))
-    (current [_ _id] (instance/not-yet! `instance/current))
-    (write! [_ _content] (instance/not-yet! `instance/write!))
-    (trash! [_ _id] (instance/not-yet! `instance/trash!))))
+    (current [_ id] (current-published-table id))
+    (write! [_ id item] (library-branching.db/do-in-transaction #(write-published-table! id item)))
+    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-published-table! id)))))
