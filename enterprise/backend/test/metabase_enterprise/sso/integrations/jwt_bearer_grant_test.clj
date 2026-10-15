@@ -197,6 +197,25 @@
         (is (not (t2/exists? :model/User :email email)))
         (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))))))
 
+(deftest exchange-refusal-reason-test
+  (testing "a refused login tells the caller why in error_description"
+    (with-jwt-bearer-setup!
+      (is (=? {:error "invalid_grant", :error_description "This login is only for personal accounts."}
+              (:body (token-response 400 {:assertion (assertion {:email (t2/select-one-fn :email :model/User
+                                                                                          :id config/internal-mb-user-id)})})))))))
+
+(deftest exchange-refusal-withheld-reason-test
+  (with-jwt-bearer-setup!
+    (let [email   "jwt-bearer-withheld@metabase.com"
+          refusal (fn [claims]
+                    (:body (token-response 400 {:assertion (assertion (assoc claims :email email))})))]
+      (testing "a JWT that fails verification gets a fixed description instead of the verifier's message"
+        (is (= {:error "invalid_grant", :error_description "The JWT could not be verified."}
+               (refusal {:exp (- (buddy-util/now) 60)}))))
+      (testing "a failure Metabase didn't write gets the generic description, with nothing from the database"
+        (is (= {:error "invalid_grant", :error_description "The token request is invalid."}
+               (refusal {:first_name (apply str (repeat 255 "x"))})))))))
+
 (deftest discovery-test
   (testing "discovery lists the grant while the token endpoint takes it"
     (with-jwt-bearer-setup!

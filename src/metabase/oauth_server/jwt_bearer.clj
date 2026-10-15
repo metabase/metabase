@@ -53,21 +53,40 @@
                      :error-description (str "The resource must be the MCP endpoint, "
                                              (oauth-server/mcp-resource-url))}))))
 
+(def ^:private own-reason-errors
+  "The `:error`s of a refused JWT login whose `:message` Metabase wrote for the caller."
+  #{:non-personal-user :missing-email :invalid-tenant})
+
+(defn- refusal-description
+  "The `error_description` for a refused JWT login, or nil to leave the token endpoint's generic one.
+
+  The login's `message` goes back only when Metabase wrote it for the caller: the login returned one of
+  [[own-reason-errors]], or threw with a 4xx `status-code`. A JWT that fails verification gets a fixed description,
+  since the verifier's message is library text."
+  [{:keys [error status-code message]}]
+  (cond
+    (= :invalid-jwt error)
+    "The JWT could not be verified."
+
+    (or (own-reason-errors error) (<= 400 (or status-code 0) 499))
+    (str message)))
+
 (defn- log-in!
   "Logs in the user that the JWT `assertion` names through JWT authentication, without a session, and returns them.
-  Throws `ex-info` carrying `invalid_grant` when the login is refused."
+  Throws `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
   [assertion request]
-  (let [{:keys [success? user message]}
+  (let [{:keys [success? user message] :as result}
         (try
           (auth-identity/login! :provider/jwt (assoc request
                                                      :token               assertion
                                                      :session/skip?       true
                                                      :user/personal-only? true))
           (catch ExceptionInfo e
-            {:message (ex-message e)}))]
+            {:message     (ex-message e)
+             :status-code (:status-code (ex-data e))}))]
     (if success?
       user
-      (throw (ex-info (str message) {:error "invalid_grant"})))))
+      (throw (ex-info (str message) {:error "invalid_grant", :error-description (refusal-description result)})))))
 
 (defn exchange-jwt-for-token!
   "Issues an MCP access token to the user that the JWT `assertion` names, and returns the RFC 6749 token response.
