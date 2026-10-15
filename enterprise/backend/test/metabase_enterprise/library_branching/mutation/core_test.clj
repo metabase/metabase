@@ -161,11 +161,12 @@
         (is (= threads-before (fixture-threads)))))))
 
 (def ^:private redefs-test
-  "A test that redefines a var, then counts down and clamps inside the redefinition, two times. A stop must end the
-  test, not only the assertion that it stops."
+  "A test that redefines a function var and a value var, then counts down and clamps inside the redefinition, two
+  times. A stop must end the test, not only the assertion that it stops."
   (anonymous-test-var! 'redefs-test
                        (fn []
-                         (with-redefs [fixtures/tagged (constantly ::redefined)]
+                         (with-redefs [fixtures/tagged   (constantly ::redefined)
+                                       fixtures/released (atom ::redefined)]
                            (dotimes [_ 2]
                              (is (= :done (fixtures/count-down (fixtures/magnitude -3))))
                              (is (= 5 (fixtures/clamp 1 5 9))))))))
@@ -173,7 +174,8 @@
 (deftest timeout-stops-test
   (testing "a mutation that makes a loop endless times out, and the run stops the loop before it returns"
     (let [threads-before (fixture-threads)
-          vars           [#'fixtures/tagged #'fixtures/magnitude #'fixtures/step #'fixtures/count-down #'fixtures/clamp]
+          vars           [#'fixtures/tagged #'fixtures/released #'fixtures/magnitude #'fixtures/step #'fixtures/count-down
+                          #'fixtures/clamp]
           roots-before   (mapv root vars)
           results        (mut/run-mutations [{:name   :endless-in-target
                                               :doc    "clamp loops forever and calls no var."
