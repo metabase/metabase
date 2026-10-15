@@ -111,8 +111,9 @@
 
   A trash step whose item is already out of scope does nothing. The caller rolls its transaction back unless the result
   is `:ok`. `opts`: `:base` (nil: the instance has no base), `:new-base`, `:digests`, `:head-ok?` (a function of no
-  argument), and `:fence` (a function of no argument that returns nil while the task may commit, else the reason;
-  default: always nil). `ops`:
+  argument), `:fence` (a function of no argument that returns nil while the task may commit, else the reason;
+  default: always nil), and `:on-commit` (a function of no argument that is called last, only for an `:ok` result, so
+  that its writes commit with the apply; default: none). `ops`:
 
   - `:current`     `(fn [kind id])`, as in [[check-steps]];
   - `:key-holders` `(fn [kind k])`, as in [[key-clashes]];
@@ -120,7 +121,7 @@
   - `:stub`        `(fn [kind id content refs])`: the content of a new item without the references `refs`;
   - `:set-base!`   `(fn [expected new digests])`: `instance/set-base!`;
   - `:in-use`      `(fn [trashed])`: from `[{:id :kind}]`, the trashed items that content outside the Library uses."
-  [ops plan {:keys [base new-base digests head-ok? fence] :or {fence (constantly nil)}}]
+  [ops plan {:keys [base new-base digests head-ok? fence on-commit] :or {fence (constantly nil) on-commit (constantly nil)}}]
   (if-let [reason (fence)]
     {:fenced reason}
     (if-let [refused (seq (system-trashes plan))]
@@ -141,7 +142,11 @@
                                 ;; The head is read last, so that the window between this check and the commit is as
                                 ;; short as it can be.
                                 (if (head-ok?)
-                                  {:ok {:trashed-in-use in-use}}
+                                  ;; Last: a write that an app DB rollback cannot undo in full (a setting keeps its new
+                                  ;; value in the cache of this process) happens only when nothing more can refuse the
+                                  ;; apply.
+                                  (do (on-commit)
+                                      {:ok {:trashed-in-use in-use}})
                                   {:rewritten new-base}))))
                           (catch clojure.lang.ExceptionInfo e
                             (let [{:keys [type reason id]} (ex-data e)]

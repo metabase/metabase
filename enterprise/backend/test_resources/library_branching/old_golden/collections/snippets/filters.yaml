@@ -1,0 +1,7 @@
+name: Filters
+entity_id: sNiPpEtFiLtErScOlL001
+slug: filters
+created_at: '2026-10-15T08:58:11.837076Z'
+namespace: snippets
+serdes/meta:
+- model: Collection

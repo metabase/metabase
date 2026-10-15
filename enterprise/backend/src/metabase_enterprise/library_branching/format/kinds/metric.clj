@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.library-branching.format.kinds.common :as common]
    [metabase-enterprise.library-branching.format.kinds.portable :as portable]
+   [metabase-enterprise.library-branching.format.kinds.visualization :as visualization]
    [metabase-enterprise.library-branching.registry :as registry]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
@@ -23,10 +24,12 @@
   {:dir ["library"]})
 
 (defn refs
-  "The references of a metric's query, and of the other attributes that hold portable references (parameters,
-  parameter mappings, dimensions, visualization settings)."
+  "The references of a metric's query, of its visualization settings, and of the other attributes that hold portable
+  references (parameters, parameter mappings, dimensions)."
   [_id attrs]
-  (into (portable/query-refs (:query attrs)) (portable/refs (dissoc attrs :query))))
+  (-> (portable/query-refs (:query attrs))
+      (into (visualization/refs (:visualization_settings attrs)))
+      (into (portable/refs (dissoc attrs :query :visualization_settings)))))
 
 (defn encode-attrs
   "The attributes as the file holds them: the query without its implied keys."

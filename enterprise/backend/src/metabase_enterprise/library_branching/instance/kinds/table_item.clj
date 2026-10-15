@@ -84,7 +84,7 @@
 (defn- place-table!
   "Throws ::instance/refused for item `id` unless `place` is the table key of an in-scope published table."
   [id place]
-  (when-not (some #(= place [(:db %) (:schema %) (:table %)]) (library-branching.db/tables-by-key [place]))
+  (when (empty? (library-branching.db/tables-by-key [place]))
     (instance/refuse! :environment id "This instance has no table with the natural key of the place."
                       {:place place}))
   (when-not (scope/in-scope? :published-table place)

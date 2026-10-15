@@ -55,12 +55,16 @@
     "The base commit id, or nil before the first sync with the repository of the instance.")
   (base-digests [inst commit]
     "The digests that [[set-base!]] stored with the base, `{identity digest}`, when the base is `commit`; else nil.")
+  (table-names [inst table-keys]
+    "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys` on this
+    instance, with no value that a user set. A key of no table of the instance has no entry.")
   (apply-plan! [inst plan opts]
     "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
     precondition, check the unique keys of the written items, then write, link or trash each item, then move the base
     from `(:base opts)` to `(:new-base opts)` with `(:digests opts)` (as [[set-base!]]), then call `(:head-ok? opts)`,
-    which is false when the planned head left the branch history. Returns the result of `apply/apply-plan`: `{:ok
-    {:trashed-in-use m}}`, or one of `{:fenced reason}`, `{:stale ids}`, `{:key-clash findings}`, `{:refused [...]}`,
+    which is false when the planned head left the branch history, then, for a success, `(:on-commit opts)`, whose
+    writes commit with the apply. Returns the result of `apply/apply-plan`: `{:ok {:trashed-in-use m}}`, or one of
+    `{:fenced reason}`, `{:stale ids}`, `{:key-clash findings}`, `{:refused [...]}`,
     `{:base-moved actual}` and `{:rewritten new-base}`, and then writes nothing.")
   (set-base! [inst expected new digests]
     "Moves the base from `expected` to `new` (`expected` nil: there is no base), and stores `digests`, the

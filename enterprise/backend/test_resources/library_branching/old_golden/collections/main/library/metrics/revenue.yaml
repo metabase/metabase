@@ -1,0 +1,9 @@
+name: Revenue
+description: Revenue metrics that finance signs off on.
+entity_id: cOlQuErIeS0ExAmPlE2x1
+slug: revenue
+created_at: '2026-10-15T08:58:11.826663Z'
+parent_id: mEtRiCsCoLlEcTiOnId00
+serdes/meta:
+- model: Collection
+is_remote_synced: true

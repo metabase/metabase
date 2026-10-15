@@ -20,23 +20,33 @@
 
 ;;; ------------------------------------------------------ Commits ------------------------------------------------------
 
+(defn decode-opts
+  "The options of `claims/decode` for a tree that instance `inst` reads: a published table of the old format with no
+  display name has the name that warehouse sync gives it on `inst`."
+  [inst]
+  {:table-names #(instance/table-names inst %)})
+
 (defn decode-commit
-  "`claims/decode` of the tree of `commit` in `store`, with the codecs `codecs`: `{:snapshot s}`, or
-  `{:findings [f ...]}`."
-  [store codecs commit]
-  (claims/decode codecs (store/read-tree store commit)))
+  "`claims/decode` of the tree of `commit` in `store`, with the codecs `codecs` and the options `opts` (default none;
+  see [[decode-opts]]): `{:snapshot s}`, or `{:findings [f ...]}`."
+  ([store codecs commit]
+   (decode-commit store codecs commit {}))
+  ([store codecs commit opts]
+   (claims/decode codecs (store/read-tree store commit) opts)))
 
 (defn check-commit
-  "[[decode-commit]], then the structural findings of its snapshot (`validate/validate`, with the fixed roots of
-  `roots/root-ids`): `{:snapshot s}`, or `{:findings [f ...]}`."
-  [store codecs commit]
-  (let [{s :snapshot :as decoded} (decode-commit store codecs commit)]
-    (if-not s
-      decoded
-      (let [findings (validate/validate s {:roots (roots/root-ids s)})]
-        (if (seq findings)
-          {:findings findings}
-          {:snapshot s})))))
+  "[[decode-commit]] with `opts`, then the structural findings of its snapshot (`validate/validate`, with the fixed
+  roots of `roots/root-ids`): `{:snapshot s}`, or `{:findings [f ...]}`."
+  ([store codecs commit]
+   (check-commit store codecs commit {}))
+  ([store codecs commit opts]
+   (let [{s :snapshot :as decoded} (decode-commit store codecs commit opts)]
+     (if-not s
+       decoded
+       (let [findings (validate/validate s {:roots (roots/root-ids s)})]
+         (if (seq findings)
+           {:findings findings}
+           {:snapshot s}))))))
 
 ;;; ----------------------------------------------------- Decisions -----------------------------------------------------
 
@@ -65,12 +75,28 @@
   [l r]
   (zipmap (distinct (concat (keys l) (keys r))) (repeat ::lost)))
 
+(defn readable?
+  "True iff `commit` is in the local object store of `store`."
+  [store commit]
+  ;; `ancestor?` reads only the local object store, and throws for a commit that is not in it.
+  (try
+    (store/ancestor? store commit commit)
+    (catch clojure.lang.ExceptionInfo _
+      false)))
+
 (defn held?
-  "True iff the pull of head `h` may merge against base commit `b`: `b` is an ancestor of `h`."
-  [store b h]
-  ;; A base that a remote ref other than the branch holds (after a branch switch) is still a safe merge base; this
-  ;; rule does not know it yet, and treats such a base as lost, which gives conflicts and never a lost save.
-  (store/ancestor? store b h))
+  "True iff a branch of the remote of `store` holds commit `b`: `b` is the head, or an ancestor of the head, of a branch.
+  Then a pull may merge against `b`, also when `b` is not an ancestor of the head that it pulls (a switch of branch).
+  `h` is the head of branch `branch` (nil: none), which is checked first; every other branch costs a fresh remote call.
+  Call it after a `store/head`, so that the local object store holds the commits of every branch."
+  [store b branch h]
+  (boolean
+   (and (readable? store b)
+        (or (and h (store/ancestor? store b h))
+            (some (fn [other]
+                    (when-let [x (and (not= other branch) (store/head store other))]
+                      (store/ancestor? store b x)))
+                  (store/branches store))))))
 
 (defn no-base-snapshot
   "The base snapshot of a pull when the instance has no base: empty, so every item of one side only is kept."
@@ -81,13 +107,14 @@
   {})
 
 (defn- base-snapshot
-  "`{:snapshot b}` of base commit `b` for head `h`, or `{:lost reason}` when the three-way merge has no base: `b` is not
-  [[held?]] (`:rewritten`), or its tree does not decode (`:unreadable`). With no base (nil), [[no-base-snapshot]]."
-  [store codecs b h]
+  "`{:snapshot b}` of base commit `b` for head `h` of branch `branch`, decoded with `opts`, or `{:lost reason}` when
+  the three-way merge has no base: `b` is not [[held?]] (`:rewritten`), or its tree does not decode (`:unreadable`).
+  With no base (nil), [[no-base-snapshot]]."
+  [store codecs opts b branch h]
   (cond
-    (nil? b)                {:snapshot (no-base-snapshot)}
-    (not (held? store b h)) {:lost :rewritten}
-    :else                   (let [{:keys [snapshot]} (decode-commit store codecs b)]
+    (nil? b)                       {:snapshot (no-base-snapshot)}
+    (not (held? store b branch h)) {:lost :rewritten}
+    :else                   (let [{:keys [snapshot]} (decode-commit store codecs b opts)]
                               (if snapshot {:snapshot snapshot} {:lost :unreadable}))))
 
 ;;; ------------------------------------------------------- Pull --------------------------------------------------------
@@ -99,7 +126,7 @@
 (defn- apply-merge!
   "Steps 4 to 6 of the pull of head `h` with remote snapshot `r`, against base commit `b`: read, merge, plan and apply,
   again after a stale precondition, at most `retries` times."
-  [inst store branch {:keys [codecs decisions retries fence]} b h r base]
+  [inst store branch {:keys [codecs decisions retries fence on-commit]} b h r base]
   (loop [attempt 0]
     (let [l       (:snapshot (instance/read-snapshot inst))
           lost    (:lost base)
@@ -113,10 +140,14 @@
                                                        ;; The base cache holds the content of the base commit `h`,
                                                        ;; which is `r`, never the merge result.
                                                        :digests  (writer/item-digests codecs r)
+                                                       ;; A plan that merged against `b` needs a branch that still
+                                                       ;; holds `b`; a plan of a lost base did not use it.
                                                        :head-ok? #(boolean
                                                                    (when-let [now (store/head store branch)]
-                                                                     (store/ancestor? store h now)))
-                                                       :fence    (or fence (constantly nil))})]
+                                                                     (and (store/ancestor? store h now)
+                                                                          (or lost (nil? b) (held? store b branch now)))))
+                                                       :fence     (or fence (constantly nil))
+                                                       :on-commit (or on-commit (constantly nil))})]
           (cond
             (:ok result)
             {:result :pulled :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
@@ -141,11 +172,12 @@
   - `{:result :invalid :head h :findings [f ...]}`: the head does not decode, or breaks a structural rule; the
     instance stays on its base;
   - `{:result :conflicts :head h :conflicts [...] :violations [...] :base-lost reason}`: the merge of `merge/merge`
-    failed, and nothing was written. `reason` is nil, `:rewritten` (the base is not in the history of the head) or
+    failed, and nothing was written. `reason` is nil, `:rewritten` (no branch holds the base: [[held?]]) or
     `:unreadable` (the tree of the base does not decode); with a reason, the merge is two-way: every item where the
     instance and the head differ is a conflict;
   - `{:result :stale :head h :ids ids}`: local saves changed the items `ids` during each of the attempts;
-  - `{:result :rewritten :head h}`: the branch was rewritten during each of the attempts;
+  - `{:result :rewritten :head h}`: during each of the attempts, the branch was rewritten, or the base that the
+    merge used left every branch;
   - `{:result :refused :head h :refused [...]}`: the instance refused a write (`instance/refused`);
   - `{:result :key-clash :head h :key-clash [f ...]}`: a written item has the unique key of a row that stays on the
     instance, a trashed row included (the findings of `apply/key-clashes`);
@@ -154,10 +186,11 @@
   - `{:result :no-branch}`: the branch does not exist, and the instance has a base;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
-  Every result other than `:pulled` writes nothing. A pulled or invalid result has `:semantic`, the findings of
-  `semantic/validate` against `:env`, when `opts` has one. `opts`: `:codecs` (default `kinds/codecs`), `:decisions`
-  (the keep-mine decisions, see [[decide]]), `:env` (an environment of `format.manifest`), `:fence` (as in
-  `apply/apply-plan`), `:retries` (default [[default-retries]])."
+  Every result other than `:pulled` writes nothing. The head and the base decode with [[decode-opts]] of `inst`. A
+  pulled or invalid result has `:semantic`, the findings of `semantic/validate` against `:env`, when `opts` has one.
+  `opts`: `:codecs` (default `kinds/codecs`), `:decisions` (the keep-mine decisions, see [[decide]]), `:env` (an
+  environment of `format.manifest`), `:fence` and `:on-commit` (as in `apply/apply-plan`), `:retries` (default
+  [[default-retries]])."
   ([inst store branch]
    (pull! inst store branch {}))
   ([inst store branch opts]
@@ -165,16 +198,17 @@
      (if-not (settings/library-branching-enabled)
        {:result :disabled}
        (loop [rewrites 0]
-         (let [b (instance/base inst)
-               h (store/head store branch)]
+         (let [b       (instance/base inst)
+               h       (store/head store branch)
+               decoding (decode-opts inst)]
            (cond
              (= b h) {:result :up-to-date :head h}
              (nil? h) {:result :no-branch}
              :else
-             (let [{r :snapshot :keys [findings]} (check-commit store codecs h)]
+             (let [{r :snapshot :keys [findings]} (check-commit store codecs h decoding)]
                (if-not r
                  {:result :invalid :head h :findings findings}
-                 (let [result (cond-> (apply-merge! inst store branch opts b h r (base-snapshot store codecs b h))
+                 (let [result (cond-> (apply-merge! inst store branch opts b h r (base-snapshot store codecs decoding b branch h))
                                 env (assoc :semantic (semantic/validate r env)))]
                    (if (and (= :rewritten (:result result)) (< rewrites retries))
                      (recur (inc rewrites))

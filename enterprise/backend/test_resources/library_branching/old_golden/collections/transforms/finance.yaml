@@ -1,0 +1,7 @@
+name: Finance
+entity_id: fInAnCeCoLlEcTiOnId00
+slug: finance
+created_at: '2026-10-15T08:58:11.844795Z'
+namespace: transforms
+serdes/meta:
+- model: Collection

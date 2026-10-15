@@ -10,6 +10,7 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.save-rule :as save-rule]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.core :as collections]
@@ -351,6 +352,32 @@
           (is (= :trashed (:state (current :segment (:entity_id s)))))
           (is (= :trashed (:state (current :measure (:entity_id m)))))
           (is (= expected (run))))))))
+
+(deftest trashed-segment-or-measure-in-use-test
+  (testing "a trashed segment or measure that a question outside the Library uses is in use, with that question; a
+            Library metric and a question in the trash are not users"
+    (collections.tu/with-library [{:keys [data metrics]}]
+      (mt/with-temp [:model/TableUserSettings _ (published :venues data)
+                     :model/Segment           s {:table_id (mt/id :venues) :name "Cheap" :definition (below :venues :price 2)}
+                     :model/Segment           unused {:table_id   (mt/id :venues) :name "Unused"
+                                                      :definition (below :venues :price 3)}
+                     :model/Measure           m {:table_id (mt/id :venues) :name "Total" :definition (sum-of :venues :price)}]
+        (let [query (-> (table-query :venues)
+                        (lib/filter (lib.metadata/segment (mp) (:id s)))
+                        (lib/aggregate (lib.metadata/measure (mp) (:id m))))]
+          (mt/with-temp [:model/Card outside {:name "Outside question" :type :question :dataset_query query}
+                         :model/Card _       {:name "Library metric" :type :metric :collection_id (:id metrics)
+                                              :display :scalar :dataset_query query}
+                         :model/Card _       {:name "Trashed question" :type :question :archived true
+                                              :dataset_query query}]
+            (t2/with-transaction [_ nil {:rollback-only true}]
+              (let [trashed (for [[kind item] [[:segment s] [:segment unused] [:measure m]]]
+                              {:id (:entity_id item) :kind kind})
+                    users   [{:kind :card :id (:entity_id outside) :name "Outside question"}]]
+                (doseq [{:keys [id kind]} trashed]
+                  (trash! kind id))
+                (is (= {(:entity_id s) users (:entity_id m) users}
+                       (in-use/trashed-in-use trashed)))))))))))
 
 (deftest trash-of-the-table-test
   (collections.tu/with-library [{:keys [data]}]

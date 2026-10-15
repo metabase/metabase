@@ -117,12 +117,6 @@
     :edits  [[:replace '(= content (get local id)) true]]
     :expect :survived
     :tests  [#'pull-test/decision-is-bound-to-content-and-head-test]}
-   {:name   :no-base-lost
-    :doc    "The pull makes a three-way merge from a base that is not in the history of the head (a force push): items
-            that the instance did not change take the content of the rewritten head with no conflict."
-    :target `pull/held?
-    :edits  [[:replace '(store/ancestor? store b h) true]]
-    :tests  [#'pull-test/force-push-loses-the-base-test]}
    {:name   :digests-of-merge
     :doc    "The base cache gets the digests of the merge result, not of the head: a kept local change shows as synced."
     :target `pull/apply-merge!
@@ -168,7 +162,18 @@
     :doc    "Merge-branch drops the files that sync does not own."
     :target `merge-branch/merge-foreign
     :edits  [[:replace '{:ok (into {} (filter second) results)} {:ok {}}]]
-    :tests  [#'merge-branch-test/merge-branch-test]}])
+    :tests  [#'merge-branch-test/merge-branch-test]}
+   {:name   :merge-branch-foreign-paths-not-taken
+    :doc    "The layout of merge-branch does not know the paths of the merged foreign files, so an item whose path a
+            foreign file holds takes no suffix, and its file overwrites the foreign file."
+    :target `merge-branch/merge-branch!
+    :edits  [[:replace '(set (keys kept)) #{}]]
+    :tests  [#'merge-branch-test/merge-branch-keeps-a-foreign-file-at-the-path-of-an-item-test]}
+   {:name   :merge-branch-no-foreign-guard
+    :doc    "Merge-branch writes a file at the path of a foreign file that no suffix avoids."
+    :target `merge-branch/merge-branch!
+    :edits  [[:replace '(push/foreign-clashes kept written) []]]
+    :tests  [#'merge-branch-test/merge-branch-never-overwrites-a-foreign-file-test]}])
 
 (deftest pull-mutations-test
   (mut/check mutations {:timeout-ms 180000}))

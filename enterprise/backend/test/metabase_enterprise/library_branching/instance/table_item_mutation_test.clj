@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.table-item :as table-item]
    [metabase-enterprise.library-branching.instance.lock-test :as lock-test]
    [metabase-enterprise.library-branching.instance.table-item-property-test :as property-test]
@@ -76,7 +77,19 @@
             Library."
     :target `table-item/current-item
     :edits  [[:replace '(and row (table-in-tree? (:table_id row))) '(some? row)]]
-    :tests  [#'table-item-test/trash-of-the-table-test]}])
+    :tests  [#'table-item-test/trash-of-the-table-test]}
+   {:name   :segment-not-in-use
+    :doc    "The in-use report knows no segment, so a pull that trashes a segment that a question outside the Library
+            uses does not name the question."
+    :target `in-use/users
+    :edits  [[:replace '(model-of kind) '(get (dissoc model-of :segment) kind)]]
+    :tests  [#'table-item-test/trashed-segment-or-measure-in-use-test]}
+   {:name   :measure-not-in-use
+    :doc    "The in-use report knows no measure, so a pull that trashes a measure that a question outside the Library
+            uses does not name the question."
+    :target `in-use/users
+    :edits  [[:replace '(model-of kind) '(get (dissoc model-of :measure) kind)]]
+    :tests  [#'table-item-test/trashed-segment-or-measure-in-use-test]}])
 
 (deftest table-item-mutations-test
   (mut/check mutations {}))

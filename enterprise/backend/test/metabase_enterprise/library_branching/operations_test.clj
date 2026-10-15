@@ -129,7 +129,7 @@
             (testing "a read-only instance"
               (with-settings {:remote-sync-url url :remote-sync-branch "main" :remote-sync-type :read-only}
                 (is (= {:status-code 400
-                        :message     "Push, pull and merge-branch are only allowed when remote-sync-type is read-write."}
+                        :message     "Push, pull, merge-branch and the branch operations are only allowed when remote-sync-type is read-write."}
                        (start f)))))
             (testing "a task runs"
               (with-settings {:remote-sync-url url :remote-sync-branch "main"}
@@ -194,3 +194,124 @@
                    (is (= [h1 d1] (ptu/commit-parents repo (get-in merged [:outcome :commit]))))
                    (is (= "From dev" (get-in (remote-snapshot "main" (get-in merged [:outcome :commit]))
                                              [(:entity_id metric) :name])))))))))))))
+
+;;; ------------------------------------------------- Branch operations -------------------------------------------------
+
+(defn- remote-head
+  "The head of branch `branch` of the configured repository, or nil."
+  [branch]
+  (repository/do-with-store #(store/head % branch)))
+
+(defn- remote-branches []
+  (repository/do-with-store store/branches))
+
+(deftest branch-operations-refuse-at-the-start-test
+  (with-remote [repo url]
+    (rtu/remote-with-branches! repo ["main"])
+    (tasks.tu/with-no-tasks
+      (mt/with-temporary-setting-values [library-branching-enabled true]
+        (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+          (doseq [[op f] [[:create-branch #(operations/start-create-branch! nil "feature" nil)]
+                          [:switch #(operations/start-switch! nil "dev")]
+                          [:push-to-a-new-branch #(operations/start-push! nil nil "stash")]]]
+            (testing op
+              (testing "while a task runs: the branch setting and the remote stay, and no task starts"
+                (let [running (tasks/start! "pull" nil)]
+                  (is (= {:status-code 400 :message "Library branching task in progress"} (start f)))
+                  (is (= "main" (repository/branch)))
+                  (is (= #{"main"} (remote-branches)))
+                  (is (= running (tasks/newest-task)))
+                  (tasks/cancel! (:id running))))
+              (testing "a read-only instance"
+                (with-settings {:remote-sync-url url :remote-sync-branch "main" :remote-sync-type :read-only}
+                  (is (= {:status-code 400
+                          :message     "Push, pull, merge-branch and the branch operations are only allowed when remote-sync-type is read-write."}
+                         (start f)))))
+              (testing "a branch from an environment variable does not change"
+                (mt/with-temp-env-var-value! [mb-remote-sync-branch "main"]
+                  (is (= {:status-code 400
+                          :message     "The branch comes from the environment variable MB_REMOTE_SYNC_BRANCH, so it does not change."}
+                         (start f))))))))))))
+
+(deftest create-branch-names-a-valid-branch-test
+  (with-remote [repo url]
+    (rtu/remote-with-branches! repo ["main"])
+    (tasks.tu/with-no-tasks
+      (mt/with-temporary-setting-values [library-branching-enabled true]
+        (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+          (doseq [bad ["has space" "a..b" "ends/" "-x/../y"]]
+            (testing (pr-str bad)
+              (is (= {:status-code 400 :message (str "The name " bad " is not a valid branch name.")}
+                     (start #(operations/start-create-branch! nil bad nil))))))
+          (is (nil? (tasks/newest-task))))))))
+
+(deftest branch-operations-on-the-app-db-test
+  (testing (str "create a branch, push to a new branch and switch, each as the worker of its task; app DB " (mdb/db-type))
+    (with-remote [repo url]
+      (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+        (rtu/do-with-library-metric!
+         (fn [metric]
+           (let [eid    (:entity_id metric)
+                 pushed (run-task! "push" #(operations/push-task! % "main" "First push"))
+                 c1     (get-in pushed [:outcome :commit])]
+             (testing "create a branch from main: it starts at the head of main, the instance uses it, and its base
+                      stays"
+               (is (=? {:status "successful" :outcome {:kind "branch-created" :branch "feature" :from "main" :commit c1}}
+                       (run-task! "branch-create" #(operations/create-branch-task! % "feature" "main"))))
+               (is (= c1 (remote-head "feature")))
+               (is (= "feature" (repository/branch)))
+               (is (= c1 (instance/base (operations/instance)))))
+             (testing "a branch that exists is not created again, and the branch setting stays"
+               (is (=? {:status "failed" :error_message "The repository already has a branch main."}
+                       (run-task! "branch-create" #(operations/create-branch-task! % "main" "feature"))))
+               (is (= "feature" (repository/branch))))
+             (testing "push to a new branch: the new branch holds the local change, and the instance uses it with that
+                      commit as its base"
+               (t2/update! :model/Card (:id metric) {:name "Stashed"})
+               (let [stashed (run-task! "push" #(operations/push-task! % "stash" "Stash message" {:new-branch? true}))
+                     s1      (get-in stashed [:outcome :commit])]
+                 (is (=? {:status "successful" :outcome {:kind "pushed" :branch "stash" :commit string?}} stashed))
+                 (is (= s1 (remote-head "stash")))
+                 (is (= [c1] (ptu/commit-parents repo s1)))
+                 (is (= "Stashed" (get-in (remote-snapshot "stash" s1) [eid :name])))
+                 (is (= c1 (remote-head "feature")))
+                 (is (= "stash" (repository/branch)))
+                 (is (= s1 (instance/base (operations/instance))))
+                 (let [m1 (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "From main"))]
+                   (testing "a switch to a branch that does not exist fails, and the branch setting stays"
+                     (is (=? {:status "failed" :error_message "The repository has no branch nope."}
+                             (run-task! "branch-switch" #(operations/switch-task! % "nope"))))
+                     (is (= "stash" (repository/branch)))
+                     (is (= s1 (instance/base (operations/instance)))))
+                   (testing "a switch with a conflict fails, writes nothing, and the branch setting stays"
+                     (t2/update! :model/Card (:id metric) {:name "Local"})
+                     (is (=? {:status "failed" :error_message "The pull has 1 conflict and 0 violations, so nothing was pulled."}
+                             (run-task! "branch-switch" #(operations/switch-task! % "main"))))
+                     (is (= "Local" (t2/select-one-fn :name :model/Card (:id metric))))
+                     (is (= "stash" (repository/branch)))
+                     (is (= s1 (instance/base (operations/instance)))))
+                   (testing "a switch that applies: the base held by the old branch merges three ways, and the branch
+                            setting changes with the base"
+                     (t2/update! :model/Card (:id metric) {:name "Stashed"})
+                     (is (=? {:status "successful" :outcome {:kind "switched" :branch "main" :commit m1 :count 1}}
+                             (run-task! "branch-switch" #(operations/switch-task! % "main"))))
+                     (is (= "From main" (t2/select-one-fn :name :model/Card (:id metric))))
+                     (is (= "main" (repository/branch)))
+                     (is (= m1 (instance/base (operations/instance)))))
+                   (testing "a switch to a branch at the base changes only the branch setting"
+                     (is (=? {:status "successful" :outcome {:kind "branch-created" :commit m1}}
+                             (run-task! "branch-create" #(operations/create-branch-task! % "next" "main"))))
+                     (is (= "next" (repository/branch)))
+                     (is (=? {:status "successful" :outcome {:kind "switched" :branch "main" :commit m1}}
+                             (run-task! "branch-switch" #(operations/switch-task! % "main"))))
+                     (is (= "main" (repository/branch)))
+                     (is (= m1 (instance/base (operations/instance)))))
+                   (testing "a switch whose task ended before it applied writes nothing, and the branch setting stays"
+                     (pltu/commit-snapshot! repo "feature" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "Feature"))
+                     (let [{:keys [id]} (tasks/start! "branch-switch" nil)]
+                       (tasks/cancel! id)
+                       (is (= {:error "The task ended before the pull applied, so nothing was pulled."}
+                              (operations/switch-task! id "feature")))
+                       (is (= "From main" (t2/select-one-fn :name :model/Card (:id metric))))
+                       (is (= "main" (repository/branch)))
+                       (is (= "cancelled" (:status (tasks/task id))))))))))))))))
