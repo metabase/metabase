@@ -380,6 +380,7 @@
 (events/derive! :event/remote-sync-settings-update ::remote-sync-event)
 (events/derive! :event/remote-sync-create-branch ::remote-sync-event)
 (events/derive! :event/remote-sync-stash ::remote-sync-event)
+(events/derive! :event/remote-sync-merge-branch ::remote-sync-event)
 
 (methodical/defmethod events/publish-event! ::remote-sync-event
   [topic event]

@@ -91,7 +91,7 @@
 (defn- forget-report! []
   (reset! @#'scheduled-deploy/last-report nil))
 
-(defn- tick-records-nothing
+(defn- tick-records-nothing!
   "Runs one tick, checks that it starts no task and writes no audit-log entry, and returns its result."
   []
   (let [ids    (task-ids)
@@ -101,7 +101,7 @@
     (is (= [] (entries-after before)) "no audit-log entry")
     result))
 
-(defn- tick-starts-a-deploy
+(defn- tick-starts-a-deploy!
   "Runs one tick, checks that it starts one deploy task, and returns that task as it ended."
   []
   (let [ids    (task-ids)
@@ -129,25 +129,25 @@
                                                        {:display "scalar"
                                                         :query   (ptu/count-query ["test-data" "PUBLIC" table])})))]
                  (testing "a creation instance does not deploy"
-                   (is (= {:result :off} (tick-records-nothing))))
+                   (is (= {:result :off} (tick-records-nothing!))))
                  (with-settings {:remote-sync-url url :remote-sync-branch "main" :remote-sync-type :read-only}
                    (testing "a consumption instance with remote-sync-auto-import off does not deploy"
-                     (is (= {:result :off} (tick-records-nothing)))))
+                     (is (= {:result :off} (tick-records-nothing!)))))
                  (with-settings {:remote-sync-url         url
                                  :remote-sync-branch      "main"
                                  :remote-sync-type        :read-only
                                  :remote-sync-auto-import true}
                    (testing "the head is the base: the tick skips"
-                     (is (= {:result :up-to-date :head c1} (tick-records-nothing))))
+                     (is (= {:result :up-to-date :head c1} (tick-records-nothing!))))
                    (let [h1 (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed base eid "After"))]
                      (testing "a tick while a task runs records nothing"
                        (let [running (tasks/start! "pull" nil)]
-                         (is (= {:result :task-running} (tick-records-nothing)))
+                         (is (= {:result :task-running} (tick-records-nothing!)))
                          (tasks/cancel! (:id running))))
                      (testing "a new head: the tick deploys it, and the audit log has one entry with no user, auto true
                               and the branch"
                        (let [before (newest-entry-id)
-                             task   (tick-starts-a-deploy)]
+                             task   (tick-starts-a-deploy!)]
                          (is (=? {:status "successful" :outcome {:kind "deployed" :commit h1}} task))
                          (is (= [{:topic    :remote-sync-import
                                   :user_id  nil
@@ -157,28 +157,28 @@
                          (is (= "After" (t2/select-one-fn :name :model/Card (:id metric))))
                          (is (= h1 (instance/base (operations/instance))))))
                      (testing "the next tick at the same head records nothing"
-                       (is (= {:result :up-to-date :head h1} (tick-records-nothing))))
-                     (let [red (pltu/commit-snapshot! repo "main" [h1] (with-gone base "lbScheduledGone00001" "NO_SUCH_TABLE"))]
+                       (is (= {:result :up-to-date :head h1} (tick-records-nothing!))))
+                     (let [red (pltu/commit-snapshot! repo "main" [h1] (with-gone base "lbScheduledGone000001" "NO_SUCH_TABLE"))]
                        (testing "a red head is reported once: a failed deploy task, and no task at the next tick"
                          (is (=? {:status        "failed"
                                   :error_message "The head of branch main breaks the rules env-resolves, so nothing was deployed."}
-                                 (tick-starts-a-deploy)))
-                         (is (=? {:result :reported :head red} (tick-records-nothing)))
-                         (is (=? {:result :reported :head red} (tick-records-nothing))))
+                                 (tick-starts-a-deploy!)))
+                         (is (=? {:result :reported :head red} (tick-records-nothing!)))
+                         (is (=? {:result :reported :head red} (tick-records-nothing!))))
                        (testing "a change of the environment changes the findings, so the head is reported again"
                          (mt/with-dynamic-fn-redefs [operations/instance-env (constantly {})]
-                           (is (=? {:status "failed"} (tick-starts-a-deploy)))
-                           (is (=? {:result :reported :head red} (tick-records-nothing)))))
-                       (let [red-2 (pltu/commit-snapshot! repo "main" [red] (with-gone base "lbScheduledGone00001" "NO_SUCH_TABLE"))]
+                           (is (=? {:status "failed"} (tick-starts-a-deploy!)))
+                           (is (=? {:result :reported :head red} (tick-records-nothing!)))))
+                       (let [red-2 (pltu/commit-snapshot! repo "main" [red] (with-gone base "lbScheduledGone000001" "NO_SUCH_TABLE"))]
                          (testing "another red head is reported"
-                           (is (=? {:status "failed"} (tick-starts-a-deploy)))
-                           (is (=? {:result :reported :head red-2} (tick-records-nothing))))
+                           (is (=? {:status "failed"} (tick-starts-a-deploy!)))
+                           (is (=? {:result :reported :head red-2} (tick-records-nothing!))))
                          (testing "after a green head, the same red head is reported again"
                            (let [h2 (pltu/commit-snapshot! repo "main" [red-2] (ptu/renamed base eid "Fixed"))]
-                             (is (=? {:status "successful" :outcome {:kind "deployed" :commit h2}} (tick-starts-a-deploy)))
+                             (is (=? {:status "successful" :outcome {:kind "deployed" :commit h2}} (tick-starts-a-deploy!)))
                              (pltu/reset-branch! repo "main" red-2)
-                             (is (=? {:status "failed"} (tick-starts-a-deploy)))
-                             (is (=? {:result :reported :head red-2} (tick-records-nothing)))
+                             (is (=? {:status "failed"} (tick-starts-a-deploy!)))
+                             (is (=? {:result :reported :head red-2} (tick-records-nothing!)))
                              (is (= "Fixed" (t2/select-one-fn :name :model/Card (:id metric))))
                              (is (= h2 (instance/base (operations/instance))))))))))
                  (with-settings {:remote-sync-url         url
@@ -186,5 +186,5 @@
                                  :remote-sync-type        :read-only
                                  :remote-sync-auto-import true}
                    (testing "a missing branch is reported once"
-                     (is (=? {:status "failed" :error_message "The repository has no branch gone."} (tick-starts-a-deploy)))
-                     (is (= {:result :reported :head nil} (tick-records-nothing))))))))))))))
+                     (is (=? {:status "failed" :error_message "The repository has no branch gone."} (tick-starts-a-deploy!)))
+                     (is (= {:result :reported :head nil} (tick-records-nothing!))))))))))))))
