@@ -38,7 +38,8 @@ git_ fetch -q --no-tags --shallow-since="${grace_days} days ago" origin \
 
 while IFS= read -r id; do
   if grep -qxF "$id" <<<"$on_branch"; then
-    echo "$id awaiting-release"
+    file=$(git_ grep -lE "^[[:space:]]*id:[[:space:]]*['\"]?${id}['\"]?[[:space:]]*$" refs/cross-version/branch -- resources/migrations | head -1)
+    echo "$id awaiting-release ${file#refs/cross-version/branch:}"
   elif [[ -n "$(git_ log --since="${grace_days} days ago" -S "$id" --format=%H refs/cross-version/master -- resources/migrations 2>/dev/null)" ]]; then
     echo "$id awaiting-backport"
   else
