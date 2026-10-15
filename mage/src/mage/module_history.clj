@@ -233,34 +233,44 @@
   [profile args]
   (concat ["mb"] args ["--profile" profile "--json" "--max-bytes" "0"]))
 
+(defn- native-query
+  "The dataset query of native card `id`. Exits when the card is not native, or when `profile` may not change it."
+  [profile id]
+  ;; String keys, so that names inside the query, such as template tags, are sent back as they came.
+  (let [card  (json/parse-string (str/join "\n" (sh! {:quiet? true} (mb profile ["card" "get" (str id) "--full"]))))
+        query (get card "dataset_query")]
+    (when-not (string? (get-in query ["stages" 0 "native"]))
+      (u/exit (c/red (str "Card " id " is not a native query, so its results cannot be refreshed this way")) 1))
+    (when (false? (get card "can_write"))
+      (u/exit (c/red (str "Card " id " cannot be changed with the " profile " profile")) 1))
+    query))
+
 (defn- refresh-card!
-  "Change the SQL of native card `id` so Metabase stops serving the results it cached."
-  [dry-run? profile stamp id]
+  "Change the SQL of native card `id`, whose dataset query is `query`, so Metabase stops serving the results it
+  cached."
+  [dry-run? profile stamp id query]
   (if dry-run?
     (println (c/yellow "Would refresh card") id)
-    ;; String keys, so that names inside the query, such as template tags, are sent back as they came.
-    (let [card  (json/parse-string (str/join "\n" (sh! {:quiet? true} (mb profile ["card" "get" (str id) "--full"]))))
-          query (get card "dataset_query")
-          sql   (get-in query ["stages" 0 "native"])]
-      (when-not (string? sql)
-        (u/exit (c/red (str "Card " id " is not a native query, so its results cannot be refreshed this way")) 1))
-      (let [tmp  (fs/create-temp-dir {:prefix "module-history"})
-            body (str (fs/path tmp "card.json"))]
-        (try
-          (spit body (json/generate-string
-                      {"dataset_query" (assoc-in query ["stages" 0 "native"] (refreshed-sql sql stamp))}))
-          (sh! {:quiet? true} (mb profile ["card" "update" (str id) "--file" body]))
-          (finally
-            (fs/delete-tree tmp))))
+    (let [tmp  (fs/create-temp-dir {:prefix "module-history"})
+          body (str (fs/path tmp "card.json"))]
+      (try
+        (spit body (json/generate-string
+                    {"dataset_query" (update-in query ["stages" 0 "native"] refreshed-sql stamp)}))
+        (sh! {:quiet? true} (mb profile ["card" "update" (str id) "--file" body]))
+        (finally
+          (fs/delete-tree tmp)))
       (println (c/green "Refreshed card") id))))
 
 (defn- publish-to-metabase!
+  "Replace the upload tables, then refresh the cards. Every card is fetched and checked first, a dry run's too, so a
+  card that cannot be refreshed stops the run before any table changes."
   [dry-run? dir {:keys [profile uploads cards]}]
-  (doseq [[file table-id] (sort uploads)]
-    (change! dry-run? (mb profile ["upload" "replace" (str table-id) "--file" (str (fs/path dir file))])))
-  (let [stamp (str (.truncatedTo (Instant/now) ChronoUnit/SECONDS))]
-    (doseq [id cards]
-      (refresh-card! dry-run? profile stamp id))))
+  (let [queries (mapv #(native-query profile %) cards)
+        stamp   (str (.truncatedTo (Instant/now) ChronoUnit/SECONDS))]
+    (doseq [[file table-id] (sort uploads)]
+      (change! dry-run? (mb profile ["upload" "replace" (str table-id) "--file" (str (fs/path dir file))])))
+    (doseq [[id query] (map vector cards queries)]
+      (refresh-card! dry-run? profile stamp id query))))
 
 ;;;; Publishing
 
