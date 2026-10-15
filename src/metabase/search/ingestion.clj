@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.db :as search.db]
@@ -26,8 +27,10 @@
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
 (def ^:private message-delay-ms
-  "The time a message should wait before coming off the queue.
-  This delay exists to ensure the data is fully committed before indexing."
+  "The time a message waits before coming off the queue.
+  Updates made in a transaction are queued when it commits, see [[ingest-maybe-async!]].
+  The delay is a head start for a write in a transaction `mdb/do-after-commit` cannot see, such as a raw JDBC one.
+  Such a write is still missed if its transaction stays open longer than the delay."
   100)
 
 (def ^:private listener-name
@@ -203,10 +206,12 @@
        (filter some?)
        (reduce + 0)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-updates*
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)
@@ -289,7 +294,8 @@
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to run synchronously for testing."
+  Can also be forced to run synchronously for testing.
+  Async updates are queued when the outermost transaction commits, and dropped if it rolls back."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
@@ -297,10 +303,13 @@
      (if sync?
        (bulk-ingest! updates)
        (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
+         ;; The worker reads rows back on its own connection, so it cannot see them before the commit.
+         (mdb/do-after-commit
+          (fn []
+            (doseq [update updates]
+              (log/trace "Queuing update" update)
+              (queue/put-with-delay! queue message-delay-ms update))
+            (track-queue-size!)))
          true)))))
 
 (defn wait-for-idle!

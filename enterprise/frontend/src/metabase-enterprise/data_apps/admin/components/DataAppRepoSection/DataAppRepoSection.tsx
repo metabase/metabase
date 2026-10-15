@@ -28,8 +28,8 @@ export const DataAppRepoSection = ({ isConfigured, url }: Props) => (
         miw={0}
         px="lg"
         py="sm"
-        bg="background-secondary"
-        bd="1px solid var(--mb-color-border)"
+        bg="background_page-secondary"
+        bd="1px solid var(--mb-color-border-neutral)"
         bdrs="sm"
         visibleFrom="sm"
       >
@@ -43,7 +43,7 @@ export const DataAppRepoSection = ({ isConfigured, url }: Props) => (
         </Text>
       </Group>
 
-      <Button component={Link} to={REMOTE_SYNC_SETTINGS_PATH} variant="default">
+      <Button component={Link} to={REMOTE_SYNC_SETTINGS_PATH} size="lg">
         {t`Go to Git sync settings`}
       </Button>
     </Group>

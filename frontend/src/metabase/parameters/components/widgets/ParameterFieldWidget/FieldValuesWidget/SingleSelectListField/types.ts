@@ -10,5 +10,4 @@ export interface SingleSelectListFieldProps {
   onSearchChange?: (value: string) => void;
   placeholder?: string;
   isDashboardFilter?: boolean;
-  checkedColor?: string;
 }

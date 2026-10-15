@@ -1,12 +1,17 @@
 import cx from "classnames";
 import _ from "underscore";
 
+import {
+  EntityIcon,
+  type EntityIconProps,
+} from "metabase/common/components/EntityIcon";
 import type { IconProps } from "metabase/ui";
-import { Ellipsified } from "metabase/ui";
+import { Ellipsified, Text } from "metabase/ui";
+import { maybeColor } from "metabase/ui/utils/colors";
 
 import type { BaseSelectListItemProps } from "./BaseSelectListItem";
 import { BaseSelectListItem } from "./BaseSelectListItem";
-import { ItemIcon, ItemRoot, ItemTitle } from "./SelectListItem.styled";
+import S from "./SelectListItem.module.css";
 
 export interface SelectListItemProps extends Omit<
   BaseSelectListItemProps,
@@ -42,32 +47,55 @@ export function SelectListItem({
 
   return (
     <BaseSelectListItem
-      as={ItemRoot}
-      className={cx(classNames.root, className)}
+      className={cx(
+        S.grid,
+        { [S.hasLeftIcon]: !!icon, [S.hasRightIcon]: !!rightIcon },
+        classNames.root,
+        className,
+      )}
       {...otherProps}
       name={name}
       aria-label={name}
-      hasLeftIcon={!!icon}
-      hasRightIcon={!!rightIcon}
     >
       {icon && (
         <ItemIcon
           iconUrl={iconUrl}
-          className={classNames.icon}
           {...iconProps}
+          className={iconProps.className ?? classNames.icon}
         />
       )}
-      <ItemTitle
-        className={classNames.label}
+      <Text
+        className={cx(S.title, classNames.label)}
         fw="bold"
         lh="normal"
         data-testid="option-text"
       >
         <Ellipsified>{name}</Ellipsified>
-      </ItemTitle>
+      </Text>
       {rightIconProps.name && (
-        <ItemIcon className={classNames.icon} {...rightIconProps} />
+        <ItemIcon
+          {...rightIconProps}
+          className={rightIconProps.className ?? classNames.icon}
+        />
       )}
     </BaseSelectListItem>
+  );
+}
+
+function ItemIcon({
+  color = "core-brand",
+  className,
+  style,
+  ...props
+}: EntityIconProps) {
+  return (
+    <EntityIcon
+      {...props}
+      className={cx(S.icon, className)}
+      style={{
+        "--select-list-item-icon-color": maybeColor(color),
+        ...style,
+      }}
+    />
   );
 }

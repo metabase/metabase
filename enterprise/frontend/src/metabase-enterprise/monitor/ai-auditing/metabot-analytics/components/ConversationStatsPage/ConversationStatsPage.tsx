@@ -2,13 +2,20 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { dayjs } from "metabase/dayjs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { queryToSearch, useLocation, useNavigate } from "metabase/router";
+import {
+  Navigate,
+  queryToSearch,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "metabase/router";
 import {
   Button,
   Flex,
@@ -19,12 +26,14 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { RouteContent } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
 import {
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
 import {
   ConversationFilters,
+  filterUrlStateConfig,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import {
@@ -37,6 +46,7 @@ import {
   VIEW_USAGE_LOG,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
+import { useHasData } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useHasData";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { BreakoutChart } from "./BreakoutChart";
@@ -48,13 +58,14 @@ import { DataComplexityCards } from "./DataComplexityCards";
 import {
   type StatsFilters,
   type UsageStatsMetric,
+  buildCountQuery,
   buildGroupBreakoutQuery,
   buildSourceBreakoutQuery,
   buildTenantBreakoutQuery,
   tableForMetric,
 } from "./query-utils";
 import type { ChartDataSources, ChartProps } from "./types";
-import { statsUrlStateConfig } from "./utils";
+import { DEFAULT_USAGE_STATS_METRIC, parseUsageStatsMetric } from "./utils";
 
 const sourceTitles: Record<UsageStatsMetric, string> = {
   get conversations() {
@@ -128,6 +139,18 @@ const tenantTitles: Record<UsageStatsMetric, string> = {
   },
 };
 
+const emptyStateTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`No conversations`;
+  },
+  get messages() {
+    return t`No messages`;
+  },
+  get tokens() {
+    return t`No token usage`;
+  },
+};
+
 const buildSourceQuery = (opts: StatsFilters & ChartDataSources) =>
   buildSourceBreakoutQuery({ ...opts, breakoutColumn: "source_name" });
 
@@ -145,9 +168,32 @@ const labelUnknownIpAddress = (value: unknown) =>
 
 export function ConversationStatsPage() {
   const location = useLocation();
+  const params = useParams();
+  const metric = parseUsageStatsMetric(params.metric);
+
+  if (metric === undefined) {
+    return (
+      <Navigate
+        to={`${Urls.monitorAiAuditingUsageMetric(DEFAULT_USAGE_STATS_METRIC)}${location.search}`}
+        replace
+      />
+    );
+  }
+
+  return <UsageStats metric={metric} />;
+}
+
+type UsageStatsProps = {
+  metric: UsageStatsMetric;
+};
+
+function UsageStats({ metric }: UsageStatsProps) {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [{ date, user, group, tenant, metric }, { patchUrlState }] =
-    useUrlState(location, statsUrlStateConfig);
+  const [{ date, user, group, tenant }, { patchUrlState }] = useUrlState(
+    location,
+    filterUrlStateConfig,
+  );
 
   const {
     dateFilter,
@@ -181,6 +227,24 @@ export function ConversationStatsPage() {
     tenantId,
     metric,
   };
+
+  const { provider, table, groupMembersTable } = sharedChartProps;
+  const countQuery = useMemo(
+    () =>
+      provider && table && groupMembersTable
+        ? buildCountQuery({
+            provider,
+            table,
+            groupMembersTable,
+            dateFilter,
+            userId,
+            groupId,
+            tenantId,
+          })
+        : null,
+    [provider, table, groupMembersTable, dateFilter, userId, groupId, tenantId],
+  );
+  const { currentCount, error } = useHasData(countQuery);
 
   const tenantNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -266,6 +330,15 @@ export function ConversationStatsPage() {
     [navigateToConversations, tenantOptions],
   );
 
+  const handleMetricChange = (value: string | null) => {
+    if (value) {
+      navigate({
+        pathname: Urls.monitorAiAuditingUsageMetric(value),
+        search: location.search,
+      });
+    }
+  };
+
   return (
     <MonitorMain>
       <Stack gap="xl">
@@ -273,11 +346,7 @@ export function ConversationStatsPage() {
           {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
         </MonitorHeaderTitle>
 
-        <Tabs
-          variant="pills"
-          value={metric}
-          onChange={(value) => patchUrlState({ metric: value ?? undefined })}
-        >
+        <Tabs variant="pills" value={metric} onChange={handleMetricChange}>
           <Tabs.List>
             <Tabs.Tab value="conversations">{t`Conversations`}</Tabs.Tab>
             <Tabs.Tab value="tokens">{t`Tokens`}</Tabs.Tab>
@@ -303,65 +372,81 @@ export function ConversationStatsPage() {
       />
 
       <Stack gap="xl">
-        <ConversationsByDayChart
-          {...sharedChartProps}
-          onDimensionClick={handleDayClick}
-        />
-
-        <SimpleGrid cols={2} spacing="xl">
-          <BreakoutChart
+        <RouteContent
+          emptyState={
+            <EmptyState
+              icon="audit"
+              title={emptyStateTitles[metric]}
+              message={t`Try widening the date range or check back once people start using Metabot.`}
+            />
+          }
+          error={error}
+          isInitialLoading={currentCount === undefined}
+          showEmpty={currentCount === 0}
+        >
+          <ConversationsByDayChart
             {...sharedChartProps}
-            titles={sourceTitles}
-            display="bar"
-            buildQuery={buildSourceQuery}
+            onDimensionClick={handleDayClick}
           />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={profileTitles}
-            display="bar"
-            buildQuery={buildProfileQuery}
-          />
-        </SimpleGrid>
 
-        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="xl">
-          {hasTenants && (
+          <SimpleGrid cols={2} spacing="xl">
             <BreakoutChart
               {...sharedChartProps}
-              titles={tenantTitles}
+              titles={sourceTitles}
+              display="bar"
+              buildQuery={buildSourceQuery}
+            />
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={profileTitles}
+              display="bar"
+              buildQuery={buildProfileQuery}
+            />
+          </SimpleGrid>
+
+          <SimpleGrid cols={hasTenants ? 2 : 3} spacing="xl">
+            {hasTenants && (
+              <BreakoutChart
+                {...sharedChartProps}
+                titles={tenantTitles}
+                display="row"
+                buildQuery={buildTenantBreakoutQuery}
+                labelMapper={labelTenantName}
+                onDimensionClick={handleTenantClick}
+                h={500}
+              />
+            )}
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={groupTitles}
               display="row"
-              buildQuery={buildTenantBreakoutQuery}
-              labelMapper={labelTenantName}
-              onDimensionClick={handleTenantClick}
+              buildQuery={(opts) =>
+                buildGroupBreakoutQuery({
+                  ...opts,
+                  excludeAllUsers: !hasTenants,
+                })
+              }
+              onDimensionClick={handleGroupClick}
               h={500}
             />
-          )}
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={groupTitles}
-            display="row"
-            buildQuery={(opts) =>
-              buildGroupBreakoutQuery({ ...opts, excludeAllUsers: !hasTenants })
-            }
-            onDimensionClick={handleGroupClick}
-            h={500}
-          />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={userTitles}
-            display="row"
-            buildQuery={buildUserQuery}
-            onDimensionClick={handleUserClick}
-            h={500}
-          />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={ipAddressTitles}
-            display="row"
-            buildQuery={buildIpAddressQuery}
-            labelMapper={labelUnknownIpAddress}
-            h={500}
-          />
-        </SimpleGrid>
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={userTitles}
+              display="row"
+              buildQuery={buildUserQuery}
+              onDimensionClick={handleUserClick}
+              h={500}
+            />
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={ipAddressTitles}
+              display="row"
+              buildQuery={buildIpAddressQuery}
+              labelMapper={labelUnknownIpAddress}
+              h={500}
+            />
+          </SimpleGrid>
+        </RouteContent>
 
         <DataComplexitySection />
       </Stack>
@@ -399,8 +484,7 @@ export function DataComplexityHeader() {
       await refreshDataComplexityScores().unwrap();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Could not recompute data complexity.`,
@@ -424,7 +508,6 @@ export function DataComplexityHeader() {
 
       <Flex gap="sm" wrap="wrap" align="center">
         <Button
-          variant="default"
           onClick={handleRecompute}
           loading={refreshDataComplexityScoresLoading}
           disabled={refreshDataComplexityScoresLoading}

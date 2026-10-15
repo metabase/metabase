@@ -109,8 +109,6 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: ErQY8K5Tep4xBc3VY_-1e
-  label: window_function___offset
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

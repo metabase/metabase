@@ -181,8 +181,12 @@ const documentsSlice = createSlice({
       } as Card;
 
       const originalCardId = originalCard?.id;
-      if (originalCardId != null && originalCardId > 0) {
-        state.draftCardOriginalIds[draftId] = originalCardId;
+      const savedOriginalId =
+        originalCardId != null && originalCardId < 0
+          ? state.draftCardOriginalIds[originalCardId]
+          : originalCardId;
+      if (savedOriginalId != null && savedOriginalId > 0) {
+        state.draftCardOriginalIds[draftId] = savedOriginalId;
       }
     },
     clearDraftCards: (state) => {

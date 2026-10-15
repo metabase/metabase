@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "metabase/current-user";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_APPLICATION_PERMISSIONS,
@@ -8,7 +9,9 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import applicationPermissionsReducer from "./reducer";
-import getRoutes from "./routes";
+import getRoutes, {
+  registerApplicationPermissionsPagePrefetch,
+} from "./routes";
 import { canAccessSettings, canManageSubscriptions } from "./selectors";
 import {
   monitoringPermissionAllowedPathGetter,
@@ -30,11 +33,13 @@ export function initializePlugin() {
       { name: t`Application`, value: `application` },
     ];
 
-    PLUGIN_APPLICATION_PERMISSIONS.selectors = {
-      canAccessSettings,
-      canManageSubscriptions,
-    };
+    PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessSettings =
+      canAccessSettings;
+    PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions =
+      canManageSubscriptions;
     PLUGIN_REDUCERS.applicationPermissionsPlugin =
       applicationPermissionsReducer;
+
+    registerApplicationPermissionsPagePrefetch();
   }
 }

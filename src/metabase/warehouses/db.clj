@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -46,13 +47,14 @@
   (t2/update! :model/Database database-id {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
-  "The `:id` of the lowest-id non-audit, non-sample, non-destination Database of each engine."
+  "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
   []
   (t2/query {:select   [[:%min.id :id]]
              :from     [(t2/table-name :model/Database)]
              :where    [:and
                         [:= :is_audit false]
                         [:= :is_sample false]
+                        [:= :is_stub false]
                         [:= :router_database_id nil]]
              :group-by [:engine]}))
 
@@ -63,7 +65,7 @@
 (mu/defn fields-exist-for-database?
   "Whether any Field belongs to a Table of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)]))
+  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn delete-childless-fields-for-database!
   "Delete the childless Fields of the Tables of the Database with `database-id`, returning the number deleted."
@@ -101,6 +103,13 @@
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
+(mu/defn delete-query-actions-for-database!
+  "Delete the query Actions whose query runs against the Database with `database-id`, returning the number deleted."
+  [database-id :- ::lib.schema.id/database]
+  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/QueryAction :database_id database-id))]
+    (t2/delete! :model/Action :id [:in action-ids])
+    0))
+
 (mu/defn delete-cards-for-database!
   "Delete the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -115,7 +124,8 @@
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]
+                                                           :order-by [[:%lower.display_name :asc]]}))
 
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
@@ -123,20 +133,22 @@
   (t2/select :model/Table
              :db_id  [:in database-ids]
              :active true
-             {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
 
 (mu/defn active-table-ids-for-database
   "The ids of the active Tables of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Table, :db_id database-id, :active true))
+  (t2/select-pks-set :model/Table, :db_id database-id, :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))
+  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)
+             {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn databases-for-serdes-reducible
-  "A reducible of the Databases to export via serdes: routing destinations and the sample database are always
+  "A reducible of the Databases to export via serdes: routing destinations, stubs and the sample database are always
   excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
   of `filter-ids` when `filter-column` is given."
   [filter-column :- [:maybe :keyword]
@@ -149,10 +161,11 @@
                                 [:= :router_database_id nil]
                                 ;; never export the sample database, regardless of its driver
                                 [:not= :is_sample true]
+                                [:not= :is_stub true]
                                 (when-not include-h2?
                                   [:not= :engine "h2"])]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id))
+  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

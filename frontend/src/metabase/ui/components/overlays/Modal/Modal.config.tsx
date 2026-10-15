@@ -22,6 +22,7 @@ export const modalOverrides = {
       content: cx(Styles.content, ZIndex.Overlay, Animation.popInFromBottom),
       inner: cx(ZIndex.Overlay, Layout.left, Animation.popInFromBottom),
       header: Styles.header,
+      body: Styles.body,
       close: Styles.ModalCloseButton,
     },
   }),
@@ -31,22 +32,24 @@ export const modalOverrides = {
       centered: true,
       size: "lg",
       shadow: "lg_outline",
-      radius: "xs",
-      padding: "lg",
+      radius: "lg",
+      padding: DEFAULT_MODAL_SPACING,
       withinPortal: true,
     },
   }),
 
-  ModalHeader: Modal.Header.extend({
+  // The content is a Paper, which would otherwise use the Paper theme radius
+  ModalContent: Modal.Content.extend({
     defaultProps: {
-      pb: "sm",
+      radius: "lg",
     },
   }),
 
   ModalCloseButton: Modal.CloseButton.extend({
     defaultProps: {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      "aria-label": t`Close`,
+      get "aria-label"() {
+        return t`Close`;
+      },
     },
   }),
 };

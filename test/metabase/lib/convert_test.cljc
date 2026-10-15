@@ -531,6 +531,28 @@
     "2020-10-20T10:20:00Z"
     "10:20:00"))
 
+(deftest ^:parallel ->legacy-MBQL-raw-int-literals-test
+  (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                   (lib/join (lib/join-clause (meta/table-metadata :categories) [(lib/= 1 1)]))
+                   (lib/filter (lib/= 1 1))
+                   (lib/filter (lib/< 4 5))
+                   (lib/filter (lib/between 5 1 10))
+                   (lib/aggregate (lib/count-where (lib/= 2 2)))
+                   (lib/aggregate (lib/sum 3)))
+        legacy (lib.convert/->legacy-MBQL query)]
+    (testing "raw integer literals in comparisons and aggregation arguments stay literals in legacy MBQL"
+      (is (=? {:filter      [:and [:= 1 1] [:< 4 5] [:between 5 1 10]]
+               :aggregation [[:count-where [:= 2 2]]
+                             [:sum 3]]
+               :joins       [{:condition [:= 1 1]}]}
+              (:query legacy))))
+    (testing "raw integer literals survive converting back to MBQL 5"
+      (is (=? {:filters     [[:= {} 1 1] [:< {} 4 5] [:between {} 5 1 10]]
+               :aggregation [[:count-where {} [:= {} 2 2]]
+                             [:sum {} 3]]
+               :joins       [{:conditions [[:= {} 1 1]]}]}
+              (-> legacy lib.convert/->mbql5 :stages first))))))
+
 (deftest ^:parallel round-trip-filter-expression-test
   (are [expressions filter-expression]
        (test-round-trip {:database 1
@@ -839,18 +861,18 @@
                               :base_type       :type/Integer}]}
 
                  :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
-                 [{:base-type                    :type/Text
-                   :semantic-type                :type/Category
-                   :table-id                     32600
+                 [{:base_type                    :type/Text
+                   :semantic_type                :type/Category
+                   :table_id                     32600
                    :name                         "category"
                    :source                       :breakout
-                   :effective-type               :type/Text
+                   :effective_type               :type/Text
                    :id                           134551
-                   :lib/join-alias "products__via__product_id"
-                   :visibility-type              :normal
-                   :display-name                 "Product → Category"
-                   :field-ref                    [:field 134551 {:source-field 134534}]
-                   :fk-field-id                  134534
+                   :lib/join-alias               "products__via__product_id"
+                   :visibility_type              :normal
+                   :display_name                 "Product → Category"
+                   :field_ref                    [:field 134551 {:source-field 134534}]
+                   :fk_field_id                  134534
                    :fingerprint                  {:global {:distinct-count 4, :nil% 0.0}
                                                   :type   {:type/Text {:percent-json   0.0
                                                                        :percent-url    0.0

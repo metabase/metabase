@@ -16,6 +16,7 @@
 
 ;; Register password provider in the hierarchy
 (auth-identity.hierarchy/derive! :provider/password ::provider/provider)
+(auth-identity.hierarchy/derive! :provider/password ::provider/supports-mfa)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 

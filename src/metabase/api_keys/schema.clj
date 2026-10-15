@@ -106,11 +106,12 @@
    [:updated_by_id        pos-int?]
    [:scope                {:optional true} [:maybe [:ref ::scope]]]
    [:single_collection_id {:optional true} [:maybe pos-int?]]
+   [:last_used_at         {:optional true} [:maybe [:ref ::timestamp]]]
    ;; added by the model's after-select hook
    [:masked_key           {:optional true} :string]])
 
 (defn- insert-schema [map-schema]
-  (into [:map]
+  (into [:map {:closed true}]
         (map (fn [[k properties schema]]
                (if properties
                  [k
@@ -124,7 +125,7 @@
   (insert-schema ::api-key))
 
 (defn- update-schema [map-schema]
-  (into [:map]
+  (into [:map {:closed true}]
         (map (fn [[k properties schema]]
                [k
                 (assoc properties :optional true)

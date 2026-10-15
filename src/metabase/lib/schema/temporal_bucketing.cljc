@@ -145,6 +145,10 @@
   "Valid EXTRACTION units for a datetime. Extraction units return integers!"
   (set/union date-extraction-units time-extraction-units))
 
+(def datetime-integer-extraction-units
+  "Extraction units that return an integer; `:year` is left out because it truncates to a date."
+  (set/difference datetime-extraction-units datetime-truncation-units))
+
 (mr/def ::unit.date-time.extract
   (into [:enum {:error/message    "Valid datetime extraction unit"
                 :decode/normalize common/normalize-keyword}]
@@ -182,7 +186,8 @@
         datetime-interval-units))
 
 (mr/def ::option
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :option/temporal-bucketing]]
    [:unit ::unit]
-   [:default {:optional true} :boolean]])
+   [:default {:optional true} :boolean]
+   [:selected {:optional true} :boolean]])

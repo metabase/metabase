@@ -59,7 +59,8 @@ export function CenterControls(props: CenterControlsProps) {
               className={S.xAxisButton}
               aria-label={t`X-axis controls`}
               variant="subtle"
-              color="text-primary"
+              size="lg"
+              color="neutral"
               leftSection={<Icon name="gear" size={16} />}
               onClick={() => setIsXAxisPopoverOpen(!isXAxisPopoverOpen)}
               data-testid="metrics-viewer-x-axis-controls"

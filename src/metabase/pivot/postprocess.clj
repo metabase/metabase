@@ -11,7 +11,7 @@
    [metabase.pivot.core :as pivot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv empty?]]))
+   [metabase.util.performance :refer [mapv empty?]]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,14 +30,19 @@
 ;; The 'pivot-grouping' is the giveaway. If you ever see that column, you know you're dealing with raw pivot rows.
 
 (mr/def ::pivot-spec
-  [:map
+  [:map {:closed true}
    [:column-titles  [:sequential [:string]]]
    [:pivot-rows     [:sequential [:int {:min 0}]]]
    [:pivot-cols     [:sequential [:int {:min 0}]]]
    [:pivot-grouping-key {:optional true}
     [:int {:min 0}]]
+   [:pivot-grouping {:optional true}
+    [:int {:min 0}]]
    [:pivot-measures {:optional true}
-    [:sequential [:int {:min 0}]]]])
+    [:sequential [:int {:min 0}]]]
+   [:show-row-totals    {:optional true} [:maybe :boolean]]
+   [:show-column-totals {:optional true} [:maybe :boolean]]
+   [:column-sort-order  {:optional true} [:maybe [:map-of [:maybe nat-int?] [:maybe :keyword]]]]])
 
 (def non-pivot-row-group
   "Pivot query results have a 'pivot-grouping' column. Rows whose pivot-grouping value is 0 are expected results.
@@ -154,20 +159,15 @@
   [get-row-section left-headers top-headers measure-count]
   (let [row-count (count left-headers)
         left-width (count (first left-headers))
-        col-count (- (count (first top-headers)) left-width)
-        result (perf/concat
-                top-headers
-                ;; For each row in left-headers...
-                (for [row-idx (range (max row-count 1))]
-                  (let [left-row (nth left-headers row-idx [])
-                        ;; ...get cell values for this row
-                        cell-values (mapcat (fn [col-idx]
-                                              (let [values (get-row-section col-idx row-idx)]
-                                                (map :value values)))
-                                            (range (/ col-count (max measure-count 1))))]
-                    ;; Combine left headers with cell values
-                    (into left-row cell-values))))]
-    (vec result)))
+        col-count (- (count (first top-headers)) left-width)]
+    (reduce (fn [acc row-idx]
+              ;; For each row in left-headers, get its cell values and combine left headers with cell values.
+              (let [left-row (nth left-headers row-idx [])]
+                (conj acc (into left-row
+                                (comp (mapcat (fn [col-idx] (get-row-section col-idx row-idx)))
+                                      (map :value))
+                                (range (/ col-count (max measure-count 1)))))))
+            (vec top-headers) (range (max row-count 1)))))
 
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports. Calls into metabase.pivot.core, which is the

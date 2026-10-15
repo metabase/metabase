@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
@@ -19,9 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
-   [toucan2.core :as t2])
-  (:import
-   (org.postgresql.util PSQLException)))
+   [toucan2.core :as t2]))
 
 (comment
   h2/keep-me
@@ -35,10 +34,12 @@
 
 (defonce ^:private next-sync-at (atom nil))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private ^{:doc "This atom is often reset! in threads, so modifications should be done only when locking it first."}
   *indexes*
   (atom {:active nil, :pending nil}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *mocking-tables* false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
@@ -118,24 +119,50 @@
   (map (comp keyword u/lower-case-en :table_name)
        (search.db/orphan-index-table-names)))
 
+(defn- drop-orphan-index!
+  "Drop the orphan index `table`, returning it, or nil if the drop failed.
+  A failed drop is logged and never propagates."
+  [table]
+  (try
+    (search.db/drop-search-index-table! table)
+    table
+    ;; Deletion could fail if it races with other instances
+    (catch Exception e
+      (log/warnf "Failed to drop orphan index %s: %s" table (ex-message e))
+      nil)))
+
+(defn- drop-orphan-indexes!
+  "Drop every index table that has no metadata row, returning those dropped.
+  Best effort: a failed drop is logged and never propagates."
+  []
+  (let [dropped (into [] (keep drop-orphan-index!) (orphan-indexes))]
+    (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)
+    dropped))
+
+(defn- ddl-commits-caller-transaction?
+  "Whether dropping a table here would commit the transaction the caller is holding."
+  []
+  ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
+  ;; Postgres keeps DDL inside the transaction, where it does no harm.
+  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
+  ;; adding support does not quietly bring the rollback failure back.
+  (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
+
 (defn delete-obsolete-tables!
-  "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
-  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by."
+  "Prune obsolete index metadata, then drop the index tables that leaves unreferenced.
+  Best effort: failures are logged and never propagate.
+  Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
+  Skips the drops when they would commit the caller's transaction, leaving those tables to a later sweep."
   []
   (when-not *mocking-tables*
     (try
       ;; Delete metadata around indexes that are no longer needed.
       (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
       ;; Drop any indexes that are no longer referenced.
-      (let [dropped (volatile! [])]
-        (doseq [table (orphan-indexes)]
-          (try
-            (search.db/drop-search-index-table! table)
-            (vswap! dropped conj table)
-            ;; Deletion could fail if it races with other instances
-            (catch Exception e
-              (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
-        (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped))
+      ;; A sweep outside the caller's transaction gets the rest.
+      (if (ddl-commits-caller-transaction?)
+        (log/debug "Deferring orphan index drops: dropping here would commit the caller's transaction")
+        (drop-orphan-indexes!))
       (catch Exception e
         (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
@@ -170,7 +197,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (search.db/delete-index-metadata-by-name-on-conn! safe-conn (name table-name)))
+                        (search.db/delete-index-metadata-by-name! safe-conn (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -232,13 +259,6 @@
         (dissoc :native_query)
         (merge (specialization/extra-entry-fields entity)))))
 
-(defn- table-not-found-exception? [e]
-  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
-  ;; TODO we should handle the MySQL and MariaDB flavors here too
-  (or (instance? PSQLException (ex-cause e))
-      (= mdb/jdbc-sql-syntax-error-exception-classname
-         (some-> e ex-cause class .getName))))
-
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
            {:table-type                table-type
@@ -258,15 +278,13 @@
     (f)))
 
 (defn- safe-batch-upsert!
-  "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
+  "Upsert a batch into the tracked table, refreshing stale tracking once when the table turns out to be missing.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
-  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
-  continue so the rest of the reindex can finish and activate whatever was successfully written.
-
-  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
+  Returns the table name written, or nil if no table is tracked or the batch is skipped.
+  Throws when the tracked table is missing and the refresh names the same table, when the retry hits a missing
+  table again, and on interruption.
+  Any other failure is logged and the batch is skipped."
   [table-type table-name-fn entries]
-  ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
     (let [upsert! (fn [t]
                     (isolate-write! #(specialization/batch-upsert! t entries))
@@ -278,7 +296,7 @@
           (throw ie))
         (catch Exception e
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (table-not-found-exception? e) (not (exists? table-name)))
+          (if (and (sql-errors/table-not-found? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
@@ -288,7 +306,7 @@
                     (.interrupt (Thread/currentThread))
                     (throw ie))
                   (catch Exception e2
-                    (if (table-not-found-exception? e2)
+                    (if (sql-errors/table-not-found? e2)
                       (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
                       (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
                           (log/errorf "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing: %s"
@@ -373,7 +391,7 @@
                    ;; The table can disappear after we read its name, especially during tests.
                    {search-model (try (isolate-write!
                                        #(search.db/delete-index-rows! table-name search-model (set ids)))
-                                      (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                                      (catch Exception e (if (sql-errors/table-not-found? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))
 
@@ -398,9 +416,11 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-non-active-index! :appdb
+                                                                              (search.spec/index-version-hash)
+                                                                              table-name)]
                   (when (pos? deleted)
-                    (log/infof "Deleted %d pending indices" deleted))))
+                    (log/infof "Deleted %d non-active metadata rows for index %s" deleted table-name))))
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]

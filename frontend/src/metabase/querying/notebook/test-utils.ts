@@ -2,7 +2,11 @@
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
+  ORDERS_ID,
+  PEOPLE_ID,
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
@@ -43,4 +47,39 @@ export function createMockNotebookStep({
     revert: jest.fn(),
     ...opts,
   };
+}
+
+const SAMPLE_TABLE_IDS = {
+  ORDERS: ORDERS_ID,
+  PEOPLE: PEOPLE_ID,
+};
+
+export type SampleTableName = keyof typeof SAMPLE_TABLE_IDS;
+
+export function createSampleTableQuery(
+  tableName: SampleTableName,
+  fieldNames?: string[],
+) {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: SAMPLE_TABLE_IDS[tableName] },
+        fields: fieldNames?.map((name) => ({
+          type: "column",
+          sourceName: tableName,
+          name,
+        })),
+      },
+    ],
+  });
+}
+
+export function getColumnNames(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+) {
+  return columns.map(
+    (column) => Lib.displayInfo(query, stageIndex, column).name,
+  );
 }

@@ -3,7 +3,10 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -281,6 +284,11 @@
                   (throw (ex-info (tru "Cannot enable smtp-override when it is not configured.") {:status-code 400})))
                 (setting/set-value-of-type! :boolean :smtp-override-enabled new-value)))
 
+(defn smtp-override-active?
+  "Whether email goes out through the custom SMTP server instead of the primary one."
+  []
+  (and (smtp-override-enabled) (premium-features/is-hosted?)))
+
 (defsetting email-max-recipients-per-second
   (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
                 Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
@@ -304,7 +312,7 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     #(boolean (email-smtp-host))
+  :getter     #(boolean (if (smtp-override-active?) (email-smtp-host-override) (email-smtp-host)))
   :doc        false)
 
 (defsetting surveys-enabled
@@ -326,11 +334,18 @@
   :default    :external-only
   :export?    false
   :deprecated-name :http-channel-host-strategy
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-allowed-networks new-value)))
+  :setter     :none
+  :doc        (str "Set this when a notification webhook must reach a host on your private network "
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+  :getter     (fn []
+                (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      :external-only))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first webhook.
+(defmethod startup/def-startup-validation! ::http-channel-allowed-networks [_]
+  (http-channel-allowed-networks))
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

@@ -21,7 +21,7 @@
 (mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
   "Get collection named `collection-name`. If no location is given root collection for automatically
    generated transforms is assumed (see `get-or-create-root-container-collection!`)."
-  ([collection-name]
+  ([collection-name :- :string]
    (get-collection collection-name (root-container-location)))
   ([collection-name :- :string
     location        :- :string]

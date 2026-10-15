@@ -21,18 +21,8 @@ import type {
   CacheableModel,
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { rootId } from "./constants/simple";
-
-type ErrorWithMessage = { data: { message: string } };
-export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
-  typeof error === "object" &&
-  error !== null &&
-  "data" in error &&
-  isObject(error.data) &&
-  "message" in error.data &&
-  typeof error.data.message === "string";
 
 const delay = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -218,9 +208,9 @@ export const translateConfigToAPI = <T extends CacheConfig>(config: T): T =>
   translateConfig(config, "toAPI");
 
 export const getPerformanceTabName = (tabId: PerformanceTabId) =>
-  PLUGIN_CACHING.getTabMetadata().find(
-    ({ key }) => key === `performance-${tabId}`,
-  )?.name;
+  PLUGIN_CACHING.getTabMetadata()
+    .find(({ key }) => key === `performance-${tabId}`)
+    ?.getName();
 
 export const getDefaultValueForField = (
   strategyType: CacheStrategyType,

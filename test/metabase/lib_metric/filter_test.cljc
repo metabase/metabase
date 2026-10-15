@@ -811,13 +811,13 @@
   {:lib/type :metadata/metric, :id 2, :name "orders", :display-name "Orders", :table-id 30})
 
 (def ^:private seg-source-segment
-  {:lib/type :metadata/segment, :id 100, :name "Big Orders", :table-id 10, :definition {}})
+  {:lib/type :metadata/segment, :id 100, :name "Big Orders", :table-id 10, :definition nil})
 
 (def ^:private seg-joined-segment
-  {:lib/type :metadata/segment, :id 200, :name "Active Users", :table-id 20, :definition {}})
+  {:lib/type :metadata/segment, :id 200, :name "Active Users", :table-id 20, :definition nil})
 
 (def ^:private seg-second-source-segment
-  {:lib/type :metadata/segment, :id 300, :name "Live Widgets", :table-id 30, :definition {}})
+  {:lib/type :metadata/segment, :id 300, :name "Live Widgets", :table-id 30, :definition nil})
 
 (defn- seg-metric-fetcher [{:keys [id]}]
   (let [wanted (or id #{1 2})]

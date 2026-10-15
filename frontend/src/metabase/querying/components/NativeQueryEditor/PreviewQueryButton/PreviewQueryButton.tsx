@@ -1,14 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import { Icon, Tooltip } from "metabase/ui";
+import type { QueryModalType } from "metabase/redux/store";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
-import PreviewQueryButtonS from "./PreviewQueryButton.module.css";
+import { MODAL_TYPES } from "../../../constants";
 
 interface PreviewQueryButtonProps {
   onOpenModal?: (modalType: QueryModalType) => void;
@@ -23,16 +22,13 @@ export const PreviewQueryButton = ({
 
   return (
     <Tooltip label={t`Preview the query`}>
-      <IconButtonWrapper
-        className={PreviewQueryButtonS.PreviewButton}
+      <ActionIcon
+        variant="subtle"
         aria-label={t`Preview the query`}
         onClick={handleClick}
       >
-        <Icon
-          className={PreviewQueryButtonS.PreviewButtonIcon}
-          name="eye_filled"
-        />
-      </IconButtonWrapper>
+        <Icon name="eye_filled" />
+      </ActionIcon>
     </Tooltip>
   );
 };

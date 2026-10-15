@@ -1,6 +1,7 @@
 import { isNotNull } from "metabase/utils/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
+import type { CartesianChartColumns } from "../../../lib/graph/columns";
 import {
   getCartesianChartColumns,
   getReferencedColumns,
@@ -10,7 +11,6 @@ import { getAreDimensionsAndMetricsValid } from "../../../shared/settings/cartes
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-  VisualizationGridSize,
 } from "../../../types";
 import type { ShowWarning } from "../../types";
 import { OTHER_DATA_KEY } from "../constants/dataset";
@@ -38,6 +38,7 @@ import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
 import type { CartesianChartModel } from "./types";
+import { getLabelValueFormatting } from "./util";
 
 // HACK: when multiple cards (datasets) are combined on a single dashboard card
 // the settings prop of the visualization contains only one set of metrics and dimensions
@@ -98,19 +99,13 @@ export const getCardsReferencedColumns = (
   });
 };
 
-export const getCartesianChartModel = (
+/** The series the chart draws: sorted, capped, and with the tail grouped into "Other". */
+export const getChartSeriesModels = (
   rawSeries: RawSeries,
-  settings: ComputedVisualizationSettings,
+  cardsColumns: CartesianChartColumns[],
   hiddenSeries: string[],
-  renderingContext: RenderingContext,
-  showWarning?: ShowWarning,
-  gridSize?: VisualizationGridSize,
-): CartesianChartModel => {
-  // rawSeries has more than one element when two or more cards are combined on a dashboard
-  const hasMultipleCards = rawSeries.length > 1;
-  const cardsColumns = getCardsColumns(rawSeries, settings);
-  const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
-  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  settings: ComputedVisualizationSettings,
+) => {
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
@@ -122,22 +117,11 @@ export const getCartesianChartModel = (
   // We display an error message if there are more than 100 series models anyway.
   unsortedSeriesModels.splice(101);
 
-  const unsortedDataset = getJoinedCardsDataset(
-    rawSeries,
-    cardsColumns,
-    showWarning,
-  );
-  const dataset = sortDataset(
-    unsortedDataset,
-    settings["graph.x_axis.scale"],
-    showWarning,
-  );
-
+  // rawSeries has more than one element when two or more cards are combined on a dashboard
+  const hasMultipleCards = rawSeries.length > 1;
   const sortedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
     : getSortedSeriesModels(unsortedSeriesModels, settings);
-
-  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
 
   const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
     groupSeriesIntoOther(sortedSeriesModels, settings);
@@ -153,6 +137,38 @@ export const getCartesianChartModel = (
       ),
     );
   }
+
+  return { sortedSeriesModels, seriesModels, groupedSeriesModels };
+};
+
+export const getCartesianChartModel = (
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
+  renderingContext: RenderingContext,
+  showWarning?: ShowWarning,
+): CartesianChartModel => {
+  const hasResponsiveTicks =
+    renderingContext.cartesianSize != null &&
+    renderingContext.cartesianSize !== "fullscreen";
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
+  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  const { sortedSeriesModels, seriesModels, groupedSeriesModels } =
+    getChartSeriesModels(rawSeries, cardsColumns, hiddenSeries, settings);
+
+  const unsortedDataset = getJoinedCardsDataset(
+    rawSeries,
+    cardsColumns,
+    showWarning,
+  );
+  const dataset = sortDataset(
+    unsortedDataset,
+    settings["graph.x_axis.scale"],
+    showWarning,
+  );
+
+  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
@@ -182,7 +198,13 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     isCompactFormatting,
-  } = getFormatters(seriesModels, stackModels, scaledDataset, settings);
+  } = getFormatters(seriesModels, stackModels, scaledDataset, {
+    ...settings,
+    "graph.label_value_formatting": getLabelValueFormatting(
+      settings["graph.label_value_formatting"],
+      hasResponsiveTicks,
+    ),
+  });
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,
@@ -204,7 +226,7 @@ export const getCartesianChartModel = (
       true,
       stackModels,
       isCompactFormatting,
-      gridSize,
+      hasResponsiveTicks,
     );
 
   const trendLinesModel = getTrendLines(

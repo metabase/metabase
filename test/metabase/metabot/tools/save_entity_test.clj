@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -221,3 +222,19 @@
                        :destination {:target_type "collection" :collection_id nil}}))]
         (is (nil? (:data-parts result)))
         (is (re-find #"No generated chart found" (:output result)))))))
+
+(deftest save-entity-errors-test
+  (testing "a dashboard that doesn't exist goes back to the agent as output"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (= "Not found." (:output (save! {:target_type "dashboard" :dashboard_id Integer/MAX_VALUE}))))))
+  (testing "a collection the user can't write to goes back to the agent as output"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection coll {}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= "You don't have permissions to do that."
+                 (:output (save! {:target_type "collection" :collection_id (:id coll)}))))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [queries/create-card! (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                              (save! {:target_type "collection" :collection_id nil})))))))

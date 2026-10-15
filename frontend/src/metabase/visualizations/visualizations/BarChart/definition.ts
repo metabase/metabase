@@ -15,8 +15,9 @@ const BarViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     getUiName: () => t`Bar`,
     identifier: "bar",
     iconName: "bar",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`bar chart`,
+    get noun() {
+      return t`bar chart`;
+    },
     minSize: getMinSize("bar"),
     defaultSize: getDefaultSize("bar"),
     settings: {

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   ACTIVE_STATUS,
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isEmbeddingHubTenancy } from "metabase/common/tenants";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
@@ -52,14 +53,23 @@ export const TenantsListingApp = () => {
 
   const hasNoTenants = data?.data?.length === 0;
 
+  const isEmbeddingHub = isEmbeddingHubTenancy();
+
   return (
-    // Make the layout narrow when there are no tenants
-    <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
-      <Group justify="space-between" w="100%" mb="xl">
-        <Title order={1}>{t`Tenants`}</Title>
+    // Narrower when there are no tenants. 50rem matches the embedding hub's
+    // content column, which mounts this same listing.
+    <Box maw={hasNoTenants ? "50rem" : undefined} mx="auto">
+      <Group
+        justify={isEmbeddingHub ? "flex-end" : "space-between"}
+        w="100%"
+        mb="xl"
+      >
+        {!isEmbeddingHub && <Title order={1}>{t`Tenants`}</Title>}
 
         <Group gap="sm">
-          <TenantsDocsButton />
+          {/* The embedding hub's Tenancy page links to the same docs above the
+              listing, so this would be the second link to one destination. */}
+          {!isEmbeddingHub && <TenantsDocsButton />}
           <EditUserStrategySettingsButton page="tenants" />
         </Group>
       </Group>

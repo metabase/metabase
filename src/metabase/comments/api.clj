@@ -13,7 +13,6 @@
    [metabase.comments.render :as comments.render]
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
-   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -62,28 +61,13 @@
     ::comments.schema/prose-mirror-node]
    (deferred-tru "Comment content must be valid JSON.")))
 
-(def ^:private CommentHighlight
-  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
-  pick out the point — so the client can re-find it in a result set it is separately authorized to
-  read."
-  [:map {:closed true}
-   [:columnName {:optional true} [:maybe :string]]
-   [:dimensions {:optional true}
-    [:maybe [:sequential [:map {:closed true}
-                          [:columnName {:optional true} [:maybe :string]]
-                          [:value      {:optional true} [:ref ::lib.schema.literal/literal]]]]]]])
-
 (def CommentContext
   "Context stored alongside a comment"
   (mu/with-api-error-message
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map {:closed true}
-     [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
-     [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-     [:highlighted           {:optional true} [:maybe CommentHighlight]]
-     [:highlight_label       {:optional true} [:maybe [:string {:max 1000}]]]]]
+    ::comments.schema/comment.context]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
@@ -301,7 +285,7 @@
   "Toggle a reaction on a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [emoji]} :- [:map {:closed true} [:emoji [:string {:min 1 :max 10}]]]]
+   {:keys [emoji]} :- [:map {:closed true} [:emoji ::comments.schema/reaction-emoji]]]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")

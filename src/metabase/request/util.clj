@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
+   [metabase.request.schema :as request.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -68,17 +69,24 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/sdk/v\d+$" uri))
 
+(def ^:private cache-busted-asset-pattern
+  "Matches a file the build emits under `/app/dist`, where the name carries a content hash either as
+  `<name>.<hash>.<ext>` or as `<hash>.<ext>`. Requiring the hash is what makes a far-future cache
+  safe: changed content always arrives at a new URL."
+  #"^/app/dist/(?:.+\.)?[a-f0-9]{8,}(?:\.[a-z0-9]+)+$")
+
+(def ^:private static-font-pattern
+  "Matches a bundled font. Fonts ship at a stable path and are treated as static."
+  #"^/app/fonts/.+\.(?:woff2?|ttf|otf|eot)$")
+
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
-  (and (= request-method :get)
-       (or
-        ;; match requests that are js/css and have a cache-busting hex string
-        (re-matches #"^/app/dist/.+\.[a-f0-9]+\.(js|css)$" uri)
-        ;; any resource that is named as a cache-busting hex string (e.g. images)
-        (re-matches #"^/app/dist/[a-f0-9]+.*$" uri)
-        ;; font files are static and should be cached
-        (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
+  (boolean
+   (and (= request-method :get)
+        uri
+        (or (re-matches cache-busted-asset-pattern uri)
+            (re-matches static-font-pattern uri)))))
 
 (def https-state
   "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a
@@ -109,7 +117,7 @@
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request}]
+  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request} :- ::request.schema/request]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent

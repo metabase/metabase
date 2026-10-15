@@ -1,5 +1,6 @@
 (ns metabase.metabot.agent.core-test
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
@@ -13,14 +14,21 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.features :as features]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -36,12 +44,17 @@
                       (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
                         (thunk))))
 
+(defn- run-agent-loop
+  [opts]
+  (agent/run-agent-loop (merge {:metabot (metabot.config/resolve-metabot metabot.config/internal-metabot-id)}
+                               opts)))
+
 (defn- run-agent-loop!
   "run-agent-loop for side effects, discarding results.
   Runs as admin so the base metabot permission check passes."
   [opts]
   (mt/as-admin
-    (reduce (fn [_ _]) nil (agent/run-agent-loop opts))))
+    (reduce (fn [_ _]) nil (run-agent-loop opts))))
 
 (deftest has-tool-calls-test
   (testing "detects tool calls in parts"
@@ -118,7 +131,7 @@
        (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts tools _tracking-opts _llm-opts]
                                                    (reset! captured (set (keys tools)))
                                                    (mut/mock-llm-response [{:type :text :text "Hello"}]))]
-         (into [] (agent/run-agent-loop
+         (into [] (run-agent-loop
                    {:messages   [{:role :user :content "Open the SQL editor"}]
                     :state      {}
                     :profile-id profile-id
@@ -143,6 +156,55 @@
           (is (contains? tools "create_sql_query"))
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
+
+(defn- run-query-offered-at-turn-start
+  "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
+   whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
+   running a turn. The bindings stand in for the ones the agent loop makes."
+  [conversation-id capabilities]
+  (let [{:keys [tools system-msg]}
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                               :profile-id      :internal
+                               :conversation-id conversation-id
+                               :context         {:capabilities capabilities}}))]
+    {:tool?       (contains? tools "run_query")
+     :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
+     :show-chart? (-> (get tools "construct_notebook_query")
+                      :declaration
+                      deref
+                      (get-in [:parameters :properties])
+                      (contains? :show_chart))}))
+
+(deftest client-claimed-feature-capability-cannot-override-settings-test
+  ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
+      (testing "the same request gets run_query once the admin turns it on"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
+
+(deftest run-query-not-offered-where-others-can-read-the-conversation-test
+  (let [rasta   (mt/user->id :rasta)
+        offered #(run-query-offered-at-turn-start % [])]
+    (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
+                   :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
+                   :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (testing "the user's own conversation offers run_query, says results can be read, and declares show_chart"
+            (is (= {:tool? true, :prompt? true, :show-chart? true} (offered own))))
+          (testing "a conversation other people can read does none of them"
+            (testing "a Slack thread"
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered thread))))
+            (testing "a conversation someone else started"
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
+          (testing "no conversation does none of them"
+            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -200,13 +262,13 @@
                                                                            :sql_query   "SELECT 1"
                                                                            :title       "Results"}}])
                                                             (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
-        (let [parts (into [] (agent/run-agent-loop
+        (let [parts (into [] (run-agent-loop
                               {:messages   [{:role :user :content "Query that database"}]
                                :state      {}
                                :profile-id profile-id
                                :context    {:capabilities    ["permission:write_sql_queries"]
                                             :user_is_viewing [{:type    "code_editor"
-                                                               :buffers [{:id "buf-1"}]}]}}))]
+                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
           {:llm-calls @call-count :parts parts})))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
@@ -260,7 +322,7 @@
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
                                                              [{:type :text :text "Hello"}]))]
-          (let [result (into [] (agent/run-agent-loop
+          (let [result (into [] (run-agent-loop
                                  {:messages   [{:role :user :content "Hi"}]
                                   :state      {}
                                   :profile-id :embedding_next
@@ -276,7 +338,7 @@
                                                       (reset! captured llm-opts)
                                                       (mut/mock-llm-response
                                                        [{:type :text :text "Hello"}]))]
-            (into [] (agent/run-agent-loop
+            (into [] (run-agent-loop
                       {:messages   [{:role :user :content "Hi"}]
                        :state      {}
                        :profile-id :sql
@@ -295,7 +357,7 @@
                                                                      :arguments {:query "test"}}])
                                                                   (mut/mock-llm-response
                                                                    [{:type :text :text "Found results"}]))))]
-            (let [result (into [] (agent/run-agent-loop
+            (let [result (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Search for test"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -319,7 +381,7 @@
                                                                 {:type :usage :model "m"
                                                                  :usage {:promptTokens 1 :completionTokens 64 :totalTokens 65}
                                                                  :finish-reason "length" :raw-finish-reason "max_tokens"}]))]
-            (let [result (into [] (agent/run-agent-loop
+            (let [result (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Hi"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -331,11 +393,28 @@
               (is (some #(and (= :usage (:type %)) (= "length" (:finish-reason %))) result))
               (is (some #(= :data (:type %)) result)
                   "state data part still closes the turn")))))
+      (testing "a turn whose stream failed stops the loop, even with a tool call present"
+        (let [call-count (atom 0)]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (swap! call-count inc)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "search"
+                                                                 :arguments {:query "test"}}
+                                                                {:type :error :errorText "Overloaded"}]))]
+            (let [result (into [] (run-agent-loop
+                                   {:messages   [{:role :user :content "Hi"}]
+                                    :state      {}
+                                    :profile-id :embedding_next
+                                    :context    {}}))]
+              (is (= 1 @call-count))
+              (is (= {:type :finish :finish-reason :error} (last result)))))))
       (testing "handles errors gracefully"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (throw (ex-info "Mock error" {})))]
           (let [result (mt/with-log-level [metabase.metabot.agent.core :fatal]
-                         (into [] (agent/run-agent-loop
+                         (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Hi"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -363,8 +442,8 @@
                                                                                  ((nth responses (dec n)) n))))
                                                       metabot-search/search (constantly [])]
                             (mt/with-log-level [metabase.metabot.agent.core :warn]
-                              (->> (agent/run-agent-loop {:messages [{:role :user :content "Hi"}]
-                                                          :profile-id :embedding_next})
+                              (->> (run-agent-loop {:messages [{:role :user :content "Hi"}]
+                                                    :profile-id :embedding_next})
                                    (into [])
                                    last))))]
         (testing "still calling tools at the cap"
@@ -411,7 +490,7 @@
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
                                                              [{:type :text :text "Test response"}]))]
-          (let [result (into [] (agent/run-agent-loop
+          (let [result (into [] (run-agent-loop
                                  {:messages   [{:role :user :content "Hello"}]
                                   :state      {}
                                   :profile-id :embedding_next
@@ -633,7 +712,7 @@
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
                           (into [] (metabot.persistence/combine-text-parts-xf)
-                                (agent/run-agent-loop
+                                (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
                                   :state      {}
@@ -642,6 +721,167 @@
               (testing "should complete 3 LLM iterations"
                 (is (= 3 @llm-call-count)
                     "Should have exactly 3 LLM calls (search, construct, final text)")))))))))
+
+(defn- chat-completions-chunks
+  "Raw Chat Completions stream chunks for one assistant turn: a tool call when `tool-call` is given, text otherwise."
+  [message-id {:keys [tool-call text]}]
+  [{:id      message-id
+    :model   "anthropic/claude-haiku-4-5"
+    :choices [{:index 0
+               :delta (if tool-call
+                        {:tool_calls [{:index    0
+                                       :id       (:id tool-call)
+                                       :type     "function"
+                                       :function {:name      (:name tool-call)
+                                                  :arguments (json/encode (:arguments tool-call))}}]}
+                        {:content text})}]}
+   {:id      message-id
+    :choices [{:index 0 :delta {} :finish_reason (if tool-call "tool_calls" "stop")}]}])
+
+(deftest replayed-tool-history-reaches-the-provider-adapter-test
+  (testing "a tool call's replayed parts, with their tool-owned result payloads, pass the adapter's request schema"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [requests  (atom [])
+              responses [(chat-completions-chunks "chatcmpl-1"
+                                                  {:tool-call {:id        "call-search-1"
+                                                               :name      "search"
+                                                               :arguments {:semantic_queries ["orders table"]
+                                                                           :keyword_queries  ["orders"]
+                                                                           :entity_types     ["table"]}}})
+                         (chat-completions-chunks "chatcmpl-2" {:text "The orders table has what you need."})]]
+          (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                      http/request            (fn [req]
+                                                                (let [n (count (swap! requests conj req))]
+                                                                  {:status 200 :body (get responses (dec n) [])}))
+                                      metabot-search/search   (fn [_args]
+                                                                [{:id               (mt/id :orders)
+                                                                  :type             "table"
+                                                                  :name             "ORDERS"
+                                                                  :display_name     "Orders"
+                                                                  :description      "Confirmed orders."
+                                                                  :database_id      (mt/id)
+                                                                  :database_schema  "PUBLIC"
+                                                                  :moderated_status nil
+                                                                  :collection       {:id nil :name nil}}])]
+            (let [result      (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                                (into [] (run-agent-loop
+                                          {:messages   [{:role :user :content "Where are the orders?"}]
+                                           :state      {}
+                                           :profile-id :internal
+                                           :context    {}})))
+                  replay-body (some-> (second @requests) :body json/decode+kw)]
+              (is (= [] (filterv #(= :error (:type %)) result)))
+              (is (=? {:type :tool-output :function "search" :duration-ms number?}
+                      (first (filter #(= :tool-output (:type %)) result))))
+              (is (= 2 (count @requests)))
+              (is (=? [{:role       "assistant"
+                        :tool_calls [{:id "call-search-1" :function {:name "search"}}]}
+                       {:role "tool" :tool_call_id "call-search-1" :content string?}]
+                      (filterv #(or (:tool_calls %) (= "tool" (:role %))) (:messages replay-body))))
+              (is (=? {:type :text :text "The orders table has what you need."}
+                      (last (filter #(= :text (:type %)) result)))))))))))
+
+(deftest next-call-ends-on-the-tool-result-test
+  (testing "even when the text before the tool call ends like the start of a link"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [call-count (atom 0)
+            next-input (atom nil)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [{:keys [input]}]
+                                                            (if (= 1 (swap! call-count inc))
+                                                              (mut/mock-llm-response
+                                                               [{:type :text :id "t1" :text "Looking up [Orders"}
+                                                                {:type      :tool-input
+                                                                 :id        "call-1"
+                                                                 :function  "search"
+                                                                 :arguments {:keyword_queries ["orders"]}}])
+                                                              (do (reset! next-input input)
+                                                                  (mut/mock-llm-response [{:type :text :text "Found it."}]))))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})
+          (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
+
+(deftest next-call-replays-link-split-by-reasoning-test
+  (testing "reasoning between two text parts preserves the link and the tool result ends the next input"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [call-count (atom 0)
+            next-input (atom nil)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [{:keys [input]}]
+                                                            (if (= 1 (swap! call-count inc))
+                                                              [{:type :text-start :id "t1"}
+                                                               {:type :text-delta :id "t1" :delta "Looking up [Ord"}
+                                                               {:type :text-end :id "t1"}
+                                                               {:type :reasoning-start :id "r1"}
+                                                               {:type :reasoning-delta :id "r1" :delta "Thinking"}
+                                                               {:type :reasoning-end :id "r1"}
+                                                               {:type :text-start :id "t2"}
+                                                               {:type :text-delta :id "t2" :delta "ers](metabase://model/1)"}
+                                                               {:type :text-end :id "t2"}
+                                                               {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                                                               {:type           :tool-input-delta
+                                                                :toolCallId     "call-1"
+                                                                :inputTextDelta (json/encode {:keyword_queries ["orders"]})}
+                                                               {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]
+                                                              (do (reset! next-input input)
+                                                                  (mut/mock-llm-response [{:type :text :text "Found it."}]))))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})
+          (is (=? [{:type :text :id "t1" :text "Looking up "}
+                   {:type :reasoning :id "r1" :text "Thinking"}
+                   {:type :text :id "t2" :text "[Orders](metabase://model/1)"}
+                   {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                   {:type :tool-output :id "call-1" :function "search"}]
+                  (filterv :type @next-input)))
+          (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
+
+(deftest later-calls-resend-what-the-turn-already-sent-test
+  (testing "edits made during a turn don't change the system prompt, tools or messages its earlier calls sent"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Ops original"}]
+      (mt/as-admin
+        (mt/with-premium-features #{:ai-controls}
+          (mt/with-temporary-setting-values [llm-providers              llm.tu/default-connections
+                                             llm-metabot-provider       "anthropic/claude-opus-5-5"
+                                             metabot-chat-system-prompt "Use British spelling."]
+            (let [requests        (atom [])
+                  semantic-search (atom true)]
+              (mt/with-dynamic-fn-redefs [features/feature-available? (fn [_] @semantic-search)
+                                          claude/claude
+                                          (fn [opts]
+                                            (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
+                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                                  (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
+                                                  (reset! semantic-search false)
+                                                  (mut/mock-llm-response [{:type      :tool-input
+                                                                           :id        "call-1"
+                                                                           :function  "load_skill"
+                                                                           :arguments {:ids ["read-resource"]}}]))
+                                              (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                (into [] (run-agent-loop
+                          {:messages   [{:role :user :content "Help me with this dashboard."}]
+                           :state      {}
+                           :profile-id :internal
+                           :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (let [[{system-1 :system tools-1 :tools messages-1 :messages}
+                       {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
+                  (is (str/includes? (pr-str system-1) "Use British spelling."))
+                  (is (str/includes? (pr-str tools-1) "semantic_queries"))
+                  (is (str/includes? (pr-str messages-1) "Ops original"))
+                  (is (= system-1 system-2))
+                  (is (= tools-1 tools-2))
+                  (is (= messages-1 (take (count messages-1) messages-2)))
+                  (is (=? [{:role "assistant" :content [{:type "tool_use" :name "load_skill"}]}
+                           {:role "user" :content [{:type "tool_result"}]}]
+                          (drop (count messages-1) messages-2))))))))))))
 
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
@@ -683,7 +923,7 @@
                                                                 :database_id  (mt/id)}])]
             (let [{:keys [trace result]} (mt/with-log-level [metabase.metabot.agent.core :warn]
                                            (ait/capture-reducible
-                                            (agent/run-agent-loop
+                                            (run-agent-loop
                                              {:messages   [{:role :user :content "Show me orders"}]
                                               :state      {}
                                               :profile-id :internal
@@ -742,7 +982,7 @@
                                               {:type :usage :usage {:promptTokens 150 :completionTokens 30}
                                                :model "gpt-4" :id "msg-2"}]))))]
             (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
-                           (into [] (agent/run-agent-loop
+                           (into [] (run-agent-loop
                                      {:messages   [{:role :user :content "test"}]
                                       :state      {}
                                       :profile-id :embedding_next
@@ -776,7 +1016,7 @@
                                               {:type :usage :usage {:promptTokens 200 :completionTokens 40}
                                                :model "model-b" :id "msg-2"}]))))]
             (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
-                           (into [] (agent/run-agent-loop
+                           (into [] (run-agent-loop
                                      {:messages   [{:role :user :content "test"}]
                                       :state      {}
                                       :profile-id :embedding_next
@@ -809,7 +1049,7 @@
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
                       (into [] (metabot.persistence/combine-text-parts-xf)
-                            (agent/run-agent-loop
+                            (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
                               :profile-id :embedding_next
@@ -817,6 +1057,185 @@
                 "Should get the response from the successful retry")
             (is (= 2 @call-count)
                 "Should have called LLM twice (1 failure + 1 success")))))))
+
+(deftest provider-failure-error-part-test
+  (let [api-error    (fn [status error]
+                       (ex-info (str "Anthropic API error (HTTP " status ")")
+                                {:status     status
+                                 :body       {:type "error" :error error}
+                                 :api-error  true
+                                 :provider   "anthropic"
+                                 :error-code :provider-api-error}))
+        credit-error (api-error 400 {:type    "invalid_request_error"
+                                     :message "Your credit balance is too low to access the Anthropic API."})
+        overloaded   {:type "overloaded_error" :message "Overloaded"}
+        error-parts  (fn [model-ref claude-fn]
+                       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                          llm-metabot-provider model-ref]
+                         (mt/with-dynamic-fn-redefs [claude/claude       claude-fn
+                                                     self/retry-delay-ms (constantly 0)]
+                           (mt/with-log-level [metabase.metabot :fatal]
+                             (filterv #(= :error (:type %))
+                                      (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                       :state      {}
+                                                       :profile-id :embedding_next
+                                                       :context    {}}))))))
+        throw-credit (fn [_] (throw credit-error))]
+    (testing "on the customer's own key, the error part says what to fix instead of passing the provider's text on"
+      (is (=? [{:error {:error-code "ai_provider_billing" :message #"Anthropic rejected the request .*"}}]
+              (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6" throw-credit))))
+      (is (=? [{:error {:error-code "ai_provider_billing" :message #"The AI provider rejected the request .*"}}]
+              (mt/with-current-user (mt/user->id :rasta)
+                (error-parts "anthropic/claude-sonnet-4-6" throw-credit)))))
+    (testing "on the managed provider, the error part keeps today's generic shape"
+      (is (= [{:type  :error
+               :error {:message (ex-message credit-error)
+                       :type    (str (type credit-error))
+                       :data    (ex-data credit-error)}}]
+             (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
+    (testing "an outage says to try again later on either connection, whether the request failed or the stream did"
+      (doseq [claude-fn [(fn [_] (throw (api-error 529 overloaded)))
+                         (fn [_] (eduction (claude/claude->aisdk-chunks-xf)
+                                           [{:type "message_start" :message {:id "msg_1"}}
+                                            {:type "error" :error overloaded}]))]]
+        (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"Anthropic is having problems .*"}}]
+                (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6" claude-fn))))
+        (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems .*"}}]
+                (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" claude-fn))))))))
+
+(defn- rethrown-api-error!
+  "What an adapter throws when `provider` answers with HTTP `status` and the JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (try
+      (self.core/rethrow-api-error! provider
+                                    (constantly "API error")
+                                    (ex-info "clj-http error"
+                                             {:status  status
+                                              :headers {"content-type" "application/json"}
+                                              :body    (json/encode body)}))
+      (catch clojure.lang.ExceptionInfo e
+        e))))
+
+(def ^:private context-full-copy
+  "This conversation has reached its maximum length and can't continue. Please start a new chat.")
+
+(defn- agent-loop-error-parts!
+  "The `:error` parts of an agent loop on `model-ref` whose provider call throws `e`."
+  [model-ref e]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider model-ref]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
+                                claude/claude         (fn [_] (throw e))]
+      (mt/with-log-level [metabase.metabot.agent.core :fatal]
+        (filterv #(= :error (:type %))
+                 (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                  :state      {}
+                                  :profile-id :embedding_next
+                                  :context    {}}))))))
+
+(def ^:private openrouter-overflow-body
+  "OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+  https://github.com/metabase/metabase/pull/83989)."
+  {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you requested about "
+                          "200001 tokens (1 of text input, 200000 in the output).")
+           :code     400
+           :metadata {:provider_name nil}}})
+
+(def ^:private openrouter-relayed-overflow-body
+  "OpenRouter's 400 body when every upstream refused a prompt over the window (probed 2026-10-13,
+  https://github.com/metabase/metabase/pull/83989). The overflow text is only in the upstream's own body, a JSON
+  string in `metadata.raw`."
+  {:error {:message  "Provider returned error"
+           :code     400
+           :metadata {:raw             (str "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\","
+                                            "\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"},"
+                                            "\"request_id\":\"req_011\"}")
+                      :provider_name   "Azure"
+                      :is_byok         false
+                      :previous_errors [{:code          400
+                                         :message       "Provider returned error"
+                                         :provider_name "Amazon Bedrock"
+                                         :raw           "{\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}"}]}}})
+
+(deftest agent-loop-context-overflow-error-part-test
+  (testing "a 400 for a request over the window becomes a \"full\" error part with the web copy"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-overflow-body]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-relayed-overflow-body]
+             ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
+             ["anthropic/claude-sonnet-4-6" "anthropic"
+              {:type  "error"
+               :error {:type    "invalid_request_error"
+                       :message "prompt is too long: 208310 tokens > 200000 maximum"}}]]]
+      (testing provider
+        (let [e     (rethrown-api-error! provider 400 body)
+              parts [{:type  :error
+                      :error {:error-code "ai_provider_context_full" :message context-full-copy}}]]
+          (is (= parts (mt/as-admin (agent-loop-error-parts! model-ref e))))
+          (is (= parts (mt/with-current-user (mt/user->id :rasta)
+                         (agent-loop-error-parts! model-ref e)))))))))
+
+(defn- openrouter-midstream-error-chunks
+  "OpenRouter's documented mid-stream error event carrying `error`, after a first chunk of text.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  its `model`, `provider` and `error` values replaced."
+  [error]
+  [{:id      "gen-abc123"
+    :object  "chat.completion.chunk"
+    :created 1234567890
+    :model   "anthropic/claude-haiku-4.5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:id       "gen-abc123"
+    :object   "chat.completion.chunk"
+    :created  1234567890
+    :model    "anthropic/claude-haiku-4.5"
+    :provider "Anthropic"
+    :error    error
+    :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}])
+
+(defn- agent-loop-streamed-error-parts!
+  "The `:error` parts of an agent loop on OpenRouter whose stream sends the raw Chat Completions `chunks`."
+  [chunks]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4.5"]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                        (eduction (openrouter/openrouter->aisdk-chunks-xf) chunks))]
+      (filterv #(= :error (:type %))
+               (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                :state      {}
+                                :profile-id :embedding_next
+                                :context    {}})))))
+
+(deftest agent-loop-streamed-context-overflow-error-part-test
+  (testing "an overflow OpenRouter streams after its 200 becomes a \"full\" error part with the web copy"
+    (let [chunks (openrouter-midstream-error-chunks {:code     400
+                                                     :message  "Provider returned error"
+                                                     :metadata {:error_type "context_length_exceeded"}})
+          errors [{:error-code "ai_provider_context_full" :message context-full-copy}]]
+      (is (= errors (map :error (mt/as-admin (agent-loop-streamed-error-parts! chunks)))))
+      (is (= errors (map :error (mt/with-current-user (mt/user->id :rasta)
+                                  (agent-loop-streamed-error-parts! chunks)))))))
+  (testing "any other streamed error keeps no error code"
+    (let [error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}]
+      (is (= [error]
+             (map :error (mt/as-admin (agent-loop-streamed-error-parts! (openrouter-midstream-error-chunks error)))))))))
+
+(deftest agent-loop-other-400s-keep-the-generic-error-part-test
+  (testing "a 400 that is not a context overflow keeps the generic error part"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "Bad request"}}]]]
+      (testing (str provider " " (pr-str body))
+        (let [e (rethrown-api-error! provider 400 body)]
+          (is (= [{:type  :error
+                   :error {:message (ex-message e)
+                           :type    (str (type e))
+                           :data    (ex-data e)}}]
+                 (mt/as-admin (agent-loop-error-parts! model-ref e)))))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
@@ -850,7 +1269,8 @@
                                    {:profile-id "internal"})))
         (is (== 2 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5"
-                                    :source "agent"})))
+                                    :source "agent"
+                                    :provider "openrouter"})))
         (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
@@ -876,7 +1296,8 @@
                                    {:profile-id "internal"})))
         (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5"
-                                    :source "agent"})))
+                                    :source "agent"
+                                    :provider "openrouter"})))
         (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
@@ -1057,6 +1478,24 @@
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
 
+(deftest viewing-context-item-id-persists-once-stored-test
+  (let [query  {:database 1 :type :query :query {:source-table 1}}
+        agent  (#'agent/init-agent {:profile-id :internal
+                                    :context    {:user_is_viewing [{:type "adhoc" :query query}]}})
+        memory @(:memory-atom agent)
+        id     (get-in agent [:context :user_is_viewing 0 :id])]
+    (testing "a turn that stores nothing under an ad hoc item's minted id persists no state"
+      (is (nil? (memory/turn-state memory))))
+    (testing "a chart created from the item's query persists the id with the query"
+      (is (= #{id}
+             (-> (#'agent/update-memory memory [{:type   :tool-output
+                                                 :result {:structured-output {:chart-id   "chart-1"
+                                                                              :query-id   id
+                                                                              :query      query
+                                                                              :chart-type :bar}}}])
+                 memory/turn-state
+                 :client-ids))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Profile permission checks
 ;;; ──────────────────────────────────────────────────────────────────
@@ -1091,10 +1530,6 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes}))))
-      (testing "transforms_codegen profile"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-                              (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (nil? (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "document-generate-content profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))
@@ -1103,3 +1538,17 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest eval-only-profile-needs-an-eval-instance-test
+  (let [check!  #'agent/check-metabot-access!
+        sql-yes {:permission/metabot :yes :permission/metabot-sql-generation :yes}]
+    (testing "without the eval setting, internal-sql is refused as an unknown profile, even with every permission"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Unknown profile$" (check! :internal-sql sql-yes)))]
+        (is (= {:status-code 400} (ex-data e)))))
+    (testing "on an eval instance it needs the SQL generation permission, as before"
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (nil? (check! :internal-sql sql-yes)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :internal-sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))))
+    (testing "the setting changes nothing for a profile the product offers"
+      (is (nil? (check! :internal {:permission/metabot :yes}))))))

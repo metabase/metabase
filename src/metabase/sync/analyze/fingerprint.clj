@@ -46,7 +46,7 @@
     (sync.db/set-fields-fingerprint-version! ids i/*latest-fingerprint-version*)))
 
 (mr/def ::FingerprintStats
-  [:map
+  [:map {:closed true}
    [:no-data-fingerprints   ms/IntGreaterThanOrEqualToZero]
    [:failed-fingerprints    ms/IntGreaterThanOrEqualToZero]
    [:updated-fingerprints   ms/IntGreaterThanOrEqualToZero]
@@ -60,6 +60,7 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *truncation-size*
   "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
   text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
@@ -98,6 +99,7 @@
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
   are analyzed and have fingerprints."
@@ -158,7 +160,7 @@
         (empty-stats-map 0)))))
 
 (def ^:private LogProgressFn
-  [:=> [:cat :string [:schema i/TableInstance]] :any])
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
 (mu/defn- fingerprint-fields-for-db!*
   "Invokes `fingerprint-table!` on every table in `database`"
@@ -168,7 +170,7 @@
 
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn
-    continue?       :- [:=> [:cat ::FingerprintStats] :any]]
+    continue?       :- [:=> [:cat ::FingerprintStats] :boolean]]
    (let [tables (if *refingerprint?*
                   (sync-util/refingerprint-reducible-sync-tables database)
                   (sync-util/reducible-sync-tables database))]

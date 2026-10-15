@@ -23,8 +23,9 @@ const ScatterViz: Omit<
   getUiName: () => t`Scatter`,
   identifier: "scatter",
   iconName: "bubble",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`scatter plot`,
+  get noun() {
+    return t`scatter plot`;
+  },
   minSize: getMinSize("scatter"),
   defaultSize: getDefaultSize("scatter"),
   settings: {

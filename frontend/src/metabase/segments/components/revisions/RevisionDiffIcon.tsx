@@ -1,6 +1,5 @@
+import { Icon } from "metabase/ui";
 import type { FieldDiff } from "metabase-types/api";
-
-import { EditIcon, ErrorIcon, SuccessIcon } from "./RevisionDiff.styled";
 
 interface Props {
   diff: FieldDiff;
@@ -10,13 +9,13 @@ export function RevisionDiffIcon({ diff }: Props) {
   const { before, after } = diff;
 
   if (before != null && after != null) {
-    return <EditIcon name="pencil" size={16} />;
+    return <Icon name="pencil" size={16} c="core-brand" />;
   }
 
   if (before != null) {
-    return <ErrorIcon name="add" size={16} />;
+    return <Icon name="add" size={16} c="feedback-negative" />;
   }
 
   // TODO: "minus" icon
-  return <SuccessIcon name="add" size={16} />;
+  return <Icon name="add" size={16} c="core-summarize" />;
 }

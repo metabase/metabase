@@ -1,0 +1,174 @@
+{:cases
+ [{:name     "no list at all"
+   :sql      "SELECT * FROM users WHERE id = 1"
+   :expected :unchanged}
+
+  {:name     "a small VALUES clause"
+   :sql      "SELECT * FROM (VALUES (1, 'a'), (2, 'b'), (3, 'c')) AS t(id, name)"
+   :expected :unchanged}
+
+  {:name     "a small IN list"
+   :sql      "SELECT * FROM t WHERE id IN (1, 2, 3)"
+   :expected :unchanged}
+
+  {:name     "an IN list at the hundred-item threshold"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 100 :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN list one item past the threshold"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 101 :suffix ")"}
+   :expected "SELECT * FROM t WHERE id IN (NULL)"}
+
+  {:name     "a long IN list, with the rest of the predicate kept"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :suffix ") AND active = true"}
+   :expected "SELECT * FROM t WHERE id IN (NULL) AND active = true"}
+
+  {:name     "a long IN list of strings"
+   :build    {:prefix "SELECT * FROM t WHERE name IN (" :item "'name %d'" :count 200 :suffix ")"}
+   :expected "SELECT * FROM t WHERE name IN (NULL)"}
+
+  {:name     "the keyword's own casing is kept"
+   :build    {:prefix "SELECT * FROM t WHERE id in (" :item "%d" :count 200 :suffix ")"}
+   :expected "SELECT * FROM t WHERE id in (NULL)"}
+
+  {:name     "NOT IN"
+   :build    {:prefix "SELECT * FROM t WHERE id NOT IN (" :item "%d" :count 200 :suffix ")"}
+   :expected "SELECT * FROM t WHERE id NOT IN (NULL)"}
+
+  {:name     "a long list nested inside a subquery that is itself left alone"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (SELECT id FROM other WHERE x IN (" :item "%d" :count 200 :suffix "))"}
+   :expected "SELECT * FROM t WHERE id IN (SELECT id FROM other WHERE x IN (NULL))"}
+
+  {:name     "an IN list holding a column reference"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :extra "col_ref" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN list holding a function call"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :extra "foo(1)" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN list holding a parameter"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :extra "?" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN list holding a template tag"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :extra "{{param}}" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN list holding a typed literal"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :extra "DATE '2024-01-01'" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN list holding NULL"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 200 :extra "NULL" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an IN whose argument is a subquery"
+   :sql      "SELECT * FROM t WHERE id IN (SELECT id FROM other)"
+   :expected :unchanged}
+
+  {:name     "a long VALUES clause keeps its column count and its alias"
+   :build    {:prefix "SELECT * FROM (VALUES " :item "(%d, 'name%d', %d)" :count 200 :suffix ") AS t(id, name, score)"}
+   :expected {:includes ["VALUES (NULL, NULL, NULL)" "AS t(id, name, score)"]
+              :excludes ["name0"]}}
+
+  {:name     "a VALUES clause at the hundred-tuple threshold"
+   :build    {:prefix "SELECT * FROM (VALUES " :item "(%d, %d)" :count 100 :suffix ") AS t(x, y)"}
+   :expected :unchanged}
+
+  {:name     "a VALUES clause one tuple past it"
+   :build    {:prefix "SELECT * FROM (VALUES " :item "(%d, %d)" :count 101 :suffix ") AS t(x, y)"}
+   :expected "SELECT * FROM (VALUES (NULL, NULL)) AS t(x, y)"}
+
+  {:name     "the VALUES keyword's own casing is kept"
+   :build    {:prefix "select * from (values " :item "(%d)" :count 200 :suffix ") as t(x)"}
+   :expected "select * from (values (NULL)) as t(x)"}
+
+  {:name     "INSERT ... VALUES"
+   :build    {:prefix "INSERT INTO foo VALUES " :item "(%d, 'x')" :count 200 :suffix ""}
+   :expected {:includes ["VALUES (NULL, NULL)"] :excludes ["(0, 'x')"]}}
+
+  {:name     "VALUES inside a string literal"
+   :sql      "SELECT 'INSERT INTO foo VALUES (1,2,3)' AS example FROM bar"
+   :expected :unchanged}
+
+  {:name     "a column named values"
+   :sql      "SELECT values FROM my_table WHERE values > 10"
+   :expected :unchanged}
+
+  {:name     "the VALUES keyword not followed by a parenthesis"
+   :sql      "SELECT * FROM t WHERE col IN (SELECT values FROM other)"
+   :expected :unchanged}
+
+  {:name     "a tuple IN list under the comma threshold"
+   :build    {:prefix "SELECT * FROM t WHERE (a, b) IN (" :item "(%d, %d)" :count 50 :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "a tuple IN list over it"
+   :build    {:prefix "SELECT * FROM t WHERE (a, b) IN (" :item "(%d, %d)" :count 51 :suffix ")"}
+   :expected "SELECT * FROM t WHERE (a, b) IN (NULL)"}
+
+  {:name     "a tuple NOT IN list"
+   :build    {:prefix "SELECT * FROM t WHERE (a, b) NOT IN (" :item "(%d, '%d')" :count 150 :suffix ")"}
+   :expected "SELECT * FROM t WHERE (a, b) NOT IN (NULL)"}
+
+  {:name     "a tuple list holding a tuple that is not simple"
+   :build    {:prefix "SELECT * FROM t WHERE (a, b) IN (" :item "(%d, %d)" :count 150 :extra "(x, 1)" :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an ARRAY literal at the threshold"
+   :build    {:prefix "SELECT * FROM t WHERE id = ANY(ARRAY[" :item "%d" :count 100 :suffix "])"}
+   :expected :unchanged}
+
+  {:name     "an ARRAY literal past it"
+   :build    {:prefix "SELECT * FROM t WHERE id = ANY(ARRAY[" :item "%d" :count 101 :suffix "])"}
+   :expected "SELECT * FROM t WHERE id = ANY(ARRAY[NULL])"}
+
+  {:name     "a lower-case array of strings"
+   :build    {:prefix "SELECT array[" :item "'%d'" :count 150 :suffix "] AS a FROM t"}
+   :expected "SELECT array[NULL] AS a FROM t"}
+
+  {:name     "an array holding a column reference"
+   :build    {:prefix "SELECT ARRAY[" :item "%d" :count 150 :extra "col_ref" :suffix "] FROM t"}
+   :expected :unchanged}
+
+  {:name     "an array subscript is not an array literal"
+   :sql      "SELECT arr[1:5] FROM t"
+   :expected :unchanged}
+
+  {:name     "a word ending in IN, and a cast to INT"
+   :sql      "SELECT CAST(x AS INT) FROM a JOIN (SELECT * FROM b) c ON a.id = c.id"
+   :expected :unchanged}
+
+  {:name     "a column named margin"
+   :sql      "SELECT margin FROM t WHERE margin > 10"
+   :expected :unchanged}
+
+  {:name     "a quoted identifier spelled like the keyword"
+   :sql      "SELECT \"in\" FROM t"
+   :expected :unchanged}
+
+  {:name     "an unterminated list"
+   :build    {:prefix "SELECT * FROM t WHERE id IN (" :item "%d" :count 150 :suffix ""}
+   :expected :unchanged}
+
+  {:name     "an unterminated string inside a list"
+   :build    {:prefix "SELECT * FROM t WHERE id IN ('unterminated string, " :item "%d" :count 150 :suffix ")"}
+   :expected :unchanged}
+
+  {:name     "an empty list"
+   :sql      "SELECT * FROM t WHERE id IN ()"
+   :expected :unchanged}
+
+  {:name     "nothing but keywords"
+   :sql      "IN () VALUES ()"
+   :expected :unchanged}
+
+  {:name     "an empty query"
+   :sql      ""
+   :expected :unchanged}
+
+  {:name     "a long list and a long VALUES in one statement"
+   :build    {:prefix "WITH v AS (SELECT * FROM (VALUES " :item "(%d)" :count 200
+              :suffix ") AS t(x)) SELECT * FROM v WHERE x IN (1, 2, 3)"}
+   :expected "WITH v AS (SELECT * FROM (VALUES (NULL)) AS t(x)) SELECT * FROM v WHERE x IN (1, 2, 3)"}]}

@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, ParameterValueOrArray } from "metabase-types/api";
@@ -86,7 +86,7 @@ export function renderLinkURLForClick(
 
       if (
         valueForLinkTemplate == null ||
-        valueForLinkTemplate === NULL_DISPLAY_VALUE
+        valueForLinkTemplate === getNullDisplayValue()
       ) {
         return "";
       }

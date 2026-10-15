@@ -8,7 +8,6 @@ describe("scenarios > custom column > field resolution", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    H.openOrdersTable({ mode: "notebook" });
   });
 
   it("should be possible to resolve fields in custom columns", () => {

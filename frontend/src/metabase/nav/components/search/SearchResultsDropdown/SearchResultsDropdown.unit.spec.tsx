@@ -21,6 +21,13 @@ import {
 
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
 
+// Every test in here otherwise waits out the real 500ms search debounce, which
+// is idle time and nothing these tests assert.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 // Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test
 jest.mock(
   "metabase/nav/components/search/SearchResultsDropdown/constants",

@@ -72,7 +72,7 @@
 (mu/defn- breakouts-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (let [cols (lib.breakout/breakouts-metadata query stage-number)]
     (not-empty
      (concat
@@ -92,7 +92,7 @@
 (mu/defn- fields-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (let [stage             (lib.util/query-stage query stage-number)
         ;; this key is added by [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]; we
         ;; forward it as `:qp/implicit-field?`
@@ -112,7 +112,7 @@
 (mu/defn- summary-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (not-empty
    (concat
     (breakouts-columns query stage-number options)
@@ -124,7 +124,7 @@
   with [[lib.field.util/update-keys-for-col-from-previous-stage]]."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
      (into []
@@ -139,7 +139,7 @@
   [query          :- ::lib.schema/query
    stage-number   :- :int
    card-id        :- [:maybe ::lib.schema.id/card]
-   options        :- ::lib.metadata.calculation/returned-columns.options]
+   options        :- ::lib.metadata.calculation/visible-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
       (not-empty
@@ -162,7 +162,7 @@
 (mu/defn- expressions-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [include-late-exprs?]} :- [:map [:include-late-exprs? {:optional true} :boolean]]]
+   {:keys [include-late-exprs?]} :- [:map {:closed true} [:include-late-exprs? {:optional true} :boolean]]]
   (not-empty
    (for [[clause col] (map vector
                            (:expressions (lib.util/query-stage query stage-number))
@@ -298,7 +298,7 @@
   [query                                  :- ::lib.schema/query
    stage-number                           :- :int
    stage                                  :- ::lib.schema/stage
-   {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   ;; Not including the stage itself in the cache key, since it's not used(!)
   (lib.computed/with-cache-ephemeral* query [::returned-columns stage-number (lib.metadata.calculation/cacheable-options options)]
     (fn []

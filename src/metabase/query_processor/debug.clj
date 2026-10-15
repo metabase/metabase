@@ -8,6 +8,7 @@
     (binding [metabase.query-processor.debug/*debug* true]
       (metabase.query-processor/process-query query)")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug*
   "Whether to enable debug tapping."
   false)

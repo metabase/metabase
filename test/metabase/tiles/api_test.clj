@@ -254,8 +254,8 @@
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
     (mt/dataset test-data
-      (with-redefs [api.tiles/create-tile (fn [_ points] points)
-                    api.tiles/tile->byte-array identity]
+      (mt/with-dynamic-fn-redefs [api.tiles/create-tile (fn [_ points] points)
+                                  api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
                       :crowberto :get 200 "tiles/7/30/49"
                       :latField (encoded-lat-field-ref :mbql)
@@ -272,12 +272,14 @@
 
 (deftest ^:parallel failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
-    (is (=? {:status "failed"}
-            (mt/user-http-request
-             :rasta :get 400 "tiles/1/1/1"
-             :latField (encoded-lat-field-ref :mbql)
-             :lonField (encoded-lon-field-ref :mbql)
-             :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))))))
+    (let [body (mt/user-http-request
+                :rasta :get 400 "tiles/1/1/1"
+                :latField (encoded-lat-field-ref :mbql)
+                :lonField (encoded-lon-field-ref :mbql)
+                :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))]
+      (is (re-find #"^Error running tiles query" body))
+      (testing "the query processor's error map, which carries the query, stays server-side"
+        (is (string? body))))))
 
 (deftest ^:parallel ad-hoc-implicit-join-ref-test
   (testing "GET /api/tiles/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"

@@ -1,8 +1,8 @@
 import * as React from "react";
-import * as ReactJSXRuntime from "react/jsx-runtime";
 import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as ReactDOMServer from "react-dom/server";
+import * as ReactJSXRuntime from "react/jsx-runtime";
 
 import type { EXTERNAL_DEPENDENCIES } from "../../../../build/embedding-sdk/constants/external-dependencies";
 
@@ -17,7 +17,9 @@ const CONFIG: Record<ExternalDependenciesGlobalName, any> = {
   METABASE_REACT_DOM_SERVER: ReactDOMServer,
 };
 
-// Put External Dependencies to the global object, so it can be used by the SDK bundle
+// Put External Dependencies to the global object, so it can be used by the SDK
+// bundle. The React here is the host app's, since the package is installed and
+// bundled by the host; the bundle has none of its own.
 export function defineGlobalDependencies() {
   if (typeof window === "undefined") {
     return;

@@ -13,25 +13,21 @@ const STARTING_FROM_UNITS = [
 ];
 
 describe("scenarios > question > relative-datetime", () => {
-  const now = dayjs().utc();
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
   describe("starting from", () => {
-    const date = (values) =>
-      values.reduce((val, [num, unit]) => val.add(num, unit), now.clone());
-
     STARTING_FROM_UNITS.forEach((unit) =>
       it(`should work with Past filters (${unit} ago)`, () => {
+        const now = dayjs().utc();
         nativeSQL([
           now,
-          date([[-1, unit]]),
-          date([[-14, unit]]),
-          date([[-15, unit]]),
-          date([[-30, unit]]),
+          now.add(-1, unit),
+          now.add(-14, unit),
+          now.add(-15, unit),
+          now.add(-30, unit),
         ]);
         withStartingFrom("Previous", [10, unit], [10, unit]);
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -41,12 +37,13 @@ describe("scenarios > question > relative-datetime", () => {
 
     STARTING_FROM_UNITS.forEach((unit) =>
       it(`should work with Next filters (${unit} from now)`, () => {
+        const now = dayjs().utc();
         nativeSQL([
           now,
-          date([[1, unit]]),
-          date([[14, unit]]),
-          date([[15, unit]]),
-          date([[30, unit]]),
+          now.add(1, unit),
+          now.add(14, unit),
+          now.add(15, unit),
+          now.add(30, unit),
         ]);
         withStartingFrom("Next", [10, unit], [10, unit]);
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -61,6 +58,7 @@ describe("scenarios > question > relative-datetime", () => {
 
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
+        cy.findByText("Previous 30 days").should("be.visible");
         cy.icon("chevronleft").should("not.exist");
         cy.findByText("Previous 30 days").click();
       });
@@ -76,13 +74,20 @@ describe("scenarios > question > relative-datetime", () => {
       addStartingFrom();
       setStartingFromValue(2);
 
-      H.popover().button("Update filter").should("be.enabled");
+      H.popover().button("Update filter").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At is in the previous year, starting 2 years ago")
+        .should("be.visible");
     });
   });
 
   function assertOptions(expectedOptions) {
-    cy.findAllByRole("option").each(($option, index) => {
-      cy.wrap($option).should("have.text", expectedOptions[index]);
+    cy.findAllByRole("option").should(($options) => {
+      expect(Cypress._.map($options, "textContent")).to.deep.equal(
+        expectedOptions,
+      );
     });
   }
 
@@ -131,13 +136,19 @@ describe("scenarios > question > relative-datetime", () => {
       });
     });
 
-    it("current filters should work (metabase#21977)", () => {
+    it("relative dates should default to past filter and current filters should work (metabase#22027, metabase#21977)", () => {
       H.openOrdersTable();
 
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.findByText("Relative date range…").click();
+        cy.findByDisplayValue("days").should("exist");
+        cy.findByText("Day").should("not.exist");
+        cy.findByText("Quarter").should("not.exist");
+        cy.findByText("Month").should("not.exist");
+        cy.findByText("Year").should("not.exist");
+
         cy.findByText("Current").click();
         cy.findByText("Year").click();
       });
@@ -152,39 +163,16 @@ describe("scenarios > question > relative-datetime", () => {
         .should("be.visible");
     });
 
-    it("Relative dates should default to past filter (metabase#22027)", () => {
-      H.openOrdersTable();
-
-      H.tableHeaderClick("Created At");
-      H.popover().within(() => {
-        cy.findByText("Filter by this column").click();
-        cy.findByText("Relative date range…").click();
-        cy.findByText("Day").should("not.exist");
-        cy.findByText("Quarter").should("not.exist");
-        cy.findByText("Month").should("not.exist");
-        cy.findByText("Year").should("not.exist");
-        cy.findByDisplayValue("days").should("exist");
-      });
-    });
-
-    it("should change the starting from units to match (metabase#22222)", () => {
+    it("should match the starting from units and allow changing values with starting from (metabase#22222, metabase#22227)", () => {
       H.openOrdersTable();
 
       openCreatedAt("Previous");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
       H.clickActionsPopover().within(() => {
-        cy.findByDisplayValue("days ago").should("not.exist");
         cy.findByDisplayValue("months ago").should("exist");
+        cy.findByDisplayValue("days ago").should("not.exist");
       });
-    });
-
-    it("should allow changing values with starting from (metabase#22227)", () => {
-      H.openOrdersTable();
-
-      openCreatedAt("Previous");
-      addStartingFrom();
-      setRelativeDatetimeUnit("months");
       setRelativeDatetimeValue(1);
       H.popover().button("Add filter").click();
       cy.wait("@dataset");

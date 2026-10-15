@@ -14,6 +14,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
+(mu/defn active-card
+  "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
+  select it as absent rather than checking `:archived` after the fact."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id :archived false))
+
 (mu/defn card-embedding-params
   "The embedding parameters of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -45,10 +51,10 @@
   (t2/select-one :model/DashboardCard dashcard-id))
 
 (mu/defn embedding-themes
-  "The id, entity id, name, settings, and timestamps of every EmbeddingTheme, oldest first."
+  "The id, entity id, name, settings, default flag, and timestamps of every EmbeddingTheme, oldest first."
   []
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
-                                    :select [:id :entity_id :name :settings :created_at :updated_at]}))
+                                    :select [:id :entity_id :name :settings :is_default :created_at :updated_at]}))
 
 (mu/defn embedding-theme-exists?
   "Whether an EmbeddingTheme with `id` exists."
@@ -66,8 +72,9 @@
   (t2/insert-returning-instance! :model/EmbeddingTheme row))
 
 (mu/defn insert-embedding-themes!
-  "Insert the EmbeddingTheme `rows`."
-  [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]]
+  "Insert the EmbeddingTheme `rows`. Only seeding - the Light/Dark themes written on the first visit
+  to the embedding hub - sets `is_default`, so the single-row insert above leaves it out."
+  [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings :is_default])]]
   (t2/insert! :model/EmbeddingTheme rows))
 
 (mu/defn update-embedding-theme!
@@ -80,3 +87,12 @@
   "Delete the EmbeddingTheme with `id`."
   [id :- ms/PositiveInt]
   (t2/delete! :model/EmbeddingTheme :id id))
+
+(mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
+  "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
+  (t2/select :model/EmbeddingSdkReact18Host {:select   [:id :host :created_at :last_seen_at]
+                                             :where    [:> :last_seen_at [:auto/param cutoff]]
+                                             :order-by [[:last_seen_at :desc] [:id :desc]]
+                                             :limit    limit}))

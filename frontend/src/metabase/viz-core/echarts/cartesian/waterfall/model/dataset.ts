@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import type { RowValue } from "metabase-types/api";
 
 import { getNumberOr } from "../../../../lib/settings/row-values";
@@ -58,7 +58,7 @@ export const getWaterfallDataset = (
     }
 
     const waterfallDatum: Datum = {
-      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY] ?? NULL_DISPLAY_VALUE,
+      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY] ?? getNullDisplayValue(),
       [WATERFALL_VALUE_KEY]: value,
       [WATERFALL_START_KEY]: start,
       [WATERFALL_END_KEY]: end,

@@ -25,7 +25,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
-import { ALL_MODELS } from "./constants";
+import { ALL_MODELS, TYPE_FILTER_MODELS } from "./constants";
 
 const collection = createMockCollection({ id: 1, can_write: false });
 
@@ -689,7 +689,9 @@ describe("CollectionItemsTable", () => {
     );
     const popover = screen.getByTestId("collection-type-filter-popover");
 
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(
+      TYPE_FILTER_MODELS.length,
+    );
     for (const label of ["Dashboard", "Model", "Question"]) {
       expect(within(popover).getByLabelText(label)).not.toBeChecked();
       expect(within(popover).getByLabelText(label)).toBeEnabled();
@@ -777,7 +779,9 @@ describe("CollectionItemsTable", () => {
     expect(getMetadataCalls()).toHaveLength(1);
     await user.click(screen.getByTestId("collection-type-filter-button"));
     const popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(
+      TYPE_FILTER_MODELS.length,
+    );
     expect(within(popover).getByLabelText("Dashboard")).not.toBeChecked();
     expect(within(popover).getByLabelText("Model")).toBeChecked();
     expect(within(popover).getByLabelText("Question")).toBeChecked();
@@ -867,7 +871,9 @@ describe("CollectionItemsTable", () => {
       await screen.findByTestId("collection-type-filter-button"),
     );
     let popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(
+      TYPE_FILTER_MODELS.length,
+    );
     within(popover).getByLabelText("Dashboard").focus();
     await user.keyboard("{Escape}");
     await waitFor(() => {
@@ -887,7 +893,9 @@ describe("CollectionItemsTable", () => {
 
     await user.click(screen.getByTestId("collection-type-filter-button"));
     popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(
+      TYPE_FILTER_MODELS.length,
+    );
     expect(within(popover).getByLabelText("Dashboard")).toBeEnabled();
     expect(within(popover).getByLabelText("Model")).toBeEnabled();
     expect(within(popover).getByLabelText("Question")).toBeEnabled();

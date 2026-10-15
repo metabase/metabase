@@ -80,19 +80,13 @@ export function DimensionList({
         <Title order={4}>{t`Dimensions of this metric`}</Title>
         <Group gap="lg" wrap="nowrap" align="center">
           {hasChecked && (
-            <ActionIcon
-              className={S.deleteIconButton}
-              aria-label={t`Remove`}
-              onClick={onRemove}
-              variant="viewHeader"
-            >
+            <ActionIcon aria-label={t`Remove`} onClick={onRemove}>
               <Icon name="trash" />
             </ActionIcon>
           )}
           <Button
             disabled={isAddDisabled}
             onClick={onAdd}
-            size="sm"
           >{t`Available dimensions`}</Button>
         </Group>
       </Group>

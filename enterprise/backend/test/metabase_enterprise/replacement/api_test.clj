@@ -129,7 +129,7 @@
                        {:source {:type  "query"
                                  :query (lib/query mp (lib.metadata/card mp old-id))}
                         :name   "acceptance_transform"
-                        :target {:database (mt/id) :table "acceptance_transform"}}
+                        :target {:database (mt/id) :type "table" :name "acceptance_transform"}}
 
                        :model/Dashboard     {dashboard-id :id}
                        {:name "Acceptance Dashboard"}
@@ -428,7 +428,7 @@
                         :type          :model
                         :name          "Model"}]
           (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
-            (with-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
+            (mt/with-dynamic-fn-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
               (snowplow-test/with-fake-snowplow-collector
                 (let [response (mt/user-http-request :crowberto :post 202
                                                      "ee/replacement/replace-model-with-transform"

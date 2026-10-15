@@ -32,7 +32,6 @@
 (events/derive! ::card-deps :metabase/event)
 (events/derive! :event/card-create ::card-deps)
 (events/derive! :event/card-update ::card-deps)
-(events/derive! :event/metric-dimensions-update ::card-deps)
 
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]

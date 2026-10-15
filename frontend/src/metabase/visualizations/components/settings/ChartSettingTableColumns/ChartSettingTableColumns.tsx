@@ -31,8 +31,8 @@ export const ChartSettingTableColumns = ({
     <div>
       {hasEditButton && (
         <Button
-          pl="0"
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
           onClick={() => setIsEditingQuery(!isEditingQuery)}
         >
           {isEditingQuery ? t`Done picking columns` : t`Add or remove columns`}

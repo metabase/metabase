@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
@@ -76,6 +77,7 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupUserMetabotPermissionsEndpoint();
   const question = new Question(card);
 
   fetchMock.get("path:/api/search", { body: { data: [] } });

@@ -150,7 +150,12 @@
                            {:distinct-count 2308
                             :percent-null   0.0
                             :earliest       "1958-04-26"
-                            :latest         "2000-04-03"}}))))))
+                            :latest         "2000-04-03"}})))
+      (testing "A metric field reached through an FK names that FK."
+        (mt/as-admin
+          (is (=? {:structured-output {:table_reference "User"}}
+                  (metabot.tools.field-stats/field-values
+                   {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))))))
 
 (deftest field-values-unknown-entity-type-test
   (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in

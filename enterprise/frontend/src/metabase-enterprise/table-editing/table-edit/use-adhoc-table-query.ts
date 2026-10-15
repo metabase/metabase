@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 
 import {
   useMetadataProvider,
-  useQuestionFromOpts,
+  useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { useDispatch } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
@@ -24,7 +24,7 @@ export const useAdHocTableQuery = ({
   databaseId,
   location,
 }: UseAdHocTableQueryProps) => {
-  const buildQuestion = useQuestionFromOpts();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
