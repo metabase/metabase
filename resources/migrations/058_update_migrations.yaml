@@ -1692,6 +1692,15 @@ databaseChangeLog:
             tableName: core_session
             columnName: saml_name_id_format
 
+  - changeSet:
+      id: v58.2026-10-15T00:00:00
+      author: ranquild
+      comment: Delete the RemoteSyncObject rows of Tables and Fields, which remote sync tracks through their user settings
+      changes:
+        - sql:
+            sql: DELETE FROM remote_sync_object WHERE model_type IN ('Table', 'Field')
+      rollback: []
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -3956,8 +3956,8 @@
         (is (empty? (t2/select :data_app_group_assignment)))))))
 
 (deftest delete-table-and-field-remote-sync-objects-test
-  (testing "v66.2026-10-15T00:00:00: the RemoteSyncObject rows of Tables and Fields are deleted, other rows stay"
-    (impl/test-migrations ["v66.2026-10-15T00:00:00"] [migrate!]
+  (testing "v58.2026-10-15T00:00:00: the RemoteSyncObject rows of Tables and Fields are deleted, other rows stay"
+    (impl/test-migrations ["v58.2026-10-15T00:00:00"] [migrate!]
       (let [insert-rso! (fn [model-type]
                           (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
                                                                         :model_id          1
