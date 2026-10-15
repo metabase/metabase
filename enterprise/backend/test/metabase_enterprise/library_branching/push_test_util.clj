@@ -204,6 +204,15 @@
   ([table metric-id]
    (assoc-in (count-query table) [:stages 0 :aggregation] [["metric" {} metric-id]])))
 
+(defn sum-query
+  "The portable query of a metric: the sum of field `field` (a field key) of its table, a field of type type/Float."
+  [field]
+  {:lib/type "mbql/query"
+   :database (first field)
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table (subvec field 0 3)
+               :aggregation  [["sum" {} ["field" {:base-type "type/Float"} field]]]}]})
+
 (defn item
   "The item of `kind` named `item-name` at `place` with attributes `attrs`, with the references of the attributes."
   [id kind item-name place attrs]
