@@ -25,5 +25,11 @@
   `:namespaces`, and an item whose kind's `:root-level` namespace is one of the `:namespaces`."
   ([s]
    (root-ids roots s))
-  ([_roots _s]
-   #{}))
+  ([{:keys [collection-types namespaces root-level]} s]
+   (set (for [[id {:keys [kind place attrs]}] s
+              :when (and (nil? place)
+                         (if (= :collection kind)
+                           (or (contains? collection-types (:type attrs))
+                               (contains? namespaces (some-> (:namespace attrs) keyword)))
+                           (contains? namespaces (get root-level kind))))]
+          id))))

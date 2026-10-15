@@ -88,14 +88,9 @@
           [(finding :unknown-format (str "The format version is not " format-version ".")
                     :format (:format doc) :file (:file (first formats)))])))))
 
-(defn decode-tree
-  "The snapshot that the file contents `files` (a collection of byte arrays, with no paths) hold, with the codecs
-  `codecs`: `{:snapshot s}`, or `{:findings [f ...]}` when a file does not decode. Each finding has `:type` and
-  `:reason`; a finding of one file has `:file`, its position in `files`. The types: `:unreadable` (not one YAML map
-  of the document model, with a kind or a format version), `:unknown-kind` (with `:kind`), `:invalid` (the codec
-  refuses the document, or the item does not fit its schema), `:duplicate-identity` (with `:id` and `:files`),
-  `:no-format`, `:duplicate-format` (with `:files`) and `:unknown-format` (with `:format`). The order of `files`
-  changes no snapshot."
+(defn decode-files
+  "[[decode-tree]], with the file of each item: `{:snapshot s :files {id n}}`, where `n` is the position in `files` of
+  the file of item `id`, or `{:findings [f ...]}`."
   [codecs files]
   (let [by-name  (update-keys (codec/by-kind codecs) name)
         results  (map-indexed (fn [i b] (assoc (decode-file by-name b) :file i)) files)
@@ -105,13 +100,19 @@
                          (format-findings (filter :format results)))]
     (if (seq findings)
       {:findings (vec findings)}
-      {:snapshot (into {} (map :item) items)})))
+      {:snapshot (into {} (map :item) items)
+       :files    (into {} (map (fn [{[id] :item i :file}] [id i])) items)})))
 
-(defn decode-files
-  "[[decode-tree]], with the file of each item: `{:snapshot s :files {id n}}`, where `n` is the position in `files` of
-  the file of item `id`, or `{:findings [f ...]}`."
+(defn decode-tree
+  "The snapshot that the file contents `files` (a collection of byte arrays, with no paths) hold, with the codecs
+  `codecs`: `{:snapshot s}`, or `{:findings [f ...]}` when a file does not decode. Each finding has `:type` and
+  `:reason`; a finding of one file has `:file`, its position in `files`. The types: `:unreadable` (not one YAML map
+  of the document model, with a kind or a format version), `:unknown-kind` (with `:kind`), `:invalid` (the codec
+  refuses the document, or the item does not fit its schema), `:duplicate-identity` (with `:id` and `:files`),
+  `:no-format`, `:duplicate-format` (with `:files`) and `:unknown-format` (with `:format`). The order of `files`
+  changes no snapshot."
   [codecs files]
-  (decode-tree codecs files))
+  (dissoc (decode-files codecs files) :files))
 
 (defn old-format?
   "True iff the tree paths `paths` hold no [[format-path]] and some YAML file outside a directory whose name starts

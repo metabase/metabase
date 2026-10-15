@@ -119,7 +119,7 @@
 (def ^:private mutations
   [{:name   :nested-fields-dropped
     :doc    "A nested field is not in the environment, so every reference to it is red."
-    :target `manifest/env
+    :target `manifest/field-entries
     :edits  [[:replace '(field-entries k (:fields field)) nil]]}
    {:name   :duplicates-allowed
     :doc    "Two databases with one name merge in silence, so a reference can resolve against the wrong one."
