@@ -49,11 +49,6 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   (some-> (get (shared/current-chart-configs-state) chart-config-id)
           stringify-series-keys))
 
-(defn- no-data-points?
-  "True when no point of `series-config` has both an x and a y value."
-  [{x-values :x_values, y-values :y_values}]
-  (not-any? (fn [[x y]] (and (some? x) (some? y))) (map vector x-values y-values)))
-
 (defn- non-numeric-y-value?
   "True when `y-values` contains a non-nil value that is not a number.
   nil y-values are allowed; they are treated as missing data points downstream."
@@ -62,8 +57,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (defn- validate-chart-config!
   "Throw an informative exception when `chart-config` is too malformed to analyze."
-  [{:keys [series] :as _chart-config}]
-  (when (every? no-data-points? (vals series))
+  [{:keys [series] :as chart-config}]
+  (when (empty? (interestingness/analyzable-series chart-config))
     (throw (ex-info "This chart has no series data to analyze."
                     {:agent-error? true, :type ::malformed-chart-config})))
   (doseq [[series-name {:keys [y_values]}] series]
