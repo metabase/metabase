@@ -299,7 +299,9 @@
    [(gen/fmap (fn [[n k]] {:type "external" :name n :field k}) (gen/tuple non-empty-text-gen field-key-gen))
     (gen/fmap (fn [[n values]] (cond-> {:type "internal" :name n} (seq values) (assoc :values values)))
               (gen/tuple non-empty-text-gen
-                         (gen/vector (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean]) text-gen) 0 3)))]))
+                         (gen/vector (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean])
+                                                (gen/one-of [non-empty-text-gen (gen/return nil)]))
+                                     0 3)))]))
 
 (def ^:private field-settings-gen
   (gen/recursive-gen

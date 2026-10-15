@@ -3,7 +3,9 @@
   table that is published into a Library collection. The identity is the table's natural key `[database schema
   table]`, the name is the display name that the table shows, and the place is its collection. The attributes are
   what users set, never what warehouse sync writes: the values of the user settings rows of the table and of its
-  fields, for the columns that the user set. A value that the user cleared is at its default, so it is absent."
+  fields, for the columns that the user set, and the remapping of each field (its Dimension row, and for an internal
+  remapping the human-readable values of its full field values row). A value that the user cleared is at its default,
+  so it is absent."
   (:require
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.format.kinds.published-table :as format.published-table]
@@ -21,6 +23,17 @@
 (def ^:private table-columns
   "The table columns that are attributes of the format."
   (disj (set (keys (:attrs format.published-table/spec))) :fields))
+
+(defn remapping
+  "The `:remapping` field setting of Dimension row `dimension`, with the `:values` and `:human_readable_values` of the
+  field's full field values row, if any: a foreign-key remapping names its target field by natural key; an internal
+  remapping holds its pairs of value and human-readable value, and none when the row has no human-readable values."
+  [{:keys [type name human_readable_field_id values human_readable_values]}]
+  (case type
+    "external" {:type "external" :name name :field (serdes/*export-field-fk* human_readable_field_id)}
+    "internal" (cond-> {:type "internal" :name name}
+                 (seq human_readable_values) (assoc :values (mapv vector values human_readable_values)))
+    nil))
 
 (def ^:private field-columns
   "The field columns that are field settings of the format: the user-settable columns, with `fk_target_field_id` as
@@ -55,22 +68,23 @@
 
 (defn field-values
   "The user-set values of field settings row `row`, with the foreign key target as the field natural key
-  `:fk_target`."
+  `:fk_target`, and the [[remapping]] of the Dimension row under `:dimension` as `:remapping`."
   [row]
   (let [values (user-values row field-columns field-user-set?)
         target (when (user-set? warehouse-schema-overlay/field-user-settings-flags row :fk_target_field_id)
                  (:fk_target_field_id row))]
     (cond-> values
-      target (assoc :fk_target (serdes/*export-field-fk* target)))))
+      target           (assoc :fk_target (serdes/*export-field-fk* target))
+      (:dimension row) (assoc :remapping (remapping (:dimension row))))))
 
 (defn- without-nil
   [m]
   (into {} (remove (comp nil? val)) m))
 
 (defn fields
-  "The `:fields` attribute: `{field-name entry}` for the fields of the settings rows `rows`, an entry holds the
-  field's settings and, under `:fields`, those of its nested fields. A field with no setting has no entry, unless a
-  nested field has one."
+  "The `:fields` attribute: `{field-name entry}` for the fields of the settings rows `rows` (each a field user
+  settings row or `{:field_id}`, with its Dimension row under `:dimension`), an entry holds the field's settings and,
+  under `:fields`, those of its nested fields. A field with no setting has no entry, unless a nested field has one."
   [rows]
   (reduce (fn [acc row]
             (let [values (without-nil (portable/document (field-values row)))
@@ -99,6 +113,34 @@
   [{:keys [db schema table]}]
   [db schema table])
 
+(defn- dimensions-of-tables
+  "`{field-id dimension}`: the Dimension row of each field of the tables of `table-ids` that has one; an internal one
+  with the `:values` and `:human_readable_values` of the newest full field values row of its field."
+  [table-ids]
+  (let [dimensions (content/in-chunks library-branching.db/dimensions-by-table-id table-ids)
+        internal   (into [] (comp (filter #(= "internal" (:type %))) (map :field_id)) dimensions)
+        ;; The rows come in the order of their ids, so the newest row of a field is the last.
+        values     (into {}
+                         (map (juxt :field_id #(select-keys % [:values :human_readable_values])))
+                         (content/in-chunks library-branching.db/remapped-values-by-field-id internal))]
+    (into {} (map (fn [d] [(:field_id d) (merge d (get values (:field_id d)))])) dimensions)))
+
+(defn- field-settings-rows
+  "The field settings rows of the fields of the tables of `table-ids`, each with its `:table_id` and its Dimension row
+  of [[dimensions-of-tables]] under `:dimension`: a field user settings row, or `{:field_id}` for a field that has a
+  Dimension row and no user settings row."
+  [table-ids]
+  (let [rows       (content/in-chunks library-branching.db/field-user-settings-by-table-id table-ids)
+        table-of   (into {}
+                         (map (juxt :id :table_id))
+                         (content/in-chunks library-branching.db/fields-by-id (vec (distinct (map :field_id rows)))))
+        dimensions (dimensions-of-tables table-ids)
+        with-row   (set (map :field_id rows))]
+    (concat (map #(assoc % :table_id (table-of (:field_id %)) :dimension (get dimensions (:field_id %))) rows)
+            (for [[field-id d] dimensions
+                  :when        (not (contains? with-row field-id))]
+              {:field_id field-id :table_id (:table_id d) :dimension d}))))
+
 (defn read-published-tables
   "`{table-key item}` of the published tables of `table-keys`."
   [table-keys]
@@ -109,11 +151,7 @@
         ids        (mapv :id tables)
         settings   (into {} (map (juxt :table_id identity))
                          (content/in-chunks library-branching.db/table-user-settings-by-table-id ids))
-        field-rows (content/in-chunks library-branching.db/field-user-settings-by-table-id ids)
-        table-of   (into {}
-                         (map (juxt :id :table_id))
-                         (content/in-chunks library-branching.db/fields-by-id (vec (distinct (map :field_id field-rows)))))
-        field-rows (group-by (comp table-of :field_id) field-rows)
+        field-rows (group-by :table_id (field-settings-rows ids))
         values     (mapv (fn [{:keys [id] :as t}]
                            (assoc t :settings (get settings id) :field-settings (get field-rows id)))
                          tables)
@@ -199,10 +237,11 @@
 
 (defn- field-writes
   "`[[field-id changes] ...]`: the settings row changes of the fields of table `table-id` that turn the `:fields`
-  attribute `old` into `new`, for item `id`. Throws ::instance/refused for a field that the table does not have."
+  attribute `old` into `new`, for item `id`, with no remapping. Throws ::instance/refused for a field that the table
+  does not have."
   [id table-id old new]
-  (let [old (flatten-fields old)
-        new (flatten-fields new)
+  (let [old (update-vals (flatten-fields old) #(dissoc % :remapping))
+        new (update-vals (flatten-fields new) #(dissoc % :remapping))
         ids (field-ids table-id)]
     (into []
           (keep (fn [path]
@@ -212,6 +251,41 @@
                         changes  (field-changes id (get old path) (get new path))]
                     (when (seq changes) [field-id changes]))))
           (sort (filter #(not= (get old %) (get new %)) (into (set (keys old)) (keys new)))))))
+
+(defn- remapping-writes
+  "`[[field-id remapping row] ...]`: each field of table `table-id` whose remapping in the `:fields` attribute `new`
+  differs from `old`, for item `id`, with its new remapping (nil: none) and the columns of its Dimension row. Throws
+  ::instance/refused for a field that the table, or the instance, does not have."
+  [id table-id old new]
+  (let [old (update-vals (flatten-fields old) :remapping)
+        new (update-vals (flatten-fields new) :remapping)
+        ids (field-ids table-id)]
+    (into []
+          (keep (fn [path]
+                  (let [{:keys [type name field] :as remapping} (get new path)]
+                    (when (not= (get old path) remapping)
+                      [(or (get ids path)
+                           (instance/refuse! :environment id (str "The table has no field " (pr-str path) ".")
+                                             {:field path}))
+                       remapping
+                       (when remapping
+                         {:type                    type
+                          :name                    name
+                          :human_readable_field_id (when (= "external" type) (field-id-of-key id field))})]))))
+          (sort (into (set (keys old)) (keys new))))))
+
+(defn- write-remapping!
+  "Makes the Dimension row of field `field-id` have the columns `row`, or deletes it when `remapping` is nil. An
+  internal remapping also sets the human-readable values of the field's values, or clears them when it has none."
+  [[field-id remapping row]]
+  (if (nil? remapping)
+    (library-branching.db/delete-dimension! field-id)
+    (do
+      (library-branching.db/set-dimension! field-id row)
+      (when (= "internal" (:type remapping))
+        (if-let [pairs (seq (:values remapping))]
+          (library-branching.db/set-remapped-values! field-id (mapv first pairs) (mapv second pairs))
+          (library-branching.db/clear-remapped-values! field-id))))))
 
 (defn- write-field!
   [[field-id changes]]
@@ -261,10 +335,12 @@
                   (not (and (= (:id parent) (:collection_id table))
                             (scope/in-scope? :published-table id)))
                   (assoc :is_published true :collection_id (:id parent)))]
-    (let [fields (field-writes id (:id table) (:fields (:attrs old)) (:fields attrs))]
+    (let [fields     (field-writes id (:id table) (:fields (:attrs old)) (:fields attrs))
+          remappings (remapping-writes id (:id table) (:fields (:attrs old)) (:fields attrs))]
       (when (seq changes)
         (update-table-settings! (:id table) changes))
-      (run! write-field! fields))
+      (run! write-field! fields)
+      (run! write-remapping! remappings))
     nil))
 
 (defn trash-published-table!
@@ -279,8 +355,9 @@
 
 (def ^:private models-of-read
   "The models whose tables a read of published tables reads: the tables and fields with their settings rows, the
-  databases of their natural keys, and the collections."
-  #{:model/Collection :model/Database :model/Field :model/FieldUserSettings :model/Table :model/TableUserSettings})
+  Dimension rows and the field values of the fields, the databases of their natural keys, and the collections."
+  #{:model/Collection :model/Database :model/Dimension :model/Field :model/FieldUserSettings :model/FieldValues
+    :model/Table :model/TableUserSettings})
 
 (def kind-store
   "The `KindStore` of published tables."

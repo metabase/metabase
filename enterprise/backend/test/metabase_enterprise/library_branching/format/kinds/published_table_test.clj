@@ -150,6 +150,9 @@
                {:type "internal" :name "Rating" :field product-title}
                {:type "internal" :name "Rating" :values []}
                {:type "internal" :name "Rating" :values [[1]]}
+               {:type "internal" :name "Rating" :values [[1 " "]]}
+               {:type "internal" :name "Rating" :values [[1 2]]}
+               {:type "internal" :name "Rating" :values [[{:a 1} "One"]]}
                {:type "internal" :values [[1 "Bad"]]}
                {:type "internal" :name "" :values [[1 "Bad"]]}
                {:type "other" :name "Rating"}]]
