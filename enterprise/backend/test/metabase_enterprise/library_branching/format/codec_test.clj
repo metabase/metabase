@@ -51,19 +51,20 @@
                      scalar-gen))
 
 (def ^:private input-gen
-  "Generates what `write-yaml` accepts: a document in which a set can stand for a vector."
+  "Generates what `write-yaml` accepts: a document in which a set of scalars can stand for a vector."
   (gen/recursive-gen (fn [inner]
                        (gen/one-of [(gen/vector inner 0 4)
-                                    (gen/set inner {:max-elements 4})
+                                    (gen/set scalar-gen {:max-elements 4})
                                     (gen/map key-gen inner {:max-elements 4})]))
                      scalar-gen))
 
 (defn- scramble
-  "Equal to `x`, with every map and set built in a different order."
+  "Equal to `x`, with every map and set built in a different order. A set becomes a sorted set in the reverse order of
+  the written text of its elements; the order agrees with `=`, as `contains?` of a sorted set needs."
   [x]
   (cond
     (map? x)    (apply array-map (mapcat (fn [[k v]] [k (scramble v)]) (reverse (seq x))))
-    (set? x)    (into (sorted-set-by #(compare (pr-str %2) (pr-str %1))) (map scramble) x)
+    (set? x)    (into (sorted-set-by #(compare (text (codec/write-yaml %2)) (text (codec/write-yaml %1)))) (map scramble) x)
     (vector? x) (mapv scramble x)
     :else       x))
 
@@ -147,11 +148,11 @@
   [{:name   :unsorted-keys
     :doc    "The writer keeps the key order of the input map, so equal maps can give different bytes."
     :target `codec/canonical
-    :edits  [[:replace '(sort-by key key-order (update-keys x key-name)) '(update-keys x key-name)]]}
+    :edits  [[:replace '(sort-by (comp key-order key) (update-keys x key-name)) '(update-keys x key-name)]]}
    {:name   :unsorted-sets
     :doc    "The writer keeps the iteration order of a set, so equal sets can give different bytes."
     :target `codec/canonical
-    :edits  [[:replace '(sort-by pr-str (map canonical x)) '(map canonical x)]]}
+    :edits  [[:replace '(sort-by yaml-text (map canonical x)) '(map canonical x)]]}
    {:name   :signed-zero
     :doc    "The writer writes -0.0 as -0.0, so two equal doubles give different bytes."
     :target `codec/canonical
@@ -193,7 +194,7 @@
   [{:name   :duplicate-keys-allowed
     :doc    "The reader takes the last of two equal keys, so a file with a hand-edit conflict reads without a finding."
     :target `codec/parse
-    :edits  [[:replace ':allow-duplicate-keys false] [:replace 'false true]]}
+    :edits  [[:replace 'false true {:nth 1}]]}
    {:name   :first-document-only
     :doc    "The reader reads the first document of a text with several, and ignores the rest."
     :target `codec/read-yaml
