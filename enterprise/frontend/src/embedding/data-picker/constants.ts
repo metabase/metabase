@@ -4,13 +4,19 @@ import type { DataPickerDataType, DataTypeInfoItem } from "./types";
 
 export const CONTAINER_WIDTH = 300;
 
-type DataBucket = "MODELS" | "RAW_DATA" | "SAVED_QUESTIONS" | "METRICS";
+type DataBucket =
+  | "MODELS"
+  | "RAW_DATA"
+  | "SAVED_QUESTIONS"
+  | "METRICS"
+  | "LIBRARY";
 
 export const DATA_BUCKET: Record<DataBucket, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",
   SAVED_QUESTIONS: "questions",
   METRICS: "metrics",
+  LIBRARY: "library",
 } as const;
 
 export const MODELS_INFO_ITEM: DataTypeInfoItem = {
@@ -54,5 +60,32 @@ export const METRICS_INFO_ITEM: DataTypeInfoItem = {
   },
   get description() {
     return t`Trustworthy definitions to start from.`;
+  },
+};
+
+export const LIBRARY_INFO_ITEM: DataTypeInfoItem = {
+  id: DATA_BUCKET.LIBRARY,
+  icon: "repository",
+  get name() {
+    return t`Library`;
+  },
+  get description() {
+    return t`Curated tables and metrics.`;
+  },
+};
+
+export const LIBRARY_DATA_INFO_ITEM: DataTypeInfoItem = {
+  id: "library-data",
+  icon: "table",
+  get name() {
+    return t`Data`;
+  },
+};
+
+export const LIBRARY_METRICS_INFO_ITEM: DataTypeInfoItem = {
+  id: "library-metrics",
+  icon: "metric",
+  get name() {
+    return t`Metrics`;
   },
 };

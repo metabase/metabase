@@ -166,6 +166,70 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 
+      it("should show the Library without configuring `entity_types`", async () => {
+        setup({ embeddingType: "full-app", hasLibrary: true });
+
+        expect(await screen.findByText("Library")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should not show the Library when `entity_types=["table"]`', async () => {
+        setup({
+          embeddingType: "full-app",
+          hasLibrary: true,
+          entityTypes: ["table"],
+        });
+
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      });
+
+      it('should not show the Library when `entity_types=["model", "table"]`', async () => {
+        setup({
+          embeddingType: "full-app",
+          hasLibrary: true,
+          entityTypes: ["model", "table"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      });
+
+      it('should ignore "library" in full-app entity_types and show the default', async () => {
+        setup({
+          embeddingType: "full-app",
+          hasLibrary: true,
+          entityTypes: ["library"],
+        });
+
+        expect(await screen.findByText("Library")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should show the Library only when modular embedding entityTypes include "library"', async () => {
+        setup({
+          embeddingType: "modular",
+          hasLibrary: true,
+          entityTypes: ["library"],
+        });
+
+        expect(
+          await screen.findByTestId("library-picker-back-navigation"),
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Models")).not.toBeInTheDocument();
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      });
+
+      it("should not show the Library when the instance has none", async () => {
+        setup({ embeddingType: "full-app", hasLibrary: false });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      });
+
       /**
        * We don't test invalid `entityTypes` values here as the redux state is set via a slice which has proper validations and tests in place.
        *
