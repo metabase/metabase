@@ -189,13 +189,13 @@ export const getLibraryCollectionEmptyStateMessages = (
   if (type === "library-data") {
     return {
       title: t`No published tables yet`,
-      description: t`Publish tables in the Library to see them here.`,
+      description: t`Publish tables in the semantic layer to see them here.`,
     };
   }
 
   return {
     title: t`No metrics yet`,
-    description: t`Put metrics in the Library to see them here.`,
+    description: t`Put metrics in the semantic layer to see them here.`,
   };
 };
 

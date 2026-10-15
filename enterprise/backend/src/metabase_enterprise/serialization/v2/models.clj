@@ -4,7 +4,9 @@
 (def data-model
   "Schema model types"
   ["Database"
+   "Dimension"
    "Field"
+   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
@@ -17,6 +19,8 @@
   ["Table"
    "TableUserSettings"
    "Field"
+   "FieldUserSettings"
+   "Dimension"
    "Segment"
    ;; a dynamic goal in viz settings can name a Measure
    "Measure"])
@@ -55,8 +59,6 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "DashboardTab"
-   "Dimension"
-   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -101,7 +103,6 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"

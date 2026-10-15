@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [dev.deps-graph]
    [dev.model-boundary-config]
+   [dev.module-graph :as module-graph]
    [hooks.common.modules :as modules]
    [metabase.test-runner]
    [metabase.util.json :as json]
@@ -358,9 +359,50 @@
                :f #{:d}
                :g #{:h}}]
     (is (= #{#{:a :b} #{:c} #{:d :e :f} #{:g} #{:h}}
-           (set (dev.deps-graph/strongly-connected-components graph))))
+           (set (module-graph/strongly-connected-components graph))))
     (is (= [#{:d :e :f} #{:a :b}]
-           (dev.deps-graph/cyclic-components graph)))))
+           (module-graph/cyclic-components graph)))))
+
+(deftest ^:parallel cycle-metrics-test
+  (testing "a ring is one independent cycle, and every edge holds it together"
+    (is (= {:size           4
+            :edges          4
+            :density        (double (/ 4 12))
+            :cycle-rank     1
+            :strong-bridges [[:a :b] [:b :c] [:c :d] [:d :a]]}
+           (module-graph/cycle-metrics {:a #{:b} :b #{:c} :c #{:d} :d #{:a}} #{:a :b :c :d}))))
+  (testing "a complete digraph has every edge and no single edge that splits it"
+    (is (= {:size           3
+            :edges          6
+            :density        1.0
+            :cycle-rank     4
+            :strong-bridges []}
+           (module-graph/cycle-metrics {:a #{:b :c} :b #{:a :c} :c #{:a :b}} #{:a :b :c}))))
+  (testing "a chord across a ring is not a strong bridge, while every ring edge still is"
+    (is (=? {:cycle-rank 2, :strong-bridges [[:a :b] [:b :c] [:c :a]]}
+            (module-graph/cycle-metrics {:a #{:b :c} :b #{:c} :c #{:a}} #{:a :b :c}))))
+  (testing "edges leaving the component and self-loops are not counted"
+    (is (=? {:edges 4, :strong-bridges [[:a :b] [:b :a] [:b :c] [:c :b]]}
+            (module-graph/cycle-metrics {:a #{:a :b :x} :b #{:a :c} :c #{:b}} #{:a :b :c})))))
+
+(deftest ^:parallel module-cycle-stats-test
+  (let [deps   [{:module 'a, :deps [{:module 'b}]}
+                {:module 'a, :deps [{:module 'c}]}
+                {:module 'b, :deps [{:module 'c}]}
+                {:module 'c, :deps [{:module 'a}]}
+                {:module 'd, :deps [{:module 'a}]}]
+        config '{a {:api :any}
+                 b {}
+                 c {}
+                 d {}}]
+    (testing "stats list each cycle's sizes, rounded density, and cycle rank"
+      (is (= {:api-any-namespaces  2
+              :module-count        4
+              :scc-module-sizes    [3]
+              :scc-namespace-sizes [4]
+              :scc-densities       [0.67]
+              :scc-cycle-ranks     [2]}
+             (dev.deps-graph/module-boundary-stats deps config))))))
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys have the shapes the ratchet counts expect"

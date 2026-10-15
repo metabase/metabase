@@ -11,6 +11,24 @@ Our themed wrapper around [Mantine SegmentedControl](https://mantine.dev/core/se
 
 - [Mantine SegmentedControl Docs](https://mantine.dev/core/segmented-control/)
 
+## Items
+
+Each item in `data` is text only, icon + text, or icon only. The component owns the icon size and spacing, so labels are plain data rather than custom JSX.
+
+```tsx
+<SegmentedControl
+  data={[
+    { value: "code", label: "Code" },
+    { value: "preview", label: "Preview", icon: "eye_filled" },
+    { value: "settings", ariaLabel: "Settings", icon: "gear" },
+  ]}
+/>
+```
+
+- `label` is the visible text. Add `icon` to show an icon before it.
+- Leave out `label` and pass `ariaLabel` with `icon` for an icon-only item. `ariaLabel` is required so the item has an accessible name.
+- `icon` is usually an icon name. Pass an element only when the icon can't be expressed as a name; the element is then responsible for its own size.
+
 ## Examples
 
 ### Text only

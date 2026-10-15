@@ -14,7 +14,7 @@ import { defineAction } from "@metabase/embedding-sdk-react/data-app";
 import schema from "../src/metabase.data";
 
 export const CreateOrder = defineAction({
-  action: schema.models.orders.actions.create,
+  action: schema.actions.createOrder,
 });
 ```
 
@@ -55,11 +55,11 @@ Rules:
   (`npm run sync-resources`, run by `npm run build`) scans only `queries/` and
   `actions/`, so a definition anywhere else is never synchronized, and the
   authored action is refused for the app's viewers in production.
-- Actions exist only when the generated schema includes models
-  (`include-models=true`). Synchronization copies actions; it never creates
-  them.
+- Actions exist only when the generated schema includes actions
+  (`include-actions=true`). Synchronization copies actions; it never creates
+  them, and a missing one is created as a query action without a model.
 - Pass the export itself to `useAction`. Never pass
-  `schema.models.<model>.actions.<action>` or its `.id`.
+  `schema.actions.<action>` or its `.id`.
 - `copiedActionId` is written by synchronization. Never add, edit, or remove it
   by hand; commit it together with `resources_metadata.json`.
 - After `execute` resolves, refresh every query on screen the action could have

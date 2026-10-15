@@ -33,12 +33,8 @@ export const PLUGIN_AUTH_PROVIDERS = definePluginSlot(
   getDefaultPluginAuthProviders,
 );
 
-export type LdapUserProvisioningProps = {
-  disabled?: boolean;
-};
-
 const getDefaultPluginLdapFormFields = () => ({
-  LdapUserProvisioning: PluginPlaceholder<LdapUserProvisioningProps>,
+  LdapUserProvisioning: PluginPlaceholder,
   LdapGroupMembershipFilter: PluginPlaceholder,
 });
 

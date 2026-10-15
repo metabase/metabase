@@ -6,8 +6,8 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsHeaderVisible } from "metabase/dashboard/selectors";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader } from "metabase/ui";
@@ -91,7 +91,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
-            [S.noBorder]: !hasTabs && !isHeaderVisible,
+            // The tab row draws its own full-width bottom border, so drop the
+            // header container's border when tabs are shown to avoid a doubled line.
+            [S.noBorder]: hasTabs || isEditing || !isHeaderVisible,
           },
         )}
         data-element-id="dashboard-header-container"

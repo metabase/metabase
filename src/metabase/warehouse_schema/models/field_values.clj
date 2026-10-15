@@ -695,10 +695,6 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldValues" :id "0"}))
 
-(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
-  (let [db-path (first (serdes/path fv))]
-    [[db-path]]))
-
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
@@ -741,4 +737,4 @@
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str field-values-slug)))))
+            (fn [segment] (assoc segment :suffix field-values-slug)))))

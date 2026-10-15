@@ -22,8 +22,16 @@
                                          :allowed_hosts ["https://api.example.com"]}
                                         extra)))
 
-(defn- export! [dir]
-  (serialization/store! (serdes/extract-all "DataApp" {}) (serialization/file-writer dir)))
+(defn- export!
+  "Export the data apps, with the collection each owns (its serdes descendant) when `with-collections?`."
+  [dir & {:keys [with-collections?]}]
+  (serialization/store! (if with-collections?
+                          (extract/extract {:targets        (mapv (fn [id] ["DataApp" id])
+                                                                  (t2/select-pks-vec :model/DataApp :draft false))
+                                            :no-settings    true
+                                            :no-data-model  true})
+                          (serdes/extract-all "DataApp" {}))
+                        (serialization/file-writer dir)))
 
 (defn- import! [dir]
   (serialization/load-metabase! (serialization/ingest-yaml dir)))
@@ -62,7 +70,8 @@
                   :name          "Sales Ops"
                   :description   "Pipeline health"
                   :path          "dist/index.js"
-                  :allowed_hosts ["https://api.example.com"]}
+                  :allowed_hosts ["https://api.example.com"]
+                  :collection    (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))}
                  (dissoc (yaml/from-file (io/file dump-dir "data_apps" "sales-ops" "data_app.yaml"))
                          :created_at))))
         (testing "the bundle is a plain file at its path next to the manifest"
@@ -78,8 +87,14 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-round-trip-"]
-        (let [app (insert-app!)]
-          (export! dump-dir)
+        (let [app                  (insert-app!)
+              collection-entity-id (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))]
+          (export! dump-dir :with-collections? true)
+          (testing "the app's collection is exported with it, like any collection"
+            (is (= [collection-entity-id]
+                   (->> (file-seq (io/file dump-dir "collections"))
+                        (filter #(.isFile ^java.io.File %))
+                        (map (comp :entity_id yaml/from-file))))))
           (t2/delete! :model/DataApp (:id app))
           (import! dump-dir)
           (let [imported (t2/select-one :model/DataApp :entity_id (:entity_id app))]
@@ -91,9 +106,32 @@
                      :draft         false}
                     imported))
             (is (= "console.log(1)" (bundle-text imported)))
-            (testing "the import creates the collection and permission group the app owns"
-              (is (t2/exists? :model/Collection :id (:resource_collection_id imported)))
+            (testing "the import links the collection the manifest names and creates the permission group"
+              (is (=? {:entity_id collection-entity-id :namespace :data-apps}
+                      (t2/select-one :model/Collection :id (:resource_collection_id imported))))
               (is (t2/exists? :model/PermissionsGroup :id (:permission_group_id imported))))))))))
+
+(deftest import-refuses-a-manifest-that-names-another-collection-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (ts/with-random-dump-dir [dump-dir "data-app-switch-"]
+        (mt/with-temp [:model/Collection {other-entity-id :entity_id} {:name "Other" :namespace :data-apps}]
+          (let [app (insert-app!)]
+            (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :collection other-entity-id)
+                              {"dist/index.js" "B"})
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
+            (is (= (:resource_collection_id app)
+                   (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))))))))))
+
+(deftest import-refuses-a-manifest-naming-a-collection-the-repository-lacks-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (ts/with-random-dump-dir [dump-dir "data-app-no-collection-"]
+        (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x" :collection "nosuchcollection00001")
+                          {"dist/index.js" "B"})
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Collection 'nosuchcollection00001' was not found"
+                              (import! dump-dir)))
+        (is (not (t2/exists? :model/DataApp :entity_id "pZrj7PDuz3vSWYYi0QFhd")))))))
 
 (deftest import-updates-in-place-and-keeps-local-state-test
   (mt/with-premium-features #{:data-apps}

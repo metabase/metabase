@@ -176,13 +176,6 @@ export class MetabaseClient {
     return this.request<void>(`card/${id}`, { method: "DELETE" });
   }
 
-  createModel(input: ModelInput) {
-    return this.request<MetabaseCard>("card", {
-      method: "POST",
-      body: JSON.stringify(modelBody(input)),
-    });
-  }
-
   createMetric(input: MetricInput) {
     return this.request<MetabaseCard>("card", {
       method: "POST",
@@ -194,13 +187,6 @@ export class MetabaseClient {
     return this.request<MetabaseCard>(`card/${id}`, {
       method: "PUT",
       body: JSON.stringify(metricBody(input)),
-    });
-  }
-
-  updateModel(id: number, input: ModelInput) {
-    return this.request<MetabaseCard>(`card/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(modelBody(input)),
     });
   }
 
@@ -227,15 +213,6 @@ export class MetabaseClient {
   }
 }
 
-interface ModelInput {
-  name: string;
-  collectionId: number;
-  datasetQuery: Record<string, unknown>;
-  display: string;
-  visualizationSettings: Record<string, unknown>;
-  description: string | null;
-}
-
 interface MetricInput {
   name: string;
   collectionId: number;
@@ -244,17 +221,6 @@ interface MetricInput {
   visualizationSettings: Record<string, unknown>;
   description: string | null;
 }
-
-const modelBody = (input: ModelInput) => ({
-  name: input.name,
-  type: "model",
-  archived: false,
-  dataset_query: input.datasetQuery,
-  display: input.display,
-  visualization_settings: input.visualizationSettings,
-  description: input.description,
-  collection_id: input.collectionId,
-});
 
 const metricBody = (input: MetricInput) => ({
   name: input.name,

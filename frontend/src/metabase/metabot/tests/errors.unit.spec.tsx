@@ -123,6 +123,35 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
+  it.each([
+    "ai_provider_billing",
+    "ai_provider_rate_limit",
+    "ai_provider_auth",
+  ])("should show the backend message for %s errors", async (errorCode) => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "error",
+          errorText:
+            "The AI provider rejected the request because of a billing issue. Please contact your administrator.",
+        },
+        {
+          type: "finish",
+          finishReason: "error",
+          messageMetadata: { errorCode },
+        },
+      ],
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", /The AI provider rejected the request because of a billing/],
+    ]);
+  });
+
   it("should mask streamed errors with a generic message", async () => {
     setup();
     mockAgentEndpoint({ events: erroredResponse });

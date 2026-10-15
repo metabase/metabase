@@ -1342,6 +1342,12 @@
   []
   #{})
 
+(defenterprise data-app-collection-ids
+  "Ids of the collections data apps own, which hold the copies an app runs. OSS has none."
+  metabase-enterprise.data-apps.models.data-app
+  []
+  #{})
+
 ;;; ---------------------------------------- Bulk permission functions ------------------------------------------------
 ;; These functions set permissions for newly-created entities (groups, databases, tables) using batch SQL operations
 ;; instead of per-row mutations. They are intended to be called from within a coarse cluster lock.

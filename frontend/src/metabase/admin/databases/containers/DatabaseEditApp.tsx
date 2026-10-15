@@ -114,29 +114,33 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
-                  <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
-                    database={database}
-                  />
+                  {!database.is_stub && (
+                    <>
+                      <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                        database={database}
+                      />
 
-                  <DatabaseModelFeaturesSection
-                    database={database}
-                    isModelPersistenceEnabled={isModelPersistenceEnabled}
-                    updateDatabase={updateDatabase}
-                  />
+                      <DatabaseModelFeaturesSection
+                        database={database}
+                        isModelPersistenceEnabled={isModelPersistenceEnabled}
+                        updateDatabase={updateDatabase}
+                      />
 
-                  <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
-                    database={database}
-                  />
+                      <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
+                        database={database}
+                      />
 
-                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
-                    database={database}
-                    settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
-                  />
+                      <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                        database={database}
+                        settingsAvailable={settingsAvailable?.settings}
+                        updateDatabase={updateDatabase}
+                      />
 
-                  <PLUGIN_DB_ROUTING.DatabaseRoutingSection
-                    database={database}
-                  />
+                      <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                        database={database}
+                      />
+                    </>
+                  )}
 
                   <DatabaseDangerZoneSection
                     isAdmin={isAdmin}

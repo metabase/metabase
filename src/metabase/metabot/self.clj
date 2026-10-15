@@ -10,6 +10,7 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
@@ -21,7 +22,9 @@
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
@@ -344,6 +347,54 @@
                (recur (inc attempt)))
            (:ok result)))))))
 
+(def ^:private provider-billing-error-codes
+  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
+  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
+    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
+
+(defn- provider-failure
+  "Classify a provider API error's ex-data as `:billing`, `:rate-limit` or `:auth`, or nil for any other failure."
+  [{:keys [status body]}]
+  (let [{error-type :type error-code :code :keys [message details]} (:error body)]
+    (cond
+      (or (= status 402)
+          (some provider-billing-error-codes [error-type error-code (:error_code details)])
+          ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
+          (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
+      :billing
+
+      (= status 429)
+      :rate-limit
+
+      (or (= status 401) (= "permission_error" error-type))
+      :auth)))
+
+(defn byok-provider-error
+  "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.
+  Always nil on the managed provider, where these failures are Metabase's to fix. Only admins are told which
+  provider failed and where to fix it."
+  [e]
+  (let [{:keys [api-error provider] :as data} (ex-data e)]
+    (when-let [failure (and api-error
+                            provider
+                            (not (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
+                            (provider-failure data))]
+      (let [admin?        api/*is-superuser?*
+            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
+        (case failure
+          :billing    {:error-code "ai_provider_billing"
+                       :message    (if admin?
+                                     (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
+                                     (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
+          :rate-limit {:error-code "ai_provider_rate_limit"
+                       :message    (if admin?
+                                     (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
+                                     (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
+          :auth       {:error-code "ai_provider_auth"
+                       :message    (if admin?
+                                     (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
+                                     (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))})))))
+
 (defn- missing-required-permission
   "Returns the metabot permission keyword that the current user is missing
   (the base `:permission/metabot` or `required-perm`), or nil when granted.
@@ -490,6 +541,37 @@
                      #(reduce rf* init (make-source))
                      (fn [_e] (not @emitted?))))))))))))
 
+(defn- json-schema->malli
+  "Malli equivalent of `json-schema`, for the JSON Schema subset [[core/LLMRequestOpts]] accepts as `:schema`."
+  [{:keys [type properties required additionalProperties items minimum maximum]}]
+  (let [schema (case type
+                 "object"  (into [:map {:closed (false? additionalProperties)}]
+                                 (for [[k v] properties]
+                                   [(keyword k) {:optional (not-any? #{(name k)} required)} (json-schema->malli v)]))
+                 "array"   [:sequential (if items (json-schema->malli items) :any)]
+                 "string"  :string
+                 "integer" :int
+                 "number"  number?
+                 "boolean" :boolean
+                 :any)]
+    (if (or minimum maximum)
+      (cond-> [:and schema]
+        minimum (conj [:>= minimum])
+        maximum (conj [:<= maximum]))
+      schema)))
+
+(defn- structured-output-in-text
+  "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
+  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches."
+  [parts json-schema]
+  (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
+        schema (json-schema->malli json-schema)]
+    (some (fn [candidate]
+            (let [value (try (json/decode-document+kw candidate) (catch Exception _ nil))]
+              (when (mr/validate schema value)
+                value)))
+          (cons text (reverse (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text)))))))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -578,8 +660,12 @@
                               {:parts parts :error error :error-code "llm-stream-error"}))
 
               :else
-              (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+              (if-let [output (structured-output-in-text parts json-schema)]
+                (do (log/info "LLM answered in text instead of calling the structured-output tool"
+                              {:provider provider :model model :tag (:tag opts)})
+                    {:result output :parts parts})
+                (throw (ex-info "LLM returned no tool call in structured response"
+                                {:parts parts}))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
@@ -600,8 +686,9 @@
                     tracking fields and [[call-llm-structured-with-trace]] for
                     `:required-permission`.
 
-  Returns the parsed JSON map from the forced tool call. For access to the
-  full streamed trace (non-tool text), see
+  Returns the parsed JSON map from the forced tool call. When the model answers
+  in text instead, the JSON in that text is returned if it matches `json-schema`.
+  For access to the full streamed trace (non-tool text), see
   [[call-llm-structured-with-trace]]."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (:result (call-llm-structured-with-trace

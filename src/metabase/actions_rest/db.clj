@@ -7,13 +7,12 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-models-visible-to-user
-  "The unarchived model Cards in Collections the current user can read."
+(mu/defn unarchived-action-ids-visible-to-user
+  "The ids of the unarchived Actions in Collections the current user can read."
   []
-  (t2/select :model/Card {:where [:and
-                                  [:= :type "model"]
-                                  [:= :archived false]
-                                  (collection/visible-collection-filter-clause)]}))
+  (t2/select-pks-vec :model/Action {:where [:and
+                                            [:= :archived false]
+                                            (collection/visible-collection-filter-clause)]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

@@ -17,6 +17,7 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.util.malli :as mu]))
 
@@ -119,6 +120,11 @@
    "vllm"       {:stream           #'vllm/vllm
                  :list-models      #'vllm/list-models
                  :reasoning?       #'vllm/streams-reasoning?}
+   "xai"        {:stream           #'xai/xai
+                 :list-models      #'xai/list-models
+                 :supported-models #'xai/supported-models
+                 :context-window   #'xai/context-window-tokens
+                 :reasoning?       #'xai/streams-reasoning?}
    "zai"        {:stream           #'zai/zai
                  :list-models      #'zai/list-models
                  :supported-models #'zai/supported-models

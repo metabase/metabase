@@ -1,5 +1,5 @@
 import isPropValid from "@emotion/is-prop-valid";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";

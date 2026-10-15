@@ -364,7 +364,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
   it("rebuilds a missing lockfile entry from the ID left in the source", () => {
     syncOneQuery().then((card) => {
-      cy.writeFile(LOCKFILE(), { queries: [], models: [] });
+      cy.writeFile(LOCKFILE(), { queries: [], actions: [] });
 
       sync();
 

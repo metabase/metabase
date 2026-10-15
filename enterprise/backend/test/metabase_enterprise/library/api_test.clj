@@ -17,8 +17,8 @@
            (is (= "Library" (:name response)))
            (is (some? (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)))
            (is (some? (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)))))
-       (testing "a second call rejects with 400 'Library already exists'"
-         (is (= "Library already exists"
+       (testing "a second call rejects with 400 'Semantic layer already exists'"
+         (is (= "Semantic layer already exists"
                 (mt/user-http-request :crowberto :post 400 "ee/library"))))))))
 
 (deftest get-library-test

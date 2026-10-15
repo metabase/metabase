@@ -9,7 +9,6 @@ table_id:
 database_type: CHARACTER VARYING
 base_type: type/Text
 effective_type: type/Text
-dimensions: []
 position: 1
 database_position: 1
 serdes/meta:

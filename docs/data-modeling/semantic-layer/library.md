@@ -30,7 +30,7 @@ Once you [create the Library](#create-the-library):
 
 - A **Library** section appears in the navigation sidebar of the main app, listing the tables and metrics in your semantic layer.
 - The data picker in the query builder defaults to showing tables and metrics from the Library to encourage people to use your vetted content.
-- If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
+- If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-or-curated-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
 - You can [sync the Library to Git](#versioning-the-library) to version your semantic layer and glossary.
 
 ### Semantic layer

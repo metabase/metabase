@@ -248,11 +248,20 @@
 ;; Transcript persistence
 ;; ---------------------------------------------------------------------------
 
+(defn- schema-violation?
+  "Whether `e` is a malli schema-validation failure. Those only throw where schemas are validated (dev and
+  test), and mean the code is wrong, so they must not be swallowed like a runtime failure."
+  [e]
+  (contains? #{:metabase.util.malli.fn/invalid-input :metabase.util.malli.fn/invalid-output}
+             (:type (ex-data e))))
+
 (defn- save-transcript!
   [thread-id transcript]
   (try
     (explorations.db/update-thread! thread-id {:query_plan_transcript transcript})
     (catch Throwable e
+      (when (schema-violation? e)
+        (throw e))
       (log/warnf e "Failed to save query-plan transcript for thread %d" thread-id))))
 
 (defn- record-outcome!
@@ -378,6 +387,8 @@
             :skip-empty)
         (run-planner! ctx picked planner-id pre)))
     (catch Throwable e
+      (when (schema-violation? e)
+        (throw e))
       (log/errorf e "generate-query-plan! failed for thread %d" thread-id)
       (record-outcome! thread-id (preamble thread-id :unknown) :error
                        :error (.getMessage e))

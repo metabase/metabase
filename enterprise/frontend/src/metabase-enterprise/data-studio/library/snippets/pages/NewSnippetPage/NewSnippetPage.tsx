@@ -122,6 +122,7 @@ export function NewSnippetPage() {
           }
           breadcrumbs={
             <DataStudioBreadcrumbs>
+              <Link to={Urls.dataStudioLibrary()}>{t`Semantic layer`}</Link>
               <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
               {t`New Snippet`}
             </DataStudioBreadcrumbs>

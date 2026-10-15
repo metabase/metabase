@@ -35,7 +35,7 @@ describe("metric reconciliation", () => {
 
     const lockfile: ResourceLockfile = {
       queries: [],
-      models: [],
+      actions: [],
       metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
     };
 
@@ -80,7 +80,7 @@ describe("metric reconciliation", () => {
 
     const lockfile: ResourceLockfile = {
       queries: [],
-      models: [],
+      actions: [],
       metrics: [],
     };
 
@@ -145,7 +145,7 @@ describe("metric reconciliation", () => {
 
     const lockfile: ResourceLockfile = {
       queries: [],
-      models: [],
+      actions: [],
       metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
     };
 
@@ -195,7 +195,7 @@ describe("metric reconciliation", () => {
 
     const lockfile: ResourceLockfile = {
       queries: [],
-      models: [],
+      actions: [],
       metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
     };
 
@@ -250,7 +250,7 @@ describe("metric reconciliation", () => {
             metrics: [],
           },
         ],
-        lockfile: { queries: [], models: [], metrics: [] },
+        lockfile: { queries: [], actions: [], metrics: [] },
         client,
         log: jest.fn(),
       }),
@@ -295,7 +295,7 @@ describe("metric reconciliation", () => {
             ],
           },
         ],
-        lockfile: { queries: [], models: [], metrics: [] },
+        lockfile: { queries: [], actions: [], metrics: [] },
         client,
         log: jest.fn(),
       }),
@@ -321,7 +321,7 @@ describe("metric reconciliation", () => {
 
     const lockfile: ResourceLockfile = {
       queries: [],
-      models: [],
+      actions: [],
       metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
     };
 
@@ -372,7 +372,7 @@ describe("metric reconciliation", () => {
 
       lockfile = {
         queries: [],
-        models: [],
+        actions: [],
         metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
       };
     });

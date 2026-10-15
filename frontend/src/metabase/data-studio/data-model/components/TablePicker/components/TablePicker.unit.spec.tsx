@@ -34,6 +34,28 @@ import {
 import type { TreePath } from "../types";
 import { UncontrolledTablePicker } from "../wrappers";
 
+// The search tests otherwise wait out a real 500ms debounce each, which is pure
+// idling. The getter lets the one test that asserts keystrokes collapse into a
+// single search put the real duration back.
+let searchDebounceDuration = 0;
+
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  get SEARCH_DEBOUNCE_DURATION() {
+    return searchDebounceDuration;
+  },
+}));
+
+const withRealSearchDebounce = () => {
+  const actual = jest.requireActual("metabase/utils/constants");
+  beforeEach(() => {
+    searchDebounceDuration = actual.SEARCH_DEBOUNCE_DURATION;
+  });
+  afterEach(() => {
+    searchDebounceDuration = 0;
+  });
+};
+
 let id = 1000;
 function nextId() {
   return id++;
@@ -974,6 +996,10 @@ describe("TablePicker", () => {
   });
 
   describe("Analytics", () => {
+    // This test is about keystrokes collapsing into one tracked search, so it
+    // needs the real debounce.
+    withRealSearchDebounce();
+
     it("tracks a table search request", async () => {
       const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       trackSimpleEvent.mockClear();

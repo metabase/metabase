@@ -1,6 +1,5 @@
 (ns metabase.config.core
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]

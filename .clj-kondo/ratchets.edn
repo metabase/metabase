@@ -1,79 +1,118 @@
 ;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts), and
 ;; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).
-;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
+;; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline
+;; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened
+;; to `ee.`.
+;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other
+;; budget is a non-negative integer.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
-;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.
+;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one;
+;; a seed like `:discouraged-var/clojure.core/println` seeds one symbol, and `:discouraged-var` all of them.
 ;; The workflow runs it on master, so feature branches do not need to record reductions.
 ;; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the
 ;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 ;;
-;; Test code's :ignore-counts has its own budget in .clj-kondo/ratchets-test.edn.
+;; Test code's inline ignores have their own budgets in .clj-kondo/ratchets-test.edn.
 ;; :config-counts stays here either way -- config.edn's scoping doesn't cleanly split.
-{:ignore-counts  {:aliased-namespace-symbol                                  3
-                  :clojure-lsp/unused-public-var                             8
-                  :consistent-alias                                          2
-                  :def-fn                                                    1
-                  :deprecated-namespace                                      29
-                  :deprecated-var                                            53
-                  :discouraged-java-method                                   4
-                  :discouraged-namespace                                     60
-                  :discouraged-var                                           73
-                  :duplicate-require                                         1
-                  :main-without-gen-class                                    1
-                  :metabase/discourage-dynamic-vars                          324
-                  :metabase/discourage-millis-duration                       1
-                  :metabase/modules                                          23
-                  :metabase/namespace-name                                   3
-                  :metabase/validate-defendpoint-has-response-schema         427
-                  :metabase/validate-defendpoint-query-params-use-kebab-case 48
-                  :metabase/validate-defendpoint-route-uses-kebab-case       44
-                  :missing-docstring                                         4
-                  :non-arg-vec-return-type-hint                              1
-                  :reduce-without-init                                       3
-                  :redundant-do                                              1
-                  :syntax                                                    2
-                  :type-mismatch                                             2
-                  :unquote-not-syntax-quoted                                 1
-                  :unresolved-namespace                                      3
-                  :unresolved-symbol                                         9
-                  :unsorted-required-namespaces                              :unlimited
-                  :unused-alias                                              2
-                  :unused-binding                                            3
-                  :unused-excluded-var                                       2
-                  :unused-namespace                                          2
-                  :unused-private-var                                        6
-                  :unused-value                                              1}
- :config-counts  {:constant-condition                      1
-                  :deprecated-namespace                    7
-                  :deprecated-var                          16
-                  :discouraged-namespace                   14
-                  :discouraged-var                         14
-                  :inline-def                              1
-                  :main-without-gen-class                  1
-                  :metabase/defsetting-must-specify-export 1
-                  :metabase/defsetting-namespace           1
-                  :metabase/discourage-dynamic-vars        1
-                  :metabase/prefer-with-dynamic-fn-redefs  4
-                  :metabase/t2-query-namespace             2
-                  :metabase/table-or-field-query           1
-                  :metabase/unsafe-app-db-query            1
-                  :missing-docstring                       1
-                  :private-call                            1
-                  :redundant-ignore                        1
-                  :redundant-primitive-coercion            1
-                  :refer-all                               1
-                  :type-mismatch                           1
-                  :unexpected-recur                        1
-                  :unresolved-symbol                       15
-                  :unresolved-var                          1
-                  :unused-referred-var                     4}
- :comment-exempt #{:deprecated-namespace
-                   :discouraged-namespace
-                   :discouraged-var
-                   :metabase/discourage-dynamic-vars
-                   :metabase/modules
-                   :metabase/validate-defendpoint-has-response-schema
-                   :metabase/validate-defendpoint-query-params-use-kebab-case
-                   :metabase/validate-defendpoint-route-uses-kebab-case}}
+{:ignore-counts                {:aliased-namespace-symbol                                  3
+                                :clojure-lsp/unused-public-var                             7
+                                :consistent-alias                                          2
+                                :def-fn                                                    1
+                                :deprecated-namespace                                      29
+                                :deprecated-var                                            53
+                                :discouraged-java-method                                   4
+                                :duplicate-require                                         1
+                                :main-without-gen-class                                    1
+                                :metabase/discourage-dynamic-vars                          324
+                                :metabase/discourage-millis-duration                       1
+                                :metabase/modules                                          23
+                                :metabase/namespace-name                                   3
+                                :metabase/validate-defendpoint-has-response-schema         427
+                                :metabase/validate-defendpoint-query-params-use-kebab-case 48
+                                :metabase/validate-defendpoint-route-uses-kebab-case       44
+                                :missing-docstring                                         4
+                                :non-arg-vec-return-type-hint                              1
+                                :reduce-without-init                                       3
+                                :redundant-do                                              1
+                                :syntax                                                    2
+                                :type-mismatch                                             2
+                                :unquote-not-syntax-quoted                                 1
+                                :unresolved-namespace                                      3
+                                :unresolved-symbol                                         9
+                                :unsorted-required-namespaces                              :unlimited
+                                :unused-alias                                              2
+                                :unused-binding                                            3
+                                :unused-excluded-var                                       2
+                                :unused-namespace                                          2
+                                :unused-private-var                                        5
+                                :unused-value                                              1}
+ :discouraged-namespace-counts {:cheshire.core         4
+                                :clojure.tools.logging 3
+                                :grouper.core          1
+                                :legacy-mbql.normalize 14
+                                :legacy-mbql.schema    14
+                                :legacy-mbql.util      2
+                                :query-processor.store 8
+                                :toucan2.core          3
+                                :util.malli.schema     2}
+ :discouraged-var-counts       {:clojure.core/eval                                     6
+                                :clojure.core/print                                    1
+                                :clojure.core/println                                  9
+                                :clojure.core/prn                                      3
+                                :clojure.core/tap>                                     5
+                                :clojure.core/update-keys                              1
+                                :clojure.java.jdbc/get-connection                      2
+                                :clojure.pprint/pprint                                 2
+                                :clojure.string/lower-case                             2
+                                :clojure.string/upper-case                             1
+                                :clojurewerkz.quartzite.jobs/defjob                    1
+                                :compojure.core/context                                2
+                                :compojure.core/defroutes                              4
+                                :compojure.core/routes                                 2
+                                :ee.transform-testing.expectations.empty/->Empty       1
+                                :ee.transform-testing.expectations.equals/->EqualsRows 1
+                                :ee.transform-testing.expectations.equals/->EqualsSql  1
+                                :entity-retrieval.core/search-unfiltered               1
+                                :entity-retrieval.mirror/search-unfiltered             1
+                                :lib.core/->legacy-MBQL                                10
+                                :lib.equality/find-column-indexes-for-refs             1
+                                :malli.core/explain                                    1
+                                :malli.core/explainer                                  1
+                                :malli.core/validate                                   1
+                                :malli.core/validator                                  1
+                                :me.flowthing.pp/pprint                                2
+                                :next.jdbc/active-tx?                                  1}
+ :config-counts                {:constant-condition                      1
+                                :deprecated-namespace                    7
+                                :deprecated-var                          16
+                                :discouraged-namespace                   14
+                                :discouraged-var                         14
+                                :inline-def                              1
+                                :main-without-gen-class                  1
+                                :metabase/defsetting-must-specify-export 1
+                                :metabase/defsetting-namespace           1
+                                :metabase/discourage-dynamic-vars        1
+                                :metabase/prefer-with-dynamic-fn-redefs  4
+                                :metabase/t2-query-namespace             2
+                                :metabase/table-or-field-query           1
+                                :metabase/unsafe-app-db-query            1
+                                :missing-docstring                       1
+                                :private-call                            1
+                                :redundant-ignore                        1
+                                :redundant-primitive-coercion            1
+                                :refer-all                               1
+                                :type-mismatch                           1
+                                :unexpected-recur                        1
+                                :unresolved-symbol                       15
+                                :unresolved-var                          1
+                                :unused-referred-var                     4}
+ :comment-exempt               #{:deprecated-namespace
+                                 :discouraged-namespace
+                                 :discouraged-var
+                                 :metabase/discourage-dynamic-vars
+                                 :metabase/modules
+                                 :metabase/validate-defendpoint-has-response-schema
+                                 :metabase/validate-defendpoint-query-params-use-kebab-case
+                                 :metabase/validate-defendpoint-route-uses-kebab-case}}

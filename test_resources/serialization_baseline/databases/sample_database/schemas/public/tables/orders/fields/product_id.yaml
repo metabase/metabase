@@ -15,7 +15,6 @@ fk_target_field_id:
 - PUBLIC
 - PRODUCTS
 - ID
-dimensions: []
 position: 2
 database_position: 2
 serdes/meta:

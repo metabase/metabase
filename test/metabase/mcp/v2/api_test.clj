@@ -561,6 +561,21 @@
   (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
       (get-in [:headers "Mcp-Session-Id"])))
 
+(deftest ui-tools-hidden-from-client-switched-off-test
+  (testing "EMB-2406: a client the admin switched off under \"Show inline charts\" is not offered the UI tools"
+    (let [handshake (fn []
+                      (-> (mcp-request (jsonrpc-request "initialize"
+                                                        (assoc mcp-app-ui-capabilities
+                                                               :clientInfo {:name "ChatGPT"})))
+                          (get-in [:headers "Mcp-Session-Id"])))
+          tool-names (fn [session-id]
+                       (->> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                            :body :result :tools (map :name) set))]
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients []]
+        (is (not (contains? (tool-names (handshake)) "visualize_query"))))
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["chatgpt"]]
+        (is (contains? (tool-names (handshake)) "visualize_query"))))))
+
 (deftest tools-list-descriptions-fit-client-truncation-test
   (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
             whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the

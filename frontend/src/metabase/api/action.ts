@@ -59,27 +59,21 @@ export const actionApi = Api.injectEndpoints({
         // (including server-managed fields like `creator`, `created_at`,
         // `database_enabled_actions`, ...). The backend routes anything
         // outside the Action columns to the type-specific update table
-        // (query_action / implicit_action / http_action), where those
+        // (query_action / implicit_action), where those
         // columns don't exist and the request 500s. Whitelist only the
         // fields that the API endpoint actually accepts.
         body: _.pick(body, [
           "id",
           "archived",
-          "body",
           "database_id",
           "dataset_query",
           "description",
-          "error_handle",
-          "headers",
           "kind",
           "model_id",
           "name",
           "parameter_mappings",
           "parameters",
           "public_uuid",
-          "response_handle",
-          "template",
-          "url",
           "visualization_settings",
         ]),
       }),

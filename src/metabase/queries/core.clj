@@ -33,7 +33,8 @@
   card-param-remapped-value]
  [metabase.queries.db
   card-query-info
-  cards-queries-info]
+  cards-queries-info
+  move-actions-of-models!]
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.card-write-checks
@@ -51,7 +52,6 @@
  [metabase.queries.models.card
   fully-parameterized?
   maybe-unverify!
-  model-supports-implicit-actions?
   model?
   sole-dashboard-id
   starting-card-schema-version

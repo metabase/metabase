@@ -78,7 +78,7 @@ export function writeQueryLockfile(
 ) {
   fs.writeFileSync(
     path.join(appRoot, "resources_metadata.json"),
-    JSON.stringify({ queries, models: [] }),
+    JSON.stringify({ queries, actions: [] }),
   );
 }
 

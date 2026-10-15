@@ -1,17 +1,16 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NormalizedTable } from "metabase-types/api";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
+import { TableLabel } from "../TableLabel/TableLabel";
 
-import {
-  InteractiveTableLabel,
-  LabelButton,
-  LabelLink,
-} from "./ConnectedTables.styled";
+import S from "./ConnectedTables.module.css";
 
 export type ConnectedTable = Pick<
   NormalizedTable,
@@ -52,9 +51,15 @@ function ConnectedTableButton({
   onClick: (table: ConnectedTable) => void;
 }) {
   return (
-    <LabelButton key={table.id} onClick={() => onClick(table)}>
-      <InteractiveTableLabel table={table} />
-    </LabelButton>
+    <Box
+      component="button"
+      key={table.id}
+      className={S.connectedTable}
+      ta="left"
+      onClick={() => onClick(table)}
+    >
+      <TableLabel className={S.label} table={table} color="text-disabled" />
+    </Box>
   );
 }
 
@@ -73,8 +78,8 @@ function ConnectedTableLink({ table }: { table: ConnectedTable }) {
   }, [buildQuestion, table.db_id, table.id]);
 
   return (
-    <LabelLink to={url}>
-      <InteractiveTableLabel table={table} />
-    </LabelLink>
+    <Link className={S.connectedTable} to={url}>
+      <TableLabel className={S.label} table={table} color="text-disabled" />
+    </Link>
   );
 }

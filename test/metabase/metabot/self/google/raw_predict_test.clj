@@ -34,6 +34,13 @@
                                       {:system "You are terse."
                                        :input  [{:role :user :content "hi"}]})))))
 
+(deftest ^:parallel request-body-never-asks-for-fast-mode-test
+  (testing "fast mode is only on the Claude API, so a request made with it on goes to the platform at standard speed"
+    (is (not (contains? (raw-predict/request-body "claude-opus-5-5"
+                                                  {:fast? true
+                                                   :input [{:role :user :content "hi"}]})
+                        :speed)))))
+
 (deftest ^:parallel request-body-dated-model-resolves-max-tokens-test
   (testing "a model dated in the platform's `@` spelling resolves to the same max_tokens ceiling as its
             direct-API `-` spelling, rather than falling back to the unknown-model default"

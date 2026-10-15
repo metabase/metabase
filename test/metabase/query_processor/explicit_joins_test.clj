@@ -2015,7 +2015,8 @@
                              (lib.tu/merged-mock-metadata-provider
                               {:cards [{:id 1, :name (apply str (repeat 65 \a))}]}))
               card       (lib.metadata/card mp 1)
-              base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              base       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/filter (lib/< (lib.metadata/field mp (mt/id :orders :id)) 101)))
               orders-pid (lib.metadata/field mp (mt/id :orders :product_id))
               ;; derive the joined card's columns instead of hardcoding "PRODUCT_ID"/"CATEGORY" (CI: case-folding drivers)
               card-pid   (m/find-first #(= (mt/id :orders :product_id) (:id %))
