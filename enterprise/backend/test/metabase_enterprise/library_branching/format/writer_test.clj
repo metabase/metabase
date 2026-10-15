@@ -7,6 +7,7 @@
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase-enterprise.library-branching.golden :as golden]
    [metabase-enterprise.library-branching.mutation.core :as mut]))
 
 (set! *warn-on-reflection* true)
@@ -16,19 +17,39 @@
 
 ;;; ---------------------------------------------------- Generators ----------------------------------------------------
 
+(defn- code-points->string
+  ^String [cps]
+  (let [sb (StringBuilder.)]
+    (doseq [^int cp cps] (.appendCodePoint sb cp))
+    (str sb)))
+
 (def ^:private code-point-string-gen
   "Strings of any code points but surrogates: control characters, line separators and characters outside the BMP."
-  (gen/fmap (fn [cps] (let [sb (StringBuilder.)]
-                        (doseq [^int cp cps] (.appendCodePoint sb cp))
-                        (str sb)))
+  (gen/fmap code-points->string
             (gen/vector (gen/frequency [[4 (gen/choose 0 0x7F)]
                                         [2 (gen/choose 0x80 0x7FF)]
                                         [1 (gen/elements [0x85 0xA0 0x2028 0x2029 0xFEFF 0xFFFD 0xFFFE 0xFFFF])]
                                         [1 (gen/choose 0x10000 0x10FFFF)]])
                         0 12)))
 
+(def ^:private marker-code-points
+  "Code points that a YAML reader strips, folds or reads as a marker, or that YAML holds only escaped: the byte order
+  mark, the noncharacters U+FFFE and U+FFFF, the bytes of the UTF-8 and UTF-16 byte order marks as Latin-1 letters,
+  the C0 and C1 controls, DEL, NEL, LS, PS, space and no-break space."
+  (vec (concat [0xFEFF 0xFFFE 0xFFFF 0xEF 0xBB 0xBF 0xFE 0xFF 0x7F 0x85 0x2028 0x2029 0x20 0xA0]
+               (range 0x00 0x20)
+               (range 0x80 0xA0))))
+
+(def ^:private marker-string-gen
+  "Strings of 1 to 6 characters, half of them from [[marker-code-points]] and half YAML indicators or letters, so a
+  marker is often first, last, or next to an indicator."
+  (gen/fmap code-points->string
+            (gen/vector (gen/frequency [[1 (gen/elements marker-code-points)]
+                                        [1 (gen/elements (map int "ab#:-?'\"{}[],&*!|>%@`~"))]])
+                        1 6)))
+
 (def ^:private string-gen
-  (gen/one-of [gen/string gen/string-alphanumeric code-point-string-gen
+  (gen/one-of [gen/string gen/string-alphanumeric code-point-string-gen marker-string-gen
                (gen/elements ["" "null" "~" "true" "no" "123" "1.5" "2024-01-01" "a: b" "- x" "#c" "'" "\""
                               "line\n" "\nline" "a\n\nb\n" " lead" "trail " "\t" "x\r\ny" "*a" "&a" "!t" "%" "@"])]))
 
@@ -88,6 +109,30 @@
 (defspec read-inverts-write-test 300
   (prop/for-all [doc document-gen]
     (= doc (codec/read-yaml (writer/write-yaml doc)))))
+
+(def ^:private string-positions
+  "Functions from a string to a document that holds it at one position: the whole document, a map value, a map key
+  (first and not first), a sequence element, and the arguments of a clause."
+  [identity
+   (fn [s] {:k s})
+   (fn [s] {(keyword s) "v"})
+   (fn [s] (assoc {:a 1} (keyword s) "v"))
+   vector
+   (fn [s] {:k [["=" {} ["field" {} s] s]]})
+   (fn [s] {:k [["=" {(keyword s) s}]]})])
+
+(defspec read-inverts-write-marker-text-test 1000
+  (prop/for-all [s        marker-string-gen
+                 position (gen/elements string-positions)]
+    (let [doc (position s)]
+      (= doc (codec/read-yaml (writer/write-yaml doc))))))
+
+(deftest byte-order-mark-test
+  (testing "a string that starts with a byte order mark reads back, at the start of the file and elsewhere"
+    (doseq [doc ["\uFEFF" "\uFEFFTotal Revenue" {(keyword "\uFEFFk") "v"} {:name "\uFEFF"} ["\uFEFF"]]]
+      (is (= doc (codec/read-yaml (writer/write-yaml doc))) (pr-str doc))))
+  (testing "the golden description with markers, which the checker reads in babashka, is the text of the writer"
+    (is (= golden/marker-description-line (text (writer/write-yaml {:description golden/marker-text}))))))
 
 (defspec canonical-bytes-test 300
   (prop/for-all [doc input-gen]
@@ -236,8 +281,16 @@
    {:name   :multi-line-keys
     :doc    "A key with a line break is in single quotes, on more than one line."
     :target `writer/key-style
-    :edits  [[:replace 'line-break 'unicode-line-break]]}])
+    :edits  [[:replace 'line-break 'unicode-line-break]]}
+   {:name   :plain-byte-order-mark
+    :doc    "A string with a byte order mark is plain, so a file that is the string U+FEFF holds no document."
+    :target `writer/scalar-style
+    :edits  [[:replace '(byte-order-mark? s) false]]}
+   {:name   :plain-byte-order-mark-key
+    :doc    "A key with a byte order mark is plain, so the first key of a file loses its byte order mark."
+    :target `writer/key-style
+    :edits  [[:replace '(byte-order-mark? k) false]]}])
 
 (deftest writer-mutations-test
   (mut/check writer-mutations {:tests [#'write-yaml-test #'clause-test #'canonical-bytes-test
-                                       #'clause-is-one-line-test]}))
+                                       #'clause-is-one-line-test #'byte-order-mark-test]}))

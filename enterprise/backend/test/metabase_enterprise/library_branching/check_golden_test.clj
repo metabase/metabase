@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.check :as check]
+   [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.manifest :as manifest]
    [metabase-enterprise.library-branching.golden :as golden]))
 
@@ -58,6 +59,13 @@
   (testing "without a manifest, the structural check alone runs"
     (is (= {:green? true :findings [] :lints [] :semantic? false}
            (select-keys (check/check (golden/tree) {}) [:green? :findings :lints :semantic?])))))
+
+(deftest marker-text-test
+  (testing "the reader reads the description that the writer wrote with a byte order mark, NEL, LS, PS and controls, and the
+            tree stays green with no lint"
+    (let [t (get-in (golden/variants) ["green-marker-text" :tree])]
+      (is (= golden/marker-text (:description (codec/read-yaml (get t golden/total-revenue-path)))))
+      (is (= {:green? true :findings [] :lints []} (select-keys (checked t) [:green? :findings :lints]))))))
 
 (deftest decode-findings-test
   (testing "each kind of file that does not decode is red, with the path of the file"

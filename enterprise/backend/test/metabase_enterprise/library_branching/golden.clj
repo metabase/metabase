@@ -107,6 +107,15 @@
   ^bytes []
   (utf-8 (str/replace (text (manifest-bytes)) products-table "")))
 
+(def marker-text
+  "A text with characters that a YAML reader strips, folds or reads as a marker: a byte order mark first, then NEL,
+  LS, PS, a C0 control, a C1 control and DEL."
+  "\uFEFFTotal\u0085Revenue\u2028\u2029\u0001\u009F\u007F")
+
+(def marker-description-line
+  "The line of the description [[marker-text]] in the bytes of the writer."
+  "description: \"\uFEFFTotal\\NRevenue\\L\\P\\x01\\x9f\\x7f\"\n")
+
 (def app-files
   "The own files of a data app, a broken YAML file and a Kubernetes manifest: foreign files."
   {"apps/sales/App.tsx"      "export default function App() { return null; }\n"
@@ -138,6 +147,7 @@
      "refs-closed"            (v (tree-with {base-filter-path nil}))
      "root"                   (v (edit total-revenue-path #(str/replace % (str "collection: " revenue-id "\n") "")))
      "unique-key"             (v (edit active-filter-path #(str/replace % "name: Active product filter" "name: Base filter")))
+     "green-marker-text"      (v (edit total-revenue-path #(str/replace % "description: Sum of order totals, after discounts.\n" marker-description-line)))
      "namespace"              (v (edit revenue-path #(str % "namespace: snippets\n")))
      "env-resolves"           {:tree golden :manifest (manifest-without-products)}
      "manifest-unreadable"    {:tree golden :manifest (utf-8 "databases: [")}
