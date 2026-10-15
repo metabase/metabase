@@ -122,14 +122,58 @@
                    (vals s))]
     (= (count ks) (count (set ks)))))
 
+(def library-holds
+  "`{collection-type #{content}}`: what a collection of each Library type can hold, by the Library's rules. A content
+  is a kind, `:dashboard-question` (a question of a dashboard), or `[:collection type]` (a collection of that `:type`,
+  nil for none)."
+  {"library"            #{[:collection "library-data"] [:collection "library-metrics"] [:collection "library-dashboards"]}
+   "library-data"       #{[:collection "library-data"] :published-table}
+   "library-metrics"    #{[:collection "library-metrics"] :metric}
+   "library-dashboards" #{[:collection "library-dashboards"] :dashboard :dashboard-question :timeline}})
+
+(defn library-content-of
+  "The content of `item` in the terms of [[library-holds]]."
+  [{:keys [kind attrs]}]
+  (case kind
+    :collection [:collection (:type attrs)]
+    :question   (if (some? (:dashboard_id attrs)) :dashboard-question :question)
+    kind))
+
+(defn library-fault
+  "The Library rule that item `item` of snapshot `s` breaks, or nil: `:library-content` when its container is a
+  collection of a type of [[library-holds]] that cannot hold it, else `:table-collection` when it is a published table
+  in a collection whose type is not library-data."
+  [s {:keys [kind place] :as item}]
+  (let [container (get s place)
+        t         (:type (:attrs container))]
+    (when (= :collection (:kind container))
+      (cond
+        (and (contains? library-holds t) (not (contains? (library-holds t) (library-content-of item))))
+        :library-content
+
+        (and (= :published-table kind) (not= "library-data" t))
+        :table-collection))))
+
+(defn library-content-fits?
+  "True iff no item of snapshot `s` breaks a Library rule ([[library-fault]])."
+  [s]
+  (not-any? (partial library-fault s) (vals s)))
+
+(defn library-fits?
+  "True iff `item` in the container `container` (an item, or nil for the root level) breaks no Library rule."
+  [container item]
+  (nil? (library-fault {::container container} (assoc item :place ::container))))
+
 (defn well-formed?
   "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
   [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the rules that the
-  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]], [[area-ids-free?]] and [[nested-ids-unique?]]."
+  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]], [[area-ids-free?]], [[nested-ids-unique?]] and
+  [[library-content-fits?]]."
   ([s] (well-formed? s snapshot/may-contain))
   ([s may-contain]
    (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s)
-        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (area-ids-free? s) (nested-ids-unique? s))))
+        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (area-ids-free? s) (nested-ids-unique? s)
+        (library-content-fits? s))))
 
 ;;; --------------------------------------------- Identities and values ----------------------------------------------
 
@@ -284,21 +328,38 @@
     :dangling (dangling-id prefix (count ids) x)
     :area     (let [roots (vec (sort (keys snapshot/area-roots)))] (nth roots (mod x (count roots))))))
 
+(def library-collection-kinds
+  "`{kind {:type t :holds #{kind}}}`: the kinds that the generators of well-formed snapshots use for the collections of
+  the Library types, each a collection of type `t` that holds only the kinds of `:holds`. [[library-root-kind]] is the
+  Library collection."
+  {::library-root          {:type "library"
+                            :holds #{::data-collection ::metrics-collection ::dashboards-collection}}
+   ::data-collection       {:type "library-data" :holds #{::data-collection :published-table}}
+   ::metrics-collection    {:type "library-metrics" :holds #{::metrics-collection :metric}}
+   ::dashboards-collection {:type "library-dashboards" :holds #{::dashboards-collection :dashboard :timeline}}})
+
+(def library-root-kind
+  "The kind of [[library-collection-kinds]] of the Library collection."
+  ::library-root)
+
 (defn- assemble
   "The snapshot of `choices`, given the kind and the place (an `[:item k]` or `[:dangling k]` choice, or nil) of each
-  item."
+  item. A kind of [[library-collection-kinds]] is a collection of its type."
   [choices item-kinds item-places]
   (let [ids (identities choices item-kinds)]
     (into {}
           (map-indexed
            (fn [i {:keys [id name refs attrs]}]
-             (let [kind (nth item-kinds i)]
+             (let [kind  (nth item-kinds i)
+                   typed (get library-collection-kinds kind)]
                [(nth ids i)
-                {:kind  kind
+                {:kind  (if (or typed (= :collection kind)) :collection kind)
                  :name  name
                  :place (some->> (nth item-places i) (resolve-target ids id))
                  :refs  (into #{} (map (fn [[role target]] [role (resolve-target ids id target)])) refs)
-                 :attrs (get attrs kind)}])))
+                 :attrs (if typed
+                          (assoc (get attrs :collection) :type (:type typed))
+                          (get attrs kind))}])))
           choices)))
 
 (defn- sorted-kinds [ks] (vec (sort ks)))
@@ -320,6 +381,25 @@
                  [s seen])))
            [s #{}]
            (sort snapshot/compare-identities (keys s)))))
+
+(defn- with-library-collections
+  "Options `opts` in which the collections of the Library types are kinds of their own ([[library-collection-kinds]])
+  that hold what the Library rules let them hold, and a collection of the kind `:collection` holds no published table.
+  So every collection obeys the Library rules."
+  [{:keys [kinds may-contain root-kinds] :as opts}]
+  (if (contains? (set kinds) :collection)
+    (let [base   (set (get may-contain :collection))
+          pseudo (set (keys library-collection-kinds))]
+      (assoc opts
+             :kinds       (into (set kinds) pseudo)
+             ;; A collection of no type holds only the Data kind of them, and the root level only that and the Library,
+             ;; so the other kinds keep most of the choices.
+             :may-contain (into (update may-contain :collection #(-> (set %) (disj :published-table) (conj ::data-collection)))
+                                (map (fn [[k {:keys [holds]}]] [k (set/intersection holds (into base pseudo))]))
+                                library-collection-kinds)
+             :root-kinds  (cond-> (set root-kinds)
+                            (contains? (set root-kinds) :collection) (conj ::library-root ::data-collection))))
+    opts))
 
 (defn- well-formed-structure
   "`[item-kinds item-places]`. Item i has its place at the root level or in an item before it whose kind can contain
@@ -374,7 +454,8 @@
 ;;; -------------------------------------------------- Generators ----------------------------------------------------
 
 (defn well-formed-snapshot-gen
-  "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A snapshot has at most
+  "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A collection has a Library
+  type only as a kind of [[library-collection-kinds]], and holds what that type holds. A snapshot has at most
   min(size, `:max-items`) items. Every root-level item has a kind of `:root-kinds`. A published table's identity is a
   table natural key; every other identity is an entity id. Two snapshots of the generator share identities now and
   then, also for items of two kinds. Siblings with one name and one kind occur, but no two items of a kind of
@@ -384,7 +465,8 @@
   Options, each with a default:
   - `:kinds` (a set of kinds; [[snapshot/kinds]]);
   - `:may-contain` (`{kind #{kind}}`; [[snapshot/may-contain]]);
-  - `:root-kinds` (a non-empty subset of `:kinds`; all of `:kinds`);
+  - `:root-kinds` (a non-empty subset of `:kinds`, or of `:kinds` and [[library-collection-kinds]]; all of `:kinds`,
+    with the Library and the Data kind of [[library-collection-kinds]] when `:collection` is one);
   - `:unique-keys` (in the form of [[snapshot/unique-keys]], with a path to a string key; [[snapshot/unique-keys]]);
   - `:attrs` (a function from a kind to a generator of its `:attrs`; [[attrs-gen]] for each kind);
   - `:max-items` (50)."
@@ -392,9 +474,17 @@
   ([opts]
    (let [opts (merge default-options opts)]
      (assert (seq (:root-kinds opts)) "`:root-kinds` must not be empty")
-     (assert (set/subset? (set (:root-kinds opts)) (set (:kinds opts))) "`:root-kinds` must be a subset of `:kinds`")
+     (assert (set/subset? (set (:root-kinds opts)) (into (set (:kinds opts)) (keys library-collection-kinds)))
+             "`:root-kinds` must be a subset of `:kinds` and the Library collection kinds")
      (gen/fmap (fn [choices]
-                 (let [[item-kinds item-places] (well-formed-structure opts choices)]
+                 (let [[item-kinds item-places] (well-formed-structure (with-library-collections opts) choices)
+                       ;; A collection of the kind :collection has no Library type.
+                       choices (mapv (fn [choice kind]
+                                       (cond-> choice
+                                         (and (= :collection kind)
+                                              (contains? library-holds (get-in choice [:attrs :collection :type])))
+                                         (update-in [:attrs :collection] dissoc :type)))
+                                     choices item-kinds)]
                    (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
                (choices-gen opts place-choice-gen item-target-gen)))))
 
@@ -421,3 +511,146 @@
                            (mapv #(nth kinds (mod (:kind %) (count kinds))) choices)
                            (mapv :place choices)))
                (choices-gen opts place-gen ref-gen)))))
+
+;;; ------------------------------------------------ The Library ------------------------------------------------------
+
+(def library-id
+  "The identity of the Library collection."
+  "librarylibrarylibrary")
+
+(def section-ids
+  "`{collection-type identity}`: the identity of each section of the Library."
+  {"library-data"       "librarylibrarydatadat"
+   "library-metrics"    "librarylibrarymetrics"
+   "library-dashboards" "librarylibrarydashbrd"})
+
+(def library-core
+  "The snapshot of the Library collection and its three sections."
+  (into {library-id {:kind :collection :name "Library" :place nil :refs #{} :attrs {:type "library"}}}
+        (map (fn [[t id]] [id {:kind :collection :name t :place library-id :refs #{} :attrs {:type t}}]))
+        section-ids))
+
+(def ^:private section-types (vec (sort (keys section-ids))))
+
+(def ^:private section-kinds
+  "The kinds of the items that the generator puts in a collection of each section type. A question is a question of a
+  dashboard."
+  {"library-data"       [:collection :published-table]
+   "library-metrics"    [:collection :metric]
+   "library-dashboards" [:collection :dashboard :question :timeline]})
+
+(defn- nth-of-vec
+  [v k]
+  (nth v (mod k (count v))))
+
+(defn- library-item
+  "Adds the item of choice `i` of [[library-snapshot-gen]] to `acc`, `{:s snapshot :containers {type [id]} :dashboards
+  [id]}`."
+  [acc [i {:keys [section place kind id table target] item-name :name}]]
+  (let [t          (nth section-types (mod section (count section-types)))
+        containers (get-in acc [:containers t])
+        container  (nth containers (- (count containers) 1 (min place (dec (count containers)))))
+        kinds      (section-kinds t)
+        kind       (nth kinds (mod kind (count kinds)))
+        kind       (if (and (= :question kind) (empty? (:dashboards acc))) :dashboard kind)
+        ident      (if (= :published-table kind)
+                     (let [[db schema table-name] table] [db schema (str table-name "_" i)])
+                     (entity-id id i))
+        dashboard  (when (= :question kind) (nth-of-vec (:dashboards acc) target))
+        item       (case kind
+                     :collection {:kind kind :name item-name :place container :refs #{} :attrs {:type t}}
+                     :question   {:kind  kind :name item-name :place (get-in acc [:s dashboard :place])
+                                  :refs  #{[:dashboard dashboard]} :attrs {:dashboard_id dashboard}}
+                     {:kind kind :name item-name :place container :refs #{} :attrs {}})]
+    (cond-> (assoc-in acc [:s ident] item)
+      (= :collection kind) (update-in [:containers t] conj ident)
+      (= :dashboard kind)  (update :dashboards conj ident))))
+
+(defn library-snapshot-gen
+  "Generates snapshots of the Library that obey every structural rule and every Library rule, by construction:
+  [[library-core]], and at most min(size, `max-items`) items in the sections. A collection in a section has the
+  section's type; Data holds published tables, Metrics holds metrics, and Dashboards holds dashboards, questions of a
+  dashboard (in the dashboard's collection) and timelines."
+  ([] (library-snapshot-gen 20))
+  ([max-items]
+   (gen/fmap (fn [choices]
+               (:s (reduce library-item
+                           {:s          library-core
+                            :containers (update-vals section-ids vector)
+                            :dashboards []}
+                           (map-indexed vector choices))))
+             (gen/sized (fn [size]
+                          (gen/vector (gen/hash-map :section gen/nat
+                                                    :place   place-choice-gen
+                                                    :kind    gen/nat
+                                                    :id      entity-id-prefix
+                                                    :name    name-gen
+                                                    :table   table-key-gen
+                                                    :target  gen/nat)
+                                      0 (min size max-items)))))))
+
+(def ^:private misfit-candidates
+  "`[content kind attrs]`: items that a Library collection can be asked to hold, with their content in the terms of
+  [[library-holds]]. A question of a dashboard gets its dashboard from the snapshot."
+  [[[:collection nil] :collection {}]
+   [[:collection "library"] :collection {:type "library"}]
+   [[:collection "library-data"] :collection {:type "library-data"}]
+   [[:collection "library-metrics"] :collection {:type "library-metrics"}]
+   [[:collection "library-dashboards"] :collection {:type "library-dashboards"}]
+   [[:collection "trash"] :collection {:type "trash"}]
+   [:dashboard :dashboard {}]
+   [:dashboard-question :question nil]
+   [:metric :metric {}]
+   [:model :model {}]
+   [:published-table :published-table {}]
+   [:question :question {}]
+   [:snippet :snippet {}]
+   [:timeline :timeline {}]])
+
+(defn- misfit
+  "`[s finding]`: snapshot `s` (of [[library-snapshot-gen]]) with one new item that a Library collection of `s` cannot
+  hold, chosen by `k` and `j`, and the finding that names it."
+  [s k j]
+  (let [collections (vec (sort-by str (keep (fn [[id {:keys [kind attrs]}]]
+                                              (when (and (= :collection kind) (contains? library-holds (:type attrs)))
+                                                id))
+                                            s)))
+        c           (nth-of-vec collections k)
+        holds       (library-holds (get-in s [c :attrs :type]))
+        dashboards  (sort (keep (fn [[id {:keys [kind]}]] (when (= :dashboard kind) id)) s))
+        candidates  (vec (for [[content :as candidate] misfit-candidates
+                               :when (and (not (contains? holds content))
+                                          (or (not= :dashboard-question content) (seq dashboards)))]
+                           candidate))
+        [content kind attrs] (nth-of-vec candidates j)
+        id          (if (= :published-table kind) ["Misfit Database" nil "MISFIT"] (entity-id "MisfitMisfitMisf" 0))
+        d           (first dashboards)
+        item        (if (= :dashboard-question content)
+                      {:kind kind :name "Misfit" :place c :refs #{[:dashboard d]} :attrs {:dashboard_id d}}
+                      {:kind kind :name "Misfit" :place c :refs #{} :attrs attrs})]
+    [(assoc s id item) {:rule :library-content :id id :place c}]))
+
+(defn- table-outside
+  "`[s finding]`: snapshot `s` with a collection at the root level, of no type or of type `t`, and a published table in
+  it, and the finding that names the table."
+  [s t]
+  (let [c     (entity-id "OutsideOutsideOu" 0)
+        table ["Outside Database" nil "OUTSIDE"]]
+    [(assoc s
+            c     {:kind :collection :name "Outside" :place nil :refs #{} :attrs (cond-> {} t (assoc :type t))}
+            table {:kind :published-table :name "Outside" :place c :refs #{} :attrs {}})
+     {:rule :table-collection :id table :place c}]))
+
+(defn library-misfit-gen
+  "Generates `[s finding]`: a snapshot of [[library-snapshot-gen]] with one new item that breaks one Library rule, by
+  construction, and the one finding of that rule that validate gives with no roots. The item is a content that a
+  Library collection cannot hold, in that collection, or a published table in a collection at the root level that is
+  not of type library-data."
+  []
+  (gen/let [s     (library-snapshot-gen 12)
+            k     gen/nat
+            j     gen/nat
+            table (gen/frequency [[4 (gen/return false)] [1 (gen/elements [nil "trash"])]])]
+    (if (false? table)
+      (misfit s k j)
+      (table-outside s table))))

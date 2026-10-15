@@ -138,6 +138,13 @@
          (id-text (second target))
          (item-text s target))))
 
+(def ^:private library-holds
+  "What a collection of each Library type holds, for a person."
+  {"library"            "collections of the types library-data, library-metrics and library-dashboards"
+   "library-data"       "published tables and collections of type library-data"
+   "library-metrics"    "metrics and collections of type library-metrics"
+   "library-dashboards" "dashboards, questions of a dashboard, timelines and collections of type library-dashboards"})
+
 (defn- structural-text
   [s {:keys [rule id place ids ref kind key] :as finding}]
   (case rule
@@ -156,6 +163,11 @@
     :area-root    (str (item-text s id) " has the identity of the root of " (area-text id) ".")
     :ref-kind     (str (item-text s id) " refers to " (target-text s ref) ", which is not of a kind that the reference"
                        " allows.")
+    :library-content (let [t (get-in s [place :attrs :type])]
+                       (str (item-text s id) " is in " (place-text s place) ", and a collection of type " t " holds only "
+                            (get library-holds t "other content") "."))
+    :table-collection (str (item-text s id) " is in " (place-text s place) ", and a published table can be only in a"
+                           " collection of type " snapshot/table-collection-type ".")
     (pr-str (dissoc finding :level :path))))
 
 (defn- semantic-text
