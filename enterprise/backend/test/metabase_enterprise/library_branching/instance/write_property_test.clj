@@ -6,7 +6,9 @@
   The generators are constructive. They pick among values that the instance can hold: a portable query that a real
   metric has, a field that the table has, a data layer that Metabase stores as it is. A value that
   depends on the trial's app DB rows (a place, a query) is a keyword that [[resolve-item]] replaces. So the
-  generators filter nothing, and a shrunk case has fewer writes and the first value of each choice."
+  generators filter nothing, and a shrunk case has fewer writes and the first value of each choice.
+
+  Each test var makes the rows of its world once, and its trials share them."
   (:require
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
@@ -32,9 +34,13 @@
 
 ;;; ---------------------------------------------------- The world ---------------------------------------------------
 
-(defn- do-with-world!
-  "Calls `f` with `{keyword value}`, the values of the keywords of the generated items for the containers and metrics
-  of this call, in a transaction that rolls back."
+(def ^:private ^:dynamic *world*
+  "The world of the current test var, or nil."
+  nil)
+
+(defn- do-with-world-rows!
+  "Makes the rows of a world, calls `f` with `{keyword value}`, the values of the keywords of the generated items for
+  its containers and metrics, and then deletes the rows."
   [f]
   (collections.tu/with-library [{:keys [data metrics]}]
     (mt/with-temp [:model/Collection sub      {:name     "Generated metrics"
@@ -57,27 +63,38 @@
                                                :dataset_query (write-test/sum-query :venues :price)}]
       (let [query (fn [card] (get-in (write-test/current :metric (:entity_id card)) [:attrs :query]))
             cols  (get-in (write-test/current :model (:entity_id m3)) [:attrs :result_metadata])]
-        (t2/with-transaction [_ nil {:rollback-only true}]
-          (f {::metrics         (:entity_id metrics)
-              ::sub             (:entity_id sub)
-              ::data            (:entity_id data)
-              ::sub-data        (:entity_id sub-data)
-              ::folder          (:entity_id folder)
-              ::inner           (:entity_id inner)
-              ::q1              (query m1)
-              ::q2              (query m2)
-              ::app             (:entity_id app)
-              ::app2            (:entity_id app2)
-              ::q3              (get-in (write-test/current :model (:entity_id m3)) [:attrs :query])
-              ::cols            cols
-              ::cols-named      (assoc-in cols [0 :display_name] "Price level total")
-              ::cols-described  (-> cols
-                                    (assoc-in [0 :description] "The sum of the price levels.")
-                                    (assoc-in [0 :semantic_type] "type/Quantity"))
-              ::category-target (write-test/field-key :categories :id)
-              ::category-name   (write-test/field-key :categories :name)
-              ::venues-name     (t2/select-one-fn :display_name :model/Table (mt/id :venues))
-              ::users-name      (t2/select-one-fn :display_name :model/Table (mt/id :users))}))))))
+        (f {::metrics         (:entity_id metrics)
+            ::sub             (:entity_id sub)
+            ::data            (:entity_id data)
+            ::sub-data        (:entity_id sub-data)
+            ::folder          (:entity_id folder)
+            ::inner           (:entity_id inner)
+            ::q1              (query m1)
+            ::q2              (query m2)
+            ::app             (:entity_id app)
+            ::app2            (:entity_id app2)
+            ::q3              (get-in (write-test/current :model (:entity_id m3)) [:attrs :query])
+            ::cols            cols
+            ::cols-named      (assoc-in cols [0 :display_name] "Price level total")
+            ::cols-described  (-> cols
+                                  (assoc-in [0 :description] "The sum of the price levels.")
+                                  (assoc-in [0 :semantic_type] "type/Quantity"))
+            ::category-target (write-test/field-key :categories :id)
+            ::category-name   (write-test/field-key :categories :name)
+            ::venues-name     (t2/select-one-fn :display_name :model/Table (mt/id :venues))
+            ::users-name      (t2/select-one-fn :display_name :model/Table (mt/id :users))})))))
+
+;; An :each fixture, so a run of the :once fixtures alone makes no rows.
+(use-fixtures :each (fn [t] (do-with-world-rows! (fn [world] (binding [*world* world] (t))))))
+
+(defn- do-with-world!
+  "Calls `f` with the world of the current test var (a new world when there is none) in a transaction that rolls
+  back."
+  [f]
+  (let [in-tx #(t2/with-transaction [_ nil {:rollback-only true}] (f %))]
+    (if *world*
+      (in-tx *world*)
+      (do-with-world-rows! in-tx))))
 
 (defn- resolve-item
   "`item` with each keyword of this namespace replaced by its value in `world`."
