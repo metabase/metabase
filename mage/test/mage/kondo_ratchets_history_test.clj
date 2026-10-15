@@ -170,12 +170,12 @@
   (testing "flags a raise beyond the suppressions its commit added, unless the commit has a verdict"
     (is (= [{:sha "stale", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 8, :added 0}]}]
            (history/suspects
-            #{"settled"}
+            #{"judged"}
             [{:sha "stale", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 8, :added 0}
                                       {:measure [:prod :ignore :b], :kind :grow, :delta 2, :added 2}
                                       {:measure [:prod :ignore :c], :kind :shrink, :delta -1}]}
              {:sha "honest", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 1, :added 1}]}
-             {:sha "settled", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 5, :added 0}]}])))))
+             {:sha "judged", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 5, :added 0}]}])))))
 
 (deftest pardon-test
   (testing "a pardoned raise is no growth, and the commit's other raises still are"
@@ -251,30 +251,30 @@
                     [sha (map (juxt :kind :delta :slack) changes) (boolean doubted)]))]
     (testing "a raise that nothing used and a later commit took back is slack, and neither side counts"
       (is (= [["stale" [[:slack 8 nil]] false]]
-             (kinds (history/settle {:settled #{}} [(tighten "tighten" -8 "stale") (raise "stale" 8 0)])))))
+             (kinds (history/settle {:judged #{}} [(tighten "tighten" -8 "stale") (raise "stale" 8 0)])))))
     (testing "only the part that was taken back is slack; what was added is growth, and the rest is still doubted"
       (is (= [["mixed" [[:grow 3 2]] true]]
-             (kinds (history/settle {:settled #{}} [(tighten "tighten" -2 "mixed") (raise "mixed" 5 1)])))))
+             (kinds (history/settle {:judged #{}} [(tighten "tighten" -2 "mixed") (raise "mixed" 5 1)])))))
     (testing "a raise nobody has taken back yet stays growth and is doubted"
       (is (= [["fresh" [[:grow 8 nil]] true]]
-             (kinds (history/settle {:settled #{}} [(raise "fresh" 8 0)])))))
+             (kinds (history/settle {:judged #{}} [(raise "fresh" 8 0)])))))
     (testing "a commit that removed suppressions while raising the budget gives back the raise as slack, and
              keeps the credit for what it removed"
       (is (= [["tighten" [[:shrink -3 nil]] false] ["odd" [[:slack 5 nil]] false]]
-             (kinds (history/settle {:settled #{}} [(tighten "tighten" -8 "odd") (raise "odd" 5 -3)])))))
+             (kinds (history/settle {:judged #{}} [(tighten "tighten" -8 "odd") (raise "odd" 5 -3)])))))
     (testing "a raise of a budget kept per symbol is never slack or doubted, since its count is approximate"
       (is (= [["tighten" [[:shrink -1 nil]] false] ["symbols" [[:grow 2 nil]] false]]
-             (kinds (history/settle {:settled #{}}
+             (kinds (history/settle {:judged #{}}
                                     [(tighten "tighten" -1 "symbols")
                                      (update-in (raise "symbols" 2 1) [:changes 0] assoc :per-symbol? true)])))))
     (testing "a raise by the commit that repaired a broken ratchet file is never slack or doubted"
       (is (= [["tighten" [[:shrink -8 nil]] false] ["repair" [[:grow 8 nil]] false]]
-             (kinds (history/settle {:settled #{}}
+             (kinds (history/settle {:judged #{}}
                                     [(tighten "tighten" -8 "repair")
                                      (update-in (raise "repair" 8 0) [:changes 0] assoc :bridged? true)])))))
     (testing "a confirmed raise is left as growth, and its return as a shrink"
       (is (= [["tighten" [[:shrink -8 nil]] false] ["kept" [[:grow 8 nil]] false]]
-             (kinds (history/settle {:settled #{"kept"}} [(tighten "tighten" -8 "kept") (raise "kept" 8 0)])))))))
+             (kinds (history/settle {:judged #{"kept"}} [(tighten "tighten" -8 "kept") (raise "kept" 8 0)])))))))
 
 (deftest counted-test
   (testing "budgets of linters that are not counted drop out, with the commits that changed nothing else"
@@ -378,7 +378,7 @@
             :introduced  [["feature" [{:measure ":new-linter (config)", :budget "9"}]]]
             :unaccounted [["tighten" [{:measure ":a", :delta -1}]]]
             :suspects    []}
-           (let [report  (history/report (history/settle {:settled #{}} records))
+           (let [report  (history/report (history/settle {:judged #{}} records))
                  biggest (juxt (comp :sha :commit) :net :measures)
                  groups  (partial map (juxt (comp :sha :commit) :items))]
              (-> (select-keys report [:commits :total])
@@ -416,7 +416,7 @@
                                :old     1
                                :new     9}]}
                    {:sha "pardoned", :changes [{:measure a, :kind :grow, :delta 5, :old nil, :new 5}]}]
-          settled (history/settle {:pardons {"pardoned" {a 5}}, :settled #{}} records)]
+          settled (history/settle {:pardons {"pardoned" {a 5}}, :judged #{}} records)]
       ;; sha, shrunk, grown, introduced, seeded, unlimited, excused, level
       (is (= [["pardoned" 0 0 0 0 0 5 5]
               ["mixed" 0 0 4 3 -2 0 10]
@@ -432,7 +432,7 @@
             ["month-2026-10" "October 2026" "2026-10-01" "2026-11-01" 2 -3]
             ["month-2026-09" "September 2026" "2026-09-01" "2026-10-01" 1 -7]]
            (map (juxt :id :label :from :to (comp :commits :report) (comp :net :total :report))
-                (history/periods "2026-10-10" (history/settle {:settled #{}} records)))))))
+                (history/periods "2026-10-10" (history/settle {:judged #{}} records)))))))
 
 (deftest script-json-test
   (testing "data that could end or hide the end of a script element reads back unchanged, with no `<` in it"
@@ -450,7 +450,7 @@
 
 (deftest summary-test
   (binding [c/*disable-colors* true]
-    (let [lines (history/summary "of all time" (history/report (history/settle {:settled #{}} records)))]
+    (let [lines (history/summary "of all time" (history/report (history/settle {:judged #{}} records)))]
       (testing "has a section for each part of the report that holds something"
         (is (= ["Ratchet changes of all time: 3 commits"
                 "Total deltas"
@@ -597,6 +597,11 @@
 (def ^:private mismatch [:prod :ignore :type-mismatch])
 (def ^:private unused [:prod :ignore :unused-binding])
 
+(defn- causes-by
+  "The `causes` of a record as the author, PR and delta of each, per measure."
+  [causes]
+  (update-vals (or causes {}) #(map (juxt :author :pr :delta) %)))
+
 (deftest records-test
   (testing "reads a repository's history: seeds, tightens credited to the commits before them, and raises"
     (is (= [[6 "automation" true
@@ -615,14 +620,14 @@
                (vec (for [{:keys [pr author tighten? changes causes]} (history/records repo)]
                       [pr author tighten?
                        (map (juxt :kind :measure :delta :added) changes)
-                       (update-vals (or causes {}) #(map (juxt :author :pr :delta) %))]))))))))
+                       (causes-by causes)]))))))))
 
 (deftest series-adds-up-test
   (testing "the credited change and the parts that count for nobody add up to each change in the total budget"
     (with-fixture-repo!
       (fn [repo]
         (let [records (history/records repo)
-              points  (history/series records (history/settle {:settled #{}} records))
+              points  (history/series records (history/settle {:judged #{}} records))
               parts   (juxt :shrunk :grown :introduced :seeded :unlimited :excused)]
           (is (= {:levels [3 1 8 2]
                   :sums   [3 -2 7 -6]}
@@ -742,4 +747,4 @@
                  (vec (for [{:keys [pr changes causes]} (take 2 (history/records repo))]
                         [pr
                          (map (juxt :kind :key) changes)
-                         (update-vals (or causes {}) #(map (juxt :author :pr :delta) %))])))))))))
+                         (causes-by causes)])))))))))

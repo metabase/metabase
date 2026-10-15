@@ -193,10 +193,10 @@
      symbols
      (for [measure (sort-by str (set (concat (keys before) (keys after))))
            :let    [seed   (get seeded measure 0)
+                    budget (get after measure)
                     ;; the budget of a newly discouraged symbol is an introduction, not growth of its linter
-                    old    (cond-> (get before measure) (pos? seed) (or 0))
-                    new    (get after measure)
-                    new    (cond-> new (and (pos? seed) (number? new)) (- seed))
+                    old    (if (pos? seed) (get before measure 0) (get before measure))
+                    new    (cond-> budget (and (pos? seed) (number? budget)) (- seed))
                     ;; budgeted per symbol, so counting its ignores only approximates it
                     change (cond-> {:measure measure, :old old, :new new}
                              (symbolic measure) (assoc :per-symbol? true))]
@@ -272,8 +272,13 @@
 (defn- git [repo & args]
   (apply shell/sh (shell-options repo) "git" args))
 
+(defn- git-result
+  "The `:exit` code and `:out` lines of git run in `repo` with the vector `args`, without throwing when it fails."
+  [repo args]
+  (apply shell/sh* (shell-options repo) "git" args))
+
 (defn- git-ok? [repo & args]
-  (zero? (:exit (apply shell/sh* (shell-options repo) "git" args))))
+  (zero? (:exit (git-result repo args))))
 
 (defn repo
   "What a run works on and the state it keeps: the git repository in `:dir`, the `:head` commit it was on when
@@ -293,7 +298,7 @@
     (assoc repo :head (first (git repo "rev-parse" "HEAD")))))
 
 (defn- file-at [repo rev path]
-  (let [{:keys [exit out]} (shell/sh* (shell-options repo) "git" "show" (str rev ":" path))]
+  (let [{:keys [exit out]} (git-result repo ["show" (str rev ":" path)])]
     (when (zero? exit)
       (str/join "\n" out))))
 
@@ -458,9 +463,8 @@
   [repo f shas]
   (if (empty? shas)
     {}
-    (let [^bytes out (:out (p/shell (cond-> {:in (str/join "\n" shas), :out :bytes, :dir (:dir repo)}
-                                      (:env repo) (assoc :env (:env repo)))
-                                    "git" "cat-file" "--batch"))]
+    (let [options    (merge (select-keys (shell-options repo) [:dir :env]) {:in (str/join "\n" shas), :out :bytes})
+          ^bytes out (:out (p/shell options "git" "cat-file" "--batch"))]
       (loop [pos 0, acc {}]
         (if (>= pos (alength out))
           acc
@@ -644,10 +648,22 @@
 
 (defn records
   "The record of every commit that changed a ratchet file in the history of `HEAD`, newest first.
-  Analyses and caches the ones that are not cached yet."
-  [repo]
-  (let [all (ratchet-commits repo (:head repo))]
-    (mapv #(record! repo all %) all)))
+  Analyses and caches the ones that are not cached yet.
+  The optional callbacks report that work: `:starting` takes how many commits need analysing, and is not called
+  when none do, and `:analysed` takes each of their records."
+  ([repo]
+   (records repo {}))
+  ([repo {:keys [starting analysed]}]
+   (let [all     (ratchet-commits repo (:head repo))
+         pending (set (remove #(cached repo %) all))]
+     (when (and starting (seq pending))
+       (starting (count pending)))
+     (mapv (fn [sha]
+             (let [record (record! repo all sha)]
+               (when (and analysed (pending sha))
+                 (analysed record))
+               record))
+           all))))
 
 ;;; -------------------------------------------------- Verdicts ------------------------------------------------
 
@@ -705,11 +721,11 @@
     (- delta (max 0 added))))
 
 (defn suspects
-  "The commits in `records` not in `settled` that raised a budget beyond the suppressions they added.
+  "The commits in `records` not in `judged` that raised a budget beyond the suppressions they added.
   Each keeps only those raises as its `:changes`."
-  [settled records]
+  [judged records]
   (for [record records
-        :when  (not (settled (:sha record)))
+        :when  (not (judged (:sha record)))
         :let   [raises (filter unused-budget (:changes record))]
         :when  (seq raises)]
     (assoc record :changes raises)))
@@ -744,11 +760,11 @@
 
 (defn- spare-budget
   "Per commit and measure, how far a raise in `records` outran the suppressions its commit added: budget that
-  nothing used. Commits in `settled` have a verdict already and are left out."
-  [settled records]
+  nothing used. Commits in `judged` have a verdict already and are left out."
+  [judged records]
   (into {}
         (for [{:keys [sha changes]} records
-              :when (not (settled sha))
+              :when (not (judged sha))
               :let  [spare (into {}
                                  (for [{:keys [measure], :as change} changes
                                        :let  [unused (unused-budget change)]
@@ -767,31 +783,31 @@
   `spare`, as [[spare-budget]] gives it, is taken back in the same way without a verdict. The part of a raise
   that a later shrink took back is its `:slack`, and a raise that was all slack turns from `:grow` into `:slack`."
   [{:keys [pardons recounts spare]} records]
-  (let [recount? (or recounts #{})
-        settle   (fn [split sha {:keys [kind measure delta], :as change}]
-                   (case kind
-                     :grow   (cond-> change (get-in pardons [sha measure]) (assoc :kind :pardon))
-                     :shrink (let [delta (- delta (get-in split [measure :returned] 0))]
-                               (when-not (or (recount? sha) (zero? delta))
-                                 (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
-                     change))
+  (let [recount?      (or recounts #{})
+        settle-change (fn [split sha {:keys [kind measure delta], :as change}]
+                        (case kind
+                          :grow   (cond-> change (get-in pardons [sha measure]) (assoc :kind :pardon))
+                          :shrink (let [delta (- delta (get-in split [measure :returned] 0))]
+                                    (when-not (or (recount? sha) (zero? delta))
+                                      (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
+                          change))
         [left settled]
         (reduce (fn [[left settled] {:keys [sha causes], :as record}]
                   (let [[left split] (split-causes left recount? sha causes)]
                     ;; consing onto a list puts the records back newest first
-                    [left (cons (cond-> (update record :changes #(keep (partial settle split sha) %))
+                    [left (cons (cond-> (update record :changes #(keep (partial settle-change split sha) %))
                                   causes (assoc :causes (update-vals split :kept)))
                                 settled)]))
                 [(merge-with merge spare pardons) ()]
                 (reverse records))
-        loosen   (fn [sha {:keys [kind measure delta], :as change}]
-                   (let [taken (if (= :grow kind)
-                                 (- (get-in spare [sha measure] 0) (get-in left [sha measure] 0))
-                                 0)]
-                     (cond
-                       (zero? taken)   change
-                       (= taken delta) (assoc change :kind :slack)
-                       :else           (assoc change :delta (- delta taken) :slack taken))))]
+        loosen        (fn [sha {:keys [kind measure delta], :as change}]
+                        (let [taken (if (= :grow kind)
+                                      (- (get-in spare [sha measure] 0) (get-in left [sha measure] 0))
+                                      0)]
+                          (cond
+                            (zero? taken)   change
+                            (= taken delta) (assoc change :kind :slack)
+                            :else           (assoc change :delta (- delta taken) :slack taken))))]
     (for [{:keys [sha], :as record} settled]
       (update record :changes #(map (partial loosen sha) %)))))
 
@@ -807,12 +823,12 @@
   "`records`, the whole history newest first, as the summaries count them: with `verdicts` applied by [[pardon]],
   with spare budget that was taken back counted as slack, without what [[counted]] leaves out, and with the
   raises [[suspects]] still flags kept on each record as `:doubted`.
-  `verdicts` holds `:pardons` and `:recounts` as [[pardon]] takes them, and `:settled`, every commit with a
+  `verdicts` holds `:pardons` and `:recounts` as [[pardon]] takes them, and `:judged`, every commit with a
   verdict."
-  [{:keys [settled], :as verdicts} records]
-  (let [records (pardon (assoc verdicts :spare (spare-budget settled records)) records)
+  [{:keys [judged], :as verdicts} records]
+  (let [records (pardon (assoc verdicts :spare (spare-budget judged records)) records)
         ;; asked of what is left of each raise once its slack is taken out
-        doubted (into {} (map (juxt :sha :changes)) (suspects settled records))]
+        doubted (into {} (map (juxt :sha :changes)) (suspects judged records))]
     (for [{:keys [sha], :as record} (counted records)]
       (cond-> record (doubted sha) (assoc :doubted (doubted sha))))))
 
@@ -1228,11 +1244,11 @@
      ["Settle each with: ./bin/mage kondo-ratchets-history --pardon|--confirm <commit or PR> --why <reason>"])))
 
 (def ^:private columns
-  {:shrunk  {:header "shrunk", :key :shrunk, :show signed, :color (tint c/green)}
-   :grown   {:header "grown", :key :grown, :show signed, :color (tint c/red)}
-   :net     {:header "net", :key :net, :show signed, :color net-tint}
-   :ignores {:header "budget", :key :ignores, :show str, :color (tint c/green)}
-   :linters {:header "new", :key :linters, :show str, :color (tint c/green)}})
+  {:shrunk  {:header "shrunk", :show signed, :color (tint c/green)}
+   :grown   {:header "grown", :show signed, :color (tint c/red)}
+   :net     {:header "net", :show signed, :color net-tint}
+   :ignores {:header "budget", :show str, :color (tint c/green)}
+   :linters {:header "new", :show str, :color (tint c/green)}})
 
 ;; TODO (Chris 2026-10-10) -- also rank by team. The module config gives each module a `:team`, so a count could be
 ;; charged to the team that owns the file. People move between teams, so a ranking by author's team needs a
@@ -1261,7 +1277,7 @@
       (table (into [nil] (map :color) shown)
              (cons (cons "" (map :header shown))
                    (for [row rows]
-                     (cons (author-name row) (map (fn [{:keys [key show]}] (show (get row key))) shown))))))))
+                     (cons (author-name row) (map (fn [k] ((:show (columns k)) (get row k))) column-keys))))))))
 
 (defn summary
   "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`."
@@ -1295,8 +1311,7 @@
 ;;; ---------------------------------------------------- Task --------------------------------------------------
 
 (defn- resolve-commit [repo rev]
-  (let [{:keys [exit out]} (shell/sh* (shell-options repo)
-                                      "git" "rev-parse" "--verify" "--quiet" (str rev "^{commit}"))]
+  (let [{:keys [exit out]} (git-result repo ["rev-parse" "--verify" "--quiet" (str rev "^{commit}")])]
     (if (zero? exit)
       (first out)
       (u/exit (str "Not a commit: " rev) 1))))
@@ -1330,19 +1345,10 @@
       all     [:all]
       :else   [:days (or days default-days)])))
 
-(defn- backfill!
-  "Every record, newest first, as [[records]] gives them, naming each commit as it is analysed."
-  [repo]
-  (let [all     (ratchet-commits repo (:head repo))
-        pending (set (remove #(cached repo %) all))]
-    (when (seq pending)
-      (println (c/dark (format "Analysing %d commits that changed a ratchet file" (count pending)))))
-    (mapv (fn [sha]
-            (let [record (record! repo all sha)]
-              (when (pending sha)
-                (println (c/dark (str "  " (commit-line record)))))
-              record))
-          all)))
+(def ^:private progress
+  "The [[records]] callbacks that name each commit as it is analysed."
+  {:starting (fn [n] (println (c/dark (format "Analysing %d commits that changed a ratchet file" n))))
+   :analysed (fn [record] (println (c/dark (str "  " (commit-line record)))))})
 
 (defn- ratchet-commit
   "The one of `records`, the commits that changed a ratchet file, that `target` names.
@@ -1364,10 +1370,10 @@
   A `:recount` says the commit only changed how suppressions are counted, so neither its raises nor its own
   shrinks count."
   [repo kind target why]
-  (let [record  (ratchet-commit repo (backfill! repo) target)
+  (let [record  (ratchet-commit repo (records repo progress) target)
         changes (filter (comp (covered-kinds kind) :kind) (:changes record))
         ;; who recorded it and when, for the reader of the page: most verdicts are on the recorder's own commits
-        by      (first (:out (shell/sh* (shell-options repo) "git" "config" "user.name")))
+        by      (first (:out (git-result repo ["config" "user.name"])))
         entry   (cond-> (assoc (select-keys record [:sha :pr :subject]) :verdict kind)
                   why  (assoc :why why)
                   by   (assoc :by by)
@@ -1385,7 +1391,7 @@
 (defn- verdict-options
   "The verdicts [[settle]] takes, from the `entries` of the verdicts file. `record` gives the record of a sha."
   [entries record]
-  {:settled  (set (map :sha entries))
+  {:judged   (set (map :sha entries))
    :recounts (set (map :sha (filter #(= :recount (:verdict %)) entries)))
    :pardons  (into {}
                    (for [{:keys [sha verdict]} entries
@@ -1420,7 +1426,7 @@
 (defn- summarize
   "Bring the cache up to `HEAD`, then print or write what `by` and `arg`, from [[request]], ask for."
   [repo by arg]
-  (let [records (unify-authors (backfill! repo))
+  (let [records (unify-authors (records repo progress))
         record  (into {} (map (juxt :sha identity)) records)
         entries (filter (comp record :sha) (read-verdicts repo))
         ;; a verdict on one commit changes what later ones count for, so the whole history is settled before a
