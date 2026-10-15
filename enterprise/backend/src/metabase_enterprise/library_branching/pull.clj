@@ -6,7 +6,6 @@
   (:require
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.engine.plan :as plan]
-   [metabase-enterprise.library-branching.engine.semantic :as semantic]
    [metabase-enterprise.library-branching.engine.validate :as validate]
    [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
@@ -14,7 +13,8 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.roots :as roots]
    [metabase-enterprise.library-branching.settings :as settings]
-   [metabase-enterprise.library-branching.store :as store]))
+   [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.typing :as typing]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,10 +124,12 @@
 
 (defn- apply-merge!
   "Steps 4 to 6 of the pull of head `h` with remote snapshot `r`, against base commit `b`: read, merge, plan and apply,
-  again after a stale precondition, at most `retries` times."
-  [inst store branch {:keys [codecs decisions retries fence on-commit]} b h r base]
+  again after a stale precondition, at most `retries` times. `(on-read env)` is called with the environment of each
+  read of the instance (nil when the read gives none)."
+  [inst store branch {:keys [codecs decisions retries fence on-commit]} b h r base on-read]
   (loop [attempt 0]
-    (let [l       (:snapshot (instance/read-snapshot inst))
+    (let [{l :snapshot env :env} (instance/read-snapshot inst)
+          _       (on-read env)
           lost    (:lost base)
           bs      (or (:snapshot base) (lost-base l r))
           merged  (merge/merge bs l r (decisions-for decisions h l))]
@@ -183,7 +185,8 @@
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
   Every result other than `:pulled` writes nothing. The head and the base decode with [[decode-opts]] of `inst`. A
-  pulled or invalid result has `:semantic`, the findings of `semantic/validate` against `:env`, when `opts` has one.
+  result of a pull that read the instance has `:semantic`, the findings of `typing/semantic` of the head against
+  `(:env opts)`, else against the environment that the read of the instance gives, when there is one.
   `opts`: `:codecs` (default `kinds/codecs`), `:decisions` (the keep-mine decisions, see [[decide]]), `:env` (an
   environment of `format.manifest`), `:fence` and `:on-commit` (as in `apply/apply-plan`), `:retries` (default
   [[default-retries]])."
@@ -204,8 +207,12 @@
              (let [{r :snapshot :keys [findings]} (check-commit store codecs h decoding)]
                (if-not r
                  {:result :invalid :head h :findings findings}
-                 (let [result (cond-> (apply-merge! inst store branch opts b h r (base-snapshot store codecs decoding b branch h))
-                                env (assoc :semantic (semantic/validate r env)))]
+                 (let [read-env (volatile! nil)
+                       result   (apply-merge! inst store branch opts b h r (base-snapshot store codecs decoding b branch h)
+                                              #(vreset! read-env %))
+                       env      (or env @read-env)
+                       result   (cond-> result
+                                  env (assoc :semantic (typing/semantic r env)))]
                    (if (and (= :rewritten (:result result)) (< rewrites retries))
                      (recur (inc rewrites))
                      result)))))))))))

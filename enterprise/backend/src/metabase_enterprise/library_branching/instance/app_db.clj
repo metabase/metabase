@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [metabase-enterprise.library-branching.apply :as apply]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
@@ -18,6 +19,7 @@
    [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.instance.kinds.timeline :as kinds.timeline]
+   [metabase-enterprise.library-branching.manifest :as manifest]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
@@ -49,16 +51,22 @@
            (mapcat (fn [[kind ks]] (instance/read-all ks (get ids kind))))
            (sort-by key stores)))))
 
+(def ^:private env-models
+  "The models whose tables the read of the environment reads."
+  #{:model/Database :model/Field :model/Table})
+
 (defn- read-at-read-point
-  "`{:snapshot s :shadowed-tables ts}` in a new read-only transaction at REPEATABLE READ, one read point for both: `s`
-  is [[read-current]], and `ts` is `scope/shadowed-tables` when `stores` holds published tables, else empty."
+  "`{:snapshot s :shadowed-tables ts :env e}` in a new read-only transaction at REPEATABLE READ, one read point for
+  all: `s` is [[read-current]], `ts` is `scope/shadowed-tables` when `stores` holds published tables, else empty, and
+  `e` is the environment of the manifest export (`manifest/manifest`)."
   [stores roots]
-  (library-branching.db/do-with-read-point (into #{} (mapcat instance/read-models) (vals stores))
+  (library-branching.db/do-with-read-point (into env-models (mapcat instance/read-models) (vals stores))
                                            (fn []
                                              {:snapshot        (read-current stores roots)
                                               :shadowed-tables (if (contains? stores :published-table)
                                                                  (scope/shadowed-tables roots)
-                                                                 [])})))
+                                                                 [])
+                                              :env             (format.manifest/env (manifest/manifest))})))
 
 (defn- base-row
   []

@@ -78,14 +78,14 @@
   with `claims/with-system-items`. Each finding has `:level`: `:decode` (a finding of `tree/decode-tree`, with
   `:path` or `:paths` in place of `:file` or `:files`), `:manifest` (a finding of `manifest/decode`), `:structural`
   (a finding of `validate/validate`, with the fixed roots of `roots/root-ids`) or `:semantic` (a finding of
-  `semantic/validate`). A structural or semantic finding has `:path`, the path of the file of its `:id`, when the
-  item has a file. The semantic check runs only when the tree decodes and `opts` has `:manifest`, the bytes of a
-  manifest. The lints do not change `:green?`: first `claims/foreign-lints`, then, when there is no finding,
+  `(:semantic opts)`, a function of the snapshot and the environment of the manifest, default `semantic/validate`). A
+  structural or semantic finding has `:path`, the path of the file of its `:id`, when the item has a file. The
+  semantic check runs only when the tree decodes and `opts` has `:manifest`, the bytes of a manifest. The lints do not change `:green?`: first `claims/foreign-lints`, then, when there is no finding,
   `{:rule :canonical-path :id i :path p :canonical q}` for each item whose file is not at the path that the layout
   gives."
   ([files opts]
    (check kinds/codecs files opts))
-  ([codecs files {manifest-bytes :manifest}]
+  ([codecs files {manifest-bytes :manifest semantic-check :semantic :or {semantic-check semantic/validate}}]
    (let [claims   (claims/item-claims files)
          paths    (vec (sort (keys (claims/claimed-files claims))))
          decoded  (tree/decode-files codecs (mapv files paths))
@@ -97,7 +97,7 @@
                                       (validate/validate s {:roots (roots/root-ids s)}))
                                  (map #(assoc % :level :manifest) (:findings env))
                                  (when-let [env (:env env)]
-                                   (map (partial with-path :semantic path-of) (semantic/validate s env))))
+                                   (map (partial with-path :semantic path-of) (semantic-check s env))))
                          (decode-findings paths (:findings decoded))))
          green?   (empty? findings)]
      {:green?    green?
@@ -158,12 +158,24 @@
                        " allows.")
     (pr-str (dissoc finding :level :path))))
 
+(defn- semantic-text
+  [s {:keys [rule id ref errors] :as finding}]
+  (case rule
+    :env-resolves (str (item-text s id) " refers to " (target-text s ref) ", which is not in the manifest.")
+    :query-typed  (str (item-text s id) " has a query that does not fit the types of the manifest: "
+                       (str/join "; " (map (fn [{:keys [at message]}]
+                                             (str (str/join "." (map #(if (keyword? %) (name %) (str %)) at))
+                                                  ": " message))
+                                           errors))
+                       ".")
+    (pr-str (dissoc finding :level :path))))
+
 (defn- finding-text
-  [s {:keys [level path paths reason id ref] :as finding}]
+  [s {:keys [level path paths reason] :as finding}]
   (str (cond path (str path ": ") paths (str (str/join ", " paths) ": ") :else "")
        (case level
          (:decode :manifest) (if reason (str/replace reason #"\s*\n\s*" " ") (pr-str (dissoc finding :level)))
-         :semantic           (str (item-text s id) " refers to " (target-text s ref) ", which is not in the manifest.")
+         :semantic           (semantic-text s finding)
          :structural         (structural-text s finding))))
 
 (defn- lint-text
@@ -189,13 +201,16 @@
 
 (defn run
   "Checks directory `dir`, with the manifest at `manifest-path`, or at `manifest/path` in `dir` when it is nil and
-  that file exists. Prints the [[report]] and returns the exit code: 0 green, 1 red."
-  [dir manifest-path]
-  (let [^File m (if manifest-path (io/file manifest-path) (io/file dir manifest/path))
-        result  (check (tree-files dir) {:manifest (when (or manifest-path (.isFile m))
-                                                     (Files/readAllBytes (.toPath m)))})]
-    (print-lines! (report result))
-    (if (:green? result) 0 1)))
+  that file exists, and with the options `opts` of [[check]] (default none). Prints the [[report]] and returns the
+  exit code: 0 green, 1 red."
+  ([dir manifest-path]
+   (run dir manifest-path {}))
+  ([dir manifest-path opts]
+   (let [^File m (if manifest-path (io/file manifest-path) (io/file dir manifest/path))
+         result  (check (tree-files dir) (assoc opts :manifest (when (or manifest-path (.isFile m))
+                                                                 (Files/readAllBytes (.toPath m)))))]
+     (print-lines! (report result))
+     (if (:green? result) 0 1))))
 
 (defn parse-args
   "`{:dir d :manifest m}` of the command-line arguments `<checkout> [--manifest <file>]`, or nil for other arguments."
