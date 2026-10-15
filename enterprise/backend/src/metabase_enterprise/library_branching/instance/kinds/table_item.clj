@@ -163,5 +163,5 @@
     (read-all [_ ids] (read-items k ids))
     (read-models [_] models-of-read)
     (current [_ id] (current-item k id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-item! k id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-item! k id)))))
+    (write! [_ id item] (content/do-in-write-transaction id #(write-item! k id item)))
+    (trash! [_ id] (content/do-in-write-transaction id #(trash-item! k id)))))

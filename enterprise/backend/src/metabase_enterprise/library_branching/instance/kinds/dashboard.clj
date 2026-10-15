@@ -281,8 +281,8 @@
     (read-all [_ ids] (read-dashboards ids))
     (read-models [_] models-of-read)
     (current [_ id] (current-dashboard id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-dashboard! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-dashboard! id)))
+    (write! [_ id item] (content/do-in-write-transaction id #(write-dashboard! id item)))
+    (trash! [_ id] (content/do-in-write-transaction id #(trash-dashboard! id)))
 
     instance/Stub
     (stub [_ id content _refs] (stub-dashboard id content))))
