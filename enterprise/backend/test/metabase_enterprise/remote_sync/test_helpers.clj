@@ -8,7 +8,6 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.models.collection :as collection]
-   [metabase.settings.core :as setting]
    [metabase.test.util :as tu]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
@@ -434,18 +433,13 @@ width: fixed
     (t2/update! :model/Collection id {:is_remote_synced synced?})))
 
 (defn- restore-transforms-setting
-  "Test fixture that restores `remote-sync-transforms`, which an import enables and never disables, and clears
-  `remote-sync-strict-mode`, which saving the remote sync settings sets, before and after the test."
+  "Test fixture that restores `remote-sync-transforms`, which an import enables and never disables."
   [f]
   (tu/with-temporary-setting-values [remote-sync-transforms false]
-    (setting/set-value-of-type! :boolean :remote-sync-strict-mode nil)
-    (try
-      (f)
-      (finally
-        (setting/set-value-of-type! :boolean :remote-sync-strict-mode nil)))))
+    (f)))
 
 (defn- clean-created-library
-  "Test fixture that deletes the Library when the test created it, as enabling remote sync in strict mode does."
+  "Test fixture that deletes the Library when the test created it, as enabling remote sync or pulling does."
   [f]
   (let [existed? (some? (collection/library-collection))]
     (try
@@ -456,8 +450,7 @@ width: fixed
 
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
-  TransformTag, PythonLibrary), and a Library the test created are clean, and transforms sync and strict mode are
-  restored."
+  TransformTag, PythonLibrary), and a Library the test created are clean, and transforms sync is restored."
   (t/join-fixtures [restore-transforms-setting
                     clean-created-library
                     clean-object

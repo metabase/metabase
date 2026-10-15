@@ -159,21 +159,20 @@
   :on-change sync-transform-tracking-on-change)
 
 (defsetting remote-sync-strict-mode
-  (deferred-tru "Whether remote sync always syncs the Library and transforms and hides the choice of other collections. Set at startup when it has no value, turned on or off when the remote sync settings are saved, and turned off when a pull syncs another collection.")
+  (deferred-tru "Whether no collection is remote-synced besides the Library and what syncs with the Library or transforms, which hides the choice of other collections to sync.")
   :type :boolean
   :visibility :admin
   :export? false
-  :encryption :no)
-
-(defn transforms-set-by-env?
-  "Whether an environment variable sets [[remote-sync-transforms]]."
-  []
-  (= :env (setting/get-raw-value-source :remote-sync-transforms)))
-
-(defn strict-mode-set-by-env?
-  "Whether an environment variable sets [[remote-sync-strict-mode]]."
-  []
-  (= :env (setting/get-raw-value-source :remote-sync-strict-mode)))
+  :setter :none
+  :getter (fn []
+            (not (remote-sync.db/other-remote-synced-collection-exists?
+                  (vec collection/library-collection-types)
+                  ["snippets"
+                   (name collection/data-actions-ns)
+                   (name collection/data-apps-ns)
+                   (name collection/transforms-ns)])))
+  :audit :never
+  :doc false)
 
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")

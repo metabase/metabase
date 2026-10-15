@@ -35,16 +35,6 @@ const PERSONAL_QUESTION_NAME = "Personal Source Question";
 const STUB_DATABASE_NAME = "Stub Postgres";
 const STUB_QUESTION_NAME = "Stub Database Question";
 
-const turnOffStrictMode = () =>
-  H.updateSetting("remote-sync-strict-mode", false);
-
-const configureGitWithoutStrictMode = (
-  syncType: "read-write" | "read-only",
-) => {
-  H.configureGitAndPullChanges(syncType);
-  turnOffStrictMode();
-};
-
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
   H.resetSnowplow();
@@ -63,7 +53,6 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       setup("postgres-writable");
       H.updateSetting("transforms-enabled", true);
-      turnOffStrictMode();
     });
 
     it("can push and pull changes", () => {
@@ -189,7 +178,7 @@ describe("Remote Sync", () => {
       const NEW_BRANCH = `new-branch-${Date.now()}`;
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      configureGitWithoutStrictMode("read-write");
+      H.configureGitAndPullChanges("read-write");
       H.wrapSyncedCollection();
 
       cy.visit("/collection/root");
@@ -409,7 +398,7 @@ describe("Remote Sync", () => {
       beforeEach(() => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        configureGitWithoutStrictMode("read-write");
+        H.configureGitAndPullChanges("read-write");
         H.wrapSyncedCollection();
 
         cy.visit("/collection/root");
@@ -496,7 +485,7 @@ describe("Remote Sync", () => {
       setup();
     });
 
-    it("creates the Library on setup and pushes a table published to it", () => {
+    it("hides the collections to sync and creates the Library on setup", () => {
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText(/repository url/i)
         .should("be.visible")
@@ -514,36 +503,32 @@ describe("Remote Sync", () => {
       cy.log("open the Library, which setup created");
       cy.visit("/data-studio/library");
       H.DataStudio.Library.collectionItem("Data").should("be.visible");
+    });
 
-      cy.log("publish a table to the Library");
-      H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Published table").click();
-      H.pickEntity({
-        path: ["Databases", /Sample Database/, "Orders"],
-        select: true,
+    it("syncs the Library and transforms once the last custom collection stops syncing", () => {
+      H.configureGitWithNewSyncedCollection("read-write", "Custom Collection");
+      cy.request("/api/session/properties").its("body").should("include", {
+        "remote-sync-strict-mode": false,
+        "remote-sync-transforms": false,
       });
-      H.modal().button("Publish this table").click();
-      H.DataStudio.Tables.overviewPage().should("exist");
 
-      cy.log("push the published table");
-      H.clickPushOption();
-      H.modal()
-        .button(/Push changes/)
-        .click();
-      H.waitForTask({ taskName: "export" });
-      cy.exec(`git -C ${H.LOCAL_GIT_PATH} ls-tree -r --name-only main`)
-        .its("stdout")
-        .should("match", /orders/i);
-
-      cy.log(
-        "the settings page still hides the collections, with nothing to push",
-      );
       cy.visit("/admin/settings/remote-sync");
       cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText("Sync branch").scrollIntoView().should("be.visible");
+        cy.findByText("Collections to sync").should("exist");
+        cy.findByRole("switch", { name: "Sync Custom Collection" }).click({
+          force: true,
+        });
+        cy.button("Save changes").click();
         cy.findByText("Collections to sync").should("not.exist");
-        cy.findByText(/unsaved change/).should("not.exist");
       });
+
+      cy.request("/api/session/properties").its("body").should("include", {
+        "remote-sync-strict-mode": true,
+        "remote-sync-transforms": true,
+      });
+      cy.request("/api/ee/library")
+        .its("body")
+        .should("include", { is_remote_synced: true });
     });
   });
 
@@ -662,7 +647,6 @@ describe("Remote Sync", () => {
 
     describe("unsynced dependency modal", () => {
       beforeEach(() => {
-        turnOffStrictMode();
         H.configureGitWithNewSyncedCollection("read-write");
         cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       });
@@ -971,7 +955,7 @@ describe("Remote Sync", () => {
           cy.findByText("Collections to sync").should("not.exist");
         });
 
-        configureGitWithoutStrictMode("read-write");
+        H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
@@ -996,7 +980,7 @@ describe("Remote Sync", () => {
         H.commitToRepo();
         // Wait for the read-only import to finish before creating the tenant collection: racing
         // their two implicit collection-permission revision bumps triggers a primary-key 500.
-        configureGitWithoutStrictMode("read-only");
+        H.configureGitAndPullChanges("read-only");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Read Only Tenant Collection");
@@ -1012,7 +996,7 @@ describe("Remote Sync", () => {
       it("should reset collection toggles when switching from read-write to read-nly", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        configureGitWithoutStrictMode("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Mode Switch Test Collection");
@@ -1043,7 +1027,7 @@ describe("Remote Sync", () => {
 
     describe("syncing tenant collections", () => {
       it("lists shared tenant collections in settings and can push changes from a synced one", () => {
-        configureGitWithoutStrictMode("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // A second, unsynced tenant collection so the settings list shows more than one row
         H.createSharedTenantCollection("Second Tenant Collection");
@@ -1144,8 +1128,6 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
-      turnOffStrictMode();
-      H.updateSetting("remote-sync-transforms", false);
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
@@ -1251,9 +1233,10 @@ describe("Remote Sync", () => {
       });
 
       it("flags a new term on the Glossary tab and pushes it to the repository", () => {
-        // Glossary entries ride with the Library, which strict mode syncs on setup.
-        H.createLibrary();
-        H.configureGit("read-write");
+        // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
+        H.createLibrary().then(({ body: library }) => {
+          H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+        });
 
         visitDataStudioGlossary();
         cy.findByRole("button", { name: /new term/i }).click();

@@ -2449,33 +2449,29 @@
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
         (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
 
-(deftest settings-switch-strict-mode-test
-  (testing "PUT /api/ee/remote-sync/settings turns strict mode on when no collection outside the Library is synced, and
-            off otherwise"
-    (mt/with-temporary-setting-values [remote-sync-strict-mode true]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Plain" :location "/" :is_remote_synced false}]
-        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                                    impl/finish-remote-config!               (constantly nil)]
-          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                {:remote-sync-type :read-write :collections {coll-id true}})
-          (is (false? (settings/remote-sync-strict-mode)))
-          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                {:remote-sync-type :read-write :collections {coll-id false}})
-          (is (true? (settings/remote-sync-strict-mode))))))))
-
-(deftest settings-ignores-transforms-in-strict-mode-test
-  (testing "PUT /api/ee/remote-sync/settings ignores remote-sync-transforms in strict mode, which always syncs transforms"
-    (mt/with-temporary-setting-values [remote-sync-strict-mode true
-                                       remote-sync-transforms  true
-                                       remote-sync-url         nil
-                                       remote-sync-token       nil
-                                       remote-sync-branch      nil
-                                       remote-sync-type        :read-only]
-      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                  impl/finish-remote-config!   (constantly nil)]
-        (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                              {:remote-sync-url        "https://github.com/test/repo.git"
-                               :remote-sync-type       :read-write
-                               :remote-sync-branch     "main"
-                               :remote-sync-transforms false})
-        (is (true? (settings/remote-sync-transforms)))))))
+(deftest settings-syncs-library-and-transforms-in-strict-mode-test
+  (testing "Saving read-write remote sync settings with no collection synced besides the Library syncs the Library and
+            transforms"
+    (mt/with-temporary-setting-values [remote-sync-url        nil
+                                       remote-sync-token      nil
+                                       remote-sync-branch     nil
+                                       remote-sync-type       :read-only
+                                       remote-sync-transforms false]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Custom" :location "/" :is_remote_synced true}]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    impl/finish-remote-config!   (constantly nil)]
+          (try
+            (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                  {:remote-sync-url    "https://github.com/test/repo.git"
+                                   :remote-sync-type   :read-write
+                                   :remote-sync-branch "main"})
+            (testing "but not while another collection is synced"
+              (is (false? (settings/remote-sync-strict-mode)))
+              (is (not (t2/exists? :model/Collection :type "library" :is_remote_synced true)))
+              (is (false? (settings/remote-sync-transforms))))
+            (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id false}})
+            (is (true? (settings/remote-sync-strict-mode)))
+            (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
+            (is (true? (settings/remote-sync-transforms)))
+            (finally
+              (test-helpers/set-library-remote-synced! false))))))))

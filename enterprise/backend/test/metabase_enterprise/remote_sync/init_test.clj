@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
@@ -334,9 +333,6 @@
        (#'init/remote-sync-init)
        (is (= {tracked "synced"} (data-app-rso-statuses)))))))
 
-(defn- library-synced? []
-  (boolean (:is_remote_synced (collection/library-collection))))
-
 (defn- do-with-unsynced-library!
   "Runs `thunk` with an unsynced Library, leaving the Library unsynced afterward."
   [thunk]
@@ -347,110 +343,47 @@
       (finally
         (th/set-library-remote-synced! false)))))
 
-(deftest init-strict-mode-test
-  (testing "Without a value, strict mode is on when no collection outside the Library is synced"
-    (mt/with-temporary-setting-values [:remote-sync-strict-mode nil]
-      (remote-sync.core/init-strict-mode!)
-      (is (true? (settings/remote-sync-strict-mode)))))
-  (testing "Without a value, strict mode is off when another collection is synced"
-    (mt/with-temporary-setting-values [:remote-sync-strict-mode nil]
-      (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
-        (remote-sync.core/init-strict-mode!)
-        (is (false? (settings/remote-sync-strict-mode))))))
-  (testing "Snippet, data actions, data apps, and transforms collections don't count as other collections"
-    (mt/with-temporary-setting-values [:remote-sync-strict-mode nil]
-      (mt/with-temp [:model/Collection _ {:name "Snippets" :namespace "snippets" :is_remote_synced true}]
-        (remote-sync.core/init-strict-mode!)
-        (is (true? (settings/remote-sync-strict-mode))))))
-  (testing "An existing value is kept"
-    (mt/with-temporary-setting-values [:remote-sync-strict-mode false]
-      (remote-sync.core/init-strict-mode!)
-      (is (false? (settings/remote-sync-strict-mode))))))
+(deftest strict-mode-test
+  (testing "Strict mode is on when only the Library and snippet, data actions, data apps, and transforms collections are
+            synced"
+    (do-with-unsynced-library!
+     (fn []
+       (th/set-library-remote-synced! true)
+       (mt/with-temp [:model/Collection _ {:name "Snippets" :namespace "snippets" :is_remote_synced true}
+                      :model/Collection _ {:name "Transforms" :namespace collection/transforms-ns :is_remote_synced true}]
+         (is (true? (settings/remote-sync-strict-mode)))
+         (testing "and off once another collection is synced"
+           (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+             (is (false? (settings/remote-sync-strict-mode))))))))))
 
-(deftest remote-sync-init-sets-strict-mode-test
-  (testing "Startup sets strict mode when it has no value, without creating the Library"
-    (mt/with-temporary-setting-values [:remote-sync-url nil
-                                       :remote-sync-strict-mode nil]
-      (mt/with-dynamic-fn-redefs [collection/ensure-library-collection! #(throw (ex-info "Should not be called" {}))]
-        (#'init/remote-sync-init)
-        (is (true? (settings/remote-sync-strict-mode)))))))
+(deftest finish-remote-config-creates-library-test
+  (doseq [remote-sync-type [:read-write :read-only]]
+    (testing (str "Saving " (name remote-sync-type) " remote sync settings creates the Library and leaves Library and "
+                  "transforms sync alone")
+      (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                         :remote-sync-type remote-sync-type
+                                         :remote-sync-branch "main"]
+        (let [[_calls capture] (capture-async-import!)]
+          (mt/with-dynamic-fn-redefs [impl/async-import! capture]
+            (is (nil? (collection/library-collection)))
+            (impl/finish-remote-config!)
+            (is (some? (collection/library-collection)))
+            (is (=? {:is_remote_synced false} (t2/select-one :model/Collection :type "library")))
+            (is (false? (settings/remote-sync-transforms)))
+            (t2/delete! :model/Collection :type [:in (vec collection/library-collection-types)])))))))
 
-(deftest finish-remote-config-strict-mode-test
-  (testing "In strict mode, saving read-write remote sync settings turns on Library and transforms sync"
+(deftest builtin-python-library-transforms-tracking-test
+  (testing "Turning on transforms sync leaves nothing to push for an unchanged built-in Python library"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-write
-                                       :remote-sync-branch "main"
-                                       :remote-sync-strict-mode true]
-      (do-with-unsynced-library!
-       (fn []
-         (impl/finish-remote-config!)
-         (is (library-synced?))
-         (is (true? (settings/remote-sync-transforms)))
-         (testing "every time, so neither can be turned off"
-           (settings/remote-sync-transforms! false)
-           (impl/finish-remote-config!)
-           (is (true? (settings/remote-sync-transforms)))))))))
-
-(deftest finish-remote-config-strict-mode-creates-library-test
-  (testing "In strict mode, saving remote sync settings creates the Library"
-    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
-                                       :remote-sync-type :read-write
-                                       :remote-sync-branch "main"
-                                       :remote-sync-strict-mode true]
-      (is (nil? (collection/library-collection)))
+                                       :remote-sync-branch "main"]
       (mt/with-temp [:model/PythonLibrary {library-id :id} {:path      "common.py"
                                                             :source    ""
                                                             :entity_id transforms-python/builtin-entity-id}]
-        (impl/finish-remote-config!)
-        (is (library-synced?))
-        (testing "and leaves nothing to push without content, ignoring the unchanged built-in Python library"
-          (is (not (remote-sync.object/dirty?))))
-        (testing "while a changed built-in Python library is tracked when transforms sync is turned on"
+        (settings/remote-sync-transforms! true)
+        (is (not (remote-sync.object/dirty?)))
+        (testing "while a changed one is tracked"
           (t2/update! :model/PythonLibrary library-id {:source "def f(): pass"})
           (settings/remote-sync-transforms! false)
           (settings/remote-sync-transforms! true)
           (is (remote-sync.object/dirty?)))))))
-
-(deftest finish-remote-config-not-strict-mode-test
-  (testing "Outside strict mode, saving remote sync settings leaves Library and transforms sync alone"
-    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
-                                       :remote-sync-type :read-write
-                                       :remote-sync-branch "main"
-                                       :remote-sync-strict-mode false]
-      (do-with-unsynced-library!
-       (fn []
-         (impl/finish-remote-config!)
-         (is (not (library-synced?)))
-         (is (false? (settings/remote-sync-transforms))))))))
-
-(deftest finish-remote-config-read-only-test
-  (testing "In strict mode, a read-only instance gets the Library but takes its sync state from its pulls"
-    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
-                                       :remote-sync-type :read-only
-                                       :remote-sync-branch "main"
-                                       :remote-sync-strict-mode true]
-      (let [[_calls capture] (capture-async-import!)]
-        (mt/with-dynamic-fn-redefs [impl/async-import! capture]
-          (is (nil? (collection/library-collection)))
-          (impl/finish-remote-config!)
-          (is (some? (collection/library-collection)))
-          (is (not (library-synced?)))
-          (is (false? (settings/remote-sync-transforms))))))))
-
-(deftest finish-remote-config-library-refused-test
-  (testing "When the Library can't sync, saving remote sync settings fails while startup logs it and goes on"
-    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
-                                       :remote-sync-type :read-write
-                                       :remote-sync-branch "main"
-                                       :remote-sync-strict-mode true]
-      (mt/with-dynamic-fn-redefs [remote-sync.core/bulk-set-remote-sync
-                                  (fn [_] (throw (ex-info "Uses content that is not remote synced." {})))]
-        (do-with-unsynced-library!
-         (fn []
-           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uses content that is not remote synced"
-                                 (impl/finish-remote-config!)))
-           (is (not (library-synced?)))
-           (let [[calls capture] (capture-async-import!)]
-             (mt/with-dynamic-fn-redefs [impl/async-import! capture]
-               (#'init/remote-sync-init)
-               (is (= [["main" true {}]] @calls) "the rest of startup still runs")))))))))

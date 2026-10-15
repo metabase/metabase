@@ -26,7 +26,6 @@ import {
   configureGit,
   configureGitAndPullChanges,
   copySyncedCollectionFixture,
-  pollForTask,
   setupGitSync,
 } from "./e2e-remote-sync-helpers";
 
@@ -663,25 +662,6 @@ const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
  * serve the built one through `mockDataApp`. Pass `initializeRepo: false` to
  * write into the repository an earlier call set up.
  */
-function connectGitAndPushChanges({
-  initializeRepo = true,
-}: { initializeRepo?: boolean } = {}) {
-  if (initializeRepo) {
-    setupGitSync();
-  }
-  configureGit("read-write");
-
-  return cy
-    .request<{ is_dirty: boolean }>("/api/ee/remote-sync/is-dirty")
-    .then(({ body }) => {
-      if (body.is_dirty) {
-        cy.request("POST", "/api/ee/remote-sync/export", { branch: "main" });
-        pollForTask({ taskName: "export" });
-        cy.exec(`git -C ${LOCAL_GIT_PATH} reset --hard`);
-      }
-    });
-}
-
 function commitDataApp(
   appRoot: string,
   slug: string,
@@ -690,8 +670,8 @@ function commitDataApp(
   const appDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
   const collectionsDir = `${LOCAL_GIT_PATH}/collections/data_apps`;
 
-  connectGitAndPushChanges({ initializeRepo });
   if (initializeRepo) {
+    setupGitSync();
     copySyncedCollectionFixture();
   }
   // A copy only adds, so a file the author deleted would stay in the repository.
@@ -776,6 +756,7 @@ export function publishDataAppExpectingRefusal(
   options?: { initializeRepo?: boolean },
 ) {
   commitDataApp(appRoot, slug, options);
+  configureGit("read-write");
   cy.request("POST", "/api/ee/remote-sync/import", { expected_branch: "main" });
 
   return waitForImportError();

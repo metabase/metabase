@@ -30,7 +30,6 @@ export const useRemoteSyncInitialValues = (
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
-  const isStrictMode = useSetting("remote-sync-strict-mode") ?? false;
   const useTenants = useSetting("use-tenants");
 
   const { data: topLevelCollectionsData } = useListCollectionItemsQuery(
@@ -89,8 +88,7 @@ export const useRemoteSyncInitialValues = (
         shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
           ? true
           : values[TRANSFORMS_KEY],
-      [SYNC_LIBRARY_PENDING_KEY]:
-        shouldDefaultToChecked && !libraryCollection && !isStrictMode,
+      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
     };
   }, [
     settingValues,
@@ -100,7 +98,6 @@ export const useRemoteSyncInitialValues = (
     tenantCollectionsData,
     isModalVariant,
     isRemoteSyncEnabled,
-    isStrictMode,
   ]);
 
   return { initialValues, libraryCollection };

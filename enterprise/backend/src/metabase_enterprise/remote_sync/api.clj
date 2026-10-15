@@ -297,8 +297,7 @@
       (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
                      "Cannot change synced collections when remote-sync-type is read-only."))
     (try
-      (settings/check-and-update-remote-settings! (cond-> (dissoc settings :collections)
-                                                    (settings/remote-sync-strict-mode) (dissoc :remote-sync-transforms)))
+      (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid settings")
                         {:error       (ex-message e)
@@ -312,10 +311,17 @@
                                  :error       (ex-message e)
                                  :status-code 400)
                           e)))))
+    (try
+      (remote-sync.core/sync-library-and-transforms-in-strict-mode!)
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                        (assoc (ex-data e)
+                               :error       (ex-message e)
+                               :status-code 400)
+                        e))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})
-    (remote-sync.core/maybe-switch-strict-mode!)
     (if-let [task-id (impl/finish-remote-config!)]
       {:success true
        :task_id task-id}

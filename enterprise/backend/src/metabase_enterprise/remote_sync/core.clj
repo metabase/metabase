@@ -504,53 +504,15 @@
                              {:object (assoc collection :is_remote_synced false)
                               :user-id api/*current-user-id*}))))
 
-(def ^:private strict-mode-namespaces
-  "The namespaces of the collections synced with the Library or transforms."
-  ["snippets"
-   (name collections/data-actions-ns)
-   (name collections/data-apps-ns)
-   (name collections/transforms-ns)])
-
-(defn- other-collection-synced?
-  "Whether a collection outside the Library and what syncs with the Library or transforms is remote-synced."
+(defn sync-library-and-transforms-in-strict-mode!
+  "Creates the Library and syncs it and transforms on a read-write instance in [[settings/remote-sync-strict-mode]],
+  throwing when the Library can't sync."
   []
-  (remote-sync.db/other-remote-synced-collection-exists? (vec collections/library-collection-types)
-                                                         strict-mode-namespaces))
-
-(defn init-strict-mode!
-  "Sets [[settings/remote-sync-strict-mode]] from whether a collection outside the Library and transforms is synced,
-  when it has no value yet."
-  []
-  (when (nil? (settings/remote-sync-strict-mode))
-    (settings/remote-sync-strict-mode! (not (other-collection-synced?)))))
-
-(defn maybe-switch-strict-mode!
-  "Turns [[settings/remote-sync-strict-mode]] on when no collection outside the Library and transforms is synced and
-  off otherwise, unless an environment variable sets it."
-  []
-  (when-not (settings/strict-mode-set-by-env?)
-    (let [strict? (not (other-collection-synced?))]
-      (when-not (= strict? (settings/remote-sync-strict-mode))
-        (settings/remote-sync-strict-mode! strict?)))))
-
-(defn maybe-switch-out-of-strict-mode!
-  "Turns off [[settings/remote-sync-strict-mode]] once a collection outside the Library and transforms is synced,
-  unless an environment variable sets it."
-  []
-  (when (and (settings/remote-sync-strict-mode)
-             (not (settings/strict-mode-set-by-env?))
-             (other-collection-synced?))
-    (settings/remote-sync-strict-mode! false)))
-
-(defn enable-library-and-transforms-sync!
-  "Creates the Library when it's missing and, in strict mode on a read-write instance, turns on remote sync for
-  transforms, unless an environment variable sets that, and for the Library, throwing when the Library can't sync. A
-  read-only instance takes both from its pulls."
-  []
-  (when-let [library (collections/ensure-library-collection!)]
-    (when (and (settings/remote-sync-strict-mode)
-               (= :read-write (settings/remote-sync-type)))
-      (when-not (or (settings/remote-sync-transforms) (settings/transforms-set-by-env?))
+  (when (and (settings/remote-sync-enabled)
+             (= :read-write (settings/remote-sync-type))
+             (settings/remote-sync-strict-mode))
+    (let [library (collections/ensure-library-collection!)]
+      (when-not (settings/remote-sync-transforms)
         (settings/remote-sync-transforms! true))
       (when-not (:is_remote_synced library)
         (bulk-set-remote-sync {(:id library) true})))))

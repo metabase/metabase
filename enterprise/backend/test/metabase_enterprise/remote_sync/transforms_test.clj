@@ -255,8 +255,7 @@
   (testing "Saving read-only settings with transforms on, as the setup guide does, leaves nothing unsaved"
     (mt/with-premium-features #{:remote-sync}
       (mt/with-temporary-setting-values [remote-sync-type :read-write
-                                         remote-sync-transforms false
-                                         remote-sync-strict-mode false]
+                                         remote-sync-transforms false]
         (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
                                     impl/finish-remote-config! (constantly nil)]
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
@@ -1232,11 +1231,10 @@ serdes/meta:
                 (is (not (contains? (get @(:files-atom mock) "main") old-path)))))))))))
 
 (deftest first-import-into-empty-library-and-transforms-has-no-conflicts-test
-  (testing "Outside strict mode, a first pull of the Library and transforms into an empty, unsynced Library and no
+  (testing "A first pull of the Library and transforms into an empty, unsynced Library and no
             transforms has no conflicts, while a Library with content still conflicts"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [remote-sync-type        :read-write
-                                         remote-sync-strict-mode false]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
         (let [library (collection/ensure-library-collection!)]
           (test-helpers/set-library-remote-synced! false)
           (let [coll-eid     (u/generate-nano-id)
@@ -1288,16 +1286,3 @@ serdes/meta:
         (is (=? {:status :success}
                 (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)))
         (is (false? (settings/remote-sync-transforms)))))))
-
-(deftest strict-mode-pull-keeps-transforms-sync-on-test
-  (testing "In strict mode, a pull without transforms keeps transforms sync on"
-    (mt/with-temporary-setting-values [remote-sync-type        :read-write
-                                       remote-sync-transforms  true
-                                       remote-sync-strict-mode true]
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-            files   {"main" {"collections/main/plain/plain.yaml"
-                             (test-helpers/generate-collection-yaml "plain-collection-xxxx" "Plain")}}]
-        (is (=? {:status :success}
-                (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
-                              task-id :force? true)))
-        (is (true? (settings/remote-sync-transforms)))))))
