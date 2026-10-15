@@ -63,6 +63,19 @@ export const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
+          key="event-analysis"
+          component={ForwardRefLink}
+          to={Urls.newEventAnalysis()}
+          leftSection={<Icon name="funnel" />}
+        >
+          {t`Event analysis`}
+        </Menu.Item>,
+      );
+    }
+
+    if (hasDataAccess) {
+      items.push(
+        <Menu.Item
           key="question"
           component={ForwardRefLink}
           to={Urls.newQuestion({

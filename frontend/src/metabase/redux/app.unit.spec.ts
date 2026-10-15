@@ -131,6 +131,8 @@ describe("isNavbarOpenForPathname", () => {
     ["/collection/1", true, true],
     ["/browse/models", true, true],
     ["/model/1", true, false],
+    ["/event-analysis/new/funnel", true, false],
+    ["/event-analysis/7", true, false],
     // a collapsing path can never force the navbar open when it was closed
     ["/collection/1", false, false],
   ])("pathname %s with prevState %s => %s", (pathname, prevState, expected) => {

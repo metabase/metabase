@@ -1,0 +1,7 @@
+.root {
+  transition: background-color 120ms ease;
+}
+
+.root:has(.editButton:hover:not(:disabled)) {
+  background-color: var(--mb-color-background-secondary);
+}
