@@ -6,6 +6,32 @@
   padding: 0.25rem;
 }
 
+/* The header row and each row's cohort label and size stick while the
+   period columns scroll under them. Both are subgrids so their cells still
+   line up with the columns of the root grid. The shadows fill the grid gap
+   next to them, so scrolled cells don't show through it. */
+.headerRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--mb-color-background-primary);
+  box-shadow: 0 0.125rem 0 var(--mb-color-background-primary);
+}
+
+.frozen {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: subgrid;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--mb-color-background-primary);
+  box-shadow: 0.125rem 0 0 var(--mb-color-background-primary);
+}
+
 .header {
   padding: 0.5rem 0.75rem;
   font-weight: bold;

@@ -87,7 +87,7 @@ export const AnalysisResult = ({
           <Title order={4}>{title}</Title>
           <Warnings warnings={allWarnings} size={18} />
         </Group>
-        <Stack gap="sm" flex={1}>
+        <Stack gap="sm" flex={1} mih={0}>
           {isIncomplete && (
             <IncompleteSettings
               missing={missing}
@@ -105,7 +105,7 @@ export const AnalysisResult = ({
             <Text c="text-secondary">{t`Results will appear here.`}</Text>
           )}
           {isShowingVisualization && (
-            <Box flex={1}>
+            <Box flex={1} mih={0}>
               <Visualization
                 rawSeries={rawSeries}
                 isQueryBuilder={false}

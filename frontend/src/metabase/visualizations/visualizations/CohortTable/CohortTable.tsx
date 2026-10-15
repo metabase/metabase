@@ -45,34 +45,42 @@ const CohortTableComponent = ({ rawSeries, settings }: VisualizationProps) => {
   }, [data, valueFormat]);
 
   return (
-    <Box h="100%" style={{ overflow: "auto" }}>
-      <Box
-        className={S.root}
-        style={{
-          gridTemplateColumns: `auto auto repeat(${offsets.length}, minmax(4.5rem, 1fr))`,
-        }}
-      >
-        <div className={S.headerLabel}>{t`Cohort`}</div>
-        <div className={S.header}>{t`Initial count`}</div>
-        {offsets.map((offset) => (
-          <div key={offset} className={S.header}>
-            {formatPeriodHeader(period, offset)}
+    // The scroller is absolutely positioned so the grid adds nothing to the
+    // card's height: the card keeps its size and the grid scrolls inside it.
+    <Box flex={1} pos="relative">
+      <Box pos="absolute" inset={0} style={{ overflow: "auto" }}>
+        <Box
+          className={S.root}
+          style={{
+            gridTemplateColumns: `auto auto repeat(${offsets.length}, minmax(4.5rem, 1fr))`,
+          }}
+        >
+          <div className={S.headerRow}>
+            <div className={S.frozen}>
+              <div className={S.headerLabel}>{t`Cohort`}</div>
+              <div className={S.header}>{t`Initial count`}</div>
+            </div>
+            {offsets.map((offset) => (
+              <div key={offset} className={S.header}>
+                {formatPeriodHeader(period, offset)}
+              </div>
+            ))}
           </div>
-        ))}
-        {cohorts.map((cohort) => (
-          <CohortRow
-            key={cohort.key}
-            label={formatCohortLabel(cohort.key, period, { showYear })}
-            size={cohort.size}
-            cells={offsets.map((offset) =>
-              isFuturePeriod(cohort.key, offset, period)
-                ? null
-                : (cohort.values.get(offset) ?? null),
-            )}
-            max={max}
-            valueFormat={valueFormat}
-          />
-        ))}
+          {cohorts.map((cohort) => (
+            <CohortRow
+              key={cohort.key}
+              label={formatCohortLabel(cohort.key, period, { showYear })}
+              size={cohort.size}
+              cells={offsets.map((offset) =>
+                isFuturePeriod(cohort.key, offset, period)
+                  ? null
+                  : (cohort.values.get(offset) ?? null),
+              )}
+              max={max}
+              valueFormat={valueFormat}
+            />
+          ))}
+        </Box>
       </Box>
     </Box>
   );
@@ -95,8 +103,10 @@ const CohortRow = ({
   valueFormat,
 }: CohortRowProps) => (
   <>
-    <div className={S.label}>{label}</div>
-    <div className={S.size}>{new Intl.NumberFormat().format(size)}</div>
+    <div className={S.frozen}>
+      <div className={S.label}>{label}</div>
+      <div className={S.size}>{new Intl.NumberFormat().format(size)}</div>
+    </div>
     {cells.map((value, offset) => {
       if (value === null) {
         return <div key={offset} />;
