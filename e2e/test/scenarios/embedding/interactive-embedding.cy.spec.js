@@ -565,6 +565,51 @@ describe("scenarios > embedding > full app", () => {
         });
       });
     });
+
+    describe("library", () => {
+      it("should count the metrics in the Library toward the full data picker switch", () => {
+        const metricDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+        };
+        cy.signInAsAdmin();
+        Cypress._.times(50, (index) => {
+          H.createQuestion({ ...metricDetails, name: `Orders count ${index}` });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByRole("link", { name: "Orders" }).should("be.visible");
+          cy.findByText("Raw Data").should("not.exist");
+        });
+
+        // The other half of the 100 metrics goes into the Library, so only
+        // the Library's metrics can push the count over
+        cy.signInAsAdmin();
+        H.createLibrary().then(({ body: library }) => {
+          const metricsCollection = library.effective_children.find(
+            (collection) => collection.type === "library-metrics",
+          );
+          Cypress._.times(50, (index) => {
+            H.createQuestion({
+              ...metricDetails,
+              name: `Library orders count ${index}`,
+            }).then(({ body: metric }) => {
+              cy.request("PUT", `/api/card/${metric.id}`, {
+                collection_id: metricsCollection.id,
+              });
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("be.visible");
+        });
+      });
+    });
   });
 
   describe("notebook multi-stage data picker", () => {
