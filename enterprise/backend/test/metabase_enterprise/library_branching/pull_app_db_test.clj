@@ -342,9 +342,13 @@
      (fn [insert! metrics]
        (let [[metric-eid dashboard-eid] (drop 3 created-ids)
              metric    (insert! :model/Card (metric-row metrics "Linked" :entity_id metric-eid))
+             ;; the Library's content rule keeps a dashboard in a Dashboards collection
+             section   (insert! :model/Collection {:name     "Pull dashboards"
+                                                   :type     "library-dashboards"
+                                                   :location (:location metrics)})
              dashboard (insert! :model/Dashboard {:name          "Metric links"
                                                   :entity_id     dashboard-eid
-                                                  :collection_id (:id metrics)
+                                                  :collection_id (:id section)
                                                   :creator_id    (mt/user->id :crowberto)})
              _         (insert! :model/DashboardCard {:dashboard_id (:id dashboard) :row 0 :col 0 :size_x 4 :size_y 2
                                                       :visualization_settings
