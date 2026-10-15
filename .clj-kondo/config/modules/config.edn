@@ -3994,6 +3994,7 @@
    :uses #{api
            app-db
            collections
+           dashboards
            models
            queries
            request
@@ -4008,6 +4009,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
                     :model/DataApp
                     :model/Database
                     :model/Dimension

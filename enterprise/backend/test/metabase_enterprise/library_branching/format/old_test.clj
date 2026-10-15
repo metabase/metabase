@@ -226,9 +226,9 @@
 (deftest unknown-models-test
   (testing "a file of a model that has no old-format decoder is an item that does not decode: the pull refuses it,
            and never drops the item"
-    (is (= {:findings [{:type :unknown-kind :model "Dashboard" :file 0
-                        :reason "No old-format decoder for the model Dashboard"}]}
-           (decode ["name: Sales\nentity_id: DashboardXXXXXXXXXXXX\nserdes/meta:\n- model: Dashboard\n"])))))
+    (is (= {:findings [{:type :unknown-kind :model "Pulse" :file 0
+                        :reason "No old-format decoder for the model Pulse"}]}
+           (decode ["name: Sales\nentity_id: PulsePulseXXXXXXXXXXX\nserdes/meta:\n- model: Pulse\n"])))))
 
 (deftest findings-test
   (testing "a file that its kind refuses is an invalid item, with its position"
@@ -565,17 +565,17 @@
 
 ;;; ------------------------------------------------ Properties --------------------------------------------------------
 
-(defn- without-remapped-values
-  "The `:fields` attribute `fields` with no values of an internal remapping."
+(defn- without-labels
+  "The `:fields` attribute `fields` with no labels of an internal remapping."
   [fields]
   (update-vals fields (fn [entry]
-                        (cond-> (update entry :remapping #(some-> % (dissoc :values)))
+                        (cond-> (update entry :remapping #(some-> % (dissoc :labels)))
                           (nil? (:remapping entry)) (dissoc :remapping)
-                          (:fields entry)           (update :fields without-remapped-values)))))
+                          (:fields entry)           (update :fields without-labels)))))
 
 (defn- holdable
   "Snapshot `s` as an instance can hold it: no visualization setting is nil, as the instance drops those. The old format
-  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no values of
+  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no labels of
   an internal remapping: remote sync writes no field values."
   [s]
   (update-vals s (fn [{:keys [kind] :as it}]
@@ -588,7 +588,7 @@
 
                      :published-table
                      (cond-> it
-                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-remapped-values))
+                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-labels))
 
                      it))))
 

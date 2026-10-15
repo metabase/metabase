@@ -158,6 +158,11 @@
              event   (insert! :model/TimelineEvent {:timeline_id (:id tl) :name "Locked event" :timezone "UTC"
                                                     :timestamp (java.time.OffsetDateTime/parse "2024-01-01T00:00:00Z")
                                                     :time_matters false :icon "star" :creator_id user})
+             dash    (insert! :model/Dashboard {:name "Locked dashboard" :collection_id (:id dashes) :creator_id user
+                                                :parameters []})
+             tab     (insert! :model/DashboardTab {:dashboard_id (:id dash) :name "Locked tab" :position 0})
+             dashcard (insert! :model/DashboardCard {:dashboard_id (:id dash) :card_id (:id metric)
+                                                     :dashboard_tab_id (:id tab) :row 0 :col 0 :size_x 4 :size_y 4})
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -183,7 +188,13 @@
                   ["a timeline" :timeline (:entity_id tl)
                    #(t2/query-one {:update :timeline :set {:name "Saved"} :where [:= :id (:id tl)]})]
                   ["an event of a timeline" :timeline (:entity_id tl)
-                   #(t2/query-one {:update :timeline_event :set {:name "Saved"} :where [:= :id (:id event)]})]]]
+                   #(t2/query-one {:update :timeline_event :set {:name "Saved"} :where [:= :id (:id event)]})]
+                  ["a dashboard" :dashboard (:entity_id dash)
+                   #(t2/query-one {:update :report_dashboard :set {:name "Saved"} :where [:= :id (:id dash)]})]
+                  ["a tab of a dashboard" :dashboard (:entity_id dash)
+                   #(t2/query-one {:update :dashboard_tab :set {:name "Saved"} :where [:= :id (:id tab)]})]
+                  ["a card of a dashboard" :dashboard (:entity_id dash)
+                   #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]]]
            (testing label
              (let [[content during after] (while-current-holds! (get stores kind) id save!)]
                (is (map? content))

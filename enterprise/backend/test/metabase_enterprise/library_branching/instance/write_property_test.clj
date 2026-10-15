@@ -174,11 +174,11 @@
 
 (def ^:private remappings-gen
   "A generator of the remappings of the fields of the venues table: none, or one of each kind; an internal remapping
-  with or without its values."
+  with or without labels, each of a value that the field values row of the price has."
   (gen/let [external (optional (gen/return {:type "external" :name "Category" :field ::category-name}))
             internal (optional (gen/elements [{:type "internal" :name "Price"}
-                                              {:type "internal" :name "Price" :values [[1 "$"] [2 "$$"]]}
-                                              {:type "internal" :name "Cost" :values [[1 "Cheap"] [4 "Dear"]]}]))]
+                                              {:type "internal" :name "Price" :labels [[1 "$"] [2 "$$"]]}
+                                              {:type "internal" :name "Cost" :labels [[1 "Cheap"] [4 "Dear"]]}]))]
     (cond-> {}
       external (assoc :CATEGORY_ID external)
       internal (assoc :PRICE internal))))
@@ -234,7 +234,9 @@
          (t2/delete! :model/TableUserSettings :table_id table-id)
          (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
          (t2/delete! :model/Dimension :field_id [:in field-ids])
-         (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))))
+         (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
+         ;; The values of the price as warehouse sync finds them, with no label.
+         (t2/insert! :model/FieldValues {:field_id (mt/id :venues :price) :type :full :values [1 2 3 4]})))
      (let [store   #(get app-db/kind-stores (:kind %))
            put-get (every? (fn [item]
                              (let [item (resolve-item world item)
@@ -297,9 +299,9 @@
       (is (some #(get-in % [:attrs :template_tags]) (sample snippet-gen)) "a snippet with a tag")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :fk_target]) tables) "a foreign key target")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :remapping]) tables) "a foreign-key remapping")
-      (is (some #(get-in % [:attrs :fields :PRICE :remapping :values]) tables) "an internal remapping with values")
+      (is (some #(get-in % [:attrs :fields :PRICE :remapping :labels]) tables) "an internal remapping with labels")
       (is (some #(= {:type "internal" :name "Price"} (get-in % [:attrs :fields :PRICE :remapping])) tables)
-          "an internal remapping with no values")
+          "an internal remapping with no labels")
       (is (some #(= "hidden" (get-in % [:attrs :data_layer])) tables) "a hidden table"))))
 
 ;;; ------------------------------------------- Visibility type and data layer ------------------------------------------

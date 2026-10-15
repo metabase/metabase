@@ -4,9 +4,10 @@
   table]`, the name is the display name that the table shows, and the place is its collection. The attributes are
   what users set, never what warehouse sync writes: the values of the user settings rows of the table and of its
   fields, for the columns that the user set, and the remapping of each field (its Dimension row, and for an internal
-  remapping the human-readable values of its full field values row). A value that the user cleared is at its default,
-  so it is absent."
+  remapping the labels that a person set in the human-readable values of its full field values row; the values of that
+  row are what warehouse sync finds). A value that the user cleared is at its default, so it is absent."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.format.kinds.published-table :as format.published-table]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -24,15 +25,27 @@
   "The table columns that are attributes of the format."
   (disj (set (keys (:attrs format.published-table/spec))) :fields))
 
+(defn labels-of
+  "The labels that a person set, `[[value label] ...]` in the order of the format, of the field values `values` with the
+  human-readable values `human-readable-values` of one field values row: each label that is not the label that
+  Metabase shows for its value with no label. Of two equal values, the first."
+  [values human-readable-values]
+  (->> (map vector values human-readable-values)
+       (remove (fn [[v l]] (format.published-table/default-label? v l)))
+       (reduce (fn [m [v :as pair]] (if (contains? m v) m (assoc m v pair))) {})
+       vals
+       format.published-table/sort-labels))
+
 (defn remapping
   "The `:remapping` field setting of Dimension row `dimension`, with the `:values` and `:human_readable_values` of the
   field's full field values row, if any: a foreign-key remapping names its target field by natural key; an internal
-  remapping holds its pairs of value and human-readable value, and none when the row has no human-readable values."
+  remapping holds the [[labels-of]] the row, and none when the row has none."
   [{:keys [type name human_readable_field_id values human_readable_values]}]
   (case type
     "external" {:type "external" :name name :field (serdes/*export-field-fk* human_readable_field_id)}
-    "internal" (cond-> {:type "internal" :name name}
-                 (seq human_readable_values) (assoc :values (mapv vector values human_readable_values)))
+    "internal" (let [ls (labels-of values human_readable_values)]
+                 (cond-> {:type "internal" :name name}
+                   (seq ls) (assoc :labels ls)))
     nil))
 
 (def ^:private field-columns
@@ -262,9 +275,9 @@
           (sort (filter #(not= (get old %) (get new %)) (into (set (keys old)) (keys new)))))))
 
 (defn- remapping-writes
-  "`[[field-id remapping row] ...]`: each field of table `table-id` whose remapping in the `:fields` attribute `new`
-  differs from `old`, for item `id`, with its new remapping (nil: none) and the columns of its Dimension row. Throws
-  ::instance/refused for a field that the table, or the instance, does not have."
+  "`[[field-id old new row] ...]`: each field of table `table-id` whose remapping in the `:fields` attribute `new`
+  differs from `old`, for item `id`, with its old and new remapping (nil: none) and the columns of its new Dimension
+  row. Throws ::instance/refused for a field that the table, or the instance, does not have."
   [id table-id old new]
   (let [old (update-vals (flatten-fields old) :remapping)
         new (update-vals (flatten-fields new) :remapping)
@@ -276,6 +289,7 @@
                       [(or (get ids path)
                            (instance/refuse! :environment id (str "The table has no field " (pr-str path) ".")
                                              {:field path}))
+                       (get old path)
                        remapping
                        (when remapping
                          {:type                    type
@@ -283,18 +297,39 @@
                           :human_readable_field_id (when (= "external" type) (field-id-of-key id field))})]))))
           (sort (into (set (keys old)) (keys new))))))
 
+(defn- unlabelled-text
+  "The human-readable value that a value with no label gets: its text, \"null\" for a null value, and nil for a value
+  whose text is blank, which Metabase does not keep as a label."
+  [v]
+  (let [text (if (nil? v) "null" (str v))]
+    (when-not (str/blank? text) text)))
+
+(defn- write-labels!
+  "Sets the labels `labels` of an internal remapping on the newest full field values row of field `field-id`: each of
+  its values gets its label, or [[unlabelled-text]]. With no label for a value of the row, the row keeps no
+  human-readable values. The values of the row do not change, so a label of a value that the row does not have is not
+  written, and with no row nothing is written. Writes nothing when the row already has these labels."
+  [field-id labels]
+  (when-let [{fv-id :id values :values current :human_readable_values}
+             (last (library-branching.db/remapped-values-by-field-id [field-id]))]
+    (let [by-value (into {} labels)
+          target   (when (some #(contains? by-value %) values)
+                     (mapv (fn [v] (get by-value v (unlabelled-text v))) values))]
+      (when (not= (labels-of values current) (labels-of values target))
+        (library-branching.db/set-human-readable-values! fv-id target)))))
+
 (defn- write-remapping!
-  "Makes the Dimension row of field `field-id` have the columns `row`, or deletes it when `remapping` is nil. An
-  internal remapping also sets the human-readable values of the field's values, or clears them when it has none."
-  [[field-id remapping row]]
-  (if (nil? remapping)
+  "Makes the Dimension row of field `field-id` have the columns `row`, or deletes it when the remapping `new` is nil;
+  sets the Dimension row only when `new` differs from `old` in more than its labels. An internal remapping also sets its
+  labels with [[write-labels!]]."
+  [[field-id old new row]]
+  (if (nil? new)
     (library-branching.db/delete-dimension! field-id)
     (do
-      (library-branching.db/set-dimension! field-id row)
-      (when (= "internal" (:type remapping))
-        (if-let [pairs (seq (:values remapping))]
-          (library-branching.db/set-remapped-values! field-id (mapv first pairs) (mapv second pairs))
-          (library-branching.db/clear-remapped-values! field-id))))))
+      (when (not= (dissoc old :labels) (dissoc new :labels))
+        (library-branching.db/set-dimension! field-id row))
+      (when (= "internal" (:type new))
+        (write-labels! field-id (:labels new))))))
 
 (defn- write-field!
   [[field-id changes]]

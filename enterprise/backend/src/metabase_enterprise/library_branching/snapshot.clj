@@ -10,11 +10,13 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :glossary-term :measure :metric :model :published-table :question :segment :snippet :timeline})
+  #{:collection :dashboard :glossary-term :measure :metric :model :published-table :question :segment :snippet
+    :timeline})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
-  {:collection      #{:collection :metric :model :published-table :question :snippet :timeline}
+  {:collection      #{:collection :dashboard :metric :model :published-table :question :snippet :timeline}
+   :dashboard       #{}
    :glossary-term   #{}
    :measure         #{}
    :metric          #{}
@@ -24,6 +26,18 @@
    :segment         #{}
    :snippet         #{}
    :timeline        #{}})
+
+(def shared-tables
+  "Sets of kinds whose items the app DB keeps in one table, keyed by identity: an instance holds at most one item of
+  the kinds of a set with one identity, and a change of kind inside a set changes that item."
+  #{#{:metric :model :question}})
+
+(defn same-row?
+  "True iff an item of kind `a` and an item of kind `b` with one identity are one item of the app DB: `a` is `b`, or
+  a set of [[shared-tables]] holds both."
+  [a b]
+  (or (= a b)
+      (boolean (some #(and (contains? % a) (contains? % b)) shared-tables))))
 
 (def unique-keys
   "`{kind {:path path :name? bool}}`: the kinds whose key the app DB keeps unique over all rows of the kind, the path of
@@ -66,7 +80,13 @@
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The
   table can name kinds outside [[kinds]]."
-  {:action {:model #{:model}}})
+  {:action    {:model #{:model}}
+   :dashboard {:action #{:action} :dashboard #{:dashboard}}})
+
+(def stub-kinds
+  "The kinds whose new item an apply can write first without its references, as a stub, and complete in a later step:
+  in a reference cycle, the items of these kinds leave out their references, so the items of other kinds need none."
+  #{:dashboard})
 
 (def system-ids
   "The identities of the system items that every instance of a release has from the install on: the Library

@@ -52,6 +52,22 @@
     (testing why
       (is (= expected (merge-one b o t))))))
 
+(deftest ^:parallel kind-change-test
+  (let [term  (engine.tu/item :glossary-term "X" nil)
+        x2    (assoc x :name "X 2")
+        term2 (assoc term :name "X 2")]
+    (testing "a kind change is a change of the item: the diff gives an update, and the merge takes it from the side
+             that made it"
+      (is (= {:created #{} :deleted #{} :updated #{i}} (diff/diff (snap x) (snap term))))
+      (is (= {:ok (snap term)} (merge-one x term x)))
+      (is (= {:ok (snap term)} (merge-one x x term)))
+      (is (= {:ok (snap term)} (merge-one x term term))))
+    (testing "a kind change on one side and an edit or another kind change on the other is a conflict of the item"
+      (is (= (conflict x term x2) (merge-one x term x2)))
+      (is (= (conflict x x2 term) (merge-one x x2 term)))
+      (is (= (conflict x term term2) (merge-one x term term2)))
+      (is (= (conflict x term nil) (merge-one x term nil))))))
+
 (deftest ^:parallel unknown-base-test
   (testing "a base value :unknown equals no content: each difference of the two sides is a conflict"
     (doseq [[o t expected why]

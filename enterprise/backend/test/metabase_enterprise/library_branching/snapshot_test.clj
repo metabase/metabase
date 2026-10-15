@@ -54,7 +54,7 @@
     (is (not (valid? (update example metric-id dissoc :attrs))))
     (is (not (valid? (update example collection-id dissoc :place)))))
   (testing "the kind is in the closed set"
-    (is (not (valid? (assoc-in example [metric-id :kind] :dashboard)))))
+    (is (not (valid? (assoc-in example [metric-id :kind] :pulse)))))
   (testing "the name is a non-empty string"
     (is (not (valid? (assoc-in example [metric-id :name] ""))))
     (is (not (valid? (assoc-in example [metric-id :name] nil)))))

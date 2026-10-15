@@ -3,7 +3,7 @@
 
   A base, a local and a remote snapshot share their identities: each comes from one well-formed universe by a list of
   edits, and every edit keeps a snapshot well formed. So a merge test sees items that one side or both sides created,
-  deleted, renamed, moved and changed. The edits are random choices, so test.check shrinks them directly."
+  deleted, renamed, moved, changed and gave another kind. The edits are random choices, so test.check shrinks them directly."
   (:require
    [clojure.set :as set]
    [clojure.test.check.generators :as gen]
@@ -82,11 +82,14 @@
     (if (key-taken? s id it) s (assoc s id it))))
 
 (defn- restore-edit
-  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds, and whose unique key no item of `s`
-  has, with its references that close."
+  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds with a kind that may contain it, and
+  whose unique key no item of `s` has, with its references that close."
   [u s k]
   (let [candidates (filter (fn [i] (and (not (contains? s i))
-                                        (let [p (:place (get u i))] (or (nil? p) (contains? s p)))
+                                        (let [{:keys [kind place]} (get u i)]
+                                          (or (nil? place)
+                                              (and (contains? s place)
+                                                   (contains? (get snapshot/may-contain (:kind (get s place)) #{}) kind))))
                                         (not (key-taken? s i (get u i)))))
                            (sorted-ids u))]
     (if-let [i (nth-of candidates k)]
@@ -94,6 +97,27 @@
       s)))
 
 (def ^:private names ["Robin" "Toucan" "Heron" "Wren" "robin" "Héron"])
+
+(def ^:private entity-id-kinds
+  "The kinds whose items have an entity id as their identity, in order."
+  (vec (sort (disj snapshot/kinds :published-table))))
+
+(defn- rekind-edit
+  "Gives item `id` the `k`th kind of the kinds that its container may contain, that may contain its contents, and that
+  keep unique keys, other than its own; with no such kind, or for an item whose identity is not an entity id, `s`."
+  [s id k]
+  (let [{:keys [kind place] :as it} (get s id)
+        allowed  (if place (get snapshot/may-contain (:kind (get s place)) #{}) (set entity-id-kinds))
+        contents (set (keep (fn [[_ c]] (when (= id (:place c)) (:kind c))) s))
+        kinds    (filterv (fn [kd]
+                            (and (not= kd kind)
+                                 (contains? allowed kd)
+                                 (set/subset? contents (get snapshot/may-contain kd #{}))
+                                 (not (key-taken? s id (assoc it :kind kd)))))
+                          entity-id-kinds)]
+    (if (and (string? id) (seq kinds))
+      (assoc-in s [id :kind] (nth-of kinds k))
+      s)))
 
 (defn- apply-edit
   [u s [op k x]]
@@ -103,6 +127,7 @@
       :rename   (rename-edit s id (nth-of names x))
       :describe (assoc-in s [id :attrs :description] (str "d" (mod x 3)))
       :move     (move-edit s id x)
+      :rekind   (rekind-edit s id x)
       :add-ref  (update-in s [id :refs] conj [:card (nth-of (sorted-ids s) x)])
       :drop-ref (update-in s [id :refs] #(disj % (first (sort-by str %))))
       :restore  (restore-edit u s x))
@@ -115,7 +140,7 @@
   (reduce (partial apply-edit u) s edits))
 
 (def ^:private edit-gen
-  (gen/tuple (gen/elements [:restore :delete :rename :describe :move :add-ref :drop-ref]) gen/nat gen/nat))
+  (gen/tuple (gen/elements [:restore :delete :rename :describe :move :add-ref :drop-ref :rekind]) gen/nat gen/nat))
 
 (def ^:private edits-gen (gen/vector edit-gen 0 6))
 
