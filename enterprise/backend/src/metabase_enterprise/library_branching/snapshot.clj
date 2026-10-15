@@ -74,3 +74,14 @@
    [:map-of ::identity ::item]
    [:fn {:error/message "a published table has a table key as its identity, every other kind an entity id"}
     #(every? identity-fits-kind? %)]])
+
+(defn compare-identities
+  "A total order on identities: every entity id before every table key; entity ids by string order, table keys part
+  by part, with a nil schema first."
+  [a b]
+  (let [sa (string? a), sb (string? b)]
+    (cond
+      (and sa sb) (compare a b)
+      sa          -1
+      sb          1
+      :else       (compare a b))))
