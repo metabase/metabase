@@ -2449,7 +2449,7 @@
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
         (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
 
-(deftest settings-syncs-library-and-transforms-in-strict-mode-test
+(deftest settings-syncs-library-and-transforms-without-custom-collections-test
   (testing "Saving read-write remote sync settings with no collection synced besides the Library syncs the Library and
             transforms"
     (mt/with-temporary-setting-values [remote-sync-url        nil
@@ -2466,11 +2466,11 @@
                                    :remote-sync-type   :read-write
                                    :remote-sync-branch "main"})
             (testing "but not while another collection is synced"
-              (is (false? (settings/remote-sync-strict-mode)))
+              (is (true? (settings/remote-sync-custom-collections-synced)))
               (is (not (t2/exists? :model/Collection :type "library" :is_remote_synced true)))
               (is (false? (settings/remote-sync-transforms))))
             (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id false}})
-            (is (true? (settings/remote-sync-strict-mode)))
+            (is (false? (settings/remote-sync-custom-collections-synced)))
             (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
             (is (true? (settings/remote-sync-transforms)))
             (finally

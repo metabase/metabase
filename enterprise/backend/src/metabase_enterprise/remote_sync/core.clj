@@ -24,7 +24,7 @@
 (p/import-vars
  [settings
   remote-sync-enabled
-  remote-sync-strict-mode]
+  remote-sync-custom-collections-synced]
  [source]
  [source.p
   ->ingestable])
@@ -504,13 +504,13 @@
                              {:object (assoc collection :is_remote_synced false)
                               :user-id api/*current-user-id*}))))
 
-(defn sync-library-and-transforms-in-strict-mode!
-  "Creates the Library and syncs it and transforms on a read-write instance in [[settings/remote-sync-strict-mode]],
-  throwing when the Library can't sync."
+(defn sync-library-and-transforms-without-custom-collections!
+  "Creates the Library and syncs it and transforms on a read-write instance where no custom collection is synced, per
+  [[settings/remote-sync-custom-collections-synced]], throwing when the Library can't sync."
   []
   (when (and (settings/remote-sync-enabled)
              (= :read-write (settings/remote-sync-type))
-             (settings/remote-sync-strict-mode))
+             (not (settings/remote-sync-custom-collections-synced)))
     (let [library (collections/ensure-library-collection!)]
       (when-not (settings/remote-sync-transforms)
         (settings/remote-sync-transforms! true))

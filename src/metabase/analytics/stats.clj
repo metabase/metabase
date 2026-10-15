@@ -1042,7 +1042,7 @@
 
 (defn- default-ee-snowplow-settings-data
   []
-  [{:key   "remote_sync_strict_mode"
+  [{:key   "remote_sync_custom_collections_synced"
     :value nil
     :tags  ["remote-sync"]}])
 

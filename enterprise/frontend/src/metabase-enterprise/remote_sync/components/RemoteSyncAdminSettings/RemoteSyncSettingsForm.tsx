@@ -54,7 +54,8 @@ export const RemoteSyncSettingsForm = ({
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
-  const isStrictMode = useSetting("remote-sync-strict-mode") ?? false;
+  const areCustomCollectionsSynced =
+    useSetting("remote-sync-custom-collections-synced") ?? true;
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -108,12 +109,14 @@ export const RemoteSyncSettingsForm = ({
                 {isReadOnly && <ReadOnlyBranchSection />}
                 {(isRemoteSyncEnabled || isReadWrite) &&
                   !isModalVariant &&
-                  !isStrictMode && <CollectionsToSyncSection />}
-                {isModalVariant && isReadWrite && !isStrictMode && (
-                  <RemoteSyncSettingsSection title={t`Content to sync`}>
-                    <TopLevelCollectionsList skipCollections />
-                  </RemoteSyncSettingsSection>
-                )}
+                  areCustomCollectionsSynced && <CollectionsToSyncSection />}
+                {isModalVariant &&
+                  isReadWrite &&
+                  areCustomCollectionsSynced && (
+                    <RemoteSyncSettingsSection title={t`Content to sync`}>
+                      <TopLevelCollectionsList skipCollections />
+                    </RemoteSyncSettingsSection>
+                  )}
 
                 <Flex justify="space-between" align="center">
                   <Box>

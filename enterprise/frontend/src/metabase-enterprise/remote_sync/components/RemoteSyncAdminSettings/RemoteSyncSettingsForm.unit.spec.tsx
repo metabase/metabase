@@ -168,11 +168,11 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should not show 'Content to sync' section in strict mode", async () => {
+    it("should not show 'Content to sync' section when no custom collection is synced", async () => {
       setup({
         remoteSyncType: "read-write",
         variant: "settings-modal",
-        remoteSyncStrictMode: true,
+        remoteSyncCustomCollectionsSynced: false,
       });
 
       await waitFor(() => {
@@ -882,12 +882,12 @@ describe("RemoteSyncSettingsForm", () => {
       expect(screen.getByText("Collections to sync")).toBeInTheDocument();
     });
 
-    it("should not display collections section in strict mode", async () => {
+    it("should not display collections section when no custom collection is synced", async () => {
       setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
-        remoteSyncStrictMode: true,
+        remoteSyncCustomCollectionsSynced: false,
       });
 
       await waitFor(() => {

@@ -480,7 +480,7 @@ describe("Remote Sync", () => {
     });
   });
 
-  describe("strict mode", () => {
+  describe("without custom collections", () => {
     beforeEach(() => {
       setup();
     });
@@ -508,7 +508,7 @@ describe("Remote Sync", () => {
     it("syncs the Library and transforms once the last custom collection stops syncing", () => {
       H.configureGitWithNewSyncedCollection("read-write", "Custom Collection");
       cy.request("/api/session/properties").its("body").should("include", {
-        "remote-sync-strict-mode": false,
+        "remote-sync-custom-collections-synced": true,
         "remote-sync-transforms": false,
       });
 
@@ -523,7 +523,7 @@ describe("Remote Sync", () => {
       });
 
       cy.request("/api/session/properties").its("body").should("include", {
-        "remote-sync-strict-mode": true,
+        "remote-sync-custom-collections-synced": false,
         "remote-sync-transforms": true,
       });
       cy.request("/api/ee/library")
@@ -1128,7 +1128,7 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
-      // Saving the settings in strict mode turns on transforms sync, which would track the local transform.
+      // Saving the settings without custom collections turns on transforms sync, which would track the local transform.
       H.updateSetting("remote-sync-transforms", false);
     });
 

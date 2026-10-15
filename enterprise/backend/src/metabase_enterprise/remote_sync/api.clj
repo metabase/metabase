@@ -312,7 +312,7 @@
                                  :status-code 400)
                           e)))))
     (try
-      (remote-sync.core/sync-library-and-transforms-in-strict-mode!)
+      (remote-sync.core/sync-library-and-transforms-without-custom-collections!)
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid collection settings")
                         (assoc (ex-data e)

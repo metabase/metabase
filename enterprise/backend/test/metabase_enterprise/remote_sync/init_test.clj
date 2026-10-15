@@ -343,18 +343,18 @@
       (finally
         (th/set-library-remote-synced! false)))))
 
-(deftest strict-mode-test
-  (testing "Strict mode is on when only the Library and snippet, data actions, data apps, and transforms collections are
-            synced"
+(deftest custom-collections-synced-test
+  (testing "No custom collection is synced when only the Library and snippet, data actions, data apps, and transforms
+            collections are"
     (do-with-unsynced-library!
      (fn []
        (th/set-library-remote-synced! true)
        (mt/with-temp [:model/Collection _ {:name "Snippets" :namespace "snippets" :is_remote_synced true}
                       :model/Collection _ {:name "Transforms" :namespace collection/transforms-ns :is_remote_synced true}]
-         (is (true? (settings/remote-sync-strict-mode)))
-         (testing "and off once another collection is synced"
+         (is (false? (settings/remote-sync-custom-collections-synced)))
+         (testing "until another collection is synced"
            (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
-             (is (false? (settings/remote-sync-strict-mode))))))))))
+             (is (true? (settings/remote-sync-custom-collections-synced))))))))))
 
 (deftest finish-remote-config-creates-library-test
   (doseq [remote-sync-type [:read-write :read-only]]

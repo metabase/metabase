@@ -158,19 +158,19 @@
   :default false
   :on-change sync-transform-tracking-on-change)
 
-(defsetting remote-sync-strict-mode
-  (deferred-tru "Whether no collection is remote-synced besides the Library and what syncs with the Library or transforms, which hides the choice of other collections to sync.")
+(defsetting remote-sync-custom-collections-synced
+  (deferred-tru "Whether a collection is remote-synced besides the Library and what syncs with the Library or transforms, which shows the choice of other collections to sync.")
   :type :boolean
   :visibility :admin
   :export? false
   :setter :none
   :getter (fn []
-            (not (remote-sync.db/other-remote-synced-collection-exists?
-                  (vec collection/library-collection-types)
-                  [(name collection/snippets-ns)
-                   (name collection/data-actions-ns)
-                   (name collection/data-apps-ns)
-                   (name collection/transforms-ns)])))
+            (remote-sync.db/other-remote-synced-collection-exists?
+             (vec collection/library-collection-types)
+             [(name collection/snippets-ns)
+              (name collection/data-actions-ns)
+              (name collection/data-apps-ns)
+              (name collection/transforms-ns)]))
   :audit :never
   :doc false)
 

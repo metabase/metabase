@@ -49,6 +49,6 @@
   which require calling EE code; other settings are defined in [[metabase.analytics.stats/snowplow-settings-metric-defs]]"
   :feature :none
   []
-  [{:key   "remote_sync_strict_mode"
-    :value (remote-sync/remote-sync-strict-mode)
+  [{:key   "remote_sync_custom_collections_synced"
+    :value (remote-sync/remote-sync-custom-collections-synced)
     :tags  ["remote-sync"]}])
