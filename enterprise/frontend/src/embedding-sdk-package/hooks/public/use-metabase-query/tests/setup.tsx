@@ -13,6 +13,7 @@ import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { TEST_METADATA } from "./fixtures";
 
@@ -134,9 +135,16 @@ export function createDeferred<TValue>() {
   return { promise, resolve, reject };
 }
 
+/** The entity ID a published "Orders question" (card 41) resolves from. */
+export const PUBLISHED_QUESTION_ENTITY_ID = "ordersQuestionEntity1";
+
 export const resetTestState = (): void => {
   jest.clearAllMocks();
-  mockRunRtkEndpoint.mockResolvedValue(undefined);
+  mockRunRtkEndpoint.mockImplementation(async (request) =>
+    isObject(request) && request.id === PUBLISHED_QUESTION_ENTITY_ID
+      ? TEST_METADATA.questions[41]
+      : undefined,
+  );
 
   // One fixture drives the provider and both cache lookups.
   const metadata = TEST_METADATA as unknown as Lib.Metadata;

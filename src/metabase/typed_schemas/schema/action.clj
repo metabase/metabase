@@ -79,7 +79,7 @@
      :entityId entity_id)))
 
 (defn action-schemas
-  "Returns schema entries for the readable query actions without a model among `database-ids` (nil for unscoped),
+  "Returns schema entries for the query actions without a model among `database-ids` (nil for unscoped),
   leaving out the copies data apps own."
   [database-ids]
   (let [ids             (typed-schemas.db/model-less-query-action-ids database-ids (set (perms/data-app-collection-ids)))

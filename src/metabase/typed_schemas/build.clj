@@ -94,8 +94,7 @@
   This is the only impure stage of the pipeline: everything downstream of the
   returned [[Items]] is pure. All reads go through a
   [[metabase.typed-schemas.source/SchemaSource]] — the application database by
-  default, filtered to what the current user can read; tests reify the
-  protocol with literal values."
+  default; tests reify the protocol with literal values."
   ([options]
    (fetch-items options source/app-db-source))
   ([options source]

@@ -438,7 +438,7 @@
   (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
                 "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
                 "behaviour beats 403ing its own browser clients.")
-    (with-redefs [system/site-url (constantly nil)]
+    (mt/with-dynamic-fn-redefs [system/site-url (constantly nil)]
       (testing "same host and port is served"
         (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
                                          {"host" "localhost:3000" "origin" "http://localhost:3000"})))))

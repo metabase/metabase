@@ -33,10 +33,10 @@
   (is (= ["const x = [ 1, 2, 3 ] as const;"]
          (render-lines [:const "x" [:arr [:lit 1] [:lit 2] [:lit 3]]]))))
 
-(deftest arrays-of-objects-render-multiline-with-comments-test
+(deftest arrays-of-objects-render-multiline-with-metadata-test
   (is (= ["const x = ["
-          "  // Display name: Total"
           "  {"
+          "    /* metadata: { \"displayName\": \"Total\" } */"
           "    name: \"total\""
           "  },"
           "  {"
@@ -45,25 +45,63 @@
           "] as const;"]
          (render-lines
           [:const "x" [:arr
-                       [:item {:comments ["Display name: Total"]}
+                       [:item {:metadata {"displayName" "Total"}}
                         [:obj ["name" [:lit "total"]]]]
                        [:obj ["name" [:lit "tax"]]]]]))))
 
-(deftest objects-render-comments-and-quote-non-identifier-keys-test
+(deftest objects-render-metadata-first-and-quote-non-identifier-keys-test
   (is (= ["const x = {"
-          "  // Entity ID: abc123"
-          "  // Description: All orders"
           "  orders: {"
+          "    /* metadata: { \"entityId\": \"abc123\", \"description\": \"All orders\" } */"
           "    type: \"table\","
           "    \"has-totals\": true"
           "  }"
           "} as const;"]
          (render-lines
           [:const "x" [:obj
-                       ["orders" {:comments ["Entity ID: abc123"
-                                             "Description: All orders"]}
+                       ["orders" {:metadata (array-map "entityId" "abc123"
+                                                       "description" "All orders")}
                         [:obj ["type" [:lit "table"]]
                          ["has-totals" [:lit true]]]]]]))))
+
+(deftest metadata-renders-in-an-otherwise-empty-object-test
+  (is (= ["const x = {"
+          "  orders: {"
+          "    /* metadata: { \"id\": 1 } */"
+          "  }"
+          "} as const;"]
+         (render-lines
+          [:const "x" [:obj ["orders" {:metadata {"id" 1}} [:obj]]]]))))
+
+(deftest metadata-with-nested-values-renders-one-item-per-line-test
+  (is (= ["const x = {"
+          "  orders: {"
+          "    /* metadata: {"
+          "      \"filters\": ["
+          "        \"Status is paid\","
+          "        \"Total is greater than 10\""
+          "      ],"
+          "      \"sourceTable\": {"
+          "        \"databaseName\": \"Sample\","
+          "        \"tableName\": \"ORDERS\""
+          "      }"
+          "    } */"
+          "    id: 1"
+          "  }"
+          "} as const;"]
+         (render-lines
+          [:const "x" [:obj ["orders" {:metadata (array-map "filters" ["Status is paid" "Total is greater than 10"]
+                                                            "sourceTable" (array-map "databaseName" "Sample"
+                                                                                     "tableName" "ORDERS"))}
+                             [:obj ["id" [:lit 1]]]]]]))))
+
+(deftest metadata-cannot-end-its-comment-early-test
+  (testing "`*/` inside a value is written as `*\\/`, which JSON reads back as `*/`"
+    (let [rendered (javascript/render-js
+                    [:module [:const "x" [:obj ["orders" {:metadata {"description" "Paid orders /* see note */"}}
+                                                [:obj ["id" [:lit 1]]]]]]])]
+      (is (str/includes? rendered "\"description\": \"Paid orders /* see note *\\/\""))
+      (is (= 1 (count (re-seq #"\*/" rendered)))))))
 
 (deftest call-expressions-render-inline-test
   (is (= ["const x = {"
@@ -93,13 +131,25 @@
                    [:module
                     [:raw "function helper() {}"]
                     [:const "tables"
-                     [:obj ["orders" {:comments ["Entity ID: abc"]}
-                            [:obj ["ids" [:arr [:lit 1] [:item {:comments ["c"]} [:obj]]]]
+                     [:obj ["orders" {:metadata {"entityId" "abc"}}
+                            [:obj ["ids" [:arr [:lit 1] [:item {:metadata {"name" "c"}} [:obj]]]]
                              ["fields" [:call "pickFields" [:ref "tables" "orders"]]]]]]]
                     [:export-default [:ref "schema"]]])))
 
 (deftest module-schema-rejects-unknown-nodes-test
   (are [module] (not (mr/validate javascript/Module module))
     [:module [:const "x" [:string "not-a-node"]]]
-    [:module [:const "x" [:obj ["key" {:commentz ["typo"]} [:lit 1]]]]]
+    [:module [:const "x" [:obj ["key" {:metadataz {"typo" 1}} [:lit 1]]]]]
+    ;; Comments were replaced by metadata blocks.
+    [:module [:const "x" [:obj ["key" {:comments ["Entity ID: abc"]} [:obj]]]]]
+    ;; A block prints inside an object, so metadata on anything else has nowhere to go.
+    [:module [:const "x" [:obj ["key" {:metadata {"entityId" "abc"}} [:lit 1]]]]]
+    [:module [:const "x" [:arr [:item {:metadata {"entityId" "abc"}} [:lit 1]]]]]
     [:const "x" [:lit 1]]))
+
+(deftest metadata-inside-a-call-argument-is-refused-test
+  (testing "a `:call` argument prints on one line, where a block can't go, so its metadata is an error, not dropped"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metadata can only be attached to an object"
+                          (javascript/render-js
+                           [:module [:const "x" [:call "pickFields"
+                                                 [:obj ["orders" {:metadata {"entityId" "abc"}} [:obj]]]]]])))))

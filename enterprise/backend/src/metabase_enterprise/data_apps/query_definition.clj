@@ -13,25 +13,12 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
-(defn- normalize-binning [column]
-  (let [{:keys [strategy num-bins bin-width] :as binning} (:binning column)]
-    ;; Keep invalid options for validation instead of silently dropping them.
-    (if (and binning (mr/validate ::binning binning))
-      (cond-> (dissoc column :binning)
-        (not (or (:bins column) (:bin-width column)))
-        (merge (case strategy
-                 :default {:bins :auto}
-                 :num-bins {:bins num-bins}
-                 :bin-width {:bin-width bin-width})))
-      column)))
-
 (defn- query-map-decoder [schema _options]
   (let [metadata-keys (::sdk-metadata (mc/properties schema))]
     {:enter (fn [value]
               (when (map? value)
                 ;; drop data apps specific metadata fields such as `js-type`
-                (apply dissoc (update-keys value (comp keyword u/->kebab-case-en)) metadata-keys)))
-     :leave (when (::normalize-binning (mc/properties schema)) normalize-binning)}))
+                (apply dissoc (update-keys value (comp keyword u/->kebab-case-en)) metadata-keys)))}))
 
 (mr/def ::table-source
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
@@ -41,32 +28,19 @@
 
 (mr/def ::column
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
-         ::sdk-metadata [:description :js-type :field-id :base-type :effective-type :default-temporal-bucket :id :metric-id]}
+         ::sdk-metadata [:description :display-name :js-type :table-id :source-name :base-type :effective-type
+                         :default-temporal-bucket :id :metric-id]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-   [:source-name {:optional true} [:maybe string?]]
-   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name {:optional true} [:maybe string?]]
-   [:index {:optional true} [:maybe pos-int?]]])
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::temporal-bucket
   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
    [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
 
-(mr/def ::auto-bin
-  [:= {:decode/normalize lib.schema.common/normalize-keyword} :auto])
-
-(mr/def ::bin-count-bucket
-  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
-   [:bins {:optional true} [:maybe [:or pos-int? ::auto-bin]]]])
-
-(mr/def ::bin-width-bucket
-  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
-   [:bin-width {:optional true} [:maybe [:or ::lib.schema.common/positive-number ::auto-bin]]]])
-
 (mr/def ::binning
-  [:multi {:decode/normalize lib.schema.common/normalize-map
+  [:multi {:decode/normalize {:compile query-map-decoder}
            :dispatch (comp keyword :strategy)}
    [:default [:map {:closed true}
               [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :default]]]]
@@ -81,11 +55,8 @@
   [:merge
    ::column
    ::temporal-bucket
-   ::bin-count-bucket
-   ::bin-width-bucket
-   [:map {:closed true :decode/normalize {:compile query-map-decoder}
-          ::normalize-binning true}
-    [:binning {:optional true} ::binning]]])
+   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+    [:binning {:optional true} [:maybe ::binning]]]])
 
 (mr/def ::breakout
   [:ref ::column-with-binning])
@@ -110,6 +81,13 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::operator]
    [:args {:default []} [:sequential [:ref ::expression]]]])
+
+(mr/def ::aggregation-operator-expression
+  "An aggregation can be named; a filter or a nested argument can't, so `name` is refused there rather than dropped."
+  [:merge
+   ::operator-expression
+   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+    [:name {:optional true} string?]]])
 
 (mr/def ::expression
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -136,9 +114,16 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
    [:id [:ref ::lib.schema.id/metric]]])
 
+(mr/def ::aggregation-expression
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::column]]
+   [:literal [:ref ::literal-expression]]
+   [:operator [:ref ::aggregation-operator-expression]]])
+
 (mr/def ::aggregation
   [:or
-   [:ref ::expression]
+   [:ref ::aggregation-expression]
    [:ref ::measure]
    [:ref ::metric]])
 

@@ -381,6 +381,7 @@ export const tokenFeatures = [
   "library",
   "library_retrieval",
   "support-users",
+  "session-management",
   "tenants",
   "writable_connection",
   "admin_security_center",
@@ -556,6 +557,9 @@ interface SettingsManagerSettings {
   "llm-bedrock-session-token"?: string | null;
   "llm-vllm-api-base-url"?: string | null;
   "llm-vllm-api-key"?: string | null;
+  "llm-ollama-api-base-url"?: string | null;
+  "llm-ollama-api-key"?: string | null;
+  "llm-ollama-request-timeout-ms"?: number | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;

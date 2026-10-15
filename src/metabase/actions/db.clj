@@ -7,7 +7,6 @@
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -61,10 +60,28 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
+(mu/defn card-ids-outside-collection
+  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
+  [card-ids      :- [:set ::lib.schema.id/card]
+   collection-id :- ::lib.schema.id/collection]
+  (t2/select-pks-set :model/Card {:where [:and
+                                          [:in :id card-ids]
+                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id))
+
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
+
+(mu/defn collection-namespace-with-entity-id
+  "The namespace of the Collection with `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
 
 (mu/defn unarchived-collection-exists?
   "Whether the unarchived Collection with `collection-id` exists."
@@ -194,11 +211,6 @@
   "The Actions with `entity-id` (usually a single Action, since entity ids are unique)."
   [entity-id :- :string]
   (t2/select :model/Action :entity_id entity-id))
-
-(mu/defn unarchived-actions-for-models
-  "The unarchived Actions whose `:model_id` is in `model-ids`."
-  [model-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false))
 
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."

@@ -52,7 +52,7 @@
     (reify
       serdes.ingest/Ingestable
       (ingest-list [_]
-        (keys mapped))
+        (map (comp no-labels serdes/path) extractions))
       (ingest-one [_ path]
         (get mapped (no-labels path)))
       (ingest-errors [_]
@@ -1191,6 +1191,7 @@
           user1d     (atom nil)
           timeline1d (atom nil)
           timeline2d (atom nil)
+          event2d    (atom nil)
           eventsT1   (atom nil)
           eventsT2   (atom nil)]
       (ts/with-dbs [source-db dest-db]
@@ -1230,6 +1231,7 @@
                              [:description {:optional true} [:maybe :string]]
                              [:events                       [:sequential
                                                              [:map
+                                                              [:entity_id                    :string]
                                                               [:timezone                     :string]
                                                               [:time_matters                 :boolean]
                                                               [:name                         :string]
@@ -1248,12 +1250,16 @@
             ;; The collection, timeline 1 and event 2 already exist. Event 1, plus timeline 2 and its event 3, are new.
             (reset! user1d     (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! coll1d     (ts/create! :model/Collection :name "col1" :entity_id (:entity_id @coll1s)))
-            (reset! timeline1d (ts/create! :model/Timeline :name "Some events" :creator_id (:id @user1s)
+            (reset! timeline1d (ts/create! :model/Timeline :name "Some events" :creator_id (:id @user1d)
                                            :entity_id (:entity_id @timeline1s)
                                            :collection_id (:id @coll1d)))
-            (ts/create! :model/TimelineEvent :name "Second thing with different name" :timeline_id (:id @timeline1s)
-                        :timestamp  (:timestamp @event2s)
-                        :creator_id (:id @user1s) :timezone "America/New_York")
+            (reset! event2d (ts/create! :model/TimelineEvent
+                                        :name        "Second thing with different name"
+                                        :timeline_id (:id @timeline1d)
+                                        :entity_id   (:entity_id @event2s)
+                                        :timestamp   (:timestamp @event2s)
+                                        :creator_id  (:id @user1d)
+                                        :timezone    "America/New_York"))
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             ;; Fetch the relevant bits
@@ -1266,6 +1272,10 @@
               (is (= 1 (count @eventsT2))))
             (testing "resulting events match up"
               (let [[event1 event2] (sort-by :timestamp @eventsT1)]
+                (is (= (:id @event2d) (:id event2))
+                    "the matching event keeps its local ID")
+                (is (= (map :entity_id [@event1s @event2s @event3s])
+                       (map :entity_id [event1 event2 (first @eventsT2)])))
                 (is (= (:timestamp @event1s) (:timestamp event1)))
                 (is (= (:timestamp @event2s) (:timestamp event2)))
                 (is (= (:timestamp @event3s)
@@ -1273,6 +1283,37 @@
                 (is (= (:name @event2s)
                        (:name event2))
                     "existing event name should be updated")))))))))
+
+(deftest legacy-timeline-events-without-entity-ids-test
+  (testing "timeline archives created before event entity IDs still import their events"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/User {user-id :id email :email} {}]
+        (let [timeline-eid (u/generate-nano-id)
+              timeline     {:serdes/meta [{:model "Timeline" :id timeline-eid}]
+                            :entity_id   timeline-eid
+                            :name        "Bird migrations"
+                            :icon        "star"
+                            :creator_id  email
+                            :created_at  "2027-01-01T00:00:00Z"
+                            :events      [{:serdes/meta  [{:model "TimelineEvent" :id nil :label "swallows_return"}]
+                                           :name         "Swallows return"
+                                           :icon         "star"
+                                           :creator_id   email
+                                           :created_at   "2027-01-01T00:00:00Z"
+                                           :timestamp    "2027-04-20T00:00:00Z"
+                                           :time_matters false
+                                           :timezone     "UTC"}]}]
+          (serdes.load/load-metabase! (ingestion-in-memory [timeline]))
+          (let [timeline-id (t2/select-one-pk :model/Timeline :entity_id timeline-eid)
+                [event]     (t2/select :model/TimelineEvent :timeline_id timeline-id)]
+            (is (= 1 (t2/count :model/TimelineEvent :timeline_id timeline-id)))
+            (is (=? {:name         "Swallows return"
+                     :creator_id   user-id
+                     :timestamp    (t/offset-date-time "2027-04-20T00:00:00Z")
+                     :time_matters false
+                     :timezone     "UTC"
+                     :entity_id    #(and (string? %) (= 21 (count %)))}
+                    event))))))))
 
 (deftest users-test
   ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
@@ -1458,6 +1499,44 @@
               (is (false? (:is_published @table2d)))
               (is (nil? (:collection_id @table2d))))))))))
 
+(deftest included-timeline-with-missing-collection-fails-import-test
+  (testing "a question cannot import before its included timeline's dependencies, even if the timeline exists locally"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/User     {user-id :id email :email} {}
+                         :model/Database {db-name :name}            {:engine :postgres}
+                         :model/Timeline {timeline-eid :entity_id}  {:creator_id user-id}]
+        (let [card-eid       (u/generate-nano-id)
+              collection-eid (u/generate-nano-id)
+              card-path      [{:model "Card" :id card-eid}]
+              timeline-path  [{:model "Timeline" :id timeline-eid}]
+              archive        (ingestion-in-memory
+                              [{:serdes/meta           card-path
+                                :entity_id             card-eid
+                                :name                  "Question with events"
+                                :created_at            (t/instant)
+                                :creator_id            email
+                                :database_id           db-name
+                                :dataset_query         {:database db-name :type :native :native {:query "SELECT 1"}}
+                                :display               :line
+                                :visualization_settings {:timeline.selected_timeline_ids [timeline-eid]}}
+                               {:serdes/meta   timeline-path
+                                :entity_id     timeline-eid
+                                :name          "Included timeline"
+                                :collection_id collection-eid}])
+              ingestion      (reify serdes.ingest/Ingestable
+                               (ingest-list [_] [card-path timeline-path])
+                               (ingest-one [_ path] (serdes.ingest/ingest-one archive path))
+                               (ingest-errors [_] []))
+              e              (try
+                               (serdes.load/load-metabase! ingestion)
+                               nil
+                               (catch clojure.lang.ExceptionInfo e e))]
+          (is (= {:model "Collection" :id collection-eid :error ::serdes.load/not-found}
+                 (select-keys (ex-data e) [:model :id :error])))
+          (is (= {:model "Timeline" :id timeline-eid :name "Included timeline"}
+                 (:referrer (ex-data e))))
+          (is (not (t2/exists? :model/Card :entity_id card-eid))))))))
+
 (deftest bare-import-test
   ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.
   ;; This tests that such an import will succeed, and that it still fails when the dependency is not found in
@@ -1625,6 +1704,23 @@
           (is (=? {:name unique-name
                    :content "11 = 11"}
                   (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
+
+(deftest snippet-referencing-snippet-round-trip-test
+  (testing "A snippet tag referencing another snippet exports its entity_id and imports the local id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [a (ts/create! :model/NativeQuerySnippet :name "A" :content "1 = 1")
+                b (ts/create! :model/NativeQuerySnippet :name "B" :content "{{snippet: A}} AND 2 = 2")]
+            (reset! serialized [(serdes/extract-one "NativeQuerySnippet" {} b)
+                                (serdes/extract-one "NativeQuerySnippet" {} a)])
+            (is (=? {"snippet: A" {:snippet-id (:entity_id a)}}
+                    (:template_tags (first @serialized))))))
+        (ts/with-db dest-db
+          (ts/create! :model/NativeQuerySnippet :name "Unrelated" :content "3 = 3")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (=? {"snippet: A" {:snippet-id (t2/select-one-pk :model/NativeQuerySnippet :name "A")}}
+                  (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "B"))))))))
 
 (deftest snippet-template-tags-import-test
   (testing "Template tags import preserves nil, empty, and populated values"
@@ -2168,7 +2264,7 @@
       (ts/with-db source-db
         (let [coll (ts/create! :model/Collection :name "coll")
               dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
-              card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
+              card (ts/create! :model/Card :name "dq card" :type :question :dashboard_id (:id dash))
               _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
               _    (t2/update! :model/Dashboard (:id dash)
                                {:parameters [(card-sourced-param (:id card))]})
@@ -2188,6 +2284,40 @@
                        (-> new-dash :parameters first :values_source_config :card_id)))
                 (is (= (:id new-dash)
                        (:dashboard_id new-card)))))))))))
+
+(deftest library-dashboards-questions-test
+  (mt/with-premium-features #{:library}
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll       (ts/create! :model/Collection :name "dashboards" :type collection/library-dashboards-collection-type)
+              regular    (ts/create! :model/Collection :name "regular")
+              dash       (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
+              dq         (ts/create! :model/Card :name "dq card" :type :question :dashboard_id (:id dash))
+              _          (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id dq))
+              standalone (ts/create! :model/Card :name "standalone" :type :question :collection_id (:id regular))
+              ser        (vec (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model true
+                                                       :no-transforms true}))
+              card-ser   (fn [card] (first (filter #(and (= "Card" (:model (last (serdes/path %))))
+                                                         (= (:entity_id card) (:entity_id %)))
+                                                   ser)))
+              messages   (fn [e] (map ex-message (take-while some? (iterate ex-cause e))))]
+          (ts/with-db dest-db
+            (testing "A dashboard question loads into Library Dashboards before its dashboard"
+              (is (serdes.load/load-metabase! (ingestion-in-memory (cons (card-ser dq) (remove #{(card-ser standalone)} ser)))))
+              (is (= (t2/select-one-pk :model/Dashboard :entity_id (:entity_id dash))
+                     (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id dq)))))
+            (testing "A standalone question can't load into Library Dashboards"
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (serdes.load/load-metabase!
+                                    (ingestion-in-memory [(assoc (card-ser standalone) :collection_id (:entity_id coll))]))))]
+                (is (some #(re-find #"Can only add dashboards to the 'Dashboards' collection" %) (messages e)))
+                (is (not (t2/exists? :model/Card :entity_id (:entity_id standalone))))))
+            (testing "A dashboard question can't become a standalone question in Library Dashboards"
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (serdes.load/load-metabase!
+                                    (ingestion-in-memory [(assoc (card-ser dq) :dashboard_id nil)]))))]
+                (is (some #(re-find #"Can only add dashboards to the 'Dashboards' collection" %) (messages e)))))))))))
 
 (deftest continue-on-error-test
   (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed

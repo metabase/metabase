@@ -8,6 +8,7 @@
    [java-time.clock]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
@@ -631,3 +632,32 @@
       :error-code    error_code
       :error-message error_message})
     {:session_id session-id :tool_name tool-name}))
+
+(api.macros/defendpoint :post "/api-keys/seed-usage"
+  :- [:map [:inserted :int]]
+  "Record one completed API-key-authenticated request so the API-key usage E2E page has a visible
+  row, then force an immediate flush of the usage-log and last_used_at batches (both normally
+  flushed on a scheduled interval) so the row is queryable without waiting. Routes through the
+  production `metabase.api-keys.usage/record-api-key-usage!` path (rather than a hand-rolled insert)
+  so the seeded row can't drift from real writes. Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [api_key_id user_id created_by_id route_template status duration_ms]}
+   :- [:map {:closed true}
+       [:api_key_id     ms/PositiveInt]
+       [:user_id        ms/PositiveInt]
+       [:created_by_id  ms/PositiveInt]
+       [:route_template {:optional true} [:maybe ms/NonBlankString]]
+       [:status         {:optional true} [:maybe :int]]
+       [:duration_ms    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (api-keys.usage/record-api-key-usage!
+   {:api-key-id          api_key_id
+    :metabase-user-id    user_id
+    :api-key-creator-id  created_by_id
+    :request-method      :get
+    :headers             {"user-agent" "curl/8.0.1"}}
+   {:status (or status 200)}
+   {:route-template (or route_template "/api/testing/api-keys/seed-usage")
+    :duration-ms    (or duration_ms 42)})
+  (api-keys.usage/flush-pending-writes!)
+  {:inserted 1})

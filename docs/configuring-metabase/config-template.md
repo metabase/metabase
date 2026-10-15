@@ -227,13 +227,15 @@ config:
     llm-google-oauth-access-token: null
     llm-google-project-id: null
     llm-google-service-account-key: null
-    llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
     llm-moonshot-api-base-url: https://api.moonshot.ai/v1
     llm-moonshot-api-key: null
+    llm-ollama-api-base-url: null
+    llm-ollama-api-key: null
+    llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
@@ -256,6 +258,7 @@ config:
     mcp-apps-cors-enabled-clients: []
     metabot-advanced-permissions: false
     metabot-chat-system-prompt: ''
+    metabot-chat-turn-async-timeout-ms: 1800000
     metabot-enabled: true
     metabot-icon: metabot
     metabot-limit-reset-rate: monthly

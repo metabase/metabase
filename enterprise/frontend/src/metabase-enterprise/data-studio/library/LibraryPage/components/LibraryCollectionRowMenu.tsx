@@ -9,31 +9,13 @@ import { getArchiveLibraryCollectionsMessage } from "../utils";
 type LibraryCollectionRowMenuProps = {
   childCount: number;
   collection: Collection;
-  refreshMetricCollections: (collectionIds: CollectionId[]) => void;
-  refreshTableCollections: (collectionIds: CollectionId[]) => void;
+  refreshCollections: (collectionIds: CollectionId[]) => void;
 };
 
 export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
-  const {
-    childCount,
-    collection,
-    refreshMetricCollections,
-    refreshTableCollections,
-  } = props;
+  const { childCount, collection, refreshCollections } = props;
   const isLibraryDataCollection =
     collection.type === "library-data" && !collection.is_library_root;
-  const refreshCollections = useCallback(
-    (collectionIds: CollectionId[]) => {
-      if (collection.type === "library-metrics") {
-        refreshMetricCollections(collectionIds);
-      }
-
-      if (collection.type === "library-data") {
-        refreshTableCollections(collectionIds);
-      }
-    },
-    [refreshMetricCollections, refreshTableCollections, collection.type],
-  );
 
   const onArchiveSuccess = useCallback(() => {
     const parentId = getParentCollectionId(collection);

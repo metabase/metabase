@@ -178,7 +178,7 @@
           result (#'pivot/get-subtotal-values pivot-data val-indexes nil)]
       (is (= {[0 1 2] {[1 "A" "Y"] [10]
                        [1 "B" "Z"] [20]}}
-             result)))))
+             (update-vals result #(update-vals % vec)))))))
 
 (deftest get-subtotal-values-primary-rows-key-test
   (testing "Excludes the primary rows if passed a primary rows key"
@@ -270,7 +270,7 @@
       (is (= [[["Y" 1 "A"] [10]]
               [["Z" 2 "B"] [20]]]
              (map
-              (fn [[k v]] [k (:values v)])
+              (fn [[k v]] [k (vec (:values v))])
               (:values-by-key result)))
           "values-by-key should identify each value by its concatenated column and row paths"))))
 

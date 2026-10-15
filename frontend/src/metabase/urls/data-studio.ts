@@ -9,6 +9,7 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  WritebackActionId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -343,6 +344,40 @@ export function newDataStudioSnippet() {
 
 export function dataStudioArchivedSnippets() {
   return `${dataStudioLibrary()}/snippets/archived`;
+}
+
+export function dataStudioAction(actionId: WritebackActionId) {
+  return `${dataStudioLibrary()}/actions/${actionId}`;
+}
+
+export function dataStudioActionEdit(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/edit`;
+}
+
+export function dataStudioActionFields(
+  actionId: WritebackActionId,
+  fieldId?: string,
+) {
+  const fieldsUrl = `${dataStudioAction(actionId)}/fields`;
+  return fieldId != null
+    ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
+    : fieldsUrl;
+}
+
+export function dataStudioActionRun(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/run`;
+}
+
+export function dataStudioActionSettings(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/settings`;
+}
+
+export function newDataStudioAction() {
+  return `${dataStudioLibrary()}/actions/new`;
+}
+
+export function dataStudioArchivedActions() {
+  return `${dataStudioLibrary()}/actions/archived`;
 }
 
 export function dataStudioSettings() {

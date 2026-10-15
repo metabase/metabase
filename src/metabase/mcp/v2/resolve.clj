@@ -91,12 +91,23 @@
           (common/throw-not-found model id-or-eid)
           (throw e))))))
 
+(defn hidden?
+  "True for a row MCP v2 treats as absent: a collection in the transforms namespace, because MCP v2 has no
+   transforms."
+  [model row]
+  (and (= model :model/Collection)
+       (= (name collection/transforms-ns) (some-> (:namespace row) name))))
+
 (defn resolve-and-read
   "Resolve `id-or-eid` for `model` and return the row from behind its `api/read-check` — what
-   nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]."
+   nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]. A
+   collection in the transforms namespace is not found too."
   [model id-or-eid]
   (resolve-and-read-with model id-or-eid
-                         (fn [id] (api/read-check (mcp.db/select-one-by-id model id)))))
+                         (fn [id]
+                           (let [row (mcp.db/select-one-by-id model id)]
+                             (when-not (hidden? model row)
+                               (api/read-check row))))))
 
 (defn resolve-collection-id
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root

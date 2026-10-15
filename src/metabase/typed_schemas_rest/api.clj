@@ -5,6 +5,7 @@
   typed options in [[metabase.typed-schemas-rest.api.query-params]] at this
   boundary, and everything in `metabase.typed-schemas.*` works on typed data."
   (:require
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.typed-schemas-rest.api.query-params :as query-params]
    [metabase.typed-schemas.core :as typed-schemas]
@@ -40,12 +41,14 @@
      :boolean]]])
 
 (api.macros/defendpoint :get "/v1/typescript" :- :any
-  "Generate a TypeScript semantic schema module."
+  "Generate a TypeScript semantic schema module. For superusers: a data app's author builds from it, and only an
+  admin works with an app's repository."
   [_route-params
    query-params :- TypedSchemaQueryParams
    _body-params
    {{question-collections "question-collections"
      include-models       "include-models"} :query-params}]
+  (api/check-superuser)
   (when (some? question-collections)
     (throw (ex-info "The question-collections query parameter is not supported."
                     {:status-code 400})))

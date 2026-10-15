@@ -179,9 +179,9 @@ describe("SettingsSAMLForm", () => {
       .getAllByRole("heading", { level: 2 })
       .map((heading) => heading.textContent);
     expect(cardTitles).toEqual([
-      "User provisioning",
       "Identity provider (IdP) configuration",
       "Identity provider info",
+      "User provisioning",
       "Sign SSO requests",
       "Group mapping",
     ]);

@@ -2,10 +2,11 @@
   "Shared typed-schema source helpers."
   (:require
    [medley.core :as m]
+   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
-   [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.typed-schemas.db :as typed-schemas.db]))
 
 (set! *warn-on-reflection* true)
@@ -20,19 +21,25 @@
   (when (seq db-ids)
     (typed-schemas.db/destination-database-ids db-ids)))
 
-(defn select-schema-cards
-  "Returns readable, non-archived cards for schema generation.
+(defn- without-unavailable-cards
+  "`cards` without any backed by a destination (routed) database -- see [[destination-db-ids]] -- and, while the
+  audit feature is off, without the audit database's and the audit collection's: the card details lookup refuses
+  one in the audit collection, and one on the audit database would be listed without its table."
+  [cards]
+  (let [destination-ids (destination-db-ids (into #{} (keep :database_id) cards))
+        audit-off?      (not (premium-features/enable-audit-app?))]
+    (cond->> cards
+      (seq destination-ids) (remove #(contains? destination-ids (:database_id %)))
+      audit-off?            (remove #(or (= audit/audit-db-id (:database_id %))
+                                         (some-> (:collection_id %) audit/is-collection-id-audit?))))))
 
-  Metrics, models and saved questions are backed by cards. They need
-  the same visibility, archived, database and collection filters, and exclude cards backed by a
-  destination (routed) database -- see [[destination-db-ids]]."
+(defn select-schema-cards
+  "Returns non-archived cards for schema generation.
+
+  Metrics, models and saved questions are backed by cards. They need the same archived, database and collection
+  filters, and leave out the cards the schema can't serve -- see [[without-unavailable-cards]]."
   [card-type database-ids collection-ids]
-  (let [cards (->> (typed-schemas.db/cards-ordered-by-name card-type database-ids collection-ids)
-                   (filter mi/can-read?))
-        destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
-    (if (seq destination-ids)
-      (remove #(contains? destination-ids (:database_id %)) cards)
-      cards)))
+  (without-unavailable-cards (typed-schemas.db/cards-ordered-by-name card-type database-ids collection-ids)))
 
 (defn aggregation-result-column-with-metadata-provider
   "Returns an aggregation result column using an existing metadata provider."

@@ -1683,13 +1683,18 @@
                                :dataset_query    {:database (mt/id)
                                                   :type     :native
                                                   :native   {:query "SELECT * FROM no_such_table -- EMBED_ERROR_LEAK_SQL_CANARY"}}}]
-          (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
-                body-str              (pr-str body)]
-            (is (= 500 status))
-            (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
-                   body))
-            (is (not (str/includes? body-str "CANARY")))
-            (is (not (str/includes? body-str ":trace")))))))))
+          ;; Both pivot flows fail with the same H2 "table not found" root cause, but H2 embeds the
+          ;; compiled SQL in its error message and the compiled SQL has different Metabase-added
+          ;; comments per path. The parity signature compares message text, so it flags this as a
+          ;; divergence even though the user-visible outcome is identical.
+          (api.pivots/without-pivot-parity-check
+           (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
+                 body-str              (pr-str body)]
+             (is (= 500 status))
+             (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
+                    body))
+             (is (not (str/includes? body-str "CANARY")))
+             (is (not (str/includes? body-str ":trace"))))))))))
 
 (deftest embed-card-query-exception-outside-qp-does-not-leak-test
   (testing "GET /api/embed/card/:token/query"

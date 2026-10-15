@@ -1,6 +1,13 @@
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+} from "metabase-types/api/mocks";
 
-import { getAccessibleCollection, getWritableCollection } from "./utils";
+import {
+  getAccessibleCollection,
+  getTreeRowHref,
+  getWritableCollection,
+} from "./utils";
 
 describe("getWritableCollection", () => {
   it("returns collection when can_write is true", () => {
@@ -110,5 +117,21 @@ describe("getAccessibleCollection", () => {
     const result = getAccessibleCollection(rootCollection, "library-data");
 
     expect(result).toBeUndefined();
+  });
+});
+
+describe("getTreeRowHref", () => {
+  it("links dashboards to the main app's dashboard page", () => {
+    const href = getTreeRowHref({
+      original: {
+        id: "dashboard:7",
+        name: "Sales",
+        icon: "dashboard",
+        model: "dashboard",
+        data: createMockCollectionItem({ id: 7, model: "dashboard" }),
+      },
+    });
+
+    expect(href).toBe("/dashboard/7-sales");
   });
 });

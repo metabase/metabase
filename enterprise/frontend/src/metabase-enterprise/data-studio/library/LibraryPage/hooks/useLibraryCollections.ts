@@ -25,5 +25,17 @@ export const useLibraryCollections = (collections: Collection[]) => {
     [libraryCollection],
   );
 
-  return { libraryCollection, tableCollection, metricCollection };
+  const dashboardCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(libraryCollection, "library-dashboards"),
+    [libraryCollection],
+  );
+
+  return {
+    libraryCollection,
+    tableCollection,
+    metricCollection,
+    dashboardCollection,
+  };
 };

@@ -10,10 +10,12 @@
     [:arr expr-or-item ...]          ; array literal
     [:obj entry ...]                 ; object literal
 
-  Object entries are `[key expr]` or `[key {:comments [...]} expr]`; array
-  items are bare expressions or `[:item {:comments [...]} expr]`. Comments are
-  plain strings; the printer prefixes them with `//` on their own lines above
-  the entry. Statements:
+  Object entries are `[key expr]` or `[key {:metadata {...}} obj]`; array
+  items are bare expressions or `[:item {:metadata {...}} obj]`, where `obj`
+  is an `[:obj ...]`. Metadata is a JSON-encodable map, printed as a
+  `/* metadata: {...} */` block first inside the entry's object, before its
+  properties, so a reader meets it before the data it describes and it never
+  reaches runtime code. Statements:
 
     [:const \"tables\" expr]           ; const tables = <expr> as const;
     [:raw \"function helper() {...}\"] ; verbatim TypeScript
@@ -24,7 +26,7 @@
 
     [:module
      [:const \"tables\"
-      [:obj [\"orders\" {:comments [\"Entity ID: abc123\"]}
+      [:obj [\"orders\" {:metadata {\"entityId\" \"abc123\"}}
              [:obj [\"type\" [:lit \"table\"]]
                    [\"ids\" [:arr [:lit 1] [:lit 2]]]]]]]
      [:export-default [:ref \"tables\"]]]
@@ -32,8 +34,8 @@
   prints as:
 
     const tables = {
-      // Entity ID: abc123
       orders: {
+        /* metadata: { \"entityId\": \"abc123\" } */
         type: \"table\",
         ids: [ 1, 2 ]
       }
@@ -43,11 +45,14 @@
 
   Rendering rules: arrays whose items are all literals print on one line;
   `:call` arguments always print inline; object keys print bare when they are
-  valid JavaScript identifiers and quoted otherwise. [[render-js]] prints a
-  `:module`; [[Module]] is the Malli schema for the whole grammar.
+  valid JavaScript identifiers and quoted otherwise. A metadata block whose
+  values are all scalars prints on one line, so a field costs a reader one line
+  of the file; one with a nested array or object prints as
+  `JSON.stringify(x, null, 2)` would, one array item per line. [[render-js]]
+  prints a `:module`; [[Module]] is the Malli schema for the whole grammar.
 
   The printer is deliberately option-free and policy-free: decisions about
-  *what* to emit (runtime keys, comments, compaction) belong in
+  *what* to emit (runtime keys, metadata, compaction) belong in
   `metabase.typed-schemas.render`, which builds this AST. If the output needs
   new syntax, add a node type and its printer here rather than concatenating
   TypeScript strings elsewhere."
@@ -67,12 +72,14 @@
 (def Module
   "Malli schema for the TypeScript AST accepted by [[render-js]]."
   [:schema {:registry
-            {::comment-options [:map {:closed true}
-                                [:comments {:optional true} [:sequential :string]]]
-             ::entry           [:or
-                                [:tuple key-schema [:ref ::expr]]
-                                [:tuple key-schema [:ref ::comment-options] [:ref ::expr]]]
-             ::item            [:tuple [:= :item] [:ref ::comment-options] [:ref ::expr]]
+            {::entry-options [:map {:closed true}
+                              [:metadata {:optional true} [:map-of key-schema :any]]]
+             ;; Metadata prints as a block inside the entry's object, so only an object can carry it.
+             ::entry         [:or
+                              [:tuple key-schema [:ref ::expr]]
+                              [:tuple key-schema [:ref ::entry-options] [:ref ::obj]]]
+             ::item          [:tuple [:= :item] [:ref ::entry-options] [:ref ::obj]]
+             ::obj           [:cat [:= :obj] [:* [:schema [:ref ::entry]]]]
              ::expr            [:multi {:dispatch first}
                                 [:lit [:tuple [:= :lit] :any]]
                                 [:ref [:cat [:= :ref] [:+ key-schema]]]
@@ -80,7 +87,7 @@
                                 [:arr [:cat [:= :arr] [:* [:or
                                                            [:schema [:ref ::item]]
                                                            [:schema [:ref ::expr]]]]]]
-                                [:obj [:cat [:= :obj] [:* [:schema [:ref ::entry]]]]]]
+                                [:obj [:ref ::obj]]]
              ::statement       [:multi {:dispatch first}
                                 [:const [:tuple [:= :const] key-schema [:ref ::expr]]]
                                 [:raw [:tuple [:= :raw] :string]]
@@ -128,24 +135,38 @@
                         (str "[" (json/encode segment-name) "]")))))))
 
 (defn- entry-parts
-  "Returns `[key comment-options expr]` for either entry form."
+  "Returns `[key entry-options expr]` for either entry form."
   [entry]
   (if (= 3 (count entry))
     entry
     [(first entry) nil (second entry)]))
 
 (defn- item-parts
-  "Returns `[comment-options expr]` for either array item form."
+  "Returns `[entry-options expr]` for either array item form."
   [item]
   (if (and (vector? item) (= :item (first item)))
     [(second item) (nth item 2)]
     [nil item]))
 
-(defn- comment-block
-  "Returns `// ...` comment lines followed by a newline, or nil without comments."
-  [indent comments]
-  (when (seq comments)
-    (str (str/join "\n" (map #(str (spaces indent) "// " %) comments)) "\n")))
+(defn- metadata-json
+  "Renders `metadata` as JSON: on one line when every value is a scalar, otherwise as `JSON.stringify(x, null, 2)`
+  would, with each line after the first indented by `indent`."
+  [metadata indent]
+  (if (not-any? coll? (vals metadata))
+    (str "{ "
+         (str/join ", " (for [[k v] metadata]
+                          (str (json/encode (u/qualified-name k)) ": " (json/encode v))))
+         " }")
+    (str/replace (json/encode metadata {:pretty {:indent-arrays? true :object-field-value-separator ": "}})
+                 "\n" (str "\n" (spaces indent)))))
+
+(defn- metadata-block
+  "Returns a `/* metadata: {...} */` block. A `*/` can only occur inside a JSON string, where it is written as the
+  equivalent `*\\/`, so the block always ends where it should."
+  [indent metadata]
+  (str (spaces indent) "/* metadata: "
+       (str/replace (metadata-json metadata indent) "*/" "*\\/")
+       " */"))
 
 (declare render-expression)
 
@@ -160,8 +181,13 @@
     :arr  (str "[ " (str/join ", " (map render-inline (rest node))) " ]")
     :obj  (str "{ "
                (str/join ", " (for [entry (rest node)
-                                    :let [[entry-key _ expr] (entry-parts entry)]]
-                                (str (javascript-key entry-key) ": " (render-inline expr))))
+                                    :let [[entry-key options expr] (entry-parts entry)]]
+                                (do
+                                  ;; An inline object has no room for a block, so refuse rather than drop it.
+                                  (when (seq (:metadata options))
+                                    (throw (ex-info "Metadata can only be attached to an object on its own lines."
+                                                    {:node node})))
+                                  (str (javascript-key entry-key) ": " (render-inline expr)))))
                " }")))
 
 (defn- literal-node?
@@ -169,20 +195,20 @@
   (and (vector? node) (= :lit (first node))))
 
 (defn- render-object
-  [entries indent]
-  (if (empty? entries)
-    "{ }"
-    (str "{\n"
-         (str/join ",\n"
-                   (for [entry entries
-                         :let [[entry-key options expr] (entry-parts entry)
-                               entry-indent (+ indent 2)]]
-                     (str (comment-block entry-indent (:comments options))
-                          (spaces entry-indent)
-                          (javascript-key entry-key)
-                          ": "
-                          (render-expression expr entry-indent))))
-         "\n" (spaces indent) "}")))
+  [entries indent metadata]
+  (let [inner-indent (+ indent 2)
+        lines        (for [entry entries
+                           :let [[entry-key options expr] (entry-parts entry)]]
+                       (str (spaces inner-indent)
+                            (javascript-key entry-key)
+                            ": "
+                            (render-expression expr inner-indent (:metadata options))))
+        ;; the block comes first, so a reader meets it before the properties it describes
+        body         (str/join "\n" (remove str/blank? [(when (seq metadata) (metadata-block inner-indent metadata))
+                                                        (str/join ",\n" lines)]))]
+    (if (str/blank? body)
+      "{ }"
+      (str "{\n" body "\n" (spaces indent) "}"))))
 
 (defn- render-array
   [items indent]
@@ -199,19 +225,23 @@
                    (for [item items
                          :let [[options expr] (item-parts item)
                                item-indent (+ indent 2)]]
-                     (str (comment-block item-indent (:comments options))
-                          (spaces item-indent)
-                          (render-expression expr item-indent))))
+                     (str (spaces item-indent)
+                          (render-expression expr item-indent (:metadata options)))))
          "\n" (spaces indent) "]")))
 
 (defn- render-expression
-  [node indent]
-  (case (first node)
-    :lit  (json/encode (second node))
-    :ref  (reference-path (rest node))
-    :call (render-inline node)
-    :obj  (render-object (rest node) indent)
-    :arr  (render-array (rest node) indent)))
+  "Renders `node` at `indent`. `metadata`, when present, prints inside `node`, which must then be an object."
+  ([node indent]
+   (render-expression node indent nil))
+  ([node indent metadata]
+   (when (and (seq metadata) (not= :obj (first node)))
+     (throw (ex-info "Metadata can only be attached to an object." {:node node})))
+   (case (first node)
+     :lit  (json/encode (second node))
+     :ref  (reference-path (rest node))
+     :call (render-inline node)
+     :obj  (render-object (rest node) indent metadata)
+     :arr  (render-array (rest node) indent))))
 
 (defn- render-statement
   [statement]

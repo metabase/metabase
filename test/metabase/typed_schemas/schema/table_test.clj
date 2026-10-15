@@ -1,6 +1,8 @@
 (ns metabase.typed-schemas.schema.table-test
   (:require
    [clojure.test :refer :all]
+   [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
@@ -139,6 +141,18 @@
         (mt/with-test-user :crowberto
           (let [tables (schema.table/select-tables nil [open-table-id destination-table-id])]
             (is (= [open-table-id] (map :id tables)))))))))
+
+(deftest the-audit-databases-tables-are-left-out-without-the-audit-feature-test
+  (let [tables [{:id 1 :db_id (mt/id)} {:id 2 :db_id audit/audit-db-id}]]
+    (testing "the table details lookup refuses the audit database's tables while the feature is off, so the schema
+              leaves them out rather than fail an unscoped request"
+      (mt/with-premium-features #{}
+        (is (= [1] (map :id (#'schema.table/without-unavailable-tables tables))))))
+    ;; a premium feature is never on without the EE code, whatever the token says
+    (when config/ee-available?
+      (testing "with the feature on they are listed"
+        (mt/with-premium-features #{:audit-app}
+          (is (= [1 2] (map :id (#'schema.table/without-unavailable-tables tables)))))))))
 
 ;; Batch measure definitions to avoid N+1 queries.
 (deftest table-schema-bulk-loads-measure-definitions-test

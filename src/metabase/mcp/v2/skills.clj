@@ -63,13 +63,6 @@
                   (str "document_write's Markdown grammar: the CommonMark subset, {% card %} embeds, "
                        "{% entity %} links, ::: layout containers, how `edits` behave."))
     :references  []}
-   {:name        "transforms"
-    :description (message/raw
-                  (str "transform_write: materializing a query into a real warehouse table — "
-                       "definition vs query_handle, the target table and what patching it renames, "
-                       "the shapes it refuses (python, incremental), tags and folders. "
-                       "Read before your first transform_write."))
-    :references  []}
    {:name        "visualization-settings"
     :description (message/raw
                   (str "Choosing a card's display and visualization_settings: which chart fits which data, "

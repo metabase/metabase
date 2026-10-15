@@ -52,9 +52,9 @@
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
 
 (defn without-resources
-  "The `entity` as written to its YAML file, without its `:serdes/resources`."
+  "The `entity` as written to its YAML file: [[serdes/storable]], without its `:serdes/resources`."
   [entity]
-  (dissoc entity :serdes/resources))
+  (serdes/storable (dissoc entity :serdes/resources)))
 
 (defn resource-files
   "Each of `entity`'s `:serdes/resources` as `[path-segments content]`, next to its YAML file at `resolved`."

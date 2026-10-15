@@ -19,23 +19,25 @@ import { TEST_SCHEMA } from "./fixtures";
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
 const revenueQuery = defineQuery({
-  savedQuestionSourceId: 54,
+  savedQuestionEntityId: "revenueQuestionEntity",
   source: TEST_SCHEMA.tables.orders,
   limit: 10,
 });
 
-const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
+const _savedQuestionEntityId: "revenueQuestionEntity" =
+  revenueQuery.savedQuestionEntityId;
 const _queryLimit: 10 = revenueQuery.limit;
 
 const CreateOrder = defineAction({
-  copiedActionId: 91,
+  copiedActionEntityId: "createOrderCopyEntity",
   action: TEST_SCHEMA.actions.createOrder,
 });
 
-const _copiedActionId: 91 = CreateOrder.copiedActionId;
+const _copiedActionEntityId: "createOrderCopyEntity" =
+  CreateOrder.copiedActionEntityId;
 const _sourceActionId: 51 = CreateOrder.action.id;
 
-// A definition is authored without a generated ID; synchronization writes one.
+// A definition is valid before its copy is written.
 const UpdateOrder = defineAction({
   action: TEST_SCHEMA.actions.updateOrder,
 });
@@ -191,7 +193,7 @@ function ValidTypeFixtures() {
   // A static query published as a card, with dynamic clauses layered on top.
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionSourceId: 41,
+    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
   const dynamicResult = useMetabaseQuery(staticQuery, {

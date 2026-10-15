@@ -137,7 +137,7 @@
                            ["orders__SLASH__invoices" "orders__SLASH__invoices.yaml"])
                 "Slashes in directory names get escaped"))
           (testing "the Field was properly exported"
-            (is (= (ts/extract-one "Field" (:id website))
+            (is (= (serdes/storable (ts/extract-one "Field" (:id website)))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases"  "my_company_data"
                                                 "tables"     "customers"

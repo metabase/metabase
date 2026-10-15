@@ -15,6 +15,7 @@ import {
 import { DatabaseListApp } from "./DatabaseListApp";
 
 const setup = () => {
+  setupEnginesEndpoint({});
   setupDatabaseListEndpoint([
     createMockDatabase({ id: 1, name: "Stubbed DB", is_stub: true }),
   ]);

@@ -1581,6 +1581,8 @@
   native-query
   raw-native-query
   recognize-template-tags
+  rename-template-tags
+  rename-template-tags-in-text
   replace-template-tag-names
   required-native-extras
   native-query-card-ids

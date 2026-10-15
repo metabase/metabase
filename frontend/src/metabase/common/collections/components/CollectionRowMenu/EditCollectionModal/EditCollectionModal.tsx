@@ -155,6 +155,10 @@ function getPickerEntityType(
     return "metric";
   }
 
+  if (collectionType === "library-dashboards") {
+    return "dashboard";
+  }
+
   return undefined;
 }
 

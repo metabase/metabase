@@ -51,7 +51,7 @@ const isActionDefinition = (
 ): input is SdkActionDefinition => isObject(input) && "action" in input;
 
 /**
- * The action that actually runs. Outside the dev preview the synchronized copy
+ * The action that actually runs. Outside the dev preview the app's copy
  * replaces the authored action: the copy is what grants an app's viewers
  * permission to run it, through the app's collection.
  */
@@ -59,7 +59,7 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
   if (!isActionDefinition(input)) {
     if (isDataApp()) {
       throw new Error(
-        `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass the \`defineAction(...)\` export, so the synchronized action runs.`,
+        `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass the \`defineAction(...)\` export, so the app's copy of the action runs.`,
       );
     }
 
@@ -70,13 +70,13 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
     return input.action.id;
   }
 
-  if (input.copiedActionId === null || input.copiedActionId === undefined) {
+  if (input.copiedActionEntityId === undefined) {
     throw new Error(
-      "This action has not been synchronized. Run `npm run sync-resources` and rebuild.",
+      "This action has no copy. Copy it into the app's collection under `collections/data_apps/`, set its `copiedActionEntityId`, run `npm run check-resources`, commit, and rebuild.",
     );
   }
 
-  return input.copiedActionId;
+  return input.copiedActionEntityId;
 }
 
 /**

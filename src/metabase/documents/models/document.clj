@@ -162,7 +162,8 @@
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
-  card fields are declared locally: the model layer doesn't depend on the REST card schema."
+  card fields are declared locally: the model layer doesn't depend on the REST card schema. `source_card_id`, if
+  given, must be a Card the user can read; the new card inherits its timeline selection for permission purposes."
   [:map {:closed true}
    [:name ms/NonBlankString]
    [:dataset_query ::lib-be.schema/maybe-legacy-query]
@@ -173,7 +174,8 @@
    [:display ms/NonBlankString]
    [:visualization_settings ms/VisualizationSettings]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
-   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
+   [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- create-card!
   "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
@@ -199,9 +201,10 @@
   user is not authoring anything -- they may be able to view (and run) the source card without having permission to
   write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
   clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
-  [card creator]
-  (api/create-check :model/Card {:collection_id (:collection_id card)})
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+  [source-card creator]
+  (api/create-check :model/Card {:collection_id (:collection_id source-card)})
+  (card/with-copy-source-card source-card
+    (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator)))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
@@ -238,14 +241,16 @@
   (when (seq cards-to-create)
     (reduce-kv
      (fn [result-map original-key card-data]
-       (let [;; Merge document info into card data
+       (let [source-card-id   (:source_card_id card-data)
+             ;; Merge document info into card data
              ;; Cards inherit document's collection_id if not explicitly specified
              merged-card-data (-> card-data
+                                  (dissoc :source_card_id)
                                   (assoc :document_id document-id)
                                   (cond-> (nil? (:collection_id card-data))
                                     (assoc :collection_id document-collection-id)))
-             ;; Create the card using the queries core function
-             new-card (create-card! merged-card-data creator)]
+             new-card         (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
+                                (create-card! merged-card-data creator))]
          (assoc result-map original-key (:id new-card))))
      {}
      cards-to-create)))

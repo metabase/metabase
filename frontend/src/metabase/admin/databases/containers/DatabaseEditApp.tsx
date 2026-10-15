@@ -29,7 +29,8 @@ import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
-import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
+import { DatabaseDataActionsSection } from "../components/DatabaseDataActionsSection";
+import { DatabaseModelPersistenceSection } from "../components/DatabaseModelPersistenceSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { deleteDatabase, updateDatabase } from "../database";
 
@@ -120,12 +121,6 @@ function DatabaseEditAppInner({
                         database={database}
                       />
 
-                      <DatabaseModelFeaturesSection
-                        database={database}
-                        isModelPersistenceEnabled={isModelPersistenceEnabled}
-                        updateDatabase={updateDatabase}
-                      />
-
                       <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
                         database={database}
                       />
@@ -134,6 +129,16 @@ function DatabaseEditAppInner({
                         database={database}
                         settingsAvailable={settingsAvailable?.settings}
                         updateDatabase={updateDatabase}
+                      />
+
+                      <DatabaseDataActionsSection
+                        database={database}
+                        updateDatabase={updateDatabase}
+                      />
+
+                      <DatabaseModelPersistenceSection
+                        database={database}
+                        isModelPersistenceEnabled={isModelPersistenceEnabled}
                       />
 
                       <PLUGIN_DB_ROUTING.DatabaseRoutingSection

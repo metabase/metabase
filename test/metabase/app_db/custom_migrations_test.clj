@@ -3117,3 +3117,59 @@
             (is (=? {:name "Data App: ops" :slug "data_app__ops" :location "/" :namespace "data-apps"}
                     (t2/select-one :collection :id collection-id)))
             (is (= 21 (count (t2/select-one-fn :entity_id :collection :id collection-id))))))))))
+
+(deftest delete-data-app-drafts-test
+  (testing "v65.2026-10-07T00:00:00: draft rows go, with their groups and the collections they left empty"
+    (impl/test-migrations ["v65.2026-10-07T00:00:00"] [migrate!]
+      (let [insert-collection! (fn [name]
+                                 (t2/insert-returning-pk! :collection {:name       name
+                                                                       :slug       name
+                                                                       :location   "/"
+                                                                       :namespace  "data-apps"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now}))
+            insert-group!      (fn [slug]
+                                 (t2/insert-returning-pk! :permissions_group {:name              (str "Data App: " slug)
+                                                                              :entity_id         (u/generate-nano-id)
+                                                                              :is_data_app_group true}))
+            insert-app!        (fn [slug draft? collection-id group-id]
+                                 (t2/insert-returning-pk! :data_app {:name                   slug
+                                                                     :display_name           slug
+                                                                     :bundle_path            "dist/index.js"
+                                                                     :entity_id              (u/generate-nano-id)
+                                                                     :draft                  draft?
+                                                                     :resource_collection_id collection-id
+                                                                     :permission_group_id    group-id
+                                                                     :created_at             :%now
+                                                                     :updated_at             :%now}))
+            empty-coll   (insert-collection! "empty")
+            used-coll    (insert-collection! "used")
+            kept-coll    (insert-collection! "kept")
+            empty-group  (insert-group! "empty-draft")
+            used-group   (insert-group! "used-draft")
+            kept-group   (insert-group! "real")
+            empty-draft  (insert-app! "empty-draft" true empty-coll empty-group)
+            used-draft   (insert-app! "used-draft" true used-coll used-group)
+            real-app     (insert-app! "real" false kept-coll kept-group)]
+        (t2/insert! :permissions {:object (str "/collection/" empty-coll "/read/") :group_id 1 :collection_id empty-coll})
+        ;; something was put in the used draft's collection: a child collection here, cards and actions count the same
+        (t2/insert! :collection {:name       "Inside"
+                                 :slug       "inside"
+                                 :location   (str "/" used-coll "/")
+                                 :namespace  "data-apps"
+                                 :entity_id  (u/generate-nano-id)
+                                 :created_at :%now})
+        (migrate!)
+        (testing "every draft row is gone, with its group"
+          (is (not (t2/exists? :data_app :id empty-draft)))
+          (is (not (t2/exists? :data_app :id used-draft)))
+          (is (not (t2/exists? :permissions_group :id [:in [empty-group used-group]]))))
+        (testing "the empty collection went with its draft, grants included"
+          (is (not (t2/exists? :collection :id empty-coll)))
+          (is (not (t2/exists? :permissions :collection_id empty-coll))))
+        (testing "a collection holding content stays"
+          (is (t2/exists? :collection :id used-coll)))
+        (testing "an app that is not a draft is untouched"
+          (is (t2/exists? :data_app :id real-app))
+          (is (t2/exists? :collection :id kept-coll))
+          (is (t2/exists? :permissions_group :id kept-group)))))))

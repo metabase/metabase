@@ -58,6 +58,14 @@ describe("DataAppSkillsSection", () => {
     },
   );
 
+  it("also installs the skill for writing Metabase YAML, in the same copied command", async () => {
+    setup("v0.64.0");
+
+    expect(await copyCommand()).toContain(
+      " && \\\nnpx skills add metabase/agent-skills/skills --skill metabase-representation-format",
+    );
+  });
+
   // Release builds pin to their `release-x.<major>.x` branch; local, snapshot,
   // and unknown builds fall back to `master`.
   it.each<[tag: string | undefined, branch: string]>([

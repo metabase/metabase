@@ -12,7 +12,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 export function useLibrarySearch(
   searchQuery: string,
   libraryCollectionId: CollectionId | undefined,
-  snippetTree: TreeItem[],
+  localTree: TreeItem[],
 ) {
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const isActive = debouncedQuery.trim().length > 0;
@@ -28,7 +28,7 @@ export function useLibrarySearch(
       ? {
           q: debouncedQuery,
           collection: libraryCollectionId,
-          models: ["table", "metric"],
+          models: ["table", "metric", "dashboard"],
           context: "library",
         }
       : skipToken,
@@ -44,9 +44,14 @@ export function useLibrarySearch(
     if (searchResponse) {
       const dataItems: TreeItem[] = [];
       const metricItems: TreeItem[] = [];
+      const dashboardItems: TreeItem[] = [];
 
       for (const result of searchResponse.data) {
-        if (result.model !== "table" && result.model !== "metric") {
+        if (
+          result.model !== "table" &&
+          result.model !== "metric" &&
+          result.model !== "dashboard"
+        ) {
           continue;
         }
 
@@ -73,6 +78,8 @@ export function useLibrarySearch(
           dataItems.push(item);
         } else if (result.model === "metric") {
           metricItems.push(item);
+        } else {
+          dashboardItems.push(item);
         }
       }
 
@@ -103,14 +110,27 @@ export function useLibrarySearch(
           children: metricItems,
         });
       }
+
+      if (dashboardItems.length > 0) {
+        sections.push({
+          id: "search-section:dashboards",
+          name: t`Dashboards`,
+          icon: "dashboard",
+          model: "collection",
+          data: {
+            model: "collection",
+            name: t`Dashboards`,
+          },
+          children: dashboardItems,
+        });
+      }
     }
 
-    // Client-side filter snippets
-    const filteredSnippets = filterSnippetTree(snippetTree, debouncedQuery);
-    sections.push(...filteredSnippets);
+    // Client-side filter snippets and actions
+    sections.push(...filterLocalTree(localTree, debouncedQuery));
 
     return sections;
-  }, [isActive, searchResponse, snippetTree, debouncedQuery, getIcon]);
+  }, [isActive, searchResponse, localTree, debouncedQuery, getIcon]);
 
   return {
     tree,
@@ -120,16 +140,16 @@ export function useLibrarySearch(
   };
 }
 
-function filterSnippetTree(nodes: TreeItem[], query: string): TreeItem[] {
+function filterLocalTree(nodes: TreeItem[], query: string): TreeItem[] {
   const lowerQuery = query.toLowerCase();
 
   return nodes.flatMap((node) => {
-    if (node.model === "snippet") {
+    if (node.model === "snippet" || node.model === "action") {
       return node.name.toLowerCase().includes(lowerQuery) ? [node] : [];
     }
 
     if (node.children) {
-      const filteredChildren = filterSnippetTree(node.children, query);
+      const filteredChildren = filterLocalTree(node.children, query);
       if (filteredChildren.length > 0) {
         return [{ ...node, children: filteredChildren }];
       }

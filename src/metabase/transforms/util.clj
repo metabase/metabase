@@ -56,10 +56,10 @@
     (qp.setup/with-qp-setup [query query]
       (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
       true)
-    (catch clojure.lang.ExceptionInfo e
+    (catch Exception e
       ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
-      ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
-      ;; is left to validation and execution, which report the specific problem.
+      ;; other reason (a missing required parameter, a malformed query, an inactive table) cannot run at all, and
+      ;; rejecting it is left to validation and execution, which report the specific problem.
       (let [data (ex-data e)]
         (not (or (:permissions-error? data)
                  (= 403 (:status-code data))))))))

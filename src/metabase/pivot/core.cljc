@@ -100,7 +100,7 @@
                (reduce
                 (fn [acc row]
                   (let [grouping-key (perf/mapv #(ensure-consistent-type (nth row %)) column-indexes)
-                        values (perf/mapv #(nth row %) val-indexes)]
+                        values (perf/mapa #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
                 rows))]
@@ -196,7 +196,7 @@
      (reduce
       (fn [acc row]
         (let [value-key  (perf/mapv #(ensure-consistent-type (nth row %)) col-and-row-indexes)
-              values     (select-indexes row val-indexes)
+              values     (perf/mapa #(nth row %) val-indexes)
               data       (perf/mapv-indexed (fn [^long index value]
                                               {:value value
                                                :colIdx index})

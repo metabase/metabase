@@ -1288,49 +1288,44 @@
       },
       "metabase-enterprise.data-apps.query-definition.aggregation" : {
         "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.expression"
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.aggregation-expression"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.measure"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.metric"
         } ]
       },
-      "metabase-enterprise.data-apps.query-definition.auto-bin" : {
-        "const" : "auto"
+      "metabase-enterprise.data-apps.query-definition.aggregation-expression" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.literal-expression"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.aggregation-operator-expression"
+        } ]
       },
-      "metabase-enterprise.data-apps.query-definition.bin-count-bucket" : {
+      "metabase-enterprise.data-apps.query-definition.aggregation-operator-expression" : {
+        "description" : "An aggregation can be named; a filter or a nested argument can't, so `name` is refused there rather than dropped.",
         "type" : "object",
         "properties" : {
-          "bins" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "integer",
-                "minimum" : 1
-              }, {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.auto-bin"
-              } ]
-            }, {
-              "type" : "null"
-            } ]
+          "args" : {
+            "default" : [ ],
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.expression"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "operator" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.operator"
+          },
+          "type" : {
+            "const" : "operator"
           }
         },
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.bin-width-bucket" : {
-        "type" : "object",
-        "properties" : {
-          "bin-width" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.positive-number"
-              }, {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.auto-bin"
-              } ]
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
+        "required" : [ "type", "operator" ],
         "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.query-definition.binning" : {
@@ -1426,7 +1421,11 @@
         "type" : "object",
         "properties" : {
           "binning" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.binning"
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.binning"
+            }, {
+              "type" : "null"
+            } ]
           },
           "index" : {
             "oneOf" : [ {
@@ -1446,17 +1445,6 @@
           "display-name" : {
             "oneOf" : [ {
               "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "bin-width" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.positive-number"
-              }, {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.auto-bin"
-              } ]
             }, {
               "type" : "null"
             } ]
@@ -1484,18 +1472,6 @@
           "unit" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "bins" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "integer",
-                "minimum" : 1
-              }, {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.auto-bin"
-              } ]
             }, {
               "type" : "null"
             } ]
@@ -1579,7 +1555,11 @@
         "type" : "object",
         "properties" : {
           "binning" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.binning"
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.binning"
+            }, {
+              "type" : "null"
+            } ]
           },
           "index" : {
             "oneOf" : [ {
@@ -1599,17 +1579,6 @@
           "display-name" : {
             "oneOf" : [ {
               "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "bin-width" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.positive-number"
-              }, {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.auto-bin"
-              } ]
             }, {
               "type" : "null"
             } ]
@@ -1645,18 +1614,6 @@
           "unit" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "bins" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "integer",
-                "minimum" : 1
-              }, {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.auto-bin"
-              } ]
             }, {
               "type" : "null"
             } ]
@@ -3032,6 +2989,452 @@
         }, {
           "type" : "boolean"
         } ]
+      },
+      "metabase-enterprise.session-management.api.EndedOnlyCriterion" : { },
+      "metabase-enterprise.session-management.api.FilterParams" : {
+        "description" : "The criteria the list and the revoke share: every one of them can match a live session.",
+        "type" : "object",
+        "properties" : {
+          "last-active-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "provider" : {
+            "allOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "password", "ldap", "google", "slack-connect", "custom-oidc", "jwt", "saml", "support-access-grant", "unknown" ]
+              }
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "password", "ldap", "google", "slack-connect", "custom-oidc", "jwt", "saml", "support-access-grant", "unknown" ]
+              },
+              "maxItems" : 9
+            } ]
+          },
+          "ids" : {
+            "allOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              },
+              "maxItems" : 1000
+            } ]
+          },
+          "tenancy" : {
+            "default" : "all",
+            "type" : "string",
+            "enum" : [ "all", "internal", "external" ]
+          },
+          "user-id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last-active-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-type"
+          },
+          "created-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "created-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          }
+        },
+        "required" : [ ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.api.ListParams" : {
+        "description" : "The criteria the list and the revoke share: every one of them can match a live session.",
+        "type" : "object",
+        "properties" : {
+          "last-active-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "query" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "ended-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "provider" : {
+            "allOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "password", "ldap", "google", "slack-connect", "custom-oidc", "jwt", "saml", "support-access-grant", "unknown" ]
+              }
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "password", "ldap", "google", "slack-connect", "custom-oidc", "jwt", "saml", "support-access-grant", "unknown" ]
+              },
+              "maxItems" : 9
+            } ]
+          },
+          "ids" : {
+            "allOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              },
+              "maxItems" : 1000
+            } ]
+          },
+          "tenancy" : {
+            "default" : "all",
+            "type" : "string",
+            "enum" : [ "all", "internal", "external" ]
+          },
+          "sort-direction" : {
+            "default" : "desc",
+            "type" : "string",
+            "enum" : [ "asc", "desc" ]
+          },
+          "status" : {
+            "default" : "live",
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-status"
+          },
+          "user-id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last-active-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-type"
+          },
+          "reason" : {
+            "$ref" : "#/components/schemas/metabase.session.schema.end-reason"
+          },
+          "ended-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "created-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "sort-column" : {
+            "default" : "created_at",
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-sort-column"
+          },
+          "created-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          }
+        },
+        "required" : [ ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.api.RevokeByCriteriaParams" : {
+        "description" : "The criteria the list and the revoke share: every one of them can match a live session.",
+        "type" : "object",
+        "properties" : {
+          "last-active-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "query" : { },
+          "ended-after" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.EndedOnlyCriterion"
+          },
+          "provider" : {
+            "allOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "password", "ldap", "google", "slack-connect", "custom-oidc", "jwt", "saml", "support-access-grant", "unknown" ]
+              }
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "password", "ldap", "google", "slack-connect", "custom-oidc", "jwt", "saml", "support-access-grant", "unknown" ]
+              },
+              "maxItems" : 9
+            } ]
+          },
+          "ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 1000
+          },
+          "tenancy" : {
+            "default" : "all",
+            "type" : "string",
+            "enum" : [ "all", "internal", "external" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "live" ]
+          },
+          "user-id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last-active-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-type"
+          },
+          "reason" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.EndedOnlyCriterion"
+          },
+          "exclude-current" : {
+            "default" : true,
+            "type" : "boolean"
+          },
+          "ended-before" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.EndedOnlyCriterion"
+          },
+          "created-after" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          },
+          "created-before" : {
+            "description" : "value must be a valid date string",
+            "type" : "string"
+          }
+        },
+        "required" : [ ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.api.RevokeByCriteriaResult" : {
+        "type" : "object",
+        "properties" : {
+          "remaining" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "revoked" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "user_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          }
+        },
+        "required" : [ "revoked", "remaining", "user_ids" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.api.Session" : {
+        "type" : "object",
+        "properties" : {
+          "end_reason" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.session.schema.end-reason"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_active_at" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "user" : {
+            "type" : "object",
+            "properties" : {
+              "common_name" : {
+                "oneOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "email" : {
+                "type" : "string"
+              },
+              "id" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            },
+            "required" : [ "id", "email", "common_name" ],
+            "additionalProperties" : false
+          },
+          "device_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "expires_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "ended_at" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "live", "ended" ]
+          },
+          "ended_by" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "current" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-type"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "device_description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "ip_address" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "user_agent" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "user", "type", "provider", "created_at", "last_active_at", "expires_at", "user_agent", "device_description", "ip_address", "device_id", "current", "status", "ended_at", "end_reason", "ended_by" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.api.SessionsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.Session"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "total", "limit", "offset", "data" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.api.SortParams" : {
+        "type" : "object",
+        "properties" : {
+          "sort-column" : {
+            "default" : "created_at",
+            "$ref" : "#/components/schemas/metabase-enterprise.session-management.schema.session-sort-column"
+          },
+          "sort-direction" : {
+            "default" : "desc",
+            "type" : "string",
+            "enum" : [ "asc", "desc" ]
+          }
+        },
+        "required" : [ ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.session-management.schema.session-sort-column" : {
+        "description" : "Columns the session list can be sorted by. `:last_active_at` sorts on the same\n  `COALESCE(last_active_at, created_at)` the idle-timeout predicate uses, so a session that has never been touched\n  sorts by when it was created rather than last. `:ended_at` is null for a live session, and for an ended one whose\n  ending the nightly sweep has not recorded yet.",
+        "type" : "string",
+        "enum" : [ "created_at", "last_active_at", "user_email", "provider", "ended_at" ]
+      },
+      "metabase-enterprise.session-management.schema.session-status" : {
+        "description" : "Which sessions a query is about: the `live` ones (the default), the `ended` ones, or `all` of them.",
+        "type" : "string",
+        "enum" : [ "live", "ended", "all" ]
+      },
+      "metabase-enterprise.session-management.schema.session-type" : {
+        "description" : "How a session was created: an ordinary login, or a full-app embedding one. Derived from whether the `core_session`\n  row carries an anti-CSRF token, which only full-app-embed sessions do.",
+        "type" : "string",
+        "enum" : [ "normal", "full-app-embed" ]
       },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
@@ -4480,8 +4883,8 @@
           }
         }
       },
-      "metabase.actions.schema..action.for-insert" : {
-        "description" : "Schema for inserting a new Action (REST API or internally).",
+      "metabase.actions.schema..action.create-request" : {
+        "description" : "Schema for the REST API body that creates an Action, without the columns the server populates.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -4494,23 +4897,9 @@
                 "type" : "null"
               } ]
             },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "parameter_mappings" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
               }, {
                 "type" : "null"
               } ]
@@ -4524,14 +4913,6 @@
             "database_id" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
               }, {
                 "type" : "null"
               } ]
@@ -4553,16 +4934,6 @@
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "model_id" : {
               "type" : "integer",
               "minimum" : 1
@@ -4577,22 +4948,8 @@
                 "type" : "null"
               } ]
             },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "archived_directly" : {
               "type" : "boolean"
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
             },
             "description" : {
               "oneOf" : [ {
@@ -4616,13 +4973,6 @@
                 "type" : "null"
               } ]
             },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "dataset_query" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
@@ -4633,13 +4983,6 @@
             "parameter_mappings" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
               }, {
                 "type" : "null"
               } ]
@@ -4657,14 +5000,6 @@
                 "type" : "null"
               } ]
             },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "collection_id" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
@@ -4674,16 +5009,6 @@
             },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
             },
             "model_id" : {
               "oneOf" : [ {
@@ -4702,22 +5027,8 @@
                 "type" : "null"
               } ]
             },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "archived_directly" : {
               "type" : "boolean"
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
             },
             "description" : {
               "oneOf" : [ {
@@ -4741,13 +5052,6 @@
                 "type" : "null"
               } ]
             },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "dataset_query" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
@@ -4762,13 +5066,6 @@
                 "type" : "null"
               } ]
             },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "name" : {
               "type" : "string"
             },
@@ -4778,14 +5075,6 @@
             "database_id" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
               }, {
                 "type" : "null"
               } ]
@@ -4807,16 +5096,6 @@
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "model_id" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
@@ -4834,22 +5113,8 @@
                 "type" : "null"
               } ]
             },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "archived_directly" : {
               "type" : "boolean"
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
             },
             "description" : {
               "oneOf" : [ {
@@ -4860,395 +5125,6 @@
             }
           },
           "required" : [ "name", "type" ],
-          "additionalProperties" : false
-        } ]
-      },
-      "metabase.actions.schema..action.for-update" : {
-        "description" : "Schema for updating an Action (REST API or internally).",
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "kind" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "collection_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "archived_directly" : {
-              "type" : "boolean"
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "dataset_query" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "collection_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "archived_directly" : {
-              "type" : "boolean"
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "dataset_query" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "kind" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "collection_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "archived_directly" : {
-              "type" : "boolean"
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
           "additionalProperties" : false
         } ]
       },
@@ -5406,6 +5282,257 @@
         "required" : [ "id", "type" ],
         "additionalProperties" : false
       },
+      "metabase.actions.schema..action.update-request" : {
+        "description" : "Schema for the REST API body that updates an Action, without the columns the server populates.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "oneOf" : [ {
+                "description" : "Value must be a map.",
+                "type" : "object",
+                "properties" : { }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameter_mappings" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "database_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "kind" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "model_id" : {
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "parameters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
+            "description" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "oneOf" : [ {
+                "description" : "Value must be a map.",
+                "type" : "object",
+                "properties" : { }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "dataset_query" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameter_mappings" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "database_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "model_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
+            "description" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "oneOf" : [ {
+                "description" : "Value must be a map.",
+                "type" : "object",
+                "properties" : { }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "dataset_query" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameter_mappings" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "database_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "kind" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "model_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
+            "description" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "additionalProperties" : false
+        } ]
+      },
       "metabase.actions.schema..execute-parameter-values.string-keys" : {
         "description" : "value must map parameter ids to scalar values.",
         "type" : "object",
@@ -5490,6 +5617,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "can_write" : {
+              "type" : "boolean"
             },
             "kind" : {
               "oneOf" : [ {
@@ -5630,6 +5760,9 @@
                 "type" : "null"
               } ]
             },
+            "can_write" : {
+              "type" : "boolean"
+            },
             "collection_id" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
@@ -5764,6 +5897,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "can_write" : {
+              "type" : "boolean"
             },
             "kind" : {
               "oneOf" : [ {
@@ -8333,11 +8469,11 @@
       },
       "metabase.collections.schema.CollectionItemModel" : {
         "type" : "string",
-        "enum" : [ "card", "dataset", "metric", "dashboard", "snippet", "collection", "indexed-entity", "indexed-entity", "document", "exploration", "table" ]
+        "enum" : [ "card", "dataset", "metric", "dashboard", "snippet", "collection", "indexed-entity", "indexed-entity", "document", "exploration", "table", "action" ]
       },
       "metabase.collections.schema.CollectionType" : {
         "type" : "string",
-        "enum" : [ "instance-analytics", "trash", "remote-synced", "library", "library-models", "library-metrics" ]
+        "enum" : [ "instance-analytics", "trash", "remote-synced", "library", "library-models", "library-metrics", "library-dashboards" ]
       },
       "metabase.collections.schema.LastEditInfo" : {
         "type" : "object",
@@ -12870,6 +13006,9 @@
               "type" : "null"
             } ]
           },
+          "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details"
+          },
           "user-parameters" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
           },
@@ -13112,6 +13251,69 @@
         "description" : "A whole copy of a query stashed on the query itself under one of the internal keys below: the same shape as\n  [[::query]] minus the `:and`-level constraints, so validating the stashed copy does not re-run uniqueness checks\n  against the query it was copied from.",
         "$ref" : "#/components/schemas/metabase.lib.schema..query.map"
       },
+      "metabase.lib.schema..sandboxing.details" : {
+        "description" : "Audit-log details for the sandboxes (row-level restrictions) applied to a query, keyed by the Table ID each one sandboxes. Stashed on the query by the enterprise sandboxing middleware and copied into the results metadata so the restrictions can be recorded in the QueryExecution log.",
+        "type" : "object",
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details.entry"
+        }
+      },
+      "metabase.lib.schema..sandboxing.details.entry" : {
+        "description" : "Audit-log entry describing one applied sandbox (row-level restriction): which Table it sandboxes, which sandbox/group/Card it came from, and which login attributes were remapped to which Fields. An attribute's `:value` is the user's actual attribute value, recorded only when `analytics-pii-retention-enabled` is set.",
+        "type" : "object",
+        "properties" : {
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : {
+                "field_id" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "value" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.parameter..parameter.value"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "field_id" ],
+              "additionalProperties" : false
+            }
+          },
+          "card_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "group_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sandbox_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          }
+        },
+        "required" : [ "table_id", "sandbox_id", "group_id", "card_id", "attributes" ],
+        "additionalProperties" : false
+      },
       "metabase.lib.schema..sandboxing.original-metadata" : {
         "description" : "The legacy columns a query was expected to return before sandboxes replaced its source tables, stashed on the query by the enterprise sandboxing middleware and merged into the sandboxed results.",
         "type" : "array",
@@ -13179,6 +13381,10 @@
           },
           "source-query/model?" : {
             "type" : "boolean"
+          },
+          "qp.pivot/forced-shape" : {
+            "type" : "string",
+            "enum" : [ "native-pivot-query", "union-all" ]
           },
           "parameters" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
@@ -13287,6 +13493,10 @@
             },
             "source-table" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+            },
+            "qp.pivot/forced-shape" : {
+              "type" : "string",
+              "enum" : [ "native-pivot-query", "union-all" ]
             },
             "order-by" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.order-by.order-bys"
@@ -13425,6 +13635,10 @@
             },
             "source-query/model?" : {
               "type" : "boolean"
+            },
+            "qp.pivot/forced-shape" : {
+              "type" : "string",
+              "enum" : [ "native-pivot-query", "union-all" ]
             },
             "parameters" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
@@ -18776,6 +18990,9 @@
                 "type" : "null"
               } ]
             },
+            "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details"
+            },
             "user-parameters" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
             },
@@ -22426,6 +22643,21 @@
         }, {
           "type" : "object",
           "properties" : {
+            "contextWindowFull" : {
+              "type" : "boolean"
+            },
+            "finishReason" : {
+              "type" : "string",
+              "enum" : [ "length", "content-filter", "tool-calls" ]
+            },
+            "type" : {
+              "const" : "incomplete"
+            }
+          },
+          "required" : [ "type", "finishReason" ]
+        }, {
+          "type" : "object",
+          "properties" : {
             "error" : {
               "anyOf" : [ {
                 "type" : "string"
@@ -23454,13 +23686,6 @@
                 "additionalProperties" : false
               }
             },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.notification.models.EchoedUser"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "updated_at" : {
               "oneOf" : [ {
                 "anyOf" : [ {
@@ -23616,13 +23841,6 @@
                 "required" : [ "channel_type" ],
                 "additionalProperties" : false
               }
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.notification.models.EchoedUser"
-              }, {
-                "type" : "null"
-              } ]
             },
             "updated_at" : {
               "oneOf" : [ {
@@ -28712,6 +28930,13 @@
               "$ref" : "#/components/schemas/metabase.query-processor.schema..result-metadata.column"
             }
           },
+          "sandbox_details" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
           "results_timezone" : {
             "type" : "string"
           },
@@ -28846,6 +29071,10 @@
       "metabase.segments.schema.definition" : {
         "description" : "value must be a valid MBQL query with a source table and filters.",
         "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
+      },
+      "metabase.session.schema.end-reason" : {
+        "type" : "string",
+        "enum" : [ "admin", "logout", "password-change", "user-deactivated", "tenant-deactivated", "sso-logout", "support-grant-revoked", "expired", "timed-out" ]
       },
       "metabase.source-swap.schema.column-error" : {
         "type" : "string",
@@ -30279,7 +30508,7 @@
       "get" : {
         "operationId" : "get-api-action",
         "summary" : "GET /api/action",
-        "description" : "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to\n  limit to the actions of a particular model.",
+        "description" : "Returns the actions the current user can read, unarchived unless `?archived=true`. Pass optional\n  `?model-id=<model-id>` to limit to the actions of a particular model, and optional `?type=<type>` to limit to actions\n  of that type.",
         "parameters" : [ {
           "in" : "query",
           "name" : "model-id",
@@ -30290,6 +30519,25 @@
             }, {
               "type" : "null"
             } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -30342,7 +30590,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.actions.schema..action.for-insert"
+                "$ref" : "#/components/schemas/metabase.actions.schema..action.create-request"
               }
             }
           }
@@ -30524,7 +30772,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.actions.schema..action.for-update"
+                "$ref" : "#/components/schemas/metabase.actions.schema..action.update-request"
               }
             }
           }
@@ -31901,7 +32149,7 @@
       "get" : {
         "operationId" : "get-api-apps",
         "summary" : "GET /api/apps",
-        "description" : "List the data apps. Pass `available=true` to return only enabled apps that aren't drafts. An outdated app is never\n   available, and otherwise listed only to superusers, who see it badged.",
+        "description" : "List the data apps. Pass `available=true` to return only enabled apps. An outdated app is never\n   available, and otherwise listed only to superusers, who see it badged.",
         "parameters" : [ {
           "in" : "query",
           "name" : "available",
@@ -31985,13 +32233,9 @@
                           "type" : "boolean"
                         },
                         "resource_collection_id" : {
-                          "oneOf" : [ {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }, {
-                            "type" : "null"
-                          } ]
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
                         },
                         "description" : {
                           "oneOf" : [ {
@@ -32038,7 +32282,7 @@
       "post" : {
         "operationId" : "post-api-apps",
         "summary" : "POST /api/apps",
-        "description" : "Create a data app from its manifest fields and bundle. A draft with the same slug becomes the app.",
+        "description" : "Create a data app from its manifest fields and bundle.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -32108,13 +32352,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32242,6 +32482,194 @@
         "tags" : [ "/api/apps" ]
       }
     },
+    "/api/apps/serialize-resources" : {
+      "post" : {
+        "operationId" : "post-api-apps-serialize-resources",
+        "summary" : "POST /api/apps/serialize-resources",
+        "description" : "Serialize what the files of a data app's collection are written from, as serialization writes it: the saved question\n  holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,\n  the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers\n  on its own, with its serialization or the error that stops it. For superusers: the files are written into the app's\n  repository, which only an admin works with.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "actions" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "entity" : {
+                              "type" : "object",
+                              "properties" : { }
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "entity" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "object",
+                          "properties" : {
+                            "error" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "error" ],
+                          "additionalProperties" : false
+                        } ]
+                      }
+                    },
+                    "metrics" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "entity" : {
+                              "type" : "object",
+                              "properties" : { }
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "entity" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "object",
+                          "properties" : {
+                            "error" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "error" ],
+                          "additionalProperties" : false
+                        } ]
+                      }
+                    },
+                    "queries" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "entity" : {
+                              "type" : "object",
+                              "properties" : { }
+                            },
+                            "export" : {
+                              "type" : "string"
+                            },
+                            "metrics" : {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "string"
+                              }
+                            }
+                          },
+                          "required" : [ "export", "entity", "metrics" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "object",
+                          "properties" : {
+                            "error" : {
+                              "type" : "string"
+                            },
+                            "export" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "export", "error" ],
+                          "additionalProperties" : false
+                        } ]
+                      }
+                    }
+                  },
+                  "required" : [ "queries", "actions", "metrics" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "actions" : {
+                    "default" : [ ],
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "collection" : {
+                    "description" : "String must be a valid 21-character NanoID string.",
+                    "type" : "string",
+                    "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                  },
+                  "queries" : {
+                    "default" : [ ],
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "entity_id" : {
+                          "description" : "String must be a valid 21-character NanoID string.",
+                          "type" : "string",
+                          "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                        },
+                        "export" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "query" : {
+                          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.query-definition"
+                        }
+                      },
+                      "required" : [ "export", "entity_id", "query" ],
+                      "additionalProperties" : false
+                    }
+                  }
+                },
+                "required" : [ "collection" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
     "/api/apps/{slug}" : {
       "put" : {
         "operationId" : "put-api-apps-slug",
@@ -32324,13 +32752,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32506,13 +32930,9 @@
                         "type" : "boolean"
                       },
                       "resource_collection_id" : {
-                        "oneOf" : [ {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }, {
-                          "type" : "null"
-                        } ]
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
                       },
                       "description" : {
                         "oneOf" : [ {
@@ -32592,456 +33012,6 @@
               "schema" : {
                 "type" : "object",
                 "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/draft" : {
-      "post" : {
-        "operationId" : "post-api-apps-slug-draft",
-        "summary" : "POST /api/apps/{slug}/draft",
-        "description" : "Create or reuse a data app draft, which reserves a slug and the app's resources before the app is created.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "has_user_permission_warnings" : {
-                      "type" : "boolean"
-                    },
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "display_name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "permission_group_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "description" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/query" : {
-      "post" : {
-        "operationId" : "post-api-apps-slug-query",
-        "summary" : "POST /api/apps/{slug}/query",
-        "description" : "Resolve an authored data-app query definition into a serializable Metabase query.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "database_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "dataset_query" : {
-                      "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
-                    },
-                    "metrics" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "visualization_settings" : {
-                            "oneOf" : [ {
-                              "description" : "Value must be a map.",
-                              "type" : "object",
-                              "properties" : { }
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "dataset_query" : {
-                            "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "name" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "database_id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "collection_id" : {
-                            "oneOf" : [ {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "type" : {
-                            "type" : "string",
-                            "enum" : [ "metric" ]
-                          },
-                          "display" : {
-                            "oneOf" : [ {
-                              "anyOf" : [ {
-                                "type" : "string"
-                              }, {
-                                "type" : "string"
-                              } ]
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "description" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "name", "type", "collection_id", "dataset_query", "database_id", "display", "visualization_settings", "description" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    }
-                  },
-                  "required" : [ "database_id", "dataset_query", "table_ids", "metrics" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.query-definition"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/query-table-dependencies" : {
-      "post" : {
-        "operationId" : "post-api-apps-slug-query-table-dependencies",
-        "summary" : "POST /api/apps/{slug}/query-table-dependencies",
-        "description" : "Return the tables read by already-saved queries, including ones reached only through an implicit join.\n\n   Sync copies actions and metrics whose queries it never resolves through `/query`, and only\n   this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key\n   appears nowhere in the query itself.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    }
-                  },
-                  "required" : [ "table_ids" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "dataset_queries" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
-                    }
-                  }
-                },
-                "required" : [ "dataset_queries" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/table-dependencies" : {
-      "put" : {
-        "operationId" : "put-api-apps-slug-table-dependencies",
-        "summary" : "PUT /api/apps/{slug}/table-dependencies",
-        "description" : "Store the tables used by the resources from a successful data app resource synchronization.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "has_user_permission_warnings" : {
-                      "type" : "boolean"
-                    },
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "display_name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "permission_group_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "description" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "table_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  }
-                },
-                "required" : [ "table_ids" ],
                 "additionalProperties" : false
               }
             }
@@ -34315,7 +34285,7 @@
       "post" : {
         "operationId" : "post-api-card",
         "summary" : "POST /api/card",
-        "description" : "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`.",
+        "description" : "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`. `source_card_id`, if given, must be a\n  Card the current user can read; the new Card is then treated as a copy of it for timeline-permission purposes.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -34382,6 +34352,15 @@
                   "result_metadata" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "source_card_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     }, {
                       "type" : "null"
                     } ]
@@ -40149,7 +40128,7 @@
       "get" : {
         "operationId" : "get-api-database",
         "summary" : "GET /api/database",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "in" : "query",
           "name" : "saved",
@@ -40199,6 +40178,18 @@
             } ]
           },
           "description" : "include must be either empty, 'tables', or 'schemas'"
+        }, {
+          "in" : "query",
+          "name" : "include_stubs",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         }, {
           "in" : "query",
           "name" : "router_database_id",
@@ -42030,6 +42021,15 @@
                               "type" : "null"
                             } ]
                           },
+                          "source_card_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "cache_ttl" : {
                             "oneOf" : [ {
                               "description" : "value must be an integer greater than zero.",
@@ -42250,6 +42250,15 @@
                           "result_metadata" : {
                             "oneOf" : [ {
                               "$ref" : "#/components/schemas/metabase.queries.schema..card.result-metadata"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "source_card_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
                             }, {
                               "type" : "null"
                             } ]
@@ -48324,6 +48333,14 @@
                           "id" : {
                             "type" : "integer"
                           },
+                          "card_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "name" : {
                             "oneOf" : [ {
                               "type" : "string"
@@ -50590,6 +50607,84 @@
           }
         },
         "tags" : [ "/api/ee/serialization" ]
+      }
+    },
+    "/api/ee/session-management" : {
+      "get" : {
+        "operationId" : "get-api-ee-session-management",
+        "summary" : "GET /api/ee/session-management",
+        "description" : "List sessions. By default the ones that are currently live — the ones that would still authenticate a request.\n  `status=ended` lists instead the sessions that have ended: revoked, logged out, expired, idle past the session\n  timeout, or belonging to a deactivated user or an inactive tenant. An ended session stays on record for thirty\n  days, with when and why it ended (`ended_at`, `end_reason`) and who ended it (`ended_by`) once the nightly sweep\n  or the ending itself has recorded that; a session that has merely stopped being live since the last sweep is\n  already `ended`, with those three null. `status=all` lists both. `total` counts whatever the filters match.\n\n  Superuser only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.SessionsResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/session-management" ]
+      }
+    },
+    "/api/ee/session-management/revoke" : {
+      "post" : {
+        "operationId" : "post-api-ee-session-management-revoke",
+        "summary" : "POST /api/ee/session-management/revoke",
+        "description" : "Revoke — end — every live session matching the given criteria, which are the filters the list endpoint takes.\n  All of them have to hold, so a revoke ends exactly the sessions the same filters would have listed. An empty\n  body matches every live session: that is how an admin logs everybody out. A revoked session is destroyed as a\n  credential at once, and stays on record as ended for thirty days.\n\n  Only live sessions can be revoked, so `status` may only be `live` (or absent), and `reason`, `ended-before` and\n  `ended-after` — which only match ended sessions — are rejected with a 400.\n\n  `exclude-current` (default true) excludes the session this request was made with. Pass false to log the caller\n  out too, in which case the response also clears their session cookie.\n\n  Sessions that are no longer live are left for the nightly cleanup task to record rather than revoked, and sessions\n  belonging to MCP clients are never matched.\n\n  Returns how many sessions were `revoked`, how many live sessions still match the criteria afterwards (`remaining`,\n  non-zero only when a login raced the revoke), and the `user_ids` whose sessions were revoked. Superuser only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.RevokeByCriteriaResult"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase-enterprise.session-management.api.RevokeByCriteriaParams"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/session-management" ]
       }
     },
     "/api/ee/stale/{id}" : {
@@ -68632,7 +68727,7 @@
                   "source" : {
                     "oneOf" : [ {
                       "type" : "string",
-                      "enum" : [ "collections", "question" ]
+                      "enum" : [ "collections", "question", "dashboard" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -74236,7 +74331,7 @@
       "get" : {
         "operationId" : "get-api-typed-schemas-v1-typescript",
         "summary" : "GET /api/typed-schemas/v1/typescript",
-        "description" : "Generate a TypeScript semantic schema module.",
+        "description" : "Generate a TypeScript semantic schema module. For superusers: a data app's author builds from it, and only an\n  admin works with an app's repository.",
         "parameters" : [ {
           "in" : "query",
           "name" : "database",

@@ -1,6 +1,9 @@
 (ns metabase.typed-schemas.common-test
   (:require
    [clojure.test :refer :all]
+   [metabase.audit-app.core :as audit]
+   [metabase.audit-app.impl :as audit.impl]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.typed-schemas.common :as typed-schemas.common]
    [metabase.typed-schemas.schema.common :as schema.common]))
@@ -84,6 +87,22 @@
         (let [card-ids (into #{} (map :id) (schema.common/select-schema-cards :metric nil nil))]
           (is (contains? card-ids open-card-id))
           (is (not (contains? card-ids destination-card-id))))))))
+
+(deftest the-audit-apps-cards-are-left-out-without-the-audit-feature-test
+  (let [cards [{:id 1 :database_id (mt/id)}
+               {:id 2 :database_id audit/audit-db-id}
+               {:id 3 :database_id (mt/id) :collection_id 7}]]
+    ;; the var itself rather than its re-export through core, which only follows the root of this one
+    (mt/with-dynamic-fn-redefs [audit.impl/is-collection-id-audit? #(= % 7)]
+      (testing "a card in the audit collection 403s on its details lookup and one on the audit database has no table
+                while the feature is off, so the schema leaves both out rather than fail an unscoped request"
+        (mt/with-premium-features #{}
+          (is (= [1] (map :id (#'schema.common/without-unavailable-cards cards))))))
+      ;; a premium feature is never on without the EE code, whatever the token says
+      (when config/ee-available?
+        (testing "with the feature on they are listed"
+          (mt/with-premium-features #{:audit-app}
+            (is (= [1 2 3] (map :id (#'schema.common/without-unavailable-cards cards))))))))))
 
 (deftest ^:parallel keyed-map-never-drops-an-entity-test
   (testing "a disambiguated key that equals another entity's own key is disambiguated again rather than overwriting it"

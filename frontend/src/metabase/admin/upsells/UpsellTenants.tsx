@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import upsellTenantsImage from "assets/img/upsell-tenants.png?url";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
@@ -33,7 +34,7 @@ export const UpsellTenants = () => {
             description={t`Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            image="app/assets/img/upsell-tenants.png"
+            image={upsellTenantsImage}
           />
         </LineDecorator>
       </Stack>

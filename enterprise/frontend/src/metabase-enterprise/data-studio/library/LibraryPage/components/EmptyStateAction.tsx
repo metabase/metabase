@@ -5,13 +5,17 @@ import { Anchor } from "metabase/ui";
 interface EmptyStateActionProps {
   data: EmptyStateData;
   onPublishTableClick: () => void;
+  onNewDashboardClick: () => void;
 }
 
 export function EmptyStateAction({
   data,
   onPublishTableClick,
+  onNewDashboardClick,
 }: EmptyStateActionProps) {
-  if (data.sectionType === "data") {
+  if (data.sectionType === "data" || data.sectionType === "dashboards") {
+    const onClick =
+      data.sectionType === "data" ? onPublishTableClick : onNewDashboardClick;
     return (
       <Anchor
         component="button"
@@ -19,7 +23,7 @@ export function EmptyStateAction({
         fz="inherit"
         onClick={(e) => {
           e.stopPropagation();
-          onPublishTableClick();
+          onClick();
         }}
       >
         {data.actionLabel}

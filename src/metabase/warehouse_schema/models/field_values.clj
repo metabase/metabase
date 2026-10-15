@@ -714,7 +714,7 @@
                :last_used_at (serdes/date)
                :type         (serdes/kw)
                :field_id     {::serdes/fk true
-                              :export     (constantly ::serdes/skip)
+                              :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
                                                        (serdes/*import-field-fk* field-ref)))}}
@@ -728,6 +728,9 @@
                    (= (:type ingested)     (:type local))     (dissoc :type)
                    (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
     ((get-method serdes/load-update! "") "FieldValues" ingested local)))
+
+(defmethod serdes/ingested-path "FieldValues" [_ {:keys [field_id]}]
+  (conj (serdes/field->path field_id) {:model "FieldValues" :id "0"}))
 
 (def ^:private field-values-slug "___fieldvalues")
 

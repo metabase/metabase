@@ -29,36 +29,42 @@
    [:card ::test-card-source-spec]])
 
 (mr/def ::test-column-spec
+  "A column of the stage: a field by `:field-id`, or else a column by its `:name`. Every other key is matched exactly:
+  a missing `:join-alias` means the column does not come from a join, a missing `:source-field-id` means it is not
+  implicitly joined."
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
-   [:name string?]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-   [:source-name {:optional true} [:maybe string?]]
+   [:name {:optional true} [:maybe string?]]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
    [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name {:optional true} [:maybe string?]]
-   [:index {:optional true} [:maybe pos-int?]]])
+   [:source-field-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]])
 
 (mr/def ::test-temporal-bucket-spec
   [:map
    [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
 
-(mr/def ::test-auto-bin-spec
-  [:= {:decode/normalize lib.schema.common/normalize-keyword} :auto])
+(mr/def ::test-binning-spec
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :strategy)}
+   [:default [:map {:closed true}
+              [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :default]]]]
+   [:num-bins [:map {:closed true}
+               [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :num-bins]]
+               [:num-bins [:ref ::lib.schema.binning/num-bins]]]]
+   [:bin-width [:map {:closed true}
+                [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :bin-width]]
+                [:bin-width [:ref ::lib.schema.binning/bin-width]]]]])
 
-(mr/def ::test-bin-count-bucket-spec
+(mr/def ::test-binning-bucket-spec
   [:map
-   [:bins {:optional true} [:maybe [:or ::lib.schema.binning/num-bins ::test-auto-bin-spec]]]])
-
-(mr/def ::test-bin-width-bucket-spec
-  [:map
-   [:bin-width {:optional true} [:maybe [:or ::lib.schema.binning/bin-width ::test-auto-bin-spec]]]])
+   [:binning {:optional true} [:maybe [:ref ::test-binning-spec]]]])
 
 (mr/def ::test-column-with-binning-spec
   [:merge
    ::test-column-spec
    ::test-temporal-bucket-spec
-   ::test-bin-count-bucket-spec
-   ::test-bin-width-bucket-spec])
+   ::test-binning-bucket-spec])
 
 (mr/def ::test-breakout-spec
   [:ref ::test-column-with-binning-spec])
@@ -117,6 +123,7 @@
   [:map {:closed true}
    [:source     [:ref ::test-source-spec]]
    [:strategy   ::lib.schema.join/strategy]
+   [:alias      {:optional true} [:maybe ::lib.schema.join/alias]]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
 (mr/def ::test-join-source-spec

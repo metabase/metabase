@@ -7,16 +7,14 @@
   representations and coding agents pass names and entity ids precisely
   because numeric ids don't travel.
 
-  A *scope* is what references resolve to on this instance: the concrete,
-  permission-filtered sets of row ids that bound what fetching selects for the
-  current user. Resolution:
+  A *scope* is what references resolve to on this instance: the concrete
+  sets of row ids that bound what fetching selects. The schema is for
+  superusers, so nothing is checked against the caller. Resolution:
 
-  - filters to what the current user can read;
   - expands collection references to include their descendants;
   - distinguishes nil (no reference given: unscoped) from the empty set
     (references resolved to nothing: match nothing);
-  - throws a 404 naming the collection references that don't resolve —
-    missing and unreadable are deliberately indistinguishable — while
+  - throws a 404 naming the collection references that don't resolve, while
     database references that don't resolve yield an empty scope, and
     therefore an empty schema rather than an error.
 
@@ -27,7 +25,6 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -43,7 +40,7 @@
   "librarylibrarymetrics")
 
 (defn database-ids-for-ref
-  "Returns readable database ids matching a typed database reference.
+  "Returns the database ids matching a typed database reference.
 
   An id matches at most one database. Database names are not unique, so a
   name reference can genuinely match several databases — currently their
@@ -52,14 +49,8 @@
   (when database-ref
     (let [{:keys [id name]} database-ref]
       (if id
-        (let [database (typed-schemas.db/database id)]
-          (if (and database (mi/can-read? database))
-            #{id}
-            #{}))
-        (->> (typed-schemas.db/databases-named name)
-             (filter mi/can-read?)
-             (map :id)
-             set)))))
+        (if (typed-schemas.db/database id) #{id} #{})
+        (into #{} (map :id) (typed-schemas.db/databases-named name))))))
 
 (defn- not-found!
   [collection-refs]
@@ -69,19 +60,16 @@
                    :collection-refs (vec collection-refs)})))
 
 (defn- resolve-collection-refs!
-  "Batch-resolves collection references into readable collection rows, in ref
-  order.
+  "Batch-resolves collection references into collection rows, in ref order.
 
   Throws a 404 naming every reference that does not resolve to a collection
-  satisfying `usable-collection?` that the current user can read; missing and
-  unreadable references are deliberately indistinguishable."
+  satisfying `usable-collection?`."
   [collection-refs usable-collection?]
   (let [ids        (into #{} (keep :id) collection-refs)
         entity-ids (into #{} (keep :entity-id) collection-refs)
         usable?    (fn [collection]
                      (and collection
-                          (usable-collection? collection)
-                          (mi/can-read? collection)))
+                          (usable-collection? collection)))
         by-id      (when (seq ids)
                      (into {} (map (juxt :id identity))
                            (typed-schemas.db/collections ids)))
@@ -110,7 +98,7 @@
             (collection/descendants-flat-for collections)))))
 
 (def LibraryScope
-  "A resolved library scope: the readable library collection tree, expanded to
+  "A resolved library scope: the library collection tree, expanded to
   descendants and classified by collection type. `:data-collection-ids` bound
   published table selection; `:metric-collection-ids` bound metric selection."
   [:map {:closed true}

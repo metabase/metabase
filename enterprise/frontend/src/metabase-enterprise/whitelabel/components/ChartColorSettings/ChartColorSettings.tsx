@@ -6,15 +6,10 @@ import _ from "underscore";
 import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
-import { Button, Group } from "metabase/ui";
+import { Box, Button, Flex, Group } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 
-import {
-  TableBody,
-  TableBodyCell,
-  TableBodyRow,
-  TableFooter,
-} from "./ChartColorSettings.styled";
+import S from "./ChartColorSettings.module.css";
 import {
   getAutoChartColors,
   getChartColorGroups,
@@ -28,7 +23,7 @@ export interface ChartColorSettingsProps {
   onChange: (colors: Record<string, string>) => void;
 }
 
-const ChartColorSettings = ({
+export const ChartColorSettings = ({
   colors,
   colorPalette,
   onChange,
@@ -100,9 +95,9 @@ const ChartColorTable = ({
 
   return (
     <div>
-      <TableBody>
+      <Box className={S.bodyBorder}>
         {colorGroups.map((colorGroup, index) => (
-          <TableBodyRow key={index}>
+          <Flex key={index} className={S.rowDivider}>
             {colorGroup.map((colorName) => (
               <ChartColorCell
                 key={colorName}
@@ -112,10 +107,10 @@ const ChartColorTable = ({
                 onChange={onChange}
               />
             ))}
-          </TableBodyRow>
+          </Flex>
         ))}
-      </TableBody>
-      <TableFooter>
+      </Box>
+      <Box className={S.footerBorder} px="xl" py="lg">
         <Group gap="sm">
           <Button onClick={onGenerate}>{t`Generate chart colors`}</Button>
           {hasCustomColors && (
@@ -133,7 +128,7 @@ const ChartColorTable = ({
             confirmButtonText={t`Reset`}
           />
         )}
-      </TableFooter>
+      </Box>
     </div>
   );
 };
@@ -159,16 +154,13 @@ const ChartColorCell = memo(function ChartColorCell({
   );
 
   return (
-    <TableBodyCell>
+    <Box className={S.colorCell} flex="1 1 auto" px="xl" py="lg">
       <ColorPicker
         value={color ?? originalColor}
         placeholder={t`Auto`}
         isAuto={color == null}
         onChange={handleChange}
       />
-    </TableBodyCell>
+    </Box>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ChartColorSettings;

@@ -16,7 +16,7 @@ import {
 const { H } = cy;
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const APP_NAME = "legacy-permission-test";
+const APP_NAME = "good";
 
 // Exercise real queries: preserving the permission graph alone does not prove that data still loads.
 describe("scenarios > data apps > legacy view data permissions", () => {
@@ -112,9 +112,8 @@ function assertAccessSurvivesAppMembership() {
   );
 
   cy.signInAsAdmin();
-  cy.request<DataApp>("POST", `/api/apps/${APP_NAME}/draft`)
-    .its("body")
-    .as("app");
+  H.pullExampleDataApps();
+  cy.request<DataApp>(`/api/apps/${APP_NAME}`).its("body").as("app");
 
   cy.log("assign the no data user to the data app group");
   cy.get<DataApp>("@app").then(({ permission_group_id }) => {

@@ -13,7 +13,8 @@ type MoveToTrashEventDetail =
   | "table"
   | "transform"
   | "measure"
-  | "exploration";
+  | "exploration"
+  | "action";
 
 type MoveToTrashTriggeredFrom =
   | "collection"
