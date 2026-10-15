@@ -474,12 +474,14 @@
    [:card            {:optional true} [:maybe [:merge
                                                ::queries.schema/card.update
                                                [:map {:closed true}
-                                                [:id                ms/PositiveInt]
+                                                [:id                     ms/PositiveInt]
                                                 ;; a metric's Card row describes its query on the way out of the database
-                                                [:query_description {:optional true} [:maybe :string]]
-                                                [:created_at        {:optional true} RowTimestamp]
-                                                [:updated_at        {:optional true} RowTimestamp]
-                                                [:last_used_at      {:optional true} RowTimestamp]]]]]
+                                                [:query_description      {:optional true} [:maybe :string]]
+                                                [:created_at             {:optional true} RowTimestamp]
+                                                [:updated_at             {:optional true} RowTimestamp]
+                                                [:last_used_at           {:optional true} RowTimestamp]
+                                                [:cache_invalidated_at   {:optional true} RowTimestamp]
+                                                [:initially_published_at {:optional true} RowTimestamp]]]]]
    [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once       {:optional true} :boolean]
    [:disable_links   {:optional true} [:maybe :boolean]]
