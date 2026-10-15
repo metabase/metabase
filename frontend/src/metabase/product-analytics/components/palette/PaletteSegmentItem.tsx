@@ -9,6 +9,8 @@ import S from "./PaletteSegmentItem.module.css";
 
 type PaletteSegmentItemProps = {
   segment: PaletteSegment;
+  /** Makes a click use the segment, as a drop would. */
+  onSelect?: () => void;
   onSaveDraft?: () => void;
   onDiscardDraft?: () => void;
 };
@@ -16,18 +18,35 @@ type PaletteSegmentItemProps = {
 /** A segment in the palette, dragged by its whole row. */
 export const PaletteSegmentItem = ({
   segment,
+  onSelect,
   onSaveDraft,
   onDiscardDraft,
 }: PaletteSegmentItemProps) => {
-  const { dragging, startDrag, endDrag } = useSegmentDrag();
+  const { dragging, hovering, startDrag, endDrag, setHovering } =
+    useSegmentDrag();
   const isDragging = dragging?.key === segment.key;
 
   return (
     <Group
       className={S.item}
+      role={onSelect !== undefined ? "button" : undefined}
+      tabIndex={onSelect !== undefined ? 0 : undefined}
       data-status={segment.status}
       data-dragging={isDragging}
+      data-selectable={onSelect !== undefined}
       draggable
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (onSelect !== undefined && event.key === "Enter") {
+          onSelect();
+        }
+      }}
+      onMouseEnter={() => setHovering(segment)}
+      onMouseLeave={() => {
+        if (hovering?.key === segment.key) {
+          setHovering(null);
+        }
+      }}
       gap="xs"
       wrap="nowrap"
       pl="xs"
@@ -35,7 +54,10 @@ export const PaletteSegmentItem = ({
       py="xs"
       bdrs="sm"
       onDragStart={(event) => startDrag(segment, event)}
-      onDragEnd={endDrag}
+      onDragEnd={() => {
+        endDrag();
+        setHovering(null);
+      }}
     >
       <Box c="text-tertiary" display="flex" style={{ flexShrink: 0 }}>
         <Icon name="grabber" size={12} />

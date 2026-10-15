@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -12,11 +12,16 @@ import type { Card, ConcreteTableId } from "metabase-types/api";
 import { pickSettingsForKind } from "../analyses/config";
 import type { AnalysisSettingsByKind } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
+import { useDrillActions } from "../drills/use-drill-actions";
+import { useDrillQueries } from "../drills/use-drill-queries";
+import { type AnalysisFilters, withPeopleFilter } from "../filters";
 import { setLastTableId } from "../last-table";
 import { SegmentDragProvider } from "../segments/drag-context";
 import type { PaletteSegment } from "../segments/types";
 import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
+import { grainLabel } from "../sql/compile/grain";
+import type { DrillPoint } from "../sql/compose";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
@@ -25,7 +30,10 @@ import { useSaveAnalysis } from "../use-save-analysis";
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisTabs } from "./AnalysisTabs";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { FilterPills } from "./FilterPills";
 import { SettingsPanel } from "./SettingsPanel";
+import { CreateSegmentModal } from "./drills/CreateSegmentModal";
+import { MembersModal } from "./drills/MembersModal";
 import { SegmentPalette } from "./palette/SegmentPalette";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
@@ -60,7 +68,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const navigate = useNavigate();
   const isNew = savedSettings === undefined;
   const [isPaletteOpen, setIsPaletteOpen] = useState(isNew);
-  const [peopleFilters, setPeopleFilters] = useState<PaletteSegment[]>([]);
   const {
     stored,
     hasUnsavedChanges,
@@ -73,6 +80,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    computed,
+    spec,
     widgets,
     missing,
     display,
@@ -83,6 +92,25 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     tableId,
     stored,
     onChangeSettings,
+  });
+  const drillQueries = useDrillQueries({
+    spec,
+    compiledBase: query.compiledBase,
+    table,
+    usersTable,
+    settings: computed,
+  });
+  const describePoint = useCallback(
+    (point: DrillPoint) => config.describePoint?.(computed, point) ?? null,
+    [config, computed],
+  );
+  const drillActions = useDrillActions({
+    tableId,
+    stored,
+    settings: computed,
+    countColumn: grainLabel(computed.counting),
+    describePoint,
+    queries: drillQueries,
   });
 
   useEffect(() => {
@@ -124,16 +152,10 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   });
   const { isPickerOpen, closePicker } = useAddToDashboardToast();
 
+  const handleFiltersChange = (filters: AnalysisFilters) =>
+    widgets.find((widget) => widget.id === "filters")?.onChange(filters);
   const handleAddPeopleFilter = (segment: PaletteSegment) =>
-    setPeopleFilters((current) =>
-      current.some((item) => item.key === segment.key)
-        ? current
-        : [...current, segment],
-    );
-  const handleRemovePeopleFilter = (segment: PaletteSegment) =>
-    setPeopleFilters((current) =>
-      current.filter((item) => item.key !== segment.key),
-    );
+    handleFiltersChange(withPeopleFilter(computed.filters, segment));
 
   return (
     <SegmentDragProvider>
@@ -155,6 +177,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             isTableLoading={isTableLoading}
             tableError={tableError}
             onTableChange={onTableChange}
+            onSelectPeopleSegment={handleAddPeopleFilter}
           />
         )}
         <Stack flex={1} miw={0} h="100%" gap={0}>
@@ -180,13 +203,16 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               sql={query.sql}
               canSave={canSave}
               isSaveDisabled={isSaveDisabled}
-              peopleFilters={peopleFilters}
               isPaletteOpen={isPaletteOpen}
               onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
               onPanelChange={setPanel}
               onSave={handleSave}
               onAddPeopleFilter={handleAddPeopleFilter}
-              onRemovePeopleFilter={handleRemovePeopleFilter}
+            />
+            <FilterPills
+              value={computed.filters}
+              table={table}
+              onChange={handleFiltersChange}
             />
           </Stack>
           <Group
@@ -221,6 +247,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               onOpenSetup={
                 panel !== "setup" ? () => setPanel("setup") : undefined
               }
+              clickActionsMode={drillActions.mode}
             />
           </Group>
         </Stack>
@@ -243,9 +270,28 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           onChangeLocation={navigate}
         />
       )}
+      {drillActions.modal?.type === "members" && (
+        <MembersModal
+          drill={drillActions.modal.drill}
+          queries={drillQueries}
+          onClose={drillActions.closeModal}
+        />
+      )}
+      {drillActions.modal?.type === "segment" && (
+        <CreateSegmentModal
+          drill={drillActions.modal.drill}
+          settings={computed}
+          table={table}
+          queries={drillQueries}
+          toCohort={drillActions.toCohort}
+          onClose={drillActions.closeModal}
+        />
+      )}
       <LeaveRouteConfirmModal
         isEnabled={hasUnsavedChanges}
-        isLocationAllowed={isLocationAllowed}
+        isLocationAllowed={() =>
+          isLocationAllowed() || drillActions.isDrilling()
+        }
       />
     </SegmentDragProvider>
   );

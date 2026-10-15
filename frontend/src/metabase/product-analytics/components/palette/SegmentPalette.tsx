@@ -47,6 +47,8 @@ type SegmentPaletteProps = {
   tableError: string | undefined;
   /** Absent when the table is fixed, as it is for a saved analysis. */
   onTableChange?: (tableId: ConcreteTableId) => void;
+  /** A click on a people segment, which adds it as a filter. */
+  onSelectPeopleSegment: (segment: PaletteSegment) => void;
 };
 
 /**
@@ -61,6 +63,7 @@ export const SegmentPalette = ({
   isTableLoading,
   tableError,
   onTableChange,
+  onSelectPeopleSegment,
 }: SegmentPaletteProps) => {
   const peopleTitle = getPeopleTitle(usersTable);
 
@@ -107,6 +110,7 @@ export const SegmentPalette = ({
             table={usersTable?.table}
             samples={usersTable === undefined ? getSamplePeopleSegments() : []}
             emptyMessage={t`No segments on this table yet.`}
+            onSelect={onSelectPeopleSegment}
           />
         </Stack>
       </ScrollArea>
@@ -126,6 +130,8 @@ type PaletteSectionProps = {
   table: Table | undefined;
   samples?: SamplePaletteSegment[];
   emptyMessage: string;
+  /** When given, clicking a segment uses it. */
+  onSelect?: (segment: PaletteSegment) => void;
 };
 
 type ModalState = { draft?: SegmentDraft } | null;
@@ -136,6 +142,7 @@ const PaletteSection = ({
   table,
   samples = [],
   emptyMessage,
+  onSelect,
 }: PaletteSectionProps) => {
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
@@ -166,6 +173,9 @@ const PaletteSection = ({
         <PaletteSegmentItem
           key={segment.key}
           segment={segment}
+          onSelect={
+            onSelect !== undefined ? () => onSelect(segment) : undefined
+          }
           onSaveDraft={() =>
             setModal({ draft: drafts.find((d) => d.id === segment.key) })
           }

@@ -1,9 +1,9 @@
 import type { AnalysisSpec, PathsSpec } from "../../spec/types";
 import { lit } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
-import type { Cte, QueryPlan } from "../compose";
+import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
-import { scopedEvents } from "./base";
+import { pointString, scopedEvents } from "./base";
 
 const STEP_NAME_SQL =
   "if(event_name != '' AND event_name IS NOT NULL, event_name, url_path)";
@@ -235,7 +235,21 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       ? "count() AS weight"
       : "uniqExact(actor) AS weight";
 
+  // A node click carries one label, an edge click both ends.
+  const members = (point: DrillPoint): string | null => {
+    const source = pointString(point.source);
+    const target = pointString(point.target);
+    if (source !== null && target !== null) {
+      return `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(source)} AND target = ${lit(target)}`;
+    }
+    const node = source ?? target;
+    return node === null
+      ? null
+      : `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(node)} OR target = ${lit(node)}`;
+  };
+
   return {
+    members,
     ctes,
     select: [
       "SELECT",

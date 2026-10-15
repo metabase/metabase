@@ -1,12 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
-import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { ActionIcon, Box, Button, Group, Icon, Tooltip } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
-import { useSegmentDropTarget } from "../segments/drag-context";
+import { useSegmentDrag, useSegmentDropTarget } from "../segments/drag-context";
 import { isPeopleSegment } from "../segments/to-event-definition";
 import type { PaletteSegment } from "../segments/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
@@ -28,14 +26,12 @@ type AnalysisToolbarProps = {
   sql: string | null;
   canSave: boolean;
   isSaveDisabled: boolean;
-  /** Prototype: people segments dropped on the filter, not applied yet. */
-  peopleFilters: PaletteSegment[];
   isPaletteOpen: boolean;
   onTogglePalette: () => void;
   onPanelChange: (panel: AnalysisPanel | null) => void;
   onSave: () => void;
+  /** A people segment dropped on the counting button. */
   onAddPeopleFilter: (segment: PaletteSegment) => void;
-  onRemovePeopleFilter: (segment: PaletteSegment) => void;
 };
 
 /**
@@ -49,20 +45,13 @@ export const AnalysisToolbar = ({
   sql,
   canSave,
   isSaveDisabled,
-  peopleFilters,
   isPaletteOpen,
   onTogglePalette,
   onPanelChange,
   onSave,
   onAddPeopleFilter,
-  onRemovePeopleFilter,
 }: AnalysisToolbarProps) => {
-  const [sendToast] = useToast();
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
-  const { dropProps } = useSegmentDropTarget({
-    accepts: isPeopleSegment,
-    onDrop: onAddPeopleFilter,
-  });
 
   const togglePanel = (target: AnalysisPanel) =>
     onPanelChange(panel === target ? null : target);
@@ -110,32 +99,11 @@ export const AnalysisToolbar = ({
             )}
           </Button.Group>
           <Button.Group>
-            <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            <Box className={S.filterDrop} {...dropProps}>
-              <Button
-                variant="default"
-                leftSection={<Icon name="filter" />}
-                onClick={() =>
-                  sendToast({
-                    message: t`Drag a customer segment here to filter who's included.`,
-                    timeout: 3000,
-                  })
-                }
-              >
-                {t`Filter`}
-              </Button>
-            </Box>
+            <PeopleDropTarget onDrop={onAddPeopleFilter}>
+              <ToolbarSetting setting={findSetting(widgets, "counting")} />
+            </PeopleDropTarget>
+            <ToolbarSetting setting={findSetting(widgets, "filters")} />
           </Button.Group>
-          {peopleFilters.map((segment) => (
-            <Tooltip
-              key={segment.key}
-              label={t`Prototype: this filter isn't applied to the query yet.`}
-            >
-              <FilterPill onRemoveClick={() => onRemovePeopleFilter(segment)}>
-                {segment.name}
-              </FilterPill>
-            </Tooltip>
-          ))}
         </Group>
 
         <Group gap="sm">
@@ -158,5 +126,35 @@ export const AnalysisToolbar = ({
       </Group>
       <SqlModal sql={sql} opened={sqlOpened} onClose={closeSql} />
     </>
+  );
+};
+
+type PeopleDropTargetProps = {
+  onDrop: (segment: PaletteSegment) => void;
+  children: React.ReactNode;
+};
+
+/**
+ * Wraps the counting button so it lights up while a people segment is
+ * hovered or dragged in the palette, and takes the drop.
+ */
+const PeopleDropTarget = ({ onDrop, children }: PeopleDropTargetProps) => {
+  const { hovering } = useSegmentDrag();
+  const { isActive, dropProps } = useSegmentDropTarget({
+    accepts: isPeopleSegment,
+    onDrop,
+  });
+  const isHinted = isActive || (hovering !== null && isPeopleSegment(hovering));
+
+  return (
+    <Tooltip
+      label={t`Drop a customer segment here to filter who's counted`}
+      opened={isHinted}
+      position="bottom"
+    >
+      <Box className={S.peopleDrop} data-hinted={isHinted} {...dropProps}>
+        {children}
+      </Box>
+    </Tooltip>
   );
 };

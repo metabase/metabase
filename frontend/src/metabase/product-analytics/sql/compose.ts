@@ -16,10 +16,18 @@ export interface Cte {
   note?: string;
 }
 
+/** A clicked point on an analysis's chart: its result columns' values, by name. */
+export type DrillPoint = Record<string, string | number | boolean | null>;
+
 export interface QueryPlan {
   ctes: Cte[];
   select: string;
   warnings: string[];
+  /**
+   * A SELECT, over the same CTEs, of the `actor`s counted in a clicked point.
+   * `null` when the point can't be traced back to actors.
+   */
+  members?: (point: DrillPoint) => string | null;
 }
 
 export class CycleError extends Error {}

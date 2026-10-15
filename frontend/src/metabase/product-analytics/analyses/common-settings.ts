@@ -4,9 +4,12 @@ import type { ColumnRole, ColumnRoles } from "../columns";
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { CountingMenu } from "../components/toolbar/CountingMenu";
 import { DateRangeButton } from "../components/toolbar/DateRangeButton";
+import { FilterButton } from "../components/toolbar/FilterButton";
 import { GranularityButton } from "../components/toolbar/GranularityButton";
 import { DEFAULT_DATE_RANGE, parseDateRange } from "../date-range";
+import { NO_FILTERS, isAnalysisFilters } from "../filters";
 import type { SettingDefinition } from "../settings/types";
+import { withWidgetProps } from "../settings/with-widget-props";
 import type { Grain, Granularity } from "../spec/types";
 
 import {
@@ -107,6 +110,13 @@ export const commonSettings = ({
     readDependencies: ["columns.person", "columns.session", "columns.event_id"],
   },
   granularity: granularitySetting(granularity),
+  filters: withWidgetProps({
+    getSection: () => "toolbar",
+    widget: FilterButton,
+    getDefault: () => NO_FILTERS,
+    isValid: (value) => isAnalysisFilters(value),
+    getProps: (context) => ({ table: context.table }),
+  }),
   "columns.timestamp": columnRoleSetting(
     "timestamp",
     () => t`Event time`,

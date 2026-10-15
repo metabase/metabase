@@ -15,6 +15,12 @@ import {
 import { parseDateRange } from "./date-range";
 import { readEventQuery } from "./events/read-event-query";
 import type { AllocatedEvent, EventDefinition } from "./events/types";
+import {
+  type AnalysisFilters,
+  COLUMN_ROLE_FOR_GRAIN,
+  cohortFilterClause,
+  readFilterQuery,
+} from "./filters";
 import { findColumn, findJoinedColumn } from "./find-column";
 
 const STAGE = -1;
@@ -48,6 +54,7 @@ export type BaseQueryInput = {
   extraColumns: readonly ExtraColumn[];
   /** Needed when an extra column comes from the users table. */
   usersTable: UsersTableLink | undefined;
+  filters: AnalysisFilters;
 };
 
 export type BuiltBaseQuery = {
@@ -56,7 +63,7 @@ export type BuiltBaseQuery = {
   extraColumns: ProjectedColumn[];
 };
 
-const getTableMetadata = (
+export const getTableMetadata = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
 ): Lib.TableMetadata | Lib.CardMetadata => {
@@ -78,6 +85,62 @@ const findJoinStrategy = (
     throw new Error(`Join strategy ${shortName} is not available`);
   }
   return strategy;
+};
+
+/** Adds the filter query's filters, and limits each cohort to its ids. */
+const applyFilters = (
+  metadataProvider: Lib.MetadataProvider,
+  query: Lib.Query,
+  filters: AnalysisFilters,
+  columns: ColumnRoles,
+): Lib.Query => {
+  const filterQuery = readFilterQuery(metadataProvider, filters);
+  if (filters.query !== null && filterQuery === null) {
+    throw new Error(t`The filters can't be read.`);
+  }
+  let filtered = query;
+  for (const filter of filterQuery ? Lib.filters(filterQuery, STAGE) : []) {
+    filtered = Lib.filter(filtered, STAGE, filter);
+  }
+  for (const cohort of filters.cohorts) {
+    const columnName = columns[COLUMN_ROLE_FOR_GRAIN[cohort.grain]];
+    if (columnName === null) {
+      throw new Error(
+        t`Pick a column for “${cohort.label}” in Advanced settings.`,
+      );
+    }
+    // An empty cohort matches nothing, rather than everything.
+    const ids = cohort.ids.length > 0 ? cohort.ids : [""];
+    filtered = Lib.filter(
+      filtered,
+      STAGE,
+      cohortFilterClause(findColumn(filtered, columnName), { ...cohort, ids }),
+    );
+  }
+  return filtered;
+};
+
+export type FilteredQueryInput = Pick<
+  BaseQueryInput,
+  "dateRange" | "columns" | "filters"
+>;
+
+/** A query on the event table, limited to the date range and the filters. */
+export const buildFilteredQuery = (
+  metadataProvider: Lib.MetadataProvider,
+  tableMetadata: Lib.TableMetadata | Lib.CardMetadata,
+  { dateRange, columns, filters }: FilteredQueryInput,
+): Lib.Query => {
+  let query = Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
+  const dateFilter = parseDateRange(dateRange);
+  if (dateFilter !== undefined && columns.timestamp !== null) {
+    query = Lib.filter(
+      query,
+      STAGE,
+      getDateFilterClause(findColumn(query, columns.timestamp), dateFilter),
+    );
+  }
+  return applyFilters(metadataProvider, query, filters, columns);
 };
 
 /**
@@ -144,7 +207,14 @@ const joinUsersTable = (
 export const buildBaseQuery = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
-  { dateRange, columns, events, extraColumns, usersTable }: BaseQueryInput,
+  {
+    dateRange,
+    columns,
+    events,
+    extraColumns,
+    usersTable,
+    filters,
+  }: BaseQueryInput,
 ): BuiltBaseQuery => {
   const tableMetadata = getTableMetadata(metadataProvider, tableId);
   if (columns.timestamp === null) {
@@ -154,16 +224,12 @@ export const buildBaseQuery = (
     throw new Error(t`Pick a person column in Advanced settings.`);
   }
 
-  let query = Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
-
-  const dateFilter = parseDateRange(dateRange);
-  if (dateFilter !== undefined) {
-    query = Lib.filter(
-      query,
-      STAGE,
-      getDateFilterClause(findColumn(query, columns.timestamp), dateFilter),
-    );
-  }
+  // Cohorts are applied to the compiled SQL instead; see `BaseColumns`.
+  let query = buildFilteredQuery(metadataProvider, tableMetadata, {
+    dateRange,
+    columns,
+    filters: { ...filters, cohorts: [] },
+  });
 
   const usersColumns = extraColumns.filter(({ from }) => from === "users");
   let usersJoinAlias: string | undefined;

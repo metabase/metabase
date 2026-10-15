@@ -90,3 +90,16 @@ export const splitCols = (block: BaseBlock): string[] =>
 
 export const splitGroup = (block: BaseBlock): string =>
   block.splitColumn ? `${block.splitColumn}, ` : "";
+
+/** Splits a numbered step label like "2. Signed up", as funnels and paths label steps. */
+export const parseStepLabel = (
+  value: unknown,
+): { step: number; name: string } | null => {
+  const match =
+    typeof value === "string" ? /^(\d+)\. (.*)$/s.exec(value) : null;
+  return match ? { step: Number(match[1]), name: match[2] } : null;
+};
+
+/** A clicked point's value as a string, or `null` when it has none. */
+export const pointString = (value: unknown): string | null =>
+  typeof value === "string" || typeof value === "number" ? String(value) : null;

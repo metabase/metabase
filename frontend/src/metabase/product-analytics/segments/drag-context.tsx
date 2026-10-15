@@ -13,14 +13,19 @@ import type { PaletteSegment } from "./types";
 
 type SegmentDragState = {
   dragging: PaletteSegment | null;
+  /** The palette item under the pointer, so targets can hint before a drag. */
+  hovering: PaletteSegment | null;
   startDrag: (segment: PaletteSegment, event: DragEvent<HTMLElement>) => void;
   endDrag: () => void;
+  setHovering: (segment: PaletteSegment | null) => void;
 };
 
 const SegmentDragContext = createContext<SegmentDragState>({
   dragging: null,
+  hovering: null,
   startDrag: () => undefined,
   endDrag: () => undefined,
+  setHovering: () => undefined,
 });
 
 const DATA_TYPE = "application/x-metabase-segment";
@@ -32,6 +37,7 @@ const DATA_TYPE = "application/x-metabase-segment";
  */
 export const SegmentDragProvider = ({ children }: { children: ReactNode }) => {
   const [dragging, setDragging] = useState<PaletteSegment | null>(null);
+  const [hovering, setHovering] = useState<PaletteSegment | null>(null);
 
   const startDrag = useCallback(
     (segment: PaletteSegment, event: DragEvent<HTMLElement>) => {
@@ -45,8 +51,8 @@ export const SegmentDragProvider = ({ children }: { children: ReactNode }) => {
   const endDrag = useCallback(() => setDragging(null), []);
 
   const value = useMemo(
-    () => ({ dragging, startDrag, endDrag }),
-    [dragging, startDrag, endDrag],
+    () => ({ dragging, hovering, startDrag, endDrag, setHovering }),
+    [dragging, hovering, startDrag, endDrag],
   );
 
   return (

@@ -16,6 +16,10 @@
   cursor: grabbing;
 }
 
+.item[data-selectable="true"] {
+  cursor: pointer;
+}
+
 .item[data-status="draft"] {
   border-style: dashed;
 }

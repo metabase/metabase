@@ -15,6 +15,7 @@ import {
   Title,
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
   CardDisplayType,
   Dataset,
@@ -24,7 +25,6 @@ import type {
 } from "metabase-types/api";
 
 import type { MissingSetting } from "../analyses/types";
-import { PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE } from "../click-actions-mode";
 
 const SYNTHETIC_CARD_ID = -1;
 
@@ -42,6 +42,7 @@ type AnalysisResultProps = {
   setupLabel: string;
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
+  clickActionsMode: ClickActionsMode;
 };
 
 export const AnalysisResult = ({
@@ -56,6 +57,7 @@ export const AnalysisResult = ({
   missing,
   setupLabel,
   onOpenSetup,
+  clickActionsMode,
 }: AnalysisResultProps) => {
   const [vizWarnings, setVizWarnings] = useState<string[]>([]);
   const rawSeries: RawSeries | null =
@@ -110,7 +112,7 @@ export const AnalysisResult = ({
               <Visualization
                 rawSeries={rawSeries}
                 isQueryBuilder={false}
-                mode={PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE}
+                mode={clickActionsMode}
                 onUpdateWarnings={setVizWarnings}
                 onChangeCardAndRun={noop}
               />
