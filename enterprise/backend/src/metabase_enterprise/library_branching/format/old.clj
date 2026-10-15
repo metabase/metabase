@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
    [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
+   [metabase-enterprise.library-branching.format.old.table-item :as old.table-item]
    [metabase-enterprise.library-branching.format.tree :as tree]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +32,9 @@
    "Field"              #'old.published-table/decode-field
    "FieldUserSettings"  #'old.published-table/decode-field-settings
    "Glossary"           #'old.glossary/decode
+   "Measure"            #'old.table-item/decode-measure
    "NativeQuerySnippet" #'old.snippet/decode
+   "Segment"            #'old.table-item/decode-segment
    "Table"              #'old.published-table/decode-table
    "TableUserSettings"  #'old.published-table/decode-table-settings})
 

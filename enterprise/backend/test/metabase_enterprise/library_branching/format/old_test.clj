@@ -402,6 +402,37 @@
                         :files [0 1]}]}
            (decode [table-settings-yaml table-settings-yaml])))))
 
+;;; ------------------------------------------------ Table items -------------------------------------------------------
+
+(def ^:private segment-yaml
+  (str "name: Large\nentity_id: LargeSegmentXXXXXXXXX\ndescription: Big ones.\narchived: false\n"
+       "created_at: '2024-08-28T09:46:18.671622Z'\ncreator_id: rasta@metabase.com\n"
+       "definition:\n  database: test-db\n  lib/type: mbql/query\n  stages:\n  - lib/type: mbql.stage/mbql\n"
+       "    source-table: [test-db, null, Test Table]\n    filters:\n    - ['>', {}, [field, {}, [test-db, null, Test Table, F1]], 1]\n"
+       "serdes/meta:\n- model: Segment\n"))
+
+(deftest table-items-test
+  (testing "a segment file has no table: the place is the source table of the definition"
+    (is (= {:kind  :segment
+            :name  "Large"
+            :place orders
+            :attrs {:description "Big ones."
+                    :definition  {:database "test-db"
+                                  :lib/type "mbql/query"
+                                  :stages   [{:lib/type     "mbql.stage/mbql"
+                                              :source-table orders
+                                              :filters      [[">" {} ["field" {} (conj orders "F1")] 1]]}]}}}
+           (dissoc (get (snapshot-of [segment-yaml]) "LargeSegmentXXXXXXXXX") :refs))))
+  (testing "a measure file, the same"
+    (is (= orders
+           (get-in (snapshot-of [(str "name: Count\nentity_id: CountMeasureXXXXXXXXX\n"
+                                      "definition:\n  database: test-db\n  lib/type: mbql/query\n  stages:\n"
+                                      "  - lib/type: mbql.stage/mbql\n    source-table: [test-db, null, Test Table]\n"
+                                      "    aggregation:\n    - [count, {}]\nserdes/meta:\n- model: Measure\n")])
+                   ["CountMeasureXXXXXXXXX" :place]))))
+  (testing "an archived segment is not in the snapshot"
+    (is (= {} (snapshot-of [(str/replace segment-yaml "archived: false" "archived: true")])))))
+
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 
 (deftest claims-decode-test

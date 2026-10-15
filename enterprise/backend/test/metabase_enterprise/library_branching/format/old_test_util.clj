@@ -75,6 +75,28 @@
    :creator_id  "crowberto@metabase.com"
    :serdes/meta [{:model "Glossary"}]})
 
+(defn segment-doc
+  "The old document of segment `id`: no table, which Metabase derives from the definition."
+  [id {:keys [name attrs]}]
+  (merge {:name        name
+          :entity_id   id
+          :created_at  created-at
+          :creator_id  "crowberto@metabase.com"
+          :archived    false
+          :serdes/meta [{:model "Segment"}]}
+         attrs))
+
+(defn measure-doc
+  "The old document of measure `id`: no table, which Metabase derives from the definition."
+  [id {:keys [name attrs]}]
+  (merge {:name        name
+          :entity_id   id
+          :created_at  created-at
+          :creator_id  "crowberto@metabase.com"
+          :archived    false
+          :serdes/meta [{:model "Measure"}]}
+         attrs))
+
 (def ^:private table-flags
   {:description        :description_set
    :caveats            :caveats_set
@@ -136,6 +158,8 @@
                    :metric          [(metric-doc id item)]
                    :snippet         [(snippet-doc id item)]
                    :glossary-term   [(glossary-doc id item)]
+                   :segment         [(segment-doc id item)]
+                   :measure         [(measure-doc id item)]
                    :published-table (cons (table-settings-doc id item)
                                           (for [[field-key settings] (sort-by (comp pr-str key)
                                                                               (flat-fields id (:fields attrs)))]

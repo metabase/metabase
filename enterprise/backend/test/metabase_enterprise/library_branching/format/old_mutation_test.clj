@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.format.old.collection :as old.collection]
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
+   [metabase-enterprise.library-branching.format.old.table-item :as old.table-item]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.test.fixtures :as fixtures]))
 
@@ -104,6 +105,11 @@
     :target `old.published-table/assemble
     :edits  [[:replace '(get table-names table-key) nil]]
     :tests  [#'old-test/display-names-test]}
+   {:name   :table-item-unplaced
+    :doc    "A segment or a measure is at the root level: its place is not the source table of its definition."
+    :target `old.table-item/decode-as
+    :edits  [[:replace '(table-item/source-table (:definition doc)) nil]]
+    :tests  [#'old-test/table-items-test]}
    {:name   :old-format-unread
     :doc    "`claims/decode` does not read the old format, so production cannot pull main before the switch."
     :target `claims/decode
