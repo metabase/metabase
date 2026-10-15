@@ -32,9 +32,9 @@
 
 (defprotocol UniqueKey
   "A kind whose key the app DB keeps unique over all its rows (`snapshot/unique-keys`)."
-  (key-holders [ks k]
-    "The set of identities of the rows of this kind whose key equals `k` by the comparison of the app DB: rows in the
-    trash and rows outside the Library tree included."))
+  (key-holders [ks]
+    "`{k #{identity}}`: for each key `k` of a row of this kind, in its compared form (`snapshot/unique-key`), the
+    identities of the rows with that key: rows in the trash and rows outside the Library tree included."))
 
 (defprotocol Stub
   "A kind whose items can be on a reference cycle: an apply writes a new item of the cycle first as a stub."

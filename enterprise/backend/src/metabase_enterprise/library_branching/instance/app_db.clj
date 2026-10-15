@@ -83,13 +83,16 @@
 
 (defn- ops
   [stores roots]
-  {:current     (fn [kind id] (instance/current (kind-store stores kind id) id))
-   :key-holders (fn [kind k] (instance/key-holders (kind-store stores kind nil) k))
-   :write!      (fn [kind id content] (instance/write! (kind-store stores kind id) id content))
-   :trash!      (fn [kind id] (instance/trash! (kind-store stores kind id) id))
-   :stub        (partial stub stores)
-   :set-base!   set-base!
-   :in-use      (partial in-use/trashed-in-use roots)})
+  ;; The apply checks every key before its first write, so one read of the key holders of a kind serves the whole
+  ;; check.
+  (let [holders (memoize (fn [kind] (instance/key-holders (kind-store stores kind nil))))]
+    {:current     (fn [kind id] (instance/current (kind-store stores kind id) id))
+     :key-holders (fn [kind k] (get (holders kind) k #{}))
+     :write!      (fn [kind id content] (instance/write! (kind-store stores kind id) id content))
+     :trash!      (fn [kind id] (instance/trash! (kind-store stores kind id) id))
+     :stub        (partial stub stores)
+     :set-base!   set-base!
+     :in-use      (partial in-use/trashed-in-use roots)}))
 
 (defn apply-plan!
   "`apply/apply-plan` of `plan` with the kind stores `stores`, in a transaction of [[library-branching.db/do-in-locking-transaction]]

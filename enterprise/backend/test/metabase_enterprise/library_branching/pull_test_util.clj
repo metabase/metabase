@@ -18,11 +18,6 @@
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
-(defn- key-of
-  [{:keys [kind] :as item}]
-  (when-let [path (get snapshot/unique-keys kind)]
-    (get-in item path)))
-
 (defn memory-ops!
   "The item operations of `apply/apply-plan` on the instance state in the volatile `st`, a state of
   [[memory-instance]]."
@@ -36,7 +31,9 @@
    :key-holders (fn [kind k]
                   (let [{:keys [snapshot trash]} @st]
                     (into #{}
-                          (keep (fn [[id item]] (when (and (= kind (:kind item)) (= k (key-of item))) id)))
+                          (keep (fn [[id item]]
+                                  (when (and (= kind (:kind item)) (= k (snapshot/unique-key snapshot/unique-keys item)))
+                                    id)))
                           (concat snapshot trash))))
    :write!    (fn [_kind id {:keys [place] :as content}]
                 (when (contains? (:outside @st) id)

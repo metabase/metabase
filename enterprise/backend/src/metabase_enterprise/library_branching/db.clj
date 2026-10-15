@@ -281,14 +281,11 @@
                  :where  [:= :entity_id [:auto/param entity-id]]
                  :for    [:update]}))
 
-(mu/defn snippet-entity-ids-by-name :- [:sequential :string]
-  "The entity ids of the snippets whose name equals `snippet-name` by the comparison of the app DB, archived or not."
-  [snippet-name :- :string]
-  (into []
-        (keep :entity_id)
-        (t2/query {:select [:entity_id]
-                   :from   [(t2/table-name :model/NativeQuerySnippet)]
-                   :where  [:= :name [:auto/param snippet-name]]})))
+(mu/defn snippet-names :- [:sequential ::row]
+  "`{:entity_id :name}` of every snippet, archived or not."
+  []
+  (t2/query {:select [:entity_id :name]
+             :from   [(t2/table-name :model/NativeQuerySnippet)]}))
 
 (mu/defn insert-snippet! :- ::row
   "Inserts a snippet with the columns `row` through the NativeQuerySnippet model, and returns it."

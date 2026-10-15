@@ -13,6 +13,7 @@
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
    [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]))
@@ -52,9 +53,15 @@
                          #(get (read-snippets [id]) id)))
 
 (defn snippet-key-holders
-  "The entity ids of the snippets named `snippet-name` by the comparison of the app DB, in the trash or not."
-  [snippet-name]
-  (set (library-branching.db/snippet-entity-ids-by-name snippet-name)))
+  "`{k #{entity-id}}`: the entity ids of the snippets, in the trash or not, by the compared form `k` of their names
+  (`snapshot/unique-key`)."
+  []
+  ;; The app DB compares names exactly on Postgres and H2, so a query cannot select the names of one compared form;
+  ;; the fold runs here, over every snippet name.
+  (reduce (fn [acc {:keys [entity_id name]}]
+            (update acc (snapshot/unique-key snapshot/unique-keys {:kind :snippet :name name}) (fnil conj #{}) entity_id))
+          {}
+          (library-branching.db/snippet-names)))
 
 (defn- columns
   "The snippet columns of the attributes `ks` of `attrs`, an absent one at its default, through the imports of the
@@ -125,7 +132,7 @@
     (stub [_ id content refs] (stub-snippet id content refs))
 
     instance/UniqueKey
-    (key-holders [_ k] (snippet-key-holders k))
+    (key-holders [_] (snippet-key-holders))
 
     instance/KindStore
     (read-all [_ ids] (read-snippets ids))

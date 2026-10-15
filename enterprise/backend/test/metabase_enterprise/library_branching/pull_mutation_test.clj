@@ -7,6 +7,7 @@
    [metabase-enterprise.library-branching.apply-test :as apply-test]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.merge-branch-test :as merge-branch-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
@@ -53,6 +54,19 @@
     :target `apply/key-clashes
     :edits  [[:replace '(into #{} (comp (filter :write) (map :id)) plan) '(into #{} (map :id) plan)]]
     :tests  [#'apply-test/apply-keeps-unique-keys-fails-test]}
+   {:name   :raw-key-at-apply
+    :doc    "The key check compares the key of a written item as it is, not in the compared form of validate: a new
+            snippet named \"filter\" takes the key of \"Filter\" in the trash."
+    :target `apply/key-clashes
+    :edits  [[:replace '(snapshot/unique-key snapshot/unique-keys write) '(get-in write (get-in snapshot/unique-keys [kind :path]))]]
+    :tests  [#'apply-test/apply-keeps-unique-keys-fails-test
+             #'apply-test/apply-keeps-unique-keys-test]}
+   {:name   :raw-snippet-key-holders
+    :doc    "The snippet kind gives its key holders by their names as they are, so on an app DB that compares names
+            exactly a new snippet takes the key of a trashed snippet whose name differs in case or accents."
+    :target `kinds.snippet/snippet-key-holders
+    :edits  [[:replace '(snapshot/unique-key snapshot/unique-keys {:kind :snippet :name name}) 'name]]
+    :tests  [#'pull-app-db-test/pull-refuses-a-name-that-differs-only-in-case-or-accents-test]}
    {:name   :trash-of-a-system-item
     :doc    "The apply carries out a trash step of a system item."
     :target `apply/apply-plan

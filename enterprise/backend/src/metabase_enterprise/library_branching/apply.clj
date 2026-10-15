@@ -50,21 +50,24 @@
 
 (defn key-clashes
   "The unique-key findings of the writes of `plan` against the rows that stay: for each write of an item of a kind with
-  a unique key (`snapshot/unique-keys`), each other identity of `(key-holders kind key)` that `plan` does not write, as
-  `{:rule :unique-key :kind kind :key key :ids #{id other}}`. A row that `plan` trashes keeps its key, so it clashes.
-  `key-holders` gives the identities of every row of the kind with the key, the trash and rows outside the Library
-  included."
+  a unique key (`snapshot/unique-keys`), each other identity of `(key-holders kind k)` that `plan` does not write, as
+  `{:rule :unique-key :kind kind :key key :ids #{id other}}`; `k` is the key in its compared form
+  (`snapshot/unique-key`), and `key` the key of the written item as it is. A row that `plan` trashes keeps its key, so
+  it clashes. `key-holders` gives the identities of every row of the kind whose key has the compared form `k`, the
+  trash and rows outside the Library included."
   [key-holders plan]
   (let [written (into #{} (comp (filter :write) (map :id)) plan)]
     (into []
           (mapcat (fn [{:keys [id write]}]
                     (let [kind (:kind write)
-                          path (get snapshot/unique-keys kind)
-                          k    (when path (get-in write path))]
+                          k    (snapshot/unique-key snapshot/unique-keys write)]
                       (when (some? k)
                         (for [other (sort snapshot/compare-identities (key-holders kind k))
                               :when (not (contains? written other))]
-                          {:rule :unique-key :kind kind :key k :ids #{id other}})))))
+                          {:rule :unique-key
+                           :kind kind
+                           :key  (get-in write (get-in snapshot/unique-keys [kind :path]))
+                           :ids  #{id other}})))))
           (filter :write plan))))
 
 (defn- system-trashes
@@ -111,7 +114,7 @@
   default: always nil). `ops`:
 
   - `:current`     `(fn [kind id])`, as in [[check-steps]];
-  - `:key-holders` `(fn [kind key])`, as in [[key-clashes]];
+  - `:key-holders` `(fn [kind k])`, as in [[key-clashes]];
   - `:write!`      `(fn [kind id content])` and `:trash!` `(fn [kind id])`: `instance/write!` and `instance/trash!`;
   - `:stub`        `(fn [kind id content refs])`: the content of a new item without the references `refs`;
   - `:set-base!`   `(fn [expected new digests])`: `instance/set-base!`;
