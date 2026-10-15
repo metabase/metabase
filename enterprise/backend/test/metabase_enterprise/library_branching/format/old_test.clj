@@ -367,6 +367,9 @@
                                      (f2-field-yaml (str "{name: Other name, type: external, entity_id: DimensionF2XXXXXXXXXX,"
                                                          " human_readable_field_id: [test-db, null, Other, NAME]}"))])
                        [orders :attrs :fields :F2 :remapping :field]))))))
+  (testing "two Dimension files of one field are a finding"
+    (is (seq (:findings (decode [table-settings-yaml f2-dimension-yaml
+                                 (str/replace f2-dimension-yaml "Remapped F2" "Other F2")])))))
   (testing "a dimension of another type, or a foreign-key remapping with no target, is a finding"
     (doseq [doc ["name: X\ntype: other\n" "name: X\ntype: external\n"]]
       (is (seq (:findings (decode [table-settings-yaml

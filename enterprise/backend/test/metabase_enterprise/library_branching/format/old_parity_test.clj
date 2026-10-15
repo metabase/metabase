@@ -78,20 +78,18 @@
     (golden/do-with-golden-content
      (fn [golden]
        (let [orders   (some #(when (and (vector? %) (= "ORDERS" (peek %))) %) (keys golden))
-             products (conj (pop orders) "PRODUCTS")
-             title    (field-id products "TITLE")]
-         (is (some? title))
+             products (conj (pop orders) "PRODUCTS")]
          (mt/with-temp [:model/Dimension _ {:field_id                (field-id orders "PRODUCT_ID")
                                             :name                    "Product"
                                             :type                    :external
-                                            :human_readable_field_id title}
-                        :model/Dimension _ {:field_id (field-id orders "QUANTITY") :name "Quantity" :type :internal}]
+                                            :human_readable_field_id (field-id products "ID")}
+                        :model/Dimension _ {:field_id (field-id orders "TOTAL") :name "Total" :type :internal}]
            (let [files   (remote-sync-export!)
                  python? #(= "PythonLibrary" (model-of (val %)))
                  opts    {:table-names (sync-display-names (filter vector? (keys golden)))}
                  read    (select-keys (app-db/read-current) (keys golden))]
-             (is (= {:PRODUCT_ID {:type "external" :name "Product" :field (conj products "TITLE")}
-                     :QUANTITY   {:type "internal" :name "Quantity"}}
+             (is (= {:PRODUCT_ID {:type "external" :name "Product" :field (conj products "ID")}
+                     :TOTAL      {:type "internal" :name "Total"}}
                     (into {}
                           (keep (fn [[k entry]] (when (:remapping entry) [k (:remapping entry)])))
                           (get-in read [orders :attrs :fields]))))
