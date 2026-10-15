@@ -41,6 +41,12 @@
     :target `store.jgit/open-store
     :edits  [[:remove '(when-let [message (url-error url)] (throw (ex-info message {:url url})))]]
     :tests  [#'jgit-test/open-store-refuses-a-bad-url-test]}
+   {:name   :parent-dir-ignored
+    :doc    "open-store makes its directory in java.io.tmpdir whatever :parent-dir is."
+    :target `store.jgit/open-store
+    :edits  [[:replace '(owner-only-temp-dir parent-dir)
+              '(owner-only-temp-dir (io/file (System/getProperty "java.io.tmpdir")))]]
+    :tests  [#'jgit-test/parent-dir-test]}
    {:name   :every-ref-is-a-branch
     :doc    "branches lists every advertised ref, HEAD and tags included."
     :target `store.jgit/branches*
