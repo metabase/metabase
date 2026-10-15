@@ -168,6 +168,11 @@
           (not (contains? env :remote-sync-branch))
           (not= current (:remote-sync-branch body))))))
 
+(defn switches-to-read-only?
+  "True iff a save of `body` makes a creation instance a consumption instance: not implemented yet."
+  [_body _saved _env]
+  false)
+
 (defn- check-connection!
   "Checks `connection` of [[save-plan]] with one fresh remote call, and returns the writes that it adds: the default
   branch of the repository when `default-branch?`. Throws 400 with the message for the person."

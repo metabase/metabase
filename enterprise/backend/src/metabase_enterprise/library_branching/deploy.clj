@@ -64,6 +64,11 @@
           (changed-ids bs l)
           (or by-digest (sort snapshot/compare-identities (keys l))))))))
 
+(defn instance-drift
+  "The drift of instance `inst` before a deploy of branch `branch` ([[drift]]): not implemented yet."
+  [_inst _with-store _branch _opts]
+  [])
+
 (defn- apply-head!
   "Read, the drift check, plan and apply of head `h` with snapshot `r`, against base commit `b`, again after a stale
   precondition, at most `retries` times."

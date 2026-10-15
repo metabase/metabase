@@ -367,6 +367,11 @@
   (when (deploys?)
     (start-deploy! user-id)))
 
+(defn check-boot!
+  "Throws when this consumption instance must not start: not implemented yet."
+  []
+  nil)
+
 (defn start-initial-deploy!
   "Starts a deploy task for the system, and returns it, iff this instance deploys its branch and has no base yet: the
   first deploy of a consumption instance at boot. Else, and when the start fails, nil; a failure is logged."
