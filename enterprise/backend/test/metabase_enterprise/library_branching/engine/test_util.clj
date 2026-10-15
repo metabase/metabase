@@ -62,7 +62,8 @@
   (let [kind       (:kind (get s id))
         below      (subtree s id)
         containers (filter (fn [c] (and (not (below c))
-                                        (contains? (get snapshot/may-contain (:kind (get s c)) #{}) kind)))
+                                        (contains? (get snapshot/may-contain (:kind (get s c)) #{}) kind)
+                                        (lb.tu/library-fits? (get s c) (get s id))))
                            (sorted-ids s))]
     (assoc-in s [id :place] (nth-of (cons nil containers) k))))
 
@@ -82,14 +83,15 @@
     (if (key-taken? s id it) s (assoc s id it))))
 
 (defn- restore-edit
-  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds with a kind that may contain it, and
-  whose unique key no item of `s` has, with its references that close."
+  "Adds the `k`th item of universe `u` that `s` lacks, whose container `s` holds with a kind that may contain it and
+  with the Library rules, and whose unique key no item of `s` has, with its references that close."
   [u s k]
   (let [candidates (filter (fn [i] (and (not (contains? s i))
                                         (let [{:keys [kind place]} (get u i)]
                                           (or (nil? place)
                                               (and (contains? s place)
-                                                   (contains? (get snapshot/may-contain (:kind (get s place)) #{}) kind))))
+                                                   (contains? (get snapshot/may-contain (:kind (get s place)) #{}) kind)
+                                                   (lb.tu/library-fits? (get s place) (get u i)))))
                                         (not (key-taken? s i (get u i)))))
                            (sorted-ids u))]
     (if-let [i (nth-of candidates k)]
@@ -103,17 +105,21 @@
   (vec (sort (disj snapshot/kinds :published-table))))
 
 (defn- rekind-edit
-  "Gives item `id` the `k`th kind of the kinds that its container may contain, that may contain its contents, and that
-  keep unique keys, other than its own; with no such kind, or for an item whose identity is not an entity id, `s`."
+  "Gives item `id` the `k`th kind of the kinds that its container may contain, that may contain its contents, that
+  keep the Library rules and unique keys, other than its own; with no such kind, or for an item whose identity is not
+  an entity id, `s`."
   [s id k]
   (let [{:keys [kind place] :as it} (get s id)
         allowed  (if place (get snapshot/may-contain (:kind (get s place)) #{}) (set entity-id-kinds))
-        contents (set (keep (fn [[_ c]] (when (= id (:place c)) (:kind c))) s))
+        contents (keep (fn [[_ c]] (when (= id (:place c)) c)) s)
         kinds    (filterv (fn [kd]
-                            (and (not= kd kind)
-                                 (contains? allowed kd)
-                                 (set/subset? contents (get snapshot/may-contain kd #{}))
-                                 (not (key-taken? s id (assoc it :kind kd)))))
+                            (let [it' (assoc it :kind kd)]
+                              (and (not= kd kind)
+                                   (contains? allowed kd)
+                                   (set/subset? (set (map :kind contents)) (get snapshot/may-contain kd #{}))
+                                   (lb.tu/library-fits? (get s place) it')
+                                   (every? (partial lb.tu/library-fits? it') contents)
+                                   (not (key-taken? s id it')))))
                           entity-id-kinds)]
     (if (and (string? id) (seq kinds))
       (assoc-in s [id :kind] (nth-of kinds k))
@@ -228,8 +234,8 @@
 (defn- cycle-items
   "`{identity item}`: the cycle of items of `choices`, each `[kind place letter]`. Item `i` refers to item `i + 1`,
   and the last item to the first; `chords` (`[from to]` pairs of indices) add more references. The place of item `i`
-  is nil or a collection before it in the cycle. `letter` gives the identity, so the order of the identities is not
-  the order of the cycle."
+  is nil or a collection before it in the cycle; a published table is at the root level, as the collections hold no
+  type. `letter` gives the identity, so the order of the identities is not the order of the cycle."
   [choices chords]
   (let [n     (count choices)
         kinds (mapv #(nth cycle-kinds (mod (first %) (count cycle-kinds))) choices)
@@ -244,7 +250,9 @@
                             (keep (fn [[from to]] (when (= i (mod from n)) [:card (nth ids (mod to n))])))
                             chords))]
     (into {} (map-indexed (fn [i [_ k letter]]
-                            [(nth ids i) (item (kinds i) (str "Cycle " letter) (place i k) (refs i))])
+                            [(nth ids i) (item (kinds i) (str "Cycle " letter)
+                                               (when-not (= :published-table (kinds i)) (place i k))
+                                               (refs i))])
                           choices))))
 
 (def ^:private cycle-choices-gen

@@ -37,7 +37,7 @@
                        "librarylibrarydashbrd" {:kind :collection :name "Dashboards" :place "librarylibrarylibrary"
                                                 :refs #{} :attrs {:type "library-dashboards"}}
                        "TeamDashboardsColl001" {:kind :collection :name "Team" :place "librarylibrarydashbrd"
-                                                :refs #{} :attrs {}}}))
+                                                :refs #{} :attrs {:type "library-dashboards"}}}))
 
 (deftest repository-that-predates-a-section-is-green-test
   (testing "a tree of the Library that lacks the Dashboards section reads as one that holds it: the collection in

@@ -159,6 +159,11 @@
   [s]
   (not-any? (partial library-fault s) (vals s)))
 
+(defn library-fits?
+  "True iff `item` in the container `container` (an item, or nil for the root level) breaks no Library rule."
+  [container item]
+  (nil? (library-fault {::container container} (assoc item :place ::container))))
+
 (defn well-formed?
   "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
   [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the rules that the
@@ -323,21 +328,38 @@
     :dangling (dangling-id prefix (count ids) x)
     :area     (let [roots (vec (sort (keys snapshot/area-roots)))] (nth roots (mod x (count roots))))))
 
+(def library-collection-kinds
+  "`{kind {:type t :holds #{kind}}}`: the kinds that the generators of well-formed snapshots use for the collections of
+  the Library types, each a collection of type `t` that holds only the kinds of `:holds`. [[library-root-kind]] is the
+  Library collection."
+  {::library-root          {:type "library"
+                            :holds #{::data-collection ::metrics-collection ::dashboards-collection}}
+   ::data-collection       {:type "library-data" :holds #{::data-collection :published-table}}
+   ::metrics-collection    {:type "library-metrics" :holds #{::metrics-collection :metric}}
+   ::dashboards-collection {:type "library-dashboards" :holds #{::dashboards-collection :dashboard :timeline}}})
+
+(def library-root-kind
+  "The kind of [[library-collection-kinds]] of the Library collection."
+  ::library-root)
+
 (defn- assemble
   "The snapshot of `choices`, given the kind and the place (an `[:item k]` or `[:dangling k]` choice, or nil) of each
-  item."
+  item. A kind of [[library-collection-kinds]] is a collection of its type."
   [choices item-kinds item-places]
   (let [ids (identities choices item-kinds)]
     (into {}
           (map-indexed
            (fn [i {:keys [id name refs attrs]}]
-             (let [kind (nth item-kinds i)]
+             (let [kind  (nth item-kinds i)
+                   typed (get library-collection-kinds kind)]
                [(nth ids i)
-                {:kind  kind
+                {:kind  (if (or typed (= :collection kind)) :collection kind)
                  :name  name
                  :place (some->> (nth item-places i) (resolve-target ids id))
                  :refs  (into #{} (map (fn [[role target]] [role (resolve-target ids id target)])) refs)
-                 :attrs (get attrs kind)}])))
+                 :attrs (if typed
+                          (assoc (get attrs :collection) :type (:type typed))
+                          (get attrs kind))}])))
           choices)))
 
 (defn- sorted-kinds [ks] (vec (sort ks)))
@@ -359,6 +381,25 @@
                  [s seen])))
            [s #{}]
            (sort snapshot/compare-identities (keys s)))))
+
+(defn- with-library-collections
+  "Options `opts` in which the collections of the Library types are kinds of their own ([[library-collection-kinds]])
+  that hold what the Library rules let them hold, and a collection of the kind `:collection` holds no published table.
+  So every collection obeys the Library rules."
+  [{:keys [kinds may-contain root-kinds] :as opts}]
+  (if (contains? (set kinds) :collection)
+    (let [base   (set (get may-contain :collection))
+          pseudo (set (keys library-collection-kinds))]
+      (assoc opts
+             :kinds       (into (set kinds) pseudo)
+             ;; A collection of no type holds only the Data kind of them, and the root level only that and the Library,
+             ;; so the other kinds keep most of the choices.
+             :may-contain (into (update may-contain :collection #(-> (set %) (disj :published-table) (conj ::data-collection)))
+                                (map (fn [[k {:keys [holds]}]] [k (set/intersection holds (into base pseudo))]))
+                                library-collection-kinds)
+             :root-kinds  (cond-> (set root-kinds)
+                            (contains? (set root-kinds) :collection) (conj ::library-root ::data-collection))))
+    opts))
 
 (defn- well-formed-structure
   "`[item-kinds item-places]`. Item i has its place at the root level or in an item before it whose kind can contain
@@ -413,7 +454,8 @@
 ;;; -------------------------------------------------- Generators ----------------------------------------------------
 
 (defn well-formed-snapshot-gen
-  "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A snapshot has at most
+  "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A collection has a Library
+  type only as a kind of [[library-collection-kinds]], and holds what that type holds. A snapshot has at most
   min(size, `:max-items`) items. Every root-level item has a kind of `:root-kinds`. A published table's identity is a
   table natural key; every other identity is an entity id. Two snapshots of the generator share identities now and
   then, also for items of two kinds. Siblings with one name and one kind occur, but no two items of a kind of
@@ -423,7 +465,8 @@
   Options, each with a default:
   - `:kinds` (a set of kinds; [[snapshot/kinds]]);
   - `:may-contain` (`{kind #{kind}}`; [[snapshot/may-contain]]);
-  - `:root-kinds` (a non-empty subset of `:kinds`; all of `:kinds`);
+  - `:root-kinds` (a non-empty subset of `:kinds`, or of `:kinds` and [[library-collection-kinds]]; all of `:kinds`,
+    with the Library and the Data kind of [[library-collection-kinds]] when `:collection` is one);
   - `:unique-keys` (in the form of [[snapshot/unique-keys]], with a path to a string key; [[snapshot/unique-keys]]);
   - `:attrs` (a function from a kind to a generator of its `:attrs`; [[attrs-gen]] for each kind);
   - `:max-items` (50)."
@@ -431,9 +474,17 @@
   ([opts]
    (let [opts (merge default-options opts)]
      (assert (seq (:root-kinds opts)) "`:root-kinds` must not be empty")
-     (assert (set/subset? (set (:root-kinds opts)) (set (:kinds opts))) "`:root-kinds` must be a subset of `:kinds`")
+     (assert (set/subset? (set (:root-kinds opts)) (into (set (:kinds opts)) (keys library-collection-kinds)))
+             "`:root-kinds` must be a subset of `:kinds` and the Library collection kinds")
      (gen/fmap (fn [choices]
-                 (let [[item-kinds item-places] (well-formed-structure opts choices)]
+                 (let [[item-kinds item-places] (well-formed-structure (with-library-collections opts) choices)
+                       ;; A collection of the kind :collection has no Library type.
+                       choices (mapv (fn [choice kind]
+                                       (cond-> choice
+                                         (and (= :collection kind)
+                                              (contains? library-holds (get-in choice [:attrs :collection :type])))
+                                         (update-in [:attrs :collection] dissoc :type)))
+                                     choices item-kinds)]
                    (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
                (choices-gen opts place-choice-gen item-target-gen)))))
 

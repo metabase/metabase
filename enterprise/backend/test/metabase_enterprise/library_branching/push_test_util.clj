@@ -236,6 +236,22 @@
                                                            :query (count-query orders-table)})
    snippet-id (item snippet-id :snippet "Active" "snippetssnippetssnipp" {:content "active = true"})})
 
+(def snippets-root
+  "The identity of the root of the Snippets area."
+  "snippetssnippetssnipp")
+
+(def app-collection-id "SalesAppCollection001")
+
+(defn with-app-card
+  "Snapshot `s` with a collection of the Data apps area, and the Revenue item of [[sample]] in it as a card of `kind`
+  (:question or :model), which the Library cannot hold."
+  [s kind]
+  (-> s
+      (assoc app-collection-id (item app-collection-id :collection "Sales app" "dataappsdataappsdatap"
+                                     {:namespace "data-apps"}))
+      (assoc-in [revenue-id :place] app-collection-id)
+      (assoc-in [revenue-id :kind] kind)))
+
 (defn renamed
   "Snapshot `s` with item `id` named `item-name`."
   [s id item-name]
@@ -244,13 +260,12 @@
 ;;; ---------------------------------------------------- Generator -----------------------------------------------------
 
 (defn- acceptable
-  "Item `item` changed so that a push accepts it: a root-level collection is a Library root, no collection has a
-  namespace (so each has the namespace of its parent), and no attribute names an item by identity. `kinds.tu/complete`
-  then puts a root-level snippet or glossary term at its area root."
-  [{:keys [kind place] :as item}]
+  "Item `item` changed so that a push accepts it: no collection has a namespace (so each has the namespace of its
+  parent), and no attribute names an item by identity. `kinds.tu/complete` then puts a root-level snippet or glossary
+  term at its area root."
+  [{:keys [kind] :as item}]
   (case kind
-    :collection (cond-> (update item :attrs dissoc :namespace)
-                  (nil? place) (update :attrs assoc :type "library"))
+    :collection (update item :attrs dissoc :namespace)
     (:metric :question :model)
     (update item :attrs #(-> %
                              (assoc :query (count-query orders-table))
@@ -276,10 +291,11 @@
 
 (def pushable-snapshot-gen
   "Generates snapshots of the kinds that a push accepts, of at most 12 items: well formed, every root-level item
-  a fixed root, references only to the environment, and every item in the schema of its codec."
+  a fixed root (a root-level collection is a Library collection), references only to the environment, and every item
+  in the schema of its codec."
   (gen/fmap (fn [s] (kinds.tu/complete (update-vals s acceptable)))
             (lb.tu/well-formed-snapshot-gen {:kinds       snapshot/kinds
                                              :may-contain snapshot/may-contain
-                                             :root-kinds  #{:collection :glossary-term :snippet}
+                                             :root-kinds  #{lb.tu/library-root-kind :glossary-term :snippet}
                                              :attrs       kinds.tu/attrs-gens
                                              :max-items   12})))
