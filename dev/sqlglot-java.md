@@ -50,8 +50,5 @@ port, or if a result holds an AST node: code that read the AST outside the shim 
 tie Metabase to the port's shape.
 
 Where the port differs from upstream sqlglot, the fix belongs in the port, not here.
-The shim works around two such gaps, each marked in its docstring: the port's
-`validateQualifyColumns` omits the failing column's position, and its tokenizer types
-a bare word `IDENTIFIER` (in sqlglot, a quoted identifier).
 
 This is an opt-in backend; changing the default is a separate step.
