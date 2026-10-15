@@ -190,6 +190,22 @@ describe("EmbeddingDataPicker", () => {
       ).toBeInTheDocument();
     });
 
+    it("should not show metrics when nested queries are disabled", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasMetrics: true,
+        hasNestedQueriesEnabled: false,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Orders model" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should not show metrics at the join step", async () => {
       setup({
         embeddingType: "full-app",

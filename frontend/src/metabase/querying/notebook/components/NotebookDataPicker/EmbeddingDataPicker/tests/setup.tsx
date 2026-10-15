@@ -5,7 +5,7 @@ import {
   setupEmbeddingDataPickerDecisionEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { embed, setInitialUrlOptions } from "metabase/redux/embed";
 import { reducer as embeddingDataPickerReducer } from "metabase/redux/embedding-data-picker";
@@ -37,6 +37,7 @@ interface SetupOpts {
   entityTypes?: EmbeddingEntityType[];
   dataPicker?: EmbeddingDataPickerVariant;
   isJoinStep?: boolean;
+  hasNestedQueriesEnabled?: boolean;
 }
 
 const DEFAULT_OPTS: Partial<SetupOpts> = {
@@ -50,6 +51,7 @@ export function setup({
   entityTypes,
   dataPicker = "staged",
   isJoinStep = false,
+  hasNestedQueriesEnabled = true,
 }: SetupOpts) {
   const query = createEmptyQuery();
 
@@ -85,14 +87,18 @@ export function setup({
     ) : (
       picker
     ),
-    embeddingType === "full-app" && entityTypes
-      ? {
-          storeInitialState: createMockState({
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState({
+          "enable-nested-queries": hasNestedQueriesEnabled,
+        }),
+        ...(embeddingType === "full-app" &&
+          entityTypes && {
             embeddingDataPicker:
               getFullAppEmbeddingDataPickerState(entityTypes),
           }),
-        }
-      : undefined,
+      }),
+    },
   );
 }
 

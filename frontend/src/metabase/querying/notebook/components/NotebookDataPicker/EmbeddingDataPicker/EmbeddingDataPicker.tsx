@@ -10,6 +10,7 @@ import {
   getEntityTypes,
 } from "metabase/redux/embedding-data-picker";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
@@ -56,6 +57,7 @@ export function EmbeddingDataPicker({
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
   const entityTypesFromRedux = useSelector(getEntityTypes);
   const dataPickerFromRedux = useSelector(getDataPicker);
+  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const queryingContext = useContext(EmbeddingDataPickerContext);
 
   /**
@@ -85,10 +87,11 @@ export function EmbeddingDataPicker({
     dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
     const isJoinStep = !canChangeDatabase;
+    const canSelectMetric = !isJoinStep && hasNestedQueriesEnabled;
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
       "model",
       "table",
-      ...(isJoinStep ? [] : (["metric"] as const)),
+      ...(canSelectMetric ? (["metric"] as const) : []),
     ];
     const isAllowedEntityType = (entityType: EmbeddingEntityType) =>
       ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType);
