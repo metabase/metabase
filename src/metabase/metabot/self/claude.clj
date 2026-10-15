@@ -428,8 +428,7 @@
         (case family
           ("fable" "mythos") true
           "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
-          "sonnet"           (>= major 5)
-          "haiku"            (>= major 5)))))
+          ("sonnet" "haiku") (>= major 5)))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter: current-generation models
@@ -437,17 +436,24 @@
   [model]
   (not (model-current-gen? model)))
 
+(def ^:private first-version-rejecting-forced-tool-choice
+  "The first `[major minor]` of each Claude family that rejects a forced `tool_choice`:
+  https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported
+  A family missing here accepts one in every version, as Haiku 4.5 and 5.5 do:
+  https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools#forcing-tool-use"
+  {"opus"   [5 5]
+   "sonnet" [5 5]
+   "fable"  [5 1]
+   "mythos" [5 1]})
+
 (defn- model-supports-forced-tool-choice?
-  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on,
-  Fable and Mythos from 5.1 on: https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported
-  Haiku accepts one: https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools#forcing-tool-use"
+  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool).
+  True for a model id that isn't a recognizable Claude version."
   [model]
-  (if-let [[family major minor] (claude-model-version model)]
-    ;; assumes every Haiku accepts one, as 4.5 and 5.5 do; check again when a new Haiku ships
-    (or (= "haiku" family)
-        (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
-          (or (< major 5) (and (= major 5) (< minor first-rejecting-minor)))))
-    true))
+  (let [[family major minor] (claude-model-version model)
+        first-rejecting      (get first-version-rejecting-forced-tool-choice family)]
+    (or (nil? first-rejecting)
+        (neg? (compare [major minor] first-rejecting)))))
 
 (def ^:private unforced-structured-output-token-floor
   "Smallest `max_tokens` for structured output on a model that can't be forced to call the tool.

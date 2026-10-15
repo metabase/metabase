@@ -953,7 +953,7 @@
       (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))
     (testing "temperature is omitted when thinking is enabled (4.6 accepts sampling but streams thinking here)"
       (is (not (contains? (request-body "claude-opus-4-6") :temperature))))
-    (testing "a structured-output call turns thinking off, so only the model decides whether temperature is sent"
+    (testing "a structured-output call sends no thinking config, so only the model decides whether temperature is sent"
       (let [schema {:type "object" :properties {:answer {:type "string"}}}
             body   #(claude/claude-request-body {:model       %
                                                  :input       [{:role :user :content "hi"}]
