@@ -18,7 +18,6 @@ const unreferencedPage = () =>
     Component: UnreferencedDependencyDiagnosticsPage,
   }));
 
-/** Keeps default-population counts subscribed across tabs and refreshes on section entry. */
 export function DependencyDiagnosticsSectionLayout() {
   useGetDependencyCountsQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -27,7 +26,6 @@ export function DependencyDiagnosticsSectionLayout() {
   return <Outlet />;
 }
 
-/** Returns the Dependency diagnostics pages with section-owned count freshness. */
 export function getDependencyDiagnosticsRoutes() {
   return (
     <Route element={<DependencyDiagnosticsSectionLayout />}>

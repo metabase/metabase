@@ -11,7 +11,6 @@ import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { dependencyApi } from "metabase-enterprise/api/dependencies";
 
-/** Renders both Dependency tabs with cached default counts, without initiating requests. */
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const { currentData: counts, isError } =
     dependencyApi.endpoints.getDependencyCounts.useQueryState(undefined);

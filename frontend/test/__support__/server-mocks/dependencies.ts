@@ -10,7 +10,6 @@ import type {
 
 import type { MockResponse } from "./types";
 
-/** Mocks default-population counts with optional deferred responses and route options. */
 export function setupDependencyCountsEndpoint(
   response: MockResponse<DependencyCountsResponse> = {
     breaking: 0,
@@ -21,7 +20,6 @@ export function setupDependencyCountsEndpoint(
   fetchMock.get("path:/api/ee/dependencies/counts", response, options);
 }
 
-/** Mocks an unavailable Dependency count endpoint without affecting list requests. */
 export function setupDependencyCountsErrorEndpoint() {
   fetchMock.get("path:/api/ee/dependencies/counts", { status: 500 });
 }

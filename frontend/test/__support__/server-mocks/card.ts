@@ -31,7 +31,6 @@ export function setupCardEndpoints(card: Card) {
   });
 }
 
-/** Mocks a successful `DELETE /api/card/:id`. */
 export function setupDeleteCardEndpoint(cardId: CardId) {
   fetchMock.delete(`path:/api/card/${cardId}`, 204);
 }
