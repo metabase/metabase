@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.scope :as scope]
-   [metabase-enterprise.library-branching.scope-property-test]
-   [metabase-enterprise.library-branching.scope-test]))
+   [metabase-enterprise.library-branching.scope-property-test :as scope-property-test]
+   [metabase-enterprise.library-branching.scope-test :as scope-test]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,15 +69,24 @@
     :edits  [[:edit '(library-branching.db/row-count (kind-query roots kind)) (fn [form] (list 'inc form))]]}])
 
 (def ^:private tests
-  [#'metabase-enterprise.library-branching.scope-test/library-tree-test
-   #'metabase-enterprise.library-branching.scope-test/trash-test
-   #'metabase-enterprise.library-branching.scope-test/outside-library-test
-   #'metabase-enterprise.library-branching.scope-test/moved-out-of-library-test
-   #'metabase-enterprise.library-branching.scope-test/namespace-roots-test
-   #'metabase-enterprise.library-branching.scope-test/exploration-document-test
-   #'metabase-enterprise.library-branching.scope-test/count-test
-   #'metabase-enterprise.library-branching.scope-test/roots-test
-   #'metabase-enterprise.library-branching.scope-property-test/scope-matches-reference-model-test])
+  [#'scope-test/library-tree-test
+   #'scope-test/trash-test
+   #'scope-test/outside-library-test
+   #'scope-test/moved-out-of-library-test
+   #'scope-test/namespace-roots-test
+   #'scope-test/exploration-document-test
+   #'scope-test/count-test
+   #'scope-test/roots-test
+   #'scope-property-test/scope-matches-reference-model-test])
 
 (deftest scope-mutations-test
   (mut/check mutations {:tests tests :timeout-ms 120000}))
+
+(deftest mutations-name-their-tests-test
+  (testing "each mutation names the tests of its own rule"
+    (is (every? (comp seq :tests) mutations)))
+  (testing "no mutation runs the property test: it takes most of the time of a run, and kills no mutation that the
+           tests of scope miss"
+    (is (not-any? #(some #{#'scope-property-test/scope-matches-reference-model-test}
+                         (:tests %))
+                  mutations))))
