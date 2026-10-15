@@ -150,6 +150,8 @@ function countCalls() {
   return fetchMock.callHistory.calls("audit-row-count");
 }
 
+// TreeTable briefly renders cell text in hidden column-measuring nodes, so wait
+// for the rendered row rather than the first matching text.
 function findEventRow() {
   return screen.findByRole("row", { name: /Visible event/ });
 }
