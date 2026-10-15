@@ -1,15 +1,17 @@
 (ns metabase-enterprise.library-branching.operations
-  "Push, pull, merge-branch and the branch operations (create a branch, push to a new branch, switch to another
-  branch) on a creation instance, and the deploy on a consumption instance, on the configured repository and the app DB
-  instance, each as a task: each start function checks the preconditions of its operation, starts its task, and
-  returns the task at once; a worker runs the operation. The result of the operation ends the task: an outcome for a
-  success, an error message for every other result. A task that succeeds gets one audit-log entry after it ends. A
-  branch operation writes the branch setting only when it succeeds, in the transaction that ends it."
+  "Push, pull, merge-branch, the branch operations (create a branch, push to a new branch, switch to another branch)
+  and the discard of the local changes on a creation instance, and the deploy on a consumption instance, on the
+  configured repository and the app DB instance, each as a task: each start function checks the preconditions of its
+  operation, starts its task, and returns the task at once; a worker runs the operation. The result of the operation
+  ends the task: an outcome for a success, an error message for every other result, with an outcome that tells why for
+  a pull that stops on conflicts. A task that succeeds gets one audit-log entry after it ends. A branch operation
+  writes the branch setting only when it succeeds, in the transaction that ends it."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library-branching.audit :as audit]
    [metabase-enterprise.library-branching.branch :as branch]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.discard :as discard]
    [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
@@ -20,6 +22,8 @@
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.settings :as settings]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
+   [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.settings.core :as setting]
@@ -66,21 +70,61 @@
     :fenced               {:error "The task ended before the push reached its commit point, so nothing was pushed."}
     :disabled             {:error disabled-message}))
 
+(defn- step-count
+  "The number of items that the steps `steps` write or trash."
+  [steps]
+  (count (filter #(or (contains? % :write) (contains? % :trash)) steps)))
+
+(defn trashed-in-use-entries
+  "The entries of the trashed items of `steps` that `trashed-in-use` (`{identity [user ...]}`) names, in the order of
+  the identities: `{:id :kind :name :users [{:kind :id :name}]}`, with the kind and the name of the item before the
+  trash, and the kinds as strings."
+  [steps trashed-in-use]
+  (->> steps
+       (keep (fn [{:keys [id pre trash]}]
+               (when-let [users (and trash (get trashed-in-use id))]
+                 {:id    id
+                  :kind  (some-> (:kind pre) name)
+                  :name  (:name pre)
+                  :users (mapv (fn [user] (update user :kind name)) users)})))
+       (sort-by :id snapshot/compare-identities)
+       vec))
+
+(defn- conflicts-outcome
+  "The outcome of a failed task whose merge of head `head` of branch `branch` has `conflicts` and `violations`
+  (`merge/merge`): the entries of `status/conflict-entry` and `status/violation-entry`, with the kinds and the side
+  changes as strings."
+  [branch head conflicts violations]
+  {:kind       "conflicts"
+   :branch     branch
+   :commit     head
+   :conflicts  (mapv (fn [c]
+                       (-> (status/conflict-entry c)
+                           (update :kind #(some-> % name))
+                           (update :ours name)
+                           (update :theirs name)))
+                     conflicts)
+   :violations (mapv (comp #(update % :rule (fn [r] (some-> r name))) status/violation-entry) violations)})
+
 (defn pull-task-result
   "The task result of `result`, a result of `pull/pull!` of branch `branch`: `{:outcome o}` when the pull applied or
-  was up to date, else `{:error message}`."
+  was up to date, else `{:error message}`. The outcome of an applied pull has `:trashed_in_use`, the
+  [[trashed-in-use-entries]]. With conflicts or violations, the error has an outcome of kind \"conflicts\" that lists
+  them."
   [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused]}]
   (case result
-    :pulled     {:outcome {:kind    "pulled"
-                           :branch  branch
-                           :commit  head
-                           :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
-                           :trashed (count trashed-in-use)}}
+    :pulled     {:outcome {:kind           "pulled"
+                           :branch         branch
+                           :commit         head
+                           :count          (step-count steps)
+                           :trashed        (count trashed-in-use)
+                           :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was pulled."
                                 branch (rules findings))}
-    :conflicts  {:error (format "The pull has %s and %s, so nothing was pulled."
-                                (n-of (count conflicts) "conflict") (n-of (count violations) "violation"))}
+    :conflicts  {:error   (format "The pull has %s and %s, so nothing was pulled."
+                                  (n-of (count conflicts) "conflict") (n-of (count violations) "violation"))
+                 :outcome (conflicts-outcome branch head conflicts violations)}
     :stale      {:error (format "Saves during the pull changed %s, so nothing was pulled. Try again."
                                 (n-of (count ids) "item"))}
     :rewritten  {:error (format "The branch %s was rewritten during the pull, so nothing was pulled. Try again."
@@ -94,11 +138,11 @@
 
 (defn switch-task-result
   "The task result of `result`, a result of `pull/pull!` of branch `branch` for a switch to it: as
-  [[pull-task-result]], with the outcome kind switched."
+  [[pull-task-result]], with the outcome kind of a success switched."
   [branch result]
   (let [task-result (pull-task-result branch result)]
     (cond-> task-result
-      (:outcome task-result) (assoc-in [:outcome :kind] "switched"))))
+      (not (:error task-result)) (assoc-in [:outcome :kind] "switched"))))
 
 (defn create-branch-task-result
   "The task result of `result`, a result of `branch/create-branch!` of branch `branch-name` from branch `from`:
@@ -112,15 +156,16 @@
 
 (defn deploy-task-result
   "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
-  or was up to date, else `{:error message}`. The outcome of a deploy that discarded drift has `:discarded`, the number
-  of items of the drift."
+  or was up to date, else `{:error message}`. The outcome of an applied deploy has `:trashed_in_use`, the
+  [[trashed-in-use-entries]]; of a deploy that discarded drift, also `:discarded`, the number of items of the drift."
   [branch {:keys [result head steps trashed-in-use findings ids refused discarded]}]
   (case result
-    :deployed   {:outcome (cond-> {:kind    "deployed"
-                                   :branch  branch
-                                   :commit  head
-                                   :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
-                                   :trashed (count trashed-in-use)}
+    :deployed   {:outcome (cond-> {:kind           "deployed"
+                                   :branch         branch
+                                   :commit         head
+                                   :count          (step-count steps)
+                                   :trashed        (count trashed-in-use)
+                                   :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}
                             discarded (assoc :discarded (count discarded)))}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was deployed."
@@ -139,9 +184,30 @@
     :disabled   {:error disabled-message}))
 
 (defn discard-task-result
-  "Not built yet: the task result of a discard."
-  [_branch _result]
-  {:error "Not built yet."})
+  "The task result of `result`, a result of `discard/discard!` on branch `branch`: `{:outcome o}` when the discard
+  applied or there was nothing to discard, else `{:error message}`. The outcome of an applied discard has `:count`,
+  the number of items that it wrote or trashed, `:discarded`, the number of local changes that it wrote over, and the
+  trashed items as for a pull."
+  [branch {:keys [result base steps discarded trashed-in-use findings ids refused]}]
+  (case result
+    :discarded  {:outcome {:kind           "discarded"
+                           :branch         branch
+                           :commit         base
+                           :count          (step-count steps)
+                           :discarded      (count discarded)
+                           :trashed        (count trashed-in-use)
+                           :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}}
+    :up-to-date {:outcome {:kind "nothing-to-discard" :branch branch :commit base}}
+    :no-base    {:error "The instance has no base yet, so it has no changes to discard."}
+    :base-lost  {:error (format "No branch of the repository holds the base %s, so nothing was discarded." base)}
+    :invalid    {:error (format "The base %s breaks the rules %s, so nothing was discarded." base (rules findings))}
+    :stale      {:error (format "Saves during the discard changed %s, so nothing was discarded. Try again."
+                                (n-of (count ids) "item"))}
+    :refused    {:error (format "The instance refused %s (%s), so nothing was discarded."
+                                (n-of (count refused) "item") (str/join "; " (map :message refused)))}
+    :base-moved {:error "Another task moved the base, so nothing was discarded."}
+    :fenced     {:error "The task ended before the discard applied, so nothing was discarded."}
+    :disabled   {:error disabled-message}))
 
 (defn merge-branch-task-result
   "The task result of `result`, a result of `merge-branch/merge-branch!` of branch `from` into branch `into`:
@@ -245,9 +311,13 @@
         (deploy-task-result branch result))))))
 
 (defn discard-task!
-  "Not built yet: the discard of the local changes as the work of a task."
-  [_id _branch]
-  {:error "Not built yet."})
+  "Runs the discard of the local changes (`discard/discard!`) as the work of task `id`, with branch `branch` as the
+  branch that must hold the base, and returns its task result ([[discard-task-result]]). The apply commits only while
+  task `id` is running."
+  [id branch]
+  (repository/do-with-store
+   (fn [s]
+     (discard-task-result branch (discard/discard! (instance) s branch {:fence (fn [] (tasks/fence id))})))))
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
@@ -348,9 +418,12 @@
     (submit! "branch-create" user-id #(create-branch-task! % branch-name from))))
 
 (defn start-discard!
-  "Not built yet: the start of a discard task."
-  [_user-id]
-  (refuse! "Not built yet."))
+  "Starts a task that discards the local changes of this creation instance (`discard-task!`): it writes the content of
+  the base over them. For the user `user-id`; returns the task. Throws as [[start-push!]]."
+  [user-id]
+  (check-start!)
+  (let [branch (configured-branch)]
+    (submit! "discard-changes" user-id #(discard-task! % branch))))
 
 (defn start-merge-branch!
   "Starts a task that merges branch `from` into branch `into` (nil: the configured branch), for the user `user-id`, and

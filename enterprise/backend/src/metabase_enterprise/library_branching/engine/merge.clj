@@ -46,9 +46,16 @@
         (validate/validate m opts)))
 
 (defn side-change
-  "Not built yet: the change of one side of a conflict."
-  [_b _x]
-  nil)
+  "The change of one side of a conflict, from the base content `b` to the content `x` of the side (nil: no content):
+  `:created`, `:updated` or `:deleted`, or `:unchanged` when `x` is `b`. A base that equals no content (a keyword,
+  such as `:unknown`) has no change to name: `:present` or `:absent`."
+  [b x]
+  (cond
+    (keyword? b) (if (some? x) :present :absent)
+    (= b x)      :unchanged
+    (nil? b)     :created
+    (nil? x)     :deleted
+    :else        :updated))
 
 (defn merge
   "The three-way merge of snapshots `o` (ours) and `t` (theirs) from their base `b`. A value of `b` can be
