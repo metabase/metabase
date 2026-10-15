@@ -484,17 +484,13 @@
    (with-remote [_repo s]
      (let [state (atom {:snapshot ptu/sample})
            inst  (ptu/fake-instance state)]
-       (testing "a push that lands ends its task as successful, with the number of changed items and the branch"
+       (testing "a push that lands ends its task as successful, with the outcome that names the branch and the commit"
          (ptu/do-with-push-task!
           (fn [task]
-            (is (= :pushed (:result (push/push! inst s ptu/branch task))))
-            (is (= {:status "successful" :outcome {:kind "pushed" :count 5 :branch ptu/branch} :error_message nil}
-                   (task-row task)))))
-         (swap! state update :snapshot ptu/renamed ptu/revenue-id "Changed")
-         (ptu/do-with-push-task!
-          (fn [task]
-            (is (= :pushed (:result (push/push! inst s ptu/branch task))))
-            (is (= {:kind "pushed" :count 1 :branch ptu/branch} (:outcome (task-row task)))))))
+            (let [{:keys [result commit]} (push/push! inst s ptu/branch task)]
+              (is (= :pushed result))
+              (is (= {:status "successful" :outcome {:kind "pushed" :branch ptu/branch :commit commit} :error_message nil}
+                     (task-row task)))))))
        (testing "a push that stops before its commit point leaves its task running, for its caller to end"
          (ptu/do-with-push-task!
           (fn [task]
