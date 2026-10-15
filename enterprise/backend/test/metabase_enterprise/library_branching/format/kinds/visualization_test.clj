@@ -74,6 +74,7 @@
     (doseq [[entity ref] [[{:model "card" :id card-id} [:card card-id]]
                           [{:model "dataset" :id card-id} [:card card-id]]
                           [{:model "question" :id card-id} [:card card-id]]
+                          [{:model "metric" :id card-id} [:card card-id]]
                           [{:model "dashboard" :id dashboard-id} [:dashboard dashboard-id]]
                           [{:model "table" :id [sd "PUBLIC" "ORDERS"]} [:table [:env [sd "PUBLIC" "ORDERS"]]]]
                           [{:model "database" :id sd} [:database [:env [sd]]]]]]
@@ -84,6 +85,8 @@
                                                      :parameterMapping {:p {:id     "p"
                                                                             :target {:type "parameter" :id "p"}}}}})))
     (is (= #{} (visualization/refs {:click_behavior {:type "link" :linkType "dashboard"}}))))
+  (testing "a click behavior cannot link to a metric, so a link of the type \"metric\" holds no reference"
+    (is (= #{} (visualization/refs {:click_behavior {:type "link" :linkType "metric" :targetId card-id}}))))
   (testing "a click behavior that is not a link keeps no reference to a link target that it held before"
     (is (= #{} (visualization/refs {:click_behavior {:type "crossfilter" :linkType "dashboard" :targetId dashboard-id}}))))
   (testing "a target of another shape is the target, so the item schema refuses it"

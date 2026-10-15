@@ -40,6 +40,28 @@
   [settings]
   (into {} (remove (comp nil? val)) settings))
 
+(defn- resolve-metric-link
+  "`settings` with the id `id` of the metric that its link card links to replaced by `(resolve id :model/Card)`;
+  `settings` when it links to no metric."
+  [settings resolve]
+  (cond-> settings
+    (and (= "metric" (get-in settings [:link :entity :model]))
+         (some? (get-in settings [:link :entity :id])))
+    (update-in [:link :entity :id] resolve :model/Card)))
+
+(defn- export-settings
+  "The portable form of the visualization settings `settings` of a dashboard card."
+  [settings]
+  ;; The serdes export converts the id of a link card only for the models that it knows, and "metric" is not one.
+  (-> (resolve-metric-link settings serdes/*export-fk*)
+      serdes/export-visualization-settings
+      without-nil-settings))
+
+(defn- import-settings
+  "The visualization settings of a dashboard card of the portable form `settings`, the inverse of [[export-settings]]."
+  [settings]
+  (or (serdes/import-visualization-settings (resolve-metric-link settings serdes/*import-fk*)) {}))
+
 (defn- export-parameters
   "The portable form of the dashboard parameters `parameters`, in their order."
   [parameters]
@@ -60,7 +82,7 @@
    :size_x                 (:size_x dc)
    :size_y                 (:size_y dc)
    :parameter_mappings     (serdes/export-parameter-mappings (:parameter_mappings dc))
-   :visualization_settings (without-nil-settings (serdes/export-visualization-settings (:visualization_settings dc)))
+   :visualization_settings (export-settings (:visualization_settings dc))
    :series                 (mapv #(serdes/*export-fk* % :model/Card) series)
    :inline_parameters      (:inline_parameters dc)})
 
@@ -122,7 +144,7 @@
    :size_x                 (:size_x entry)
    :size_y                 (:size_y entry)
    :parameter_mappings     (vec (serdes/import-parameter-mappings (or parameter_mappings [])))
-   :visualization_settings (or (serdes/import-visualization-settings visualization_settings) {})
+   :visualization_settings (import-settings visualization_settings)
    :inline_parameters      (or inline_parameters [])})
 
 (defn- series-ids
