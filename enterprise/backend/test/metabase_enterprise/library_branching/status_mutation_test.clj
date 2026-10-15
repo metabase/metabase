@@ -5,9 +5,12 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.status-property-test :as status-property-test]
-   [metabase-enterprise.library-branching.status-test :as status-test]))
+   [metabase-enterprise.library-branching.status-test :as status-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the status."
