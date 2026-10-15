@@ -5,15 +5,19 @@
                                  metabase-enterprise.library-branching.repository-test-util/with-remote clojure.core/fn}}}
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.push-test-util :as ptu]
    [metabase-enterprise.library-branching.repository-test-util :as rtu]
    [metabase-enterprise.library-branching.store :as store]
-   [metabase-enterprise.library-branching.store.jgit :as store.jgit])
+   [metabase-enterprise.library-branching.store.jgit :as store.jgit]
+   [metabase.test.fixtures :as fixtures])
   (:import
    (java.util.concurrent AbstractExecutorService)
    (org.eclipse.jgit.internal.storage.file GC)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- background-gcs
   "Calls `(f)`, and returns the count of background gcs that JGit started during the call. Each one runs at once on the
