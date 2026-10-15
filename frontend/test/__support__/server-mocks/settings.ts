@@ -33,11 +33,17 @@ export function setupSettingEndpoint<K extends EnterpriseSettingKey>({
 }
 
 export function setupUpdateSettingEndpoint(
-  { status }: { status?: number } = { status: 204 },
+  { status, body }: { status?: number; body?: Record<string, unknown> } = {
+    status: 204,
+  },
 ) {
   const name = "update-setting";
   fetchMock.removeRoute(name);
-  fetchMock.put(new RegExp("/api/setting/"), { status }, { name: name });
+  fetchMock.put(
+    new RegExp("/api/setting/"),
+    body === undefined ? { status } : { status, body },
+    { name: name },
+  );
 }
 
 /**
