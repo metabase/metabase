@@ -1,0 +1,9 @@
+kind: action
+id: rEfUnDaLlAcTiOn000001
+collection: rEfUnDsCoLlEcTiOn0001
+dataset_query:
+  database: Sample Database
+  stages:
+  - {native: UPDATE orders SET refunded = true}
+name: Refund all
+type: query

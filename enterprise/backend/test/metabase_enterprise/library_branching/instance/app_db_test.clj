@@ -106,6 +106,10 @@
                                   :definition (sum-query :venues :price)})
          (insert! :model/Measure {:name "Count trashed measure" :table_id (mt/id :venues) :creator_id user
                                   :archived true :definition (sum-query :venues :price)})
+         ;; The query row of an action goes with it when the cleanup deletes the action.
+         (doseq [row [{:name "Count action"} {:name "Count trashed action" :archived true}]]
+           (t2/insert! :model/QueryAction {:action_id     (:id (insert! :model/Action (merge {:type :query :creator_id user} row)))
+                                           :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}))
          (let [{:keys [snapshot]} (instance/read-snapshot (app-db/app-db-instance))
                counts             (engine.count/count-by-kind snapshot)]
            (is (= (select-keys (scope/scope-count) snapshot/kinds) counts))

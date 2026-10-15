@@ -451,6 +451,82 @@
   (testing "an archived segment is not in the snapshot"
     (is (= {} (snapshot-of [(str/replace segment-yaml "archived: false" "archived: true")])))))
 
+;;; ------------------------------------------------- Actions ----------------------------------------------------------
+
+(defn- action-yaml
+  "An action file as the serdes export of master writes it, with the keys `extra` after the common ones."
+  [entity-id action-name & {:keys [type model collection extra]}]
+  (str "name: " action-name "\n"
+       "entity_id: " entity-id "\n"
+       "description: null\n"
+       "archived: false\n"
+       "archived_directly: false\n"
+       "type: " (or type "query") "\n"
+       "model_id: " (or model "null") "\n"
+       "collection_id: " (or collection "null") "\n"
+       "created_at: '2024-08-28T09:46:18.671622Z'\n"
+       "creator_id: crowberto@metabase.com\n"
+       "public_uuid: null\n"
+       "made_public_by_id: null\n"
+       "parameter_mappings: []\n"
+       "visualization_settings:\n  confirmMessage: Sure?\n  column_settings: null\n"
+       "serdes/meta:\n- id: " entity-id "\n  label: x\n  model: Action\n"
+       extra))
+
+(def ^:private query-yaml
+  (str "query:\n- database_id: test-db\n  dataset_query:\n    database: test-db\n    lib/type: mbql/query\n"
+       "    stages:\n    - lib/type: mbql.stage/native\n      native: UPDATE t SET x = {{id}}\n"
+       "implicit: []\n"
+       "parameters:\n- id: abc\n  name: ID\n  slug: id\n  type: number/=\n  target: [variable, [template-tag, id]]\n"
+       "  position: 0\n"))
+
+(def ^:private query-attrs
+  {:type                   "query"
+   :dataset_query          {:database "test-db"
+                            :lib/type "mbql/query"
+                            :stages   [{:lib/type "mbql.stage/native" :native "UPDATE t SET x = {{id}}"}]}
+   :parameters             [{:id "abc" :name "ID" :slug "id" :type "number/=" :target ["variable" ["template-tag" "id"]]
+                             :position 0}]
+   :visualization_settings {:confirmMessage "Sure?"}})
+
+(deftest actions-test
+  (testing "an action with no model at the root of the data actions namespace, and one in a collection: the query of
+           the query row, and no database, which the query gives"
+    (is (= {"RootActionXXXXXXXXXXX" (item :action "Refund" nil query-attrs #{[:database [:env ["test-db"]]]})
+            "FolderActionXXXXXXXXX" (item :action "Refund all" "RefundsCollXXXXXXXXXX" query-attrs
+                                          #{[:database [:env ["test-db"]]]})
+            "RefundsCollXXXXXXXXXX" (item :collection "Refunds" nil {:namespace "data-actions"})}
+           (snapshot-of [(action-yaml "RootActionXXXXXXXXXXX" "Refund" :extra query-yaml)
+                         (action-yaml "FolderActionXXXXXXXXX" "Refund all" :collection "RefundsCollXXXXXXXXXX"
+                                      :extra query-yaml)
+                         (collection-yaml "RefundsCollXXXXXXXXXX" "Refunds" :namespace "data-actions")]))))
+  (testing "an action with a model: its place is the model, and the collection of the model is no attribute"
+    (is (= (item :action "Refund" "OrdersModelXXXXXXXXXX" (assoc query-attrs :model "OrdersModelXXXXXXXXXX")
+                 #{[:database [:env ["test-db"]]] [:model "OrdersModelXXXXXXXXXX"]})
+           (get (:snapshot (decode [(action-yaml "ModelActionXXXXXXXXXX" "Refund" :model "OrdersModelXXXXXXXXXX"
+                                                 :collection "AppCollectionXXXXXXXX" :extra query-yaml)]))
+                "ModelActionXXXXXXXXXX"))))
+  (testing "an implicit action: the kind of its implicit row"
+    (is (= (item :action "Create" "OrdersModelXXXXXXXXXX"
+                 {:type "implicit" :model "OrdersModelXXXXXXXXXX" :implicit_kind "row/create"
+                  :visualization_settings {:confirmMessage "Sure?"}}
+                 #{[:model "OrdersModelXXXXXXXXXX"]})
+           (get (:snapshot (decode [(action-yaml "ImplicitActionXXXXXXX" "Create" :type "implicit"
+                                                 :model "OrdersModelXXXXXXXXXX"
+                                                 :extra "query: []\nimplicit:\n- kind: row/create\nparameters: []\n")]))
+                "ImplicitActionXXXXXXX"))))
+  (testing "an archived action, and an action of an archived model, are not in the snapshot"
+    (is (= {} (snapshot-of [(str/replace (action-yaml "RootActionXXXXXXXXXXX" "Refund" :extra query-yaml)
+                                         "archived: false" "archived: true")])))
+    (is (= {} (snapshot-of [(action-yaml "ModelActionXXXXXXXXXX" "Refund" :model "OrdersModelXXXXXXXXXX"
+                                         :extra query-yaml)
+                            (str "name: Orders\nentity_id: OrdersModelXXXXXXXXXX\ntype: model\narchived: true\n"
+                                 "serdes/meta:\n- model: Card\n")]))))
+  (testing "an action file of a type that Metabase no longer has is a finding: the pull refuses it"
+    (is (= [{:type :invalid :file 0}]
+           (finding-types (decode [(action-yaml "HttpActionXXXXXXXXXXX" "Call" :type "http"
+                                                :extra "query: []\nimplicit: []\nparameters: []\n")]))))))
+
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 
 (deftest claims-decode-test
@@ -478,7 +554,7 @@
   writes `column_settings: null`, so it cannot tell a nil setting from an absent one."
   [s]
   (update-vals s (fn [{:keys [kind] :as it}]
-                   (if (= :metric kind)
+                   (if (contains? #{:action :metric} kind)
                      (let [vs (into {} (remove (comp nil? val)) (get-in it [:attrs :visualization_settings]))]
                        (if (seq vs)
                          (assoc-in it [:attrs :visualization_settings] vs)

@@ -181,6 +181,43 @@
                                      :entity_id  (eid-of :glossary-term "Churn")
                                      :definition "The share of customers who cancel in a month."
                                      :creator_id (mt/user->id :crowberto)})
+        (let [refunds      (t2/insert-returning-pk! :model/Collection {:name      "Refunds"
+                                                                       :namespace "data-actions"
+                                                                       :location  "/"
+                                                                       :entity_id (eid-of :collection "Refunds")})
+              refund-order (t2/insert-returning-pk!
+                            :model/Action
+                            {:name                   "Refund order"
+                             :type                   :query
+                             :entity_id              (eid-of :action "Refund order")
+                             :description            "Marks one order as refunded."
+                             :creator_id             (mt/user->id :crowberto)
+                             :parameters             [{:id     "6a1f0c2e-61a4-4a70-a1d1-3b2c5d7e9f10"
+                                                       :name   "ID"
+                                                       :slug   "id"
+                                                       :type   :number/=
+                                                       :target [:variable [:template-tag "id"]]}]
+                             :visualization_settings {:confirmMessage "Refund this order?"
+                                                      :successMessage "Refunded."}})
+              refund-all   (t2/insert-returning-pk! :model/Action {:name          "Refund all"
+                                                                   :type          :query
+                                                                   :entity_id     (eid-of :action "Refund all")
+                                                                   :collection_id refunds
+                                                                   :creator_id    (mt/user->id :crowberto)})
+              native       (fn [sql & {:as tags}]
+                             {:lib/type :mbql/query
+                              :database (:id db)
+                              :stages   [(cond-> {:lib/type :mbql.stage/native :native sql}
+                                           tags (assoc :template-tags tags))]})]
+          (t2/insert! :model/QueryAction
+                      {:action_id     refund-order
+                       :dataset_query (native "UPDATE orders SET refunded = true WHERE id = {{id}}"
+                                              "id" {:type         :number
+                                                    :name         "id"
+                                                    :display-name "ID"
+                                                    :id           "6a1f0c2e-61a4-4a70-a1d1-3b2c5d7e9f10"})})
+          (t2/insert! :model/QueryAction {:action_id     refund-all
+                                          :dataset_query (native "UPDATE orders SET refunded = true")}))
         (f snapshot)))))
 
 (deftest read-gives-golden-items-test

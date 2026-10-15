@@ -368,9 +368,32 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
+(def action-attrs-gen
+  "Generates the `:attrs` of an action with no model: a query action."
+  (gen/fmap #(assoc % :type "query")
+            (attrs-of {:description            [false text-gen]
+                       :dataset_query          [true query-gen]
+                       :parameters             [false (gen/vector document-map-gen 1 2)]
+                       :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
+                       :visualization_settings [false visualization-settings-gen]})))
+
+(def ^:private implicit-action-attrs-gen
+  (gen/fmap #(assoc % :type "implicit")
+            (attrs-of {:description            [false text-gen]
+                       :implicit_kind          [true (gen/elements ["row/create" "row/update" "row/delete"
+                                                                    "bulk/create" "bulk/update" "bulk/delete"])]
+                       :parameters             [false (gen/vector document-map-gen 1 2)]
+                       :visualization_settings [false visualization-settings-gen]})))
+
+(defn model-action-attrs-gen
+  "Generates the `:attrs` of an action on the model with identity `model`: a query action or an implicit action."
+  [model]
+  (gen/fmap #(assoc % :model model) (gen/one-of [action-attrs-gen implicit-action-attrs-gen])))
+
 (def attrs-gens
-  "`{kind generator}` of the `:attrs` of each kind."
-  {:collection      collection-attrs-gen
+  "`{kind generator}` of the `:attrs` of each kind. An action of [[action-attrs-gen]] has no model."
+  {:action          action-attrs-gen
+   :collection      collection-attrs-gen
    :glossary-term   glossary-attrs-gen
    :measure         measure-attrs-gen
    :metric          metric-attrs-gen
