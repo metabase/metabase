@@ -396,6 +396,73 @@
                                {:kind :dashboard :id (:entity_id links) :name "Links"}]}
                 (in-use/trashed-in-use [{:id dashboard-id :kind :dashboard}]))))))))
 
+(def ^:private metric-link-card "lbDcArDmEtRiClInK0006")
+
+(defn- insert-metric!
+  "A metric of the venues named `metric-name` in `collection`, with the entity id `eid`."
+  [collection metric-name eid]
+  (t2/insert-returning-instance! :model/Card {:name                   metric-name
+                                              :type                   :metric
+                                              :display                :scalar
+                                              :visualization_settings {}
+                                              :creator_id             (mt/user->id :crowberto)
+                                              :dataset_query          (metric-query)
+                                              :collection_id          (:id collection)
+                                              :entity_id              eid}))
+
+(defn- link-entity
+  "The `:entity` of the link card of dashboard card `dashcard-eid`, as the app DB stores it."
+  [dashcard-eid]
+  (get-in (t2/select-one :model/DashboardCard :entity_id dashcard-eid) [:visualization_settings :link :entity]))
+
+(deftest metric-link-card-test
+  (testing "a link card to a metric: a read gives the metric's identity and a reference to it, and a write on an
+            instance where the metric has another row id links to that row"
+    (do-with-world
+     (fn [{:keys [metrics] :as world}]
+       (write! dashboard-id (content world))
+       (let [metric-eid "lbMeTrIcLiNkEdTo00001"
+             metric     (insert-metric! metrics "Price" metric-eid)
+             d          (t2/select-one :model/Dashboard :entity_id dashboard-id)
+             _          (t2/insert! :model/DashboardCard {:dashboard_id (:id d) :entity_id metric-link-card
+                                                          :dashboard_tab_id (t2/select-one-pk :model/DashboardTab
+                                                                                              :entity_id tab-2)
+                                                          :row 2 :col 0 :size_x 4 :size_y 2
+                                                          :visualization_settings
+                                                          {:virtual_card {:display "link"}
+                                                           :link         {:entity {:model "metric" :id (:id metric)
+                                                                                   :name "Price"}}}})
+             item       (get (app-db/read-current) dashboard-id)
+             entry      (some #(when (= metric-link-card (:id %)) %) (get-in item [:attrs :dashcards]))]
+         (is (= {:model "metric" :id metric-eid :name "Price"}
+                (get-in entry [:visualization_settings :link :entity])))
+         (is (contains? (:refs item) [:card metric-eid]))
+         (let [c (first (filter #(= :dashboard (codec/kind %)) format.kinds/codecs))]
+           (is (mr/validate (codec/schema c) item)))
+         (testing "on an instance where the metric has another row id"
+           (t2/delete! :model/Dashboard (:id d))
+           (t2/delete! :model/Card (:id metric))
+           (let [other (insert-metric! metrics "Price" metric-eid)]
+             (is (not= (:id metric) (:id other)))
+             (instance/write! (store) dashboard-id item)
+             (is (= {:model "metric" :id (:id other) :name "Price"} (link-entity metric-link-card)))
+             (is (= item (current dashboard-id))))))))))
+
+(deftest trashed-metric-linked-by-a-link-card-in-use-test
+  (testing "a trash of a Library metric: the in-use report names a dashboard outside the Library whose link card links
+            to it"
+    (do-with-world
+     (fn [{:keys [metrics]}]
+       (let [metric  (insert-metric! metrics "Price" "lbMeTrIcLiNkEdTo00002")
+             outside (t2/insert-returning-instance! :model/Collection {:name "Not the Library" :location "/"})
+             links   (insert-dashboard! outside "Metric links" {:virtual_card {:display "link"}
+                                                                :link         {:entity {:model "metric"
+                                                                                        :id    (:id metric)
+                                                                                        :name  "Price"}}})]
+         (instance/trash! (get app-db/kind-stores :metric) (:entity_id metric))
+         (is (= {(:entity_id metric) [{:kind :dashboard :id (:entity_id links) :name "Metric links"}]}
+                (in-use/trashed-in-use [{:id (:entity_id metric) :kind :metric}]))))))))
+
 (deftest move-test
   (do-with-world
    (fn [{:keys [dashboards] :as world}]

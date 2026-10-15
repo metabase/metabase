@@ -33,9 +33,11 @@
 
 (def ^:private created-ids
   "Entity ids of the rows that a pull of these tests creates."
-  ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001"])
+  ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001" "lbPullLinkedMetric001"
+   "lbPullMetricLinks0001"])
 
 (defn- delete-created! []
+  (t2/delete! :model/Dashboard :entity_id [:in created-ids])
   (t2/delete! :model/Card :entity_id [:in created-ids])
   (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids]))
 
@@ -317,7 +319,8 @@
              new-id  (second created-ids)]
          (with-remote [repo s]
            (let [[inst c1 base] (pushed! s)
-                 item           {:kind :snippet :name "lb pull clash" :place "snippetssnippetssnipp" :refs #{} :attrs {:content "2 = 2"}}
+                 item           {:kind  :snippet :name "lb pull clash" :place "snippetssnippetssnipp" :refs #{}
+                                 :attrs {:content "2 = 2"}}
                  h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
              (is (= {:result    :key-clash
                      :head      h
@@ -340,7 +343,8 @@
              new-id  (second created-ids)]
          (with-remote [repo s]
            (let [[inst c1 base] (pushed! s)
-                 item           {:kind :snippet :name "lb pull cläsh" :place "snippetssnippetssnipp" :refs #{} :attrs {:content "2 = 2"}}
+                 item           {:kind  :snippet :name "lb pull cläsh" :place "snippetssnippetssnipp" :refs #{}
+                                 :attrs {:content "2 = 2"}}
                  h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
              (is (= {:result    :key-clash
                      :head      h
@@ -357,8 +361,8 @@
                 (mdb/db-type))
     (doseq [[trashed-name new-name] [["lb pull Straße" "lb pull Strasse"]
                                      ["lb pull clash" "lb pull clash  "]
-                                     ["lb pull clash" "lb pull cl​ash"]
-                                     ["lb pull 😀" "lb pull 🎉"]]]
+                                     ["lb pull clash" "lb pull cl\u200Bash"]
+                                     ["lb pull \uD83D\uDE00" "lb pull \uD83C\uDF89"]]]
       (testing (pr-str trashed-name new-name)
         (do-with-committed-content!
          (fn [insert! _metrics]
@@ -369,7 +373,8 @@
                  new-id  (second created-ids)]
              (with-remote [repo s]
                (let [[inst c1 base] (pushed! s)
-                     item           {:kind :snippet :name new-name :place "snippetssnippetssnipp" :refs #{} :attrs {:content "2 = 2"}}
+                     item           {:kind  :snippet :name new-name :place "snippetssnippetssnipp" :refs #{}
+                                     :attrs {:content "2 = 2"}}
                      h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
                  (is (= {:result    :key-clash
                          :head      h
@@ -378,3 +383,40 @@
                         (pull! inst s)))
                  (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
                  (is (= c1 (instance/base inst))))))))))))
+
+(deftest link-card-to-a-metric-test
+  (testing (str "a dashboard with a link card to a metric, pushed from an instance and pulled into an instance where the "
+                "metric has another row id: the link card links to the metric's row on that instance; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! metrics]
+       (let [[metric-eid dashboard-eid] (drop 3 created-ids)
+             metric    (insert! :model/Card (metric-row metrics "Linked" :entity_id metric-eid))
+             dashboard (insert! :model/Dashboard {:name          "Metric links"
+                                                  :entity_id     dashboard-eid
+                                                  :collection_id (:id metrics)
+                                                  :creator_id    (mt/user->id :crowberto)})
+             _         (insert! :model/DashboardCard {:dashboard_id (:id dashboard) :row 0 :col 0 :size_x 4 :size_y 2
+                                                      :visualization_settings
+                                                      {:virtual_card {:display "link"}
+                                                       :link         {:entity {:model "metric" :id (:id metric)
+                                                                               :name "Linked"}}}})
+             link      (fn []
+                         (let [d (t2/select-one :model/Dashboard :entity_id dashboard-eid)]
+                           (get-in (t2/select-one :model/DashboardCard :dashboard_id (:id d))
+                                   [:visualization_settings :link :entity])))]
+         (with-remote [_repo s]
+           (let [[inst _c1 base] (pushed! s)]
+             (testing "the commit holds the metric's identity, and the dashboard refers to the metric"
+               (is (= {:model "metric" :id metric-eid :name "Linked"}
+                      (get-in base [dashboard-eid :attrs :dashcards 0 :visualization_settings :link :entity])))
+               (is (contains? (get-in base [dashboard-eid :refs]) [:card metric-eid])))
+             ;; Another instance: the same metric at another row id, no dashboard, and no base.
+             (t2/delete! :model/Dashboard (:id dashboard))
+             (t2/delete! :model/Card (:id metric))
+             (let [other (t2/insert-returning-instance! :model/Card (metric-row metrics "Linked" :entity_id metric-eid))]
+               (is (not= (:id metric) (:id other)))
+               (reset-base!)
+               (is (= :pulled (:result (pull! inst s))))
+               (is (= {:model "metric" :id (:id other) :name "Linked"} (link)))
+               (is (= (get base dashboard-eid) (get (read-snapshot inst) dashboard-eid)))))))))))

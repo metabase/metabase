@@ -348,3 +348,46 @@
                 (in-use/trashed-in-use [{:id (:entity_id question) :kind :question}
                                         {:id (:entity_id model) :kind :model}
                                         {:id (:entity_id metric) :kind :metric}]))))))))
+
+(defn- insert-series-dashboard!
+  "A dashboard named `dashboard-name` in `collection`, with one dashboard card that shows `card` and the cards `series`
+  as its series. `archived?` puts the dashboard in the trash."
+  ([collection dashboard-name card series]
+   (insert-series-dashboard! collection dashboard-name card series false))
+  ([collection dashboard-name card series archived?]
+   (let [d  (t2/insert-returning-instance! :model/Dashboard {:name          dashboard-name
+                                                             :collection_id (:id collection)
+                                                             :archived      archived?
+                                                             :creator_id    (mt/user->id :rasta)})
+         dc (t2/insert-returning-instance! :model/DashboardCard {:dashboard_id (:id d) :card_id (:id card)
+                                                                 :row 0 :col 0 :size_x 4 :size_y 4})]
+     (t2/insert! :model/DashboardCardSeries (map-indexed (fn [i s] {:dashboardcard_id (:id dc) :card_id (:id s)
+                                                                    :position         i})
+                                                         series))
+     d)))
+
+(deftest trashed-card-series-in-use-test
+  (testing "a trash of a Library question, model and metric: the in-use report names each dashboard outside the
+           Library that shows it as a series of another card, each once"
+    (do-with-world!
+     (fn [{:keys [app dashboards metrics]}]
+       (let [question (insert-card! {:name "Orders" :type :question :collection_id (:id app)})
+             model    (insert-card! {:name "Venues model" :type :model :collection_id (:id app)})
+             metric   (insert-card! {:name "Price" :type :metric :display :scalar :collection_id (:id metrics)})
+             outside  (t2/insert-returning-instance! :model/Collection {:name "Not the Library" :location "/"})
+             base     (insert-card! {:name "Base" :type :question :collection_id (:id outside)})
+             q-series (insert-series-dashboard! outside "Question series" base [question])
+             mx-both  (insert-series-dashboard! outside "Model and metric series" base [model metric])
+             q-twice  (insert-series-dashboard! outside "Shows and stacks" question [question])]
+         ;; Not users: a dashboard in the Library and a dashboard in the trash.
+         (insert-series-dashboard! dashboards "Library series" base [question model metric])
+         (insert-series-dashboard! outside "Trashed series" base [question model metric] true)
+         (doseq [[kind card] [[:question question] [:model model] [:metric metric]]]
+           (write-test/trash! kind (:entity_id card)))
+         (is (= {(:entity_id question) [{:kind :dashboard :id (:entity_id q-series) :name "Question series"}
+                                        {:kind :dashboard :id (:entity_id q-twice) :name "Shows and stacks"}]
+                 (:entity_id model)    [{:kind :dashboard :id (:entity_id mx-both) :name "Model and metric series"}]
+                 (:entity_id metric)   [{:kind :dashboard :id (:entity_id mx-both) :name "Model and metric series"}]}
+                (in-use/trashed-in-use [{:id (:entity_id question) :kind :question}
+                                        {:id (:entity_id model) :kind :model}
+                                        {:id (:entity_id metric) :kind :metric}]))))))))
