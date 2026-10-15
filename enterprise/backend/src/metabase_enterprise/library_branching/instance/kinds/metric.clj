@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -131,7 +132,9 @@
   (when-let [row (library-branching.db/lock-card id)]
     (tree/check-in-tree! id (tree/collection-id-in-tree? (:collection_id row)))
     (when-not (:archived row)
-      (library-branching.db/update-card! (:id row) {:archived true :archived_directly true}))
+      (values-source/do-keeping-outside-values-sources
+       (library-branching.db/values-source-users-of-card (:id row))
+       #(library-branching.db/update-card! (:id row) {:archived true :archived_directly true})))
     nil))
 
 (def kind-store
