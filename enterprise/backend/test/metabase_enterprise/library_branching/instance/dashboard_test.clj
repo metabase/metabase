@@ -3,6 +3,7 @@
   references of a read against the serdes walk of master. Each test writes in a transaction that rolls back."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.engine.plan :as plan]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.kinds.dashboard :as format.dashboard]
@@ -412,3 +413,36 @@
              walked  (disj (set (keep portable-target walk)) (:entity_id dashboards))]
          (is (every? (set (map first walk)) ["Card" "Action" "Dashboard" "Field"]) "the walk follows each kind")
          (is (every? targets walked) (pr-str (remove targets walked))))))))
+
+;;; ------------------------------------------------- Reference cycles ------------------------------------------------
+
+(deftest new-dashboard-with-a-new-question-test
+  (testing "the apply of a plan that creates a dashboard and a question of it, a reference cycle, gives both"
+    (do-with-world
+     (fn [{:keys [dashboards] :as world}]
+       (write! dashboard-id (content world))
+       (let [d        (t2/select-one :model/Dashboard :entity_id dashboard-id)
+             question (t2/insert-returning-instance! :model/Card {:name                   "Internal" :type :question
+                                                                  :display                :table
+                                                                  :visualization_settings {}
+                                                                  :creator_id             (mt/user->id :crowberto)
+                                                                  :dataset_query          (mt/mbql-query venues)
+                                                                  :dashboard_id           (:id d)
+                                                                  :collection_id          (:id dashboards)})
+             _        (t2/insert! :model/DashboardCard {:dashboard_id (:id d) :card_id (:id question) :row 9 :col 0
+                                                        :size_x 4 :size_y 4 :entity_id "lbDcArDqUeStIoN000005"
+                                                        :dashboard_tab_id (t2/select-one-pk :model/DashboardTab
+                                                                                            :entity_id tab-1)})
+             target   (select-keys (app-db/read-current) [dashboard-id (:entity_id question)])
+             _        (t2/delete! :model/Dashboard (:id d))
+             _        (t2/delete! :model/Card (:id question))
+             local    (app-db/read-current)
+             inst     (app-db/app-db-instance)
+             steps    (plan/plan local (merge local target) local)
+             result   (instance/apply-plan! inst steps {:base     (instance/base inst)
+                                                        :new-base "5555555555555555555555555555555555555555"
+                                                        :digests  {}
+                                                        :head-ok? (constantly true)})]
+         (is (= [:dashboard :question] (sort (map :kind (vals target)))))
+         (is (contains? result :ok) (pr-str result))
+         (is (= target (select-keys (app-db/read-current) (keys target)))))))))

@@ -5,6 +5,7 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [metabase-enterprise.library-branching.engine.plan :as plan]
    [metabase-enterprise.library-branching.engine.validate :as validate]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
@@ -228,6 +229,42 @@
                                                 :attrs {:type "library"}}
                                  dashboard-id  (item a)}))))))
 
+;;; ------------------------------------------------- Reference cycles ------------------------------------------------
+
+(def ^:private question-id "qUeStIoNoNtHeDaShBd01")
+
+(defn- question
+  "A question of the dashboard, in the collection."
+  []
+  (let [a {:display      "table"
+           :query        {:lib/type "mbql/query"
+                          :database sd
+                          :stages   [{:lib/type "mbql.stage/mbql" :source-table [sd "PUBLIC" "ORDERS"]}]}
+           :dashboard_id dashboard-id}]
+    {:kind :question :name "Orders" :place collection-id :refs (kinds/refs :question question-id a) :attrs a}))
+
+(deftest cycle-with-a-question-test
+  (testing "a new dashboard and a new question of it form a reference cycle; a question has no stub, so the plan writes
+            the dashboard first without its cards, then the question, then the dashboard's cards"
+    (let [coll {:kind :collection :name "Dashboards" :place nil :refs #{} :attrs {:type "library-dashboards"}}
+          d    (item {:dashcards [{:id card-1 :card_id question-id :row 0 :col 0 :size_x 4 :size_y 4}]})
+          l    {collection-id coll}
+          m    {collection-id coll dashboard-id d question-id (question)}]
+      (is (= [[dashboard-id :write #{[:card question-id]}]
+              [question-id :write nil]
+              [dashboard-id :link #{[:card question-id]}]]
+             (mapv (fn [{:keys [id write defer link]}] [id (if write :write :link) (or defer link)])
+                   (plan/plan l m l))))))
+  (testing "in a cycle of two dashboards that link to each other, each defers its link"
+    (let [link   (fn [target] {:dashcards [{:id card-2 :row 0 :col 0 :size_x 4 :size_y 4
+                                            :visualization_settings {:click_behavior {:type "link" :linkType "dashboard"
+                                                                                      :targetId target}}}]})
+          d1     (assoc (item (link other-dashboard-id)) :place nil)
+          d2     (assoc (item (link dashboard-id)) :place nil)
+          steps  (plan/plan {} {dashboard-id d1 other-dashboard-id d2} {})]
+      (is (= #{[dashboard-id #{[:dashboard other-dashboard-id]}] [other-dashboard-id #{[:dashboard dashboard-id]}]}
+             (set (keep (fn [{:keys [id defer]}] (when defer [id defer])) steps)))))))
+
 ;;; ------------------------------------------- The serdes walk of master ---------------------------------------------
 
 (def ^:private role-models
@@ -331,5 +368,13 @@
     :target `dashboard/tabs-fit?
     :edits  [[:replace '(distinct-ids? dashcards) true]]}])
 
+(def ^:private plan-mutations
+  [{:name   :no-stub-first
+    :doc    "In a reference cycle of a dashboard and its question, the question leaves out its dashboard too, so the
+            apply must write a stub of a question, which no kind store has."
+    :target `plan/cyclic-refs
+    :edits  [[:replace '(contains? stub-kinds (:kind (get m id))) false]]}])
+
 (deftest dashboard-mutations-test
-  (mut/check mutations {:tests [#'refs-test #'decode-normalizes-test #'structure-test]}))
+  (mut/check mutations {:tests [#'refs-test #'decode-normalizes-test #'structure-test]})
+  (mut/check plan-mutations {:tests [#'cycle-with-a-question-test]}))
