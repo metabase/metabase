@@ -2,16 +2,22 @@
   "The content that the instance reads for each kind, and the local changes that a content difference shows. Each
   test writes its content in a transaction that rolls back, and reads it in that transaction."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.engine.diff :as diff]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
+   [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sync.sync-metadata.tables :as sync.tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
@@ -153,6 +159,88 @@
           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :users :name) :display_name "Who"}]
             (is (nil? (read-item (table-key :users))))))))))
 
+(deftest published-table-remapping-content-test
+  (testing "a published table holds the remappings of its fields: a foreign-key remapping by the natural key of its
+            target field, an internal remapping with its values"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_ nil {:rollback-only true}]
+        (t2/delete! :model/FieldValues :field_id [:in [(mt/id :venues :price) (mt/id :venues :name)]])
+        (t2/insert! :model/TableUserSettings {:table_id (mt/id :venues) :is_published true :collection_id (:id data)})
+        (t2/insert! :model/Dimension {:field_id                (mt/id :venues :category_id)
+                                      :name                    "Category"
+                                      :type                    :external
+                                      :human_readable_field_id (mt/id :categories :name)})
+        (t2/insert! :model/Dimension {:field_id (mt/id :venues :price) :name "Price" :type :internal})
+        (t2/insert! :model/Dimension {:field_id (mt/id :venues :name) :name "Name" :type :internal})
+        (t2/insert! :model/FieldValues {:field_id              (mt/id :venues :price)
+                                        :type                  :full
+                                        :values                [1 2 3 4]
+                                        :human_readable_values ["$" "$$" "$$$" "$$$$"]})
+        (t2/insert! :model/FieldValues {:field_id (mt/id :venues :name) :type :full :values ["A" "B"]})
+        (let [item (read-item (table-key :venues))]
+          (is (= {:CATEGORY_ID {:remapping {:type "external" :name "Category" :field (field-key :categories :name)}}
+                  :PRICE       {:remapping {:type   "internal"
+                                            :name   "Price"
+                                            :values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]}}
+                  :NAME        {:remapping {:type "internal" :name "Name"}}}
+                 (get-in item [:attrs :fields])))
+          (is (contains? (:refs item) [:remapping [:env (field-key :categories :name)]])))
+        (testing "the human-readable values of a field with no internal remapping are no content"
+          (t2/delete! :model/Dimension :field_id (mt/id :venues :price))
+          (t2/update! :model/Dimension {:field_id (mt/id :venues :name)} {:type :external
+                                                                          :human_readable_field_id (mt/id :venues :id)})
+          (t2/update! :model/FieldValues {:field_id (mt/id :venues :name)} {:human_readable_values ["a" "b"]})
+          (is (= {:CATEGORY_ID {:remapping {:type "external" :name "Category" :field (field-key :categories :name)}}
+                  :NAME        {:remapping {:type "external" :name "Name" :field (field-key :venues :id)}}}
+                 (get-in (read-item (table-key :venues)) [:attrs :fields]))))))))
+
+(defn- archive-by-sync!
+  "Archives table `table-id` as warehouse sync archives a table that the warehouse no longer has: sync deactivates it,
+  and archives and renames it after the threshold."
+  [table-id]
+  (t2/update! :metabase_table table-id {:active         false
+                                        :deactivated_at (.minusDays (java.time.OffsetDateTime/now) 15)})
+  (#'sync.tables/archive-tables! (t2/select-one :model/Database (mt/id))))
+
+(deftest archived-published-table-test
+  (testing "a published table that warehouse sync archives keeps its identity, its content and its path"
+    (collections.tu/with-library [{:keys [data]}]
+      (mt/with-temp [:model/Table             table {:db_id        (mt/id)
+                                                     :schema       "PUBLIC"
+                                                     :name         "lb_kinds_archived"
+                                                     :display_name "Archived orders"
+                                                     :active       true}
+                     :model/TableUserSettings _     {:table_id      (:id table)
+                                                     :is_published  true
+                                                     :collection_id (:id data)
+                                                     :description   "Orders of last year."}]
+        (let [k      [(db-name) "PUBLIC" "lb_kinds_archived"]
+              paths  #(layout/layout kinds/codecs %)
+              before (app-db/read-current)]
+          (is (= "Archived orders" (:name (get before k))))
+          (archive-by-sync! (:id table))
+          (testing "warehouse sync renamed the table"
+            (is (str/starts-with? (t2/select-one-fn :name :metabase_table (:id table)) "lb_kinds_archived__mbarchiv__")))
+          (let [after (app-db/read-current)]
+            (testing "the read gives the same item at the same path: a push or a pull sees no change"
+              (is (= (get before k) (get after k)))
+              (is (= {:created #{} :deleted #{} :updated #{}} (diff/diff before after)))
+              (is (= (get (paths before) k) (get (paths after) k))))
+            (testing "a reference to the table names its original key"
+              (is (= [{:id (:id table) :db (db-name) :schema "PUBLIC" :table "lb_kinds_archived"}]
+                     (library-branching.db/table-keys-by-id [(:id table)]))))
+            (testing "the current content and a write find the table by its original key"
+              (is (= (get before k) (instance/current kinds.published-table/kind-store k)))
+              (instance/write! kinds.published-table/kind-store k
+                               (assoc-in (get before k) [:attrs :description] "Orders of the year before."))
+              (is (= "Orders of the year before."
+                     (get-in (app-db/read-current) [k :attrs :description]))))
+            (testing "a later table with the original name does not take the key from the published table"
+              (let [item (get (app-db/read-current) k)]
+                (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "PUBLIC" :name "lb_kinds_archived" :active true}]
+                  (is (= item (get (app-db/read-current) k)))
+                  (is (= item (instance/current kinds.published-table/kind-store k))))))))))))
+
 (deftest items-fit-the-format-test
   (testing "every item that the instance reads fits the schema of its kind, and survives encode and decode"
     (collections.tu/with-library [{:keys [data metrics]}]
@@ -164,6 +252,11 @@
                      :model/NativeQuerySnippet _ {:name "A filter" :collection_id (:id f) :content "{{x}} > 1"}
                      :model/TableUserSettings _ {:table_id (mt/id :venues) :is_published true :collection_id (:id data)}
                      :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :semantic_type :type/Currency}
+                     :model/Dimension         _ {:field_id                (mt/id :venues :category_id)
+                                                 :name                    "Category"
+                                                 :type                    :external
+                                                 :human_readable_field_id (mt/id :categories :name)}
+                     :model/Dimension         _ {:field_id (mt/id :venues :price) :name "Price" :type :internal}
                      :model/Glossary          _ {:term       "lb format churn"
                                                  :definition "Who leaves: 10% of: them."
                                                  :creator_id (mt/user->id :crowberto)}]
@@ -255,6 +348,7 @@
                      :model/NativeQuerySnippet _ {:name "One" :collection_id (:id f) :content "1 = 1"}
                      :model/TableUserSettings _ {:table_id (mt/id :venues) :is_published true :collection_id (:id data)}
                      :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}
+                     :model/Dimension         _ {:field_id (mt/id :venues :price) :name "Price" :type :internal}
                      :model/Glossary          _ {:term "lb batch one" :definition "1" :creator_id (mt/user->id :rasta)}]
         (let [few (statements-of-read)]
           (mt/with-temp [:model/Card              _ {:name          "Latitude"
@@ -278,6 +372,11 @@
                          :model/FieldUserSettings _ {:field_id (mt/id :users :name) :display_name "Who"}
                          :model/FieldUserSettings _ {:field_id           (mt/id :checkins :user_id)
                                                      :fk_target_field_id (mt/id :users :id)}
+                         :model/Dimension         _ {:field_id (mt/id :users :name) :name "Who" :type :internal}
+                         :model/Dimension         _ {:field_id                (mt/id :checkins :user_id)
+                                                     :name                    "User"
+                                                     :type                    :external
+                                                     :human_readable_field_id (mt/id :users :name)}
                          :model/TableUserSettings _ {:table_id      (mt/id :checkins)
                                                      :is_published  true
                                                      :collection_id (:id data)}

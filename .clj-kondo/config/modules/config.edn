@@ -4010,9 +4010,11 @@
                     :model/DashboardCard
                     :model/DataApp
                     :model/Database
+                    :model/Dimension
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet

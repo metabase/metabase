@@ -105,6 +105,18 @@
     :doc    "A field setting that the content no longer has is not cleared."
     :target `kinds.published-table/field-changes
     :edits  [[:replace '(into (set (keys old)) (keys new)) '(keys new)]]}
+   {:name   :remappings-not-written
+    :doc    "A write of a published table sets no remapping of its fields."
+    :target `kinds.published-table/write-published-table!
+    :edits  [[:replace '(run! write-remapping! remappings) nil]]}
+   {:name   :remapping-not-removed
+    :doc    "A remapping that the content no longer has stays."
+    :target `kinds.published-table/write-remapping!
+    :edits  [[:replace '(library-branching.db/delete-dimension! field-id) nil]]}
+   {:name   :stale-remapped-values-kept
+    :doc    "An internal remapping with no values keeps the human-readable values of an earlier remapping."
+    :target `kinds.published-table/write-remapping!
+    :edits  [[:replace '(library-branching.db/clear-remapped-values! field-id) nil]]}
    {:name   :outside-values-sources-cleared
     :doc    "A trash keeps no ParameterCard row of a user outside the Library tree, so the Card save path clears the
             values source of each parameter outside the Library that takes its values from a trashed card."
@@ -145,6 +157,7 @@
    #'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test
    #'metabase-enterprise.library-branching.instance.write-test/refused-writes-write-nothing-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-write-test
+   #'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-legacy-visibility-type-test
    #'metabase-enterprise.library-branching.instance.write-test/snippet-write-test
    #'metabase-enterprise.library-branching.instance.write-test/write-of-current-content-changes-no-row-test

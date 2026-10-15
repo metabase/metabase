@@ -57,25 +57,27 @@
                                                :dataset_query (write-test/sum-query :venues :price)}]
       (let [query (fn [card] (get-in (write-test/current :metric (:entity_id card)) [:attrs :query]))
             cols  (get-in (write-test/current :model (:entity_id m3)) [:attrs :result_metadata])]
-        (f {::metrics         (:entity_id metrics)
-            ::sub             (:entity_id sub)
-            ::data            (:entity_id data)
-            ::sub-data        (:entity_id sub-data)
-            ::folder          (:entity_id folder)
-            ::inner           (:entity_id inner)
-            ::q1              (query m1)
-            ::q2              (query m2)
-            ::app             (:entity_id app)
-            ::app2            (:entity_id app2)
-            ::q3              (get-in (write-test/current :model (:entity_id m3)) [:attrs :query])
-            ::cols            cols
-            ::cols-named      (assoc-in cols [0 :display_name] "Price level total")
-            ::cols-described  (-> cols
-                                  (assoc-in [0 :description] "The sum of the price levels.")
-                                  (assoc-in [0 :semantic_type] "type/Quantity"))
-            ::category-target (write-test/field-key :categories :id)
-            ::venues-name     (t2/select-one-fn :display_name :model/Table (mt/id :venues))
-            ::users-name      (t2/select-one-fn :display_name :model/Table (mt/id :users))})))))
+        (t2/with-transaction [_ nil {:rollback-only true}]
+          (f {::metrics         (:entity_id metrics)
+              ::sub             (:entity_id sub)
+              ::data            (:entity_id data)
+              ::sub-data        (:entity_id sub-data)
+              ::folder          (:entity_id folder)
+              ::inner           (:entity_id inner)
+              ::q1              (query m1)
+              ::q2              (query m2)
+              ::app             (:entity_id app)
+              ::app2            (:entity_id app2)
+              ::q3              (get-in (write-test/current :model (:entity_id m3)) [:attrs :query])
+              ::cols            cols
+              ::cols-named      (assoc-in cols [0 :display_name] "Price level total")
+              ::cols-described  (-> cols
+                                    (assoc-in [0 :description] "The sum of the price levels.")
+                                    (assoc-in [0 :semantic_type] "type/Quantity"))
+              ::category-target (write-test/field-key :categories :id)
+              ::category-name   (write-test/field-key :categories :name)
+              ::venues-name     (t2/select-one-fn :display_name :model/Table (mt/id :venues))
+              ::users-name      (t2/select-one-fn :display_name :model/Table (mt/id :users))}))))))
 
 (defn- resolve-item
   "`item` with each keyword of this namespace replaced by its value in `world`."
@@ -170,6 +172,17 @@
             (apply gen/hash-map (mapcat (fn [field-name] [(keyword field-name) (optional field-settings-gen)])
                                         (get field-names table)))))
 
+(def ^:private remappings-gen
+  "A generator of the remappings of the fields of the venues table: none, or one of each kind; an internal remapping
+  with or without its values."
+  (gen/let [external (optional (gen/return {:type "external" :name "Category" :field ::category-name}))
+            internal (optional (gen/elements [{:type "internal" :name "Price"}
+                                              {:type "internal" :name "Price" :values [[1 "$"] [2 "$$"]]}
+                                              {:type "internal" :name "Cost" :values [[1 "Cheap"] [4 "Dear"]]}]))]
+    (cond-> {}
+      external (assoc :CATEGORY_ID external)
+      internal (assoc :PRICE internal))))
+
 (defn- published-table-gen
   "A generator of the content of the published table `table`."
   [table]
@@ -180,15 +193,19 @@
             layer     (gen/elements layer-choices)
             getting   (optional (gen/return true))
             settings  (fields-gen table)
-            target    (optional (gen/return ::category-target))]
+            target    (optional (gen/return ::category-target))
+            remaps    remappings-gen]
     (with-attrs {:kind :published-table :name item-name :place place}
       (merge layer
              {:description             desc
               :caveats                 caveats
               :show_in_getting_started getting
-              :fields                  (not-empty (cond-> settings
-                                                    (and target (= :venues table))
-                                                    (assoc-in [:CATEGORY_ID :fk_target] target)))}))))
+              :fields                  (not-empty (if (= :venues table)
+                                                    (cond-> (reduce-kv (fn [m k r] (assoc-in m [k :remapping] r))
+                                                                       settings
+                                                                       remaps)
+                                                      target (assoc-in [:CATEGORY_ID :fk_target] target))
+                                                    settings))}))))
 
 ;;; ---------------------------------------------------- Property ----------------------------------------------------
 
@@ -199,7 +216,9 @@
    (t2/select :collection :entity_id (str id))
    (t2/select :native_query_snippet :entity_id (str id))
    (t2/select :metabase_table_user_settings {:order-by [:table_id]})
-   (t2/select :metabase_field_user_settings {:order-by [:field_id]})])
+   (t2/select :metabase_field_user_settings {:order-by [:field_id]})
+   (t2/select :dimension {:order-by [:id]})
+   (t2/select :metabase_fieldvalues :field_id (mt/id :venues :price) {:order-by [:id]})])
 
 (defn- laws-hold!
   "True iff each write of the generated `items` to identity `id` reads back with current (PutGet), and a write of the
@@ -210,9 +229,12 @@
    (fn [world]
      (when (vector? id)
        ;; Each trial starts from a table with no user value.
-       (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema (second id) :name (peek id))]
+       (let [table-id  (t2/select-one-pk :model/Table :db_id (mt/id) :schema (second id) :name (peek id))
+             field-ids (t2/select-pks-set :model/Field :table_id table-id)]
          (t2/delete! :model/TableUserSettings :table_id table-id)
-         (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-set :model/Field :table_id table-id)])))
+         (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
+         (t2/delete! :model/Dimension :field_id [:in field-ids])
+         (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))))
      (let [store   #(get app-db/kind-stores (:kind %))
            put-get (every? (fn [item]
                              (let [item (resolve-item world item)
@@ -274,6 +296,10 @@
       (is (some #(nil? (:place %)) (sample (collection-gen :snippets))) "a collection at the root level")
       (is (some #(get-in % [:attrs :template_tags]) (sample snippet-gen)) "a snippet with a tag")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :fk_target]) tables) "a foreign key target")
+      (is (some #(get-in % [:attrs :fields :CATEGORY_ID :remapping]) tables) "a foreign-key remapping")
+      (is (some #(get-in % [:attrs :fields :PRICE :remapping :values]) tables) "an internal remapping with values")
+      (is (some #(= {:type "internal" :name "Price"} (get-in % [:attrs :fields :PRICE :remapping])) tables)
+          "an internal remapping with no values")
       (is (some #(= "hidden" (get-in % [:attrs :data_layer])) tables) "a hidden table"))))
 
 ;;; ------------------------------------------- Visibility type and data layer ------------------------------------------
