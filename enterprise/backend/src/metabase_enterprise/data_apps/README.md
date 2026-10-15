@@ -89,8 +89,9 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/generate/app` — a new app's `data_app.yaml` and its collection's file, each at its path
-  from the repository root, with new entity IDs (`generate/app.clj`; superuser).
+- `POST /api/apps/generate/app` — an app's `data_app.yaml` and its collection's file, each at its path
+  from the repository root, with new entity IDs, or with the `entity_id` and `collection_id` an existing
+  app passes (`generate/app.clj`; superuser).
 - `GET /api/apps/generate/schemas` — the TypeScript module an app's definitions are written against: the
   root libraries' tables and metrics, and the query actions that belong to no model
   (`generate/schemas.clj`; superuser).
@@ -147,7 +148,7 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `resources.clj`                        | Lifecycle of the app-owned collection and derived collection permissions.                       |
 | `models/data_app.clj`                  | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.           |
 | `generate.clj`                         | The facade over what Metabase generates for an app's author: its files, its schema, its collection's files. |
-| `generate/app.clj`                     | A new app's `data_app.yaml` and collection file, each at its path with its YAML.                |
+| `generate/app.clj`                     | An app's `data_app.yaml` and collection file, each at its path with its YAML.                   |
 | `generate/resources.clj`               | The files of an app's collection: built queries, action copies, metric copies, each with its YAML. |
 | `generate/schemas.clj`                 | The TypeScript schema of the root libraries' tables and metrics and the model-less query actions. |
 | `generate/schemas/`                    | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |
