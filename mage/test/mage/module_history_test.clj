@@ -218,7 +218,14 @@
 (deftest publish-missing-tool-test
   (testing "a tool the config needs and that is not installed stops the run, a dry run too"
     (is (= {:exit 1, :page nil, :calls [], :printed "share"}
-           (naming #"share" (publish! (assoc run :tools #{"mb"}, :options {:dry-run true})))))))
+           (naming #"share" (publish! (assoc run :tools #{"mb"}, :options {:dry-run true}))))))
+  (testing "a tool the config would not run need not be installed"
+    (is (= {:exit 0, :page "2 of [\"tardis\"]", :calls []}
+           (dissoc (publish! (assoc run
+                                    :config {:pages    (get-in run [:config :pages])
+                                             :metabase {:profile "stats"}}
+                                    :tools  #{}))
+                   :printed)))))
 
 (deftest publish-stale-history-test
   (testing "no page is written from a history.json that lacks a key its template shows"

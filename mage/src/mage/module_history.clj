@@ -144,8 +144,8 @@
   [{:keys [metabase shares]}]
   (binding [u/*skip-warning* true]
     (into [] (remove u/can-run?) (cond-> []
-                                   metabase     (conj "mb")
-                                   (seq shares) (conj "share")))))
+                                   (or (seq (:uploads metabase)) (seq (:cards metabase))) (conj "mb")
+                                   (seq shares)                                         (conj "share")))))
 
 ;;;; Pages
 
