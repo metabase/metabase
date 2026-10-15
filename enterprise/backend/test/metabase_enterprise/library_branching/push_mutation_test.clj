@@ -35,7 +35,7 @@
             cachereread): a save during the push shows as synced, and the next push has nothing to push."
     :target `push/commit!
     :edits  [[:replace '(instance/set-base! inst b c digests)
-              '(instance/set-base! inst b c (writer/item-digests codecs (:snapshot (instance/read-snapshot inst))))]]}
+              '(instance/set-base! inst b c (writer/item-digests kinds/codecs (:snapshot (instance/read-snapshot inst))))]]}
    {:name   :no-validate
     :doc    "The push writes a snapshot with a structural finding, for example a reference to a trashed item."
     :target `push/push!
@@ -59,7 +59,8 @@
     :doc    "A push whose remote compare-and-swap refused ends its task as interrupted (the push may have landed), not
             as failed: the task record is not truthful."
     :target `push/commit!
-    :edits  [[:replace '(tasks/fail-committing! task remote-moved-message) '(tasks/fail! task remote-moved-message)]]}
+    :edits  [[:replace '(tasks/fail-committing! task (remote-moved-message branch))
+              '(tasks/fail! task (remote-moved-message branch))]]}
    {:name   :no-record-step
     :doc    "The push moves the base outside the record step of its task, so the task stays committing after the
             push landed."

@@ -140,24 +140,53 @@
 (defn entries
   "`{id entry}`: the entry name of each item of `items` in its directory. An item is a map with `:id`, `:dir`,
   `:base`, `:word`, `:directory?` and `:entry`, the entry with no suffix. Of the items with one `:dir` and one `:entry`,
-  the least [[identity-segment]] keeps `:entry`; each other one gets `~<identity>` after its base."
-  [items]
-  (into {}
-        (mapcat (fn [group]
-                  (let [[least & others] (sort-by (comp identity-segment :id) group)]
-                    (cons [(:id least) (:entry least)]
-                          (for [{:keys [id base word directory?]} others]
-                            [id (cond-> (str base "~" (identity-segment id))
-                                  (not directory?) (str "." word))])))))
-        (vals (group-by (juxt :dir :entry) items))))
+  the least [[identity-segment]] keeps `:entry`; each other one gets `~<identity>` after its base. An item whose entry
+  is not free (`(free? item entry)`, default always true) takes the first free one of `~<identity>`, `~<identity>~2`,
+  `~<identity>~3`, and so on."
+  ([items]
+   (entries items (constantly true)))
+  ([items free?]
+   (into {}
+         (mapcat (fn [group]
+                   (let [[least & others] (sort-by (comp identity-segment :id) group)]
+                     (for [{:keys [id base word directory?] :as item} (cons least others)
+                           :let [suffixed (fn [n]
+                                            (cond-> (str (str base "~" (identity-segment id)) (when (< 1 n) (str "~" n)))
+                                              (not directory?) (str "." word)))]]
+                       [id (first (filter #(free? item %)
+                                          (concat (when (identical? item least) [(:entry item)])
+                                                  (map suffixed (iterate inc 1)))))]))))
+         (vals (group-by (juxt :dir :entry) items)))))
+
+(defn- dir-prefixes
+  "The directories of path `p`: each proper prefix that ends before a /."
+  [^String p]
+  (let [segments (str/split p #"/")]
+    (map #(str/join "/" (take % segments)) (range 1 (count segments)))))
+
+(defn- free-entry?
+  "`(free? item entry)` for [[entries]]: true iff entry `entry` of `item` puts its file and its own directory at no
+  path of `taken`, and its file at no directory of a path of `taken`."
+  [taken]
+  (if (empty? taken)
+    (constantly true)
+    (let [taken-dirs (into #{} (mapcat dir-prefixes) taken)]
+      (fn [{:keys [dir word directory?]} entry]
+        (let [own  (str/join "/" (conj dir entry))
+              file (if directory? (str own "/_" word ".yaml") (str own ".yaml"))]
+          (not (or (contains? taken own) (contains? taken file) (contains? taken-dirs file))))))))
 
 (defn layout
   "`{identity path}` of snapshot `s`, with the codecs `codecs` (each a `codec/Codec` and a [[Layout]]). Paths are
   relative, separated by /, unique, and end in .yaml; no path is a directory of another. Throws when a kind of `s` has
-  no codec, when a place is not in `s`, when places form a cycle, or when a codec gives an unsafe word or home."
+  no codec, when a place is not in `s`, when places form a cycle, or when a codec gives an unsafe word or home.
+
+  `taken` is a set of paths of files that sync does not write (the foreign files of a tree). An item whose file or
+  own directory would be at one of them, or whose file would be at one of their directories, gets a suffix
+  ([[entries]]); the items that it contains move with it. A home directory takes no suffix."
   ([codecs s]
    (layout codecs s #{}))
-  ([codecs s _taken]
+  ([codecs s taken]
    (let [by-kind  (codec/by-kind codecs)
          _        (run! check-word! (vals by-kind))
          codec-of (fn [kind]
@@ -178,7 +207,7 @@
                                  base (or (when-not place (:segment (home-of item))) (slug name))]]
                        {:id id :name name :dir (parent-dir dirs home-of item) :base base :word w :directory? dir?
                         :entry (if dir? base (str base "." w))})
-               named (entries items)]
+               named (entries items (free-entry? taken))]
            (reduce (fn [acc {:keys [id dir word directory?]}]
                      (let [entry (get named id)
                            own   (conj dir entry)]

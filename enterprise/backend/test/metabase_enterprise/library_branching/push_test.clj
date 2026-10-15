@@ -555,7 +555,7 @@
             (let [result (push/push! inst racing ptu/branch task)]
               (is (= {:result :remote-moved :base c1 :head (deref other 0 ::none)} result)))
             (is (= c1 (instance/base inst)))
-            (is (= {:status "failed" :error_message push/remote-moved-message}
+            (is (= {:status "failed" :error_message (push/remote-moved-message ptu/branch)}
                    (select-keys (task-row task) [:status :error_message]))))))))))
 
 (deftest paused-push-cannot-move-the-base-back-test

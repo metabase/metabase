@@ -152,14 +152,14 @@
     (write-yaml doc)))
 
 (defn encode-tree
-  "`{path bytes}` of snapshot `s`, with the codecs `codecs`: each item at the path that `layout/layout` gives, and the
-  format version file at `tree/format-path`. Equal snapshots give equal trees. Throws when a kind of `s` has no codec,
+  "`{path bytes}` of snapshot `s`, with the codecs `codecs`: each item at the path that `layout/layout` gives with the
+  taken paths `taken` (default none), and the format version file at `tree/format-path`. Equal snapshots give equal trees. Throws when a kind of `s` has no codec,
   or when `s` has a place outside it or a containment cycle."
   ([codecs s]
    (encode-tree codecs s #{}))
-  ([codecs s _taken]
+  ([codecs s taken]
    (let [by-kind (codec/by-kind codecs)
-         paths   (layout/layout codecs s)]
+         paths   (layout/layout codecs s taken)]
      (into {tree/format-path (write-yaml {:format tree/format-version})}
            (map (fn [[id item]] [(get paths id) (encode-file (get by-kind (:kind item)) id item)]))
            s))))
