@@ -119,14 +119,12 @@
           :conflict)))))
 
 (defn- process-status!
-  "Re-derive the result metadata of the stale entity `status` when it is a card, then clear it, unconditionally when
-  storing the result metadata marked it again, and not at all when the card was updated meanwhile, so it is retried."
+  "Re-derive the result metadata of the stale entity `status` when it is a card, then clear it unless it was marked
+  again meanwhile, and not at all when the card was updated meanwhile, so it is retried."
   [{:keys [entity_type entity_id] :as status}]
   (t2/with-transaction [_]
-    (case (if (= entity_type :card) (update-card-result-metadata! entity_id) :unchanged)
-      :stored    (deps.result-metadata-status/clear-stale! status)
-      :unchanged (deps.result-metadata-status/clear-stale-if-unchanged! status)
-      :conflict  nil)))
+    (when-not (= :conflict (if (= entity_type :card) (update-card-result-metadata! entity_id) :unchanged))
+      (deps.result-metadata-status/clear-stale-if-unchanged! status))))
 
 (defn- process-status-or-record-failure!
   "Process the stale entity `status`, recording a failure instead of throwing one."

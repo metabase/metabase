@@ -49,11 +49,6 @@
     (or (not-empty (dependencies.db/ready-result-metadata-statuses batch-size now))
         (dependencies.db/stale-result-metadata-statuses-batch batch-size now))))
 
-(defn clear-stale!
-  "Clear the stale status `status`."
-  [{:keys [id]}]
-  (dependencies.db/clear-result-metadata-status! id))
-
 (defn clear-stale-if-unchanged!
   "Clear the stale status `status`, unless it was marked again since it was read."
   [{:keys [id updated_at]}]

@@ -952,13 +952,6 @@
               :order-by [[:updated_at :asc] [:id :asc]]
               :limit    batch-size}))
 
-(mu/defn clear-result-metadata-status!
-  "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id`, returning the number updated."
-  [status-id :- ms/PositiveInt]
-  (t2/update! :model/ResultMetadataStatus
-              :id status-id
-              {:stale false :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
-
 (mu/defn clear-unchanged-result-metadata-status!
   "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id` unless it was updated after
   `updated-at`, returning the number updated."
