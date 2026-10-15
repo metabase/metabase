@@ -34,9 +34,9 @@
   (:codecs opts kinds/codecs))
 
 (defn- decode
-  "`claims/decode` of the tree `files` with the codecs and the option `:table-names` of `opts`."
+  "`claims/decode` of the tree `files` with the codecs and the options of `pull/decode-keys` in `opts`."
   [opts files]
-  (claims/decode (codecs-of opts) files (select-keys opts [:table-names])))
+  (claims/decode (codecs-of opts) files (select-keys opts pull/decode-keys)))
 
 (defn- with-instance-names
   "`opts` with the options of `pull/decode-opts` of instance `inst`, unless `opts` has them."
@@ -68,7 +68,7 @@
 
 (defn base-snapshot
   "The snapshot of base commit `b`, read through `store` after a fetch of branch `branch`, or nil when the repository no
-  longer holds `b` or its tree does not decode. `opts`: `:codecs`, `:table-names` (as `claims/decode`)."
+  longer holds `b` or its tree does not decode. `opts`: `:codecs`, `:table-names` and `:card-ids` (as `claims/decode`)."
   [store branch b opts]
   (some->> (fetched-tree store branch b)
            (decode opts)
@@ -105,7 +105,7 @@
   "The remote changes from base commit `b` to head `h` of `store`, from a decode of every item file of `h`: `{:changes
   c}`, `{:findings f}` when the tree of `h` does not decode, or `{:unknown :base}` when the content of `b` is not known.
   The content of `b` is `(:base-digests opts)` when given, else the decode of the tree of `b`; `b` nil has no items.
-  `opts`: `:codecs`, `:base-digests`, `:table-names` (as `claims/decode`)."
+  `opts`: `:codecs`, `:base-digests`, `:table-names` and `:card-ids` (as `claims/decode`)."
   [store b h opts]
   (let [codecs (codecs-of opts)
         {r :snapshot :keys [findings]} (decode opts (store/read-tree store h))]
@@ -179,7 +179,7 @@
   result. When `h` is `b`, no change, with no read of the store. Else it decodes only the files that
   `store/changed-paths` names, at both commits, when that is exact: every changed file is a foreign file or an item file
   that decodes, no changed file holds a system item or the Library, and no new file holds an item of the base
-  (`(:base-digests opts)`, required for this path). `opts`: `:codecs`, `:base-digests`, `:table-names`."
+  (`(:base-digests opts)`, required for this path). `opts`: `:codecs`, `:base-digests`, `:table-names`, `:card-ids`."
   [store b h opts]
   (let [codecs  (codecs-of opts)
         digests (:base-digests opts)
@@ -216,7 +216,7 @@
         codecs   (codecs-of opts)
         h        (store/head store branch)
         {b :base l :local local :changes shadowed :shadowed-tables} (local-changes inst (fn [f] (f store)) branch opts)
-        checked  (when h (pull/check-commit store codecs h (select-keys opts [:table-names])))
+        checked  (when h (pull/check-commit store codecs h (select-keys opts pull/decode-keys)))
         findings (:findings checked)
         remote   (when (:snapshot checked)
                    (:changes (remote-changes store b h (assoc opts :base-digests (base-digests-of inst b)))))]
@@ -246,10 +246,22 @@
           no-summary
           (distinct (concat (keys l) (keys r)))))
 
-(defn- conflict-entry
+(defn conflict-entry
+  "The entry of conflict `{:id :base :ours :theirs}` of `merge/merge`: `{:id :kind :name :ours :theirs}`. The kind
+  and the name are of the local content, else of the remote content, else of the base. `:ours` and `:theirs` are the
+  changes of the two sides against the base (`merge/side-change`)."
   [{:keys [id base ours theirs]}]
   (let [item (some #(when (map? %) %) [ours theirs base])]
-    {:id id :kind (:kind item) :name (:name item)}))
+    {:id     id
+     :kind   (:kind item)
+     :name   (:name item)
+     :ours   (merge/side-change base ours)
+     :theirs (merge/side-change base theirs)}))
+
+(defn violation-entry
+  "The entry of violation `v` of `merge/merge`: `{:rule :ours :theirs}`."
+  [v]
+  (select-keys v [:rule :ours :theirs]))
 
 (defn- lost-base
   "A base in which each item of `l` and `r` is unknown, so that every difference of the two sides is a conflict."
@@ -260,11 +272,12 @@
   "What a push of instance `inst` to branch `branch` of `store` meets: the status, plus a merge of the base, the synced
   snapshot and the head, with no keep-mine decision. Pure apart from the reads.
 
-    {:diverged d :clean c :conflicts [...] :violations [...] :summary s :branch-missing m :base-lost l
+    {:head h :diverged d :clean c :conflicts [...] :violations [...] :summary s :branch-missing m :base-lost l
      :head-findings f}
 
-  `d` is true iff the head is not the base. With `d` false, no conflict, and no read of the instance. A conflict is
-  `{:id :kind :name}`; a violation is `{:rule :ours :theirs}`. `s` is `{:added :updated :removed}`: the numbers of
+  `h` is the head that the merge reads, nil when the branch does not exist: a keep-mine decision names it. `d` is true
+  iff the head is not the base. With `d` false, no conflict, and no read of the instance. A conflict is
+  [[conflict-entry]]; a violation is [[violation-entry]]. `s` is `{:added :updated :removed}`: the numbers of
   items that the merge takes from the head over an unchanged local item. A base that no branch holds is lost: every
   difference of the two sides is a conflict. A head with findings is not clean, and has no merge. Each commit decodes
   with `pull/decode-opts` of `inst`. `opts`: `:codecs`."
@@ -274,7 +287,8 @@
         b      (instance/base inst)
         h      (store/head store branch)
         lost?  (boolean (and b (not (pull/held? store b branch h))))
-        result {:diverged       (not= b h)
+        result {:head           h
+                :diverged       (not= b h)
                 :clean          true
                 :conflicts      []
                 :violations     []
@@ -284,7 +298,7 @@
                 :head-findings  nil}]
     (if (or (= b h) (nil? h))
       result
-      (let [{r :snapshot :keys [findings]} (pull/check-commit store codecs h (select-keys opts [:table-names]))]
+      (let [{r :snapshot :keys [findings]} (pull/check-commit store codecs h (select-keys opts pull/decode-keys))]
         (if-not r
           (assoc result :clean false :head-findings findings)
           (let [l      (:snapshot (instance/read-snapshot inst))
@@ -297,7 +311,7 @@
             (assoc result
                    :clean      (contains? merged :ok)
                    :conflicts  (mapv conflict-entry (:conflicts merged))
-                   :violations (mapv #(select-keys % [:rule :ours :theirs]) (:violations merged))
+                   :violations (mapv violation-entry (:violations merged))
                    :summary    (summary base l r))))))))
 
 ;;; ------------------------------------------------- Has remote changes ----------------------------------------------
