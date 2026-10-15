@@ -322,6 +322,16 @@
   ;; becomes available
   false)
 
+(defenterprise sandboxed-user-for-db?
+  "Returns a boolean if the current user has any enforced sandbox for the given database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  false)
+
 (defenterprise row-restricted-by-routing?
   "Whether database routing sends the current user from router `db-or-id` to a Destination Database. In OSS this is
   always false. The EE implementation ignores feature availability, so a restriction never disappears just because a

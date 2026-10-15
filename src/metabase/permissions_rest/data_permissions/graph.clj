@@ -587,6 +587,25 @@
                                (:name (perms/data-analyst-group)))
                           {:status-code 400})))))))
 
+(defenterprise check-native-access-without-sandboxes!
+  "Throw a 400 if a group in `native-group-db-ids`, a set of `[group-id db-id]` pairs being granted native query
+  access, would also have a sandbox on that database once `graph` is applied. OSS impl is a no-op, since sandboxes are
+  an EE-only feature."
+  metabase-enterprise.sandbox.models.permissions.delete-sandboxes
+  [_graph _native-group-db-ids])
+
+(defn- check-native-access-compatible-with-sandboxes!
+  "Native queries bypass sandboxing, so a group can't be granted native access to a database it has a sandbox on.
+  Sandboxing a Table for a group that already has native access is fine: creating the sandbox revokes it."
+  [graph]
+  (check-native-access-without-sandboxes!
+   graph
+   (into #{}
+         (for [[group-id db-updates] graph
+               [db-id db-changes]    db-updates
+               :when                 (= :query-builder-and-native (:create-queries db-changes))]
+           [group-id db-id]))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
@@ -614,6 +633,7 @@
          desired-state       (compute-desired-state graph tables-by-db-schema)
          {:keys [to-delete to-insert]} (compute-diff desired-state current-perms tables-by-db)]
      (validate-blocked-permissions! graph)
+     (check-native-access-compatible-with-sandboxes! graph)
      (when (seq to-delete)
        (perms/batch-delete-permissions! to-delete))
      (when (seq to-insert)
