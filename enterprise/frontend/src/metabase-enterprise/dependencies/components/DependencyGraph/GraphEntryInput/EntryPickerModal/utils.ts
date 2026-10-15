@@ -14,7 +14,7 @@ import type {
   SearchModel,
 } from "metabase-types/api";
 
-import { getDependencyType } from "../../../../utils";
+import { getDependencyType, isDataStudioAction } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
 export function getTablePickerItem(
@@ -115,11 +115,10 @@ export function getActionPickerItem(
   if (node.type !== "action") {
     return;
   }
-  const isDataAction = node.data.model_id == null;
   return {
     id: node.id,
     model: "action",
-    namespace: isDataAction ? "data-actions" : null,
+    namespace: isDataStudioAction(node.data) ? "data-actions" : null,
   };
 }
 

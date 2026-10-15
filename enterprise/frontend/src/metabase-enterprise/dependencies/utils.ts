@@ -9,6 +9,7 @@ import type { NamedUser } from "metabase/utils/user";
 import { visualizations } from "metabase/viz-core";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  ActionDependencyNodeData,
   AnalysisFindingError,
   AnalysisFindingErrorType,
   CardType,
@@ -345,7 +346,7 @@ export function getNodeLocationInfo(
       }
       return null;
     case "action":
-      return node.data.model_id == null
+      return isDataStudioAction(node.data)
         ? getDataActionLocationInfo(node.data.collection)
         : null;
     case "transform":
@@ -354,13 +355,22 @@ export function getNodeLocationInfo(
   }
 }
 
+export function isDataStudioAction({
+  model_id,
+  collection,
+}: Pick<ActionDependencyNodeData, "model_id" | "collection">): boolean {
+  return (
+    model_id == null &&
+    (collection == null ||
+      isRootCollection(collection) ||
+      collection.namespace === "data-actions")
+  );
+}
+
 function getDataActionLocationInfo(
   collection: Collection | null | undefined,
-): NodeLocationInfo | null {
+): NodeLocationInfo {
   if (collection != null && !isRootCollection(collection)) {
-    if (collection.namespace !== "data-actions") {
-      return null;
-    }
     return {
       icon: "collection",
       links: [

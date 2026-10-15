@@ -2,6 +2,7 @@ import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   createMockActionDependencyNode,
   createMockActionDependencyNodeData,
+  createMockCollection,
   createMockSnippetDependencyNode,
 } from "metabase-types/api/mocks";
 
@@ -23,6 +24,21 @@ describe("getEntryPickerItem", () => {
       id: 4,
       model: "action",
       namespace: "data-actions",
+    });
+  });
+
+  it("should select an action without a model in a regular collection in the regular namespace", () => {
+    const node = createMockActionDependencyNode({
+      id: 6,
+      data: createMockActionDependencyNodeData({
+        model_id: null,
+        collection: createMockCollection({ id: 7, namespace: null }),
+      }),
+    });
+    expect(getEntryPickerItem(node)).toEqual({
+      id: 6,
+      model: "action",
+      namespace: null,
     });
   });
 
