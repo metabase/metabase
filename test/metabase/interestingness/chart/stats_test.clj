@@ -141,6 +141,19 @@
                :series       [{:name "series_1" :data-points 5}]}
               (stats.core/compute-chart-stats config {:deep? true}))))))
 
+(deftest ^:parallel chart-type-ignores-dropped-series-test
+  (testing "a first series whose categories are all nil does not pick the chart type"
+    (let [counts (assoc (make-series 3) :x {:name "Category" :type "string"} :x_values ["Gadget" "Gizmo" "Widget"])]
+      (doseq [display-type ["bar" "line"]]
+        (testing display-type
+          (is (=? {:chart-type   :categorical
+                   :series-count 1
+                   :series       [{:name "Globex"}]}
+                  (stats.core/compute-chart-stats {:display_type display-type
+                                                   :series       {"Acme"   (assoc counts :x_values [nil nil nil])
+                                                                  "Globex" counts}}
+                                                  {:deep? true}))))))))
+
 (deftest ^:parallel correlations-skip-nil-y-values-test
   (testing "a nil in one series leaves its other points to correlate"
     (let [series (assoc (make-series 12) :x {:name "Category" :type "string"} :x_values (mapv str (range 12)))]

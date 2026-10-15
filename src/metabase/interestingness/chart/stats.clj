@@ -157,9 +157,10 @@
                    :deep? - compute additional statistics"
   [chart-config :- ::stats.types/chart-config
    opts         :- ::stats.types/options]
-  (let [chart-type                   (detect-chart-type chart-config)
-        [limited-series limits-info] (apply-data-limits (->> (update-vals (:series chart-config) drop-nil-points)
-                                                             (m/filter-vals (comp seq :y_values))))
+  (let [series                       (->> (update-vals (:series chart-config) drop-nil-points)
+                                          (m/filter-vals (comp seq :y_values)))
+        chart-type                   (detect-chart-type (assoc chart-config :series series))
+        [limited-series limits-info] (apply-data-limits series)
         too-many-series?             (> (count limited-series) max-series-for-correlations)
         opts                         (cond-> opts
                                        too-many-series? (assoc :max-correlation-series max-series-for-correlations))
