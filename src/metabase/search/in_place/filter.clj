@@ -73,7 +73,7 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-impersonated-or-routed-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -353,7 +353,7 @@
     (cond-> models
       ;; `indexed-entity` is the only x58 legacy-search model with :app-user visibility. Do this before
       ;; optional filters: without a search string the older per-model predicate is never generated.
-      (search.permissions/sandboxed-or-impersonated-user? search-context)
+      (search.permissions/sandboxed-impersonated-or-routed-user? search-context)
       (disj "indexed-entity")
       (not   is-superuser?)        (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))

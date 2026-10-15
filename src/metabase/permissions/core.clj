@@ -116,6 +116,7 @@
   impersonated-user?
   impersonation-enforced-for-db?
   log-permissions-changes
+  routed-user?
   row-restricted-by-routing?
   sandboxed-or-impersonated-user?
   sandboxed-user?

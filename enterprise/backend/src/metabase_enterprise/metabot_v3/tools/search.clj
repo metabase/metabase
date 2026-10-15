@@ -163,23 +163,27 @@
         collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
                           (:collection_id metabot))
         limit           (or limit 50)
+        ;; the user's data lens, computed once for every context built below
+        lens            {:is-impersonated-user? (perms/impersonated-user?)
+                         :is-sandboxed-user?    (perms/sandboxed-user?)
+                         :is-routed-user?       (perms/routed-user?)}
         search-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
-                                                (cond-> {:search-string                       search-string
-                                                         :models                              search-models
-                                                         :table-db-id                         database-id
-                                                         :created-at                          created-at
-                                                         :last-edited-at                      last-edited-at
-                                                         :current-user-id                     api/*current-user-id*
-                                                         :is-impersonated-user?               (perms/impersonated-user?)
-                                                         :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                                         :is-superuser?                       api/*is-superuser?*
-                                                         :current-user-perms                  @api/*current-user-permissions-set*
-                                                         :filter-items-in-personal-collection "exclude-others"
-                                                         :context                             :metabot
-                                                         :archived                            false
-                                                         :limit                               limit
-                                                         :offset                              0}
+                                                (cond-> (merge
+                                                         lens
+                                                         {:search-string                       search-string
+                                                          :models                              search-models
+                                                          :table-db-id                         database-id
+                                                          :created-at                          created-at
+                                                          :last-edited-at                      last-edited-at
+                                                          :current-user-id                     api/*current-user-id*
+                                                          :is-superuser?                       api/*is-superuser?*
+                                                          :current-user-perms                  @api/*current-user-permissions-set*
+                                                          :filter-items-in-personal-collection "exclude-others"
+                                                          :context                             :metabot
+                                                          :archived                            false
+                                                          :limit                               limit
+                                                          :offset                              0})
                                                   ;; Don't include search-native-query key if nil so that we don't
                                                   ;; inadvertently filter out search models that don't support it
                                                   search-native-query

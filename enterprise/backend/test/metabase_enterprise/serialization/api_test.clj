@@ -186,6 +186,7 @@
       :is-superuser?         true
       :is-impersonated-user? false
       :is-sandboxed-user?    false
+      :is-routed-user?       false
       :models                #{model}
       :current-user-perms    #{"/"}
       :search-string         search-string}))))
