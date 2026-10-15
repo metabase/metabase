@@ -6,6 +6,7 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_LIBRARY, type SimpleDataPickerProps } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { useSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
@@ -111,6 +112,8 @@ function useLibrarySearch({
   SimpleDataPickerProps,
   "entityTypes" | "filterByDatabaseId" | "isJoinStep"
 >) {
+  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
+  const canSelectMetric = !isJoinStep && hasNestedQueriesEnabled;
   const { data: libraryCollection, isLoading: isLibraryCollectionLoading } =
     PLUGIN_LIBRARY.useGetLibraryCollection({
       skip: !entityTypes.includes("library"),
@@ -119,7 +122,7 @@ function useLibrarySearch({
     libraryCollection
       ? {
           table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
-          models: isJoinStep ? ["table"] : ["table", "metric"],
+          models: canSelectMetric ? ["table", "metric"] : ["table"],
           collection: libraryCollection.id,
           context: "data-picker",
         }

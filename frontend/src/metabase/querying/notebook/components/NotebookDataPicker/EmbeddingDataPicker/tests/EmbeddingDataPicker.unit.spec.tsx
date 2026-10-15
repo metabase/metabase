@@ -306,6 +306,22 @@ describe("EmbeddingDataPicker", () => {
       ).toBeInTheDocument();
     });
 
+    it("should not show the Library's metrics when nested queries are disabled", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+        hasNestedQueriesEnabled: false,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Published Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should not show the Library's metrics at the join step", async () => {
       setup({
         embeddingType: "full-app",
