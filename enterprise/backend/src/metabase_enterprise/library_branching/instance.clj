@@ -19,12 +19,14 @@
     absent one to its default; a trashed item with this identity is restored. Only a row inside the Library tree
     matches `id`. Instance-local attributes do not change. Laws: a write of the current content changes no row
     (GetPut); current after write returns `content` (PutGet). Throws ::refused, and writes nothing, when `content`
-    is not an item of this kind, when `id` names a row outside the Library tree or of another kind, or when the place
-    or an environment reference of `content` does not resolve on this instance.")
+    is not an item of this kind, when `id` names a row outside the Library tree or of another kind, when the place
+    or an environment reference of `content` does not resolve on this instance, or when another item of a kind whose
+    names Metabase keeps unique (a glossary term) has the name of `content`.")
   (trash! [ks id]
     "Moves item `id` and the items under it to the trash. The identity and the content stay; content outside the
-    Library that uses the item still resolves. Nothing happens when no row has the identity, or when it is already in
-    the trash. Throws ::refused when `id` names a row outside the Library tree."))
+    Library that uses the item still resolves. An item of a kind that Metabase keeps no trash for (a glossary term) is
+    deleted. Nothing happens when no row has the identity, or when it is already in the trash. Throws ::refused when
+    `id` names a row outside the Library tree."))
 
 (defprotocol Instance
   "One Metabase instance as library branching sees it."

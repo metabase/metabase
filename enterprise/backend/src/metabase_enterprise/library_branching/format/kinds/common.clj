@@ -68,7 +68,8 @@
 
 (defn- reserved-keys
   [{:keys [name-key place-key]}]
-  #{:kind :id name-key place-key})
+  (cond-> #{:kind :id name-key}
+    place-key (conj place-key)))
 
 (defn refs-of
   "The references of the item of `spec` with identity `id` and attributes `attrs`."
@@ -83,14 +84,14 @@
     (= refs (refs-of spec id attrs))))
 
 (defn item-schema
-  "The schema of the items of `spec`: a closed map, with a container identity or nil as `:place`, the closed
-  attributes of the spec, and the references of the attributes as `:refs`."
-  [spec]
+  "The schema of the items of `spec`: a closed map, with a container identity or nil as `:place` (always nil for a
+  spec with no place key), the closed attributes of the spec, and the references of the attributes as `:refs`."
+  [{:keys [name-schema place-key] :as spec}]
   [:and
    [:map {:closed true}
     [:kind [:= (:kind spec)]]
-    [:name [:string {:min 1}]]
-    [:place [:maybe ::snapshot/entity-id]]
+    [:name (or name-schema [:string {:min 1}])]
+    [:place (if place-key [:maybe ::snapshot/entity-id] :nil)]
     [:refs [:set ::snapshot/ref]]
     [:attrs (attrs-schema spec)]]
    [:fn {:error/message "the references are not those of the attributes"} #(refs-consistent? spec %)]])
@@ -120,7 +121,7 @@
     (let [a (drop-defaults spec ((or decode-attrs identity) (select-keys doc (keys attrs))))]
       [id {:kind  kind
            :name  nm
-           :place (get doc place-key)
+           :place (when place-key (get doc place-key))
            :refs  (refs-of spec id a)
            :attrs a}])))
 
@@ -134,7 +135,8 @@
      :home         f                      ; (f item): layout/home
      :id-schema    ::snapshot/entity-id   ; the identities of the kind
      :name-key     :name                  ; the document key of the item's :name
-     :place-key    :collection            ; the document key of the item's :place
+     :name-schema  s                      ; optional: the schema of the :name; a non-empty string by default
+     :place-key    :collection            ; the document key of the item's :place; nil: every item is at the root level
      :attrs        {k {:schema s :default d :required? b}}
      :encode-attrs f                      ; optional: (f attrs), the attribute part of the document
      :decode-attrs f                      ; optional: its inverse

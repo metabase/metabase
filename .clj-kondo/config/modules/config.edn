@@ -4006,6 +4006,7 @@
                     :model/Database
                     :model/Document
                     :model/FieldUserSettings
+                    :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Segment
