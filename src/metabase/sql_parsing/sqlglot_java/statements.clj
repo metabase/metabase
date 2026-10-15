@@ -144,15 +144,6 @@
 (defn- read-only? [stmt]
   (not-any? writes-or-locks? (ast/walk stmt)))
 
-(defn- quoted-identifier-token?
-  "Whether the token at `start` in `sql` is a quoted identifier, `[name]` or `\"name\"`. Read from the text rather
-  than the token type: the port types a bare word IDENTIFIER, which in sqlglot means quoted, and trusting that would
-  let `SELECT * FROM t SHUTDOWN` through. An identifier not visibly quoted counts as bare, so the check refuses."
-  [^String sql token-type start]
-  (and (= token-type "IDENTIFIER")
-       (< start (count sql))
-       (contains? #{\[ \" \`} (.charAt sql (int start)))))
-
 (defn- hidden-sql
   "`[reason detail]` when `sql` holds text its database would run and sqlglot would not parse as a statement of its
   own, else nil.
@@ -164,9 +155,8 @@
   (or (when (re-find #"(?<![\w\$])[uU]&\"" sql)
         ["unicode-identifier" nil])
       (when (= dialect "tsql")
-        (some (fn [[token-type text start]]
-                (when (and (not (#{"STRING" "NATIONAL_STRING"} token-type))
-                           (not (quoted-identifier-token? sql token-type start))
+        (some (fn [[token-type text]]
+                (when (and (not (#{"STRING" "NATIONAL_STRING" "IDENTIFIER"} token-type))
                            (contains? tsql-statement-words (u/upper-case-en text)))
                   ["statement-word" (u/upper-case-en text)]))
               (ast/tokenize sql dialect)))

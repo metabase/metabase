@@ -4,56 +4,20 @@
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.references :as references])
   (:import
-   (com.metabase.sqlglot.ast Expr Expressions$Alias Expressions$Column Expressions$Query Expressions$Select
-                             Expressions$Table)
-   (com.metabase.sqlglot.reference Errors Errors$Position Lineage Lineage$Node OptimizeError ParseError Qualify
-                                   Qualify$Options Scope)))
+   (com.metabase.sqlglot.ast Expr Expressions$Alias Expressions$Column Expressions$Query Expressions$Table)
+   (com.metabase.sqlglot.reference Lineage Lineage$Node OptimizeError ParseError Qualify Qualify$Options)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------------ qualify ------------------------------------------------------
 
-(defn- column-position
-  "The `Line: n, Col: m` and highlighted-SQL suffixes for an error about `column`, as sqlglot words them."
-  [^Expr column sql line-format]
-  (let [meta                 (.meta ^Expr (ast/this column))
-        [line col start end] (map #(get meta %) ["line" "col" "start" "end"])]
-    (str (when (and line col (pos? line) (pos? col))
-           (format line-format line col))
-         (when (and sql start end)
-           (str "\n  " (.formattedSql (Errors/highlightSql sql [(Errors$Position. start end)])))))))
-
-(defn- validate-qualify-columns!
-  "Throw an OptimizeError for the first column of `expr` that no source resolves, or that is ambiguous
-  (`validate_qualify_columns`).
-
-  Ported here rather than called on the port, whose `validateQualifyColumns` leaves out the position of the column
-  that failed. Remove it once the port reports one."
-  [expr sql]
-  (let [unqualified (volatile! [])]
-    (doseq [^Scope scope (Scope/traverseScope expr)
-            :when (instance? Expressions$Select (.expression scope))]
-      (when (and (seq (.externalColumns scope)) (not (.isCorrelatedSubquery scope)) (empty? (.pivots scope)))
-        (let [column    (first (.externalColumns scope))
-              table-ref (ast/text column "table")]
-          (throw (OptimizeError. (str "Column '" (ast/node-name column) "' could not be resolved"
-                                      (when (seq table-ref) (str " for table: '" table-ref "'"))
-                                      "."
-                                      (column-position column sql " Line: %s, Col: %s"))))))
-      (vswap! unqualified into (.unqualifiedColumns scope)))
-    (when-let [column (first @unqualified)]
-      (throw (OptimizeError. (str "Ambiguous column '" (ast/node-name column) "'"
-                                  (column-position column sql " (Line: %s, Col: %s)")))))
-    expr))
-
 (defn- qualify!
-  "`expr` qualified in place (`qualify.qualify`), with `opts` for the arguments `sql_tools.py` passes."
+  "`expr` qualified in place (`qualify.qualify`), with `opts` for the arguments `sql_tools.py` passes. `sql` is the
+  text `expr` was parsed from, which an unresolved column's error highlights."
   [expr {:keys [db dialect schema infer-schema? validate? sql]}]
   (Qualify/qualify expr schema dialect
-                   (Qualify$Options. db nil true true infer-schema? false false true true false))
-  (when validate?
-    (validate-qualify-columns! expr sql))
-  expr)
+                   (Qualify$Options. db nil true true infer-schema? false (boolean validate?) true true false)
+                   ^String sql))
 
 ;;; --------------------------------------------------- validate-query ---------------------------------------------------
 
