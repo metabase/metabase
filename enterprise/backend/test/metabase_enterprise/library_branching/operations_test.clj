@@ -7,8 +7,10 @@
    [clojure.test :refer :all]
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
+   [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
+   [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu]
    [metabase-enterprise.library-branching.repository :as repository]
@@ -194,6 +196,83 @@
                    (is (= [h1 d1] (ptu/commit-parents repo (get-in merged [:outcome :commit]))))
                    (is (= "From dev" (get-in (remote-snapshot "main" (get-in merged [:outcome :commit]))
                                              [(:entity_id metric) :name])))))))))))))
+
+;;; ------------------------------------------ The end of a task in its apply ------------------------------------------
+
+(defn- held-after-return
+  "`f`, which delivers its result to the promise `returned`, then waits for the promise `release` (at most one
+  minute), then returns the result."
+  [f returned release]
+  (fn [& args]
+    (let [result (apply f args)]
+      (deliver returned result)
+      (deref release 60000 nil)
+      result)))
+
+(defn- cancel-after-the-apply
+  "Starts a task of `kind` and runs `(work id)` as its worker in a future. The worker must deliver `returned` after its
+  apply committed, and then wait for `release` ([[held-after-return]]). In that window, cancels the task; then
+  delivers `release`. Returns `{:cancel c :task t}`: `c` is the result of `tasks/cancel!`, `t` the task at its end."
+  [kind work returned release]
+  (let [{:keys [id]} (tasks/start! kind (mt/user->id :crowberto))
+        worker       (future (tasks/run-task! id work))]
+    (try
+      (when (= ::timeout (deref returned 60000 ::timeout))
+        (throw (ex-info "The worker did not return from its operation." {:task (tasks/task id)})))
+      (let [cancel (tasks/cancel! id)]
+        (deliver release true)
+        {:cancel cancel :task (deref worker 60000 ::timeout)})
+      (finally
+        (deliver release true)))))
+
+(deftest apply-ends-its-task-test
+  (testing (str "a pull, a switch and a deploy end their task in the transaction of the apply: a cancel after the apply
+                is refused, and the task is successful; app DB " (mdb/db-type))
+    (with-remote [repo url]
+      (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+        (rtu/do-with-library-metric!
+         (fn [metric]
+           (let [eid  (:entity_id metric)
+                 c1   (get-in (run-task! "push" #(operations/push-task! % "main" "First push")) [:outcome :commit])
+                 h1   (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "Pulled"))
+                 card-name #(t2/select-one-fn :name :model/Card (:id metric))]
+             (testing "a pull"
+               (let [returned (promise)
+                     release  (promise)]
+                 (mt/with-dynamic-fn-redefs [pull/pull! (held-after-return (mt/original-fn #'pull/pull!) returned release)]
+                   (let [{:keys [cancel task]} (cancel-after-the-apply "pull" #(operations/pull-task! % "main")
+                                                                       returned release)]
+                     (is (= {:refused "successful"} cancel))
+                     (is (=? {:status "successful" :outcome {:kind "pulled" :branch "main" :commit h1 :count 1}} task))
+                     (is (= "Pulled" (card-name)))
+                     (is (= h1 (instance/base (operations/instance))))))))
+             (let [o1 (pltu/commit-snapshot! repo "other" [h1] (ptu/renamed (remote-snapshot "main" h1) eid "Switched"))]
+               (testing "a switch"
+                 (let [returned (promise)
+                       release  (promise)]
+                   (mt/with-dynamic-fn-redefs [pull/pull! (held-after-return (mt/original-fn #'pull/pull!) returned release)]
+                     (let [{:keys [cancel task]} (cancel-after-the-apply "branch-switch" #(operations/switch-task! % "other")
+                                                                         returned release)]
+                       (is (= {:refused "successful"} cancel))
+                       (is (=? {:status "successful" :outcome {:kind "switched" :branch "other" :commit o1 :count 1}}
+                               task))
+                       (is (= "Switched" (card-name)))
+                       (is (= "other" (repository/branch)))
+                       (is (= o1 (instance/base (operations/instance))))))))
+               (testing "a deploy"
+                 (let [d1       (pltu/commit-snapshot! repo "other" [o1] (ptu/renamed (remote-snapshot "other" o1) eid "Deployed"))
+                       returned (promise)
+                       release  (promise)]
+                   (mt/with-temporary-setting-values [remote-sync-type :read-only]
+                     (mt/with-dynamic-fn-redefs [deploy/deploy! (held-after-return (mt/original-fn #'deploy/deploy!)
+                                                                                   returned release)]
+                       (let [{:keys [cancel task]} (cancel-after-the-apply "deploy" #(operations/deploy-task! % "other")
+                                                                           returned release)]
+                         (is (= {:refused "successful"} cancel))
+                         (is (=? {:status "successful" :outcome {:kind "deployed" :branch "other" :commit d1 :count 1}}
+                                 task))
+                         (is (= "Deployed" (card-name)))
+                         (is (= d1 (instance/base (operations/instance)))))))))))))))))
 
 ;;; ------------------------------------------------- Branch operations -------------------------------------------------
 
