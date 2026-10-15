@@ -103,8 +103,9 @@
     :doc    "The record step calls its hook also when another task moved the base: the branch setting changes with no
             move of the base."
     :target `push/commit!
-    :edits  [[:replace '{:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c)}
-              '(do (on-record) {:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c)})]]
+    :edits  [[:replace '{:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c shadowed)}
+              '(do (on-record)
+                   {:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c shadowed)})]]
     :tests  [#'branch-test/push-to-a-new-branch-records-in-one-step-test]}
    {:name   :new-branch-from-the-base-ref
     :doc    "A push to a new branch moves the new ref from the base, as a push to the branch of the base does."
