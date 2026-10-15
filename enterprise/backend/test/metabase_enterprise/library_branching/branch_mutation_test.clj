@@ -69,7 +69,8 @@
    {:name   :switch-at-the-base-writes-no-branch
     :doc    "A switch to a branch whose head is the base does not write the branch setting."
     :target `operations/switch-task!
-    :edits  [[:remove '(write-branch! branch) {:nth 1}]]
+    ;; the hook of the apply is a fn literal, so the one call that matches is the one in the commit of the task
+    :edits  [[:remove '(write-branch! branch)]]
     :tests  [#'operations-test/branch-operations-on-the-app-db-test]}
    {:name   :switch-with-no-fence
     :doc    "The apply of a switch commits although its task ended."
@@ -85,7 +86,8 @@
    {:name   :create-with-no-commit-point
     :doc    "A branch creation does not ask its task whether it may change the remote."
     :target `branch/create-branch!
-    :edits  [[:replace '(commit-point) nil]]
+    ;; match 0 is the vector [commit-point] of the destructuring, which equals the list
+    :edits  [[:replace '(commit-point) nil {:nth 1}]]
     :tests  [#'branch-test/create-branch-stops-at-its-commit-point-test]}
    {:name   :create-writes-no-branch
     :doc    "A branch creation leaves the branch setting."
