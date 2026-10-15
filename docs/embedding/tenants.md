@@ -105,7 +105,7 @@ You can create and manage your tenants exclusively through Metabase UI, or, if t
 1. Go to **Embedding hub > Tenancy**.
 2. Under **Enable multi-tenant user strategy**, click **Enable multi-tenancy**.
 
-Once it's on, the **gear** icon on the **Tenants** tab lets you switch strategies. You can also do this from **Admin settings > People**.
+Once it's on, the **gear** icon on the **Tenants** tab lets you switch strategies.
 
 ![Edit tenant strategy](./images/edit-tenant-strategy.png)
 

@@ -54,7 +54,7 @@ In the **Themes** section, you can:
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
 - **Delete a theme.** This deletion is eternal.
 
-**Branding elements**, on the same page, sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows for empty results. These are the same settings as [Admin > Settings > Appearance](../configuring-metabase/appearance.md). That page also controls your logo, colors, and fonts, and it's what [full-app embeds](./full-app-embedding.md) use instead of embedding themes.
+**Branding elements**, on the same page, sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) for empty results. These are the same settings as [Admin > Settings > Appearance](../configuring-metabase/appearance.md).
 
 ![Theme editor](./images/theme-editor.png)
 
