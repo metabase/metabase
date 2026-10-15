@@ -19,11 +19,11 @@
 (set! *warn-on-reflection* true)
 
 (defn check-head
-  "The full check of commit `h` of `store` against the environment `env` (`format.manifest/env`): `{:snapshot r}`, or
-  `{:findings [f ...]}`, the structural findings of `pull/check-commit`, else the semantic findings of
-  `semantic/validate`."
-  [store codecs env h]
-  (let [{r :snapshot :as checked} (pull/check-commit store codecs h)]
+  "The full check of commit `h` of `store` against the environment `env` (`format.manifest/env`), decoded with the
+  options `opts` (`pull/decode-opts`): `{:snapshot r}`, or `{:findings [f ...]}`, the structural findings of
+  `pull/check-commit`, else the semantic findings of `semantic/validate`."
+  [store codecs opts env h]
+  (let [{r :snapshot :as checked} (pull/check-commit store codecs h opts)]
     (if-not r
       checked
       (let [findings (semantic/validate r env)]
@@ -38,10 +38,11 @@
         (filter #(not= (get x %) (get y %)) (distinct (concat (keys x) (keys y))))))
 
 (defn- base-snapshot
-  "The snapshot of base commit `b`, or nil when its tree cannot be read or does not decode."
-  [store codecs b]
+  "The snapshot of base commit `b`, decoded with the options `opts`, or nil when its tree cannot be read or does not
+  decode."
+  [store codecs opts b]
   (try
-    (:snapshot (pull/decode-commit store codecs b))
+    (:snapshot (pull/decode-commit store codecs b opts))
     (catch Exception e
       (log/warnf e "Library branching cannot read the base commit %s; the base digests give the drift." b)
       nil)))
@@ -59,7 +60,7 @@
           by-digest (when digests (changed-ids digests (writer/item-digests codecs l)))]
       (if (and digests (empty? by-digest))
         []
-        (if-let [bs (base-snapshot store codecs b)]
+        (if-let [bs (base-snapshot store codecs (pull/decode-opts inst) b)]
           (changed-ids bs l)
           (or by-digest (sort snapshot/compare-identities (keys l))))))))
 
@@ -111,8 +112,9 @@
   - `{:result :no-branch}`: the branch does not exist;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
-  Every result other than `:deployed` writes nothing. `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in
-  `apply/apply-plan`), `:retries` (default `pull/default-retries`)."
+  Every result other than `:deployed` writes nothing. The head and the base decode with `pull/decode-opts` of `inst`.
+  `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in `apply/apply-plan`), `:retries` (default
+  `pull/default-retries`)."
   ([inst store branch env]
    (deploy! inst store branch env {}))
   ([inst store branch env opts]
@@ -126,7 +128,7 @@
              (nil? h) {:result :no-branch}
              (= b h)  {:result :up-to-date :head h}
              :else
-             (let [{r :snapshot :keys [findings]} (check-head store codecs env h)]
+             (let [{r :snapshot :keys [findings]} (check-head store codecs (pull/decode-opts inst) env h)]
                (if-not r
                  {:result :invalid :head h :findings findings}
                  (let [result (apply-head! inst store branch opts b h r)]

@@ -56,7 +56,7 @@
    (fn [golden]
      (let [files   (remote-sync-export!)
            python? #(= "PythonLibrary" (model-of (val %)))
-           opts    {:table-names (sync-display-names (filter vector? (keys golden)))}]
+           opts    {:table-names sync-display-names}]
        (testing "the files of remote sync decode to the items that a read of the same content gives"
          (is (= {:snapshot golden}
                 (claims/decode kinds/codecs (into {} (remove python?) files) opts)))
@@ -64,3 +64,34 @@
        (testing "the built-in Python library is of a kind with no codec yet: its file is an item that does not decode"
          (is (= [:unknown-kind]
                 (map :type (:findings (claims/decode kinds/codecs (into {} (filter python?) files) opts))))))))))
+
+(defn- field-id
+  "The id of the field `field-name` of the table of key `[db schema table]`."
+  [[db schema table] field-name]
+  (let [table-id (t2/select-one-pk :model/Table :db_id (t2/select-one-pk :model/Database :name db)
+                                   :schema schema :name table)]
+    (t2/select-one-pk :model/Field :table_id table-id :name field-name)))
+
+(deftest remote-sync-export-of-remappings-decodes-to-the-read-test
+  (testing "the Dimension files of remote sync decode to the remappings that a read of the same content gives: a
+            foreign-key remapping, and an internal remapping with no values, because remote sync writes no field values"
+    (golden/do-with-golden-content
+     (fn [golden]
+       (let [orders   (some #(when (and (vector? %) (= "ORDERS" (peek %))) %) (keys golden))
+             products (conj (pop orders) "PRODUCTS")]
+         (mt/with-temp [:model/Dimension _ {:field_id                (field-id orders "PRODUCT_ID")
+                                            :name                    "Product"
+                                            :type                    :external
+                                            :human_readable_field_id (field-id products "ID")}
+                        :model/Dimension _ {:field_id (field-id orders "TOTAL") :name "Total" :type :internal}]
+           (let [files   (remote-sync-export!)
+                 python? #(= "PythonLibrary" (model-of (val %)))
+                 opts    {:table-names sync-display-names}
+                 read    (select-keys (app-db/read-current) (keys golden))]
+             (is (= {:PRODUCT_ID {:type "external" :name "Product" :field (conj products "ID")}
+                     :TOTAL      {:type "internal" :name "Total"}}
+                    (into {}
+                          (keep (fn [[k entry]] (when (:remapping entry) [k (:remapping entry)])))
+                          (get-in read [orders :attrs :fields]))))
+             (is (= {:snapshot read}
+                    (claims/decode kinds/codecs (into {} (remove python?) files) opts))))))))))
