@@ -595,7 +595,7 @@ function getFieldSuffixInput() {
 }
 
 function getFieldSectionCloseButton() {
-  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+  return getFieldSectioHeader().findByRole("link", { name: /close/i });
 }
 
 /** preview section helpers */

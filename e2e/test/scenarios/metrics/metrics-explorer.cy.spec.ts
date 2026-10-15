@@ -1319,7 +1319,7 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.assertVizType("Bar");
 
         cy.log("should allow changing display types");
-        H.MetricsViewer.changeVizType("line");
+        H.MetricsViewer.changeVizType("Line");
         H.MetricsViewer.assertVizType("Line");
       });
 
@@ -1680,7 +1680,7 @@ describe("scenarios > metrics > explorer", () => {
       selectDimensionBreakout("Category");
       H.MetricsViewer.assertVizType("Bar");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-      H.MetricsViewer.changeVizType("line");
+      H.MetricsViewer.changeVizType("Line");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
         8,
