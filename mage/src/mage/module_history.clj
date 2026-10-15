@@ -150,9 +150,11 @@
 ;;;; Pages
 
 (defn- script-safe-json
-  "`value` as JSON that can sit inside a `<script>` element."
+  "`value` as JSON that can sit inside a `<script>` element. Every `<` is escaped, since `</script>` ends the element
+  and `<!--` can make the parser skip the tag that would end it. So are the line and paragraph separators, which
+  older JavaScript parsers do not accept inside a string."
   [value]
-  (str/replace (json/generate-string value) "</" "<\\/"))
+  (str/replace (json/generate-string value) #"[<\u2028\u2029]" #(format "\\u%04x" (int (first %)))))
 
 (def ^:private placeholders
   "Placeholder in a page template -> the key of `history.json` it shows, and how to write that key's value."

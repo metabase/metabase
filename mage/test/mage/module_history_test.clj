@@ -23,8 +23,10 @@
                (module-history/refreshed-sql "2026-10-11T00:00:00Z"))))))
 
 (deftest fill-template-test
-  (is (= (str "<p>3 commits</p><script>"
-              "const DATA = [{\"subject\":\"Close <\\/script> early\"},{\"subject\":\"$1 \\\\ kept\"},"
+  (is (= (str "<p>4 commits</p><script>"
+              "const DATA = [{\"subject\":\"Close \\u003c/script> early\"},"
+              "{\"subject\":\"Hide \\u003c!--\\u003cscript> \\u2028\"},"
+              "{\"subject\":\"$1 \\\\ kept\"},"
               "{\"subject\":\"Rename /*COUNT*/ and /*DATA*/\"}];"
               "const TODAY = [{\"cluster\":\"tardis\"}];"
               "const ANCHORS = [\"tardis\"];"
@@ -38,6 +40,7 @@
                "const ANCHORS = /*ANCHORS*/;const RETEST = /*RETEST*/;"
                "const PAIRS = /*PAIRS*/;const CUTS = /*CUTS*/;</script>")
           {"commits"  [{"subject" "Close </script> early"}
+                       {"subject" "Hide <!--<script> \u2028"}
                        {"subject" "$1 \\ kept"}
                        ;; A placeholder in a value stays as it is.
                        {"subject" "Rename /*COUNT*/ and /*DATA*/"}]
