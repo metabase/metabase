@@ -653,7 +653,8 @@
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-haiku-5-5"})))
         (testing "bedrock vendor prefix is stripped"
-          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"}))))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"})))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-haiku-5-5"}))))
         (testing "the dotted display-name spelling of the minor version parses the same
                  (Azure admins name deployments freely)"
           (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4.8"})))))
@@ -951,4 +952,13 @@
       (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
       (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))
     (testing "temperature is omitted when thinking is enabled (4.6 accepts sampling but streams thinking here)"
-      (is (not (contains? (request-body "claude-opus-4-6") :temperature))))))
+      (is (not (contains? (request-body "claude-opus-4-6") :temperature))))
+    (testing "a structured-output call turns thinking off, so only the model decides whether temperature is sent"
+      (let [schema {:type "object" :properties {:answer {:type "string"}}}
+            body   #(claude/claude-request-body {:model       %
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :schema      schema
+                                                 :temperature 0.3})]
+        (is (= 0.3 (:temperature (body "claude-haiku-4-5"))))
+        (is (not (contains? (body "claude-haiku-5-5") :temperature)))
+        (is (not (contains? (body "anthropic.claude-haiku-5-5") :temperature)))))))

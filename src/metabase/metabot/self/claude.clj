@@ -431,17 +431,18 @@
           "haiku"            (>= major 5)))))
 
 (defn- model-supports-temperature?
-  "Whether `model` accepts an explicit `temperature` parameter. Sampling params
-  were removed starting with Claude Opus 4.7 and Sonnet 5."
+  "Whether `model` accepts an explicit `temperature` parameter: current-generation models
+  (see [[model-current-gen?]]) reject sampling params."
   [model]
   (not (model-current-gen? model)))
 
 (defn- model-supports-forced-tool-choice?
   "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on,
-  Fable and Mythos from 5.1 on, and Haiku accepts one:
-  https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported"
+  Fable and Mythos from 5.1 on: https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported
+  Haiku accepts one: https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools#forcing-tool-use"
   [model]
   (if-let [[family major minor] (claude-model-version model)]
+    ;; assumes every Haiku accepts one, as 4.5 and 5.5 do; check again when a new Haiku ships
     (or (= "haiku" family)
         (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
           (or (< major 5) (and (= major 5) (< minor first-rejecting-minor)))))
