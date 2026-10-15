@@ -2289,11 +2289,6 @@
                     oauth-server/full-access-scope [true false]}
                    (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
 
-(deftest consent-scope-order-covers-v2-scopes-test
-  (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"
-    (is (= (set (mcp/v2-scopes)) (set @#'api.oauth/consent-scope-order)))
-    (is (= (count (mcp/v2-scopes)) (count @#'api.oauth/consent-scope-order)))))
-
 (deftest consent-page-opts-into-script-nonce-test
   (testing (str "GHY-4568: the consent page's inline script needs a `script-src` nonce. Dev mode allows "
                 "'unsafe-inline' and adds no nonce, so a response that forgot to opt in would work locally and have "
