@@ -424,6 +424,35 @@
       (is (= {:system-ids [metrics-id]}
              (try (plan/plan with-system m with-system) (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
+(deftest ^:parallel kind-change-cycle-test
+  (testing "a container that changes kind, in a cycle of places and references with the content that leaves it"
+    ;; From a shrunk counterexample of plan-laws-test: collection a refers to dashboard d, d is in a and refers to
+    ;; collection b, b is in a, and e is in b. The target has a as a dashboard at the root level. Until its trash, the
+    ;; old collection a closes the cycle b, a, d, so the trash of b can come before the trash of its user d.
+    (let [a     (engine.tu/eid "a")
+          b     (engine.tu/eid "b")
+          d     (engine.tu/eid "d")
+          e     (engine.tu/eid "e")
+          l     {a (engine.tu/item :collection "A" nil #{[:card d]})
+                 b (engine.tu/item :collection "B" a)
+                 d (engine.tu/item :dashboard "D" a #{[:card b]})
+                 e (engine.tu/item :collection "E" b)}
+          m     {a (engine.tu/item :dashboard "A" nil)}
+          steps (plan/plan l m l)]
+      (is (= [[a :write] [e :trash] [b :trash] [d :trash] [a :trash]] (step-forms steps)))
+      (is (reaches-target? l m steps))))
+  (testing "the old item of a replaced identity is a user of its targets until its trash"
+    (let [x     (engine.tu/eid "x")
+          y     (engine.tu/eid "y")
+          l     {x (engine.tu/item :collection "X" nil #{[:card y]})
+                 y (engine.tu/item :collection "Y" nil)}
+          m     {x (engine.tu/item :dashboard "X" nil)}
+          steps (plan/plan l m l)
+          [write-x trash-x trash-y] steps]
+      (is (= [[x :write] [x :trash] [y :trash]] (step-forms steps)))
+      (is (reaches-target? l m steps))
+      (is (= [[:target-before-user y]] (:faults (simulate l [write-x trash-y trash-x])))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------
 
 (defn- merged
