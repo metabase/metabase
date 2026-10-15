@@ -13,7 +13,8 @@
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.format.manifest :as manifest]
    [metabase-enterprise.library-branching.format.tree :as tree]
-   [metabase-enterprise.library-branching.roots :as roots])
+   [metabase-enterprise.library-branching.roots :as roots]
+   [metabase-enterprise.library-branching.snapshot :as snapshot])
   (:import
    (java.io File)
    (java.nio.file Files Path)))
@@ -118,6 +119,18 @@
     (str (clojure.core/name kind) " \"" name "\" (" (id-text id) ")")
     (id-text id)))
 
+(defn- area-text
+  "`the <name> area` of the area root `id`."
+  [id]
+  (str "the " (:name (get snapshot/area-roots id)) " area"))
+
+(defn- place-text
+  "The text of the container `place` of an item of snapshot `s`: [[area-text]] for an area root, else [[item-text]]."
+  [s place]
+  (if (and (not (contains? s place)) (contains? snapshot/area-roots place))
+    (area-text place)
+    (item-text s place)))
+
 (defn- target-text
   [s [role target]]
   (str (name role) " "
@@ -131,12 +144,13 @@
     :place-inside (str (item-text s id) " is in " (id-text place) ", which is not in the tree.")
     :acyclic      (str "These items contain each other: "
                        (str/join ", " (map (partial item-text s) (sort-by id-text ids))) ".")
-    :kind-fits    (str (item-text s id) " is in " (item-text s place) ", which cannot contain it.")
+    :kind-fits    (str (item-text s id) " is in " (place-text s place) ", which cannot contain it.")
     :refs-closed  (str (item-text s id) " refers to " (target-text s ref) ", which is not in the tree.")
     :root         (str (item-text s id) " is at the root level, and it is not a fixed root.")
     :unique-key   (str "These items of kind " (name kind) " have one key " (pr-str key) ", which must be unique: "
                        (str/join ", " (map (partial item-text s) (sort-by id-text ids))) ".")
-    :namespace    (str (item-text s id) " is in " (item-text s place) ", which is in another namespace.")
+    :namespace    (str (item-text s id) " is in " (place-text s place) ", which is in another namespace.")
+    :area-root    (str (item-text s id) " has the identity of the root of " (area-text id) ".")
     :ref-kind     (str (item-text s id) " refers to " (target-text s ref) ", which is not of a kind that the reference"
                        " allows.")
     (pr-str (dissoc finding :level :path))))

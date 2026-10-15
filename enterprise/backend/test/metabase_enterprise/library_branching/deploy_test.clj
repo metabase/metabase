@@ -57,7 +57,7 @@
 (def ^:private other-id "OtherSnippet000000001")
 
 (defn- other-snippet []
-  (ptu/item other-id :snippet "Other" nil {:content "other = true"}))
+  (ptu/item other-id :snippet "Other" "snippetssnippetssnipp" {:content "other = true"}))
 
 (defn- described
   [s id text]
@@ -355,7 +355,7 @@
   {robin-id {:kind :collection :name "Robin" :place nil :refs #{} :attrs {:type "library"}}})
 
 (def ^:private robin-term
-  {robin-id {:kind :glossary-term :name "Robin" :place nil :refs #{} :attrs {:definition ""}}})
+  {robin-id {:kind :glossary-term :name "Robin" :place "glossaryglossarygloss" :refs #{} :attrs {:definition ""}}})
 
 (deftest deploy-of-an-identity-of-another-kind-test
   (testing "the shrunk case of deploy-shows-the-head-property-test: a collection, then a glossary term with its identity,

@@ -222,14 +222,14 @@
 (def orders-table ["Sample Database" "PUBLIC" "ORDERS"])
 
 (def sample
-  "A snapshot that a push accepts: the Library, its metrics collection with two metrics, and a snippet at the root
-  level of the snippets namespace."
+  "A snapshot that a push accepts: the Library, its metrics collection with two metrics, and a snippet at the root of
+  the Snippets area."
   {library-id (item library-id :collection "Library" nil {:type "library"})
    metrics-id (item metrics-id :collection "Metrics" library-id {:type "library-metrics"})
    revenue-id (item revenue-id :metric "Revenue" metrics-id {:display "scalar" :query (count-query orders-table)})
    orders-id  (item orders-id :metric "Orders" metrics-id {:display "scalar" :description "All orders."
                                                            :query (count-query orders-table)})
-   snippet-id (item snippet-id :snippet "Active" nil {:content "active = true"})})
+   snippet-id (item snippet-id :snippet "Active" "snippetssnippetssnipp" {:content "active = true"})})
 
 (defn renamed
   "Snapshot `s` with item `id` named `item-name`."
@@ -240,7 +240,8 @@
 
 (defn- acceptable
   "Item `item` changed so that a push accepts it: a root-level collection is a Library root, no collection has a
-  namespace (so each has the namespace of its parent), and no attribute names an item by identity."
+  namespace (so each has the namespace of its parent), and no attribute names an item by identity. `kinds.tu/complete`
+  then puts a root-level snippet or glossary term at its area root."
   [{:keys [kind place] :as item}]
   (case kind
     :collection (cond-> (update item :attrs dissoc :namespace)

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.library-branching.instance.kinds.glossary
-  "The app DB side of the kind `:glossary-term`, in the item form of `format.kinds.glossary`: the term is the name, and
-  the definition is the one attribute. Not content: the creator and the bookkeeping columns. Metabase has no trash for
-  glossary terms, so `trash!` deletes the term."
+  "The app DB side of the kind `:glossary-term`, in the item form of `format.kinds.glossary`: the term is the name, the
+  place is the root of the Glossary area, and the definition is the one attribute. Not content: the creator and the
+  bookkeeping columns. Metabase has no trash for glossary terms, so `trash!` deletes the term."
   (:require
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.format.kinds.glossary :as format.glossary]
@@ -15,7 +15,8 @@
 
 (defn- term-item
   [{:keys [entity_id term definition]}]
-  (content/item :glossary-term entity_id term nil (content/attrs format.glossary/spec {:definition definition})))
+  (content/item :glossary-term entity_id term (:fixed-place format.glossary/spec)
+                (content/attrs format.glossary/spec {:definition definition})))
 
 (defn read-glossary-terms
   "`{entity-id item}` of the glossary terms of `entity-ids`."

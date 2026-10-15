@@ -81,7 +81,7 @@
                                       :attrs {:description "Revenue metrics." :type "library-metrics"}}
                 (:entity_id filters) {:kind  :collection
                                       :name  "Filters"
-                                      :place nil
+                                      :place "snippetssnippetssnipp"
                                       :refs  #{}
                                       :attrs {:namespace "snippets"}}}
                (read-items (:entity_id revenue) (:entity_id filters))))))))
@@ -128,7 +128,8 @@
                (dissoc item :attrs)))
         (is (= (:entity_id base)
                (get-in attrs [:template_tags (keyword "snippet: Base filter for library branching") :snippet-id]))))
-      (is (= {:kind :snippet :name "Base filter for library branching" :place nil :refs #{} :attrs {:content "x > 1"}}
+      (is (= {:kind  :snippet :name "Base filter for library branching" :place "snippetssnippetssnipp" :refs #{}
+              :attrs {:content "x > 1"}}
              (read-item (:entity_id base)))))))
 
 (deftest published-table-content-test

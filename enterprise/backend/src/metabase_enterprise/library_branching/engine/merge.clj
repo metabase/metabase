@@ -28,7 +28,7 @@
     (:place-inside :kind-fits :namespace) [id place]
     (:refs-closed :ref-kind)              [id (second ref)]
     (:acyclic :unique-key)                (sort snapshot/compare-identities ids)
-    :root                                 [id]))
+    (:root :area-root)                    [id]))
 
 (defn- pair
   "`[i j]`: two different items of `ids`, `i` changed in `o` and `j` changed in `t` against `b`; nil when there are

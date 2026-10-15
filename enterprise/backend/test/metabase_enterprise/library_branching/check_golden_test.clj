@@ -105,7 +105,8 @@
       [{:level :structural :rule :acyclic :ids #{golden/library-id golden/metrics-id golden/revenue-id}}]
 
       ;; a snippet inside a metric
-      (golden/edit golden/base-filter-path #(str % "collection: IW8kbqZVaMxdGtCM2F4U6\n"))
+      (golden/edit golden/base-filter-path
+                   #(str/replace % "collection: snippetssnippetssnipp\n" "collection: IW8kbqZVaMxdGtCM2F4U6\n"))
       [{:level :structural :rule :kind-fits :id golden/base-filter-id :place golden/total-revenue-id
         :path golden/base-filter-path}]
 
@@ -117,6 +118,28 @@
       ;; a metric at the root level, which is not a fixed root
       (golden/edit golden/total-revenue-path #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n" ""))
       [{:level :structural :rule :root :id golden/total-revenue-id :path golden/total-revenue-path}]
+
+      ;; a snippet at the root level: its file names no place, so it is not at the root of the Snippets area
+      (golden/edit golden/base-filter-path #(str/replace % "collection: snippetssnippetssnipp\n" ""))
+      [{:level :structural :rule :root :id golden/base-filter-id :path golden/base-filter-path}]
+
+      ;; a snippet at the root of another area
+      (golden/edit golden/base-filter-path
+                   #(str/replace % "collection: snippetssnippetssnipp\n" "collection: glossaryglossarygloss\n"))
+      [{:level :structural :rule :kind-fits :id golden/base-filter-id :place "glossaryglossarygloss"
+        :path golden/base-filter-path}]
+
+      ;; a collection of the transforms namespace at the root of the Snippets area
+      (golden/edit "transforms/finance/_collection.yaml"
+                   #(str/replace % "parent: transformstransformst\n" "parent: snippetssnippetssnipp\n"))
+      [{:level :structural :rule :namespace :id "fInAnCeCoLlEcTiOnId00" :place "snippetssnippetssnipp"
+        :path "transforms/finance/_collection.yaml"}]
+
+      ;; a place that names no item and no area root
+      (golden/edit golden/base-filter-path
+                   #(str/replace % "collection: snippetssnippetssnipp\n" "collection: snippetssnippetssnipX\n"))
+      [{:level :structural :rule :place-inside :id golden/base-filter-id :place "snippetssnippetssnipX"
+        :path golden/base-filter-path}]
 
       ;; two snippets with one name
       (golden/edit golden/active-filter-path #(str/replace % "name: Active product filter" "name: Base filter"))
@@ -189,9 +212,16 @@
       (is (= "red: 1 finding" (peek lines)))))
   (testing "a kind that cannot be in its container names the item and the container"
     (let [[line] (check/report (checked (golden/edit golden/base-filter-path
-                                                     #(str % "collection: IW8kbqZVaMxdGtCM2F4U6\n"))))]
+                                                     #(str/replace % "collection: snippetssnippetssnipp\n"
+                                                                   "collection: IW8kbqZVaMxdGtCM2F4U6\n"))))]
       (is (str/includes? line "Base filter"))
       (is (str/includes? line "Total Revenue"))))
+  (testing "a kind that an area root cannot hold names the item and the area"
+    (let [[line] (check/report (checked (golden/edit golden/base-filter-path
+                                                     #(str/replace % "collection: snippetssnippetssnipp\n"
+                                                                   "collection: glossaryglossarygloss\n"))))]
+      (is (str/includes? line "Base filter"))
+      (is (str/includes? line "the Glossary area"))))
   (testing "a key clash names the kind, the key and both items"
     (let [[line] (check/report (checked (golden/edit golden/active-filter-path
                                                      #(str/replace % "name: Active product filter" "name: Base filter"))))]

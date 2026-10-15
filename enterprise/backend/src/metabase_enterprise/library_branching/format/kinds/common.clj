@@ -85,31 +85,31 @@
 
 (defn item-schema
   "The schema of the items of `spec`: a closed map, with `:place` of the spec's `:place-schema` (default a container
-  identity or nil, and nil for a spec with no place key), the closed attributes of the spec, and the references of
-  the attributes as `:refs`; and each schema of the spec's `:checks` on the whole item."
-  [{:keys [name-schema place-key place-schema checks] :as spec}]
+  identity or nil, and the spec's `:fixed-place` for a spec with no place key), the closed attributes of the spec, and
+  the references of the attributes as `:refs`; and each schema of the spec's `:checks` on the whole item."
+  [{:keys [name-schema place-key place-schema fixed-place checks] :as spec}]
   (into [:and
          [:map {:closed true}
           [:kind [:= (:kind spec)]]
           [:name (or name-schema [:string {:min 1}])]
-          [:place (or place-schema (if place-key [:maybe ::snapshot/entity-id] :nil))]
+          [:place (or place-schema (if place-key [:maybe ::snapshot/entity-id] [:= fixed-place]))]
           [:refs [:set ::snapshot/ref]]
           [:attrs (attrs-schema spec)]]
          [:fn {:error/message "the references are not those of the attributes"} #(refs-consistent? spec %)]]
         checks))
 
 (defn encode-item
-  "The document of `item` of `spec`, whose identity is `id`."
+  "The document of `item` of `spec`, whose identity is `id`. A spec with no place key writes no place."
   [{:keys [kind name-key place-key encode-attrs]} id {:keys [name place attrs]}]
   (cond-> (merge ((or encode-attrs identity) attrs)
                  {:kind (clojure.core/name kind) :id id name-key name})
-    (some? place) (assoc place-key place)))
+    (and place-key (some? place)) (assoc place-key place)))
 
 (defn decode-doc
   "`[id item]` of document `doc` of the kind of `spec`. An absent attribute, or one at its default, is not in
-  `:attrs`. Throws ::codec/invalid for a key that is not of the kind, an identity of another form, or a name that is
-  not a non-empty string."
-  [{:keys [kind name-key place-key attrs id-schema decode-attrs] :as spec} doc]
+  `:attrs`. The place of a spec with no place key is its `:fixed-place`. Throws ::codec/invalid for a key that is not
+  of the kind, an identity of another form, or a name that is not a non-empty string."
+  [{:keys [kind name-key place-key fixed-place attrs id-schema decode-attrs] :as spec} doc]
   (let [unknown (sort (remove (into (reserved-keys spec) (keys attrs)) (keys doc)))]
     (when (seq unknown)
       (codec/invalid! (str "Keys that are not attributes of the kind " (clojure.core/name kind) ": "
@@ -123,7 +123,7 @@
     (let [a (drop-defaults spec ((or decode-attrs identity) (select-keys doc (keys attrs))))]
       [id {:kind  kind
            :name  nm
-           :place (when place-key (get doc place-key))
+           :place (if place-key (get doc place-key) fixed-place)
            :refs  (refs-of spec id a)
            :attrs a}])))
 
@@ -138,7 +138,8 @@
      :id-schema    ::snapshot/entity-id   ; the identities of the kind
      :name-key     :name                  ; the document key of the item's :name
      :name-schema  s                      ; optional: the schema of the :name; a non-empty string by default
-     :place-key    :collection            ; the document key of the item's :place; nil: every item is at the root level
+     :place-key    :collection            ; the document key of the item's :place; nil: every item is at :fixed-place
+     :fixed-place  id                     ; with no place key: the place of every item, which no file holds
      :attrs        {k {:schema s :default d :required? b}}
      :encode-attrs f                      ; optional: (f attrs), the attribute part of the document
      :decode-attrs f                      ; optional: its inverse
