@@ -27,7 +27,7 @@
 
 (def ^:private url "https://git.example.com/library.git")
 
-(defmacro ^:private as
+(defmacro ^:private with-role
   "Runs `body` on an instance of `role`: `:consumption` (library branching on, read-only), `:creation` (library
   branching on, read-write), `:no-url` (library branching on, read-only, no repository URL) or `:off` (library
   branching off, read-only with a URL)."
@@ -95,65 +95,65 @@
      (doseq [user [:crowberto :rasta]
              role roles]
        (testing (str user " on an instance of the role " role)
-         (as role
-             (mt/with-current-user (mt/user->id user)
-               (let [gated? (= :consumption role)]
-                 (testing "the cards, dashboards and documents of the Library tree, nested ones too"
-                   (doseq [[k row] synced]
-                     (testing k
-                       (is (= (not gated?) (writable? (models k) row))))))
-                 (testing "the collections of the Library tree, the Library itself too"
-                   (doseq [c [library inner nested]]
-                     (testing (:name c)
-                       (is (= (not gated?) (writable? :model/Collection c))))))
-                 (testing "content outside the Library, and at the root level, stays writable"
-                   (doseq [[k row] outside]
-                     (testing k
-                       (is (true? (writable? (models k) row)))))
-                   (is (true? (writable? :model/Collection regular))))
-                 (testing "reads are not gated"
-                   (is (true? (mi/can-read? (t2/select-one :model/Card :id (:id (:inner-card synced)))))))))))))))
+         (with-role role
+           (mt/with-current-user (mt/user->id user)
+             (let [gated? (= :consumption role)]
+               (testing "the cards, dashboards and documents of the Library tree, nested ones too"
+                 (doseq [[k row] synced]
+                   (testing k
+                     (is (= (not gated?) (writable? (models k) row))))))
+               (testing "the collections of the Library tree, the Library itself too"
+                 (doseq [c [library inner nested]]
+                   (testing (:name c)
+                     (is (= (not gated?) (writable? :model/Collection c))))))
+               (testing "content outside the Library, and at the root level, stays writable"
+                 (doseq [[k row] outside]
+                   (testing k
+                     (is (true? (writable? (models k) row)))))
+                 (is (true? (writable? :model/Collection regular))))
+               (testing "reads are not gated"
+                 (is (true? (mi/can-read? (t2/select-one :model/Card :id (:id (:inner-card synced)))))))))))))))
 
 (deftest library-card-edit-through-the-api-test
   (do-with-library-content
    (fn [{:keys [synced outside]}]
      (let [card-id (:id (:inner-card synced))]
        (testing "a consumption instance refuses an edit of a Library card, and the card stays"
-         (as :consumption
-             (is (= "You don't have permissions to do that."
-                    (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:description "edited"})))
-             (is (nil? (t2/select-one-fn :description :model/Card card-id)))
-             (testing "a card at the root level can be edited"
-               (mt/user-http-request :crowberto :put 200 (str "card/" (:id (:root-card outside))) {:description "root"}))))
+         (with-role :consumption
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:description "edited"})))
+           (is (nil? (t2/select-one-fn :description :model/Card card-id)))
+           (testing "a card at the root level can be edited"
+             (mt/user-http-request :crowberto :put 200 (str "card/" (:id (:root-card outside))) {:description "root"}))))
        (testing "with library branching off, the edit goes through"
-         (as :off
-             (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited"})))))))
+         (with-role :off
+           (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited"})))))))
 
 (deftest data-app-question-is-read-only-on-a-consumption-instance-test
   (mt/with-temp [:model/Collection app  {:name "App" :namespace "data-apps" :location "/"}
                  :model/Card       card {:name "App question" :collection_id (:id app)
                                          :dataset_query (mt/native-query {:query "SELECT 1"})}]
-    (testing "a question of a data app's collection: refused on a consumption instance, allowed with the module off"
-      (as :consumption
-          (mt/user-http-request :crowberto :put 403 (str "card/" (:id card)) {:description "edited here"}))
-      (as :off
-          (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:description "edited without sync"})))))
+    (testing "a question of a data app's collection: refused on a consumption instance, allowed with no repository"
+      (with-role :consumption
+        (mt/user-http-request :crowberto :put 403 (str "card/" (:id card)) {:description "edited here"}))
+      (with-role :no-url
+        (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:description "edited without sync"})))))
 
 (deftest cache-policy-of-a-library-dashboard-test
   (do-with-library-content
    (fn [{:keys [synced]}]
      (let [dash-id (:id (:inner-dash synced))]
-       (as :consumption
-           (testing "a cache policy is instance state, not content: a consumption instance takes it"
-             (mt/with-model-cleanup [:model/CacheConfig]
-               (mt/with-premium-features #{:cache-granular-controls}
-                 (is (=? {:id pos-int?}
-                         (mt/user-http-request :crowberto :put 200 "cache/"
-                                               {:model "dashboard" :model_id dash-id :strategy {:type "nocache"}}))))))
-           (testing "the dashboard is not writable, and its cache policy can be set"
-             (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id))]
-               (is (false? (:can_write response)))
-               (is (true? (:can_set_cache_policy response))))))))))
+       (with-role :consumption
+         (testing "a cache policy is instance state, not content: a consumption instance takes it"
+           (mt/with-model-cleanup [:model/CacheConfig]
+             (mt/with-premium-features #{:cache-granular-controls}
+               (is (=? {:id pos-int?}
+                       (mt/user-http-request :crowberto :put 200 "cache/"
+                                             {:model "dashboard" :model_id dash-id :strategy {:type "nocache"}}))))))
+         (testing "the dashboard is not writable, and its cache policy can be set"
+           (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id))]
+             (is (false? (:can_write response)))
+             (is (true? (:can_set_cache_policy response))))))))))
 
 ;;; ------------------------------------------ Published tables and their parts ----------------------------------------
 
@@ -173,25 +173,25 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (doseq [role roles]
           (testing (str "an instance of the role " role)
-            (as role
-                (let [gated? (= :consumption role)]
-                  (testing "a table published in the Library, its fields, its segments, and a new segment on it"
-                    (do-with-published-venues
-                     (:id data)
-                     (fn [table-id]
-                       (is (= (not gated?) (mi/can-write? (t2/select-one :model/Table :id table-id))))
-                       (is (= (not gated?) (mi/can-write? (t2/select-one :model/Field :id (mt/id :venues :name)))))
-                       (mt/with-temp [:model/Segment segment {:name "Cheap" :table_id table-id :definition {}}]
-                         (is (= (not gated?) (mi/can-write? (t2/select-one :model/Segment :id (:id segment))))))
-                       (is (= (not gated?) (mi/can-create? :model/Segment {:table_id   table-id
-                                                                           :table      (t2/select-one :model/Table :id table-id)
-                                                                           :name       "New segment"
-                                                                           :definition {}}))))))
-                  (testing "a table published in a regular collection stays writable"
-                    (do-with-published-venues
-                     (:id regular)
-                     (fn [table-id]
-                       (is (true? (mi/can-write? (t2/select-one :model/Table :id table-id)))))))))))))))
+            (with-role role
+              (let [gated? (= :consumption role)]
+                (testing "a table published in the Library, its fields, its segments, and a new segment on it"
+                  (do-with-published-venues
+                   (:id data)
+                   (fn [table-id]
+                     (is (= (not gated?) (mi/can-write? (t2/select-one :model/Table :id table-id))))
+                     (is (= (not gated?) (mi/can-write? (t2/select-one :model/Field :id (mt/id :venues :name)))))
+                     (mt/with-temp [:model/Segment segment {:name "Cheap" :table_id table-id :definition {}}]
+                       (is (= (not gated?) (mi/can-write? (t2/select-one :model/Segment :id (:id segment))))))
+                     (is (= (not gated?) (mi/can-create? :model/Segment {:table_id   table-id
+                                                                         :table      (t2/select-one :model/Table :id table-id)
+                                                                         :name       "New segment"
+                                                                         :definition {}}))))))
+                (testing "a table published in a regular collection stays writable"
+                  (do-with-published-venues
+                   (:id regular)
+                   (fn [table-id]
+                     (is (true? (mi/can-write? (t2/select-one :model/Table :id table-id)))))))))))))))
 
 ;;; ---------------------------------------------------- Transforms ----------------------------------------------------
 
@@ -202,26 +202,26 @@
    :target        {:database (mt/id) :type "table" :schema "public" :name "lb_gates_target"}})
 
 (deftest transforms-are-read-only-on-a-consumption-instance-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms" :namespace :transforms}
                    :model/Transform  {transform-id :id} (transform-row coll-id)]
       (mt/with-current-user (mt/user->id :crowberto)
-        (doseq [role roles]
+        (doseq [role [:consumption :creation :no-url]]
           (testing (str "an instance of the role " role)
-            (as role
-                (let [gated? (= :consumption role)]
-                  (is (= (not gated?) (mi/can-write? (t2/select-one :model/Transform :id transform-id))))
-                  (is (= (not gated?) (mi/can-create? :model/Transform (transform-row coll-id))))
-                  (is (true? (mi/can-read? (t2/select-one :model/Transform :id transform-id))))))))))
+            (with-role role
+              (let [gated? (= :consumption role)]
+                (is (= (not gated?) (mi/can-write? (t2/select-one :model/Transform :id transform-id))))
+                (is (= (not gated?) (mi/can-create? :model/Transform (transform-row coll-id))))
+                (is (true? (mi/can-read? (t2/select-one :model/Transform :id transform-id))))))))))
     (testing "PUT and DELETE of a transform give 403 on a consumption instance, and the transform stays"
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms" :namespace :transforms}
                      :model/Transform  {transform-id :id} (assoc (transform-row coll-id) :name "Read-only")]
-        (as :consumption
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :crowberto :put 403 (str "transform/" transform-id) {:name "renamed"})))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :crowberto :delete 403 (str "transform/" transform-id))))
-            (is (= "Read-only" (t2/select-one-fn :name :model/Transform :id transform-id))))))))
+        (with-role :consumption
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :put 403 (str "transform/" transform-id) {:name "renamed"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :delete 403 (str "transform/" transform-id))))
+          (is (= "Read-only" (t2/select-one-fn :name :model/Transform :id transform-id))))))))
 
 ;;; ----------------------------------------------------- Glossary -----------------------------------------------------
 
@@ -229,27 +229,27 @@
   (mt/with-model-cleanup [:model/Glossary]
     (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "Annual recurring revenue"}]
       (testing "a consumption instance refuses POST, PUT and DELETE, and changes nothing"
-        (as :consumption
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :crowberto :post 403 "glossary" {:term "MRR" :definition "Monthly recurring revenue"})))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :crowberto :put 403 (str "glossary/" id) {:term "ARR" :definition "changed"})))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :crowberto :delete 403 (str "glossary/" id))))
-            (is (= "Annual recurring revenue" (t2/select-one-fn :definition :model/Glossary :id id)))
-            (testing "GET works and says that the glossary is not writable"
-              (let [response (mt/user-http-request :crowberto :get 200 "glossary")]
-                (is (some #(= id (:id %)) (:data response)))
-                (is (false? (:can_write response)))))))
+        (with-role :consumption
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :post 403 "glossary" {:term "MRR" :definition "Monthly recurring revenue"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :put 403 (str "glossary/" id) {:term "ARR" :definition "changed"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :crowberto :delete 403 (str "glossary/" id))))
+          (is (= "Annual recurring revenue" (t2/select-one-fn :definition :model/Glossary :id id)))
+          (testing "GET works and says that the glossary is not writable"
+            (let [response (mt/user-http-request :crowberto :get 200 "glossary")]
+              (is (some #(= id (:id %)) (:data response)))
+              (is (false? (:can_write response)))))))
       (testing "a creation instance takes the edit"
-        (as :creation
-            (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
-            (is (= "edited" (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
-                                                               {:term "ARR" :definition "edited"})))))))))
+        (with-role :creation
+          (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
+          (is (= "edited" (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
+                                                             {:term "ARR" :definition "edited"})))))))))
 
 ;;; ----------------------------------------------------- Snippets -----------------------------------------------------
 
-(defn- do-with-snippet-collection
+(defn- do-with-snippet-collection!
   "Calls `(f collection snippet)` with a snippets collection that all users can read and write, a snippet in it, and
   native query permissions for all users."
   [f]
@@ -263,36 +263,36 @@
         (f collection snippet)))))
 
 (deftest snippets-are-read-only-on-a-consumption-instance-test
-  (do-with-snippet-collection
+  (do-with-snippet-collection!
    (fn [collection snippet]
      (let [path (format "native-query-snippet/%d" (:id snippet))]
        (testing "a consumption instance refuses a create, a rename and a trash"
-         (as :consumption
-             (let [snippet-name (mt/random-name)]
-               (is (= "You don't have permissions to do that."
-                      (mt/user-http-request :rasta :post 403 "native-query-snippet"
-                                            {:name snippet-name :content "SELECT 1" :collection_id (:id collection)})))
-               (is (not (t2/exists? :model/NativeQuerySnippet :name snippet-name))))
+         (with-role :consumption
+           (let [snippet-name (mt/random-name)]
              (is (= "You don't have permissions to do that."
-                    (mt/user-http-request :rasta :put 403 path {:name "Renamed"})))
-             (is (= "You don't have permissions to do that."
-                    (mt/user-http-request :rasta :put 403 path {:archived true})))
-             (is (=? {:name "Original" :archived false} (t2/select-one :model/NativeQuerySnippet :id (:id snippet))))
-             (testing "a read and a list work"
-               (is (= "Original" (:name (mt/user-http-request :rasta :get 200 path))))
-               (is (some #(= (u/the-id snippet) (:id %)) (mt/user-http-request :rasta :get 200 "native-query-snippet"))))))
+                    (mt/user-http-request :rasta :post 403 "native-query-snippet"
+                                          {:name snippet-name :content "SELECT 1" :collection_id (:id collection)})))
+             (is (not (t2/exists? :model/NativeQuerySnippet :name snippet-name))))
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :put 403 path {:name "Renamed"})))
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :put 403 path {:archived true})))
+           (is (=? {:name "Original" :archived false} (t2/select-one :model/NativeQuerySnippet :id (:id snippet))))
+           (testing "a read and a list work"
+             (is (= "Original" (:name (mt/user-http-request :rasta :get 200 path))))
+             (is (some #(= (u/the-id snippet) (:id %)) (mt/user-http-request :rasta :get 200 "native-query-snippet"))))))
        (doseq [role [:creation :off]]
          (testing (str "an instance of the role " role " takes a create and a rename")
-           (as role
-               (let [snippet-name (mt/random-name)]
-                 (try
-                   (is (= snippet-name (:name (mt/user-http-request :rasta :post 200 "native-query-snippet"
-                                                                    {:name snippet-name :content "SELECT 1"
-                                                                     :collection_id (:id collection)}))))
-                   (finally
-                     (t2/delete! :model/NativeQuerySnippet :name snippet-name))))
-               (is (= "Renamed" (:name (mt/user-http-request :rasta :put 200 path {:name "Renamed"}))))
-               (t2/update! :model/NativeQuerySnippet (:id snippet) {:name "Original"}))))))))
+           (with-role role
+             (let [snippet-name (mt/random-name)]
+               (try
+                 (is (= snippet-name (:name (mt/user-http-request :rasta :post 200 "native-query-snippet"
+                                                                  {:name snippet-name :content "SELECT 1"
+                                                                   :collection_id (:id collection)}))))
+                 (finally
+                   (t2/delete! :model/NativeQuerySnippet :name snippet-name))))
+             (is (= "Renamed" (:name (mt/user-http-request :rasta :put 200 path {:name "Renamed"}))))
+             (t2/update! :model/NativeQuerySnippet (:id snippet) {:name "Original"}))))))))
 
 ;;; --------------------------------------------- Data actions and data apps -------------------------------------------
 
@@ -302,41 +302,43 @@
                  :model/Action     {app-action :id}  {:type :query :name "App copy" :collection_id app-coll}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "a consumption instance: neither a data action at the root nor a data app's action is writable"
-        (as :consumption
-            (is (false? (mi/can-write? (t2/select-one :model/Action :id root-action))))
-            (is (false? (mi/can-write? (t2/select-one :model/Action :id app-action))))))
+        (with-role :consumption
+          (is (false? (mi/can-write? (t2/select-one :model/Action :id root-action))))
+          (is (false? (mi/can-write? (t2/select-one :model/Action :id app-action))))))
       (testing "a creation instance: a data action at the root is writable"
-        (as :creation
-            (is (true? (mi/can-write? (t2/select-one :model/Action :id root-action)))))))))
+        (with-role :creation
+          (is (true? (mi/can-write? (t2/select-one :model/Action :id root-action)))))))))
 
 ;;; ---------------------------------------------- The hooks, one by one -----------------------------------------------
 
 (deftest model-editable-hooks-test
   (testing "a data app: not editable on a consumption instance; editable with no URL and on a creation instance"
-    (as :consumption
+    (mt/with-temp [:model/DataApp app {:name "lb-gates" :display_name "Gates" :bundle_path "gates.js"}]
+      (with-role :consumption
         (is (false? (remote-sync/model-editable? :model/DataApp {})))
-        (is (= {1 false} (remote-sync/batch-model-editable? :model/DataApp [{:id 1}]))))
-    (doseq [role [:no-url :creation :off]]
-      (as role
+        (is (false? (remote-sync/model-editable? :model/DataApp app)))
+        (is (= {(:id app) false} (remote-sync/batch-model-editable? :model/DataApp [app]))))
+      (doseq [role [:no-url :creation]]
+        (with-role role
           (is (true? (remote-sync/model-editable? :model/DataApp {})))
-          (is (= {1 true} (remote-sync/batch-model-editable? :model/DataApp [{:id 1}]))))))
+          (is (= {(:id app) true} (remote-sync/batch-model-editable? :model/DataApp [app])))))))
   (testing "a new transform and a new snippet at the root level are in scope: not editable on a consumption instance"
-    (as :consumption
-        (is (false? (remote-sync/model-editable? :model/Transform nil)))
-        (is (false? (remote-sync/model-editable? :model/NativeQuerySnippet nil)))
-        (is (false? (remote-sync/transforms-editable?)))
-        (is (false? (remote-sync/model-editable? :model/Glossary nil)))))
+    (with-role :consumption
+      (is (false? (remote-sync/model-editable? :model/Transform nil)))
+      (is (false? (remote-sync/model-editable? :model/NativeQuerySnippet nil)))
+      (is (false? (remote-sync/transforms-editable?)))
+      (is (false? (remote-sync/model-editable? :model/Glossary nil)))))
   (testing "a model with no kind is editable"
-    (as :consumption
-        (is (true? (remote-sync/model-editable? :model/UnknownModel {})))
-        (is (= {1 true} (remote-sync/batch-model-editable? :model/UnknownModel [{:id 1}])))))
+    (with-role :consumption
+      (is (true? (remote-sync/model-editable? :model/UnknownModel {})))
+      (is (= {1 true} (remote-sync/batch-model-editable? :model/UnknownModel [{:id 1}])))))
   (testing "a card by its collection: in the Library, not editable; in a regular collection, editable"
     (collections.tu/with-library [{:keys [metrics]}]
       (mt/with-temp [:model/Collection regular {:name "Regular"}]
-        (as :consumption
-            (is (false? (remote-sync/model-editable? :model/Card {:collection_id (:id metrics)})))
-            (is (true? (remote-sync/model-editable? :model/Card {:collection_id (:id regular)})))
-            (is (true? (remote-sync/collection-editable? nil))))))))
+        (with-role :consumption
+          (is (false? (remote-sync/model-editable? :model/Card {:collection_id (:id metrics)})))
+          (is (true? (remote-sync/model-editable? :model/Card {:collection_id (:id regular)})))
+          (is (true? (remote-sync/collection-editable? nil))))))))
 
 (deftest batch-of-snippets-test
   (mt/with-temp [:model/Collection outside {:name "Outside" :namespace "snippets"}
@@ -344,10 +346,10 @@
                  :model/NativeQuerySnippet b {:name "lb gates b" :content "2" :collection_id (:id outside)}
                  :model/NativeQuerySnippet c {:name "lb gates c" :content "3" :archived true}]
     (testing "a consumption instance: every snippet in scope is not editable; a trashed one is out of scope"
-      (as :consumption
-          (is (= {(:id a) false (:id b) false (:id c) true}
-                 (remote-sync/batch-model-editable? :model/NativeQuerySnippet [a b c])))))
+      (with-role :consumption
+        (is (= {(:id a) false (:id b) false (:id c) true}
+               (remote-sync/batch-model-editable? :model/NativeQuerySnippet [a b c])))))
     (testing "a creation instance: every snippet is editable"
-      (as :creation
-          (is (= {(:id a) true (:id b) true (:id c) true}
-                 (remote-sync/batch-model-editable? :model/NativeQuerySnippet [a b c])))))))
+      (with-role :creation
+        (is (= {(:id a) true (:id b) true (:id c) true}
+               (remote-sync/batch-model-editable? :model/NativeQuerySnippet [a b c])))))))

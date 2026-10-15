@@ -3990,7 +3990,7 @@
 
   enterprise/library-branching
   {:team "UX West"
-   :api #{metabase-enterprise.library-branching.api metabase-enterprise.library-branching.init}
+   :api #{metabase-enterprise.library-branching.api metabase-enterprise.library-branching.gates metabase-enterprise.library-branching.init}
    :uses #{api
            app-db
            collections
@@ -4002,10 +4002,12 @@
            util
            util.config
            warehouse-schema-overlay}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DataApp
                     :model/Database
                     :model/Document
                     :model/Field
@@ -4017,6 +4019,7 @@
                     :model/Segment
                     :model/Table
                     :model/TableUserSettings
+                    :model/Transform
                     :model/User}}
 
   enterprise/mcp
@@ -4293,6 +4296,7 @@
            util
            warehouse-schema-overlay
            enterprise/data-apps
+           enterprise/library-branching
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}

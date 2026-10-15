@@ -63,7 +63,7 @@
   [s id text]
   (assoc-in s [id :attrs :description] text))
 
-(defn- counting
+(defn- counting!
   "`inst` with an atom of the plans that its `apply-plan!` received."
   [inst]
   (let [plans (atom [])]
@@ -87,7 +87,7 @@
                               (dissoc ptu/orders-id)
                               (assoc other-id (other-snippet)))
            h              (pltu/commit-snapshot! repo ptu/branch [c1] remote)
-           [counted plans] (counting inst)
+           [counted plans] (counting! inst)
            {:keys [result head steps]} (deploy! counted s)]
        (testing "the first deploy, with no base, takes the head"
          (is (= c1 first)))
@@ -261,15 +261,17 @@
                          (assoc other-id (other-snippet))
                          (assoc ptu/snippet-id (get (described ptu/sample ptu/snippet-id "Local") ptu/snippet-id)))
                inst  (pltu/memory-instance (atom {:snapshot local}))]
-           (is (= {:result :drift :head h :ids [other-id ptu/snippet-id]} (update (deploy! inst s) :ids sort)))
+           (is (= {:result :drift :head h :ids #{other-id ptu/snippet-id}} (update (deploy! inst s) :ids set)))
            (is (= local (pltu/snapshot-of inst)))
            (is (nil? (instance/base inst)))))))))
 
-(defn- unreadable-base-store
+(defn- unreadable-base-store!
   "`s` that throws on a read of the tree of commit `base`."
   [s base]
   (reify store/Store
     (head [_ r] (store/head s r))
+    (branches [_] (store/branches s))
+    (default-branch [_] (store/default-branch s))
     (read-tree [_ c] (if (= c base) (throw (ex-info "missing object" {:commit c})) (store/read-tree s c)))
     (changed-paths [_ a b] (store/changed-paths s a b))
     (write-commit [_ ps t m] (store/write-commit s ps t m))
@@ -284,7 +286,7 @@
      (let [c1         (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
            [inst _]   (deployed-instance! s)
            _          (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))
-           unreadable (unreadable-base-store s c1)]
+           unreadable (unreadable-base-store! s c1)]
        (testing "the local content has the digests of the base: no read of the base commit, and the deploy goes on"
          (let [copy (pltu/memory-instance (atom @(:state inst)))]
            (is (= :deployed (:result (deploy! copy unreadable))))))

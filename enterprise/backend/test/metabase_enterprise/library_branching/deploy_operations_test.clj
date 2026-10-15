@@ -216,7 +216,7 @@
                                             (assoc base new-id (ptu/item new-id :metric "Missing" (:entity_id metrics)
                                                                          {:display "scalar" :query (ptu/count-query missing)})))
                      (is (=? {:status        "failed"
-                              :error_message #"breaks the rules .*env-resolves"}
+                              :error_message "The head of branch main breaks the rules env-resolves, so nothing was deployed."}
                              (run-task! "deploy" #(operations/deploy-task! % "main"))))
                      (is (not (t2/exists? :model/Card :entity_id new-id)))
                      (is (= h1 (instance/base (operations/instance)))))))))))))))
