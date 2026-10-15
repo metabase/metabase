@@ -26,12 +26,17 @@
   [f]
   (let [f (if (var? f) @f f)]
     (cond
-      (instance? RestFn f)    (<= (.getRequiredArity ^RestFn f) 1)
-      (instance? AFunction f) (boolean (some (fn [^Method m]
-                                               (and (= "invoke" (.getName m))
-                                                    (= 1 (.getParameterCount m))))
-                                             (.getDeclaredMethods (class f))))
-      :else                   true)))
+      (instance? RestFn f)
+      (<= (.getRequiredArity ^RestFn f) 1)
+
+      (instance? AFunction f)
+      (boolean (some (fn [^Method m]
+                       (and (= "invoke" (.getName m))
+                            (= 1 (.getParameterCount m))))
+                     (.getDeclaredMethods (class f))))
+
+      :else
+      true)))
 
 (defn add-encoder
   "Register `encoder`, a fn of an instance of `class` returning the value to write in its place (e.g. a String).
@@ -66,16 +71,24 @@
   [x]
   (cond
     (or (instance? Double x) (instance? Float x)) (str x)
-    @fallback-encoder                             (@fallback-encoder x)
+    @fallback-encoder (@fallback-encoder x)
     :else (throw (ex-info (str "Cannot JSON encode object of class: " (.getName (class x)))
                           {:class (class x)}))))
 
+(defn- map-key
+  "Writes map keys oda has no encoding for (nil, dates, collections...) as their `str`, like cheshire did."
+  [k]
+  (if (or (keyword? k) (string? k))
+    k
+    (str k)))
+
 (defn- write-opts
   [opt-map]
-  {:encoders    @encoders
-   :default-fn  default-fn
+  {:encoders @encoders
+   :default-fn default-fn
+   :key-fn map-key
    :date-format default-date-format
-   :pretty      (:pretty opt-map)})
+   :pretty (:pretty opt-map)})
 
 (defn encode
   "Return a JSON-encoding String for the given object.
@@ -100,7 +113,7 @@
   [key-fn]
   {:key-fn (cond
              (true? key-fn) keyword
-             key-fn         key-fn)})
+             key-fn key-fn)})
 
 (defn- read-one
   "Read the first JSON value from `rdr`, a Reader or InputStream, or nil if it is empty."

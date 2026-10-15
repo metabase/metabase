@@ -42,7 +42,17 @@
                (gen/fmap #(java.util.Date. (long %)) (gen/choose 0 4102444800000))]))
 
 (def ^:private map-key
-  (gen/one-of [unicode-string gen/keyword gen/keyword-ns gen/large-integer]))
+  (gen/one-of [unicode-string
+               gen/keyword
+               gen/keyword-ns
+               gen/symbol-ns
+               gen/large-integer
+               finite-double
+               gen/boolean
+               gen/uuid
+               (gen/return nil)
+               (gen/fmap #(java.time.LocalDate/ofEpochDay %) (gen/choose 0 50000))
+               (gen/vector gen/small-integer 0 3)]))
 
 (def ^:private value
   (gen/recursive-gen (fn [inner]
@@ -95,8 +105,6 @@
     (is (instance? Long (json/decode "1"))))
   (testing "a lone surrogate encodes as U+FFFD (cheshire: ?)"
     (is (= "\"�\"" (json/encode "\uD800"))))
-  (testing "a nil map key throws (cheshire: written as \"\")"
-    (is (thrown? Exception (json/encode {nil 1}))))
   (testing "content after the value throws (cheshire: ignored)"
     (is (thrown? Exception (json/decode "{} x"))))
   (testing "a leading byte order mark is skipped (cheshire: throws)"
