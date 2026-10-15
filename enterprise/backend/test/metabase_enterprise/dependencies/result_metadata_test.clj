@@ -98,7 +98,7 @@
           (is (not (stale? :table (mt/id :orders)))))))))
 
 (deftest measure-chain-test
-  (testing "changing a measure's type re-derives a card using it through another measure"
+  (testing "changing a measure's definition re-derives a card using it through another measure"
     (with-clean-statuses
       (mt/with-temp [:model/Measure {inner-id :id} {:name       "Inner"
                                                     :table_id   (mt/id :orders)
@@ -110,15 +110,15 @@
                                                     :definition (measure-query inner-id)}
                      :model/Card    {card-id :id}  {:dataset_query (measure-query outer-id)}]
         (run-jobs!)
-        (let [base-type #(:base_type (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
-          (is (= :type/Integer (base-type)))
+        (let [column-name #(:name (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
+          (is (= "count" (column-name)))
           (t2/update! :model/Measure inner-id
                       {:definition (-> (table-query :orders)
                                        (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
                                                                                    (mt/id :orders :total)))))})
           (is (stale? :measure inner-id))
           (run-jobs!)
-          (is (= :type/Float (base-type))))))))
+          (is (= "avg" (column-name))))))))
 
 (deftest concurrent-update-test
   (testing "re-derived result metadata is not stored over a card updated after it was read"

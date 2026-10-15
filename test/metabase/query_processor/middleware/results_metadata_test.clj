@@ -11,7 +11,6 @@
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
@@ -225,8 +224,8 @@
                              (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
                              {:card-id    (u/the-id card)
                               :query-hash (qp.util/query-hash {})}))]
-                (is (= (lib/comparable-metadata cols-1)
-                       (lib/comparable-metadata
+                (is (= (#'middleware.results-metadata/comparable-metadata cols-1)
+                       (#'middleware.results-metadata/comparable-metadata
                         (-> result :data :results_metadata :columns))))
                 (is (=? {:status :completed}
                         result)))
@@ -483,7 +482,7 @@
             (mt/process-query query)))))
 
 (deftest ^:parallel comparable-metadata-test
-  (is (= [] (lib/comparable-metadata [])))
+  (is (= [] (#'middleware.results-metadata/comparable-metadata [])))
   (testing "removes ident and converts keywords to strings"
     (is (= [{:base_type      "type/Float"
              :database_type  "DECFLOAT"
@@ -500,7 +499,7 @@
                                                  :sd  nil}}}
              :name           "sum"
              :semantic_type  nil}]
-           (lib/comparable-metadata [{:base_type      :type/Float
+           (#'middleware.results-metadata/comparable-metadata [{:base_type      :type/Float
                                                                 :database_type  "DECFLOAT"
                                                                 :display_name   "Sum of Total"
                                                                 :effective_type :type/Float
@@ -523,7 +522,7 @@
              :description    "The date and time an order was submitted."
              :display_name   "Created At: Quarter"
              :effective_type "type/DateTime"}]
-           (lib/comparable-metadata [{:name           "X"
+           (#'middleware.results-metadata/comparable-metadata [{:name           "X"
                                                                 :base_type      :type/Integer
                                                                 :description    "The date and time an order was submitted."
                                                                 :display_name   "Created At: Quarter"
