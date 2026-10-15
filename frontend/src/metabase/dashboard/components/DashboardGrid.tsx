@@ -88,7 +88,6 @@ interface DashboardGridInnerState {
   };
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
-  isAnimationPaused: boolean;
   dashcardCountByCardId: Record<CardId, number>;
   _lastProps?: LastProps;
 
@@ -169,8 +168,6 @@ class DashboardGridInner extends Component<
 > {
   static contextType = ContentViewportContext;
 
-  _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
-
   constructor(props: DashboardGridInnerProps, context: unknown) {
     super(props, context);
 
@@ -196,28 +193,12 @@ class DashboardGridInner extends Component<
       ),
       replaceCardModalDashCard: null,
       isDragging: false,
-      isAnimationPaused: true,
       _lastProps: {
         dashboard: props.dashboard,
         isEditing: props.isEditing,
         selectedTabId: props.selectedTabId,
       },
     };
-  }
-
-  componentDidMount() {
-    // In order to skip the initial cards animation we must let the grid layout calculate
-    // the initial card positions. The timer is necessary to enable animation only
-    // after the grid layout has been calculated and applied to the DOM.
-    this._pauseAnimationTimer = setTimeout(() => {
-      this.setState({ isAnimationPaused: false });
-    }, 0);
-  }
-
-  componentWillUnmount() {
-    if (this._pauseAnimationTimer !== null) {
-      clearTimeout(this._pauseAnimationTimer);
-    }
   }
 
   componentDidUpdate(prevProps: DashboardGridInnerProps) {
@@ -615,7 +596,6 @@ class DashboardGridInner extends Component<
           S.DashboardCardContainer,
           {
             [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
-            [S.isAnimationDisabled]: this.state.isAnimationPaused,
           },
         )}
       >

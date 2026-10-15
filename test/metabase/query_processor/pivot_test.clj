@@ -122,7 +122,67 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+  (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"pivot-rows and pivot-cols must not overlap"
+         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
+
+(deftest ^:parallel breakout-combinations-powerset-cap-test
+  (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
+    (testing "the powerset fallback is allowed up to the cap"
+      (is (= (long (Math/pow 2 max-breakouts))
+             (count (#'qp.pivot/breakout-combinations max-breakouts [] [] true true)))))
+    (testing "the powerset fallback is rejected past the cap, before any combinations are enumerated"
+      (doseq [num-breakouts [(inc max-breakouts) 30 62]]
+        (is (=? {:type          :invalid-query
+                 :num-breakouts num-breakouts}
+                (try
+                  (#'qp.pivot/breakout-combinations num-breakouts [] [] true true)
+                  nil
+                  (catch ExceptionInfo e
+                    (ex-data e)))))))
+    (testing "explicit pivot-rows/pivot-cols only produce a linear number of combinations, so they are not capped"
+      (is (= 60
+             (count (#'qp.pivot/breakout-combinations 30 (range 29) [29] true true)))))))
+
+(defn- many-breakouts-query
+  "A query against `checkins` with `n` distinct breakouts (the date bucketed by different temporal units)."
+  [n]
+  (let [mp    (mt/metadata-provider)
+        units [:day :week :month :quarter :year :day-of-week :day-of-month :day-of-year
+               :week-of-year :month-of-year :quarter-of-year]
+        date  (lib.metadata/field mp (mt/id :checkins :date))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                  (lib/aggregate (lib/count)))
+        cols  (concat (map #(lib/with-temporal-bucket date %) units)
+                      (map #(lib.metadata/field mp (mt/id :checkins %)) [:id :user_id :venue_id]))]
+    (assert (<= n (count cols)))
+    (reduce lib/breakout query (take n cols))))
+
+(deftest powerset-breakout-cap-run-pivot-query-test
+  (testing "a pivot query with no pivot rows/cols and too many breakouts fails as an invalid query instead of
+           enumerating every breakout combination"
+    (let [query (qp.core/userland-query (many-breakouts-query (inc @#'qp.pivot/max-powerset-breakouts)))]
+      (doseq [native? [false true]]
+        (testing (str "use-native-pivot-tables = " native?)
+          (mt/with-temporary-setting-values [use-native-pivot-tables native?]
+            (qp.pivot.test-util/without-pivot-parity-check
+             (is (=? {:status     :failed
+                      :error      #"Too many breakouts.*"
+                      :error_type :invalid-query}
+                     (qp.pivot/run-pivot-query query))))))))))
+
 ;; TODO -- we should require these columns to be distinct as well (I think?)
 ;; TODO -- require all numbers to be positive
 ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
@@ -366,8 +426,8 @@
 
 (deftest ^:parallel apply-legacy-pivot-keys-kebab-case-test
   (testing "kebab-case legacy indices resolve to breakout :lib/uuid values"
-    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1 0] :pivot-cols [0]})]
-      (is (=? {:rows               [(breakout-uuid q 1) (breakout-uuid q 0)]
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1] :pivot-cols [0]})]
+      (is (=? {:rows               [(breakout-uuid q 1)]
                :columns            [(breakout-uuid q 0)]
                :show-row-totals    true
                :show-column-totals true}
@@ -1033,6 +1093,21 @@
                  {:expressions {"Product Rating + 1" [:+ $product_id->products.rating 1]}
                   :aggregation [[:count]]
                   :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
+
+(deftest ^:parallel pivot-with-case-with-literal-else-in-aggregation-test
+  (testing "pivot runs when an aggregation wraps a :case with a literal else value (#84452)"
+    (mt/dataset test-data
+      (let [mp       (mt/metadata-provider)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            total    (lib.metadata/field mp (mt/id :orders :total))
+            quantity (lib.metadata/field mp (mt/id :orders :quantity))
+            created  (lib.metadata/field mp (mt/id :orders :created_at))
+            query    (-> (lib/query mp orders)
+                         (lib/aggregate (lib/sum (lib/case [[(lib/> quantity 3) total]] 0)))
+                         (lib/breakout (lib/with-temporal-bucket created :year))
+                         (lib/breakout quantity))]
+        (is (=? {:status :completed}
+                (qp.pivot/run-pivot-query query)))))))
 
 (deftest ^:parallel measure-in-pivot-table-test
   (testing "a :measure clause used inside a pivot query executes like the equivalent inline aggregation"

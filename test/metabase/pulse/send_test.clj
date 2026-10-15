@@ -245,10 +245,8 @@
 
            :fixture
            (fn [_ thunk]
-             ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
-             ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
-             #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-             (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
+             (mt/with-dynamic-fn-redefs [body/attached-results-text
+                                         (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
                (thunk)))
 
            :assert
@@ -276,10 +274,10 @@
                           message)))
                 (testing "attached-results-text should be invoked exactly once"
                   (is (= 1
-                         (count (pulse.test-util/input @#'body/attached-results-text)))))
+                         (count (pulse.test-util/input (mt/dynamic-value #'body/attached-results-text))))))
                 (testing "attached-results-text should return nil since it's a slack message"
                   (is (= [nil]
-                         (pulse.test-util/output @#'body/attached-results-text))))))}}
+                         (pulse.test-util/output (mt/dynamic-value #'body/attached-results-text)))))))}}
           "11 rows in the results no longer causes a CSV attachment per issue #36441."
           {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
 

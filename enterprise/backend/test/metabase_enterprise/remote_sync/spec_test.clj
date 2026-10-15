@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -368,6 +369,60 @@
                    :model_collection_id synced-coll :status "synced"}]
                  (spec/sync-all-entities! (t/offset-date-time) {:by-entity-id {"Action" #{eid}}}))))))))
 
+(defn- do-with-data-actions!
+  "Runs `f` with `{:folder :root-action :folder-action :app-action}`: actions without a model in the data actions root,
+  a data actions folder, and a data app collection."
+  [f]
+  (mt/with-temp [:model/Collection {folder :id}        {:name "Billing" :namespace "data-actions" :location "/"}
+                 :model/Collection {app-coll :id}      {:name "App" :namespace "data-apps" :location "/"}
+                 :model/Action     {root-action :id}   {:type :query :name "At root"}
+                 :model/Action     {folder-action :id} {:type :query :name "In folder" :collection_id folder}
+                 :model/Action     {app-action :id}    {:type :query :name "App copy" :collection_id app-coll}]
+    (f {:folder folder :root-action root-action :folder-action folder-action :app-action app-action})))
+
+(deftest data-action-eligibility-follows-library-test
+  (testing "actions without a model are synced with the Library from the data actions root and namespace"
+    (do-with-data-actions!
+     (fn [{:keys [root-action folder-action app-action]}]
+       (let [action-spec (spec/spec-for-model-key :model/Action)
+             eligible?   #(spec/check-eligibility action-spec (t2/select-one :model/Action :id %))]
+         (collections.tu/with-library-synced
+           (is (true? (eligible? root-action)))
+           (is (true? (eligible? folder-action)))
+           ;; an app's copy is synced with the app, whatever the Library does
+           (is (true? (eligible? app-action))))
+         (collections.tu/with-library-not-synced
+           (is (false? (eligible? root-action)))
+           (is (false? (eligible? folder-action)))))))))
+
+(deftest data-action-export-and-removal-test
+  (testing "with the Library synced, root data actions are export roots and absent ones are removed on pull"
+    (do-with-data-actions!
+     (fn [{:keys [folder root-action app-action]}]
+       (collections.tu/with-library-synced
+         (let [action-spec (spec/spec-for-model-key :model/Action)]
+           (is (contains? (set (spec/query-export-roots action-spec)) ["Action" root-action]))
+           (is (contains? (set (spec/query-export-roots (spec/spec-for-model-key :model/Collection)))
+                          ["Collection" folder]))
+           (remote-sync.db/delete-removed-instances!
+            :model/Action
+            (spec/removal-opts action-spec [] #{}))
+           (is (not (t2/exists? :model/Action :id root-action)))
+           (is (t2/exists? :model/Action :id app-action))))))))
+
+(deftest data-action-read-only-test
+  (testing "data actions synced with the Library cannot be changed while remote sync is read-only"
+    (do-with-data-actions!
+     (fn [{:keys [root-action app-action]}]
+       (collections.tu/with-library-synced
+         (mt/with-current-user (mt/user->id :crowberto)
+           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
+             (is (false? (mi/can-write? (t2/select-one :model/Action :id root-action))))
+             ;; an app's copy is synced with the app, which a read-only instance can't push either
+             (is (false? (mi/can-write? (t2/select-one :model/Action :id app-action)))))
+           (mt/with-temporary-setting-values [remote-sync-type :read-write]
+             (is (true? (mi/can-write? (t2/select-one :model/Action :id root-action)))))))))))
+
 ;;; -------------------------------------------- Editability Checking Tests ----------------------------------------
 
 (deftest model-editable?-unknown-model-test
@@ -380,12 +435,12 @@
   (testing "model-editable? returns true for every model while remote sync is not configured"
     (mt/with-temporary-setting-values [remote-sync-url  nil
                                        remote-sync-type :read-only]
-      (is (true? (spec/model-editable? :model/DataApp {:draft false})))
-      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))
+      (is (true? (spec/model-editable? :model/DataApp {})))
+      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1}]))))
     (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                        remote-sync-type :read-only]
-      (is (false? (spec/model-editable? :model/DataApp {:draft false})))
-      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))))
+      (is (false? (spec/model-editable? :model/DataApp {})))
+      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1}]))))))
 
 (deftest model-editable?-read-write-mode-test
   (testing "model-editable? returns true in read-write mode regardless of eligibility"

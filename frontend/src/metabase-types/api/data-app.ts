@@ -24,16 +24,10 @@ export interface DataApp {
   bundle_path: string;
   /** Admin toggle. When false the app is not served. */
   enabled: boolean;
-  /** Whether the app is a draft that reserves its slug before the app is created. */
-  draft: boolean;
   /** The collection that contains this app's saved questions and models. */
   resource_collection_id: number;
-  /** The group that grants users access to this data app. */
-  permission_group_id: number | null;
   /** Tables used by the last successful resource synchronization. */
   table_ids: number[];
-  /** Whether any app member lacks access to a table used by this app. */
-  has_user_permission_warnings?: boolean;
   /**
    * External origins the app's sandboxed bundle may `fetch`/XHR. Empty means
    * none (Metabase data still flows through the SDK). Each entry is an origin,
@@ -63,6 +57,22 @@ export interface SetDataAppEnabledRequest {
   enabled: boolean;
 }
 
+export interface DataAppGroup {
+  id: number;
+  name: string;
+  member_count: number;
+}
+
+export interface AddDataAppGroupsRequest {
+  name: string;
+  group_ids: number[];
+}
+
+export interface RemoveDataAppGroupRequest {
+  name: string;
+  group_id: number;
+}
+
 export interface DataAppMissingTable {
   id: number;
   name: string;
@@ -71,12 +81,7 @@ export interface DataAppMissingTable {
   database_name: string;
 }
 
-export interface DataAppUserPermissionWarning {
-  user_id: number;
+export interface DataAppGroupPermissionWarning {
+  group_id: number;
   missing_tables: DataAppMissingTable[];
-}
-
-export interface GetDataAppUserPermissionWarningsRequest {
-  name: string;
-  user_ids: number[];
 }

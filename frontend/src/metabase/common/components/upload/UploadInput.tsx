@@ -1,12 +1,8 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import styled from "@emotion/styled";
 import { type InputHTMLAttributes, forwardRef } from "react";
 
-import { DEFAULT_UPLOAD_INPUT_ID } from "./constants";
+import { Box } from "metabase/ui";
 
-const StyledUploadInput = styled.input`
-  display: none;
-`;
+import { DEFAULT_UPLOAD_INPUT_ID } from "./constants";
 
 interface IUploadInputProps extends InputHTMLAttributes<HTMLInputElement> {
   id?: string;
@@ -18,7 +14,9 @@ export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
     ref,
   ) {
     return (
-      <StyledUploadInput
+      <Box
+        component="input"
+        display="none"
         data-testid={id}
         id={id}
         ref={ref}

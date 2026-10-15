@@ -29,14 +29,30 @@ const targetQuestion = {
   },
 };
 
+const stringLabelSource = {
+  name: "String label source",
+  native: {
+    query:
+      "SELECT DISTINCT CATEGORY, CONCAT(CATEGORY, ' Label') AS LABEL " +
+      "FROM PRODUCTS WHERE CATEGORY != 'Doohickey'",
+  },
+};
+
+const numberLabelSource = {
+  name: "Number label source",
+  native: {
+    query: "SELECT ID, TITLE FROM PRODUCTS ORDER BY ID ASC LIMIT 5",
+  },
+};
+
 describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  describe("question source", () => {
-    it("should be able to use structured and native question sources", () => {
+  describe("question, static list and field sources", () => {
+    it("should be able to use structured, native and labeled question sources, static list sources and field search", () => {
       H.createQuestion(structuredSourceQuestion, {
         wrapId: true,
         idAlias: "structuredSourceQuestionId",
@@ -45,6 +61,8 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         wrapId: true,
         idAlias: "nativeSourceQuestionId",
       });
+      H.createNativeQuestion(stringLabelSource);
+      H.createNativeQuestion(numberLabelSource);
       H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
@@ -65,61 +83,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       H.setFilter("Text or Category", "Is", "SQL Is");
       mapFilterToQuestion();
       H.setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
-
-      H.saveDashboard();
-
-      cy.log("structured question source with string/contains parameter");
-      H.getDashboardCard().findByText("200").should("be.visible");
-      H.filterWidget({ name: "GUI Contains" }).click();
-      H.popover().findByText("Gizmo").click();
-      H.popover().button("Add filter").click();
-      H.getDashboardCard().findByText("51").should("be.visible");
-
-      cy.log("structured question source with string/= parameter");
-      filterDashboard({ name: "GUI Is" });
-
-      cy.log("native question source");
-      filterDashboard({ name: "SQL Is" });
-
-      cy.get("@structuredSourceQuestionId").then(H.visitQuestion);
-      archiveQuestion(
-        "It will also be removed from the 2 filters that use it to populate values.",
-      );
-
-      cy.get("@nativeSourceQuestionId").then(H.visitQuestion);
-      archiveQuestion(
-        "It will also be removed from the filter that uses it to populate values.",
-      );
-    });
-  });
-
-  describe("question source with custom labels", () => {
-    const stringLabelSource = {
-      name: "String label source",
-      native: {
-        query:
-          "SELECT DISTINCT CATEGORY, CONCAT(CATEGORY, ' Label') AS LABEL " +
-          "FROM PRODUCTS WHERE CATEGORY != 'Doohickey'",
-      },
-    };
-
-    const numberLabelSource = {
-      name: "Number label source",
-      native: {
-        query: "SELECT ID, TITLE FROM PRODUCTS ORDER BY ID ASC LIMIT 5",
-      },
-    };
-
-    it("should remap string, number and id values to string labels", () => {
-      H.createNativeQuestion(stringLabelSource);
-      H.createNativeQuestion(numberLabelSource);
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      H.editDashboard();
 
       H.setFilter("Text or Category", "Is", "String label");
       mapFilterToQuestion();
@@ -145,7 +108,37 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         labelField: "TITLE",
       });
 
+      H.setFilter("Text or Category", "Is", "List dropdown");
+      mapFilterToQuestion();
+      H.setFilterListSource({
+        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
+      });
+
+      H.setFilter("Text or Category", "Is", "List search");
+      mapFilterToQuestion();
+      H.sidebar().findByText("Search box").click();
+      H.setFilterListSource({
+        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
+      });
+
+      H.setFilter("Text or Category", "Is", "Field search");
+      mapFilterToQuestion();
+      H.setSearchBoxFilterType();
+
       H.saveDashboard();
+
+      cy.log("structured question source with string/contains parameter");
+      H.getDashboardCard().findByText("200").should("be.visible");
+      H.filterWidget({ name: "GUI Contains" }).click();
+      H.popover().findByText("Gizmo").click();
+      H.popover().button("Add filter").click();
+      H.getDashboardCard().findByText("51").should("be.visible");
+
+      cy.log("structured question source with string/= parameter");
+      filterDashboard({ name: "GUI Is" });
+
+      cy.log("native question source");
+      filterDashboard({ name: "SQL Is" });
 
       cy.log(
         "string/string: the dropdown shows the labels instead of the raw values",
@@ -201,37 +194,6 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       H.filterWidget({ name: "ID label" })
         .findByText("Rustic Paper Wallet")
         .should("be.visible");
-    });
-  });
-
-  describe("static list and field sources", () => {
-    it("should be able to use static list sources and a search box with fields configured for list", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: targetQuestion,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      H.editDashboard();
-
-      H.setFilter("Text or Category", "Is", "List dropdown");
-      mapFilterToQuestion();
-      H.setFilterListSource({
-        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
-      });
-
-      H.setFilter("Text or Category", "Is", "List search");
-      mapFilterToQuestion();
-      H.sidebar().findByText("Search box").click();
-      H.setFilterListSource({
-        values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
-      });
-
-      H.setFilter("Text or Category", "Is", "Field search");
-      mapFilterToQuestion();
-      H.setSearchBoxFilterType();
-
-      H.saveDashboard();
 
       cy.log("static list source (dropdown)");
       filterDashboard({ name: "List dropdown", isLabeled: true });
@@ -244,6 +206,17 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
       cy.log("field source (search box)");
       filterDashboard({ name: "Field search", isField: true });
+
+      cy.log("archive question sources");
+      cy.get("@structuredSourceQuestionId").then(H.visitQuestion);
+      archiveQuestion(
+        "It will also be removed from the 2 filters that use it to populate values.",
+      );
+
+      cy.get("@nativeSourceQuestionId").then(H.visitQuestion);
+      archiveQuestion(
+        "It will also be removed from the filter that uses it to populate values.",
+      );
     });
   });
 });

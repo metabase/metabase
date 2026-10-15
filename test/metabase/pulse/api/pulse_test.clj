@@ -206,6 +206,39 @@
    :schedule_type  "hourly"
    :details        {:channels "#general"}})
 
+(deftest create-pulse-rejects-bad-email-subject-test
+  (testing "POST /api/pulse rejects an email subject that is blank, too long, or more than one line"
+    (doseq [subject ["   "
+                     (apply str (repeat 256 "a"))
+                     "Weekly KPIs\nBcc: someone@example.com"
+                     "Weekly KPIs\r"]]
+      (testing (pr-str subject)
+        (is (=? {:specific-errors {:channels some?}}
+                (mt/user-http-request :rasta :post 400 "pulse"
+                                      {:name     "abc"
+                                       :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}]
+                                       :channels [(assoc daily-email-channel :details {:subject subject})]})))))))
+
+(deftest create-pulse-with-email-subject-test
+  (testing "POST /api/pulse stores an email subject that GET /api/pulse/:id returns"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       card       {}
+                   :model/Dashboard  dashboard  {:name "Birdcage KPIs" :collection_id (u/the-id collection)}]
+      (api.card-test/with-cards-in-readable-collection! [card]
+        (mt/with-model-cleanup [:model/Pulse]
+          (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse"
+                                                     {:name          "Birdcage KPIs"
+                                                      :collection_id (u/the-id collection)
+                                                      :dashboard_id  (u/the-id dashboard)
+                                                      :cards         [{:id                (u/the-id card)
+                                                                       :include_csv       false
+                                                                       :include_xls       false
+                                                                       :dashboard_card_id nil}]
+                                                      :channels      [(assoc daily-email-channel
+                                                                             :details {:subject "Birdcage KPIs, Account A"})]})]
+            (is (=? {:channels [{:details {:subject "Birdcage KPIs, Account A"}}]}
+                    (mt/user-http-request :rasta :get 200 (str "pulse/" pulse-id))))))))))
+
 (deftest create-test
   (testing "POST /api/pulse"
     (testing "legacy pulse"
@@ -1063,6 +1096,29 @@
                         :subject "Daily Sad Toucans"
                         :recipient-type nil}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
+
+(deftest send-test-pulse-custom-subject-test
+  (testing "POST /api/pulse/test sends the email with the channel's custom subject (#63305)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-fake-inbox
+        (mt/with-temp [:model/Collection collection {}
+                       :model/Dashboard  {dashboard-id :id} {:name "Daily Sad Toucans"}
+                       :model/Card       card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (api.card-test/with-cards-in-readable-collection! [card]
+            (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                     (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                           {:name         (mt/random-name)
+                                                            :dashboard_id dashboard-id
+                                                            :cards        [{:id                (:id card)
+                                                                            :include_csv       false
+                                                                            :include_xls       false
+                                                                            :dashboard_card_id nil}]
+                                                            :channels     [(assoc daily-email-channel
+                                                                                  :details    {:subject "Sad Toucans, Account A"}
+                                                                                  :recipients [(mt/fetch-user :rasta)])]}))]
+              (is (= "Sad Toucans, Account A"
+                     (-> channel-messages :channel/email first :subject))))))))))
 
 (deftest send-test-pulse-to-non-user-test
   (testing "sending test email to non user won't include unsubscribe link (#43391)"

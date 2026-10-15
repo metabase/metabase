@@ -22,6 +22,7 @@ import {
   getIncompleteTurnMessage,
   getIncompleteTurnReason,
   isChainOfThoughtMessage,
+  isContextFullError,
   isTextPart,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
@@ -120,7 +121,8 @@ const CopyAction = ({ text }: { text: string }) => {
   return (
     <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
       <ActionIcon
-        size="1.5rem"
+        variant="subtle"
+        size="sm"
         data-testid="metabot-chat-message-copy"
         onClick={() => clipboard.copy(text)}
       >
@@ -186,9 +188,10 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
   ) {
     return (
       <ActionIcon
+        variant="subtle"
         onClick={onClick}
         disabled={disabled}
-        size="1.5rem"
+        size="sm"
         {...props}
         ref={ref}
       >
@@ -337,8 +340,9 @@ const MessageActions = ({
     actions.push(
       <Tooltip key="retry" label={t`Retry`}>
         <ActionIcon
+          variant="subtle"
           onClick={onRetry}
-          size="1.5rem"
+          size="sm"
           data-testid="metabot-chat-message-retry"
         >
           <Icon name="revert" size="0.9rem" c="icon-primary" />
@@ -355,7 +359,8 @@ const MessageActions = ({
     actions.push(
       <Tooltip key="fork" label={t`Fork conversation`}>
         <ActionIcon
-          size="1.5rem"
+          variant="subtle"
+          size="sm"
           data-testid="metabot-chat-message-fork"
           loading={isForking}
           disabled={isForking}
@@ -710,7 +715,10 @@ export const Messages = ({
         ).unwrap();
         sendToast({ icon: "check", message: t`Conversation forked` });
       } catch {
-        sendToast({ icon: "warning", message: t`Failed to fork conversation` });
+        sendToast({
+          variant: "negative",
+          message: t`Failed to fork conversation`,
+        });
       } finally {
         setForkingMessageId(null);
       }
@@ -743,7 +751,7 @@ export const Messages = ({
         modal: undefined,
       }));
     } catch (error) {
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      sendToast({ variant: "negative", message: t`Failed to submit feedback` });
     }
   };
 
@@ -763,7 +771,9 @@ export const Messages = ({
                 conversationId={conversationId}
                 isStreaming={isDoingScience && isLastMessage}
                 onRetry={
-                  isLastMessage && onRetryMessage
+                  isLastMessage &&
+                  onRetryMessage &&
+                  !isContextFullError(message)
                     ? () => onRetryMessage(message.id)
                     : undefined
                 }

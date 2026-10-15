@@ -3,10 +3,41 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 
 import * as DateFilter from "../native/helpers/e2e-date-filter-helpers";
 
-import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
+const DASHBOARD_DATE_FILTERS = {
+  "Month and Year": {
+    value: {
+      month: "Nov",
+      year: "2025",
+    },
+    representativeResult: "85.88",
+  },
+  "Quarter and Year": {
+    value: {
+      quarter: "Q2",
+      year: "2025",
+    },
+    representativeResult: "44.43",
+  },
+  "Single Date": {
+    value: "05/23/2025",
+    representativeResult: "49.54",
+  },
+  "Date Range": {
+    value: {
+      startDate: "05/25/2025",
+      endDate: "06/01/2025",
+    },
+    representativeResult: "75.41",
+  },
+  "All Options": {
+    value: "06/01/2025",
+    representativeResult: "53.6",
+  },
+};
 
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
@@ -15,6 +46,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should work when set through the filter widget", () => {
+    cy.signInAsNormalUser();
     visitOrdersDashboardInEditMode();
 
     // Add and connect every single available date filter type
@@ -50,6 +82,56 @@ describe("scenarios > dashboard > filters > date", () => {
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
+
+    const allOptionsWidget = () => H.filterWidget().eq(4);
+
+    cy.log("Round the relative date range preview (metabase#22482)");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Relative date range…").click();
+      cy.findByLabelText("Interval").clear().type(15);
+      cy.findByRole("textbox", { name: "Unit" }).click();
+    });
+    H.selectDropdown().findByText("months").click();
+
+    const expectedRange = getFormattedRange(
+      dayjs().startOf("month").add(-15, "month"),
+      dayjs().add(-1, "month").endOf("month"),
+    );
+    H.popover().findByText(expectedRange).should("be.visible");
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log("Remove the last excluded hour (metabase#27579)");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Exclude…").click();
+      cy.findByText("Hours of the day…").click();
+      cy.findByText("Select all").click();
+      cy.findByLabelText("12 AM").should("be.checked");
+
+      cy.findByText("Select all").click();
+      cy.findByLabelText("12 AM").should("not.be.checked");
+    });
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log(
+      "Block an exclude filter with all options selected (metabase#24235)",
+    );
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
+      cy.findByText("Select all").click();
+      cy.findByText("Add filter").click();
+    });
+
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Select all").click();
+      cy.button("Update filter").should("be.disabled");
+    });
   });
 
   it("should support being required", () => {
@@ -58,6 +140,17 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.log("show sub-day resolutions in relative date filter (metabase#6660)");
     H.setFilter("Date picker", "All Options");
     H.dashboardParameterSidebar().findByText("No default").click();
+
+    cy.log("re-position the default value popover on resize (metabase#52918)");
+    H.popover().within(() => {
+      cy.findByText("Fixed date range…").click();
+      cy.findByText("Between").should("be.visible");
+    });
+    H.popover().should(([element]) => {
+      expect(element.offsetWidth).to.gte(element.scrollWidth);
+    });
+    H.popover().button("Back").click();
+
     H.popover().within(() => {
       cy.findByText("Relative date range…").click();
       cy.findByText("Next").click();
@@ -145,6 +238,10 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.url().should("match", /\/dashboard\/\d+\?.*date=exclude-months-Jan/);
   });
 });
+
+function getFormattedRange(start, end) {
+  return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
+}
 
 function visitOrdersDashboardInEditMode() {
   H.visitDashboard(ORDERS_DASHBOARD_ID);

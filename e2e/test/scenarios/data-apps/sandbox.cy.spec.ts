@@ -182,10 +182,14 @@ describe("scenarios > data apps > sandbox & isolation", () => {
 
   describe("iframe security headers", () => {
     it("serves the embed document with the expected CSP + framing headers", () => {
+      H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME });
+
       cy.request({
         url: `/embed/apps/${APP_NAME}`,
         failOnStatusCode: false,
       }).then((res) => {
+        expect(res.status).to.equal(200);
+
         const csp = String(res.headers["content-security-policy"] ?? "");
         expect(csp).to.contain("frame-ancestors 'self'");
         expect(csp).to.contain("default-src 'none'");

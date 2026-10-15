@@ -44,8 +44,10 @@
   remote-synced-collection?
   remote-synced-dependents
   shared-tenant-collection?
+  slugify
   transforms-ns
   data-apps-ns
+  data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
   annotate-dashboards])

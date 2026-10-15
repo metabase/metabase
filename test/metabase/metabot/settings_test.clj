@@ -1,11 +1,14 @@
 (ns metabase.metabot.settings-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -217,9 +220,12 @@
                ;; a family with no deployment segment names no model
                "azure/anthropic"                            false
                "zai/glm-5.2"                                true
+               "zai/glm-5.3-flash"                          true
                "zai/glm-4.7"                                false
                "openrouter/anthropic/claude-sonnet-4.6"     true
                "openrouter/z-ai/glm-5.2"                    true
+               "openrouter/z-ai/glm-5.3-flash"              true
+               "openrouter/google/gemini-3.8-flash"         true
                ;; streams reasoning summaries under the server default
                "openrouter/openai/gpt-5.5"                  true
                ;; re-probed 2026-09-04: streams summaries under the explicit enable
@@ -230,6 +236,7 @@
                "google/anthropic/claude-haiku-4-5@20251001" false
                "google/google/gemini-3.5-flash"             true
                "google/google/gemini-3.7-flash"             true
+               "google/google/gemini-3.8-flash"             true
                ;; off-catalog: no thinking directive — see google/models.clj
                "google/google/gemini-2.5-flash"             false
                "mistral/mistral-medium-3-5"                 true
@@ -285,6 +292,64 @@
     (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
       (with-selected-model "vllm/vllm-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
+(def ^:private ollama-credentials
+  {:base-url "http://ollama.internal:11434/v1"})
+
+(def ^:private ollama-connection
+  (connection "ollama" "ollama" ollama-credentials))
+
+(defn- showing-capabilities
+  "Stub `http/request` so `/api/show` reports `capabilities-by-model`, and a model absent from it comes
+  back without a `capabilities` key — an Ollama too old to report them."
+  [capabilities-by-model]
+  (fn [{:keys [body]}]
+    (let [model (:model (json/decode+kw (str body)))]
+      {:status 200
+       :body   (cond-> {:model model}
+                 (contains? capabilities-by-model model)
+                 (assoc :capabilities (get capabilities-by-model model)))})))
+
+(defn- supports-reasoning?
+  "The setting's answer for `model`, once the adapter has been given the chance to learn about it.
+
+  The setting itself only reads what is known — it is public, so it never calls Ollama. Warming here
+  goes through the accessor the request path uses, which is one of the two places that fills the
+  cache in production; the other is listing a connection's models."
+  [model]
+  (ollama.capabilities/reasoning-model? ollama-credentials model)
+  (with-selected-model (str "ollama/" model)
+    (metabot.settings/llm-metabot-supports-reasoning?)))
+
+(defn- with-capabilities!
+  "Call `f` against a `/api/show` stub reporting `by-model`, with the capability cache emptied on both
+  sides so no test inherits another's models."
+  [by-model f]
+  (ollama.capabilities/clear-cache!)
+  (try
+    (mt/with-dynamic-fn-redefs [http/request (showing-capabilities by-model)]
+      (f))
+    (finally
+      (ollama.capabilities/clear-cache!))))
+
+(deftest metabot-supports-reasoning-ollama-test
+  (testing "Ollama answers per model rather than per connection: one connection serves as many models as
+           the operator has pulled, and Metabot and the mini model need not be on the same one"
+    (with-capabilities! {"thinking-model" ["completion" "tools" "thinking"]
+                         "chat-model"     ["completion" "tools"]}
+      (fn []
+        (with-connections [ollama-connection]
+          (testing "thinking-model" (is (true? (supports-reasoning? "thinking-model"))))
+          (testing "chat-model"     (is (false? (supports-reasoning? "chat-model"))))))))
+  (testing "and a model nothing has looked up yet reads as non-reasoning rather than guessing: the
+           setting is public, so it answers from what is already known instead of asking"
+    ;; the stub reports this model as thinking, so `false?` holds only while the setting answers from the
+    ;; cache rather than asking
+    (with-capabilities! {"unlooked-model" ["completion" "tools" "thinking"]}
+      (fn []
+        (with-connections [ollama-connection]
+          (with-selected-model "ollama/unlooked-model"
+            (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))))
 
 (deftest metabot-supports-reasoning-managed-proxy-test
   (testing "the managed connection answers from the model's own provider segment"
@@ -406,8 +471,8 @@
     (testing "accepts a publisher-qualified model, or a Model Garden endpoint"
       (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
         (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
-      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
-        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5"]
+        (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/endpoints/1234567890123456789"]
         (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))))))
 
@@ -522,6 +587,21 @@
                                  (mt/user-http-request :crowberto :get 200 "setting"))]
                 (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-metabot-provider")))
                 (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-mini-model")))))))))))
+
+(deftest google-dated-claude-haiku-reads-as-undated-test
+  (testing "a saved Google selection of the dated Claude Haiku 4.5 reads as the undated id the picker offers"
+    (with-connections [configured-google]
+      (with-selected-model "google/anthropic/claude-haiku-4-5@20251001"
+        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
+          (mt/with-temporary-raw-setting-values [llm-mini-model "google/anthropic/claude-haiku-4-5@20251001"]
+            (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider)))
+            (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-mini-model)))
+            (testing "including through the settings API the picker loads"
+              (let [values (into {}
+                                 (map (juxt :key :value))
+                                 (mt/user-http-request :crowberto :get 200 "setting"))]
+                (is (= "google/anthropic/claude-haiku-4-5" (get values "llm-metabot-provider")))
+                (is (= "google/anthropic/claude-haiku-4-5" (get values "llm-mini-model")))))))))))
 
 (deftest retired-model-is-stored-as-its-successor-test
   (testing "writing a retired OpenRouter id stores the model now serving it, so saved values converge"

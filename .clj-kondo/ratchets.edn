@@ -25,11 +25,11 @@
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/discourage-dynamic-vars                          323
+                                :metabase/discourage-dynamic-vars                          325
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
-                                :metabase/validate-defendpoint-has-response-schema         427
+                                :metabase/validate-defendpoint-has-response-schema         426
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       44
                                 :missing-docstring                                         4
@@ -67,15 +67,12 @@
                                 :clojure.pprint/pprint                                 2
                                 :clojure.string/lower-case                             2
                                 :clojure.string/upper-case                             1
-                                :clojurewerkz.quartzite.jobs/defjob                    1
                                 :compojure.core/context                                2
                                 :compojure.core/defroutes                              4
                                 :compojure.core/routes                                 2
                                 :ee.transform-testing.expectations.empty/->Empty       1
                                 :ee.transform-testing.expectations.equals/->EqualsRows 1
                                 :ee.transform-testing.expectations.equals/->EqualsSql  1
-                                :entity-retrieval.core/search-unfiltered               1
-                                :entity-retrieval.mirror/search-unfiltered             1
                                 :lib.core/->legacy-MBQL                                10
                                 :lib.equality/find-column-indexes-for-refs             1
                                 :malli.core/explain                                    1
@@ -83,7 +80,9 @@
                                 :malli.core/validate                                   1
                                 :malli.core/validator                                  1
                                 :me.flowthing.pp/pprint                                2
-                                :next.jdbc/active-tx?                                  1}
+                                :next.jdbc/active-tx?                                  1
+                                :search.entity-retrieval.core/search-unfiltered        1
+                                :search.entity-retrieval.mirror/search-unfiltered      1}
  :config-counts                {:constant-condition                      1
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16

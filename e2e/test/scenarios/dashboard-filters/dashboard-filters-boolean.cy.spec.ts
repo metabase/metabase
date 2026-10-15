@@ -27,7 +27,7 @@ describe("scenarios > dashboard > filters > boolean", () => {
       cy.signInAsAdmin();
     });
 
-    it("should allow to map a boolean parameter to a boolean column of an MBQL query, update it with a click behavior, and drill-thru", () => {
+    it("should allow to map a boolean parameter to a boolean column of an MBQL query, update it with a click behavior, drill-thru, and use a 'Go to a custom destination - Saved question' click behavior", () => {
       createQuestionAndDashboard().then(({ dashboardId }) =>
         H.visitDashboard(dashboardId),
       );
@@ -68,19 +68,18 @@ describe("scenarios > dashboard > filters > boolean", () => {
       H.queryBuilderFiltersPanel()
         .findByText(`${COLUMN_NAME} is true`)
         .should("be.visible");
-    });
 
-    it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
-      createQuestionAndDashboard().then(({ dashboardId }) =>
-        H.visitDashboard(dashboardId),
-      );
+      cy.go("back");
+      H.filterWidget().findByText("True").should("be.visible");
+      H.filterWidget().icon("close").click();
+      H.getDashboardCard().findByText("200 rows").should("be.visible");
 
-      cy.log("set up click behavior");
+      cy.log("'Go to a custom destination - Saved question' click behavior");
       H.editDashboard();
       H.showDashboardCardActions();
       cy.findByLabelText("Click behavior").click();
       H.sidebar().within(() => {
-        cy.findByText(COLUMN_NAME).click();
+        cy.findByText(`${COLUMN_NAME} updates 1 filter`).click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("Saved question").click();
       });
@@ -92,7 +91,6 @@ describe("scenarios > dashboard > filters > boolean", () => {
       H.selectDropdown().findByText(COLUMN_NAME).click();
       H.saveDashboard();
 
-      cy.log("assert click behavior");
       H.getDashboardCard().findAllByText("true").first().click();
       H.queryBuilderFiltersPanel()
         .findByText(`${COLUMN_NAME} is true`)
@@ -244,9 +242,11 @@ describe("scenarios > dashboard > filters > boolean", () => {
 function createQuestionAndDashboard({
   questionName = QUESTION_NAME,
   dashboardName = DASHBOARD_NAME,
+  parameters,
 }: {
   questionName?: string;
   dashboardName?: string;
+  parameters?: DashboardDetails["parameters"];
 } = {}) {
   const questionDetails: StructuredQuestionDetails = {
     name: questionName,
@@ -263,6 +263,7 @@ function createQuestionAndDashboard({
   };
   const dashboardDetails: DashboardDetails = {
     name: dashboardName,
+    parameters,
   };
   return H.createQuestionAndDashboard({
     questionDetails,
@@ -358,14 +359,33 @@ function createAndMapParameter({
 
 function setupDashboardClickBehavior() {
   cy.log("setup target dashboard");
+  const parameter = {
+    id: "f8ec7c71",
+    name: PARAMETER_NAME,
+    slug: "boolean_parameter",
+    type: "boolean/=",
+    sectionId: "boolean",
+  };
   createQuestionAndDashboard({
     dashboardName: DASHBOARD_NAME,
     questionName: QUESTION_NAME,
-  }).then(({ dashboardId }) => {
-    H.visitDashboard(dashboardId);
-    H.editDashboard();
-    createAndMapParameter();
-    H.saveDashboard();
+    parameters: [parameter],
+  }).then(({ dashboardId, questionId }) => {
+    H.updateDashboardCards({
+      dashboard_id: dashboardId,
+      cards: [
+        {
+          card_id: questionId,
+          parameter_mappings: [
+            {
+              parameter_id: parameter.id,
+              card_id: questionId,
+              target: ["dimension", ["expression", COLUMN_NAME]],
+            },
+          ],
+        },
+      ],
+    });
   });
 
   cy.log(

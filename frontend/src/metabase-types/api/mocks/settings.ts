@@ -6,6 +6,7 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
+  MajorVersionSupport,
   SettingDefinition,
   Settings,
   TokenFeatures,
@@ -82,6 +83,16 @@ export const createMockVersionInfo = (
   ...opts,
 });
 
+export const createMockMajorVersionSupport = (
+  opts?: Partial<MajorVersionSupport>,
+): MajorVersionSupport => ({
+  major: 56,
+  released: "2025-04-15",
+  lts: false,
+  eol: "2027-06-01",
+  ...opts,
+});
+
 export const createMockTokenStatus = (
   opts?: Partial<TokenStatus>,
 ): TokenStatus => ({
@@ -104,6 +115,7 @@ export const createMockTokenFeatures = (
   "schema-viewer": false,
   disable_password_login: false,
   cloud_custom_smtp: false,
+  content_diagnostics: false,
   content_translation: false,
   content_verification: false,
   "custom-viz": false,
@@ -150,6 +162,7 @@ export const createMockTokenFeatures = (
   library: false,
   library_retrieval: false,
   "support-users": false,
+  "session-management": false,
   tenants: false,
   writable_connection: false,
   admin_security_center: false,
@@ -251,10 +264,10 @@ export const createMockSettings = (
   "embedding-app-origins-interactive": "",
   "enable-embedding": false,
   "non-table-chart-generated": true,
-  "enable-embedding-static": false,
+  "enable-embedding-modular": false,
   "enable-embedding-sdk": false,
-  "enable-embedding-simple": false,
   "enable-embedding-interactive": false,
+  "enable-embedding-sidecar": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
   "enable-sandboxes?": true,
@@ -279,8 +292,7 @@ export const createMockSettings = (
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
-  "show-sdk-embed-terms": true,
-  "show-simple-embed-terms": true,
+  "show-modular-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,

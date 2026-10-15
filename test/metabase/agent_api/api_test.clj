@@ -15,6 +15,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.mcp.core :as mcp]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -26,6 +28,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -725,6 +728,18 @@
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
+
+(deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+    (mt/with-temp [:model/Card {secret-id :id} {:collection_id (:id (collection/user->personal-collection
+                                                                     (mt/user->id :crowberto)))
+                                                :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+      (let [q    {:database (mt/id) :type :query :query {:source-table (str "card__" secret-id)}}
+            body (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                       {:name  "Should Not Save"
+                                        :query (u/encode-base64 (json/encode q))})]
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               body))))))
 
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
@@ -1454,6 +1469,27 @@
           (is (nat-int? (:row (first dashcards))))
           (is (nat-int? (:col (first dashcards)))))))))
 
+(deftest update-dashboard-dashcards-add-restricted-timeline-card-test
+  (testing "Adding a card to a shared dashboard needs read access to the timelines it shows"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Card {card-id :id} {:name          "Orders over time"
+                                                :dataset_query (orders-count-query)
+                                                :display       :line
+                                                :visualization_settings
+                                                {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (re-find #"You don't have permissions to do that\."
+                     (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                           {:dashcards [{:action "add" :card_id card-id}]})))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+        (testing "a user who can read the timeline can add it"
+          (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
+                                {:dashcards [{:action "add" :card_id card-id}]})
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
+
 (deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
@@ -1920,6 +1956,46 @@
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest read-resource-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An OAuth token issued to an MCP client must not reach a
+            REST endpoint, so a token holding every MCP scope is refused by POST /v1/read-resource."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token (str (random-uuid))]
+            (t2/insert! :model/OAuthAccessToken
+                        {:token     (oidc.util/hash-token token)
+                         :user_id   (mt/user->id :crowberto)
+                         :client_id client-id
+                         :scope     (vec (mcp/v2-scopes))
+                         :expiry    (+ (System/currentTimeMillis) 3600000)})
+            (is (= 403 (:status (client/client-full-response
+                                 :post "agent/v1/read-resource"
+                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                 {:uris ["metabase://databases"]}))))))))))
+
+(deftest endpoint-without-scope-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An endpoint that declares no `:scope` must refuse every
+            scoped token, so a token holding every MCP scope is refused by GET /api/user/:id."
+    (testing "the endpoint itself works for a normal session"
+      (is (= (mt/user->id :crowberto)
+             (:id (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :crowberto)))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token    (str (random-uuid))
+                _        (t2/insert! :model/OAuthAccessToken
+                                     {:token     (oidc.util/hash-token token)
+                                      :user_id   (mt/user->id :crowberto)
+                                      :client_id client-id
+                                      :scope     (vec (mcp/v2-scopes))
+                                      :expiry    (+ (System/currentTimeMillis) 3600000)})
+                response (client/client-full-response
+                          :get (str "user/" (mt/user->id :crowberto))
+                          {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
+            (is (= 403 (:status response)))
+            (is (= "scope_not_permitted" (get-in response [:body :error])))))))))
 
 (deftest decode-and-validate-query-strips-extra-keys-test
   (testing "base64 query payloads are decoded, validated, and stripped of the query processor's internal keys"

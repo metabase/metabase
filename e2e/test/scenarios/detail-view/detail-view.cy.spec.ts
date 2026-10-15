@@ -19,7 +19,7 @@ describe("detail view", () => {
   });
 
   describe("table", () => {
-    it("displays object details, breadcrumbs, relationships, email links, and 404 error state", () => {
+    it("displays object details, breadcrumbs, relationships, and 404 error state", () => {
       DetailView.visitTable(PRODUCTS_ID, 9999);
       cy.findByTestId("loading-indicator").should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
@@ -29,16 +29,6 @@ describe("detail view", () => {
         cy.findByRole("link", { name: /Sample Database/ }).should("be.visible");
         cy.findByRole("link", { name: "Products" }).should("be.visible");
         cy.findByText("9999").should("be.visible");
-      });
-
-      DetailView.visitTable(PEOPLE_ID, 1);
-
-      DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(() => {
-        cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
-          "have.attr",
-          "href",
-          "mailto:borer-hudson@yahoo.com",
-        );
       });
 
       DetailView.visitTable(PRODUCTS_ID, 1);
@@ -171,8 +161,6 @@ describe("detail view", () => {
         ["Products → Title", "Awesome Concrete Shoes"],
         ["Products → Vendor", "McClure-Lockman"],
       ]);
-
-      DetailView.getRelationships().should("not.exist");
     });
   });
 

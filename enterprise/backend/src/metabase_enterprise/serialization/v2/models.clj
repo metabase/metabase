@@ -34,6 +34,11 @@
    "NativeQuerySnippet"
    "Timeline"])
 
+(def elidable-content-models
+  "Content models a reference may name without the target being in the archive or the destination. Such references
+  are dropped on import instead of failing the load."
+  #{"Timeline"})
+
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
@@ -72,6 +77,7 @@
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
+   "ApiKeyUsageLog"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"
@@ -85,14 +91,17 @@
    "Comment"
    "CommentReaction"
    "ConnectionImpersonation"
+   "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
+   "DataAppGroupAssignment"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
    "DependencyStatus"
    "DocumentBookmark"
+   "EmbeddingSdkReact18Host"
    "Exploration"
    "ExplorationBlock"
    "ExplorationBookmark"
@@ -104,6 +113,7 @@
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
+   "McpGroupPermission"
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"

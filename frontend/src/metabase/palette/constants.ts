@@ -42,7 +42,6 @@ type AdminSettingsSections = Record<
   {
     name: string;
     hidden?: boolean;
-    adminOnly?: boolean;
   }
 >;
 
@@ -55,7 +54,6 @@ export const getAdminSettingsSections = (
   updates: {
     name: t`Updates`,
     hidden: settings["token-features"]?.hosting,
-    adminOnly: true,
   },
   email: {
     name: t`Email`,
@@ -68,16 +66,13 @@ export const getAdminSettingsSections = (
   },
   authentication: {
     name: t`Authentication`,
-    adminOnly: true,
   },
   "authentication/user-provisioning": {
     name: t`User provisioning`,
     hidden: !settings["token-features"].scim,
-    adminOnly: true,
   },
   "authentication/api-keys": {
     name: t`Api keys`,
-    adminOnly: true,
   },
   domains: {
     name: t`Domains`,

@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
@@ -53,6 +54,15 @@
   "True if `m`'s keywordized `:type` equals `t`."
   [m t]
   (= t (keyword (:type m))))
+
+(defn create-target-schema!
+  "Creates a transform's target `schema` on database `db-id` when it doesn't exist, under a cluster lock per database so concurrent transforms targeting a new schema don't race to create it."
+  [driver db-id conn-spec schema]
+  (when (and (not (str/blank? schema))
+             (not (driver/schema-exists? driver db-id schema)))
+    (cluster-lock/with-cluster-lock (keyword "metabase.transforms-base.util" (str "create-target-schema-" db-id))
+      (when-not (driver/schema-exists? driver db-id schema)
+        (driver/create-schema-if-needed! driver conn-spec schema)))))
 
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."

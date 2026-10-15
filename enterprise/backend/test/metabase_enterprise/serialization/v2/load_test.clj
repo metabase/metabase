@@ -17,6 +17,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
@@ -247,6 +248,46 @@
                                               :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "age"))))
             (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension
                                                :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "email"))))))))))
+
+(deftest field-user-settings-survive-connecting-a-stub-database-test
+  (testing "Field settings imported onto a stub database survive connecting it and syncing, and export again"
+    (let [db-name    (mt/random-name)
+          extract    #(into [] (serdes/extract-all "FieldUserSettings" {:filter-column :field_id :filter-ids %}))
+          serialized (mt/with-temp [:model/Database {db-id :id}    {:name db-name}
+                                    :model/Table    {table-id :id} {:db_id db-id :schema "PUBLIC" :name "VENUES"}
+                                    :model/Field    {price-id :id} {:table_id table-id :name "PRICE"}
+                                    :model/Field    {name-id :id}  {:table_id table-id :name "NAME"}]
+                       (t2/insert! :model/FieldUserSettings {:field_id       price-id
+                                                             :semantic_type  :type/Currency
+                                                             :effective_type :type/Integer
+                                                             :description    "In dollars"})
+                       (t2/insert! :model/FieldUserSettings {:field_id name-id :semantic_type :type/City})
+                       (extract [price-id name-id]))]
+      (try
+        (serdes.load/load-metabase! (ingestion-in-memory serialized))
+        (let [stub      (t2/select-one :model/Database :name db-name)
+              table-id  (t2/select-one-pk :model/Table :db_id (:id stub) :schema "PUBLIC" :name "VENUES")
+              field-ids (t2/select-pks-vec :model/Field :table_id table-id {:order-by [[:name :asc]]})
+              settings  #(t2/select-fn->fn :field_id (juxt :semantic_type :semantic_type_set :effective_type)
+                                           :model/FieldUserSettings :field_id [:in field-ids])]
+          (is (true? (:is_stub stub)))
+          (is (= {:type/Currency true :type/City true}
+                 (into {} (map (juxt first second)) (vals (settings)))))
+          (t2/update! :model/Database (:id stub) {:engine :h2 :details (:details (mt/db)) :is_stub false})
+          (sync/sync-db-metadata! (t2/select-one :model/Database :id (:id stub)))
+          (testing "sync reactivates the stub Fields and gives them their real base types"
+            (is (=? [{:name "NAME" :active true :base_type :type/Text}
+                     {:name "PRICE" :active true :base_type :type/Integer}]
+                    (t2/select [:model/Field :name :active :base_type] :id [:in field-ids] {:order-by [[:name :asc]]}))))
+          (testing "the imported user settings are kept"
+            (is (= #{[:type/Currency true :type/Integer] [:type/City true nil]}
+                   (set (vals (settings))))))
+          (testing "and a later export still carries them"
+            (is (=? [{:semantic_type :type/City :semantic_type_set true}
+                     {:semantic_type :type/Currency :semantic_type_set true :description "In dollars"}]
+                    (sort-by (comp str :semantic_type) (extract field-ids))))))
+        (finally
+          (t2/delete! :model/Database :name db-name))))))
 
 (deftest stub-database-survives-a-rolled-back-referrer-test
   (testing "A stub created inside a failed entity's transaction is not reused from the cache by the next entity"
@@ -1191,6 +1232,7 @@
           user1d     (atom nil)
           timeline1d (atom nil)
           timeline2d (atom nil)
+          event2d    (atom nil)
           eventsT1   (atom nil)
           eventsT2   (atom nil)]
       (ts/with-dbs [source-db dest-db]
@@ -1230,6 +1272,7 @@
                              [:description {:optional true} [:maybe :string]]
                              [:events                       [:sequential
                                                              [:map
+                                                              [:entity_id                    :string]
                                                               [:timezone                     :string]
                                                               [:time_matters                 :boolean]
                                                               [:name                         :string]
@@ -1248,12 +1291,16 @@
             ;; The collection, timeline 1 and event 2 already exist. Event 1, plus timeline 2 and its event 3, are new.
             (reset! user1d     (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! coll1d     (ts/create! :model/Collection :name "col1" :entity_id (:entity_id @coll1s)))
-            (reset! timeline1d (ts/create! :model/Timeline :name "Some events" :creator_id (:id @user1s)
+            (reset! timeline1d (ts/create! :model/Timeline :name "Some events" :creator_id (:id @user1d)
                                            :entity_id (:entity_id @timeline1s)
                                            :collection_id (:id @coll1d)))
-            (ts/create! :model/TimelineEvent :name "Second thing with different name" :timeline_id (:id @timeline1s)
-                        :timestamp  (:timestamp @event2s)
-                        :creator_id (:id @user1s) :timezone "America/New_York")
+            (reset! event2d (ts/create! :model/TimelineEvent
+                                        :name        "Second thing with different name"
+                                        :timeline_id (:id @timeline1d)
+                                        :entity_id   (:entity_id @event2s)
+                                        :timestamp   (:timestamp @event2s)
+                                        :creator_id  (:id @user1d)
+                                        :timezone    "America/New_York"))
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             ;; Fetch the relevant bits
@@ -1266,6 +1313,10 @@
               (is (= 1 (count @eventsT2))))
             (testing "resulting events match up"
               (let [[event1 event2] (sort-by :timestamp @eventsT1)]
+                (is (= (:id @event2d) (:id event2))
+                    "the matching event keeps its local ID")
+                (is (= (map :entity_id [@event1s @event2s @event3s])
+                       (map :entity_id [event1 event2 (first @eventsT2)])))
                 (is (= (:timestamp @event1s) (:timestamp event1)))
                 (is (= (:timestamp @event2s) (:timestamp event2)))
                 (is (= (:timestamp @event3s)
@@ -1273,6 +1324,37 @@
                 (is (= (:name @event2s)
                        (:name event2))
                     "existing event name should be updated")))))))))
+
+(deftest legacy-timeline-events-without-entity-ids-test
+  (testing "timeline archives created before event entity IDs still import their events"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/User {user-id :id email :email} {}]
+        (let [timeline-eid (u/generate-nano-id)
+              timeline     {:serdes/meta [{:model "Timeline" :id timeline-eid}]
+                            :entity_id   timeline-eid
+                            :name        "Bird migrations"
+                            :icon        "star"
+                            :creator_id  email
+                            :created_at  "2027-01-01T00:00:00Z"
+                            :events      [{:serdes/meta  [{:model "TimelineEvent" :id nil :label "swallows_return"}]
+                                           :name         "Swallows return"
+                                           :icon         "star"
+                                           :creator_id   email
+                                           :created_at   "2027-01-01T00:00:00Z"
+                                           :timestamp    "2027-04-20T00:00:00Z"
+                                           :time_matters false
+                                           :timezone     "UTC"}]}]
+          (serdes.load/load-metabase! (ingestion-in-memory [timeline]))
+          (let [timeline-id (t2/select-one-pk :model/Timeline :entity_id timeline-eid)
+                [event]     (t2/select :model/TimelineEvent :timeline_id timeline-id)]
+            (is (= 1 (t2/count :model/TimelineEvent :timeline_id timeline-id)))
+            (is (=? {:name         "Swallows return"
+                     :creator_id   user-id
+                     :timestamp    (t/offset-date-time "2027-04-20T00:00:00Z")
+                     :time_matters false
+                     :timezone     "UTC"
+                     :entity_id    #(and (string? %) (= 21 (count %)))}
+                    event))))))))
 
 (deftest users-test
   ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
@@ -1457,6 +1539,44 @@
             (testing "unpublished table has is_published=false and no collection"
               (is (false? (:is_published @table2d)))
               (is (nil? (:collection_id @table2d))))))))))
+
+(deftest included-timeline-with-missing-collection-fails-import-test
+  (testing "a question cannot import before its included timeline's dependencies, even if the timeline exists locally"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/User     {user-id :id email :email} {}
+                         :model/Database {db-name :name}            {:engine :postgres}
+                         :model/Timeline {timeline-eid :entity_id}  {:creator_id user-id}]
+        (let [card-eid       (u/generate-nano-id)
+              collection-eid (u/generate-nano-id)
+              card-path      [{:model "Card" :id card-eid}]
+              timeline-path  [{:model "Timeline" :id timeline-eid}]
+              archive        (ingestion-in-memory
+                              [{:serdes/meta           card-path
+                                :entity_id             card-eid
+                                :name                  "Question with events"
+                                :created_at            (t/instant)
+                                :creator_id            email
+                                :database_id           db-name
+                                :dataset_query         {:database db-name :type :native :native {:query "SELECT 1"}}
+                                :display               :line
+                                :visualization_settings {:timeline.selected_timeline_ids [timeline-eid]}}
+                               {:serdes/meta   timeline-path
+                                :entity_id     timeline-eid
+                                :name          "Included timeline"
+                                :collection_id collection-eid}])
+              ingestion      (reify serdes.ingest/Ingestable
+                               (ingest-list [_] [card-path timeline-path])
+                               (ingest-one [_ path] (serdes.ingest/ingest-one archive path))
+                               (ingest-errors [_] []))
+              e              (try
+                               (serdes.load/load-metabase! ingestion)
+                               nil
+                               (catch clojure.lang.ExceptionInfo e e))]
+          (is (= {:model "Collection" :id collection-eid :error ::serdes.load/not-found}
+                 (select-keys (ex-data e) [:model :id :error])))
+          (is (= {:model "Timeline" :id timeline-eid :name "Included timeline"}
+                 (:referrer (ex-data e))))
+          (is (not (t2/exists? :model/Card :entity_id card-eid))))))))
 
 (deftest bare-import-test
   ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.

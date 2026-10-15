@@ -8,6 +8,7 @@
    [java-time.clock]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
@@ -221,7 +222,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 (api.macros/defendpoint :post "/mark-stale"
-  "Mark the card or dashboard as stale"
+  "Backdate an entity's activity so the staleness checks treat it as stale. Cards and dashboards carry
+  the timestamp directly, a document is stale once it has not been viewed since the cutoff, and a
+  transform is stale once it was created before the cutoff with no later run. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [id model date-str]} :- [:map {:closed true}
@@ -234,11 +237,18 @@
                       (throw (ex-info (str "invalid date: '"
                                            date-str
                                            "' expected format: 'yyyy-MM-dd'")
-                                      {:status 400}))))
+                                      {:status-code 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
       "card"      (testing-api.db/set-card-last-used-at! id date)
-      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date))))
+      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date)
+      "document"  (testing-api.db/set-document-last-viewed-at! id date)
+      "transform" (do
+                    (testing-api.db/set-transform-created-at! id date)
+                    ;; collapsed to a zero-length run so backdating staleness can't also make the
+                    ;; transform look slow
+                    (testing-api.db/set-transform-run-times! id date))
+      (throw (ex-info (str "unknown model: '" model "'") {:status-code 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -259,6 +269,22 @@
   No-op on OSS."
   metabase-enterprise.metabot.usage
   [])
+
+(defenterprise run-content-diagnostics-scan!
+  "Runs a content diagnostics scan on EE and returns its topline. No-op on OSS."
+  metabase-enterprise.content-diagnostics.scan
+  [])
+
+(api.macros/defendpoint :post "/content-diagnostics/scan"
+  :- [:maybe [:map
+              [:scan_id       :string]
+              [:finding_count :int]
+              [:duration_ms   :int]]]
+  "Run a content diagnostics scan synchronously and return its topline. Findings only reach the UI
+  through a scan, and the production trigger is a nightly job, so E2E tests need a way to run one on
+  demand. Intended only for E2E tests."
+  []
+  (run-content-diagnostics-scan!))
 
 (defenterprise reset-mfa-throttlers-for-testing!
   "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.
@@ -631,3 +657,32 @@
       :error-code    error_code
       :error-message error_message})
     {:session_id session-id :tool_name tool-name}))
+
+(api.macros/defendpoint :post "/api-keys/seed-usage"
+  :- [:map [:inserted :int]]
+  "Record one completed API-key-authenticated request so the API-key usage E2E page has a visible
+  row, then force an immediate flush of the usage-log and last_used_at batches (both normally
+  flushed on a scheduled interval) so the row is queryable without waiting. Routes through the
+  production `metabase.api-keys.usage/record-api-key-usage!` path (rather than a hand-rolled insert)
+  so the seeded row can't drift from real writes. Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [api_key_id user_id created_by_id route_template status duration_ms]}
+   :- [:map {:closed true}
+       [:api_key_id     ms/PositiveInt]
+       [:user_id        ms/PositiveInt]
+       [:created_by_id  ms/PositiveInt]
+       [:route_template {:optional true} [:maybe ms/NonBlankString]]
+       [:status         {:optional true} [:maybe :int]]
+       [:duration_ms    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (api-keys.usage/record-api-key-usage!
+   {:api-key-id          api_key_id
+    :metabase-user-id    user_id
+    :api-key-creator-id  created_by_id
+    :request-method      :get
+    :headers             {"user-agent" "curl/8.0.1"}}
+   {:status (or status 200)}
+   {:route-template (or route_template "/api/testing/api-keys/seed-usage")
+    :duration-ms    (or duration_ms 42)})
+  (api-keys.usage/flush-pending-writes!)
+  {:inserted 1})

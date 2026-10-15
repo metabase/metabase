@@ -239,7 +239,7 @@
       ;; Two metrics × two dimensions all live on the Orders table -> a single distinct
       ;; (db, table), so the access check must fire exactly once.
       (mt/with-test-user :rasta
-        (with-redefs [perms/user-has-permission-for-table? (fn [& _] (swap! calls inc) true)]
+        (mt/with-dynamic-fn-redefs [perms/user-has-permission-for-table? (fn [& _] (swap! calls inc) true)]
           (metrics.perms/filter-dimensions-for-user-batch [(mk) (mk)])))
       (is (= 1 @calls)))))
 

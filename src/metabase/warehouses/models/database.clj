@@ -679,7 +679,7 @@
   (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
                  :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
@@ -693,6 +693,11 @@
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
                  :initial_sync_status {:export identity :import (constantly "complete")}
+                 ;; Never trust an archive's `is_sample`: the real Sample Database is excluded from export
+                 ;; ([[warehouses.db/databases-for-serdes-reducible]]), so any incoming `is_sample true` is forged --
+                 ;; and marking an imported row as the sample DB would let it ride sample-only code paths. Import false.
+                 :is_sample           {:export-with-context (fn [_current _ _is-sample] ::serdes/skip)
+                                       :import              (constantly false)}
                  :is_stub             {:export-with-context (fn [_current _ _is-stub] ::serdes/skip)
                                        :import              (constantly false)}}
      :defaults  {:auto_run_queries true
@@ -738,9 +743,21 @@
     (throw (ex-info "h2 is not supported for serialization import"
                     {:engine (:engine ingested) :name (:name ingested)}))))
 
+(defn assert-sqlite-not-hosted!
+  "Refuse to import a SQLite Database on a hosted instance. SQLite is blocked as a warehouse on Metabase Cloud (only
+  the bundled Sample Database, which serdes never exports, is allowed); serialization import is the one write path
+  that never tests the connection, so without this an archive could persist a SQLite row whose attacker-chosen `:db`
+  path is later opened by sync. Mirrors [[assert-not-h2!]]. Self-hosted instances import SQLite normally."
+  [ingested]
+  (when (and (= :sqlite (keyword (:engine ingested)))
+             (premium-features/is-hosted?))
+    (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
+                    {:engine (:engine ingested) :name (:name ingested) :status-code 400}))))
+
 (defmethod serdes/load-one! "Database"
   [ingested maybe-local]
   (assert-not-h2! ingested)
+  (assert-sqlite-not-hosted! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
