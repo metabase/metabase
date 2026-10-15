@@ -40,6 +40,43 @@ describe("PillTabNavigation", () => {
     expect(onClick).toHaveBeenCalledTimes(2);
   });
 
+  it("moves focus between tabs with the arrow, Home and End keys", async () => {
+    setup({
+      tabs: [
+        { label: "Usage", to: "/monitor/example/usage" },
+        { label: "Events", to: "/monitor/example/events" },
+        { label: "Failing", onClick: jest.fn<void, []>() },
+      ],
+    });
+    const usage = screen.getByRole("link", { name: "Usage" });
+    const events = screen.getByRole("link", { name: "Events" });
+    const failing = screen.getByRole("button", { name: "Failing" });
+
+    await userEvent.tab();
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(events).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(failing).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(failing).toHaveFocus();
+    await userEvent.keyboard("{Home}");
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(failing).toHaveFocus();
+  });
+
+  it("keeps every tab reachable with the Tab key", async () => {
+    setup({ initialRoute: "/monitor/example/events" });
+
+    await userEvent.tab();
+    expect(screen.getByRole("link", { name: "Usage" })).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole("link", { name: "Events" })).toHaveFocus();
+  });
+
   it("shows a resolved zero count without hiding the tab", () => {
     setup({
       tabs: [

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useId } from "react";
+import { type KeyboardEvent, useId } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
@@ -27,6 +27,36 @@ type PillTabNavigationProps = {
   "data-testid"?: string;
 };
 
+function getFocusTargetIndex(key: string, index: number, count: number) {
+  switch (key) {
+    case "ArrowRight":
+      return (index + 1) % count;
+    case "ArrowLeft":
+      return (index - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+
+function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
+  const tabs = Array.from(
+    event.currentTarget
+      .closest("[data-pill-tab-navigation]")
+      ?.querySelectorAll<HTMLElement>("[data-pill-tab]") ?? [],
+  );
+  const index = tabs.indexOf(event.currentTarget);
+  const targetIndex = getFocusTargetIndex(event.key, index, tabs.length);
+  if (index === -1 || targetIndex === null) {
+    return;
+  }
+  event.preventDefault();
+  tabs[targetIndex].focus();
+}
+
 function isTabSelected(tab: PillTab, pathname: string) {
   const { to, isSelected } = tab;
   return typeof isSelected === "function"
@@ -42,7 +72,13 @@ export function PillTabNavigation({
   const countIdPrefix = useId();
 
   return (
-    <Flex component="nav" gap="xxs" wrap="wrap" data-testid={testId}>
+    <Flex
+      component="nav"
+      gap="xxs"
+      wrap="wrap"
+      data-pill-tab-navigation
+      data-testid={testId}
+    >
       {tabs.map((tab, index) => {
         const selected = isTabSelected(tab, pathname);
         const countId = `${countIdPrefix}-count-${index}`;
@@ -56,6 +92,8 @@ export function PillTabNavigation({
           "aria-current": selected ? "page" : undefined,
           "data-testid": tab["data-testid"],
           onClick: tab.onClick,
+          onKeyDown: handleTabKeyDown,
+          "data-pill-tab": true,
         } as const;
         const content = (
           <>
