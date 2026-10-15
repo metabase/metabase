@@ -27,6 +27,35 @@
             (and (some? table-change)
                  (not= table-change :sandboxed))))))))
 
+(defn- sandboxed-view-data?
+  "Does an API-graph `:view-data` value (a keyword, or a map of schema to keyword or map of table ID to keyword) sandbox
+  anything?"
+  [view-data]
+  (if (map? view-data)
+    (some sandboxed-view-data? (vals view-data))
+    (= view-data :sandboxed)))
+
+(defenterprise check-native-access-without-sandboxes!
+  "Throw a 400 if a group in `native-group-db-ids`, a set of `[group-id db-id]` pairs being granted native query
+  access, would also have a sandbox on that database once `changes` are applied: either one it newly sandboxes, or
+  an existing one that [[delete-gtaps-if-needed-after-permissions-change!]] won't delete. Native queries bypass
+  sandboxing."
+  :feature :sandboxes
+  [changes native-group-db-ids]
+  (when (seq native-group-db-ids)
+    (let [kept-sandboxes (into #{}
+                               (comp (remove (partial should-delete-sandbox? changes))
+                                     (map (juxt :group_id :db_id)))
+                               (sandbox.db/candidate-sandboxes-for-groups-and-databases
+                                (into #{} (map first) native-group-db-ids)
+                                (into #{} (map second) native-group-db-ids)))]
+      (when (some (fn [[group-id db-id :as group-db-id]]
+                    (or (contains? kept-sandboxes group-db-id)
+                        (sandboxed-view-data? (get-in changes [group-id db-id :view-data]))))
+                  native-group-db-ids)
+        (throw (ex-info (tru "A group with row and column security on a database cannot also have native query access to it.")
+                        {:status-code 400}))))))
+
 (defenterprise delete-gtaps-if-needed-after-permissions-change!
   "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
   longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed, i.e.
