@@ -81,6 +81,7 @@
                             ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                             [:not= :table.name "DATABASECHANGELOG"]
                             [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
+                            [:not= :table.name "DATABASECHANGELOG_VERSION"]
                             [:not [:like :table.name "QRTZ_%"]]
                             [:not [:exists ^:allow-subquery {:select [1]
                                                              :from   [(warehouse-schema-overlay/table-query {:alias :self_table, :user-settings? false})]
@@ -109,6 +110,7 @@
                                 [:= :table.id :field.table_id]]
                    :where      [:and [:= :table.db_id database-id]
                                 [:not= :table.name "DATABASECHANGELOG"]
+                                [:not= :table.name "DATABASECHANGELOG_VERSION"]
                                 [:not [:like :table.name "QRTZ_%"]]
                                 [:not [:exists ^:allow-subquery {:select     [1]
                                                                  :from       [(warehouse-schema-overlay/field-query {:alias :self_field})]

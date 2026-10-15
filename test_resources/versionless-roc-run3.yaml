@@ -1,0 +1,30 @@
+# Test changelog for metabase.app-db.liquibase-test/rollback-of-reran-only-deployment-test.
+# `versionless-roc-run1.yaml` after the developer edits ONLY the runOnChange view (no new changesets), so the
+# next migrate up produces a deployment that contains nothing but the re-run (RERAN) row.
+databaseChangeLog:
+  - logicalFilePath: migrations/2026/versionless_roc.yaml
+  - changeSet:
+      id: roc_base
+      author: test
+      comment: base migration of the older release (scenario test)
+      changes:
+        - createTable:
+            tableName: roc_base_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+      rollback:
+        - dropTable:
+            tableName: roc_base_table
+  - changeSet:
+      id: roc_view
+      author: test
+      runOnChange: true
+      comment: runOnChange view, edited again with no accompanying new changeset (scenario test)
+      changes:
+        - sql:
+            sql: CREATE OR REPLACE VIEW v_roc AS SELECT 3 AS x
+      rollback:
+        - sql:
+            sql: DROP VIEW IF EXISTS v_roc
