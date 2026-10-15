@@ -338,6 +338,21 @@ describe.each(SECTIONS)("$label tab count", (section) => {
 });
 
 describe("audit tab count freshness and failures", () => {
+  it("shows 0 when a successful count returns no rows", async () => {
+    setup({
+      getCountResponse: () =>
+        createMockDataset({
+          database_id: AUDIT_DB_ID,
+          row_count: 0,
+          data: createMockDatasetData({
+            rows: [],
+            cols: [createMockColumn({ name: "count", source: "aggregation" })],
+          }),
+        }),
+    });
+    expect(await within(getTab(CLI_SECTION)).findByText("0")).toBeVisible();
+  });
+
   it("shows a zero count rather than hiding it", async () => {
     setup({ getCountResponse: () => countDataset(0) });
     expect(await within(getTab(CLI_SECTION)).findByText("0")).toBeVisible();
@@ -424,12 +439,6 @@ describe("audit tab count freshness and failures", () => {
   });
 
   it.each([
-    {
-      name: "missing scalar",
-      response: createMockDataset({
-        data: createMockDatasetData({ rows: [] }),
-      }),
-    },
     { name: "negative scalar", response: countDataset(-1) },
     {
       name: "failed dataset",

@@ -36,7 +36,9 @@ export function useAuditRowCount(
   const { currentData: data, error } = useGetAdhocQueryQuery(
     query ?? skipToken,
   );
-  const value = data?.data?.rows?.[0]?.[0];
+  const rows = data?.data?.rows;
+  const isEmptyResult = rows !== undefined && rows.length === 0;
+  const value = isEmptyResult ? 0 : rows?.[0]?.[0];
   const isValidCount =
     typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
   const isError =
