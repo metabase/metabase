@@ -77,14 +77,28 @@
                     :let [{:keys [place refs]} (get s id)]]
                 [id (into #{} (filter in-ids?) (cons place (map second (remove (skip id) refs))))])))))
 
-(defn- cyclic-refs
-  "A function from an id of `ids` to the set of its references in `m` whose target is in its own strongly connected
-  component of the dependency graph of `ids`: the references that close a cycle, a reference to itself included."
-  [m ids]
-  (let [deps    (dependencies m ids)
+(defn- cycle-refs
+  "A function from an id of `ids` to the set of its references in `m`, but those of `(skip id)`, whose target is in its
+  own strongly connected component of the dependency graph of `ids` without the references of `skip`: the references
+  that close a cycle, a reference to itself included."
+  [m ids skip]
+  (let [deps    (dependencies m ids skip)
         comp-of (into {} (for [c (components ids #(get deps % #{})), id c] [id c]))]
     (fn [id]
-      (into #{} (filter (fn [[_role target]] (contains? (comp-of id) target))) (:refs (get m id))))))
+      (into #{}
+            (filter (fn [[_role target :as ref]] (and (contains? (comp-of id) target) (not (contains? (skip id) ref)))))
+            (:refs (get m id))))))
+
+(defn- cyclic-refs
+  "A function from an id of `ids` to the set of its references in `m` that a write leaves out: first the references that
+  close a cycle from an item of a kind of `stub-kinds`; then, of each cycle that remains, every reference that closes
+  it."
+  [m ids stub-kinds]
+  (let [first-pass (cycle-refs m ids (constantly #{}))
+        stubbed    (memoize (fn [id] (if (contains? stub-kinds (:kind (get m id))) (first-pass id) #{})))
+        rest-pass  (cycle-refs m ids stubbed)]
+    (fn [id]
+      (into (stubbed id) (rest-pass id)))))
 
 (defn- invert
   [deps]
@@ -162,8 +176,8 @@
 
 (defn- write-steps
   "`[interims writes links]` for the items of `ids`, which `m` holds."
-  [unique-keys l m b ids]
-  (let [deferred (cyclic-refs m ids)
+  [unique-keys stub-kinds l m b ids]
+  (let [deferred (cyclic-refs m ids stub-kinds)
         after    (invert (dependencies m ids deferred))
         moves    (key-moves unique-keys l m ids)
         ;; The write of an item that exists and has deferred references leaves it as it is, and its link writes its
@@ -206,6 +220,15 @@
           (recur todo (into out (map (fn [id] {:id id :trash true :pre (get b id)})) group))))
       out)))
 
+(defn- kind-changes
+  "The identities of `ids` whose items in `l` and in `m` are of kinds of two tables ([[snapshot/same-row?]]): the item
+  of `l` goes to the trash, and the item of `m` is a new one."
+  [l m ids]
+  (filterv (fn [id]
+             (let [old (get l id), new (get m id)]
+               (and old new (not (snapshot/same-row? (:kind old) (:kind new))))))
+           ids))
+
 (defn- check-base-equal!
   [l b changed]
   (when-let [ids (not-empty (filterv (fn [id] (not= (get l id) (get b id))) changed))]
@@ -224,8 +247,9 @@
   - `m` must not change an item whose content in `l` differs from `b` (a merge result of `l` never does); else this
     throws an ex-info with `:ids`. A value of `b` can be `:unknown`, which equals no content, so an item with an
     unknown base that `m` changes is such an item, and no step has `:pre :unknown`;
-  - `m` must hold each system item of `l` (`opts` `:system`, a set of identities; default [[snapshot/system-ids]]);
-    else this throws an ex-info with `:system-ids`, the identities of those that it lacks.
+  - `m` must hold each system item of `l` (`opts` `:system`, a set of identities; default [[snapshot/system-ids]]),
+    with a kind of the same table ([[snapshot/same-row?]]); else this throws an ex-info with `:system-ids`, the
+    identities of those that it lacks.
 
   `opts` `:unique-keys` (default [[snapshot/unique-keys]]) names the keys that no two items may have at one time; a
   key is a name.
@@ -236,9 +260,13 @@
     it as it is (see `:defer`) and another write takes its key;
   - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them, and a
     write that frees a key before the write that takes it. In a reference cycle, a write has `:defer #{ref}`, the
-    references that it leaves out;
+    references that it leaves out: those of the items of a kind of `opts` `:stub-kinds` (default
+    [[snapshot/stub-kinds]]) when that breaks the cycle, else every reference that closes it. An item whose kind in
+    `m` is a kind of another table than in `l` is replaced: its write has `:pre nil`, and the item of `l` has a trash
+    step;
   - links `{:id i :link #{ref}}`: each sets the deferred references of `i`;
-  - trashes `{:id i :trash true :pre b(i)}`: an item before its container, and before the items that it refers to.
+  - trashes `{:id i :trash true :pre b(i)}`, of the items that `m` lacks or replaces: an item before its container,
+    and before the items that it refers to.
     A cycle of places and references starts with its least item that contains no other item of the cycle; the rest
     of the cycle follows these rules again. So only the references to the first item of a cycle go to the trash
     before their users.
@@ -247,12 +275,16 @@
   item must have before the first step (nil: no item). A trash does not free a key: a trashed item keeps it."
   ([l m b]
    (plan l m b {}))
-  ([l m b {:keys [system unique-keys] :or {system snapshot/system-ids unique-keys snapshot/unique-keys}}]
-   (let [changed (sort snapshot/compare-identities
-                       (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))
-         removed (remove #(contains? m %) changed)]
+  ([l m b {:keys [system unique-keys stub-kinds]
+           :or   {system snapshot/system-ids unique-keys snapshot/unique-keys stub-kinds snapshot/stub-kinds}}]
+   (let [changed  (sort snapshot/compare-identities
+                        (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))
+         replaced (kind-changes l m changed)
+         removed  (sort snapshot/compare-identities (concat (remove #(contains? m %) changed) replaced))]
      (check-base-equal! l b changed)
      (check-system-kept! system removed)
-     (let [[interims writes links] (write-steps unique-keys l m b (filter #(contains? m %) changed))
+     ;; The write of a replaced item makes a new item: no local content, and no base content as its precondition.
+     (let [[interims writes links] (write-steps unique-keys stub-kinds (apply dissoc l replaced) m
+                                                (apply dissoc b replaced) (filter #(contains? m %) changed))
            trashes                 (trash-steps l b removed)]
        (vec (concat interims writes links trashes))))))

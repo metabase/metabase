@@ -245,10 +245,24 @@
   (case kind
     :collection (cond-> (update item :attrs dissoc :namespace)
                   (nil? place) (update :attrs assoc :type "library"))
-    :metric     (update item :attrs #(-> %
-                                         (assoc :query (count-query orders-table))
-                                         (dissoc :visualization_settings :parameters :parameter_mappings
-                                                 :dimensions :dimension_mappings)))
+    (:metric :question :model)
+    (update item :attrs #(-> %
+                             (assoc :query (count-query orders-table))
+                             (dissoc :visualization_settings :parameters :parameter_mappings
+                                     :dimensions :dimension_mappings :dashboard_id :document_id)))
+    :dashboard  (update item :attrs
+                        (fn [a]
+                          (cond-> a
+                            (:parameters a) (update :parameters (partial mapv #(dissoc % :values_source_type
+                                                                                       :values_source_config)))
+                            (:dashcards a)  (update :dashcards
+                                                    (partial mapv
+                                                             (fn [dc]
+                                                               (cond-> (dissoc dc :card_id :action_id :series
+                                                                               :visualization_settings)
+                                                                 (:parameter_mappings dc)
+                                                                 (update :parameter_mappings
+                                                                         (partial mapv #(dissoc % :card_id))))))))))
     :snippet    (update item :attrs dissoc :template_tags)
     :segment    (assoc-in item [:attrs :definition :stages 0 :filters] [[">" {} ["field" {:base-type "type/Integer"} "ID"] 1]])
     :measure    (assoc-in item [:attrs :definition :stages 0 :aggregation] [["count" {}]])

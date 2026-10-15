@@ -8,10 +8,13 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
+   [metabase-enterprise.library-branching.instance.kinds.dashboard :as kinds.dashboard]
    [metabase-enterprise.library-branching.instance.kinds.glossary :as kinds.glossary]
    [metabase-enterprise.library-branching.instance.kinds.measure :as kinds.measure]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
+   [metabase-enterprise.library-branching.instance.kinds.model :as kinds.model]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
+   [metabase-enterprise.library-branching.instance.kinds.question :as kinds.question]
    [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.scope :as scope]
@@ -22,10 +25,13 @@
 (def kind-stores
   "`{kind KindStore}`: the kinds that this instance syncs, each with its store."
   {:collection      kinds.collection/kind-store
+   :dashboard       kinds.dashboard/kind-store
    :glossary-term   kinds.glossary/kind-store
    :measure         kinds.measure/kind-store
    :metric          kinds.metric/kind-store
+   :model           kinds.model/kind-store
    :published-table kinds.published-table/kind-store
+   :question        kinds.question/kind-store
    :segment         kinds.segment/kind-store
    :snippet         kinds.snippet/kind-store})
 
@@ -41,11 +47,16 @@
            (mapcat (fn [[kind ks]] (instance/read-all ks (get ids kind))))
            (sort-by key stores)))))
 
-(defn read-at-read-point
-  "[[read-current]] in a new read-only transaction at REPEATABLE READ: one read point for the whole snapshot."
+(defn- read-at-read-point
+  "`{:snapshot s :shadowed-tables ts}` in a new read-only transaction at REPEATABLE READ, one read point for both: `s`
+  is [[read-current]], and `ts` is `scope/shadowed-tables` when `stores` holds published tables, else empty."
   [stores roots]
   (library-branching.db/do-with-read-point (into #{} (mapcat instance/read-models) (vals stores))
-                                           #(read-current stores roots)))
+                                           (fn []
+                                             {:snapshot        (read-current stores roots)
+                                              :shadowed-tables (if (contains? stores :published-table)
+                                                                 (scope/shadowed-tables roots)
+                                                                 [])})))
 
 (defn- base-row
   []
@@ -127,7 +138,7 @@
 (defrecord AppDbInstance [stores roots url]
   instance/Instance
   (read-snapshot [_]
-    {:snapshot (read-at-read-point stores roots)})
+    (read-at-read-point stores roots))
   (base [_] (base url))
   (base-digests [_ commit] (base-digests url commit))
   (table-names [_ table-keys] (kinds.published-table/sync-display-names table-keys))

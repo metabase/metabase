@@ -150,6 +150,14 @@
                                               :table_id   (mt/id :venues)
                                               :creator_id user
                                               :definition (sum-query :venues :price)})
+             dashes  (insert! :model/Collection {:name     "Lock dashboards"
+                                                 :type     "library-dashboards"
+                                                 :location (children-location library)})
+             dash    (insert! :model/Dashboard {:name "Locked dashboard" :collection_id (:id dashes) :creator_id user
+                                                :parameters []})
+             tab     (insert! :model/DashboardTab {:dashboard_id (:id dash) :name "Locked tab" :position 0})
+             dashcard (insert! :model/DashboardCard {:dashboard_id (:id dash) :card_id (:id metric)
+                                                     :dashboard_tab_id (:id tab) :row 0 :col 0 :size_x 4 :size_y 4})
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -171,7 +179,13 @@
                   ["a segment" :segment (:entity_id segment)
                    #(t2/query-one {:update :segment :set {:name "Saved"} :where [:= :id (:id segment)]})]
                   ["a measure" :measure (:entity_id measure)
-                   #(t2/query-one {:update :measure :set {:name "Saved"} :where [:= :id (:id measure)]})]]]
+                   #(t2/query-one {:update :measure :set {:name "Saved"} :where [:= :id (:id measure)]})]
+                  ["a dashboard" :dashboard (:entity_id dash)
+                   #(t2/query-one {:update :report_dashboard :set {:name "Saved"} :where [:= :id (:id dash)]})]
+                  ["a tab of a dashboard" :dashboard (:entity_id dash)
+                   #(t2/query-one {:update :dashboard_tab :set {:name "Saved"} :where [:= :id (:id tab)]})]
+                  ["a card of a dashboard" :dashboard (:entity_id dash)
+                   #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]]]
            (testing label
              (let [[current during after] (while-current-holds! (get stores kind) id save!)]
                (is (= :live (:state current)))

@@ -6,8 +6,10 @@
   never gives an attribute at its default value. An optional attribute is absent or present; absent is the first
   choice, so a shrunk value has few attributes."
   (:require
+   [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
+   [metabase-enterprise.library-branching.format.kinds.dashboard :as dashboard]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
    [metabase.util.json :as json]))
@@ -279,29 +281,72 @@
              :namespace       [false (gen/elements ["snippets" "transforms" "data-actions" "data-apps"])]
              :authority_level [false (gen/return "official")]}))
 
+(def ^:private card-attrs
+  "`{k [required? gen]}` of the attributes of every card kind."
+  {:description            [false text-gen]
+   :display                [true (gen/elements ["scalar" "line" "bar" "table"])]
+   :query                  [true query-gen]
+   :visualization_settings [false visualization-settings-gen]
+   :parameters             [false (gen/vector document-map-gen 1 2)]
+   :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
+   :collection_position    [false gen/large-integer]
+   :collection_preview     [false (gen/return false)]})
+
 (def metric-attrs-gen
   "Generates the `:attrs` of a metric."
-  (attrs-of {:description            [false text-gen]
-             :display                [true (gen/elements ["scalar" "line" "bar" "table"])]
-             :query                  [true query-gen]
-             :visualization_settings [false visualization-settings-gen]
-             :parameters             [false (gen/vector document-map-gen 1 2)]
-             :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
-             :collection_position    [false gen/large-integer]
-             :collection_preview     [false (gen/return false)]
-             :dimensions             [false (gen/vector document-map-gen 0 2)]
-             :dimension_mappings     [false (gen/vector document-map-gen 0 2)]}))
+  (attrs-of (assoc card-attrs
+                   :dimensions         [false (gen/vector document-map-gen 0 2)]
+                   :dimension_mappings [false (gen/vector document-map-gen 0 2)])))
+
+(def question-attrs-gen
+  "Generates the `:attrs` of a question: sometimes of a dashboard or of a document."
+  (attrs-of (assoc card-attrs
+                   :dashboard_id [false lb.tu/entity-id-gen]
+                   :document_id  [false lb.tu/entity-id-gen])))
+
+(def result-column-gen
+  "Generates a column of the result metadata of a model, in the form of the serdes export: a name, the values that a
+  person edits, and for a native query its field, table and types by natural key."
+  (gen/fmap (fn [[n m]] (assoc m :name n))
+            (gen/tuple (gen/elements ["TOTAL" "count" "sum" "Société"])
+                       (attrs-of {:display_name       [false non-empty-text-gen]
+                                  :description        [false text-gen]
+                                  :semantic_type      [false (gen/elements ["type/Currency" "type/FK" "type/Category"])]
+                                  :visibility_type    [false (gen/elements ["normal" "details-only"])]
+                                  :settings           [false document-map-gen]
+                                  :field_ref          [false field-ref-gen]
+                                  :fk_target_field_id [false field-key-gen]
+                                  :id                 [false field-key-gen]
+                                  :table_id           [false lb.tu/table-key-gen]
+                                  :base_type          [false (gen/elements ["type/Integer" "type/Text"])]}))))
+
+(def model-attrs-gen
+  "Generates the `:attrs` of a model."
+  (attrs-of (assoc card-attrs :result_metadata [false (gen/vector result-column-gen 1 3)])))
+
+(defn- label-order
+  "The sort key of a label `[value label]` in the order of the format: null, then false and true, then numbers, then
+  texts, each kind in the order of its values."
+  [[v]]
+  [(cond (nil? v) 0 (boolean? v) 1 (number? v) 2 :else 3) v])
+
+(def ^:private labels-gen
+  "Generates the labels of an internal remapping: up to 3 values with a label each, in the order of the format. No
+  label is the text of its value, because no value text starts with an arrow. No two numbers are equal in value."
+  (gen/fmap (fn [pairs] (vec (sort-by label-order (map (fn [[v l]] [v (str "\u2192 " l)]) pairs))))
+            (gen/vector-distinct-by first
+                                    (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean (gen/return nil)
+                                                            (gen/fmap #(+ 0.5 %) gen/small-integer)])
+                                               text-gen)
+                                    {:max-elements 3})))
 
 (def ^:private remapping-gen
   "Generates the remapping of a field: a foreign-key remapping to a field, or an internal remapping with or without
-  its values."
+  labels."
   (gen/one-of
    [(gen/fmap (fn [[n k]] {:type "external" :name n :field k}) (gen/tuple non-empty-text-gen field-key-gen))
-    (gen/fmap (fn [[n values]] (cond-> {:type "internal" :name n} (seq values) (assoc :values values)))
-              (gen/tuple non-empty-text-gen
-                         (gen/vector (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean])
-                                                (gen/one-of [non-empty-text-gen (gen/return nil)]))
-                                     0 3)))]))
+    (gen/fmap (fn [[n labels]] (cond-> {:type "internal" :name n} (seq labels) (assoc :labels labels)))
+              (gen/tuple non-empty-text-gen labels-gen))]))
 
 (def ^:private field-settings-gen
   (gen/recursive-gen
@@ -380,13 +425,93 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
+;;; ---------------------------------------------------- Dashboards ---------------------------------------------------
+
+(def ^:private nested-id-prefix-gen
+  "18 characters of an entity id: the ids of the tabs and dashboard cards of one dashboard add 3 more."
+  (gen/fmap str/join (gen/vector (gen/elements "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") 18)))
+
+(defn- nested-id
+  "The id of the `i`th entry of tag `tag` (one character) of a dashboard whose nested ids start with `prefix`."
+  [prefix tag i]
+  (format "%s%s%02d" prefix tag i))
+
+(def ^:private dashboard-parameter-gen
+  "A dashboard parameter with no id: a plain filter, or a filter whose values come from a card."
+  (gen/one-of
+   [(gen/fmap (fn [t] {:name "Category" :slug "category" :type t}) (gen/elements ["string/=" "category"]))
+    (gen/fmap (fn [[card field]] {:name                 "Category"
+                                  :slug                 "category"
+                                  :type                 "string/="
+                                  :values_source_type   "card"
+                                  :values_source_config {:card_id card :value_field field}})
+              (gen/tuple lb.tu/entity-id-gen field-ref-gen))]))
+
+(def ^:private dashcard-mapping-gen
+  "A parameter mapping of a dashboard card with no parameter id: to a field of its card or of another card."
+  (gen/fmap (fn [[card field]] {:card_id card :target ["dimension" field]})
+            (gen/tuple lb.tu/entity-id-gen field-ref-gen)))
+
+(def ^:private dashcard-choice-gen
+  (attrs-of {:tab                    [true gen/nat]
+             :row                    [true (gen/choose 0 20)]
+             :col                    [true (gen/choose 0 20)]
+             :size_x                 [true (gen/choose 1 24)]
+             :size_y                 [true (gen/choose 1 12)]
+             :card_id                [false lb.tu/entity-id-gen]
+             :action_id              [false lb.tu/entity-id-gen]
+             :parameter_mappings     [false (gen/vector dashcard-mapping-gen 1 2)]
+             ;; The settings of the shapes that the serdes walk of master reads, so the reference law can compare.
+             :visualization_settings [false (gen/fmap first visualization-settings-refs-gen)]
+             :series                 [false (gen/vector lb.tu/entity-id-gen 1 2)]
+             :inline_parameters      [false (gen/return ["p00"])]}))
+
+(defn- fold-dashboard
+  "The dashboard attributes of the choices `attrs`: the nested ids from `prefix`, each dashboard card on the tab of its
+  choice (none when the dashboard has no tab), each mapping to a parameter of the dashboard, in the file's order."
+  [prefix {:keys [tabs dashcards parameters] :as attrs}]
+  (let [tabs       (vec (map-indexed (fn [i tab-name] {:id (nested-id prefix "T" i) :name tab-name}) tabs))
+        parameters (vec (map-indexed (fn [i p] (assoc p :id (format "p%02d" i))) parameters))
+        param-id   (fn [j] (if (seq parameters) (:id (nth parameters (mod j (count parameters)))) "p00"))
+        dashcards  (vec (map-indexed
+                         (fn [i {:keys [tab] :as dc}]
+                           (cond-> (-> dc (dissoc :tab) (assoc :id (nested-id prefix "C" i)))
+                             (seq tabs)                   (assoc :dashboard_tab_id (:id (nth tabs (mod tab (count tabs)))))
+                             (:parameter_mappings dc)     (update :parameter_mappings
+                                                                  (fn [ms] (vec (map-indexed #(assoc %2 :parameter_id (param-id %1)) ms))))))
+                         dashcards))]
+    (cond-> (dissoc attrs :tabs :dashcards :parameters)
+      (seq tabs)       (assoc :tabs tabs)
+      (seq parameters) (assoc :parameters parameters)
+      (seq dashcards)  (assoc :dashcards (dashboard/dashcard-order tabs (mapv dashboard/normal-dashcard dashcards))))))
+
+(def dashboard-attrs-gen
+  "Generates the `:attrs` of a dashboard: its own attributes, parameters, tabs, and dashboard cards on those tabs with
+  every entry that holds a reference."
+  (gen/fmap (fn [[prefix attrs]] (fold-dashboard prefix attrs))
+            (gen/tuple nested-id-prefix-gen
+                       (attrs-of {:description             [false text-gen]
+                                  :caveats                 [false text-gen]
+                                  :points_of_interest      [false text-gen]
+                                  :collection_position     [false gen/large-integer]
+                                  :position                [false gen/large-integer]
+                                  :width                   [false (gen/return "full")]
+                                  :auto_apply_filters      [false (gen/return false)]
+                                  :show_in_getting_started [false (gen/return true)]
+                                  :parameters              [false (gen/vector dashboard-parameter-gen 1 2)]
+                                  :tabs                    [false (gen/vector non-empty-text-gen 1 2)]
+                                  :dashcards               [false (gen/vector dashcard-choice-gen 1 3)]}))))
+
 (def attrs-gens
   "`{kind generator}` of the `:attrs` of each kind."
   {:collection      collection-attrs-gen
+   :dashboard       dashboard-attrs-gen
    :glossary-term   glossary-attrs-gen
    :measure         measure-attrs-gen
    :metric          metric-attrs-gen
+   :model           model-attrs-gen
    :published-table published-table-attrs-gen
+   :question        question-attrs-gen
    :segment         segment-attrs-gen
    :snippet         snippet-attrs-gen})
 

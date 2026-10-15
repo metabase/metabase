@@ -125,6 +125,59 @@
    [:= name-column table]
    [:and [:not= archived-column nil] [:like name-column (str table "__mbarchiv__%")]]])
 
+(def ^:private archive-suffix-sql
+  ;; [[archive-suffix]] as a regular expression of every app DB. `$` also matches before a final line terminator; no
+  ;; table name ends with one.
+  "__mbarchiv__[0-9]+$")
+
+(defn- table-key-name
+  "HoneySQL: the table name of the natural key ([[table-key]]) of the table row whose name is in `name-column` and
+  whose archive time is in `archived-column`."
+  [name-column archived-column]
+  [:case
+   [:= archived-column nil] name-column
+   :else                    [:regexp_replace name-column archive-suffix-sql ""]])
+
+(defn- exact=
+  "HoneySQL: the strings `a` and `b` are equal as Clojure compares strings, or both are null."
+  [a b]
+  ;; The database name has a case-insensitive collation on MySQL and MariaDB.
+  (let [exact (if (= :mysql (mdb/db-type)) (fn [x] [:cast x :binary]) identity)]
+    [:or [:= (exact a) (exact b)] [:and [:= a nil] [:= b nil]]]))
+
+(defn- column
+  [alias c]
+  (keyword (str (name alias) "." (name c))))
+
+(defn shadowed-table
+  "HoneySQL: the natural key ([[table-key]]) of the table row aliased `t`, whose database row is aliased `d`, is owned
+  by another published table row, which `t` then does not own. Of the published rows of one key, the owner is the
+  row that warehouse sync did not archive, else the newest; `t` and `d` have the columns of
+  `warehouse-schema-overlay/table-query` and of the database table. With `live-owner?`, the owner is also a row that
+  warehouse sync did not archive."
+  ([t d]
+   (shadowed-table t d false))
+  ([t d live-owner?]
+   (let [tc          (partial column t)
+         t-archived? [:<> (tc :archived_at) nil]
+         o-archived? [:<> :o.archived_at nil]]
+     [:exists (vary-meta
+               {:select [[1 :one]]
+                :from   [(warehouse-schema-overlay/table-query {:alias :o})]
+                :join   [[(t2/table-name :model/Database) :od] [:= :od.id :o.db_id]]
+                :where  [:and
+                         [:= :o.is_published true]
+                         [:<> :o.id (tc :id)]
+                         (exact= :od.name (column d :name))
+                         (exact= :o.schema (tc :schema))
+                         (exact= (table-key-name :o.name :o.archived_at) (table-key-name (tc :name) (tc :archived_at)))
+                         [:or
+                          [:and [:not o-archived?] t-archived?]
+                          [:and [:> :o.id (tc :id)] [:or [:not o-archived?] t-archived?]]]
+                         (when live-owner?
+                           [:not o-archived?])]}
+               assoc :allow-subquery true)])))
+
 (defn- with-key-name
   "`row` with `:table` set to the name of its [[table-key]], and no `:archived_at`."
   [row]
@@ -222,17 +275,23 @@
   [entity-ids :- ::entity-ids]
   (t2/select :model/NativeQuerySnippet :entity_id [:in entity-ids]))
 
+(defn- published?
+  "True iff `v`, the published flag of a table row as a query returns it, is true."
+  [v]
+  ;; MySQL and MariaDB return the flag of the user settings overlay, an expression, as 1 or 0.
+  (or (true? v) (= 1 v)))
+
 (defn- key-row
   "The row of several table rows with one natural key: the published one, then the one that warehouse sync did not
-  archive, then the newest."
+  archive, then the newest. Of the published rows, it is the owner of [[shadowed-table]]."
   [rows]
-  (first (sort-by (juxt (comp not true? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
+  (first (sort-by (juxt (comp not published? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
 
 (mu/defn tables-by-key :- [:sequential ::row]
   "`{:id :db :schema :table :display_name :collection_id}` of each table of `table-keys`, natural keys `[database
   schema table]` ([[table-key]]), at most one per key. `:display_name` and `:collection_id` are the values that users
-  see. Of a table that warehouse sync archived and a later table with its name, the row is the published one, else
-  the later one."
+  see. Of several rows of one key, the row is the published one, then the one that warehouse sync did not archive,
+  then the newest: of published rows, the one that owns the key ([[shadowed-table]])."
   [table-keys :- [:sequential {:max 100} ::table-key]]
   (if (empty? table-keys)
     []
@@ -472,26 +531,12 @@
   [field-id :- pos-int?]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(mu/defn set-remapped-values! :- :any
-  "Sets the values and the human-readable values of the newest full field values row of field `field-id` through the
-  FieldValues model; with no such row, inserts one with them."
-  [field-id              :- pos-int?
-   values                :- [:sequential [:maybe [:or :string number? :boolean]]]
+(mu/defn set-human-readable-values! :- :int
+  "Sets the human-readable values of the field values row `id` to `human-readable-values` (nil: none) through the
+  FieldValues model; returns the number of rows."
+  [id                    :- pos-int?
    human-readable-values :- [:maybe [:sequential [:maybe :string]]]]
-  (if-let [id (:id (last (remapped-values-by-field-id [field-id])))]
-    (t2/update! :model/FieldValues id {:values values :human_readable_values human-readable-values})
-    (t2/insert! :model/FieldValues {:field_id              field-id
-                                    :type                  :full
-                                    :values                values
-                                    :human_readable_values human-readable-values})))
-
-(mu/defn clear-remapped-values! :- :any
-  "Removes the human-readable values of the newest full field values row of field `field-id`, if it has any, through
-  the FieldValues model."
-  [field-id :- pos-int?]
-  (let [{:keys [id human_readable_values]} (last (remapped-values-by-field-id [field-id]))]
-    (when (seq human_readable_values)
-      (t2/update! :model/FieldValues id {:human_readable_values nil}))))
+  (t2/update! :model/FieldValues id {:human_readable_values human-readable-values}))
 
 ;;; ----------------------------------------------------- Users ------------------------------------------------------
 
@@ -751,3 +796,103 @@
   (if (empty? entity-ids)
     0
     (t2/update! model {:entity_id [:in entity-ids]} {:archived true})))
+
+;;; ---------------------------------------------------- Dashboards --------------------------------------------------
+
+(def ^:private dashboard-columns
+  [:id :entity_id :name :collection_id :archived :description :caveats :points_of_interest :collection_position
+   :position :width :auto_apply_filters :show_in_getting_started :parameters])
+
+(mu/defn dashboards-by-entity-id :- [:sequential ::row]
+  "The dashboards of `entity-ids`, as instances of `:model/Dashboard` with their content columns."
+  [entity-ids :- ::entity-ids]
+  (t2/select (into [:model/Dashboard] dashboard-columns) :entity_id [:in entity-ids]))
+
+(mu/defn tabs-of-dashboards :- [:sequential ::row]
+  "`{:id :entity_id :dashboard_id :name}` of each tab of the dashboards `ids`, by dashboard, then position, then id."
+  [ids :- ::ids]
+  (t2/query {:select   [:id :entity_id :dashboard_id :name]
+             :from     [(t2/table-name :model/DashboardTab)]
+             :where    [:in :dashboard_id ids]
+             :order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
+
+(mu/defn dashcards-of-dashboards :- [:sequential ::row]
+  "The dashboard cards of the dashboards `ids`, as instances of `:model/DashboardCard` with their content columns."
+  [ids :- ::ids]
+  (t2/select [:model/DashboardCard :id :entity_id :dashboard_id :card_id :action_id :dashboard_tab_id :row :col
+              :size_x :size_y :parameter_mappings :visualization_settings :inline_parameters]
+             :dashboard_id [:in ids]
+             {:order-by [[:id :asc]]}))
+
+(mu/defn series-of-dashcards :- [:sequential ::row]
+  "`{:dashboardcard_id :card_id}` of each series of the dashboard cards `ids`, by dashboard card, then position, then
+  id."
+  [ids :- ::ids]
+  (t2/query {:select   [:dashboardcard_id :card_id]
+             :from     [(t2/table-name :model/DashboardCardSeries)]
+             :where    [:in :dashboardcard_id ids]
+             :order-by [[:dashboardcard_id :asc] [:position :asc] [:id :asc]]}))
+
+(mu/defn lock-dashboard :- [:maybe ::row]
+  "`{:id :collection_id :archived}` of the dashboard of `entity-id`, after a lock on its row, the rows of its tabs, its
+  dashboard cards and their series until the current transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (when-let [row (t2/query-one {:select [:id :collection_id :archived]
+                                :from   [(t2/table-name :model/Dashboard)]
+                                :where  [:= :entity_id [:auto/param entity-id]]
+                                :for    [:update]})]
+    (let [dashcards ^:allow-subquery {:select [:id]
+                                      :from   [(t2/table-name :model/DashboardCard)]
+                                      :where  [:= :dashboard_id [:auto/param (:id row)]]}]
+      (t2/query {:select [:id]
+                 :from   [(t2/table-name :model/DashboardTab)]
+                 :where  [:= :dashboard_id [:auto/param (:id row)]]
+                 :for    [:update]})
+      (t2/query (assoc dashcards :for [:update]))
+      (t2/query {:select [:id]
+                 :from   [(t2/table-name :model/DashboardCardSeries)]
+                 :where  [:in :dashboardcard_id dashcards]
+                 :for    [:update]}))
+    row))
+
+(mu/defn insert-dashboard! :- ::row
+  "Inserts a dashboard with the columns `row` through the Dashboard model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Dashboard row))
+
+(mu/defn update-dashboard! :- :int
+  "Sets the columns `changes` of the dashboard `id` through the Dashboard model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Dashboard id changes))
+
+(mu/defn insert-dashboard-tab! :- pos-int?
+  "Inserts a dashboard tab with the columns `row` through the DashboardTab model, and returns its id."
+  [row :- ::row]
+  (t2/insert-returning-pk! :model/DashboardTab row))
+
+(mu/defn update-dashboard-tab! :- :int
+  "Sets the columns `changes` of the dashboard tab `id` through the DashboardTab model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/DashboardTab id changes))
+
+(mu/defn insert-dashcard! :- pos-int?
+  "Inserts a dashboard card with the columns `row` through the DashboardCard model, and returns its id."
+  [row :- ::row]
+  (t2/insert-returning-pk! :model/DashboardCard row))
+
+(mu/defn update-dashcard! :- :int
+  "Sets the columns `changes` of the dashboard card `id` through the DashboardCard model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/DashboardCard id changes))
+
+(mu/defn values-source-users-of-dashboard-questions :- [:sequential ::row]
+  "The ParameterCard rows of the parameters that take their values from a question of the dashboard `dashboard-id`,
+  each with `:user_collection_id`, the collection of the card or dashboard of the parameter."
+  [dashboard-id :- pos-int?]
+  (let [cards ^:allow-subquery {:select [:id]
+                                :from   [(t2/table-name :model/Card)]
+                                :where  [:= :dashboard_id [:auto/param dashboard-id]]}]
+    (t2/query (values-source-users [:in :pc.card_id cards]))))

@@ -347,6 +347,52 @@
          (is (= ptu/sample (pltu/snapshot-of inst)))
          (is (= c1 (instance/base inst))))))))
 
+;;; ---------------------------------------------------- Kind change -------------------------------------------------
+
+(def ^:private robin-id "AAAAAAAAAAAAAAAAAAAAA")
+
+(def ^:private robin-collection
+  {robin-id {:kind :collection :name "Robin" :place nil :refs #{} :attrs {:type "library"}}})
+
+(def ^:private robin-term
+  {robin-id {:kind :glossary-term :name "Robin" :place nil :refs #{} :attrs {:definition ""}}})
+
+(deftest deploy-of-an-identity-of-another-kind-test
+  (testing "the shrunk case of deploy-shows-the-head-property-test: a collection, then a glossary term with its identity,
+           then the collection again; each deploy shows its head"
+    (enabled
+     (with-remote [repo s]
+       (let [c1   (pltu/commit-snapshot! repo ptu/branch [] robin-collection)
+             inst (pltu/memory-instance (atom {:snapshot {}}))]
+         (is (= :deployed (:result (deploy! inst s))))
+         (let [h2 (pltu/commit-snapshot! repo ptu/branch [c1] robin-term)
+               {:keys [result steps]} (deploy! inst s)]
+           (is (= :deployed result))
+           (is (= [{:id robin-id :write (get robin-term robin-id) :pre nil}
+                   {:id robin-id :trash true :pre (get robin-collection robin-id)}]
+                  steps))
+           (is (= robin-term (pltu/snapshot-of inst)))
+           (is (= h2 (instance/base inst)))
+           (let [h3 (pltu/commit-snapshot! repo ptu/branch [h2] robin-collection)]
+             (is (= :deployed (:result (deploy! inst s))))
+             (is (= robin-collection (pltu/snapshot-of inst)))
+             (is (= h3 (instance/base inst))))))))))
+
+(deftest deploy-of-a-card-of-another-type-test
+  (testing "a question whose card becomes a model: one write of the card, as the app DB keeps both kinds in one table"
+    (enabled
+     (with-remote [repo s]
+       (let [local    (assoc-in ptu/sample [ptu/revenue-id :kind] :question)
+             c1       (pltu/commit-snapshot! repo ptu/branch [] local)
+             [inst _] (deployed-instance! s)
+             remote   (assoc-in ptu/sample [ptu/revenue-id :kind] :model)
+             h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+             {:keys [result steps]} (deploy! inst s)]
+         (is (= :deployed result))
+         (is (= [{:id ptu/revenue-id :write (get remote ptu/revenue-id) :pre (get local ptu/revenue-id)}] steps))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (= h (instance/base inst))))))))
+
 ;;; ------------------------------------------------- The whole workflow -----------------------------------------------
 
 (deftest sandbox-to-production-workflow-test

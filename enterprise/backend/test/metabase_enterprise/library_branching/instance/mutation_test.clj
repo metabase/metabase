@@ -8,8 +8,8 @@
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.golden-test :as golden-test]
    [metabase-enterprise.library-branching.instance.kinds-test :as kinds-test]
+   [metabase-enterprise.library-branching.instance.kinds.card :as kinds.card]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
-   [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.instance.portable :as portable]
@@ -55,10 +55,10 @@
     :edits  [[:replace '(mdb/in-transaction?) false]]
     :tests  read-point-tests}
    {:name   :every-column-is-content
-    :doc    "A metric's attributes are all the columns that the read selects, not the closed list of the format: ids,
+    :doc    "A card's attributes are all the columns that the read selects, not the closed list of the format: ids,
             the card schema and derived metadata become content."
-    :target `kinds.metric/attrs
-    :edits  [[:replace '(keys (:attrs format.metric/spec)) '(keys card)]]
+    :target `kinds.card/attrs
+    :edits  [[:replace '(keys (:attrs spec)) '(keys card)]]
     :tests  [#'kinds-test/metric-content-test
              #'kinds-test/items-fit-the-format-test
              #'golden-test/read-gives-golden-items-test]}
@@ -107,11 +107,17 @@
     :target `kinds.published-table/field-values
     :edits  [[:replace '(assoc :remapping (remapping (:dimension row))) '(identity)]]
     :tests  [#'kinds-test/published-table-remapping-content-test]}
-   {:name   :no-remapped-values
-    :doc    "An internal remapping holds none of its values."
+   {:name   :no-labels
+    :doc    "An internal remapping holds none of its labels."
     :target `kinds.published-table/remapping
-    :edits  [[:replace '(seq human_readable_values) false]]
+    :edits  [[:replace '(seq ls) false]]
     :tests  [#'kinds-test/published-table-remapping-content-test]}
+   {:name   :sync-values-in-content
+    :doc    "An internal remapping holds every value that warehouse sync found, with its label, so a scan that adds or
+            drops a value is a local change."
+    :target `kinds.published-table/labels-of
+    :edits  [[:replace '(remove (fn [[v l]] (format.published-table/default-label? v l))) '(identity)]]
+    :tests  [#'kinds-test/published-table-rescan-keeps-remapping-test]}
    {:name   :remapping-needs-user-settings
     :doc    "A remapping of a field with no user settings row is not read."
     :target `kinds.published-table/field-settings-rows

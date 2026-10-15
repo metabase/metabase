@@ -22,11 +22,13 @@
   [[memory-instance]]."
   [st]
   {:current     (fn [kind id]
-                  (let [{:keys [snapshot trash]} @st]
-                    (cond
-                      (= kind (:kind (get snapshot id))) {:state :live :content (get snapshot id)}
-                      (= kind (:kind (get trash id)))    {:state :trashed :content (get trash id)}
-                      :else                              {:state :absent})))
+                  (let [{:keys [snapshot trash]} @st
+                        of-kind (fn [item] (when (and item (snapshot/same-row? kind (:kind item))) item))]
+                    (if-let [item (of-kind (get snapshot id))]
+                      {:state :live :content item}
+                      (if-let [item (of-kind (get trash id))]
+                        {:state :trashed :content item}
+                        {:state :absent}))))
    :key-holders (fn [kind k]
                   (let [{:keys [snapshot trash]} @st]
                     (into #{}
@@ -42,8 +44,11 @@
                 (vswap! st #(-> %
                                 (assoc-in [:snapshot id] content)
                                 (update :trash dissoc id))))
-   :trash!    (fn [_kind id]
-                (when-let [item (get-in @st [:snapshot id])]
+   ;; The state holds one item per identity: the write of a new item of another table replaced the old item, so the
+   ;; trash of the old item finds no item of its kind.
+   :trash!    (fn [kind id]
+                (when-let [item (let [it (get-in @st [:snapshot id])]
+                                  (when (and it (snapshot/same-row? kind (:kind it))) it))]
                   (vswap! st #(-> %
                                   (update :snapshot dissoc id)
                                   (assoc-in [:trash id] item)))))

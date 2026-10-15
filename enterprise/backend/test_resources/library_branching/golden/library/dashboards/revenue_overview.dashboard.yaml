@@ -1,0 +1,32 @@
+kind: dashboard
+id: 7RZUq1g5o1C5ws_e3ppKf
+collection: dAsHbOaRdScOlLeCtIoN1
+dashcards:
+- id: _Bv8Qc16SHr8CtmMHBEub
+  card_id: IW8kbqZVaMxdGtCM2F4U6
+  col: 0
+  dashboard_tab_id: XcmNByL-bsDQ15jLHBUwr
+  parameter_mappings:
+  - card_id: IW8kbqZVaMxdGtCM2F4U6
+    parameter_id: b0000001
+    target: [dimension, [field, [Sample Database, PUBLIC, ORDERS, CREATED_AT], null]]
+  row: 0
+  size_x: 12
+  size_y: 6
+- id: nOtEsCaRdNoTeScArD001
+  col: 0
+  dashboard_tab_id: frlnbZFzBEzun9_GwdiZd
+  row: 0
+  size_x: 12
+  size_y: 2
+  visualization_settings:
+    text: Revenue is in US dollars.
+    virtual_card: {display: text}
+description: Revenue at a glance.
+name: Revenue overview
+parameters:
+- {id: b0000001, name: Month, slug: month, type: date/all-options}
+tabs:
+- {id: XcmNByL-bsDQ15jLHBUwr, name: Overview}
+- {id: frlnbZFzBEzun9_GwdiZd, name: Details}
+width: full

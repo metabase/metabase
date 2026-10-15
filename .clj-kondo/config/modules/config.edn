@@ -3994,7 +3994,9 @@
    :uses #{api
            app-db
            collections
+           dashboards
            models
+           queries
            request
            settings
            startup
@@ -4007,6 +4009,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
                     :model/DataApp
                     :model/Database
                     :model/Dimension
@@ -4021,6 +4025,8 @@
                     :model/Segment
                     :model/Table
                     :model/TableUserSettings
+                    :model/Timeline
+                    :model/TimelineEvent
                     :model/Transform
                     :model/User}}
 

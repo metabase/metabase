@@ -192,12 +192,32 @@
                   #{[:database [:env ["Sample Database"]]]
                     [:source-table [:env ["Sample Database" "PUBLIC" "ORDERS"]]]})}
            (snapshot-of [(card-yaml "MetricCardXXXXXXXXXXX" "Orders" "LibraryCollectionXXXX" "metric")]))))
-  (testing "a question and a model are kinds with no codec yet: the file is an item that does not decode"
-    (is (= [{:type :unknown-kind :kind :question :file 0}
-            {:type :unknown-kind :kind :model :file 1}]
-           (map #(select-keys % [:type :kind :file])
-                (:findings (decode [(card-yaml "QuestionCardXXXXXXXXX" "Q" "LibraryCollectionXXXX" "question")
-                                    (card-yaml "ModelCardXXXXXXXXXXXX" "M" "LibraryCollectionXXXX" "model")]))))))
+  (testing "a card of type question is a question, with its dashboard; its result metadata is derived"
+    (is (= {"QuestionCardXXXXXXXXX"
+            (item :question "Q" "LibraryCollectionXXXX"
+                  {:display      "scalar"
+                   :dashboard_id "DashboardXXXXXXXXXXXX"
+                   :query        {:lib/type "mbql/query"
+                                  :database "Sample Database"
+                                  :stages   [{:lib/type     "mbql.stage/mbql"
+                                              :source-table ["Sample Database" "PUBLIC" "ORDERS"]
+                                              :aggregation  [["count" {}]]}]}}
+                  #{[:database [:env ["Sample Database"]]]
+                    [:source-table [:env ["Sample Database" "PUBLIC" "ORDERS"]]]
+                    [:dashboard "DashboardXXXXXXXXXXXX"]})}
+           (snapshot-of [(card-yaml "QuestionCardXXXXXXXXX" "Q" "LibraryCollectionXXXX" "question"
+                                    :extra (str "dashboard_id: DashboardXXXXXXXXXXXX\n"
+                                                "result_metadata:\n- name: count\n  base_type: type/BigInteger\n"))]))))
+  (testing "a card of type model is a model, with the result metadata that a person edits"
+    (is (= [{:name "count" :display_name "Orders"}]
+           (get-in (snapshot-of [(card-yaml "ModelCardXXXXXXXXXXXX" "M" "LibraryCollectionXXXX" "model"
+                                            :extra "result_metadata:\n- name: count\n  display_name: Orders\n")])
+                   ["ModelCardXXXXXXXXXXXX" :attrs :result_metadata])))
+    (is (= {:display "scalar"}
+           (dissoc (get-in (snapshot-of [(card-yaml "ModelCardXXXXXXXXXXXX" "M" "LibraryCollectionXXXX" "model"
+                                                    :extra "result_metadata: null\n")])
+                           ["ModelCardXXXXXXXXXXXX" :attrs])
+                   :query))))
   (testing "an archived card is not in the snapshot"
     (is (= {}
            (snapshot-of [(str/replace (card-yaml "MetricCardXXXXXXXXXXX" "Orders" "LibraryCollectionXXXX" "metric")
@@ -206,9 +226,9 @@
 (deftest unknown-models-test
   (testing "a file of a model that has no old-format decoder is an item that does not decode: the pull refuses it,
            and never drops the item"
-    (is (= {:findings [{:type :unknown-kind :model "Dashboard" :file 0
-                        :reason "No old-format decoder for the model Dashboard"}]}
-           (decode ["name: Sales\nentity_id: DashboardXXXXXXXXXXXX\nserdes/meta:\n- model: Dashboard\n"])))))
+    (is (= {:findings [{:type :unknown-kind :model "Pulse" :file 0
+                        :reason "No old-format decoder for the model Pulse"}]}
+           (decode ["name: Sales\nentity_id: PulsePulseXXXXXXXXXXX\nserdes/meta:\n- model: Pulse\n"])))))
 
 (deftest findings-test
   (testing "a file that its kind refuses is an invalid item, with its position"
@@ -514,22 +534,22 @@
 
 ;;; ------------------------------------------------ Properties --------------------------------------------------------
 
-(defn- without-remapped-values
-  "The `:fields` attribute `fields` with no values of an internal remapping."
+(defn- without-labels
+  "The `:fields` attribute `fields` with no labels of an internal remapping."
   [fields]
   (update-vals fields (fn [entry]
-                        (cond-> (update entry :remapping #(some-> % (dissoc :values)))
+                        (cond-> (update entry :remapping #(some-> % (dissoc :labels)))
                           (nil? (:remapping entry)) (dissoc :remapping)
-                          (:fields entry)           (update :fields without-remapped-values)))))
+                          (:fields entry)           (update :fields without-labels)))))
 
 (defn- holdable
   "Snapshot `s` as an instance can hold it: no visualization setting is nil, as the instance drops those. The old format
-  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no values of
+  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no labels of
   an internal remapping: remote sync writes no field values."
   [s]
   (update-vals s (fn [{:keys [kind] :as it}]
                    (case kind
-                     :metric
+                     (:metric :question :model)
                      (let [vs (into {} (remove (comp nil? val)) (get-in it [:attrs :visualization_settings]))]
                        (if (seq vs)
                          (assoc-in it [:attrs :visualization_settings] vs)
@@ -537,7 +557,7 @@
 
                      :published-table
                      (cond-> it
-                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-remapped-values))
+                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-labels))
 
                      it))))
 
