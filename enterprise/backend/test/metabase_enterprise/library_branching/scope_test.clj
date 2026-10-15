@@ -280,6 +280,77 @@
                (membership {:document [:document (:entity_id document)]
                             :summary  [:document (:entity_id summary)]})))))))
 
+(deftest timeline-test
+  (testing "a timeline in a Library collection is in scope; a trashed one, one outside the Library and one at the root
+           are not"
+    (collections.tu/with-library [{:keys [library]}]
+      (mt/with-temp [:model/Collection dashboards {:name     "Dashboards"
+                                                   :type     collections/library-dashboards-collection-type
+                                                   :location (children-location library)}
+                     :model/Collection other      {:name "Team"}
+                     :model/Timeline   live       {:name "Releases" :collection_id (:id dashboards)}
+                     :model/Timeline   trashed    {:name "Old releases" :collection_id (:id dashboards) :archived true}
+                     :model/Timeline   outside    {:name "Team releases" :collection_id (:id other)}
+                     :model/Timeline   at-root    {:name "Root releases" :collection_id nil}]
+        (is (= {:live true :trashed false :outside false :at-root false}
+               (membership {:live    [:timeline (:entity_id live)]
+                            :trashed [:timeline (:entity_id trashed)]
+                            :outside [:timeline (:entity_id outside)]
+                            :at-root [:timeline (:entity_id at-root)]})))))))
+
+(deftest transform-test-test
+  (testing "a transform test is in scope iff its transform is"
+    (mt/with-temp [:model/Collection    folder      {:name "Finance" :namespace "transforms"}
+                   :model/Collection    old-folder  {:name "Old finance" :namespace "transforms"}
+                   :model/Transform     in-folder   {:name "Daily orders" :collection_id (:id folder)}
+                   :model/Transform     at-root     {:name "Weekly orders" :collection_id nil}
+                   :model/Transform     in-old      {:name "Old orders" :collection_id (:id old-folder)}
+                   :model/TransformTest test-folder {:transform_id (:id in-folder) :name "Daily totals"}
+                   :model/TransformTest test-root   {:transform_id (:id at-root) :name "Weekly totals"}
+                   :model/TransformTest test-old    {:transform_id (:id in-old) :name "Old totals"}]
+      (archive-collection! old-folder)
+      (is (= {:test-folder true :test-root true :test-old false}
+             (membership {:test-folder [:transform-test (:entity_id test-folder)]
+                          :test-root   [:transform-test (:entity_id test-root)]
+                          :test-old    [:transform-test (:entity_id test-old)]})))
+      (testing "without the transforms namespace, no transform test is in scope"
+        (let [less (update scope/roots :namespaces disj :transforms)]
+          (is (= #{} (set/intersection #{(:entity_id test-folder) (:entity_id test-root)}
+                                       (:transform-test (scope/scope-ids less))))))))))
+
+(deftest archived-published-table-test
+  (testing "a published table that warehouse sync archives stays in scope; an unpublish or a trash of its collection
+           takes it out"
+    (collections.tu/with-library [{:keys [data]}]
+      (mt/with-temp [:model/Table      archived    {:db_id         (mt/id)
+                                                    :schema        "PUBLIC"
+                                                    :name          "lb_scope_archived"
+                                                    :is_published  true
+                                                    :collection_id (:id data)
+                                                    :active        false
+                                                    :archived_at   (java.time.OffsetDateTime/now)}
+                     :model/Table      unpublished {:db_id         (mt/id)
+                                                    :schema        "PUBLIC"
+                                                    :name          "lb_scope_archived_unpublished"
+                                                    :is_published  false
+                                                    :collection_id (:id data)
+                                                    :archived_at   (java.time.OffsetDateTime/now)}
+                     :model/Collection trashed     {:name     "Old data"
+                                                    :type     collections/library-data-collection-type
+                                                    :location (children-location data)}
+                     :model/Table      in-trashed  {:db_id         (mt/id)
+                                                    :schema        "PUBLIC"
+                                                    :name          "lb_scope_archived_in_trash"
+                                                    :is_published  true
+                                                    :collection_id (:id trashed)
+                                                    :archived_at   (java.time.OffsetDateTime/now)}]
+        (archive-collection! trashed)
+        (is (= {:archived true :unpublished false :in-trashed false}
+               (membership {:archived    [:published-table (table-identity archived)]
+                            :unpublished [:published-table (table-identity unpublished)]
+                            :in-trashed  [:published-table (table-identity in-trashed)]})))
+        (is (scope/in-scope? :published-table (table-identity archived)))))))
+
 (deftest glossary-test
   (testing "every glossary term is in scope: it is in no collection, and Metabase has no trash for it"
     (mt/with-temp [:model/Glossary term  {:term "lb scope churn" :definition "Who leaves." :creator_id (mt/user->id :crowberto)}

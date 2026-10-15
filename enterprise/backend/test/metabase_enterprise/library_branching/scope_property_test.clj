@@ -23,21 +23,22 @@
   collection, or the root of a namespace."
   [:library :plain :personal :transforms :snippets :data-actions :data-apps])
 
-(def ^:private item-kinds [:metric :question :dashboard :snippet :transform :action])
+(def ^:private item-kinds [:metric :question :dashboard :snippet :timeline :transform :action])
 
 (def ^:private archive-gen
   (gen/frequency [[4 (gen/return false)] [1 (gen/return true)]]))
 
 (def ^:private world-gen
-  "`{:collections [{:parent n :archive bool}] :items [{:kind k :place n :archive bool}]}`. Each choice is folded into a
-  world by [[fold]], so the generator filters nothing, and a shrunk world has fewer collections and items, at the root
-  places."
+  "`{:collections [{:parent n :archive bool}] :items [{:kind k :place n :archive bool}] :tests [{:transform n}]}`.
+  Each choice is folded into a world by [[fold]], so the generator filters nothing, and a shrunk world has fewer
+  collections, items and transform tests, at the root places."
   (gen/sized
    (fn [size]
      (gen/hash-map
       :collections (gen/vector (gen/hash-map :parent gen/nat :archive archive-gen) 0 (min size 12))
       :items       (gen/vector (gen/hash-map :kind (gen/elements item-kinds) :place gen/nat :archive archive-gen)
-                               0 (min size 20))))))
+                               0 (min size 20))
+      :tests       (gen/vector (gen/hash-map :transform gen/nat) 0 (min size 8))))))
 
 (defn- entity-id
   [prefix i]
@@ -47,8 +48,8 @@
   "The world of `choices`. Collection i has its parent among the root places and the collections before it; it takes
   the namespace of its root, and is archived iff it or an ancestor is (archive is closed downward). Item i is at the
   root level or in a collection, and is archived iff it is or its collection is; a transform has no archived flag of
-  its own."
-  [{:keys [collections items]}]
+  its own. Transform test i tests one of the transforms of the items; a world with no transform has no test."
+  [{:keys [collections items tests]}]
   (let [colls (reduce (fn [acc [i {:keys [parent archive]}]]
                         (let [candidates (into root-places (range i))
                               p          (nth candidates (mod parent (count candidates)))
@@ -58,18 +59,26 @@
                                      :root      (if up (:root up) p)
                                      :archived  (boolean (or archive (:archived up)))})))
                       []
-                      (map-indexed vector collections))]
+                      (map-indexed vector collections))
+        items      (vec (map-indexed
+                         (fn [i {:keys [kind place archive]}]
+                           (let [candidates (into [nil] (range (count colls)))
+                                 p          (nth candidates (mod place (count candidates)))]
+                             {:entity-id (entity-id "i" i)
+                              :kind      kind
+                              :place     p
+                              :archived  (boolean (or (and archive (not= :transform kind))
+                                                      (some-> p (->> (nth colls)) :archived)))}))
+                         items))
+        transforms (filterv #(= :transform (:kind %)) items)]
     {:collections colls
-     :items       (vec (map-indexed
-                        (fn [i {:keys [kind place archive]}]
-                          (let [candidates (into [nil] (range (count colls)))
-                                p          (nth candidates (mod place (count candidates)))]
-                            {:entity-id (entity-id "i" i)
-                             :kind      kind
-                             :place     p
-                             :archived  (boolean (or (and archive (not= :transform kind))
-                                                     (some-> p (->> (nth colls)) :archived)))}))
-                        items))}))
+     :items       items
+     :tests       (if (seq transforms)
+                    (vec (map-indexed (fn [i {:keys [transform]}]
+                                        {:entity-id (entity-id "t" i)
+                                         :transform (:entity-id (nth transforms (mod transform (count transforms))))})
+                                      tests))
+                    [])}))
 
 ;;; ------------------------------------------------ The reference model ---------------------------------------------
 
@@ -79,21 +88,25 @@
 
 (defn- expected-scope
   "`{kind #{entity-id}}`: the in-scope identities of `world` by the rules of scope, for the kinds of the world."
-  [{:keys [collections items]}]
+  [{:keys [collections items tests]}]
   (let [coll-in? (fn [c] (and (not (:archived c))
-                              (contains? #{:library :transforms :snippets :data-actions :data-apps} (:root c))))]
-    (merge-with into
-                (into {} (map (fn [k] [k #{}])) (cons :collection item-kinds))
-                {:collection (into #{} (comp (filter coll-in?) (map :entity-id)) collections)}
-                (reduce (fn [acc {:keys [entity-id kind place archived]}]
-                          (if (and (not archived)
-                                   (if place
-                                     (coll-in? (nth collections place))
-                                     (contains? root-level-kinds kind)))
-                            (update acc kind (fnil conj #{}) entity-id)
-                            acc))
-                        {}
-                        items))))
+                              (contains? #{:library :transforms :snippets :data-actions :data-apps} (:root c))))
+        scope    (merge-with into
+                             (into {} (map (fn [k] [k #{}])) (concat [:collection :transform-test] item-kinds))
+                             {:collection (into #{} (comp (filter coll-in?) (map :entity-id)) collections)}
+                             (reduce (fn [acc {:keys [entity-id kind place archived]}]
+                                       (if (and (not archived)
+                                                (if place
+                                                  (coll-in? (nth collections place))
+                                                  (contains? root-level-kinds kind)))
+                                         (update acc kind (fnil conj #{}) entity-id)
+                                         acc))
+                                     {}
+                                     items))]
+    (assoc scope :transform-test (into #{}
+                                       (comp (filter #(contains? (:transform scope) (:transform %)))
+                                             (map :entity-id))
+                                       tests))))
 
 ;;; ------------------------------------------------ Writing the world -----------------------------------------------
 
@@ -122,47 +135,65 @@
           collections))
 
 (defn- insert-item!
+  "Inserts `item` as a row, and returns its id."
   [{:keys [entity-id kind archived]} collection-id]
-  (let [user (mt/user->id :crowberto)
-        base {:name entity-id :entity_id entity-id :collection_id collection-id}]
+  (let [user    (mt/user->id :crowberto)
+        base    {:name entity-id :entity_id entity-id :collection_id collection-id}
+        insert! (fn [table row] (first (t2/insert-returning-pks! table row)))]
     (case kind
-      (:metric :question) (t2/insert! :report_card (merge base {:type                   (name kind)
-                                                                :archived               archived
-                                                                :display                "table"
-                                                                :dataset_query          "{}"
-                                                                :visualization_settings "{}"
-                                                                :creator_id             user
-                                                                :database_id            (mt/id)
-                                                                :created_at             (now)
-                                                                :updated_at             (now)}))
-      :dashboard          (t2/insert! :report_dashboard (merge base {:archived   archived
-                                                                     :parameters "[]"
-                                                                     :creator_id user
-                                                                     :created_at (now)
-                                                                     :updated_at (now)}))
-      :snippet            (t2/insert! :native_query_snippet (merge base {:archived   archived
-                                                                         :content    "1 = 1"
-                                                                         :creator_id user}))
-      :transform          (t2/insert! :transform (merge base {:source      "{}"
-                                                              :source_type "query"
-                                                              :target      "{}"}))
-      :action             (t2/insert! :action (merge base {:archived archived :type "http"})))))
+      (:metric :question) (insert! :report_card (merge base {:type                   (name kind)
+                                                             :archived               archived
+                                                             :display                "table"
+                                                             :dataset_query          "{}"
+                                                             :visualization_settings "{}"
+                                                             :creator_id             user
+                                                             :database_id            (mt/id)
+                                                             :created_at             (now)
+                                                             :updated_at             (now)}))
+      :dashboard          (insert! :report_dashboard (merge base {:archived   archived
+                                                                  :parameters "[]"
+                                                                  :creator_id user
+                                                                  :created_at (now)
+                                                                  :updated_at (now)}))
+      :snippet            (insert! :native_query_snippet (merge base {:archived   archived
+                                                                      :content    "1 = 1"
+                                                                      :creator_id user}))
+      :timeline           (insert! :timeline (merge base {:archived   archived
+                                                          :icon       "star"
+                                                          :creator_id user}))
+      :transform          (insert! :transform (merge base {:source      "{}"
+                                                           :source_type "query"
+                                                           :target      "{}"}))
+      :action             (insert! :action (merge base {:archived archived :type "http"})))))
+
+(defn- insert-test!
+  [{:keys [entity-id]} transform-id]
+  (t2/insert! :transform_test {:entity_id    entity-id
+                               :name         entity-id
+                               :transform_id transform-id
+                               :creator_id   (mt/user->id :crowberto)
+                               :inputs       "[]"
+                               :expectations "[]"}))
 
 (defn- actual-scope
   "The in-scope identities of `world`, by kind, after it is written."
   [world]
-  (let [ours (into #{} (map :entity-id) (concat (:collections world) (:items world)))]
+  (let [ours (into #{} (map :entity-id) (concat (:collections world) (:items world) (:tests world)))]
     (-> (scope/scope-ids)
-        (select-keys (cons :collection item-kinds))
+        (select-keys (concat [:collection :transform-test] item-kinds))
         (update-vals #(into #{} (filter ours) %)))))
 
 (defn- check-world!
   "Writes `world` in a transaction that rolls back, and returns `{:expected :actual :counts-agree?}`."
   [world roots]
   (t2/with-transaction [_conn nil {:rollback-only true}]
-    (let [ids (insert-collections! world roots)]
-      (doseq [{:keys [place] :as item} (:items world)]
-        (insert-item! item (some-> place (->> (nth ids)) :id)))
+    (let [ids      (insert-collections! world roots)
+          item-ids (into {}
+                         (map (fn [{:keys [entity-id place] :as item}]
+                                [entity-id (insert-item! item (some-> place (->> (nth ids)) :id))]))
+                         (:items world))]
+      (doseq [{:keys [transform] :as test} (:tests world)]
+        (insert-test! test (get item-ids transform)))
       {:expected      (expected-scope world)
        :actual        (actual-scope world)
        :counts-agree? (= (update-vals (scope/scope-ids) count) (scope/scope-count))})))
@@ -191,6 +222,12 @@
       (is (some-i #(and (nil? (:place %)) (= :transform (:kind %)))) "a transform at the root level")
       (is (some-i #(and (nil? (:place %)) (= :metric (:kind %)))) "a metric at the root level")
       (is (some-i #(and (:archived %) (= :transform (:kind %)))) "a transform in an archived collection")
+      (is (some-i #(and (:archived %) (= :timeline (:kind %)))) "an archived timeline")
+      (is (some #(seq (:tests %)) worlds) "a transform test")
+      (is (some (fn [{:keys [items tests]}]
+                  (some #(:archived (some (fn [i] (when (= (:transform %) (:entity-id i)) i)) items)) tests))
+                worlds)
+          "a test of a transform in an archived collection")
       (is (not-any? (fn [{:keys [items collections]}]
                       (some #(and (:place %) (not (:archived %)) (:archived (nth collections (:place %)))) items))
                     worlds)
