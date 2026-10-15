@@ -122,7 +122,33 @@
                    :model/FieldUserSettings _ {:field_id           (:id user-id)
                                                :visibility_type    :hidden
                                                :fk_target_field_id (:id people-id)}]
-      (let [base-filter (t2/insert-returning-pk! :native_query_snippet
+      (let [large-orders (t2/insert-returning-instance!
+                          :model/Segment
+                          {:name        "Large orders"
+                           :entity_id   (eid-of :segment "Large orders")
+                           :table_id    (:id orders)
+                           :description "Orders over 100."
+                           :creator_id  (mt/user->id :crowberto)
+                           :definition  {:lib/type :mbql/query
+                                         :database (:id db)
+                                         :stages   [{:lib/type     :mbql.stage/mbql
+                                                     :source-table (:id orders)
+                                                     :filters      [[:> {:lib/uuid (str (random-uuid))}
+                                                                     (field-ref {:base-type :type/Float} (:id total)) 100]]}]}})
+            _            (t2/insert! :model/Measure
+                                     {:name       "Order total"
+                                      :entity_id  (eid-of :measure "Order total")
+                                      :table_id   (:id orders)
+                                      :creator_id (mt/user->id :crowberto)
+                                      :definition {:lib/type :mbql/query
+                                                   :database (:id db)
+                                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                                               :source-table (:id orders)
+                                                               :aggregation  [[:sum-where {:lib/uuid (str (random-uuid))}
+                                                                               (field-ref {:base-type :type/Float} (:id total))
+                                                                               [:segment {:lib/uuid (str (random-uuid))}
+                                                                                (:id large-orders)]]]}]}})
+            base-filter (t2/insert-returning-pk! :native_query_snippet
                                                  {:name       "Base filter"
                                                   :entity_id  (eid-of :snippet "Base filter")
                                                   :content    "products.deleted_at IS NULL"
