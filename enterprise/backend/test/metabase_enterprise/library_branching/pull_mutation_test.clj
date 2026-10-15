@@ -12,6 +12,8 @@
    [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.merge-branch-test :as merge-branch-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase-enterprise.library-branching.operations :as operations]
+   [metabase-enterprise.library-branching.operations-test :as operations-test]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-app-db-test :as pull-app-db-test]
    [metabase-enterprise.library-branching.pull-test :as pull-test]
@@ -87,6 +89,12 @@
     :target `apply/apply-plan
     :edits  [[:replace '(fence) nil]]
     :tests  [#'pull-test/fenced-apply-writes-nothing-test]}
+   {:name   :pull-ends-its-task-after-the-apply
+    :doc    "The task of a pull ends after the apply transaction (TaskLease nofence, after the commit): a cancel between
+            the commit and the end of the task says cancelled, although the pull applied."
+    :target `operations/pull-task!
+    :edits  [[:replace '(end-in-apply id (partial pull-task-result branch)) nil]]
+    :tests  [#'operations-test/apply-ends-its-task-test]}
    {:name   :trash-needs-content
     :doc    "A trash step needs its base content also when its item is already out of scope: the pull starts again for
             no reason."

@@ -60,7 +60,7 @@
    {:name   :no-on-commit
     :doc    "The apply does not call its commit hook: a switch that applies leaves the branch setting."
     :target `apply/apply-plan
-    :edits  [[:replace '(on-commit) nil]]
+    :edits  [[:replace '(on-commit ok) nil]]
     :tests  [#'branch-test/switch-commits-the-hook-with-the-apply-test #'operations-test/branch-operations-on-the-app-db-test]}
    {:name   :switch-writes-the-branch-on-failure
     :doc    "A switch writes the branch setting whatever its result: a failed switch changes the branch."
@@ -78,6 +78,14 @@
     :target `operations/switch-task!
     :edits  [[:replace '(tasks/fence id) nil]]
     :tests  [#'operations-test/branch-operations-on-the-app-db-test]}
+   {:name   :switch-ends-its-task-after-the-apply
+    :doc    "The hook of the apply of a switch writes only the branch setting, and the task ends after the apply
+            transaction: a cancel between the commit and the end of the task says cancelled, although the switch
+            applied."
+    :target `operations/switch-task!
+    :edits  [[:replace '(end-in-apply id (partial switch-task-result branch) #(write-branch! branch))
+              '(fn [_] (write-branch! branch))]]
+    :tests  [#'operations-test/apply-ends-its-task-test]}
    {:name   :create-over-an-existing-branch
     :doc    "A branch creation moves a branch that exists."
     :target `branch/create-branch!

@@ -122,8 +122,8 @@
   A trash step whose item is already out of scope does nothing, and the interim step of that item too. The caller
   rolls its transaction back unless the result is `:ok`. `opts`: `:base` (nil: the instance has no base), `:new-base`,
   `:digests`, `:head-ok?` (a function of no argument), `:fence` (a function of no argument that returns nil while the
-  task may commit, else the reason; default: always nil), and `:on-commit` (a function of no argument that is called
-  last, only for an `:ok` result, so that its writes commit with the apply; default: none). `ops`:
+  task may commit, else the reason; default: always nil), and `:on-commit` (a function of the `:ok` value that is
+  called last, only for an `:ok` result, so that its writes commit with the apply; default: none). `ops`:
 
   - `:current`     `(fn [kind id])`, as in [[check-steps]];
   - `:key-holders` `(fn [kind k])`, as in [[key-clashes]];
@@ -156,10 +156,11 @@
                                   ;; Last: a write that an app DB rollback cannot undo in full (a setting keeps its new
                                   ;; value in the cache of this process) happens only when nothing more can refuse the
                                   ;; apply.
-                                  (let [renamed (trash-renames plan)]
-                                    (on-commit)
-                                    {:ok (cond-> {:trashed-in-use in-use}
-                                           (seq renamed) (assoc :renamed renamed))})
+                                  (let [renamed (trash-renames plan)
+                                        ok      (cond-> {:trashed-in-use in-use}
+                                                  (seq renamed) (assoc :renamed renamed))]
+                                    (on-commit ok)
+                                    {:ok ok})
                                   {:rewritten new-base}))))
                           (catch clojure.lang.ExceptionInfo e
                             (let [{:keys [type reason id]} (ex-data e)]

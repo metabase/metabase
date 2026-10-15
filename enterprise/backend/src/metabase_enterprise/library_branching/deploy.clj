@@ -92,7 +92,7 @@
   "Read, the drift check, plan and apply of head `h` with snapshot `r`, against base commit `b`, again after a stale
   precondition, at most `retries` times. With `discard-drift?`, the drift does not stop the apply: the plan writes the
   head over it."
-  [inst store branch {:keys [codecs retries fence discard-drift? on-phase]} b h r]
+  [inst store branch {:keys [codecs retries fence discard-drift? on-phase on-commit]} b h r]
   (loop [attempt 0]
     (let [l   (:snapshot (instance/read-snapshot inst))
           ids (drift inst store codecs b l r)
@@ -108,21 +108,23 @@
         ;; With no drift, the base content is the local content, so every step's precondition is the local content. A
         ;; discard takes the local content as the precondition too: the admin chose to write over it.
         :else
-        (let [steps  (plan/plan l r l)
-              _      (on-phase :apply)
-              result (instance/apply-plan! inst steps {:base     b
-                                                       :new-base h
-                                                       :digests  (writer/item-digests codecs r)
-                                                       :head-ok? #(boolean
-                                                                   (when-let [now (store/head store branch)]
-                                                                     (store/ancestor? store h now)))
-                                                       :fence    (or fence (constantly nil))})]
+        (let [steps    (plan/plan l r l)
+              _        (on-phase :apply)
+              deployed (fn [{:keys [trashed-in-use renamed]}]
+                         (cond-> {:result :deployed :head h :steps steps :trashed-in-use trashed-in-use}
+                           discard-drift? (assoc :discarded (vec ids))
+                           renamed        (assoc :renamed renamed)))
+              result   (instance/apply-plan! inst steps {:base      b
+                                                         :new-base  h
+                                                         :digests   (writer/item-digests codecs r)
+                                                         :head-ok?  #(boolean
+                                                                      (when-let [now (store/head store branch)]
+                                                                        (store/ancestor? store h now)))
+                                                         :fence     (or fence (constantly nil))
+                                                         :on-commit (comp (or on-commit (constantly nil)) deployed)})]
           (cond
             (:ok result)
-            (let [{:keys [trashed-in-use renamed]} (:ok result)]
-              (cond-> {:result :deployed :head h :steps steps :trashed-in-use trashed-in-use}
-                discard-drift? (assoc :discarded (vec ids))
-                renamed        (assoc :renamed renamed)))
+            (deployed (:ok result))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -156,11 +158,13 @@
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
   Every result other than `:deployed` writes nothing. The head and the base decode with `pull/decode-opts` of `inst`.
-  `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in `apply/apply-plan`), `:retries` (default
-  `pull/default-retries`), `:discard-drift?`: the admin's choice to discard the drift. Then no result is `:drift`: the
-  deploy writes the head over the drift, also when the head is the base, and `:deployed` has `:discarded ids`, the drift
-  that it wrote over. `:on-phase`: a function of a key of `tasks/phase-starts`, called at the start of the read, the
-  plan and the apply; a throw of it stops the deploy, and nothing is written (default: none)."
+  `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in `apply/apply-plan`), `:on-commit` (a function of the
+  `:deployed` result that the apply calls last in its transaction, so that its writes commit with the apply),
+  `:retries` (default `pull/default-retries`), `:discard-drift?`: the admin's choice to discard the drift. Then no
+  result is `:drift`: the deploy writes the head over the drift, also when the head is the base, and `:deployed` has
+  `:discarded ids`, the drift that it wrote over. `:on-phase`: a function of a key of `tasks/phase-starts`, called at
+  the start of the read, the plan and the apply; a throw of it stops the deploy, and nothing is written (default:
+  none)."
   ([inst store branch env]
    (deploy! inst store branch env {}))
   ([inst store branch env opts]
