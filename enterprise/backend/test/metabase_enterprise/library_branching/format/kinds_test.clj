@@ -123,7 +123,11 @@
                              items)]
         (is (some #(and (= "internal" (:type %)) (:values %)) remappings) "an internal remapping with its values")
         (is (some #(and (= "internal" (:type %)) (not (:values %))) remappings) "an internal remapping with no values"))
-      (is (some #(< 3 (count (:refs %))) items) "an item with several references"))))
+      (is (some #(< 3 (count (:refs %))) items) "an item with several references")
+      (doseq [[area-id {:keys [kinds]}] snapshot/area-roots
+              kind                      (filter snapshot/kinds kinds)]
+        (is (some #(and (= area-id (:place %)) (= kind (:kind %))) items) (str "an item of kind " kind " at " area-id))))))
+
 
 ;;; ---------------------------------------------------- Golden files -------------------------------------------------
 
@@ -155,6 +159,9 @@
 (def ^:private orders [sd "PUBLIC" "ORDERS"])
 (def ^:private large-orders-id "lArGeOrDeRsSeGmEnT001")
 (def ^:private order-total-id "oRdErToTaLmEaSuRe0001")
+(def ^:private snippets-root "snippetssnippetssnipp")
+(def ^:private transforms-root "transformstransformst")
+(def ^:private glossary-root "glossaryglossarygloss")
 
 (defn- collection [nm place & {:as attrs}]
   {:kind :collection :name nm :place place :refs #{} :attrs (or attrs {})})
@@ -165,8 +172,8 @@
    data-id     (collection "Data" library-id :type "library-data")
    metrics-id  (collection "Metrics" library-id :type "library-metrics")
    revenue-id  (collection "Revenue" metrics-id :description "Revenue metrics that finance signs off on.")
-   filters-id  (collection "Filters" nil :namespace "snippets")
-   finance-id  (collection "Finance" nil :namespace "transforms")
+   filters-id  (collection "Filters" snippets-root :namespace "snippets")
+   finance-id  (collection "Finance" transforms-root :namespace "transforms")
 
    total-revenue-id
    {:kind  :metric
@@ -264,12 +271,12 @@
                                                      ["segment" {} large-orders-id]]]}]}}}
 
    base-filter-id
-   {:kind :snippet :name "Base filter" :place nil :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
+   {:kind :snippet :name "Base filter" :place snippets-root :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
 
    churn-id
    {:kind  :glossary-term
     :name  "Churn"
-    :place nil
+    :place glossary-root
     :refs  #{}
     :attrs {:definition "The share of customers who cancel in a month."}}
 
@@ -317,6 +324,21 @@
     false
     (catch clojure.lang.ExceptionInfo e
       (= ::codec/invalid (:type (ex-data e))))))
+
+(deftest area-root-files-test
+  (testing "the file of an item at an area root names the area root as its place; the path is the home of its kind"
+    (let [files (text-tree (writer/encode-tree kinds/codecs golden-snapshot))]
+      (is (str/includes? (get files "snippets/base_filter.snippet.yaml") "collection: snippetssnippetssnipp\n"))
+      (is (str/includes? (get files "snippets/filters/_collection.yaml") "parent: snippetssnippetssnipp\n"))
+      (is (str/includes? (get files "transforms/finance/_collection.yaml") "parent: transformstransformst\n"))))
+  (testing "a glossary term file holds no place: every glossary term is at the glossary area root"
+    (let [file (get (text-tree (writer/encode-tree kinds/codecs golden-snapshot)) "glossary/churn.term.yaml")]
+      (is (not (str/includes? file "glossaryglossarygloss")))
+      (is (= [churn-id (get golden-snapshot churn-id)] (decode-text file)))))
+  (testing "a snippet file with no place decodes to the root level, which validate refuses"
+    (is (nil? (:place (second (decode-text "kind: snippet\nid: bAsEfIlTeRsNiPpEt0001\nname: Base filter\ncontent: x\n"))))))
+  (testing "a glossary term at another place does not fit the schema of its kind"
+    (is (not (mr/validate (codec/schema (:glossary-term by-kind)) (assoc (get golden-snapshot churn-id) :place nil))))))
 
 (deftest instance-local-attributes-test
   ;; Q5: public links and embedding settings are not content: no item holds them, and a file with them is invalid.

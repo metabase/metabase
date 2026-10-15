@@ -75,6 +75,9 @@
   "The entity id of the Active product filter snippet, which uses the Base filter."
   "aCtIvEpRoDuCtFiLtEr01")
 
+(def snippets-root
+  "The identity of the root of the Snippets area."
+  "snippetssnippetssnipp")
 (def total-revenue-path
   "The file of the Total Revenue metric."
   "library/metrics/revenue/total_revenue.metric.yaml")
@@ -131,7 +134,11 @@
      "duplicate-format"       (v (tree-with {"library/format.yaml" "format: library-branching/1\n"}))
      "place-inside"           (v (tree-with {"library/metrics/_collection.yaml" nil}))
      "acyclic"                (v (edit "library/_collection.yaml" #(str % "parent: " revenue-id "\n")))
-     "kind-fits"              (v (edit base-filter-path #(str % "collection: " total-revenue-id "\n")))
+     "kind-fits"              (v (edit base-filter-path #(str/replace % (str "collection: " snippets-root "\n")
+                                                                      (str "collection: " total-revenue-id "\n"))))
+     "area-root"              (v (tree-with {"library/fake/_collection.yaml"
+                                             (str "kind: collection\nid: " snippets-root "\nname: Fake\nparent: "
+                                                  library-id "\n")}))
      "refs-closed"            (v (tree-with {base-filter-path nil}))
      "root"                   (v (edit total-revenue-path #(str/replace % (str "collection: " revenue-id "\n") "")))
      "unique-key"             (v (edit active-filter-path #(str/replace % "name: Active product filter" "name: Base filter")))

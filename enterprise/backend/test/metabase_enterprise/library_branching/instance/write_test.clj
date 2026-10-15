@@ -241,8 +241,10 @@
 
 ;;; ---------------------------------------------------- Places ----------------------------------------------------
 
+(def ^:private snippets-root "snippetssnippetssnipp")
+
 (deftest move-to-the-root-level-test
-  (testing "a write with no place moves an item to the root level of its namespace"
+  (testing "a write with the area root as the place moves an item to the root level of its namespace"
     (mt/with-temp [:model/Collection         outer   {:name "Outer" :namespace "snippets" :location "/"}
                    :model/Collection         inner   {:name "Inner" :namespace "snippets" :location (children-location outer)}
                    :model/Collection         leaf    {:name "Leaf" :namespace "snippets" :location (children-location inner)}
@@ -251,15 +253,36 @@
                                                       :collection_id (:id inner)}]
       (let [inner-item (current :collection (:entity_id inner))]
         (testing "a collection, with its subtree"
-          (write! :collection (:entity_id inner) (assoc inner-item :place nil))
-          (is (nil? (:place (current :collection (:entity_id inner)))))
+          (write! :collection (:entity_id inner) (assoc inner-item :place snippets-root))
+          (is (= snippets-root (:place (current :collection (:entity_id inner)))))
           (is (= "/" (t2/select-one-fn :location :model/Collection (:id inner))))
           (is (= (str "/" (:id inner) "/") (t2/select-one-fn :location :model/Collection (:id leaf))))
           (is (= (:entity_id inner) (:place (current :collection (:entity_id leaf))))))
         (testing "a snippet"
-          (write! :snippet (:entity_id snippet) (assoc (current :snippet (:entity_id snippet)) :place nil))
-          (is (nil? (:place (current :snippet (:entity_id snippet)))))
-          (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet (:id snippet))))))))
+          (write! :snippet (:entity_id snippet) (assoc (current :snippet (:entity_id snippet)) :place snippets-root))
+          (is (= snippets-root (:place (current :snippet (:entity_id snippet)))))
+          (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet (:id snippet)))))
+        (testing "a new snippet and a new collection at the area root"
+          (t2/with-transaction [_ nil {:rollback-only true}]
+            (write! :snippet "lbAreaRootSnippet0001" (assoc (current :snippet (:entity_id snippet)) :name "Area snippet"))
+            (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet :entity_id "lbAreaRootSnippet0001")))
+            (write! :collection "lbAreaRootFolder00001" (assoc inner-item :name "Area folder" :place snippets-root))
+            (is (= "/" (t2/select-one-fn :location :model/Collection :entity_id "lbAreaRootFolder00001")))
+            (is (= snippets-root (:place (current :collection "lbAreaRootFolder00001"))))))
+        (testing "no place is not the root level of a namespace: the write is refused and writes nothing"
+          (is (= :place (refusal #(write! :collection (:entity_id leaf)
+                                          (assoc (current :collection (:entity_id leaf)) :place nil)))))
+          (is (= :place (refusal #(write! :snippet (:entity_id snippet)
+                                          (assoc (current :snippet (:entity_id snippet)) :place nil)))))
+          (is (= (children-location inner) (t2/select-one-fn :location :model/Collection (:id leaf)))))
+        (testing "an area root of another namespace, or one that cannot hold the kind, refuses the write"
+          (is (= :place (refusal #(write! :collection (:entity_id leaf)
+                                          (assoc (current :collection (:entity_id leaf))
+                                                 :place "transformstransformst")))))
+          (is (= :place (refusal #(write! :snippet (:entity_id snippet)
+                                          (assoc (current :snippet (:entity_id snippet))
+                                                 :place "transformstransformst")))))
+          (is (= snippets-root (:place (current :snippet (:entity_id snippet)))))))))
   (testing "a collection that is not a fixed root cannot be at the root level"
     (collections.tu/with-library [{:keys [metrics]}]
       (mt/with-temp [:model/Collection folder {:name     "Folder"
@@ -267,6 +290,8 @@
                                                :location (children-location metrics)}]
         (is (= :place (refusal #(write! :collection (:entity_id folder)
                                         (assoc (current :collection (:entity_id folder)) :place nil)))))
+        (is (= :place (refusal #(write! :collection (:entity_id folder)
+                                        (assoc (current :collection (:entity_id folder)) :place snippets-root)))))
         (is (= (children-location metrics) (t2/select-one-fn :location :model/Collection (:id folder))))))))
 
 (deftest refused-writes-write-nothing-test
@@ -292,6 +317,7 @@
         (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place (:entity_id outside))))))
         (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place "lbNoSuchCollection001")))))
         (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place nil)))))
+        (is (= :place (refusal #(write! :metric new-metric-id (assoc item :place snippets-root)))))
         (is (not (t2/exists? :model/Card :entity_id new-metric-id)))
         (is (= :environment (refusal #(write! :published-table [(db-name) "PUBLIC" "NO_SUCH_TABLE"]
                                               {:kind :published-table :name "None" :place (:entity_id data)
