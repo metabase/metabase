@@ -5,8 +5,10 @@ The existing `sql-tools-parser-backend` setting selects `sqlglot` (GraalPy, defa
 interface. Both SQLGlot implementations share Metabase's driver mapping, metadata
 resolution and result normalization, and implement the ten-method `SqlParser` protocol.
 
-The Java port is `com.metabase/sqlglot-metabase` in `deps.edn`, from the
-`metabase-maven-downloads` repository; it brings in the generic `sqlglot-core`.
+The Java port is `com.metabase/sqlglot-core` in `deps.edn`, from the
+`metabase-maven-downloads` repository. `metabase.sql-parsing.sqlglot-java` ports
+`resources/python-sources/sql_tools.py` to Clojure on top of it, one namespace per
+section of the Python file under `src/metabase/sql_parsing/sqlglot_java/`.
 
 ```sh
 MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java clojure -M:dev:run
@@ -40,13 +42,16 @@ Integration checks:
 (clojure.test/run-tests 'metabase.sql-parsing.sqlglot-java-test)
 ```
 
-The shim ports `resources/python-sources/sql_tools.py`. Field diagnostics use
-consistent object maps rather than Python's accidental frozenset pair-list JSON.
+The port's AST stays inside `metabase.sql-parsing.sqlglot-java.*`. Every protocol
+method returns strings, vectors and maps, and every failure is a `call-failed-ex`
+named for the error Python would raise (`ParseError`, `OptimizeError`, ...).
+`metabase.sql-parsing.sqlglot-java-test` fails if any other source file imports the
+port, or if a result holds an AST node: code that read the AST outside the shim would
+tie Metabase to the port's shape.
+
+Where the port differs from upstream sqlglot, the fix belongs in the port, not here.
+The shim works around two such gaps, each marked in its docstring: the port's
+`validateQualifyColumns` omits the failing column's position, and its tokenizer types
+a bare word `IDENTIFIER` (in sqlglot, a quoted identifier).
 
 This is an opt-in backend; changing the default is a separate step.
-
-The Java backend calls typed shim methods directly with JVM maps/lists. It performs
-no JSON encoding/decoding. Java collections become persistent Clojure collections
-with keyword map keys at the adapter boundary; schema/replacement keyword keys
-become strings for the Java contract. Graal retains its Python JSON transport.
-The shim has no Jackson dependency; JSON remains in process-based test runners.

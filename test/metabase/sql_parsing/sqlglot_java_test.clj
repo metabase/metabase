@@ -1,13 +1,18 @@
 (ns metabase.sql-parsing.sqlglot-java-test
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.sql-parsing.parser :as parser]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
+   [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.sql-tools.settings :as settings]
    [metabase.sql-tools.sqlglot-java.core]
    [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest native-protocol-contract-test
   (let [native (sqlglot-java/parser)]
@@ -85,3 +90,30 @@
     (is (= {:status "ok"}
            (protocol/validate-query native "postgres" "SELECT id FROM \"ns/orders\"" nil
                                     {:ns/orders {:id :INT}})))))
+
+(deftest port-stays-inside-the-shim-test
+  (testing "only the shim's namespaces touch the sqlglot port, so nothing else can come to depend on its AST"
+    (is (= []
+           (for [dir   ["src" "enterprise/backend/src"]
+                 ^java.io.File file (file-seq (io/file dir))
+                 :let  [path (.getPath file)]
+                 :when (and (.isFile file)
+                            (re-find #"\.clj[cs]?$" path)
+                            (not (str/includes? path "sql_parsing/sqlglot_java"))
+                            (str/includes? (slurp file) "com.metabase.sqlglot"))]
+             path)))))
+
+(deftest results-hold-no-ast-test
+  (testing "every operation returns plain data: no node of the port's AST escapes"
+    (let [native (sqlglot-java/parser)
+          sql    "WITH c AS (SELECT id, total FROM orders) SELECT c.id, total * 2 AS t FROM c JOIN people p ON p.id = c.id"]
+      (doseq [result [(protocol/referenced-tables native "postgres" sql)
+                      (protocol/referenced-fields native "postgres" sql)
+                      (protocol/returned-columns-lineage native "postgres" sql "public" nil)
+                      (protocol/validate-query native "postgres" sql "public" nil)
+                      (protocol/simple-query native "postgres" sql)
+                      (protocol/field-references native "postgres" sql)
+                      (protocol/single-stmt-of-type native "postgres" sql "read-only")
+                      (protocol/transpile-sql native sql "postgres" "snowflake")]]
+        (is (not-any? sqlglot-java.ast/ast-node? (tree-seq coll? seq result))
+            (pr-str result))))))

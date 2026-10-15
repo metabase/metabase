@@ -1,71 +1,76 @@
 (ns metabase.sql-parsing.sqlglot-java
-  "Native SQLGlot AST shim implementing the same sql_tools contract as GraalPy."
+  "The `:sqlglot-java` [[metabase.sql-parsing.protocol/SqlParser]]: `sql_tools.py` ported to Clojure over the Java port
+  of sqlglot, with the same contract as the GraalPy parser.
+
+  The port's AST stays inside `metabase.sql-parsing.sqlglot-java.*`: every method returns strings, vectors and maps,
+  and every failure is a [[metabase.sql-parsing.common/call-failed-ex]] named for the error Python would raise."
   (:require
    [metabase.sql-parsing.common :as common]
-   [metabase.sql-parsing.protocol :as protocol])
+   [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.sqlglot-java.field-references :as field-references]
+   [metabase.sql-parsing.sqlglot-java.qualify :as qualify]
+   [metabase.sql-parsing.sqlglot-java.references :as references]
+   [metabase.sql-parsing.sqlglot-java.rewrite :as rewrite]
+   [metabase.sql-parsing.sqlglot-java.statements :as statements]
+   [metabase.sql-parsing.sqlglot-java.transpile :as transpile]
+   [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.metabase SqlTools SqlTools$Failure)))
+   (com.metabase.sqlglot.reference Parser$DialectError SqlglotError)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^SqlTools tools (SqlTools.))
+(defn- error-type
+  "The name of the error Python raises for `e`."
+  [^Throwable e]
+  (cond
+    (instance? StackOverflowError e)     "RecursionError"
+    (instance? Parser$DialectError e)    "ValueError"
+    (instance? SqlglotError e)           (.getSimpleName (class e))
+    (:sql-parsing.sqlglot-java/error-type (ex-data e)) (:sql-parsing.sqlglot-java/error-type (ex-data e))
+    :else                                (.getSimpleName (class e))))
 
-(defn- call-java
+(defn- call
+  "Call `f`, turning any failure into the exception every parser throws: its cause carries `ErrorType: message`,
+  as the GraalPy transport's does, so [[metabase.sql-parsing.core/parse-error-message]] reads both the same way."
   [f]
   (try
     (f)
-    (catch SqlTools$Failure e
-      (throw (common/call-failed-ex (str (.type e) ": " (.getMessage e)) e)))))
+    (catch StackOverflowError _
+      (throw (common/call-failed-ex "RecursionError: SQL is too complex to analyze (maximum recursion depth exceeded)")))
+    (catch Exception e
+      (let [error (str (error-type e) ": " (ex-message e))]
+        (throw (common/call-failed-ex error (ex-info error {} e)))))))
 
-(defn- java-value
-  "Normalize structured inputs to the shim's string-keyed map/list/scalar convention."
-  [value]
+(defn- json-shaped
+  "`x` with keyword keys and values as strings, the shape `sql_tools.py` reads its JSON arguments in."
+  [x]
   (cond
-    (instance? java.util.Map value)
-    (into {} (map (fn [^java.util.Map$Entry entry]
-                    (let [k (.getKey entry)]
-                      [(if (keyword? k) (subs (str k) 1) (str k))
-                       (java-value (.getValue entry))]))
-                  (.entrySet ^java.util.Map value)))
-    (keyword? value) (subs (str value) 1)
-    (or (coll? value) (instance? java.util.Collection value)) (mapv java-value value)
-    :else value))
-
-(defn- clojure-value
-  "Convert Java result collections to the protocol's persistent, keyword-keyed values."
-  [value]
-  (cond
-    (instance? java.util.Map value)
-    (into {} (map (fn [^java.util.Map$Entry entry]
-                    (let [k (.getKey entry)]
-                      [(if (string? k) (keyword k) k) (clojure-value (.getValue entry))]))
-                  (.entrySet ^java.util.Map value)))
-    (instance? java.util.Collection value) (mapv clojure-value value)
-    :else value))
+    (map? x)     (into {} (map (fn [[k v]] [(if (keyword? k) (u/qualified-name k) k) (json-shaped v)])) x)
+    (keyword? x) (u/qualified-name x)
+    (coll? x)    (mapv json-shaped x)
+    :else        x))
 
 (defn parser
-  "The `:sqlglot-java` SqlParser, using direct JVM values for inputs and results."
+  "The `:sqlglot-java` SqlParser."
   []
   (reify protocol/SqlParser
     (referenced-tables [_ dialect sql]
-      (clojure-value (call-java #(.referencedTables tools sql dialect))))
+      (call #(references/referenced-tables sql dialect)))
     (referenced-fields [_ dialect sql]
-      (clojure-value (call-java #(.referencedFields tools sql dialect))))
+      (call #(references/referenced-fields sql dialect)))
     (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
-      (clojure-value (call-java #(.returnedColumnsLineage tools dialect sql default-table-schema
-                                                          (java-value sqlglot-schema)))))
-    (validate-query [_ dialect sql _default-table-schema sqlglot-schema]
-      (clojure-value (call-java #(.validateQuery tools dialect sql
-                                                 (java-value (or sqlglot-schema {}))))))
+      (call #(qualify/returned-columns-lineage dialect sql default-table-schema (json-shaped sqlglot-schema))))
+    (validate-query [_ dialect sql default-table-schema sqlglot-schema]
+      (call #(qualify/validate-query dialect sql default-table-schema (json-shaped sqlglot-schema))))
     (simple-query [_ dialect sql]
-      (clojure-value (call-java #(.simpleQuery tools sql dialect))))
+      (call #(statements/simple-query sql dialect)))
     (add-into-clause [_ dialect sql table-name]
-      (call-java #(.addIntoClause tools sql table-name dialect)))
+      (call #(rewrite/add-into-clause sql table-name dialect)))
     (field-references [_ dialect sql]
-      (clojure-value (call-java #(.fieldReferences tools sql dialect))))
+      (call #(field-references/field-references sql dialect)))
     (replace-names [_ dialect sql replacements]
-      (call-java #(.replaceNames tools sql (java-value replacements) dialect)))
+      (call #(rewrite/replace-names sql (json-shaped replacements) dialect)))
     (single-stmt-of-type [_ dialect sql stmt-type]
-      (clojure-value (call-java #(.isSingleStmtOfType tools sql stmt-type dialect))))
+      (call #(statements/single-stmt-of-type sql stmt-type dialect)))
     (transpile-sql [_ sql from-dialect to-dialect]
-      (clojure-value (call-java #(.transpileSql tools sql from-dialect to-dialect))))))
+      (call #(transpile/transpile-sql sql from-dialect to-dialect)))))
