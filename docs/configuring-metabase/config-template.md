@@ -167,6 +167,7 @@ config:
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
+    interestingness-max-fields-per-sync: 100000
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
     jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
