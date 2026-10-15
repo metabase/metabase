@@ -171,15 +171,19 @@
                ":ref" "\"origin/stack-tip\""]]
              @calls)))))
 
+(def ^:private card-get
+  "The command that fetches card 21."
+  ["mb" "card" "get" "21" "--full" "--profile" "stats" "--json" "--max-bytes" "0"])
+
 (deftest publish-test
-  (testing "pages are written, then uploads replaced, cards refreshed and shares updated"
+  (testing "pages are written, cards checked, then uploads replaced, cards refreshed and shares updated"
     (is (= {:exit  0
             :page  "2 of [\"tardis\"]"
-            :calls [["mb" "upload" "replace" "12" "--file" "DIR/cycles.csv" "--profile" "stats" "--json"
+            :calls [card-get
+                    ["mb" "upload" "replace" "12" "--file" "DIR/cycles.csv" "--profile" "stats" "--json"
                      "--max-bytes" "0"]
                     ["mb" "upload" "replace" "11" "--file" "DIR/history.csv" "--profile" "stats" "--json"
                      "--max-bytes" "0"]
-                    ["mb" "card" "get" "21" "--full" "--profile" "stats" "--json" "--max-bytes" "0"]
                     ;; Only the query is sent, with the rest of it unchanged.
                     ["mb" "card" "update" "21" "--file"
                      (str "{\"dataset_query\":{\"database\":1,\"stages\":"
@@ -189,9 +193,9 @@
            (dissoc (publish! run) :printed)))))
 
 (deftest publish-dry-run-test
-  (testing "a dry run writes the page, runs nothing, and prints what it would run"
+  (testing "a dry run writes the page, only fetches the cards, and prints what it would run"
     (let [{:keys [printed], :as result} (publish! (assoc run :options {:dry-run true}))]
-      (is (= {:exit 0, :page "2 of [\"tardis\"]", :calls []}
+      (is (= {:exit 0, :page "2 of [\"tardis\"]", :calls [card-get]}
              (dissoc result :printed)))
       (is (= ["mb upload replace 12" "mb upload replace 11" "Would refresh card" "share -e"]
              (re-seq #"mb upload replace \d+|Would refresh card|share -e" printed))))))
@@ -199,11 +203,15 @@
 (deftest publish-failing-command-test
   (testing "a command that fails stops the run with its exit code, and nothing runs after it"
     (is (= {:exit  3
-            :calls [["mb" "upload" "replace" "12" "--file" "DIR/cycles.csv" "--profile" "stats" "--json"
+            :calls [card-get
+                    ["mb" "upload" "replace" "12" "--file" "DIR/cycles.csv" "--profile" "stats" "--json"
                      "--max-bytes" "0"]
                     ["mb" "upload" "replace" "11" "--file" "DIR/history.csv" "--profile" "stats" "--json"
                      "--max-bytes" "0"]]}
-           (select-keys (publish! (assoc run :failures {["mb" "upload" "replace" "11"] 3})) [:exit :calls])))))
+           (select-keys (publish! (assoc run :failures {["mb" "upload" "replace" "11"] 3})) [:exit :calls]))))
+  (testing "a card that cannot be fetched stops the run before any upload changes"
+    (is (= {:exit 4, :calls [card-get]}
+           (select-keys (publish! (assoc run :failures {["mb" "card" "get"] 4})) [:exit :calls])))))
 
 (deftest publish-missing-file-test
   (testing "nothing is written or published when a file the config names is not there"
