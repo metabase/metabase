@@ -2,12 +2,14 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sync.sync-metadata.tables :as sync.tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -350,6 +352,106 @@
                             :unpublished [:published-table (table-identity unpublished)]
                             :in-trashed  [:published-table (table-identity in-trashed)]})))
         (is (scope/in-scope? :published-table (table-identity archived)))))))
+
+(defn- archive-by-sync!
+  "Archives table `table-id` as warehouse sync archives a table that the warehouse no longer has: sync deactivates it,
+  and archives and renames it after the threshold."
+  [table-id]
+  (t2/update! :metabase_table table-id {:active         false
+                                        :deactivated_at (.minusDays (java.time.OffsetDateTime/now) 15)})
+  (#'sync.tables/archive-tables! (t2/select-one :model/Database (mt/id))))
+
+(defn- insert-segment!
+  "Inserts a segment row on table `table-id`, with no model hook, and returns its entity id."
+  [table-id]
+  (let [entity-id (str (subs (str (random-uuid)) 0 12) "lbsegment")]
+    (t2/insert! :segment {:entity_id  entity-id
+                          :name       entity-id
+                          :table_id   table-id
+                          :creator_id (mt/user->id :crowberto)
+                          :definition "{}"
+                          :created_at (java.time.OffsetDateTime/now)
+                          :updated_at (java.time.OffsetDateTime/now)})
+    entity-id))
+
+(defn- published-table-scope
+  "`{:count n :ids ids :old-row b :new-row b :key b :key-row id :old-segment b}`: what scope says of the published
+  tables `old` and `new` of key `k`, and of the segment `segment` on `old`."
+  [old new k segment]
+  (let [ids (scope/scope-ids)]
+    {:count       (= (update-vals ids count) (scope/scope-count))
+     :old-row     (scope/row-in-scope? :published-table (:id old))
+     :new-row     (scope/row-in-scope? :published-table (:id new))
+     :key         (scope/in-scope? :published-table k)
+     :key-row     (:id (first (library-branching.db/tables-by-key [k])))
+     :old-segment (contains? (:segment ids) segment)}))
+
+(deftest archived-table-key-owner-test
+  (testing "a live published table owns its key: an archived published table with the same key is out of scope, and
+           so are its segments"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [table!  #(first (t2/insert-returning-instances! :model/Table {:db_id         (mt/id)
+                                                                            :schema        "PUBLIC"
+                                                                            :name          "lb_scope_owner"
+                                                                            :is_published  true
+                                                                            :collection_id (:id data)
+                                                                            :active        true}))
+              k       [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "lb_scope_owner"]
+              old     (table!)
+              segment (insert-segment! (:id old))
+              _       (archive-by-sync! (:id old))
+              _       (is (not= "lb_scope_owner" (t2/select-one-fn :name :metabase_table (:id old))))
+              new     (table!)]
+          (is (= {:count true :old-row false :new-row true :key true :key-row (:id new) :old-segment false}
+                 (published-table-scope old new k segment)))
+          (testing "scope names the archived table, so a person can unpublish it"
+            (let [archived-name (t2/select-one-fn :name :metabase_table (:id old))
+                  shadowed      (filter (comp #{(:id old) (:id new)} :id) (scope/shadowed-tables))]
+              (is (= [{:id (:id old) :name archived-name :key k :archived true :live-owner true}] shadowed))
+              (is (= (format (str "The archived table %s has the key %s.PUBLIC.lb_scope_owner of a live published table,"
+                                  " so library branching does not sync it. Unpublish it.")
+                             archived-name (first k))
+                     (scope/shadowed-message (first shadowed))))))
+          (testing "with no live published table of the key, the newest archived published table owns it"
+            (t2/update! :metabase_table (:id new) {:name        "lb_scope_owner__mbarchiv__1"
+                                                   :active      false
+                                                   :archived_at (java.time.OffsetDateTime/now)})
+            (is (= {:count true :old-row false :new-row true :key true :key-row (:id new) :old-segment false}
+                   (published-table-scope old new k segment)))
+            (is (= [{:id (:id old) :archived true :live-owner false}]
+                   (map #(select-keys % [:id :archived :live-owner])
+                        (filter (comp #{(:id old) (:id new)} :id) (scope/shadowed-tables))))))
+          (testing "an unpublished table owns no key"
+            (t2/update! :model/Table (:id new) {:is_published false})
+            (is (= {:count true :old-row true :new-row false :key true :key-row (:id old) :old-segment true}
+                   (published-table-scope old new k segment)))
+            (is (empty? (filter (comp #{(:id old) (:id new)} :id) (scope/shadowed-tables))))))))))
+
+(deftest database-name-key-owner-test
+  (testing "the natural key of a table holds the name of its database: of two databases with one name, a live
+           published table owns the key over a newer archived published table of the other database"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [db-name  (t2/select-one-fn :name :model/Database (mt/id))
+              other-db (first (t2/insert-returning-pks! :model/Database {:name db-name :engine :h2 :details {}}))
+              table!   (fn [db-id table-name archived?]
+                         (first (t2/insert-returning-instances! :model/Table
+                                                                {:db_id         db-id
+                                                                 :schema        "PUBLIC"
+                                                                 :name          table-name
+                                                                 :is_published  true
+                                                                 :collection_id (:id data)
+                                                                 :active        (not archived?)
+                                                                 :archived_at   (when archived?
+                                                                                  (java.time.OffsetDateTime/now))})))
+              live     (table! (mt/id) "lb_scope_db_owner" false)
+              archived (table! other-db "lb_scope_db_owner__mbarchiv__1" true)
+              k        [db-name "PUBLIC" "lb_scope_db_owner"]]
+          (is (< (:id live) (:id archived)))
+          (is (= {:count true :old-row false :new-row true :key true :key-row (:id live) :old-segment false}
+                 (published-table-scope archived live k nil)))
+          (is (= [(:id archived)] (map :id (filter (comp #{(:id live) (:id archived)} :id) (scope/shadowed-tables))))))))))
 
 (deftest glossary-test
   (testing "every glossary term is in scope: it is in no collection, and Metabase has no trash for it"
