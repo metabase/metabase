@@ -20,14 +20,13 @@
                                 :deprecated-var                                                      33
                                 :equals-true                                                         1
                                 :metabase/disallow-hardcoded-driver-names-in-tests                   34
-                                :metabase/discourage-dynamic-vars                                    41
+                                :metabase/discourage-dynamic-vars                                    1
                                 :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
                                 :metabase/namespace-name                                             1
                                 :metabase/prefer-with-dynamic-fn-redefs                              :unlimited
                                 :metabase/test-helpers-use-non-thread-safe-functions                 18
                                 :metabase/validate-deftest                                           9
                                 :missing-protocol-method                                             3
-                                :type-mismatch                                                       6
                                 :uninitialized-var                                                   1
                                 :unresolved-symbol                                                   2
                                 :unused-binding                                                      6
@@ -49,8 +48,6 @@
                                 :lib.equality/find-column-indexes-for-refs         2
                                 :search.entity-retrieval.core/search-unfiltered    1
                                 :search.entity-retrieval.mirror/search-unfiltered  1
-                                :test/with-temp                                    30}
+                                :test/with-temp                                    29}
  :comment-exempt               #{:deprecated-namespace
-                                 :discouraged-namespace
-                                 :discouraged-var
-                                 :metabase/discourage-dynamic-vars}}
+                                 :discouraged-var}}

@@ -266,7 +266,7 @@ function ModelCacheStatus({
           to={Urls.monitorModelCacheRefreshJob(job.id)}
           onClick={(event) => event.stopPropagation()}
         >
-          <Ellipsified ff="monospace" c="error">
+          <Ellipsified ff="monospace" c="feedback-negative">
             {job.error}
           </Ellipsified>
         </Link>

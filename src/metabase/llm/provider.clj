@@ -215,6 +215,7 @@
     :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
                     {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "google/gemini-3.8-flash"             :display_name "Gemini 3.8 Flash"}
                     {:id "anthropic/claude-fable-5-1"          :display_name "Claude Fable 5.1"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
                     {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
@@ -223,7 +224,14 @@
                     {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
-                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+                    {:id "anthropic/claude-haiku-5-5"          :display_name "Claude Haiku 5.5"}
+                    {:id "anthropic/claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}]
+    ;; Google lists Claude Haiku 4.5 without the `@20251001` date it once carried:
+    ;; https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5
+    ;; Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a stored value
+    ;; converges only when the setting is next written.
+    ;; A connection's stored `:probed-model` converges only when a probe next verifies the connection.
+    :retired-models {"anthropic/claude-haiku-4-5@20251001" "anthropic/claude-haiku-4-5"}
     ;; A connection with an endpoint ID serves that Model Garden endpoint instead of the catalog.
     :model-fields  ["endpoints" :endpoint-id]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
@@ -1146,7 +1154,7 @@
   "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
   (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
 
-(defn- current-model
+(defn current-model
   "The model now serving `model` on provider type `type-name`.
 
   Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like

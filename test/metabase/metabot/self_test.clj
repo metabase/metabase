@@ -127,7 +127,7 @@
         (is (ifn? (registry/required provider :list-models)) provider))))
   (testing "a capability a provider does not have is absent, not a default"
     (is (nil? (registry/optional "vllm" :supported-models)))
-    (is (nil? (registry/optional "deepseek" :context-window)))
+    (is (nil? (registry/optional "vllm" :context-window)))
     (is (some? (registry/optional "anthropic" :supported-models))))
   (testing "the registry covers exactly the provider types the platform knows about"
     (is (= (set (map :type (llm.provider/provider-types)))
@@ -221,7 +221,9 @@
       (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
                                     ["azure/anthropic/claude-deployment"         "/v1/messages"]
                                     ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
-                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5@20251001"]]]
+                                    ["google/anthropic/claude-haiku-4-5"         "/publishers/anthropic/models/claude-haiku-4-5:"]
+                                    ;; a selection saved before Google dropped the date requests the undated model
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5:"]]]
         (testing model-ref
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
@@ -1364,8 +1366,14 @@
       "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
       "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
       "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
+      "google/google/gemini-3.8-flash"       1048576 ; Gemini 3.8 Flash reaches the Google adapter
       "zai/glm-5.3"                          1048576 ; Z.AI direct
       "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
+      "deepseek/deepseek-v4-pro"             1048576 ; DeepSeek direct, probed overflow message
+      "deepseek/deepseek-flash"              1048576 ; DeepSeek direct, probed overflow message
+      "zai/glm-5.3-flash"                    1048576 ; Z.AI direct
+      "openrouter/z-ai/glm-5.3-flash"        1048575 ; lower of context_length and top_provider.context_length
+      "openrouter/google/gemini-3.8-flash"   1048576 ; OpenRouter serving limit
       "azure/openai/my-deployment"           nil     ; unmatched deployment
       "anthropic/some-future-model"          nil     ; unknown model
       "unknown"                              nil)))  ; no such connection
@@ -2797,6 +2805,89 @@
                     (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))
         (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
                 (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
+
+(defn- openrouter-relayed-error-body
+  "OpenRouter's 400 body when every upstream refused the request with the JSON string `raw`.
+
+  Shape probed 2026-10-13 (https://github.com/metabase/metabase/pull/83989): OpenRouter's own message is generic, and
+  the upstream's body is only in `metadata.raw`."
+  [raw]
+  {:error {:message  "Provider returned error"
+           :code     400
+           :metadata {:raw             raw
+                      :provider_name   "Azure"
+                      :is_byok         false
+                      :previous_errors [{:code          400
+                                         :message       "Provider returned error"
+                                         :provider_name "Amazon Bedrock"
+                                         :raw           raw}]}}})
+
+(deftest context-overflow-error-test
+  (testing "a 400 for a prompt that does not fit the window is a \"full\" error"
+    ;; Bodies probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989), unless a row names a doc.
+    (are [provider body]
+         (= "ai_provider_context_full"
+            (:error-code (self/context-overflow-error (provider-api-error! provider 400 body))))
+      "openrouter" {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you "
+                                           "requested about 200001 tokens (1 of text input, 200000 in the output).")
+                            :code     400
+                            :metadata {:provider_name nil}}}
+      ;; https://openrouter.ai/docs/api-reference/errors
+      "openrouter" {:error {:message  "Provider returned error"
+                            :code     400
+                            :metadata {:error_type "context_length_exceeded"}}}
+      "deepseek"   {:error {:message (str "This model's maximum context length is 1048576 tokens. However, you "
+                                          "requested 1048600 tokens (1016600 in the messages, 32000 in the completion).")
+                            :type    "invalid_request_error"
+                            :param   nil
+                            :code    "invalid_request_error"}}
+      "mistral"    {:object          "error"
+                    :message         "Prompt 1000015 > 262144 maximum context length"
+                    :type            "invalid_request_prompt_too_long"
+                    :param           nil
+                    :code            "3059"
+                    :raw_status_code 400}
+      "moonshot"   {:error {:message "Invalid request: Your request exceeded model token limit: 262144 (requested: 1000008)"
+                            :type    "invalid_request_error"}}
+      ;; https://platform.kimi.ai/docs/api/errors
+      "moonshot"   {:error {:message "Input token length too long" :type "invalid_request_error"}}
+      "moonshot"   {:error {:message "prompt tokens + max_tokens exceeds the model specification"
+                            :type    "invalid_request_error"}}
+      ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
+      "anthropic"  {:type  "error"
+                    :error {:type "invalid_request_error" :message "prompt is too long: 208310 tokens > 200000 maximum"}}
+      ;; https://docs.z.ai/api-reference/api-code
+      "zai"        {:error {:code "1261" :message "Prompt too long"}}
+      ;; probed 2026-10-13 on Vertex, gemini-3.5-flash
+      "google"     {:error {:code    400
+                            :message "The input token count exceeds the maximum number of tokens allowed 1048576."
+                            :status  "INVALID_ARGUMENT"}}
+      "openrouter" (openrouter-relayed-error-body
+                    "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}}"))))
+
+(deftest context-overflow-error-other-failure-test
+  (testing "any other failure is not a \"full\" error"
+    (are [status body]
+         (nil? (self/context-overflow-error (provider-api-error! "openrouter" status body)))
+      400 {:error {:code 400 :message "Bad request"}}
+      400 {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}
+      400 (openrouter-relayed-error-body
+           "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tools.0: Input should be a valid dictionary\"}}")
+      400 anthropic-credit-balance-body
+      ;; Gemini's INVALID_ARGUMENT for a bad `maxOutputTokens`, probed 2026-10-13 on Vertex, gemini-3.5-flash
+      400 {:error {:code    400
+                   :message (str "Unable to submit request because it has a maxOutputTokens value of 70000 but the "
+                                 "supported range is from 1 (inclusive) to 65537 (exclusive). Update the value and "
+                                 "try again.")
+                   :status  "INVALID_ARGUMENT"}}
+      429 {:error {:code 429 :message "This endpoint's maximum context length is 200000 tokens."}}
+      500 {:error {:code 500 :message "This endpoint's maximum context length is 200000 tokens."}})))
+
+(deftest context-overflow-error-not-api-error-test
+  (testing "an exception that is not a provider API error"
+    (is (nil? (self/context-overflow-error
+               (ex-info "boom" {:status 400
+                                :body   {:error {:message "This endpoint's maximum context length is 200000 tokens."}}}))))))
 
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"

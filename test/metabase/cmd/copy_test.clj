@@ -151,6 +151,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/EmbeddingSdkReact18Host
     :model/ExplorationQueryResult
     :model/McpQueryHandle
     :model/McpSessionLog

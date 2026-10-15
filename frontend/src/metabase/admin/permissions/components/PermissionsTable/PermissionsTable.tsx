@@ -251,7 +251,9 @@ const EntityRow = memo(function EntityRow({
             // The hub overrides the link's default admin purple with its own
             // blue, both colors the design system already owns.
             style={
-              isEmbeddingHub ? { color: "var(--mb-color-brand)" } : undefined
+              isEmbeddingHub
+                ? { color: "var(--mb-color-core-brand)" }
+                : undefined
             }
           >
             {entityName}

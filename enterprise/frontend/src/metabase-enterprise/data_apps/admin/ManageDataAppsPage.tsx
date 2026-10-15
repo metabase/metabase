@@ -79,9 +79,9 @@ export const ManageDataAppsPage = () => {
             <DataAppsEmptyState />
           ) : (
             <Box
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               bdrs="sm"
-              bg="background-primary"
+              bg="background_page-primary"
               className={S.appList}
               style={{ overflow: "hidden" }}
             >
