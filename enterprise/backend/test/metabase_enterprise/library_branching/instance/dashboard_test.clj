@@ -12,6 +12,8 @@
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -21,6 +23,17 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- venues-query
+  "A query of all venues."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn- count-query
+  "The count of the venues."
+  []
+  (lib/aggregate (venues-query) (lib/count)))
 
 ;;; ---------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -67,7 +80,7 @@
      (t2/select :parameter_card :parameterized_object_type "dashboard" :parameterized_object_id (:id dashboard)
                 {:order-by [:id]})]))
 
-(defn- metric-query [] (mt/mbql-query venues {:aggregation [[:count]]}))
+(defn- metric-query [] (count-query))
 
 (defn- do-with-world
   "Calls `f` with `{:dashboards :metrics :m1 :m2 :model :action}`: a Dashboards collection of the Library, two metrics,
@@ -80,7 +93,7 @@
                                                  :collection_id (:id metrics)}
                    :model/Card       m2         {:name "Count again" :type :metric :dataset_query (metric-query)
                                                  :collection_id (:id metrics)}
-                   :model/Card       model      {:name "Venues" :type :model :dataset_query (mt/mbql-query venues)}
+                   :model/Card       model      {:name "Venues" :type :model :dataset_query (venues-query)}
                    :model/Action     action     {:type :implicit :name "Create a venue" :model_id (:id model)}]
       (t2/with-transaction [_ nil {:rollback-only true}]
         (f {:dashboards dashboards :metrics metrics :library library :m1 m1 :m2 m2 :model model :action action})))))
@@ -301,7 +314,7 @@
                                                                 :display       :table
                                                                 :visualization_settings {}
                                                                 :creator_id    (mt/user->id :crowberto)
-                                                                :dataset_query (mt/mbql-query venues)
+                                                                :dataset_query (venues-query)
                                                                 :dashboard_id  (:id d)
                                                                 :collection_id (:id dashboards)})]
        (testing "trash! moves the dashboard and its questions to the trash"
@@ -326,7 +339,7 @@
                                                                 :display       :table
                                                                 :visualization_settings {}
                                                                 :creator_id    (mt/user->id :crowberto)
-                                                                :dataset_query (mt/mbql-query venues)
+                                                                :dataset_query (venues-query)
                                                                 :dashboard_id  (:id d)
                                                                 :collection_id (:id dashboards)})
            other    (t2/insert-returning-instance! :model/Collection {:name     "More dashboards"
@@ -426,7 +439,7 @@
                                                                   :display                :table
                                                                   :visualization_settings {}
                                                                   :creator_id             (mt/user->id :crowberto)
-                                                                  :dataset_query          (mt/mbql-query venues)
+                                                                  :dataset_query          (venues-query)
                                                                   :dashboard_id           (:id d)
                                                                   :collection_id          (:id dashboards)})
              _        (t2/insert! :model/DashboardCard {:dashboard_id (:id d) :card_id (:id question) :row 9 :col 0

@@ -18,6 +18,8 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -25,6 +27,17 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- venues-query
+  "A query of all venues."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn- count-query
+  "The count of the venues."
+  []
+  (lib/aggregate (venues-query) (lib/count)))
 
 ;;; ---------------------------------------------------- The world ---------------------------------------------------
 
@@ -38,14 +51,14 @@
   transaction that rolls back."
   [f]
   (collections.tu/with-library [{:keys [library metrics]}]
-    (let [query (mt/mbql-query venues {:aggregation [[:count]]})]
+    (let [query (count-query)]
       (mt/with-temp [:model/Collection dashboards {:name     "Dashboards" :type "library-dashboards"
                                                    :location (str (:location library) (:id library) "/")}
                      :model/Collection more       {:name     "More dashboards"
                                                    :location (str (:location library) (:id library) "/" (:id dashboards) "/")}
                      :model/Card       m1         {:name "m1" :type :metric :dataset_query query :collection_id (:id metrics)}
                      :model/Card       m2         {:name "m2" :type :metric :dataset_query query :collection_id (:id metrics)}
-                     :model/Card       model      {:name "Venues" :type :model :dataset_query (mt/mbql-query venues)}
+                     :model/Card       model      {:name "Venues" :type :model :dataset_query (venues-query)}
                      :model/Action     action     {:type :implicit :name "Create a venue" :model_id (:id model)}]
         (t2/with-transaction [_ nil {:rollback-only true}]
           (f {::dashboards  (:entity_id dashboards)
@@ -175,7 +188,7 @@
       (is (some #(some :series (cards (first %))) runs) "a card with series")
       (is (some #(some :parameter_mappings (cards (first %))) runs) "a card with a parameter mapping")
       (is (some #(some :action_id (cards (first %))) runs) "an action button")
-      (is (some #(some (fn [p] (:values_source_config p)) (get-in (first %) [:attrs :parameters])) runs)
+      (is (some #(some :values_source_config (get-in (first %) [:attrs :parameters])) runs)
           "a parameter whose values come from a card")
       (is (some #(seq (set/intersection (ids (first %) :dashcards) (ids (second %) :dashcards))) runs)
           "a card that a later write keeps")
