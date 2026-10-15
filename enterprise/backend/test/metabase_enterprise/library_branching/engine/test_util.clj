@@ -6,6 +6,7 @@
   deleted, renamed, moved and changed. The edits are random choices, so test.check shrinks them directly."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]))
@@ -67,12 +68,12 @@
 
 (defn- key-taken?
   "True iff an item of `s` other than `id`, of the kind of item `it`, has the unique key of `it`
-  ([[snapshot/unique-keys]])."
+  ([[snapshot/unique-key]])."
   [s id it]
-  (when-let [path (get snapshot/unique-keys (:kind it))]
-    (let [k (get-in it path)]
-      (and (some? k)
-           (some (fn [[j other]] (and (not= j id) (= (:kind it) (:kind other)) (= k (get-in other path)))) s)))))
+  (when-some [k (snapshot/unique-key snapshot/unique-keys it)]
+    (some (fn [[j other]]
+            (and (not= j id) (= (:kind it) (:kind other)) (= k (snapshot/unique-key snapshot/unique-keys other))))
+          s)))
 
 (defn- rename-edit
   "Renames item `id`, unless an item of its kind has the new name as its unique key."
@@ -92,7 +93,7 @@
       (assoc s i (keep-refs s (get u i)))
       s)))
 
-(def ^:private names ["Robin" "Toucan" "Heron" "Wren"])
+(def ^:private names ["Robin" "Toucan" "Heron" "Wren" "robin" "Héron"])
 
 (defn- apply-edit
   [u s [op k x]]
@@ -130,12 +131,13 @@
 
 (defn key-clash-snapshots-gen
   "Generates `[b o t ours theirs]`: `[b o t]` as [[related-snapshots-gen]] gives them, then `o` renames its snippet
-  `ours` or adds it, and `t` adds the snippet `theirs`, both with a name that no item of `b`, `o` and `t` has. So
-  each side keeps unique keys, and the per-item merge gives `ours` and `theirs` one name."
+  `ours` or adds it, and `t` adds the snippet `theirs`, both with a name whose key no item of `b`, `o` and `t` has.
+  The two names can differ in case. So each side keeps unique keys, and the per-item merge gives `ours` and `theirs`
+  one key."
   []
-  (gen/fmap (fn [[[b o t] k]]
-              (let [taken    (set (map :name (concat (vals b) (vals o) (vals t))))
-                    clash    (first (remove taken (map #(str "Clash " %) (range))))
+  (gen/fmap (fn [[[b o t] k upper?]]
+              (let [taken    (set (map (comp snapshot/fold-name :name) (concat (vals b) (vals o) (vals t))))
+                    clash    (first (remove (comp taken snapshot/fold-name) (map #(str "Clash " %) (range))))
                     snippets (filterv #(= :snippet (:kind (get o %))) (sorted-ids o))
                     ours     (if (and (seq snippets) (even? k)) (nth-of snippets (quot k 2)) (eid "clashours"))
                     theirs   (eid "clashtheirs")]
@@ -143,10 +145,58 @@
                  (if (contains? o ours)
                    (assoc-in o [ours :name] clash)
                    (assoc o ours (item :snippet clash nil)))
-                 (assoc t theirs (item :snippet clash nil))
+                 (assoc t theirs (item :snippet (cond-> clash upper? str/upper-case) nil))
                  ours
                  theirs]))
-            (gen/tuple (related-snapshots-gen) gen/nat)))
+            (gen/tuple (related-snapshots-gen) gen/nat gen/boolean)))
+
+(def ^:private cycle-kinds [:collection :metric :published-table])
+
+(defn- cycle-items
+  "`{identity item}`: the cycle of items of `choices`, each `[kind place letter]`. Item `i` refers to item `i + 1`,
+  and the last item to the first; `chords` (`[from to]` pairs of indices) add more references. The place of item `i`
+  is nil or a collection before it in the cycle. `letter` gives the identity, so the order of the identities is not
+  the order of the cycle."
+  [choices chords]
+  (let [n     (count choices)
+        kinds (mapv #(nth cycle-kinds (mod (first %) (count cycle-kinds))) choices)
+        ids   (mapv (fn [kind [_ _ letter]]
+                      (if (= :published-table kind)
+                        ["Cycle Database" nil (str "T" letter)]
+                        (eid (str "cycle" letter))))
+                    kinds choices)
+        place (fn [i k] (let [containers (filterv #(= :collection (kinds %)) (range i))]
+                          (some->> (nth-of (cons nil containers) k) (nth ids))))
+        refs  (fn [i] (into #{[:card (nth ids (mod (inc i) n))]}
+                            (keep (fn [[from to]] (when (= i (mod from n)) [:card (nth ids (mod to n))])))
+                            chords))]
+    (into {} (map-indexed (fn [i [_ k letter]]
+                            [(nth ids i) (item (kinds i) (str "Cycle " letter) (place i k) (refs i))])
+                          choices))))
+
+(def ^:private cycle-choices-gen
+  "Generates the `[kind place letter]` choices of a cycle of 2 to 5 items, with distinct letters."
+  (gen/bind (gen/choose 2 5)
+            (fn [n]
+              (gen/fmap (fn [[kinds places letters]] (mapv vector kinds places letters))
+                        (gen/tuple (gen/vector gen/nat n)
+                                   (gen/vector gen/nat n)
+                                   (gen/fmap #(vec (take n %)) (gen/shuffle "ABCDEFGH")))))))
+
+(defn ref-cycle-snapshots-gen
+  "Generates `[b o t]`: `[b o t]` as [[related-snapshots-gen]] gives them, and a reference cycle of 2 to 5 new items
+  ([[cycle-items]]), so that a plan must trash or write the whole cycle. Either `b` and `o` hold the cycle and `t`
+  removes it, or only `t` holds it. Each snapshot stays well formed."
+  []
+  (gen/fmap (fn [[[b o t] choices chords trash?]]
+              (let [c (cycle-items choices chords)]
+                (if trash?
+                  [(into b c) (into o c) t]
+                  [b o (into t c)])))
+            (gen/tuple (related-snapshots-gen)
+                       cycle-choices-gen
+                       (gen/vector (gen/tuple gen/nat gen/nat) 0 3)
+                       gen/boolean)))
 
 (defn with-unknown
   "Base snapshot `b` in which the base value of the `k`th identity of `ids`, for each `k` of `ks`, is `:unknown`."

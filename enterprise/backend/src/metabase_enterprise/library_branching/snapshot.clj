@@ -19,9 +19,23 @@
    :snippet         #{}})
 
 (def unique-keys
-  "`{kind path}`: the kinds whose key the app DB keeps unique over all rows of the kind, and the path of that key in
-  an item. An item whose key is nil has none."
-  {:snippet [:name]})
+  "`{kind {:path path :name? bool}}`: the kinds whose key the app DB keeps unique over all rows of the kind, the path of
+  that key in an item, and whether the key is a name. Two names are one key iff their [[fold-name]] forms are equal.
+  An item whose key is nil has none."
+  {:snippet {:path [:name] :name? true}})
+
+(defn fold-name
+  "Name `s` in the form in which two names are one key."
+  ^String [^String s]
+  s)
+
+(defn unique-key
+  "The unique key of `item` by `unique-keys` (in the form of [[unique-keys]]), in the form in which keys compare; nil
+  when the kind of `item` has no key, or its key is nil."
+  [unique-keys item]
+  (when-let [{:keys [path name?]} (get unique-keys (:kind item))]
+    (when-some [k (get-in item path)]
+      (if (and name? (string? k)) (fold-name k) k))))
 
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The
