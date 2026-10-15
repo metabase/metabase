@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { hasAuthenticationSettings } from "metabase/account/utils";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
@@ -21,14 +21,8 @@ export const AccountHeader = ({
   path,
   onChangeLocation,
 }: AccountHeaderProps) => {
-  const canChangePassword = useMemo(
-    () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
-    [user],
-  );
   const mfaEnforcement = useSetting("mfa-enforcement");
-  const isMfaEnabled = mfaEnforcement != null && mfaEnforcement !== "off";
-  const hasAuthenticationTab =
-    canChangePassword || (isMfaEnabled && user.sso_source === "ldap");
+  const hasAuthenticationTab = hasAuthenticationSettings(user, mfaEnforcement);
 
   const tabs = useMemo(
     () => [

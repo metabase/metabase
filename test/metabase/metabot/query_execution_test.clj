@@ -6,7 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.util :as tools.util]
-   [metabase.query-processor.core :as qp]
+   ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
+   ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (defn- venues-query
@@ -40,3 +42,16 @@
         (testing "the run is recorded under the caller's context, not one named in the query"
           (is (=? {:info {:executed-by (mt/user->id :rasta) :context :agent}}
                   @captured)))))))
+
+(deftest execute-page-marks-a-permission-refusal-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [failure #(try
+                     (query-execution/execute-page! (venues-query 3) 3 :agent)
+                     (catch clojure.lang.ExceptionInfo e
+                       (ex-data e)))]
+      (testing "a query the user may not run fails as a permission error"
+        (mt/with-no-data-perms-for-all-users!
+          (is (=? {:error :query-failed, :permissions-error? true} (failure)))))
+      (testing "any other failure does not"
+        (mt/with-dynamic-fn-redefs [qp/process-query (constantly {:status :failed, :error "Column FOO not found"})]
+          (is (=? {:error :query-failed, :permissions-error? false} (failure))))))))

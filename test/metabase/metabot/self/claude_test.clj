@@ -854,7 +854,7 @@
                 "claude-haiku-4-5-20251001"]]
       (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
-    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
       (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test

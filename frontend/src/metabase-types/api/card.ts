@@ -8,6 +8,7 @@ import type {
   Dashboard,
   DashboardCardSize,
   DashboardId,
+  DashboardParameterMapping,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
@@ -51,6 +52,13 @@ export type CardCreationType =
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
+export type CardParameterMapping = Omit<
+  DashboardParameterMapping,
+  "card_id"
+> & {
+  card_id?: CardId | null;
+};
+
 export interface Card<
   Q extends DatasetQuery = DatasetQuery,
 > extends UnsavedCard<Q> {
@@ -85,6 +93,7 @@ export interface Card<
   metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
+  parameter_mappings?: CardParameterMapping[] | null;
 
   result_metadata: Field[] | null;
   param_fields?: Record<ParameterId, Field[]>;
@@ -635,7 +644,7 @@ export interface CreateCardRequest {
   visualization_settings: VisualizationSettings;
   type?: CardType;
   parameters?: Parameter[];
-  parameter_mappings?: unknown;
+  parameter_mappings?: CardParameterMapping[] | null;
   description?: string | null;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;

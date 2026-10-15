@@ -30,13 +30,13 @@ export const SyncOptionsModal = ({
 
   return (
     <Modal
+      density="relaxed"
       opened={isOpen}
-      padding="xxl"
       size={rem(512)}
       title={t`Syncing and scanning`}
       onClose={onClose}
     >
-      <Stack gap="xxl" pt="xl">
+      <Stack gap="xl">
         <Stack gap="lg">
           <Stack gap="xxs">
             <Text fw="bold">

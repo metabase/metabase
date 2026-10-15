@@ -235,7 +235,11 @@
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (sandbox.db/set-card-result-metadata! card-id cols))
+                ;;
+                ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
+                ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
+                (request/as-admin
+                  (sandbox.db/set-card-result-metadata! card-id cols)))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 
