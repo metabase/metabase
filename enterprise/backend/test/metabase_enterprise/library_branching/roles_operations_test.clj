@@ -101,7 +101,7 @@
 
 ;;; ------------------------------------------------------- Boot -------------------------------------------------------
 
-(defn- boot-check []
+(defn- boot-check! []
   (try
     (operations/check-boot!)
     :starts
@@ -116,13 +116,13 @@
   ;; Scenario M9-010.
   (mt/with-temporary-setting-values [library-branching-enabled true]
     (with-settings {:remote-sync-url "file:///my/repo.git" :remote-sync-type :read-only}
-      (is (= "Library branching is enabled with read-only type, but no branch is set." (boot-check))))
+      (is (= "Library branching is enabled with read-only type, but no branch is set." (boot-check!))))
     (testing "a creation instance with no branch starts"
       (with-settings {:remote-sync-url "file:///my/repo.git"}
-        (is (= :starts (boot-check)))))
+        (is (= :starts (boot-check!)))))
     (testing "an instance with no repository starts"
       (with-settings {:remote-sync-type :read-only}
-        (is (= :starts (boot-check)))))))
+        (is (= :starts (boot-check!)))))))
 
 (deftest boot-of-a-consumption-instance-with-drift-test
   ;; Scenarios M9-011 and M9-012 (changed).
@@ -131,20 +131,20 @@
      (fn [metric c1 _repo]
        (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-allow nil]
          (testing "no drift: the instance starts, and starts no deploy, as it has a base"
-           (is (= :starts (boot-check)))
+           (is (= :starts (boot-check!)))
            (is (nil? (operations/start-initial-deploy!))))
          (testing "drift: the instance does not start"
            (rename! metric "Script")
-           (is (= drift-message (boot-check))))
+           (is (= drift-message (boot-check!))))
          (testing "a creation instance with the same change starts: its change is a local change"
            (mt/with-temporary-setting-values [remote-sync-type :read-write]
-             (is (= :starts (boot-check)))))
+             (is (= :starts (boot-check!)))))
          (testing "when the drift cannot be read, the instance starts; the deploy checks the drift itself"
            (mt/with-dynamic-fn-redefs [repository/do-with-store (fn [& _] (throw (ex-info "the remote is down" {})))]
-             (is (= :starts (boot-check)))))
+             (is (= :starts (boot-check!)))))
          (testing "MB_REMOTE_SYNC_ALLOW=overwrite-unpublished: the instance starts and discards the drift"
            (mt/with-temporary-setting-values [remote-sync-allow "overwrite-unpublished"]
-             (is (= :starts (boot-check)))
+             (is (= :starts (boot-check!)))
              (let [{:keys [id]} (operations/start-initial-deploy!)]
                (is (=? {:task_type "deploy" :initiated_by nil :status "successful"
                         :outcome {:kind "deployed" :commit c1 :discarded 1}}
