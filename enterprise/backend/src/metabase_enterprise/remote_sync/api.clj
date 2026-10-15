@@ -295,7 +295,9 @@
     ;; Check if trying to change collections while in read-only mode
     (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
       (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
-                     "Cannot change synced collections when remote-sync-type is read-only."))
+                     "Cannot change synced collections when remote-sync-type is read-only.")
+      (api/check-400 (not (and (seq collections) (settings/remote-sync-strict-mode)))
+                     "Cannot change synced collections in strict mode, which always syncs the Library and transforms."))
     (try
       (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
@@ -314,7 +316,6 @@
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})
-    (remote-sync.core/maybe-switch-to-strict-mode!)
     (if-let [task-id (impl/finish-remote-config!)]
       {:success true
        :task_id task-id}

@@ -168,6 +168,20 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
+    it("should not show 'Content to sync' section in strict mode", async () => {
+      setup({
+        remoteSyncType: "read-write",
+        variant: "settings-modal",
+        remoteSyncStrictMode: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.queryByText("Content to sync")).not.toBeInTheDocument();
+    });
+
     it("should not show 'Content to sync' section when read-only mode is selected", async () => {
       const libraryCollection = createMockLibraryCollection({ id: 999 });
 

@@ -46,7 +46,10 @@
   (remote-sync.core/init-strict-mode!)
   (if (settings/remote-sync-enabled)
     (do
-      (remote-sync.core/enable-library-and-transforms-sync!)
+      (try
+        (remote-sync.core/enable-library-and-transforms-sync!)
+        (catch Exception e
+          (log/warnf "Could not set up the Library and transforms sync: %s" (ex-message e))))
       (when (= :read-only (settings/remote-sync-type))
         (let [branch (settings/remote-sync-branch)]
           (when (str/blank? branch)

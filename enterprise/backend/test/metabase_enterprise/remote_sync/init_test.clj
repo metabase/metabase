@@ -368,20 +368,6 @@
       (remote-sync.core/init-strict-mode!)
       (is (false? (settings/remote-sync-strict-mode))))))
 
-(deftest switch-to-strict-mode-test
-  (testing "Strict mode turns on once no collection outside the Library is synced"
-    (mt/with-temporary-setting-values [:remote-sync-strict-mode false]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :is_remote_synced true}]
-        (remote-sync.core/maybe-switch-to-strict-mode!)
-        (is (false? (settings/remote-sync-strict-mode)))
-        (t2/update! :model/Collection coll-id {:is_remote_synced false})
-        (remote-sync.core/maybe-switch-to-strict-mode!)
-        (is (true? (settings/remote-sync-strict-mode))))))
-  (testing "An environment variable keeps it off"
-    (mt/with-temp-env-var-value! [mb-remote-sync-strict-mode "false"]
-      (remote-sync.core/maybe-switch-to-strict-mode!)
-      (is (false? (settings/remote-sync-strict-mode))))))
-
 (deftest finish-remote-config-strict-mode-test
   (testing "In strict mode, saving read-write remote sync settings turns on Library and transforms sync"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
@@ -445,7 +431,7 @@
           (is (false? (settings/remote-sync-transforms))))))))
 
 (deftest finish-remote-config-library-refused-test
-  (testing "When the Library can't sync, saving remote sync settings still turns on transforms sync"
+  (testing "When the Library can't sync, saving remote sync settings fails while startup logs it and goes on"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-write
                                        :remote-sync-branch "main"
@@ -454,9 +440,13 @@
                                   (fn [_] (throw (ex-info "Uses content that is not remote synced." {})))]
         (do-with-unsynced-library!
          (fn []
-           (impl/finish-remote-config!)
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uses content that is not remote synced"
+                                 (impl/finish-remote-config!)))
            (is (not (library-synced?)))
-           (is (true? (settings/remote-sync-transforms)))))))))
+           (let [[calls capture] (capture-async-import!)]
+             (mt/with-dynamic-fn-redefs [impl/async-import! capture]
+               (#'init/remote-sync-init)
+               (is (= [["main" true {}]] @calls) "the rest of startup still runs")))))))))
 
 (deftest remote-sync-init-strict-mode-test
   (testing "A read-write start without a strict mode value turns it on and syncs the Library and transforms, so it

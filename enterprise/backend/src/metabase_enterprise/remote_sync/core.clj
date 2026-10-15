@@ -14,7 +14,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -525,15 +524,6 @@
   (when (nil? (settings/remote-sync-strict-mode))
     (settings/remote-sync-strict-mode! (not (other-collection-synced?)))))
 
-(defn maybe-switch-to-strict-mode!
-  "Turns on [[settings/remote-sync-strict-mode]] once no collection outside the Library and transforms is synced,
-  unless an environment variable sets it."
-  []
-  (when (and (not (settings/remote-sync-strict-mode))
-             (not (settings/strict-mode-set-by-env?))
-             (not (other-collection-synced?)))
-    (settings/remote-sync-strict-mode! true)))
-
 (defn maybe-switch-out-of-strict-mode!
   "Turns off [[settings/remote-sync-strict-mode]] once a collection outside the Library and transforms is synced,
   unless an environment variable sets it."
@@ -545,8 +535,7 @@
 
 (defn enable-library-and-transforms-sync!
   "In strict mode, creates the Library when it's missing and, on a read-write instance, turns on remote sync for
-  transforms and the Library, logging rather than failing when the Library can't sync yet. A read-only instance takes
-  both from its pulls."
+  transforms and the Library, throwing when the Library can't sync. A read-only instance takes both from its pulls."
   []
   (when (settings/remote-sync-strict-mode)
     (let [library (collections/ensure-library-collection!)]
@@ -554,7 +543,4 @@
         (when-not (settings/remote-sync-transforms)
           (settings/remote-sync-transforms! true))
         (when-not (:is_remote_synced library)
-          (try
-            (bulk-set-remote-sync {(:id library) true})
-            (catch Exception e
-              (log/warnf "Could not turn on remote sync for the Library: %s" (ex-message e)))))))))
+          (bulk-set-remote-sync {(:id library) true}))))))

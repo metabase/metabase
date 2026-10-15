@@ -109,7 +109,7 @@ export const RemoteSyncSettingsForm = ({
                 {(isRemoteSyncEnabled || isReadWrite) &&
                   !isModalVariant &&
                   !isStrictMode && <CollectionsToSyncSection />}
-                {isModalVariant && isReadWrite && (
+                {isModalVariant && isReadWrite && !isStrictMode && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />
                   </RemoteSyncSettingsSection>

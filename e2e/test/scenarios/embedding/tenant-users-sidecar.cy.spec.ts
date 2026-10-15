@@ -146,6 +146,7 @@ describe("scenarios > sidecar > tenant users", () => {
           [id2]: true,
         };
 
+        H.updateSetting("remote-sync-strict-mode", false);
         cy.request("PUT", "/api/ee/remote-sync/settings", {
           collections: collectionsConfig,
           "remote-sync-branch": "main",
