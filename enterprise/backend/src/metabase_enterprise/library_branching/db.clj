@@ -683,3 +683,76 @@
   (if (empty? entity-ids)
     0
     (t2/update! model {:entity_id [:in entity-ids]} {:archived true})))
+
+;;; --------------------------------------------------- Timelines ---------------------------------------------------
+
+(def ^:private timeline-columns
+  [:id :entity_id :name :description :icon :default :collection_id :archived])
+
+(def ^:private event-columns
+  [:id :entity_id :timeline_id :name :description :timestamp :timezone :time_matters :icon :archived])
+
+(mu/defn timelines-by-entity-id :- [:sequential ::row]
+  "The timelines of `entity-ids`, as instances of `:model/Timeline`."
+  [entity-ids :- ::entity-ids]
+  (t2/select (into [:model/Timeline] timeline-columns) :entity_id [:in entity-ids]))
+
+(mu/defn live-events-by-timeline-id :- [:sequential ::row]
+  "The events not in the trash of the timelines of `ids`, as instances of `:model/TimelineEvent`."
+  [ids :- ::ids]
+  (t2/select (into [:model/TimelineEvent] event-columns) :timeline_id [:in ids] :archived false))
+
+(mu/defn lock-timeline :- [:maybe ::row]
+  "`{:id :collection_id :archived}` of the timeline of `entity-id`, after a lock on its row until the current
+  transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :collection_id :archived]
+                 :from   [(t2/table-name :model/Timeline)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn lock-timeline-events :- [:sequential ::row]
+  "The events of timeline `timeline-id`, in the trash or not, as instances of `:model/TimelineEvent`, after a lock on
+  their rows until the current transaction ends."
+  [timeline-id :- pos-int?]
+  (t2/select (into [:model/TimelineEvent] event-columns) {:where [:= :timeline_id timeline-id] :for [:update]}))
+
+(mu/defn lock-timeline-event :- [:maybe ::row]
+  "The event of `entity-id`, as an instance of `:model/TimelineEvent`, after a lock on its row until the current
+  transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/select-one (into [:model/TimelineEvent] event-columns) {:where [:= :entity_id entity-id] :for [:update]}))
+
+(mu/defn timeline-collection-id :- [:maybe pos-int?]
+  "The collection of timeline `id`, or nil."
+  [id :- pos-int?]
+  (t2/select-one-fn :collection_id [:model/Timeline :collection_id] :id id))
+
+(mu/defn insert-timeline! :- ::row
+  "Inserts a timeline with the columns `row` through the Timeline model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Timeline row))
+
+(mu/defn update-timeline! :- :int
+  "Sets the columns `changes` of the timeline `id` through the Timeline model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Timeline id changes))
+
+(mu/defn insert-timeline-event! :- ::row
+  "Inserts an event with the columns `row` through the TimelineEvent model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/TimelineEvent row))
+
+(mu/defn update-timeline-event! :- :int
+  "Sets the columns `changes` of the event `id` through the TimelineEvent model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/TimelineEvent id changes))
+
+(mu/defn archive-timeline-events! :- :int
+  "Moves the events of `ids` to the trash through the TimelineEvent model; returns the number of rows."
+  [ids :- ::ids]
+  (if (empty? ids)
+    0
+    (t2/update! :model/TimelineEvent {:id [:in ids]} {:archived true})))
