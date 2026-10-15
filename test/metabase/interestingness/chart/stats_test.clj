@@ -134,6 +134,13 @@
             (stats.core/compute-chart-stats (assoc-in (make-chart-config 1 5) [:series "series_0" :x_values 0] nil)
                                             {:deep? true})))))
 
+(deftest ^:parallel time-series-skips-series-with-only-nil-dates-test
+  (testing "a series whose dates are all nil is left out, and the other series still gets stats"
+    (let [config (assoc-in (make-chart-config 2 5) [:series "series_0" :x_values] [nil nil nil nil nil])]
+      (is (=? {:series-count 1
+               :series       [{:name "series_1" :data-points 5}]}
+              (stats.core/compute-chart-stats config {:deep? true}))))))
+
 (deftest ^:parallel correlations-skip-nil-y-values-test
   (testing "a nil in one series leaves its other points to correlate"
     (let [series (assoc (make-series 12) :x {:name "Category" :type "string"} :x_values (mapv str (range 12)))]

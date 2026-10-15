@@ -1,6 +1,7 @@
 (ns metabase.interestingness.chart.stats
   "Chart type detection and statistics routing."
   (:require
+   [medley.core :as m]
    [metabase.interestingness.chart.categorical :as categorical]
    [metabase.interestingness.chart.histogram :as histogram]
    [metabase.interestingness.chart.scatter :as scatter]
@@ -146,7 +147,7 @@
 (mu/defn compute-chart-stats :- ::stats.types/chart-stats
   "Compute statistics for a chart based on its detected type.
 
-  Drops points with a nil x or y value, then applies data limits before computation:
+  Drops points with a nil x or y value and series left empty, then applies data limits before computation:
   - Each series is downsampled to at most [[max-data-points-per-series]] points
   - Correlation computation is limited to [[max-series-for-correlations]] series
 
@@ -157,7 +158,8 @@
   [chart-config :- ::stats.types/chart-config
    opts         :- ::stats.types/options]
   (let [chart-type                   (detect-chart-type chart-config)
-        [limited-series limits-info] (apply-data-limits (update-vals (:series chart-config) drop-nil-points))
+        [limited-series limits-info] (apply-data-limits (->> (update-vals (:series chart-config) drop-nil-points)
+                                                             (m/filter-vals (comp seq :y_values))))
         too-many-series?             (> (count limited-series) max-series-for-correlations)
         opts                         (cond-> opts
                                        too-many-series? (assoc :max-correlation-series max-series-for-correlations))
