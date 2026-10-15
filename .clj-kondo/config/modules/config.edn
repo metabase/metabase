@@ -4019,6 +4019,8 @@
                     :model/Segment
                     :model/Table
                     :model/TableUserSettings
+                    :model/Timeline
+                    :model/TimelineEvent
                     :model/Transform
                     :model/User}}
 
