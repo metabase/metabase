@@ -2,6 +2,10 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "incremental": true,
+    // Node runs the node:test runner's TypeScript files directly, and those
+    // import each other with the .ts extension.
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo",
     "outDir": "build",
     "paths": {
