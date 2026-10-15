@@ -98,6 +98,18 @@
           (is (not (t2/exists? :model/Session :user_id (:id user))))
           (is (not (t2/exists? :model/LoginHistory :user_id (:id user)))))))))
 
+(deftest exchange-group-sync-test
+  (testing "the exchange syncs the user's groups from the JWT, as JWT login does"
+    (with-jwt-bearer-setup!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "jwt-bearer-group"}]
+        (mt/with-temporary-setting-values [jwt-group-sync       true
+                                           jwt-group-mappings   {"analysts" [group-id]}
+                                           jwt-attribute-groups "groups"]
+          (let [email "jwt-bearer-groups@metabase.com"]
+            (token-response 200 {:assertion (assertion {:email email, :groups ["analysts"]})})
+            (is (t2/exists? :model/PermissionsGroupMembership
+                            :user_id (t2/select-one-pk :model/User :email email), :group_id group-id))))))))
+
 (deftest exchange-scope-test
   (with-jwt-bearer-setup!
     (let [email "jwt-bearer-scope@metabase.com"]
