@@ -3997,6 +3997,7 @@
            models
            request
            settings
+           startup
            util
            util.config
            warehouse-schema-overlay}

@@ -4,6 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2])
   (:import
@@ -375,3 +376,90 @@
   (:id (t2/query-one {:select [:id]
                       :from   [(t2/table-name model)]
                       :where  [:= :entity_id [:auto/param entity-id]]})))
+
+;;; ----------------------------------------------------- Tasks ------------------------------------------------------
+
+(mr/def ::task-row
+  [:map {::mr/deliberately-open true, :description "a row of library_branching_task"}
+   [:id pos-int?]
+   [:task_type :string]
+   [:status :string]])
+
+(mr/def ::statuses
+  [:set {:min 1} :string])
+
+(def ^:private task-columns
+  [:id :task_type :status :initiated_by :progress :started_at :last_heartbeat_at :ended_at :outcome :error_message])
+
+(mu/defn insert-task! :- pos-int?
+  "Inserts the task row `row` and returns its id."
+  [row :- ::row]
+  (first (t2/insert-returning-pks! :library_branching_task row)))
+
+(mu/defn task-row :- [:maybe ::task-row]
+  "The task row `id`, or nil."
+  [id :- pos-int?]
+  (t2/query-one {:select task-columns
+                 :from   [:library_branching_task]
+                 :where  [:= :id [:auto/param id]]}))
+
+(mu/defn lock-task-row :- [:maybe ::task-row]
+  "The task row `id`, after a lock on it until the current transaction ends, or nil."
+  [id :- pos-int?]
+  (t2/query-one {:select task-columns
+                 :from   [:library_branching_task]
+                 :where  [:= :id [:auto/param id]]
+                 :for    [:update]}))
+
+(mu/defn newest-task-row :- [:maybe ::task-row]
+  "The newest task row, or nil when there is none."
+  []
+  (t2/query-one {:select   task-columns
+                 :from     [:library_branching_task]
+                 :order-by [[:started_at :desc] [:id :desc]]
+                 :limit    1}))
+
+(mu/defn newest-live-task-row :- [:maybe ::task-row]
+  "The newest task row with a status of `open` and a heartbeat after `cutoff`, or nil."
+  [open   :- ::statuses
+   cutoff :- ms/TemporalInstant]
+  (t2/query-one {:select   task-columns
+                 :from     [:library_branching_task]
+                 :where    [:and [:in :status open] [:> :last_heartbeat_at [:auto/param cutoff]]]
+                 :order-by [[:started_at :desc] [:id :desc]]
+                 :limit    1}))
+
+(mu/defn update-task-row! :- :int
+  "Sets the columns `changes` of task row `id` iff its status is in `from`. Returns the number of rows changed, 1 or
+  0."
+  [id      :- pos-int?
+   from    :- ::statuses
+   changes :- ::row]
+  (first (t2/query {:update :library_branching_task
+                    :set    changes
+                    :where  [:and [:= :id [:auto/param id]] [:in :status from]]})))
+
+(mu/defn end-stale-task-rows! :- [:sequential pos-int?]
+  "Sets the columns `changes` of each task row with a status of `open` and a heartbeat before `cutoff`. Returns the ids
+  of the rows changed."
+  [open    :- ::statuses
+   cutoff  :- ms/TemporalInstant
+   changes :- ::row]
+  (let [stale [:and [:in :status open] [:< :last_heartbeat_at [:auto/param cutoff]]]]
+    ;; One update per row, each with the condition again: a row that a heartbeat made fresh after the select stays
+    ;; open, and is not in the result.
+    (into []
+          (filter (fn [id]
+                    (= 1 (first (t2/query {:update :library_branching_task
+                                           :set    changes
+                                           :where  [:and stale [:= :id [:auto/param id]]]})))))
+          (map :id (t2/query {:select [:id] :from [:library_branching_task] :where stale})))))
+
+(mu/defn users-by-id :- [:sequential ::row]
+  "`{:id :first_name :last_name :email}` of each user of `ids`."
+  [ids :- ::ids]
+  (if (empty? ids)
+    []
+    (t2/query {:select [:id :first_name :last_name :email]
+               :from   [(t2/table-name :model/User)]
+               :where  [:in :id ids]})))

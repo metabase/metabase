@@ -1,0 +1,142 @@
+## Library branching: one row for each task (push, pull, merge-branch, deploy, branch operations, settings save). The
+## row is the record that the UI shows. The worker of an open row writes its heartbeat; an open row with an old
+## heartbeat is stale, and the next reader ends it. The apply transaction of a task locks its own row and commits only
+## while the row is running, so the status of an ended row tells what the task did.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.t4sk7a
+      author: Timothy Dean
+      comment: Library branching task
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: library_branching_task
+      changes:
+        - createTable:
+            tableName: library_branching_task
+            remarks: The library branching tasks of this instance, one row for each task.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: The id of the task.
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: task_type
+                  type: varchar(32)
+                  remarks: The operation of the task, such as push or pull.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(16)
+                  remarks: running or committing while the task is open; successful, failed, cancelled or interrupted after it ended.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: The user who started the task, or null for a task that the system started.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: progress
+                  type: float
+                  remarks: The fraction of the task that is done, from 0.0 to 1.0.
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the task started.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_heartbeat_at
+                  type: ${timestamp_type}
+                  remarks: When the worker of the task last showed that it is alive.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: When the task ended, or null while it is open.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: outcome
+                  type: ${text.type}
+                  remarks: The result of a successful task, as JSON, or null.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: Why the task failed, was cancelled or was interrupted, or null.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.t4sk7b
+      author: Timothy Dean
+      comment: Index of the newest library branching task
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: library_branching_task
+                indexName: idx_library_branching_task_newest
+      changes:
+        - createIndex:
+            tableName: library_branching_task
+            indexName: idx_library_branching_task_newest
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+              - column:
+                  name: id
+                  descending: true
+
+  - changeSet:
+      id: v65.t4sk7c
+      author: Timothy Dean
+      comment: Index of library_branching_task.initiated_by
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: library_branching_task
+                indexName: idx_library_branching_task_initiated_by
+      changes:
+        - createIndex:
+            tableName: library_branching_task
+            indexName: idx_library_branching_task_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: v65.t4sk7d
+      author: Timothy Dean
+      comment: Foreign key from library_branching_task.initiated_by to core_user
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyTableName: library_branching_task
+                foreignKeyName: fk_library_branching_task_initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: library_branching_task
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_library_branching_task_initiated_by
+            onDelete: SET NULL
