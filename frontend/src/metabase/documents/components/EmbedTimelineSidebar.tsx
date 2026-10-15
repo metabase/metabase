@@ -120,7 +120,7 @@ export function EmbedTimelineSidebar({
     return (
       <Stack gap="xl" p="xl" className={S.errorContainer}>
         <Box className={S.errorContent}>
-          <Text c="error">{t`Failed to load timeline events`}</Text>
+          <Text c="feedback-negative">{t`Failed to load timeline events`}</Text>
         </Box>
       </Stack>
     );

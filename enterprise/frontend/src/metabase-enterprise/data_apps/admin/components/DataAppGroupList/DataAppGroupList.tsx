@@ -125,9 +125,11 @@ export const DataAppGroupList = ({
         {(isAdding || groups.length > 0) && (
           <Box
             data-testid="data-app-groups-card"
-            bd={groups.length > 0 ? "1px solid var(--mb-color-border)" : 0}
+            bd={
+              groups.length > 0 ? "1px solid var(--mb-color-border-neutral)" : 0
+            }
             bdrs="sm"
-            bg="background-primary"
+            bg="background_page-primary"
             style={{ overflow: "hidden" }}
           >
             {isAdding && (
@@ -184,7 +186,7 @@ export const DataAppGroupList = ({
 const DataAppGroupsEmptyState = () => (
   <Box
     data-testid="data-app-groups-empty-state"
-    bg="background-secondary"
+    bg="background_page-secondary"
     bdrs="md"
     py="5rem"
   >

@@ -95,10 +95,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
     it("derives color from white-labeled colors", () => {
       const theme: MetabaseTheme = {};
 
-      const applicationColors = {
-        "background-primary": "#2d3030",
-        "text-primary": "#eee",
-      };
+      const applicationColors = { brand: "#ff0000" };
 
       const { colors } = getDerivedDefaultColorsForEmbedFlow({
         isSimpleEmbedFeatureAvailable,
@@ -106,7 +103,8 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
         applicationColors,
       });
 
-      expect(colors?.["background-secondary"]).toBe("rgb(36, 38, 38)");
+      expect(colors?.brand).toBe("#ff0000");
+      expect(colors?.["brand-hover"]).toBe("rgb(255, 102, 102)");
     });
 
     it("derives default colors for empty themes", () => {

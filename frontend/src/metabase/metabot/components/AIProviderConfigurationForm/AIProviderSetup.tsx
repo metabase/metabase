@@ -44,7 +44,7 @@ export function AIProviderSetup({
   const loadError = connectionsError ?? providerTypesError;
   if (loadError) {
     return (
-      <Text c="error">
+      <Text c="feedback-negative">
         {getErrorMessage(loadError, t`Unable to load your AI providers.`)}
       </Text>
     );
