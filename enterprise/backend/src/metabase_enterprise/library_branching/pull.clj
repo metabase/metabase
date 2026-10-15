@@ -20,11 +20,17 @@
 
 ;;; ------------------------------------------------------ Commits ------------------------------------------------------
 
+(def decode-keys
+  "The keys of the options of [[decode-opts]]."
+  [:table-names :card-ids])
+
 (defn decode-opts
   "The options of `claims/decode` for a tree that instance `inst` reads: a published table of the old format with no
-  display name has the name that warehouse sync gives it on `inst`."
+  display name has the name that warehouse sync gives it on `inst`, and the row id of a card in a file of the old
+  format names the card of that row on `inst`."
   [inst]
-  {:table-names #(instance/table-names inst %)})
+  {:table-names #(instance/table-names inst %)
+   :card-ids    #(instance/card-entity-ids inst %)})
 
 (defn decode-commit
   "`claims/decode` of the tree of `commit` in `store`, with the codecs `codecs` and the options `opts` (default none;
