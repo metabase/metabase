@@ -478,6 +478,16 @@
                                                            {:measure (str ":l" i), :budget (str i), :size i})}]})
                     (drop-while #(not= "New ratchets over existing debt" %))
                     rest))))
+      (testing "sums the budgets past the first six of the biggest change and of a raise with no verdict"
+        (let [commit   {:sha "big", :author "Ada", :subject "Big"}
+              measures (for [i (range 8)] {:measure (str ":l" i), :delta (- i), :added 0})
+              lines    (history/summary "of all time" {:commits  1
+                                                       :best     {:commit commit, :net -28, :measures measures}
+                                                       :suspects [{:commit commit
+                                                                   :items  (map #(update % :delta -) measures)}]})]
+          (is (= ["    -13  2 more budgets"
+                  "    +13 over 2 more budgets, with 0 suppressions added"]
+                 (filter #(str/includes? % "more budgets") lines)))))
       (testing "ranks authors by net change and names what no commit explains"
         (is (= ["                shrunk  grown  net"
                 "Cy                  -7      0   -7"
@@ -558,6 +568,8 @@
         dir  (fs/create-dirs (fs/path root "repo"))]
     (try
       (p/shell {:dir (str dir), :out :string, :extra-env isolated} "git" "init" "-q" "-b" "master")
+      (p/shell {:dir (str dir), :out :string, :extra-env isolated}
+               "git" "remote" "add" "origin" "git@github.com:example/ratchets.git")
       (doseq [[author day subject files] commits]
         (commit! dir author day subject files))
       (f (history/repo {:dir      (str dir)
@@ -659,13 +671,29 @@
           (testing "counts the ignore that was added as growth, and the spare budget that was taken back as nothing"
             (is (= [["total" "-2" "+1" "-1"] false]
                    ((juxt total warned?) (summary)))))
-          (testing "a verdict on a PR that changed no ratchet file is refused"
-            (is (= 1
-                   (try
-                     (with-out-str
-                       (history/run repo {:options {:pardon "2", :why "Not a ratchet commit."}, :arguments []}))
-                     (catch clojure.lang.ExceptionInfo e
-                       (:babashka/exit (ex-data e)))))))
+          (testing "summarizes only the commits after the one given"
+            (let [after (some #(when (= 4 (:pr %)) (:sha %)) (history/records repo))
+                  lines (str/split-lines (with-out-str (history/run repo {:options {}, :arguments [after]})))]
+              (is (= [(str "Ratchet changes since " (subs after 0 10) ": 1 commits") ["total" "0" "+1" "+1"]]
+                     [(first lines) (total lines)]))))
+          (testing "writes the page, with the repository's GitHub URL taken from its SSH remote"
+            (let [file (str (fs/path (fs/parent (:verdicts-file repo)) "page.html"))
+                  _    (with-out-str (history/run repo {:options {:html file}, :arguments []}))
+                  data (json/read-str (second (re-find #"id=\"data\">(.*?)</script>" (slurp file))))]
+              (is (= ["https://github.com/example/ratchets" 6 "all" 4]
+                     ((juxt :repo :shown (comp :id first :periods) (comp count :series)) data)))))
+          ;; a PR that changed no ratchet file, a commit that raised nothing, no reason, a start that is no commit
+          (testing "refuses a verdict or a start it cannot act on"
+            (is (= [1 1 1 1]
+                   (for [request [{:options {:pardon "2", :why "Not a ratchet commit."}, :arguments []}
+                                  {:options {:pardon "4", :why "It only lowered budgets."}, :arguments []}
+                                  {:options {:pardon "5"}, :arguments []}
+                                  {:options {}, :arguments ["not-a-commit"]}]]
+                     (try
+                       (with-out-str (history/run repo request))
+                       nil
+                       (catch clojure.lang.ExceptionInfo e
+                         (:babashka/exit (ex-data e))))))))
           (testing "a pardon, given by PR number, is recorded and takes out the raises and what took them back"
             (with-out-str (history/run repo {:options {:pardon "5", :why "A stale budget."}, :arguments []}))
             (is (= {:verdicts [[5 "Add a feature (#5)" :pardon "A stale budget."]]
@@ -687,16 +715,10 @@
            [(changes {:prod ::history/unreadable} {:prod {:ignore-counts {:a 1}}} #{})
             (changes {:prod {:ignore-counts {:a 1}}} {:prod ::history/unreadable} #{})]))))
 
-(deftest unreadable-gap-and-module-measure-test
-  (testing "the commit that repairs a broken ratchet file carries what changed across it and is marked for it,
-           a change to another ratchet file meanwhile is not, and a module measure is new only when the commit
-           also adds what counts it"
-    (let [counter "dev/src/dev/kondo_ratchet.clj"
-          modules ".clj-kondo/config/modules/ratchets.edn"
-          tests   ".clj-kondo/ratchets-test.edn"]
-      (is (= [[5 "Cy" [[:introduce [:modules :module :ns-prefixes] nil nil]
-                       [:seed [:modules :module :uses-any] nil nil]]]
-              [4 "Bob" [[:grow [:prod :ignore :a] 3 true]]]
+(deftest unreadable-gap-test
+  (testing "the repair of a broken ratchet file carries the change across the gap, and only it is marked bridged"
+    (let [tests ".clj-kondo/ratchets-test.edn"]
+      (is (= [[4 "Bob" [[:grow [:prod :ignore :a] 3 true]]]
               [3 "Dee" [[:grow [:test :ignore :b] 3 nil]]]
               [2 "Ada" []]
               ;; the commit that adds the test ratchet file is read with both sides as one
@@ -705,20 +727,30 @@
                (with-repo!
                  [["Chris" 1 "Add a ratchet (#1)"
                    {ratchets "{:ignore-counts {:a 2}}\n"
-                    tests    "{:ignore-counts {:b 1}}\n"
-                    counter  "{:uses-any (count uses)}\n"}]
+                    tests    "{:ignore-counts {:b 1}}\n"}]
                   ["Ada" 2 "Break the ratchet file (#2)"
                    {ratchets "{:ignore-counts {:a 2\n"}]
                   ["Dee" 3 "Raise a test budget while it is broken (#3)"
                    {tests "{:ignore-counts {:b 4}}\n"}]
                   ["Bob" 4 "Repair it, with a raise (#4)"
-                   {ratchets "{:ignore-counts {:a 5}}\n"}]
-                  ["Cy" 5 "Ratchet the modules (#5)"
-                   {modules "{:ns-prefixes 3, :uses-any 1}\n"
-                    counter "{:uses-any (count uses), :ns-prefixes (count prefixes)}\n"}]]
+                   {ratchets "{:ignore-counts {:a 5}}\n"}]]
                  (fn [repo]
                    (vec (for [{:keys [pr author changes]} (history/records repo)]
                           [pr author (map (juxt :kind :measure :delta :bridged?) changes)]))))))))))
+
+(deftest module-measure-test
+  (testing "a module measure is introduced only when the commit also adds what counts it, and seeded otherwise"
+    (let [counter "dev/src/dev/kondo_ratchet.clj"
+          modules ".clj-kondo/config/modules/ratchets.edn"]
+      (is (= [[[:introduce [:modules :module :ns-prefixes]] [:seed [:modules :module :uses-any]]]]
+             (with-repo!
+               [["Chris" 1 "Count uses (#1)"
+                 {counter "{:uses-any (count uses)}\n"}]
+                ["Cy" 2 "Ratchet the modules (#2)"
+                 {modules "{:ns-prefixes 3, :uses-any 1}\n"
+                  counter "{:uses-any (count uses), :ns-prefixes (count prefixes)}\n"}]]
+               (fn [repo]
+                 (mapv #(map (juxt :kind :measure) (:changes %)) (history/records repo)))))))))
 
 (deftest unreadable-test-ratchet-removed-test
   (testing "a broken test ratchet file that is removed marks the prod changes its budgets are folded into"
