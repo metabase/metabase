@@ -96,7 +96,7 @@
     [model instance]
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(doseq [[model columns] {:model/Card               #{:dataset_query :dimension_mappings :parameters :result_metadata :type}
+(doseq [[model columns] {:model/Card               #{:dataset_query :dimension_mappings :parameters}
                          :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}
