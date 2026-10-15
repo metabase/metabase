@@ -74,11 +74,12 @@
     (boolean (and is_published (tree/collection-id-in-tree? collection_id)))))
 
 (defn current-item
-  "The content of the in-scope item `id` of the table item kind `k`, after a lock on its row, or nil."
+  "The state of item `id` of the table item kind `k` (`instance/current`), after a lock on its row."
   [{:keys [kind model] :as k} id]
-  (library-branching.db/lock-table-item model id)
-  (when (scope/in-scope? kind id)
-    (get (read-items k [id]) id)))
+  (let [row (library-branching.db/lock-table-item model id)]
+    (content/current-state (boolean (and row (table-in-tree? (:table_id row))))
+                           #(scope/in-scope? kind id)
+                           #(get (read-items k [id]) id))))
 
 (defn- place-table!
   "Throws ::instance/refused for item `id` unless `place` is the table key of an in-scope published table."

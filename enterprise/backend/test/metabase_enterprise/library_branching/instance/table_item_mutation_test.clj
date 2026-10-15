@@ -9,9 +9,12 @@
    [metabase-enterprise.library-branching.instance.table-item-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.table-item-test :as table-item-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
-   [metabase-enterprise.library-branching.scope :as scope]))
+   [metabase-enterprise.library-branching.scope :as scope]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the instance side of segments and measures."
@@ -67,7 +70,13 @@
     :doc    "current reads a segment or a measure with no row lock, so a save by another connection does not wait."
     :target `library-branching.db/lock-table-item
     :edits  [[:remove :for] [:remove '[:update]]]
-    :tests  [#'lock-test/current-locks-the-row-test]}])
+    :tests  [#'lock-test/current-locks-the-row-test]}
+   {:name   :outside-tree-trashed
+    :doc    "current gives a row of a table outside the Library tree as trashed, so an apply takes it as an item of the
+            Library."
+    :target `table-item/current-item
+    :edits  [[:replace '(and row (table-in-tree? (:table_id row))) '(some? row)]]
+    :tests  [#'table-item-test/trash-of-the-table-test]}])
 
 (deftest table-item-mutations-test
   (mut/check mutations {}))

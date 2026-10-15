@@ -387,9 +387,10 @@
             (write! :measure (:entity_id m) (get before (:entity_id m)))
             (is (= (select-keys before (cons venues ids)) (select-keys (app-db/read-current) (cons venues ids))))
             (is (true? (t2/select-one-fn :archived :model/Measure (:id old)))))
-          (testing "trash! of a collection moves the segments of its tables to the trash"
+          (testing (str "trash! of a collection moves the segments of its tables to the trash; the trash unpublishes "
+                        "the tables, so their rows are outside the Library tree")
             (trash! :collection (:entity_id sub))
-            (is (= :trashed (:state (current :segment (:entity_id cs)))))
+            (is (= {:state :absent} (current :segment (:entity_id cs))))
             (is (true? (t2/select-one-fn :archived :model/Segment (:id cs))))
             (is (= :live (:state (current :segment (:entity_id s)))) "a segment of a table in another collection stays")))))))
 
