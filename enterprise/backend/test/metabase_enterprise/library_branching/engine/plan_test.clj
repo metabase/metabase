@@ -32,12 +32,14 @@
 (defn- resolves? [s target] (or (lb.tu/env-target? target) (contains? s target)))
 
 (defn- reaches?
-  "True iff a chain of places and references among the items of `s` leads from `from` to `to`."
-  [s from to]
+  "True iff a chain of places and references among the items of `s` and the old items `old` leads from `from` to `to`.
+  An identity with an old item stands for both of its items."
+  [s old from to]
   (loop [todo [from], seen #{}]
     (if-let [[x & more] (seq todo)]
       (cond (seen x) (recur more seen)
-            :else    (let [next (filter #(contains? s %) (cons (:place (get s x)) (ref-targets (get s x))))]
+            :else    (let [next (filter #(or (contains? s %) (contains? old %))
+                                        (mapcat #(cons (:place %) (ref-targets %)) (keep #(get % x) [s old])))]
                        (if (some #{to} next) true (recur (into (vec more) next) (conj seen x)))))
       false)))
 
@@ -74,7 +76,7 @@
   "Applies `step` to the simulated instance `{:s snapshot :old {id item} :content {id write} :later #{ids to trash
   later} :faults []}` as the apply does, and records each order rule that the step breaks. A write with `:defer` leaves an item that exists
   as it is, and writes a new one without the deferred references; its link writes the whole content."
-  [{:keys [s later content] :as state} {:keys [id write pre defer link interim trash]}]
+  [{:keys [s old later content] :as state} {:keys [id write pre defer link interim trash]}]
   (let [fault (fn [state why] (update state :faults conj [why id]))]
     (cond
       write
@@ -103,21 +105,26 @@
 
       trash
       (let [it    (get s id)
-            later (disj later id)]
+            later (disj later id)
+            old'  (dissoc old id)]
         (if (and it (not (one-row? (:kind it) (:kind pre))))
           ;; the old item of another table: the item of `id` in `s` is the new one, and stays
-          (cond-> (-> state (update :old dissoc id) (assoc :later later))
-            (not (contains? (:old state) id))
+          (cond-> (assoc state :old old' :later later)
+            (not (contains? old id))
             (fault :trash-of-no-old-item)
 
-            (some #(and (= id (:place %)) (not (contains? (get snapshot/may-contain (:kind it)) (:kind %)))) (vals s))
+            (or (some #(and (= id (:place %)) (not (contains? (get snapshot/may-contain (:kind it)) (:kind %)))) (vals s))
+                ;; An old item came from `l`, so its place names the old item of a replaced identity.
+                (some #(= id (:place %)) (vals old')))
             (fault :container-before-content))
           (let [s' (dissoc s id)]
             (cond-> (assoc state :s s' :later later)
-              (some #(= id (:place %)) (vals s'))
+              (some #(= id (:place %)) (concat (vals s') (vals old)))
               (fault :container-before-content)
 
-              (some (fn [[j c]] (and (contains? (ref-targets c) id) (not (and (later j) (reaches? s id j))))) s')
+              ;; An old item is a user of its targets until its trash.
+              (some (fn [[j c]] (and (contains? (ref-targets c) id) (not (and (later j) (reaches? s old id j)))))
+                    (concat s' old))
               (fault :target-before-user))))))))
 
 (defn- simulate
@@ -585,6 +592,11 @@
             apply reads the new kind, finds no item, and the precondition fails on each attempt."
     :target `plan/plan
     :edits  [[:replace '(kind-changes l m changed) ()]]}
+   {:name   :replaced-trash-by-new-content
+    :doc    "The trash order reads the target content of a replaced item, so the references of its old item do not put
+            its trash before the trash of their targets."
+    :target `plan/plan
+    :edits  [[:replace '(trash-steps l b removed) '(trash-steps (merge l m) b removed)]]}
    {:name   :system-trash
     :doc    "A plan trashes a system item that the target lacks."
     :target `plan/plan
@@ -593,6 +605,7 @@
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
                                 #'local-change-test #'unknown-base-test #'system-item-test #'key-move-test
-                                #'kind-change-test
+                                #'kind-change-test #'kind-change-cycle-test
                                 #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-laws-key-move-test
+                                #'plan-laws-kind-change-test
                                 #'plan-unknown-base-test]}))
