@@ -373,12 +373,6 @@
           m     (snippets [kc "Filter c" #{[:snippet kd]}] [kd "Filter d" #{[:snippet kc]}] [ka "Filter a"])
           steps (plan/plan l m l)]
       (is (= [kc :interim] (first (step-forms steps))))
-      (is (key-moves-apply? l m steps))))
-  (testing "a trash does not free a name: the old holder takes a new name before the new holder writes it"
-    (let [l     (snippets [kb "Filter a"])
-          m     (snippets [ka "Filter a"])
-          steps (plan/plan l m l)]
-      (is (= [[kb :interim] [ka :write] [kb :trash]] (step-forms steps)))
       (is (key-moves-apply? l m steps)))))
 
 (def ^:private robin (engine.tu/eid "robin"))
@@ -431,12 +425,14 @@
 (deftest ^:parallel trash-rename-test
   (testing "an item that the target lacks, whose name a write takes: an interim step gives it the name with a suffix
            that names it, before every write, and the trash keeps that name"
-    (let [l (snippets [kb "Filter a"])
-          m (snippets [ka "Filter a"])]
+    (let [l     (snippets [kb "Filter a"])
+          m     (snippets [ka "Filter a"])
+          steps (plan/plan l m l)]
       (is (= [{:id kb :interim (assoc (get l kb) :name (trashed-name "Filter a" kb))}
               {:id ka :write (get m ka) :pre nil}
               {:id kb :trash true :pre (get l kb)}]
-             (plan/plan l m l)))))
+             steps))
+      (is (key-moves-apply? l m steps))))
   (testing "a name of one key counts: case and accents"
     (let [l     (snippets [kb "Héron"])
           m     (snippets [ka "HERON"])

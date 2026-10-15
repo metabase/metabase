@@ -68,14 +68,16 @@
 
 (defn pull-task-result
   "The task result of `result`, a result of `pull/pull!` of branch `branch`: `{:outcome o}` when the pull applied or
-  was up to date, else `{:error message}`."
-  [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused]}]
+  was up to date, else `{:error message}`. The outcome of a pull that trashed items with a new name has `:renamed`,
+  their number."
+  [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused renamed]}]
   (case result
-    :pulled     {:outcome {:kind    "pulled"
-                           :branch  branch
-                           :commit  head
-                           :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
-                           :trashed (count trashed-in-use)}}
+    :pulled     {:outcome (cond-> {:kind    "pulled"
+                                   :branch  branch
+                                   :commit  head
+                                   :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
+                                   :trashed (count trashed-in-use)}
+                            renamed (assoc :renamed (count renamed)))}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was pulled."
                                 branch (rules findings))}
@@ -113,15 +115,16 @@
 (defn deploy-task-result
   "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
   or was up to date, else `{:error message}`. The outcome of a deploy that discarded drift has `:discarded`, the number
-  of items of the drift."
-  [branch {:keys [result head steps trashed-in-use findings ids refused discarded]}]
+  of items of the drift; of a deploy that trashed items with a new name, `:renamed`, their number."
+  [branch {:keys [result head steps trashed-in-use findings ids refused discarded renamed]}]
   (case result
     :deployed   {:outcome (cond-> {:kind    "deployed"
                                    :branch  branch
                                    :commit  head
                                    :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
                                    :trashed (count trashed-in-use)}
-                            discarded (assoc :discarded (count discarded)))}
+                            discarded (assoc :discarded (count discarded))
+                            renamed   (assoc :renamed (count renamed)))}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was deployed."
                                 branch (rules findings))}
