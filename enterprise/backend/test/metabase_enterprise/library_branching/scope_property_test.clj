@@ -59,26 +59,26 @@
                                      :root      (if up (:root up) p)
                                      :archived  (boolean (or archive (:archived up)))})))
                       []
-                      (map-indexed vector collections))]
-    (let [items      (vec (map-indexed
-                           (fn [i {:keys [kind place archive]}]
-                             (let [candidates (into [nil] (range (count colls)))
-                                   p          (nth candidates (mod place (count candidates)))]
-                               {:entity-id (entity-id "i" i)
-                                :kind      kind
-                                :place     p
-                                :archived  (boolean (or (and archive (not= :transform kind))
-                                                        (some-> p (->> (nth colls)) :archived)))}))
-                           items))
-          transforms (filterv #(= :transform (:kind %)) items)]
-      {:collections colls
-       :items       items
-       :tests       (if (seq transforms)
-                      (vec (map-indexed (fn [i {:keys [transform]}]
-                                          {:entity-id (entity-id "t" i)
-                                           :transform (:entity-id (nth transforms (mod transform (count transforms))))})
-                                        tests))
-                      [])})))
+                      (map-indexed vector collections))
+        items      (vec (map-indexed
+                         (fn [i {:keys [kind place archive]}]
+                           (let [candidates (into [nil] (range (count colls)))
+                                 p          (nth candidates (mod place (count candidates)))]
+                             {:entity-id (entity-id "i" i)
+                              :kind      kind
+                              :place     p
+                              :archived  (boolean (or (and archive (not= :transform kind))
+                                                      (some-> p (->> (nth colls)) :archived)))}))
+                         items))
+        transforms (filterv #(= :transform (:kind %)) items)]
+    {:collections colls
+     :items       items
+     :tests       (if (seq transforms)
+                    (vec (map-indexed (fn [i {:keys [transform]}]
+                                        {:entity-id (entity-id "t" i)
+                                         :transform (:entity-id (nth transforms (mod transform (count transforms))))})
+                                      tests))
+                    [])}))
 
 ;;; ------------------------------------------------ The reference model ---------------------------------------------
 
