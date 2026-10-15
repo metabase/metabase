@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      awaiting-release: ${{ steps.set-matrix.outputs.awaiting-release }}
+      unreleased-changesets: ${{ steps.set-matrix.outputs.unreleased-changesets }}
     steps:
       - name: Require HEAD digest
         if: inputs.digest == ''
@@ -63,9 +63,9 @@ jobs:
 
             await generateCrossVersionMatrix({ core, supportedMajors });
 
-  notify-release-needed:
+  notify-unreleased-migrations:
     needs: generate-test-matrix
-    if: needs.generate-test-matrix.outputs.awaiting-release != '[]'
+    if: needs.generate-test-matrix.outputs.unreleased-changesets != '[]'
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -78,10 +78,10 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
-      - name: Ask on Slack for a release of majors with unreleased migrations
+      - name: Notify Slack about master commits that need a backport or a release
         uses: actions/github-script@v9
         env:
-          CHANGESETS: ${{ needs.generate-test-matrix.outputs.awaiting-release }}
+          CHANGESETS: ${{ needs.generate-test-matrix.outputs.unreleased-changesets }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
         with:

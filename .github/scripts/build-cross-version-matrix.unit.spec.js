@@ -2,7 +2,7 @@ const {
   buildCrossVersionMatrix,
   buildGatedCrossVersionMatrix,
   excludeBlockedDowngrades,
-  findCommitsToRelease,
+  findMasterCommits,
   findPendingChangesets,
   formatReleaseNeededMessage,
   generateCrossVersionMatrix,
@@ -301,13 +301,13 @@ describe("findPendingChangesets", () => {
 });
 
 describe("buildGatedCrossVersionMatrix", () => {
-  it("returns the gated matrix, the skipped entries and the changesets to release", () => {
+  it("returns the gated matrix, the skipped entries and the unreleased changesets", () => {
     const result = buildGatedCrossVersionMatrix({
       supportedMajors: [63, 62],
       pending: {
         63: [
           ["v63.a", "awaiting-release", "a.yaml"],
-          ["v63.b", "awaiting-backport"],
+          ["v63.b", "awaiting-backport", "b.yaml"],
         ],
       },
     });
@@ -318,7 +318,10 @@ describe("buildGatedCrossVersionMatrix", () => {
         { source: "v1.62.x", target: "HEAD" },
       ],
       skipped: [{ source: "HEAD", target: "v1.62.x" }],
-      awaitingRelease: [{ major: 63, id: "v63.a", file: "a.yaml" }],
+      unreleased: [
+        { major: 63, id: "v63.a", status: "awaiting-release", file: "a.yaml" },
+        { major: 63, id: "v63.b", status: "awaiting-backport", file: "b.yaml" },
+      ],
     });
   });
 });
@@ -341,7 +344,7 @@ describe("generateCrossVersionMatrix", () => {
       supportedMajors: [63],
       listPendingChangesets: () => "",
     });
-    expect(core.setOutput).toHaveBeenCalledWith("awaiting-release", "[]");
+    expect(core.setOutput).toHaveBeenCalledWith("unreleased-changesets", "[]");
     expect(core.setOutput).toHaveBeenCalledWith(
       "matrix",
       JSON.stringify({ include: buildCrossVersionMatrix([63]).config }),
@@ -363,8 +366,10 @@ describe("generateCrossVersionMatrix", () => {
     expect(core.summary.addList).toHaveBeenCalledWith(["HEAD → v1.62.x"]);
     expect(core.summary.write).toHaveBeenCalled();
     expect(core.setOutput).toHaveBeenCalledWith(
-      "awaiting-release",
-      JSON.stringify([{ major: 63, id: "v63.a", file: "a.yaml" }]),
+      "unreleased-changesets",
+      JSON.stringify([
+        { major: 63, id: "v63.a", status: "awaiting-release", file: "a.yaml" },
+      ]),
     );
   });
 });
@@ -372,139 +377,184 @@ describe("generateCrossVersionMatrix", () => {
 describe("release notification", () => {
   const owner = "metabase";
   const repo = "metabase";
-  const sha = "8ae0ae3ee3a0a349a4e48ba1aeb1a6891e694957";
+  const masterSha = "50e4cd4250ef7bd054b9a798267f06881424c7bc";
+  const backportSha = "8ae0ae3ee3a0a349a4e48ba1aeb1a6891e694957";
+  const file = "resources/migrations/063/x.yaml";
+  const masterUrl = `https://github.com/metabase/metabase/commit/${masterSha}`;
+
+  const pr = (number, base, merged = true) => ({
+    number,
+    html_url: `https://github.com/metabase/metabase/pull/${number}`,
+    merged_at: merged ? "2026-10-15T14:28:16Z" : null,
+    base: { ref: base },
+  });
 
   const makeGithub = () => ({
     rest: {
       repos: {
-        listCommits: jest.fn(async () => ({
-          data: [{ sha: "newer" }, { sha }],
+        listCommits: jest.fn(async ({ sha }) => ({
+          data:
+            sha === "release-x.63.x"
+              ? [{ sha: "newer" }, { sha: backportSha }]
+              : [{ sha: "newer" }, { sha: masterSha }],
         })),
-        listPullRequestsAssociatedWithCommit: jest.fn(async () => ({
-          data: [
-            {
-              number: 84525,
-              html_url: "https://github.com/metabase/metabase/pull/84525",
-              merged_at: "2026-10-15T14:28:16Z",
-              base: { ref: "release-x.63.x" },
-            },
-            {
-              number: 84542,
-              html_url: "https://github.com/metabase/metabase/pull/84542",
-              merged_at: null,
-              base: { ref: "release-x.63.x" },
-            },
-          ],
-        })),
+        listPullRequestsAssociatedWithCommit: jest.fn(
+          async ({ commit_sha }) => ({
+            data:
+              commit_sha === masterSha
+                ? [pr(84259, "master")]
+                : [
+                    pr(84525, "release-x.63.x"),
+                    pr(84542, "release-x.63.x", false),
+                  ],
+          }),
+        ),
       },
     },
   });
 
-  const changesets = [
-    { major: 63, id: "v63.a", file: "resources/migrations/063/x.yaml" },
-    { major: 63, id: "v63.b", file: "resources/migrations/063/x.yaml" },
+  const changesets = (status) => [
+    { major: 63, id: "v63.a", status, file },
+    { major: 63, id: "v63.b", status, file },
   ];
 
-  it("groups changesets by the oldest commit that has the file, with its merged PRs", async () => {
+  const context = { repo: { owner, repo }, runId: 1, sha: "head" };
+
+  it("groups changesets by the master commit that added the file, with its backport", async () => {
     const github = makeGithub();
-    const commits = await findCommitsToRelease({
+    const commits = await findMasterCommits({
       github,
       owner,
       repo,
-      changesets,
+      ref: "head",
+      changesets: changesets("awaiting-release"),
       warn: jest.fn(),
     });
     expect(commits).toEqual([
       {
-        major: 63,
-        branch: "release-x.63.x",
-        sha,
-        prs: [expect.objectContaining({ number: 84525 })],
-        ids: ["v63.a", "v63.b"],
+        sha: masterSha,
+        prs: [expect.objectContaining({ number: 84259 })],
+        majors: [
+          {
+            major: 63,
+            status: "awaiting-release",
+            file,
+            ids: ["v63.a", "v63.b"],
+            backport: {
+              sha: backportSha,
+              prs: [expect.objectContaining({ number: 84525 })],
+            },
+          },
+        ],
       },
     ]);
-    expect(
-      github.rest.repos.listPullRequestsAssociatedWithCommit,
-    ).toHaveBeenCalledTimes(1);
-  });
-
-  it("warns when no commit on the release branch has the file", async () => {
-    const github = makeGithub();
-    github.rest.repos.listCommits.mockResolvedValue({ data: [] });
-    const warn = jest.fn();
-    const commits = await findCommitsToRelease({
-      github,
-      owner,
-      repo,
-      changesets: [changesets[0]],
-      warn,
-    });
-    expect(commits).toEqual([]);
-    expect(warn).toHaveBeenCalledWith(
-      "No commit on release-x.63.x has resources/migrations/063/x.yaml",
+    expect(github.rest.repos.listCommits).toHaveBeenCalledWith(
+      expect.objectContaining({ sha: "head", path: file }),
     );
   });
 
-  it("links the commit and the PR in the message", () => {
+  it("has no backport when the changesets are not backported yet", async () => {
+    const github = makeGithub();
+    const [commit] = await findMasterCommits({
+      github,
+      owner,
+      repo,
+      ref: "head",
+      changesets: changesets("awaiting-backport"),
+      warn: jest.fn(),
+    });
+    expect(commit.majors[0].backport).toBeNull();
+    expect(github.rest.repos.listCommits).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sha: "release-x.63.x" }),
+    );
+  });
+
+  it("warns when no master commit has the file", async () => {
+    const github = makeGithub();
+    github.rest.repos.listCommits.mockResolvedValue({ data: [] });
+    const warn = jest.fn();
+    const commits = await findMasterCommits({
+      github,
+      owner,
+      repo,
+      ref: "head",
+      changesets: changesets("awaiting-backport"),
+      warn,
+    });
+    expect(commits).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(`No commit on master has ${file}`);
+  });
+
+  it("links the master commit, its PR and the backport in the message", () => {
     const message = formatReleaseNeededMessage({
       owner,
       repo,
       runUrl: "https://run",
       commit: {
-        major: 63,
-        branch: "release-x.63.x",
-        sha,
-        prs: [
+        sha: masterSha,
+        prs: [pr(84259, "master")],
+        majors: [
           {
-            number: 84525,
-            html_url: "https://github.com/metabase/metabase/pull/84525",
+            major: 63,
+            status: "awaiting-release",
+            ids: ["v63.a"],
+            backport: { sha: backportSha, prs: [pr(84525, "release-x.63.x")] },
+          },
+          {
+            major: 62,
+            status: "awaiting-backport",
+            ids: ["v62.a"],
+            backport: null,
           },
         ],
-        ids: ["v63.a", "v63.b"],
       },
     });
     expect(message).toBe(
       [
-        ":warning: *v63 needs a release.*",
-        `Commit <https://github.com/metabase/metabase/commit/${sha}|8ae0ae3ee3> (<https://github.com/metabase/metabase/pull/84525|#84525>) added \`v63.a\`, \`v63.b\` to \`release-x.63.x\`, but no v63 release has it yet.`,
-        "Cross-version downgrades from master to versions older than v63 are skipped until a release has it. <https://run|Run>",
+        `:warning: *<${masterUrl}|50e4cd4250> (<https://github.com/metabase/metabase/pull/84259|#84259>) needs a backport and a release.*`,
+        "It added `v63.a`, `v62.a` to master, but no release of v63, v62 has them yet:",
+        `• v63: backported in <https://github.com/metabase/metabase/commit/${backportSha}|8ae0ae3ee3> (<https://github.com/metabase/metabase/pull/84525|#84525>), but not released yet`,
+        "• v62: not backported yet",
+        "Cross-version downgrades from master to versions older than v63, v62 are skipped until a release has them. <https://run|Run>",
       ].join("\n"),
     );
   });
 
-  it("sends one message per commit", async () => {
+  it("sends one message per master commit", async () => {
     const sendSlackMessage = jest.fn(async () => ({}));
+    const findSlackMessage = jest.fn(async () => null);
     await notifyReleaseNeeded({
       github: makeGithub(),
-      context: { repo: { owner, repo }, runId: 1 },
+      context,
       core: { warning: jest.fn() },
-      changesets,
-      channelName: "release",
-      findSlackMessage: jest.fn(async () => null),
-      sendSlackMessage,
-    });
-    expect(sendSlackMessage).toHaveBeenCalledTimes(1);
-    expect(sendSlackMessage).toHaveBeenCalledWith({
-      channelName: "release",
-      message: expect.stringContaining("v63 needs a release"),
-    });
-  });
-
-  it("does not send a message when the channel already has one for the commit", async () => {
-    const sendSlackMessage = jest.fn();
-    const findSlackMessage = jest.fn(async () => ({ id: "1", body: "" }));
-    await notifyReleaseNeeded({
-      github: makeGithub(),
-      context: { repo: { owner, repo }, runId: 1 },
-      core: { warning: jest.fn() },
-      changesets,
+      changesets: changesets("awaiting-release"),
       channelName: "release",
       findSlackMessage,
       sendSlackMessage,
     });
     expect(findSlackMessage).toHaveBeenCalledWith({
       channelName: "release",
-      text: `https://github.com/metabase/metabase/commit/${sha}`,
+      text: masterUrl,
+    });
+    expect(sendSlackMessage).toHaveBeenCalledTimes(1);
+    expect(sendSlackMessage).toHaveBeenCalledWith({
+      channelName: "release",
+      message: expect.stringContaining("needs a release"),
+    });
+  });
+
+  it("does not send a message when the channel already has one for the master commit", async () => {
+    const sendSlackMessage = jest.fn();
+    await notifyReleaseNeeded({
+      github: makeGithub(),
+      context,
+      core: { warning: jest.fn() },
+      changesets: changesets("awaiting-release"),
+      channelName: "release",
+      findSlackMessage: jest.fn(async ({ text }) =>
+        text === masterUrl ? { id: "1", body: "" } : null,
+      ),
+      sendSlackMessage,
     });
     expect(sendSlackMessage).not.toHaveBeenCalled();
   });

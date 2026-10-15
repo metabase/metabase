@@ -117,14 +117,16 @@ function buildGatedCrossVersionMatrix({ supportedMajors, pending }) {
   const blockedMajors = Object.keys(pending).map(Number);
   const gatedConfig = excludeBlockedDowngrades(config, blockedMajors);
   const skipped = config.filter((entry) => !gatedConfig.includes(entry));
-  const awaitingRelease = Object.entries(pending).flatMap(
-    ([major, changesets]) =>
-      changesets
-        .filter(([, status]) => status === "awaiting-release")
-        .map(([id, , file]) => ({ major: Number(major), id, file })),
+  const unreleased = Object.entries(pending).flatMap(([major, changesets]) =>
+    changesets.map(([id, status, file]) => ({
+      major: Number(major),
+      id,
+      status,
+      file,
+    })),
   );
 
-  return { config: gatedConfig, skipped, awaitingRelease };
+  return { config: gatedConfig, skipped, unreleased };
 }
 
 async function generateCrossVersionMatrix({
@@ -137,7 +139,7 @@ async function generateCrossVersionMatrix({
     listPendingChangesets,
     warn: core.warning,
   });
-  const { config, skipped, awaitingRelease } = buildGatedCrossVersionMatrix({
+  const { config, skipped, unreleased } = buildGatedCrossVersionMatrix({
     supportedMajors,
     pending,
   });
@@ -164,62 +166,139 @@ async function generateCrossVersionMatrix({
   }
 
   const matrix = JSON.stringify({ include: config });
-  core.setOutput("awaiting-release", JSON.stringify(awaitingRelease));
+  core.setOutput("unreleased-changesets", JSON.stringify(unreleased));
   core.setOutput("matrix", matrix);
   console.log("matrix:", matrix);
 }
 
-async function findCommitsToRelease({ github, owner, repo, changesets, warn }) {
+async function findOldestCommit({ github, owner, repo, ref, path }) {
+  const { data } = await github.rest.repos.listCommits({
+    owner,
+    repo,
+    sha: ref,
+    path,
+    per_page: 100,
+  });
+  return data.at(-1);
+}
+
+async function findMergedPrs({ github, owner, repo, sha, base }) {
+  const { data } = await github.rest.repos.listPullRequestsAssociatedWithCommit(
+    { owner, repo, commit_sha: sha },
+  );
+  return data.filter((pr) => pr.merged_at && pr.base.ref === base);
+}
+
+async function findMasterCommits({
+  github,
+  owner,
+  repo,
+  ref,
+  changesets,
+  warn,
+}) {
   const commits = new Map();
-  for (const { major, id, file } of changesets) {
-    const branch = `release-x.${major}.x`;
-    const { data } = await github.rest.repos.listCommits({
+  for (const { major, id, status, file } of changesets) {
+    const commit = await findOldestCommit({
+      github,
       owner,
       repo,
-      sha: branch,
+      ref,
       path: file,
-      per_page: 100,
     });
-    const commit = data.at(-1);
     if (!commit) {
-      warn(`No commit on ${branch} has ${file}`);
+      warn(`No commit on master has ${file}`);
       continue;
     }
 
-    const key = `${major}:${commit.sha}`;
-    if (!commits.has(key)) {
-      const { data: prs } =
-        await github.rest.repos.listPullRequestsAssociatedWithCommit({
-          owner,
-          repo,
-          commit_sha: commit.sha,
-        });
-      commits.set(key, {
-        major,
-        branch,
+    if (!commits.has(commit.sha)) {
+      const prs = await findMergedPrs({
+        github,
+        owner,
+        repo,
         sha: commit.sha,
-        prs: prs.filter((pr) => pr.merged_at && pr.base.ref === branch),
-        ids: [],
+        base: "master",
       });
+      commits.set(commit.sha, { sha: commit.sha, prs, majors: new Map() });
     }
-    commits.get(key).ids.push(id);
+
+    const { majors } = commits.get(commit.sha);
+    if (!majors.has(major)) {
+      majors.set(major, { major, status, file, ids: [], backport: null });
+    }
+    const entry = majors.get(major);
+    entry.ids.push(id);
+    if (status === "awaiting-backport") {
+      entry.status = status;
+    }
   }
-  return [...commits.values()];
+
+  const result = [];
+  for (const { sha, prs, majors } of commits.values()) {
+    const majorEntries = [...majors.values()];
+    for (const entry of majorEntries) {
+      if (entry.status !== "awaiting-release") {
+        continue;
+      }
+      const branch = `release-x.${entry.major}.x`;
+      const backport = await findOldestCommit({
+        github,
+        owner,
+        repo,
+        ref: branch,
+        path: entry.file,
+      });
+      if (backport) {
+        entry.backport = {
+          sha: backport.sha,
+          prs: await findMergedPrs({
+            github,
+            owner,
+            repo,
+            sha: backport.sha,
+            base: branch,
+          }),
+        };
+      }
+    }
+    result.push({ sha, prs, majors: majorEntries });
+  }
+  return result;
 }
 
 function commitUrl({ owner, repo, sha }) {
   return `https://github.com/${owner}/${repo}/commit/${sha}`;
 }
 
-function formatReleaseNeededMessage({ owner, repo, runUrl, commit }) {
-  const { major, branch, sha, prs, ids } = commit;
+function commitLink({ owner, repo, sha, prs }) {
   const prLinks =
     prs.map((pr) => `<${pr.html_url}|#${pr.number}>`).join(", ") ||
     "no PR found";
+  return `<${commitUrl({ owner, repo, sha })}|${sha.slice(0, 10)}> (${prLinks})`;
+}
+
+function formatReleaseNeededMessage({ owner, repo, runUrl, commit }) {
+  const needsBackport = commit.majors.some(
+    ({ status }) => status === "awaiting-backport",
+  );
+  const needsRelease = commit.majors.some(
+    ({ status }) => status === "awaiting-release",
+  );
+  const needs = [needsBackport && "a backport", needsRelease && "a release"]
+    .filter(Boolean)
+    .join(" and ");
+  const ids = commit.majors.flatMap((entry) => entry.ids);
+  const versions = commit.majors.map(({ major }) => `v${major}`).join(", ");
+
   return [
-    `:warning: *v${major} needs a release.*`,
-    `Commit <${commitUrl({ owner, repo, sha })}|${sha.slice(0, 10)}> (${prLinks}) added ${ids.map((id) => `\`${id}\``).join(", ")} to \`${branch}\`, but no v${major} release has it yet.`,
-    `Cross-version downgrades from master to versions older than v${major} are skipped until a release has it. <${runUrl}|Run>`,
+    `:warning: *${commitLink({ owner, repo, ...commit })} needs ${needs}.*`,
+    `It added ${ids.map((id) => `\`${id}\``).join(", ")} to master, but no release of ${versions} has them yet:`,
+    ...commit.majors.map(({ major, backport }) =>
+      backport
+        ? `• v${major}: backported in ${commitLink({ owner, repo, ...backport })}, but not released yet`
+        : `• v${major}: not backported yet`,
+    ),
+    `Cross-version downgrades from master to versions older than ${versions} are skipped until a release has them. <${runUrl}|Run>`,
   ].join("\n");
 }
 
@@ -234,10 +313,11 @@ async function notifyReleaseNeeded({
 }) {
   const { owner, repo } = context.repo;
   const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
-  const commits = await findCommitsToRelease({
+  const commits = await findMasterCommits({
     github,
     owner,
     repo,
+    ref: context.sha,
     changesets,
     warn: core.warning,
   });
@@ -248,7 +328,7 @@ async function notifyReleaseNeeded({
       console.error,
     );
     if (existing) {
-      console.log(`Already asked for a release of ${url}`);
+      console.log(`Already sent a notification for ${url}`);
       continue;
     }
 
@@ -265,7 +345,7 @@ module.exports = {
   findPendingChangesets,
   buildGatedCrossVersionMatrix,
   generateCrossVersionMatrix,
-  findCommitsToRelease,
+  findMasterCommits,
   formatReleaseNeededMessage,
   notifyReleaseNeeded,
 };
