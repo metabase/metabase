@@ -144,7 +144,7 @@
 
 (deftest ^:parallel registered-scopes-test
   (testing "registered-scopes reports the scopes of the landed tools. (It does not feed the DCR grant: that reads
-            `mcp.paths/v2-surface-scopes`, and a tool whose :scope is outside that set is unreachable over OAuth
+            `mcp.scope/v2-surface-scopes`, and a tool whose :scope is outside that set is unreachable over OAuth
             — which the containment below guards.)"
     (is (set/subset? #{"agent:content:read"} (set (registry/registered-scopes)))))
   ;; GHY-4225 retired :required-scopes from v2: duplicate_content's per-type create scopes all

@@ -2,7 +2,7 @@
   "Test-only v2 MCP tools and registry helpers. Never loaded by the production surface."
   (:require
    [clojure.string :as str]
-   [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -16,7 +16,7 @@
 (def all-scopes
   "Token scopes holding every scope the v2 MCP surface accepts. Tests that exercise a tool rather than its scope
    gate call it with these."
-  (set mcp.paths/v2-surface-scopes))
+  (set mcp.scope/v2-surface-scopes))
 
 (defn do-with-bearer-token!
   "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."

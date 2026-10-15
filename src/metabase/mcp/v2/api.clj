@@ -67,7 +67,7 @@
    asking for [[step-up-scopes]] over `token-scopes`, with [[step-up-description]] as the `error_description`."
   [error-response token-scopes {:keys [required-scope description]}]
   (transport/insufficient-scope error-response
-                                (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
+                                (step-up-scopes mcp.scope/v2-surface-scopes token-scopes required-scope)
                                 (step-up-description description)))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
@@ -218,7 +218,7 @@
   ;; untick away. A call needing a scope the token lacks is still answered with a 403 `insufficient_scope`, for
   ;; clients that step up. A scope outside the ceiling is answered "Invalid scope" for a client that follows the
   ;; challenge.
-  mcp.paths/v2-surface-scopes)
+  mcp.scope/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

@@ -8,8 +8,8 @@
    [metabase.config.core :as config]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.http-handler :as mcp.http-handler]
-   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.permissions :as mcp.perms]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
@@ -365,7 +365,7 @@
           (f {"cookie session" cookie-tools
               "content:read"   (bearer-tools ["agent:content:read"])
               "query:run"      (bearer-tools ["agent:query:run"])
-              "all v2 scopes"  (bearer-tools (vec mcp.paths/v2-surface-scopes))}))))))
+              "all v2 scopes"  (bearer-tools (vec mcp.scope/v2-surface-scopes))}))))))
 
 (deftest tools-list-is-identical-whatever-the-token-holds-test
   (testing "GHY-4543: Claude Code keeps the first descriptors it loads for the whole session, and ChatGPT reads
@@ -551,7 +551,7 @@
                  (is (str/includes? text "uiCredential")))))))))))
 
 (deftest ^:parallel v2-surface-scopes-match-metabot-scope-test
-  (testing "`v2-surface-scopes` spells its scopes as literals because `metabase.mcp.paths` must stay
+  (testing "`v2-surface-scopes` spells its scopes as literals because `metabase.mcp.scope` must stay
             dependency-free — `metabase.server.middleware.security` requires `metabase.mcp.core`, so requiring
             `metabot.scope` from anything `mcp.core` reaches deadlocks namespace loading at web-server start.
             This is what keeps the literals honest in place of that require."
@@ -560,7 +560,7 @@
             metabot.scope/agent-query-run
             metabot.scope/agent-sql-run
             metabot.scope/agent-delivery-write]
-           mcp.paths/v2-surface-scopes))))
+           mcp.scope/v2-surface-scopes))))
 
 (deftest ^:parallel no-rest-endpoint-declares-an-mcp-scope-test
   (testing "GHY-4939: MCP scopes gate the MCP surface only. A REST endpoint that declares one lets an OAuth token
@@ -568,7 +568,7 @@
     (require 'metabase.api-routes.routes)
     (when config/ee-available?
       (require 'metabase-enterprise.api-routes.routes))
-    (let [mcp-scopes (set mcp.paths/v2-surface-scopes)]
+    (let [mcp-scopes (set mcp.scope/v2-surface-scopes)]
       (is (= []
              (for [nmspace                (all-ns)
                    [[method route] {:keys [form]}] (api.macros/ns-routes nmspace)
@@ -588,7 +588,7 @@
           (is (contains? grantable scope)
               "a scope the v2 challenge asks for must be one the OAuth server will actually grant")))))
   (testing "ENG-11089: the challenge asks for everything the surface accepts, in surface order"
-    (is (= mcp.paths/v2-surface-scopes @#'v2.api/default-ask-scopes))))
+    (is (= mcp.scope/v2-surface-scopes @#'v2.api/default-ask-scopes))))
 
 (def ^:private mcp-app-ui-capabilities
   "The `initialize` capabilities an MCP Apps host advertises. Tools gated on `:mcp-app-ui` are hidden from — and
@@ -1222,7 +1222,7 @@
   (testing "GHY-4543: a client holding only the always-granted baseline is challenged, on a write, for the
             baseline plus the scope that write needs, so its step-up keeps what it already holds"
     (v2.tu/do-with-bearer-token!
-     (set mcp.paths/v2-baseline-scopes)
+     (set mcp.scope/v2-baseline-scopes)
      (fn [headers]
        (let [post!    (bearer-session-post! headers)
              response (post! 403 (jsonrpc-request "tools/call"
@@ -1249,7 +1249,7 @@
             connected client queries and charts without a 403."
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (v2.tu/do-with-bearer-token!
-       (set mcp.paths/v2-baseline-scopes)
+       (set mcp.scope/v2-baseline-scopes)
        (fn [headers]
          (let [session-id (-> (client/client-full-response :post 200 endpoint
                                                            {:request-options {:headers headers}}
@@ -1328,7 +1328,7 @@
   (testing "GHY-4543, GHY-4939: the locked baseline carries agent:content:read, so a client that unticked everything
             else still reads the fields catalog without stepping up"
     (v2.tu/do-with-bearer-token!
-     (set mcp.paths/v2-baseline-scopes)
+     (set mcp.scope/v2-baseline-scopes)
      (fn [headers]
        (let [response ((bearer-session-post! headers)
                        200
