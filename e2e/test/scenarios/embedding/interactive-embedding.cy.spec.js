@@ -680,7 +680,7 @@ describe("scenarios > embedding > full app", () => {
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
-    it('should respect "entity_types" search parameter and never offer questions or metrics (EMB-228)', () => {
+    it('should show tables, models, and metrics without "entity_types", and only tables with `entity_types=table` (EMB-228)', () => {
       H.createQuestion({
         ...ordersCountCardDetails,
         type: "metric",
@@ -701,7 +701,7 @@ describe("scenarios > embedding > full app", () => {
         cy.findByText("Models").should("be.visible");
         cy.findByText("Raw Data").should("be.visible");
         cy.findByText("Saved Questions").should("not.exist");
-        cy.findByText("Metrics").should("not.exist");
+        cy.findByText("Metrics").should("be.visible");
       });
 
       cy.log("test providing `entity_types` as an empty string");
@@ -1011,6 +1011,53 @@ describe("scenarios > embedding > full app", () => {
         verifyTableSelected({
           tableName: "Products",
           databaseName: "Sample Database",
+        });
+      });
+    });
+
+    describe("metric", () => {
+      beforeEach(() => {
+        H.createQuestion({
+          ...ordersCountCardDetails,
+          type: "metric",
+          collection_id: null,
+        });
+        cy.intercept({
+          method: "GET",
+          pathname: "/api/database",
+          query: {
+            saved: "true",
+          },
+        }).as("getDatabases");
+      });
+
+      it("should select a metric as the starting data source", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        cy.wait("@getDatabases");
+        selectCard({
+          cardName: ordersCountCardDetails.name,
+          cardType: "metric",
+          collectionNames: [],
+        });
+
+        // A metric becomes the aggregation on the table it is built from,
+        // rather than the source card a model or a question would become.
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(ordersCountCardDetails.name)
+          .should("be.visible");
+      });
+
+      it("should not be able to join a metric", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        cy.wait("@getDatabases");
+        selectTable({ tableName: "Orders" });
+
+        H.getNotebookStep("data").button("Join data").click();
+        goBackToBucketStep();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("not.exist");
         });
       });
     });

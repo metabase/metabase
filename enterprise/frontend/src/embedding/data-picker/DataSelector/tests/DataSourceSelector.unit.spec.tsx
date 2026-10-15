@@ -18,69 +18,63 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DataSourceSelector } from "../DataSelector";
 
 const DATABASES = [createSampleDatabase()];
 
-const storeInitialState = createMockState({
-  settings: createMockSettingsState({
-    "enable-nested-queries": true,
-  }),
-});
-
-const AVAILABLE_MODELS: Record<
-  AvailableModels,
-  Extract<SearchModel, "table" | "dataset" | "card">[]
-> = {
-  "tables-only": ["table"],
-  "with-models": ["table", "dataset"],
-  "with-questions": ["table", "card"],
-};
-
-type AvailableModels = "tables-only" | "with-models" | "with-questions";
+type AvailableModel = Extract<
+  SearchModel,
+  "table" | "dataset" | "card" | "metric"
+>;
 
 interface SetupOpts {
   databases?: Database[];
   isJoinStep?: boolean;
-  availableModels?: AvailableModels;
+  availableModels?: AvailableModel[];
   selectedTable?: {
     id: number;
     databaseId: number;
   };
   entityTypes?: EmbeddingEntityType[];
+  hasNestedQueriesEnabled?: boolean;
 }
 
 function setup({
   databases = DATABASES,
   isJoinStep = false,
-  availableModels = "tables-only",
+  availableModels = ["table"],
   selectedTable,
   entityTypes,
+  hasNestedQueriesEnabled = true,
 }: SetupOpts = {}) {
   fetchMock.get({
     url: "path:/api/search",
     query: {
       calculate_available_models: true,
       limit: 0,
-      models: ["dataset"],
+      models: ["dataset", "metric"],
     },
     response: {
       data: [],
       limit: 0,
-      models: ["dataset"],
+      models: ["dataset", "metric"],
       offset: 0,
       table_db_id: null,
       engine: "search.engine/in-place",
       total: 1,
-      available_models: AVAILABLE_MODELS[availableModels],
+      available_models: availableModels,
     },
   });
 
   setupDatabasesEndpoints(
     databases,
-    { hasSavedQuestions: availableModels === "with-questions" },
+    { hasSavedQuestions: availableModels.includes("card") },
     { saved: true },
   );
 
@@ -100,17 +94,24 @@ function setup({
       canSelectModel={entityTypes ? entityTypes.includes("model") : true}
       canSelectTable={entityTypes ? entityTypes.includes("table") : true}
       canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
+      canSelectMetric={entityTypes ? entityTypes.includes("metric") : true}
       triggerElement={<div>Click me to open or close data picker</div>}
       setSourceTableFn={jest.fn()}
     />,
-    { storeInitialState },
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState({
+          "enable-nested-queries": hasNestedQueriesEnabled,
+        }),
+      }),
+    },
   );
 }
 
 describe("DataSourceSelector", () => {
   it("should close the picker when clicking outside", async () => {
     setup({
-      availableModels: "tables-only",
+      availableModels: ["table"],
     });
 
     expect(await screen.findByText("Orders")).toBeInTheDocument();
@@ -126,7 +127,7 @@ describe("DataSourceSelector", () => {
 
   describe("only tables are available", () => {
     const setupOpts: SetupOpts = {
-      availableModels: "tables-only",
+      availableModels: ["table"],
     };
 
     it("should show search input when there are 10 and more tables", async () => {
@@ -186,7 +187,7 @@ describe("DataSourceSelector", () => {
 
   describe("both models and tables are available", () => {
     const setupOpts: SetupOpts = {
-      availableModels: "with-models",
+      availableModels: ["table", "dataset"],
     };
 
     it("should only show data from the selected database when joining data", async () => {
@@ -228,12 +229,13 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
     });
   });
 
   describe("both questions and tables are available", () => {
     const setupOpts: SetupOpts = {
-      availableModels: "with-questions",
+      availableModels: ["table", "card"],
     };
 
     it("should skip the bucket step and show the SavedEntityPicker right away if there is only questions in the bucket step", async () => {
@@ -244,6 +246,7 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
@@ -262,6 +265,63 @@ describe("DataSourceSelector", () => {
     });
   });
 
+  describe("both metrics and tables are available", () => {
+    const setupOpts: SetupOpts = {
+      availableModels: ["table", "metric"],
+    };
+
+    it("should skip the bucket step and show the SavedEntityPicker right away if there is only metrics in the bucket step", async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["metric"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Metrics")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it("should not offer metrics when joining", async () => {
+      setup({
+        ...setupOpts,
+        isJoinStep: true,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      // Go back from the table step to the database step, which offers no
+      // way back to a bucket step when metrics are the only other option
+      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("chevronleft icon"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
+      setup(setupOpts);
+
+      await userEvent.click(await screen.findByText("Metrics"));
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Metrics")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not offer metrics when nested queries are disabled", async () => {
+      setup({ ...setupOpts, hasNestedQueriesEnabled: false });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+  });
+
   // metabase#74428: after the "Remove database entity" PR the picker hydrated as
   // soon as the (fast) models search resolved, so it showed the models bucket
   // before the database list had loaded and streamed the databases in
@@ -277,13 +337,13 @@ describe("DataSourceSelector", () => {
         query: {
           calculate_available_models: true,
           limit: 0,
-          models: ["dataset"],
+          models: ["dataset", "metric"],
         },
         response: () =>
           searchResponse.then(() => ({
             data: [],
             limit: 0,
-            models: ["dataset"],
+            models: ["dataset", "metric"],
             offset: 0,
             table_db_id: null,
             total: 1,
@@ -316,6 +376,7 @@ describe("DataSourceSelector", () => {
           canSelectModel
           canSelectTable
           canSelectQuestion
+          canSelectMetric
           triggerElement={<div>Click me to open or close data picker</div>}
           setSourceTableFn={jest.fn()}
         />,

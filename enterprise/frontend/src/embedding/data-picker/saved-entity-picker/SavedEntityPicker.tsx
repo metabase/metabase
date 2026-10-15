@@ -64,6 +64,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = mergeLazily(
 export function SavedEntityPicker(props: SavedEntityPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery({
     "exclude-archived": true,
+    "include-library": true,
     namespaces: ["", "shared-tenant-collection", "tenant-specific"],
   });
   const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
@@ -132,7 +133,9 @@ function InnerSavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, { modelFilter }),
+      ...resolveLibraryNodes(
+        buildCollectionTree(preparedCollections, { modelFilter }),
+      ),
     ];
   }, [collections, rootCollection, currentUser, type]);
 
@@ -184,5 +187,24 @@ function InnerSavedEntityPicker({
         onSelect={onSelect}
       />
     </Box>
+  );
+}
+
+// The Library only holds its Data, Metrics and Dashboards folders, so when a
+// single folder is left after filtering, the Library node stands for it:
+// selecting the Library lists that folder's items instead of nothing. Same rule
+// as `useGetResolvedLibraryCollection` in the core pickers.
+function resolveLibraryNodes(
+  collectionTree: CollectionTreeItem[],
+): CollectionTreeItem[] {
+  return collectionTree.map((collection) =>
+    collection.type === "library" && collection.children.length === 1
+      ? {
+          ...collection.children[0],
+          name: collection.name,
+          schemaName: collection.schemaName,
+          icon: collection.icon,
+        }
+      : collection,
   );
 }
