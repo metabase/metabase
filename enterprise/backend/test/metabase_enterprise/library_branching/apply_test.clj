@@ -3,6 +3,7 @@
   state that `current` gives, with and without a base; the unique keys of the written items against the rows that
   stay (the trash included); and no trash of a system item. Each apply that does not return `:ok` writes nothing."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
@@ -106,18 +107,35 @@
     (let [item           (snippet id "Base" "changed = 1")
           [result after] (apply-to! {:snapshot {id c}} [{:id id :write item :pre c}] "base")]
       (is (contains? result :ok))
-      (is (= {id item} (:snapshot after))))))
+      (is (= {id item} (:snapshot after)))))
+  (testing "two names that differ only in case or accents are one key, as validate compares them"
+    (doseq [[held written] [["Filter" "filter"] ["Société" "SOCIETE"]]]
+      (testing (str (pr-str held) " in the trash, " (pr-str written) " written")
+        (let [before         {:snapshot {} :trash {trashed-id (snippet trashed-id held)}}
+              plan           [{:id new-id :write (snippet new-id written) :pre nil}]
+              [result after] (apply-to! before plan "base")]
+          (is (= {:key-clash [{:rule :unique-key :kind :snippet :key written :ids #{new-id trashed-id}}]} result))
+          (is (= before after)))))))
 
-(def ^:private names ["A" "B" "C" "D"])
+(def ^:private names ["Ana" "Bea" "Cid" "Dan"])
 (def ^:private ids ["UniqueKeySnippet00001" "UniqueKeySnippet00002" "UniqueKeySnippet00003" "UniqueKeySnippet00004"])
 
+(def ^:private names-gen
+  "Generates a permutation of [[names]], each name in one of its spellings that are one key: as it is, in lower case,
+  in upper case, or with an accent on its first letter."
+  (gen/let [ns        (gen/shuffle names)
+            spellings (gen/vector (gen/elements [identity str/lower-case str/upper-case
+                                                 #(str (first %) "\u0301" (subs % 1))])
+                                  (count names))]
+    (mapv #(%1 %2) spellings ns)))
+
 (def ^:private key-world-gen
-  "Generates `[state target]`: a memory instance state whose snippets (live or trashed) have distinct names, and a
-  target snapshot of snippets with distinct names. Constructive: the names of each side are a permutation of
-  [[names]], and each identity takes a state."
-  (gen/let [row-names    (gen/shuffle names)
+  "Generates `[state target]`: a memory instance state whose snippets (live or trashed) have distinct keys, and a
+  target snapshot of snippets with distinct keys. Constructive: the names of each side are a permutation of
+  [[names]], in spellings of [[names-gen]], and each identity takes a state."
+  (gen/let [row-names    names-gen
             row-states   (gen/vector (gen/elements [:live :trashed :absent]) (count ids))
-            target-names (gen/shuffle names)
+            target-names names-gen
             in-target    (gen/vector gen/boolean (count ids))]
     (let [rows   (map vector ids row-names row-states)
           state  {:snapshot (into {} (keep (fn [[i n s]] (when (= :live s) [i (snippet i n)]))) rows)
@@ -134,15 +152,15 @@
         snapshot))
 
 (defn- rows-unique?
-  "True iff the snippets of `state`, live and trashed, have distinct names."
+  "True iff the snippets of `state`, live and trashed, have distinct keys."
   [{:keys [snapshot trash]}]
-  (let [ns (map :name (concat (vals snapshot) (vals trash)))]
-    (= (count ns) (count (distinct ns)))))
+  (let [ks (map (comp snapshot/fold-name :name) (concat (vals snapshot) (vals trash)))]
+    (= (count ks) (count (distinct ks)))))
 
 (defspec apply-keeps-unique-keys-test 200
   (prop/for-all [[state target] key-world-gen]
     ;; Alloy ApplyKeepsUniqueKeys: with the key precondition, every applied state has unique keys; a refused apply
-    ;; names pairs that hold one name, one of them written by the plan, and writes nothing.
+    ;; names pairs that hold one key, one of them written by the plan, and writes nothing.
     (let [plan           (plan-to state target)
           written        (into #{} (keep #(when (:write %) (:id %))) plan)
           [result after] (apply-to! state plan "base")]
@@ -155,17 +173,28 @@
                               (= 2 (count ids))
                               (empty? more)
                               (= key (:name (get target w)))
-                              (= key (:name (or (get-in state [:snapshot holder]) (get-in state [:trash holder])))))))
+                              (= (snapshot/fold-name key)
+                                 (snapshot/fold-name (:name (or (get-in state [:snapshot holder])
+                                                                (get-in state [:trash holder]))))))))
                      clashes))
         (and (contains? result :ok)
              (rows-unique? after))))))
 
 (deftest key-world-gen-covers-the-cases-test
   (testing "the generator gives worlds whose apply clashes and worlds whose apply does not"
-    (let [results (map (fn [[state target]] (first (apply-to! state (plan-to state target) "base")))
-                       (gen/sample key-world-gen 200))]
+    (let [worlds  (gen/sample key-world-gen 200)
+          results (map (fn [[state target]] (first (apply-to! state (plan-to state target) "base"))) worlds)]
       (is (some :key-clash results))
-      (is (some :ok results)))))
+      (is (some :ok results))
+      (testing ", and clashes of two spellings of one key"
+        (is (some (fn [[{:keys [snapshot trash]} result]]
+                    (some (fn [{:keys [key ids]}]
+                            (some #(when-let [held (:name (or (get snapshot %) (get trash %)))]
+                                     (and (not= key held)
+                                          (= (snapshot/fold-name key) (snapshot/fold-name held))))
+                                  ids))
+                          (:key-clash result)))
+                  (map vector (map first worlds) results)))))))
 
 ;;; --------------------------------------------------- System items ---------------------------------------------------
 

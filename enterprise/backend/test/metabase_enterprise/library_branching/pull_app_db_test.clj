@@ -293,3 +293,26 @@
                     (pull! inst s)))
              (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
              (is (= c1 (instance/base inst))))))))))
+
+(deftest pull-refuses-a-name-that-differs-only-in-case-or-accents-test
+  (testing (str "The apply compares snippet names in the form of validate: a name that differs from the name of a "
+                "snippet in the trash only in case or accents is one key on every app DB. The apply refuses with the "
+                "pair before it writes; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _metrics]
+       (let [trashed (insert! :model/NativeQuerySnippet {:name       "lb pull Clash"
+                                                         :content    "1 = 1"
+                                                         :archived   true
+                                                         :creator_id (mt/user->id :crowberto)})
+             new-id  (second created-ids)]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 item           {:kind :snippet :name "lb pull cläsh" :place nil :refs #{} :attrs {:content "2 = 2"}}
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
+             (is (= {:result    :key-clash
+                     :head      h
+                     :key-clash [{:rule :unique-key :kind :snippet :key "lb pull cläsh"
+                                  :ids  #{new-id (:entity_id trashed)}}]}
+                    (pull! inst s)))
+             (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
+             (is (= c1 (instance/base inst))))))))))
