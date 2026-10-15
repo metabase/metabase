@@ -844,6 +844,12 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- tool-output
+  "The text the model sees: `result-xml` followed by `instruction-text`."
+  [result-xml instruction-text]
+  (str "<result>\n" result-xml "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
@@ -874,9 +880,7 @@
         (if structured
           (let [query-xml        (llm-shape/query->xml (structured->query-data structured))
                 instruction-text (instructions/query-created-instructions-for (:query-id structured) false)]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
+            (assoc query-result :output (tool-output query-xml instruction-text)))
           query-result)
 
         (not show-chart?)
@@ -885,8 +889,7 @@
                                 ""
                                 (str "To read its values, call `run_query` with `query_id` `"
                                      (:query-id structured) "`."))]
-          {:output            (str "<result>\n" (llm-shape/query->xml (structured->query-data structured)) "\n</result>\n"
-                                   "<instructions>\n" instruction-text "\n</instructions>")
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured)) instruction-text)
            :structured-output (assoc structured :result-type :query)
            :instructions      instruction-text})
 
@@ -910,8 +913,7 @@
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
+          {:output            (tool-output chart-xml instruction-text)
            :data-parts        [(streaming/viz-part
                                 {:entity-id   (:chart-id chart-result)
                                  :query-id    (:query-id structured)
