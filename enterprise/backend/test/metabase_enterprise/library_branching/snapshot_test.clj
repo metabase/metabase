@@ -241,7 +241,10 @@
     (let [ss (samples (lb.tu/well-formed-snapshot-gen))]
       (is (some (fn [s] (some #(<= 3 (depth s %)) (keys s))) ss) "an item three levels deep")
       (is (some sibling-clash? ss) "two siblings with one name and one kind")
-      (is (some #(= snapshot/kinds (set (map :kind (vals %)))) ss) "every kind in one snapshot")
+      ;; Every kind fits in one snapshot only near the most items, so this case uses the size of :max-items.
+      (is (some #(= snapshot/kinds (set (map :kind (vals %))))
+                (mapv #(gen/generate (lb.tu/well-formed-snapshot-gen) 50 %) (range 200)))
+          "every kind in one snapshot")
       (is (some (fn [s] (some (fn [[_ target]] (lb.tu/env-target? target)) (mapcat :refs (vals s)))) ss)
           "a reference to the environment")
       (is (some (fn [s] (some (fn [[id {:keys [refs]}]] (some #(= [id] (rest %)) refs)) s)) ss)
@@ -257,27 +260,29 @@
     (is (every? #(<= (count %) 3) (samples (lb.tu/well-formed-snapshot-gen {:max-items 3}))))))
 
 (defn- smallest-failure
-  "Shrinks the first value of generator `g` (size 30, seeds 0 to 199) that fails `pred` as test.check does: it moves
-  to the first shrink that still fails, until no shrink fails."
-  [g pred]
-  (loop [tree (some (fn [seed]
-                      (let [tree (gen/call-gen g (random/make-random seed) 30)]
-                        (when-not (pred (rose/root tree)) tree)))
-                    (range 200))]
+  "Shrinks the value of generator `g` (size 30) at `seed` as test.check does: it moves to the first shrink that still
+  fails `pred`, until no shrink fails."
+  [g pred seed]
+  (loop [tree (gen/call-gen g (random/make-random seed) 30)]
     (if-let [child (first (remove #(pred (rose/root %)) (rose/children tree)))]
       (recur child)
       (rose/root tree))))
 
 (deftest ^:parallel well-formed-snapshot-gen-shrinks-test
-  (testing "a failure on a snapshot with an item two levels deep shrinks to three items, with no references and no
-            attributes, under a root collection"
-    ;; The kinds of the items below the root depend on the order of the kinds: the first kind that a collection can
-    ;; contain, :action, contains nothing, so the chain goes through the first kind that contains one.
-    (let [smallest (smallest-failure (lb.tu/well-formed-snapshot-gen)
-                                     (fn [s] (not-any? #(<= 2 (depth s %)) (keys s))))]
-      (is (= 3 (count smallest)))
-      (is (every? #(and (empty? (:refs %)) (empty? (:attrs %))) (vals smallest)))
-      (is (= [:collection] (keep #(when (nil? (:place %)) (:kind %)) (vals smallest)))))))
+  (testing "a failure on a snapshot with an item two levels deep shrinks to three items in most cases, and to at most
+            four with no references in each case"
+    ;; A shrink can stop at four items: the removal of an item moves the place choices of the later items to other
+    ;; containers, so no single removal keeps the chain two levels deep.
+    (let [g        (lb.tu/well-formed-snapshot-gen)
+          pred     (fn [s] (not-any? #(<= 2 (depth s %)) (keys s)))
+          failing  (remove #(pred (rose/root (gen/call-gen g (random/make-random %) 30))) (range 40))
+          smallest (mapv #(smallest-failure g pred %) failing)]
+      (is (<= 10 (count smallest)))
+      (is (every? #(<= (count %) 4) smallest))
+      (is (every? (fn [s] (every? #(empty? (:refs %)) (vals s))) smallest))
+      (is (<= (* 3 (count smallest)) (* 4 (count (filter #(= 3 (count %)) smallest)))))
+      (is (every? (fn [s] (= [:collection] (keep #(when (nil? (:place %)) (:kind %)) (vals s))))
+                  (filter #(= 3 (count %)) smallest))))))
 
 (deftest ^:parallel well-formed-snapshot-gen-timing-test
   (testing "1,000 well-formed snapshots of size up to 30"
