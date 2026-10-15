@@ -41,7 +41,7 @@ export const SyncedContentSection = () => {
         <Flex align="center" gap="sm">
           <Icon name="info" c="text-secondary" />
           <Text c="text-secondary">
-            {t`Other collections stay on this instance and aren’t synced.`}
+            {t`Other collections stay on this instance and aren't synced.`}
           </Text>
         </Flex>
       </Stack>
