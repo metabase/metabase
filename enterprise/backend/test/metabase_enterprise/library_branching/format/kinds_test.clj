@@ -116,6 +116,13 @@
       (is (some #(get-in % [:attrs :fields]) items) "field settings")
       (is (some #(some (comp :fields val) (get-in % [:attrs :fields])) items) "a nested field")
       (is (some #(some (fn [[role]] (= :fk-target role)) (:refs %)) items) "a foreign-key target")
+      (is (some #(some (fn [[role]] (= :remapping role)) (:refs %)) items) "a foreign-key remapping")
+      (let [remappings (into []
+                             (comp (mapcat #(tree-seq coll? seq (get-in % [:attrs :fields])))
+                                   (keep #(when (map? %) (:remapping %))))
+                             items)]
+        (is (some #(and (= "internal" (:type %)) (:values %)) remappings) "an internal remapping with its values")
+        (is (some #(and (= "internal" (:type %)) (not (:values %))) remappings) "an internal remapping with no values"))
       (is (some #(< 3 (count (:refs %))) items) "an item with several references"))))
 
 ;;; ---------------------------------------------------- Golden files -------------------------------------------------
