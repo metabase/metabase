@@ -351,7 +351,7 @@
           (write! :published-table id item)
           (is (= (refs item) (current :published-table id))))))))
 
-(defn- field-values-writes
+(defn- field-values-writes!
   "The number of writes of human-readable values that `(f)` makes."
   [f]
   (let [n (atom 0)]
@@ -397,7 +397,7 @@
             (is (= {:type :internal :name "Price" :human_readable_field_id nil} (into {} (dimension :price))))
             (is (= {:values [1 2 3 4] :human_readable_values ["$" "$$" "3" "4"]} (values)))
             (testing "a write of the current content writes no field values"
-              (is (zero? (field-values-writes #(write! :published-table id (current :published-table id)))))))
+              (is (zero? (field-values-writes! #(write! :published-table id (current :published-table id)))))))
           (testing "a local removal of a remapping is a change of the table, and a write restores it"
             (t2/delete! :model/Dimension :field_id (mt/id :venues :category_id))
             (is (not= (refs item) (current :published-table id)))
@@ -418,7 +418,7 @@
               (is (= (refs changed) (current :published-table id)))
               (is (= {:values [1 2 3 4] :human_readable_values []} (values)))
               (testing "and a write of that content again writes no field values"
-                (is (zero? (field-values-writes #(write! :published-table id changed)))))))
+                (is (zero? (field-values-writes! #(write! :published-table id changed)))))))
           (testing "a label of a value that warehouse sync did not find stays out of the instance, and the values stay"
             (let [changed (assoc-in item [:attrs :fields :PRICE :remapping :labels] [[1 "$"] [9 "Nine"]])]
               (write! :published-table id changed)
@@ -426,7 +426,7 @@
                      (current :published-table id)))
               (is (= {:values [1 2 3 4] :human_readable_values ["$" "2" "3" "4"]} (values)))
               (testing "and a write of that content again writes no field values"
-                (is (zero? (field-values-writes #(write! :published-table id changed)))))))
+                (is (zero? (field-values-writes! #(write! :published-table id changed)))))))
           (testing "with no field values row, a write sets the dimension and inserts no row"
             (t2/delete! :model/FieldValues :field_id price)
             (write! :published-table id item)
