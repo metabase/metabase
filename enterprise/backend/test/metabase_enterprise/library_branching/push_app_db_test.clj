@@ -9,8 +9,11 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
+   [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
@@ -136,6 +139,47 @@
                  (is (= :pushed result))
                  (is (= [false false] (in-commit s commit [kept m-kept])))
                  (is (empty? (table-item-paths s commit))))))))))))
+
+(deftest push-names-a-shadowed-table-test
+  (testing (str "of an archived published table and a live published table with its key, a push writes the live one, "
+                "and the push result, the task outcome and the status name the archived one; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! library]
+       (let [data   (insert! :model/Collection {:name     "Owner data"
+                                                :type     "library-data"
+                                                :location (children-location library)})
+             table! (fn [table-name archived? description]
+                      (let [table (insert! :model/Table {:db_id       (mt/id)
+                                                         :schema      "PUBLIC"
+                                                         :name        table-name
+                                                         :active      (not archived?)
+                                                         :archived_at (when archived? (java.time.OffsetDateTime/now))})]
+                        (insert! :model/TableUserSettings {:table_id      (:id table)
+                                                           :is_published  true
+                                                           :collection_id (:id data)
+                                                           :description   description})
+                        table))
+             old    (table! "lb_push_owner__mbarchiv__1" true "The old table.")
+             _new   (table! "lb_push_owner" false "The new table.")
+             k      [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "lb_push_owner"]
+             inst   (app-db/app-db-instance)]
+         (with-remote [_repo s]
+           (let [[task-id {:keys [result commit shadowed-tables] :as pushed}]
+                 (ptu/do-with-push-task! (fn [id] [id (push/push! inst s ptu/branch id)]))
+                 messages [(scope/shadowed-message (first shadowed-tables))]]
+             (is (= :pushed result))
+             (is (= "The new table." (get-in (ptu/commit-snapshot s commit) [k :attrs :description])))
+             (is (= [(:id old)] (map :id shadowed-tables)))
+             (is (= messages (:warnings (:outcome (tasks/task task-id)))))
+             (is (= {:outcome (push/outcome ptu/branch commit shadowed-tables)}
+                    (operations/push-task-result ptu/branch pushed)))
+             (testing "a second push has nothing to push, and names the table again"
+               (let [again (ptu/push! inst s)]
+                 (is (= {:result :nothing-to-push :commit commit :shadowed-tables shadowed-tables} again))
+                 (is (= {:kind "nothing-to-push" :branch ptu/branch :commit commit :warnings messages}
+                        (:outcome (operations/push-task-result ptu/branch again))))))
+             (testing "the status names the table"
+               (is (= shadowed-tables (:shadowed-tables (status/status inst s ptu/branch {}))))))))))))
 
 (deftest push-of-the-app-db-test
   (testing (str "a push writes the synced snapshot of the app DB, and the base row holds the commit; app DB "
