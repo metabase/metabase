@@ -230,15 +230,17 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages        messages
-                               :state           state
-                               :metabot-id      metabot-id
-                               :conversation-id conversation-id
-                               :profile-id      (keyword profile-id)
-                               :context         enriched-context
-                               :eval-session-id eval-session-id
-                               :memory-atom     memory-atom
-                               :tracking-opts   {:session-id conversation-id}}
+                      (cond-> {:messages              messages
+                               :state                 state
+                               :metabot-id            metabot-id
+                               :conversation-id       conversation-id
+                               :profile-id            (keyword profile-id)
+                               :context               enriched-context
+                               :eval-session-id       eval-session-id
+                               :memory-atom           memory-atom
+                               :tracking-opts         {:session-id conversation-id}
+                               ;; A query a tool is running stops when the client goes away.
+                               :request-canceled-chan canceled-chan}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -309,8 +311,9 @@
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
-        ;; reject before `start-turn!` persists anything or the title job calls the LLM
-        _          (when-not (profiles/profile-registered? (keyword profile-id))
+        ;; reject before `start-turn!` persists anything or the title job calls the LLM. An eval-only profile on an
+        ;; instance that doesn't run evals gets the same refusal, so nobody can tell it exists.
+        _          (when-not (profiles/profile-available? (keyword profile-id))
                      (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))
