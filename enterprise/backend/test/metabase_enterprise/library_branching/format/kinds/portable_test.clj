@@ -146,8 +146,8 @@
     :edits  [[:replace '(contains? stage :native) false]]}
    {:name   :no-source-card
     :doc    "A source card is not a reference, so a metric on a trashed card passes validation."
-    :target `portable/key-refs
-    :edits  [[:remove :source-card]]}
+    :target `portable/item-keys
+    :edits  [[:remove :source-card {:nth 0}] [:remove :source-card {:nth 0}]]}
    {:name   :no-item-clauses
     :doc    "A metric, segment or measure clause is not a reference."
     :target `portable/clause-ref
@@ -155,7 +155,7 @@
    {:name   :no-field-refs
     :doc    "A field clause is not a reference, so semantic validation cannot find a removed column."
     :target `portable/clause-ref
-    :edits  [[:replace '(= "field" tag) false]]}
+    :edits  [[:replace '(= "field" tag) false {:nth 0}] [:replace '(= "field" tag) false {:nth 0}]]}
    {:name   :no-database
     :doc    "The database of a query is not a reference."
     :target `portable/query-refs
