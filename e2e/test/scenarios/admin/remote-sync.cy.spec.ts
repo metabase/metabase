@@ -491,6 +491,66 @@ describe("Remote Sync", () => {
     });
   });
 
+  describe("strict mode", () => {
+    beforeEach(() => {
+      setup();
+    });
+
+    it("creates the Library on setup and pushes a table published to it", () => {
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .should("be.visible")
+        .clear()
+        .type(LOCAL_GIT_URL);
+      cy.findByTestId("admin-layout-content").findByText("Read-write").click();
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("Synced content").scrollIntoView().should("be.visible");
+        cy.findByText("Collections to sync").should("not.exist");
+      });
+      cy.button("Set up remote sync").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
+
+      cy.log("open the Library, which setup created");
+      cy.findByRole("link", { name: "Open Library" })
+        .should("have.attr", "target", "_blank")
+        .invoke("removeAttr", "target")
+        .click();
+      H.DataStudio.Library.collectionItem("Data").should("be.visible");
+
+      cy.log("publish a table to the Library");
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Published table").click();
+      H.pickEntity({
+        path: ["Databases", /Sample Database/, "Orders"],
+        select: true,
+      });
+      H.modal().button("Publish this table").click();
+      H.DataStudio.Tables.overviewPage().should("exist");
+
+      cy.log("push the published table");
+      H.clickPushOption();
+      H.modal()
+        .button(/Push changes/)
+        .click();
+      H.waitForTask({ taskName: "export" });
+      cy.exec(`git -C ${H.LOCAL_GIT_PATH} ls-tree -r --name-only main`)
+        .its("stdout")
+        .should("match", /orders/i);
+
+      cy.log("the settings page still shows strict mode with nothing to push");
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("Synced content").scrollIntoView().should("be.visible");
+        cy.findByText("Collections to sync").should("not.exist");
+        cy.findByRole("link", { name: "Open Library" }).should("be.visible");
+        cy.findByRole("link", { name: "Open Transforms" }).should("be.visible");
+        cy.findByText(/unsaved changes/).should("not.exist");
+      });
+    });
+  });
+
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
       setup();
