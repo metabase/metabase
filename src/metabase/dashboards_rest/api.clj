@@ -119,6 +119,7 @@
                   [:series :can_write]
                   :dashcard/action
                   :dashcard/linkcard-info]
+                 :creator
                  :can_restore
                  :can_delete
                  :tabs
