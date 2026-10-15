@@ -77,14 +77,28 @@
                     :let [{:keys [place refs]} (get s id)]]
                 [id (into #{} (filter in-ids?) (cons place (map second (remove (skip id) refs))))])))))
 
-(defn- cyclic-refs
-  "A function from an id of `ids` to the set of its references in `m` whose target is in its own strongly connected
-  component of the dependency graph of `ids`: the references that close a cycle, a reference to itself included."
-  [m ids]
-  (let [deps    (dependencies m ids)
+(defn- cycle-refs
+  "A function from an id of `ids` to the set of its references in `m`, but those of `(skip id)`, whose target is in its
+  own strongly connected component of the dependency graph of `ids` without the references of `skip`: the references
+  that close a cycle, a reference to itself included."
+  [m ids skip]
+  (let [deps    (dependencies m ids skip)
         comp-of (into {} (for [c (components ids #(get deps % #{})), id c] [id c]))]
     (fn [id]
-      (into #{} (filter (fn [[_role target]] (contains? (comp-of id) target))) (:refs (get m id))))))
+      (into #{}
+            (filter (fn [[_role target :as ref]] (and (contains? (comp-of id) target) (not (contains? (skip id) ref)))))
+            (:refs (get m id))))))
+
+(defn- cyclic-refs
+  "A function from an id of `ids` to the set of its references in `m` that a write leaves out: first the references that
+  close a cycle from an item of a kind of `stub-kinds`; then, of each cycle that remains, every reference that closes
+  it."
+  [m ids stub-kinds]
+  (let [first-pass (cycle-refs m ids (constantly #{}))
+        stubbed    (memoize (fn [id] (if (contains? stub-kinds (:kind (get m id))) (first-pass id) #{})))
+        rest-pass  (cycle-refs m ids stubbed)]
+    (fn [id]
+      (into (stubbed id) (rest-pass id)))))
 
 (defn- invert
   [deps]
@@ -162,8 +176,8 @@
 
 (defn- write-steps
   "`[interims writes links]` for the items of `ids`, which `m` holds."
-  [unique-keys l m b ids]
-  (let [deferred (cyclic-refs m ids)
+  [unique-keys stub-kinds l m b ids]
+  (let [deferred (cyclic-refs m ids stub-kinds)
         after    (invert (dependencies m ids deferred))
         moves    (key-moves unique-keys l m ids)
         ;; The write of an item that exists and has deferred references leaves it as it is, and its link writes its
@@ -236,7 +250,8 @@
     it as it is (see `:defer`) and another write takes its key;
   - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them, and a
     write that frees a key before the write that takes it. In a reference cycle, a write has `:defer #{ref}`, the
-    references that it leaves out;
+    references that it leaves out: those of the items of a kind of `opts` `:stub-kinds` (default
+    [[snapshot/stub-kinds]]) when that breaks the cycle, else every reference that closes it;
   - links `{:id i :link #{ref}}`: each sets the deferred references of `i`;
   - trashes `{:id i :trash true :pre b(i)}`: an item before its container, and before the items that it refers to.
     A cycle of places and references starts with its least item that contains no other item of the cycle; the rest
@@ -247,12 +262,13 @@
   item must have before the first step (nil: no item). A trash does not free a key: a trashed item keeps it."
   ([l m b]
    (plan l m b {}))
-  ([l m b {:keys [system unique-keys] :or {system snapshot/system-ids unique-keys snapshot/unique-keys}}]
+  ([l m b {:keys [system unique-keys stub-kinds]
+           :or   {system snapshot/system-ids unique-keys snapshot/unique-keys stub-kinds snapshot/stub-kinds}}]
    (let [changed (sort snapshot/compare-identities
                        (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))
          removed (remove #(contains? m %) changed)]
      (check-base-equal! l b changed)
      (check-system-kept! system removed)
-     (let [[interims writes links] (write-steps unique-keys l m b (filter #(contains? m %) changed))
+     (let [[interims writes links] (write-steps unique-keys stub-kinds l m b (filter #(contains? m %) changed))
            trashes                 (trash-steps l b removed)]
        (vec (concat interims writes links trashes))))))

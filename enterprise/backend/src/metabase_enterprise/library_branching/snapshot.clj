@@ -55,6 +55,11 @@
   {:action    {:model #{:model}}
    :dashboard {:action #{:action} :dashboard #{:dashboard}}})
 
+(def stub-kinds
+  "The kinds whose new item an apply can write first without its references, as a stub, and complete in a later step:
+  in a reference cycle, the items of these kinds leave out their references, so the items of other kinds need none."
+  #{:dashboard})
+
 (def system-ids
   "The identities of the system items that every instance of a release has from the install on: the Library
   collection and its sections Data, Metrics and Dashboards."

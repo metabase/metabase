@@ -457,7 +457,7 @@
    {:name   :no-defer
     :doc    "A reference cycle is written in one step per item, so a write refers to an item that does not exist yet."
     :target `plan/write-steps
-    :edits  [[:replace '(cyclic-refs m ids) '(constantly #{})]]}
+    :edits  [[:replace '(cyclic-refs m ids stub-kinds) '(constantly #{})]]}
    {:name   :pre-is-local
     :doc    "A step has no precondition."
     :target `plan/write-step
