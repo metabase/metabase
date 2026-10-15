@@ -14,9 +14,13 @@
    [metabase-enterprise.library-branching.instance.write-test :as write-test]
    [metabase.config.core :as config]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; The tests open their own transactions, and the app DB must not be set up inside one.
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;;; ---------------------------------------------------- Helpers ---------------------------------------------------
 

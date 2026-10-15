@@ -279,22 +279,19 @@
 
 (deftest glossary-test
   (testing "every glossary term is in scope: it is in no collection, and Metabase has no trash for it"
-    (t2/with-transaction [_ nil {:rollback-only true}]
-      (let [term  (t2/insert-returning-instance! :model/Glossary {:term       "lb scope churn"
-                                                                  :definition "Who leaves."
-                                                                  :creator_id (mt/user->id :crowberto)})
-            other (t2/insert-returning-instance! :model/Glossary {:term       "lb scope retention"
-                                                                  :definition "Who stays."
-                                                                  :creator_id (mt/user->id :rasta)})]
-        (is (= {:term true :other true}
-               (membership {:term  [:glossary-term (:entity_id term)]
-                            :other [:glossary-term (:entity_id other)]})))
-        (is (= (t2/count :model/Glossary) (:glossary-term (scope/scope-count))))
-        (is (scope/in-scope? :glossary-term (:entity_id term)))
-        (testing "the roots are an argument: without the glossary kind, no glossary term is in scope"
-          (let [less (update scope/roots :unplaced-kinds disj :glossary-term)]
-            (is (= #{} (:glossary-term (scope/scope-ids less))))
-            (is (not (scope/in-scope? less :glossary-term (:entity_id term))))))))))
+    (mt/with-temp [:model/Glossary term  {:term "lb scope churn" :definition "Who leaves." :creator_id (mt/user->id :crowberto)}
+                   :model/Glossary other {:term       "lb scope retention"
+                                          :definition "Who stays."
+                                          :creator_id (mt/user->id :rasta)}]
+      (is (= {:term true :other true}
+             (membership {:term  [:glossary-term (:entity_id term)]
+                          :other [:glossary-term (:entity_id other)]})))
+      (is (= (t2/count :model/Glossary) (:glossary-term (scope/scope-count))))
+      (is (scope/in-scope? :glossary-term (:entity_id term)))
+      (testing "the roots are an argument: without the glossary kind, no glossary term is in scope"
+        (let [less (update scope/roots :unplaced-kinds disj :glossary-term)]
+          (is (= #{} (:glossary-term (scope/scope-ids less))))
+          (is (not (scope/in-scope? less :glossary-term (:entity_id term)))))))))
 
 (deftest count-test
   (testing "the count of each kind is the size of the scope of that kind"
