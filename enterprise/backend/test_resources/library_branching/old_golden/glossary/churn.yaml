@@ -1,0 +1,7 @@
+created_at: '2026-10-15T08:58:11.876231Z'
+creator_id: crowberto@metabase.com
+definition: The share of customers who cancel in a month.
+entity_id: ChUrNgLoSsArYtErM0001
+term: Churn
+serdes/meta:
+- model: Glossary

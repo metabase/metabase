@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.library-branching.gates :as library-branching.gates]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -32,18 +33,21 @@
   Takes a collection to check for editability.
 
   Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  or when the collection is not a remote-synced collection. While library branching is on, its gate answers instead.
+  Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
-      (not (or (collections/remote-synced-collection? collection)
-               ;; a data app's collection is synced with the app; without remote sync nothing writes its files
-               (and (settings/remote-sync-enabled)
-                    (spec/data-apps-namespace-collection?
-                     {:namespace (if (and (map? collection) (contains? collection :namespace))
-                                   (:namespace collection)
-                                   ;; the root collection has no ID, and nothing in it is synced
-                                   (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
+  (if (library-branching.gates/governs?)
+    (library-branching.gates/collection-editable? collection)
+    (or (= (settings/remote-sync-type) :read-write)
+        (not (or (collections/remote-synced-collection? collection)
+                 ;; a data app's collection is synced with the app; without remote sync nothing writes its files
+                 (and (settings/remote-sync-enabled)
+                      (spec/data-apps-namespace-collection?
+                       {:namespace (if (and (map? collection) (contains? collection :namespace))
+                                     (:namespace collection)
+                                     ;; the root collection has no ID, and nothing in it is synced
+                                     (some-> (u/id collection) remote-sync.db/collection-namespace))})))))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
@@ -55,40 +59,51 @@
   - table is published AND
   - table is in a remote-synced collection
 
-  Always returns true on OSS.
+  While library branching is on, its gate answers instead. Always returns true on OSS.
 
   If the table has a pre-hydrated :collection key, uses that to avoid an extra query."
   :feature :none
   [table]
-  (or (= (settings/remote-sync-type) :read-write)
-      (not (:is_published table))
-      ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
-      (not (collections/remote-synced-collection? (or (:collection table)
-                                                      (:collection_id table))))))
+  (if (library-branching.gates/governs?)
+    (library-branching.gates/table-editable? table)
+    (or (= (settings/remote-sync-type) :read-write)
+        (not (:is_published table))
+        ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
+        (not (collections/remote-synced-collection? (or (:collection table)
+                                                        (:collection_id table)))))))
 
 (defenterprise transforms-editable?
   "Determines if transforms should be editable.
 
   Returns true if transforms are editable, false otherwise. Transforms are globally
-  read-only when remote-sync is enabled and remote-sync-type is :read-only.
+  read-only when remote-sync is enabled and remote-sync-type is :read-only. While library branching is on, its gate
+  answers instead.
 
   Always returns true on OSS."
   :feature :none
   []
-  (or (not (settings/remote-sync-enabled))
-      (= (settings/remote-sync-type) :read-write)))
+  (if (library-branching.gates/governs?)
+    (library-branching.gates/transforms-editable?)
+    (or (not (settings/remote-sync-enabled))
+        (= (settings/remote-sync-type) :read-write))))
 
 (defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration."
+  "Determines if a model instance is editable based on remote sync configuration. While library branching is on, its
+  gate answers instead."
   :feature :none
   [model-key instance]
-  (spec/model-editable? model-key instance))
+  (if (library-branching.gates/governs?)
+    (library-branching.gates/model-editable? model-key instance)
+    (spec/model-editable? model-key instance)))
 
 (defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean. While library branching is
+  on, its gate answers instead."
   :feature :none
   [model-key instances]
-  (spec/batch-model-editable? model-key instances))
+  (if (library-branching.gates/governs?)
+    (library-branching.gates/batch-model-editable? model-key instances)
+    (spec/batch-model-editable? model-key instances)))
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.

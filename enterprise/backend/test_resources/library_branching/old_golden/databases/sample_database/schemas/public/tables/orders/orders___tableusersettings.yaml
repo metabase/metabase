@@ -1,0 +1,11 @@
+collection_id: dAtAcOlLeCtIoNiD00000
+created_at: '2026-10-15T08:58:11.876231Z'
+description: One row per order.
+description_set: true
+is_published: true
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+serdes/meta:
+- model: TableUserSettings

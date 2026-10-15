@@ -32,6 +32,7 @@
    [:post "/push"]                {}
    [:post "/pull"]                {}
    [:post "/merge-branch"]        {:from "dev"}
+   [:post "/deploy"]              {}
    [:get "/status"]               {}
    [:get "/is-dirty"]             {}
    [:get "/dirty"]                {}
