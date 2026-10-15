@@ -962,10 +962,12 @@
               (is (= #{}
                      (into #{} (comp relevant-2 (map (juxt :name normalize)))
                            (search! "rom" :rasta))))))
-          (testing "Sandboxed users do not see indexed entities in search"
+          (testing "Sandboxed, impersonated and routed users do not see indexed entities in search"
             (mt/with-dynamic-fn-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
             (mt/with-dynamic-fn-redefs [perms-util/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (mt/with-dynamic-fn-redefs [perms-util/routed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
