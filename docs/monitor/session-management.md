@@ -18,7 +18,7 @@ Metabase displays a list of all active sessions. Switch to ended sessions by cli
 
 Ended sessions are kept for 30 days and show the reason for why they ended (like a timeout or an admin revoking the session).
 
-Click any of the table's headings to sort it by that column. Click a session in the table to see its details:
+Click the User, Signed in, or Auth Method headings to sort the table by that column. Click a session in the table to see its details:
 
 - User
 - Email
