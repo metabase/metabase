@@ -560,14 +560,14 @@
   (when (str/blank? (str dir))
     (throw (ex-info "update! needs :dir, the directory to write the files into" {})))
   (let [dir       (io/file (str dir))
-        ref       (str ref)
-        history   (module-history/backfill! (assoc history-sample
-                                                   :ref   ref
-                                                   :extra (concat (quarterly-commits ref) (key-commits-with-parents))))
-        structure (module-history/backfill! (assoc structure-sample :ref ref))
-        position  (positions ref)
-        anchors   (cluster-anchors ref)
+        ;; Every step reads this one commit, so a fetch during a long run cannot mix two tips in the files.
         tip       (first (git-lines ["rev-parse" (str ref "^{commit}")]))
+        history   (module-history/backfill! (assoc history-sample
+                                                   :ref   tip
+                                                   :extra (concat (quarterly-commits tip) (key-commits-with-parents))))
+        structure (module-history/backfill! (assoc structure-sample :ref tip))
+        position  (positions tip)
+        anchors   (cluster-anchors tip)
         sha       (subs tip 0 11)
         tables    (let [{:keys [deps modules]} (module-history/snapshot tip)] (tip-tables deps modules))
         page      (merge (page-data anchors position history) tables)]
