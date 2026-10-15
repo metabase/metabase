@@ -1,6 +1,14 @@
 (ns metabase.query-processor.middleware.catch-exceptions
-  "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:refer-clojure :exclude [some get-in])
+  "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format.
+
+  The response carries only the client-facing part of each exception's ex-data (see [[metabase.util.api-error]]). The
+  error log line carries just the message, plus the ex-data entries in the `:log` namespace, as log context:
+
+    (throw (ex-info (tru \"Field is not available\") {:status-code 400, :log/field-id id, :log/field-name field-name}))
+
+  responds without either entry and logs `field-id` and `field-name` alongside the message. Keep everything else, like
+  the query or values from it, out of the `:log` namespace."
+  (:refer-clojure :exclude [some get-in mapv not-empty select-keys])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
@@ -14,11 +22,12 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some get-in]])
+   [metabase.util.performance :refer [some get-in mapv not-empty select-keys]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -41,6 +50,14 @@
   [^InterruptedException _e]
   {:status :interrupted})
 
+(defn- response-ex-data
+  "The part of an exception's `data` sent to the client: what [[api-error/response-data]] sends, `:status-code`, which
+  [[metabase.query-processor.streaming]] turns into the HTTP status, and `:sql`, the query a driver ran, which the
+  frontend lines error positions up with. [[format-exception*]] drops `:sql` for users who can't see native queries."
+  [data]
+  (not-empty (merge (api-error/response-data data)
+                    (select-keys data [:status-code :sql]))))
+
 (defmethod format-exception ExceptionInfo
   [e]
   ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
@@ -53,7 +70,8 @@
      (when is-curated
        {:error_is_curated is-curated})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
-     {:ex-data data})))
+     (when-let [response-data (response-ex-data data)]
+       {:ex-data response-data}))))
 
 (defmethod format-exception SQLException
   [^SQLException e]
@@ -106,15 +124,25 @@
 
 (defn- query-info
   "Map of about `query` to add to the exception response."
-  [{query-type :type, :as query} {:keys [preprocessed native]}]
+  [{query-type :type, :as query} {:keys [preprocessed native]} native-perms?]
   (merge
    {:json_query (dissoc query :info :driver)}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
      {:preprocessed preprocessed
-      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
+      :native       (when native-perms?
                       native)})))
+
+(defn- without-driver-sql
+  "`response` without the `:sql` drivers put in ex-data, which for an MBQL query is the compiled query, like `:native`."
+  [response]
+  (let [strip (fn [m]
+                (if-let [data (not-empty (dissoc (:ex-data m) :sql))]
+                  (assoc m :ex-data data)
+                  (dissoc m :ex-data)))]
+    (cond-> (strip response)
+      (:via response) (update :via #(mapv strip %)))))
 
 (mr/def ::query-execution-info
   "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
@@ -144,12 +172,25 @@
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
              (format-exception* query (ex-cause e) extra-info))
-      (merge
-       {:data {:rows [], :cols []}, :row_count 0}
-       (exception-response e)
-       (query-info query extra-info)))
+      (let [native-perms? (qp.perms/current-user-has-adhoc-native-query-perms? query)]
+        (cond-> (merge
+                 {:data {:rows [], :cols []}, :row_count 0}
+                 (exception-response e)
+                 (query-info query extra-info native-perms?))
+          (not native-perms?) without-driver-sql)))
     (catch Throwable e
       (assoc (Throwable->map e) :status :failed))))
+
+(defn- log-context
+  "The `:log`-namespaced ex-data entries of `e`'s exception chain, without the namespace, for the error log line. An
+  inner exception's entries win over an outer one's."
+  [e]
+  (into {}
+        (comp (mapcat ex-data)
+              (keep (fn [[k v]]
+                      (when (and (keyword? k) (= (namespace k) "log"))
+                        [(keyword (name k)) v]))))
+        (u/full-exception-chain e)))
 
 (mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
@@ -175,8 +216,9 @@
                   pool-saturated?     (qp.error-type/connection-pool-saturated?
                                        (:error_type formatted-exception))]
               (when-not (or query-canceled? pool-saturated?)
-                (log/errorf "Error processing query: %s"
-                            (or (:error formatted-exception) "Error running query")))
+                (log/with-thread-context (log-context e)
+                  (log/errorf "Error processing query: %s"
+                              (or (:error formatted-exception) "Error running query"))))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]
