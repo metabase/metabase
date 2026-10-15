@@ -69,7 +69,8 @@
 
 (def spec
   "The spec of the published-table codec. The `_set` flags of the user settings are an instance mechanism, not
-  attributes: an attribute is the value that the table shows."
+  attributes: an attribute is the value that the table shows. The table's `visibility_type` is not an attribute:
+  Metabase derives it from `data_layer` on each save of the data layer."
   {:kind       :published-table
    :word       "table"
    :directory? false
@@ -79,14 +80,14 @@
    :place-key  :collection
    :attrs      {:description             {:schema :string}
                 :entity_type             {:schema :string}
-                :visibility_type         {:schema :string}
                 :field_order             {:schema :string}
                 :caveats                 {:schema :string}
                 :points_of_interest      {:schema :string}
                 :show_in_getting_started {:schema :boolean :default false}
                 :data_authority          {:schema :string}
                 :data_source             {:schema :string}
-                :data_layer              {:schema :string}
+                ;; Only the values that Metabase stores as they are: it stores a legacy value as another one.
+                :data_layer              {:schema [:enum "final" "internal" "hidden"]}
                 :owner_email             {:schema :string}
                 :fields                  {:schema ::fields :default {}}}
    :refs       #'refs
