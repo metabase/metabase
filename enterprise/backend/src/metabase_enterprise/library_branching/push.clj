@@ -18,6 +18,10 @@
   "The commit message of a push that names none."
   "Library branching push")
 
+(def remote-moved-message
+  "The error message of a push task whose remote compare-and-swap refused."
+  "The branch moved during the push. Pull, then push again.")
+
 (defn foreign-files
   "The files of tree `t`, `{path bytes}`, that a push keeps at their paths: `claims/kept-files`."
   [t]
@@ -72,9 +76,9 @@
   Only `:pushed` and `:base-moved` change the branch, and only `:pushed` changes the base. A first push to a tree in
   the old format writes the new layout and the format version file in one commit. The [[foreign-files]] of the base
   tree stay. `opts`: `:codecs` (default `kinds/codecs`), `:message` (default [[default-message]])."
-  ([inst store branch]
-   (push! inst store branch {}))
-  ([inst store branch {:keys [codecs message] :or {codecs kinds/codecs message default-message}}]
+  ([inst store branch task]
+   (push! inst store branch task {}))
+  ([inst store branch _task {:keys [codecs message] :or {codecs kinds/codecs message default-message}}]
    (if-not (settings/library-branching-enabled)
      {:result :disabled}
      (let [b (instance/base inst)

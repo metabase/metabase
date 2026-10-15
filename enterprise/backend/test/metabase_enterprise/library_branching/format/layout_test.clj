@@ -149,6 +149,73 @@
             orders2   "tables/orders~+Sample%20Database+~+ORDERS%202.table.yaml"}
            (layout/layout toy/codecs example)))))
 
+(deftest taken-paths-example-test
+  (testing "a taken path at the file of an item, or at the directory of an item, gives the item its identity as a
+            suffix; the items that it contains move with it. A taken suffixed path gives a number after the suffix"
+    (is (= {area-id   "area/_folder.yaml"
+            birds2-id "area/birds~AbIrDsbIrDsbIrDsbIrD0/_folder.yaml"
+            birds-id  "area/birds~bIrDsbIrDsbIrDsbIrDs0/_folder.yaml"
+            board-id  "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings~bOaRdbOaRdbOaRdbOaRd0.board.yaml"
+            leaf-id   "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings~bOaRdbOaRdbOaRdbOaRd0.board/robin.leaf.yaml"
+            leaf2-id  "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings~bOaRdbOaRdbOaRdbOaRd0.board/robin~lEaFlEaFlEaFlEaFlEaF1~2.leaf.yaml"
+            loose-id  "area/_leaves/__wren.leaf.yaml"
+            orders    "tables/orders.table.yaml"
+            orders2   "tables/orders~+Sample%20Database+~+ORDERS%202.table.yaml"}
+           (layout/layout toy/codecs example
+                          #{"area/birds/_folder.yaml"
+                            "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings.board"
+                            "area/birds~bIrDsbIrDsbIrDsbIrDs0/sightings~bOaRdbOaRdbOaRdbOaRd0.board/robin~lEaFlEaFlEaFlEaFlEaF1.leaf.yaml"})))))
+
+(defn- home-dirs
+  "The directories of the homes of the root-level items of `s`, and their parents: no suffix moves them."
+  [s]
+  (set (for [[_ {:keys [kind place] :as item}] s
+             :when (nil? place)
+             :let  [dir (:dir (layout/home (get codecs kind) item))]
+             n     (range 1 (inc (count dir)))]
+         (str/join "/" (take n dir)))))
+
+(defn- tree-paths
+  "`paths` with each path removed that is a directory of another one: the file paths of one git tree."
+  [paths]
+  (let [dirs (set (mapcat dir-prefixes paths))]
+    (set (remove dirs paths))))
+
+(def ^:private snapshot-and-taken-gen
+  ;; The taken paths come from the paths of the layout itself, from their directories, from paths under them, and from
+  ;; the paths that one round of suffixes gives: every kind of clash. No taken path is a home directory, because no
+  ;; suffix moves one.
+  (gen/bind (toy/toy-snapshot-gen)
+            (fn [s]
+              (let [paths (vals (layout/layout toy/codecs s))
+                    cands (remove (home-dirs s)
+                                  (distinct (concat paths
+                                                    (mapcat dir-prefixes paths)
+                                                    (map #(str % "/x") paths)
+                                                    (vals (layout/layout toy/codecs s (set paths))))))]
+                (if (empty? cands)
+                  (gen/return [s #{}])
+                  (gen/fmap (fn [taken] [s (tree-paths taken)])
+                            (gen/vector (gen/elements cands) 0 8)))))))
+
+(defspec taken-paths-test 300
+  ;; The push keeps each foreign file at its path, so the layout never puts a file of an item, or a directory, where a
+  ;; foreign file is, and never puts a file of an item where a foreign file has a directory.
+  (prop/for-all [[s taken] snapshot-and-taken-gen]
+    (let [paths      (layout/layout toy/codecs s taken)
+          taken-dirs (set (mapcat dir-prefixes taken))
+          item-dirs  (set (mapcat dir-prefixes (vals paths)))]
+      (and (= (set (keys s)) (set (keys paths)))
+           (or (empty? paths) (apply distinct? (vals paths)))
+           (not-any? item-dirs (vals paths))
+           (not-any? taken (vals paths))
+           (not-any? taken-dirs (vals paths))
+           (not-any? taken item-dirs)))))
+
+(defspec no-taken-paths-change-nothing-test 100
+  (prop/for-all [s (toy/toy-snapshot-gen)]
+    (= (layout/layout toy/codecs s) (layout/layout toy/codecs s #{}))))
+
 (deftest identity-segment-test
   (testing "an entity id is its own segment; a natural key is escaped and joined with +, nil as ~"
     (is (= "IW8kbqZVaMxdGtCM2F4U6" (layout/identity-segment "IW8kbqZVaMxdGtCM2F4U6")))
@@ -235,6 +302,14 @@
     :doc    "The slug keeps upper case, so two names that differ in case collide on a file system that ignores case."
     :target `layout/slug
     :edits  [[:replace '(.toLowerCase s Locale/ROOT) 's]]}
+   {:name   :taken-ignored
+    :doc    "The layout does not look at the taken paths, so an item file can sit where a foreign file is."
+    :target `layout/layout
+    :edits  [[:replace '(free-entry? taken) '(constantly true)]]}
+   {:name   :one-suffix-only
+    :doc    "An item whose suffixed path is taken too gets no path that is free."
+    :target `layout/entries
+    :edits  [[:replace '(iterate inc 1) [1]]]}
    {:name   :place-ignored
     :doc    "Every item sits at its home, as if it were at the root level: containment no longer shows in the paths."
     :target `layout/parent-dir
@@ -242,7 +317,8 @@
 
 (deftest layout-mutations-test
   (mut/check mutations {:tests [#'example-layout-test #'slug-test #'unique-paths-test #'git-safe-paths-test
-                                #'least-identity-has-no-suffix-test #'path-shape-test]}))
+                                #'least-identity-has-no-suffix-test #'path-shape-test #'taken-paths-example-test
+                                #'taken-paths-test]}))
 
 ;;; ---------------------------------------------------- Coverage -----------------------------------------------------
 

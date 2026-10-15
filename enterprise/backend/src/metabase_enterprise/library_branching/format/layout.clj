@@ -155,20 +155,22 @@
   "`{identity path}` of snapshot `s`, with the codecs `codecs` (each a `codec/Codec` and a [[Layout]]). Paths are
   relative, separated by /, unique, and end in .yaml; no path is a directory of another. Throws when a kind of `s` has
   no codec, when a place is not in `s`, when places form a cycle, or when a codec gives an unsafe word or home."
-  [codecs s]
-  (let [by-kind (codec/by-kind codecs)
-        _       (run! check-word! (vals by-kind))
-        codec-of (fn [kind]
-                   (or (get by-kind kind)
-                       (invalid-layout! (str "No codec for the kind " kind) {:kind kind})))
-        home-of (fn [item] (checked-home (codec-of (:kind item)) item))
-        depth   (depths s home-of)
-        levels  (sort (distinct (vals depth)))
-        by-level (group-by depth (keys s))]
-    (:paths
-     (reduce
-      (fn [{:keys [dirs] :as acc} level]
-        (let [items  (for [id (get by-level level)
+  ([codecs s]
+   (layout codecs s #{}))
+  ([codecs s _taken]
+   (let [by-kind  (codec/by-kind codecs)
+         _        (run! check-word! (vals by-kind))
+         codec-of (fn [kind]
+                    (or (get by-kind kind)
+                        (invalid-layout! (str "No codec for the kind " kind) {:kind kind})))
+         home-of  (fn [item] (checked-home (codec-of (:kind item)) item))
+         depth    (depths s home-of)
+         levels   (sort (distinct (vals depth)))
+         by-level (group-by depth (keys s))]
+     (:paths
+      (reduce
+       (fn [{:keys [dirs] :as acc} level]
+         (let [items (for [id (get by-level level)
                            :let [{:keys [kind name place] :as item} (get s id)
                                  c    (codec-of kind)
                                  dir? (boolean (directory? c))
@@ -176,16 +178,16 @@
                                  base (or (when-not place (:segment (home-of item))) (slug name))]]
                        {:id id :name name :dir (parent-dir dirs home-of item) :base base :word w :directory? dir?
                         :entry (if dir? base (str base "." w))})
-              named  (entries items)]
-          (reduce (fn [acc {:keys [id dir word directory?]}]
-                    (let [entry (get named id)
-                          own   (conj dir entry)]
-                      (-> acc
-                          (assoc-in [:dirs id] own)
-                          (assoc-in [:paths id] (str/join "/" (if directory?
-                                                                (conj own (str "_" word ".yaml"))
-                                                                (conj dir (str entry ".yaml"))))))))
-                  acc
-                  items)))
-      {:dirs {} :paths {}}
-      levels))))
+               named (entries items)]
+           (reduce (fn [acc {:keys [id dir word directory?]}]
+                     (let [entry (get named id)
+                           own   (conj dir entry)]
+                       (-> acc
+                           (assoc-in [:dirs id] own)
+                           (assoc-in [:paths id] (str/join "/" (if directory?
+                                                                 (conj own (str "_" word ".yaml"))
+                                                                 (conj dir (str entry ".yaml"))))))))
+                   acc
+                   items)))
+       {:dirs {} :paths {}}
+       levels)))))
