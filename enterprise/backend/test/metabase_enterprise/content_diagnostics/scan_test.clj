@@ -5,7 +5,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -15,6 +14,7 @@
    [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.permissions.core :as perms]
@@ -654,9 +654,9 @@
     ;; makes it impossible instead: the clause is data-independent. A reintroduced id set would grow these
     ;; params and fail here, which `api-personal-collection-exclusion-spans-descendants-test` cannot do -
     ;; the old LIKE matcher handled any depth too, so that test is a semantic-equivalence guard only.
-    (let [params   #(rest (sql/format {:select [:*]
-                                       :from   [:content_diagnostics_finding]
-                                       :where  (api.common/exclude-personal-collections-clause true)}))
+    (let [params   #(rest (mdb/compile {:select [:*]
+                                        :from   [:content_diagnostics_finding]
+                                        :where  (api.common/exclude-personal-collections-clause true)}))
           baseline (params)]
       (mt/with-temp [:model/User {user-id :id} {}]
         (collection/user->personal-collection user-id)

@@ -1086,7 +1086,6 @@
   (compile! rhs context))
 
 (defn- fn-call! [[f & args] context]
-  {:pre [(keyword? f)]}
   ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
   ;; `:%foo` keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the
   ;; SQL raw. All allowed functions need to be explicitly whitelisted here.
