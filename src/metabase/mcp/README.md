@@ -60,7 +60,8 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
 
-Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+A tool matches only the exact scope in the table. A wildcard such as `*` or `agent:*` is not a registered scope, so it
+grants no tool.
 
 These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
 MCP client grants nothing on the REST API.
