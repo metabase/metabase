@@ -61,10 +61,10 @@
 
   Only `:merged` moves a ref. The merged foreign files stay at their paths; an item whose path one of them holds gets
   its identity as a suffix (`layout/layout`). `opts`: `:codecs` (default `kinds/codecs`), `:message` (default
-  [[default-message]])."
+  [[default-message]]), `:table-names` (as `claims/decode`; see `pull/decode-opts`)."
   ([store into from]
    (merge-branch! store into from {}))
-  ([store into from {:keys [codecs message] :or {codecs kinds/codecs message default-message}}]
+  ([store into from {:keys [codecs message] :or {codecs kinds/codecs message default-message} :as opts}]
    (if-not (settings/library-branching-enabled)
      {:result :disabled}
      (let [c1 (store/head store into)
@@ -76,7 +76,7 @@
          (store/ancestor? store c2 c1) {:result :up-to-date :head c1}
          (nil? a)                     {:result :no-merge-base}
          :else
-         (let [decoded (map (fn [c] [c (pull/decode-commit store codecs c)]) [a c1 c2])]
+         (let [decoded (map (fn [c] [c (pull/decode-commit store codecs c (select-keys opts [:table-names]))]) [a c1 c2])]
            (if-let [[c {:keys [findings]}] (first (filter (comp :findings second) decoded))]
              {:result :invalid :commit c :findings findings}
              (let [[sa s1 s2] (map (comp :snapshot second) decoded)

@@ -43,19 +43,19 @@
   (claims/kept-files (claims/item-claims t)))
 
 (defn tree-digests
-  "The item digests of the snapshot that tree `t` holds (`claims/decode`), with the codecs `codecs`, or nil when it
-  does not decode (a tree with a file of a kind that has no codec, for example)."
-  [codecs t]
-  (some->> (claims/decode codecs t)
+  "The item digests of the snapshot that tree `t` holds (`claims/decode`, with the options `opts`), with the codecs
+  `codecs`, or nil when it does not decode (a tree with a file of a kind that has no codec, for example)."
+  [codecs t opts]
+  (some->> (claims/decode codecs t opts)
            :snapshot
            (writer/item-digests codecs)))
 
 (defn- base-digests
-  "The item digests of the content of base `b`: the digests that the instance stored with it, else those of its tree.
-  nil when neither is known; `{}` when there is no base."
+  "The item digests of the content of base `b`: the digests that the instance stored with it, else those of its tree,
+  decoded with `pull/decode-opts` of `inst`. nil when neither is known; `{}` when there is no base."
   [inst codecs base-tree b]
   (if b
-    (or (instance/base-digests inst b) (tree-digests codecs @base-tree))
+    (or (instance/base-digests inst b) (tree-digests codecs @base-tree (pull/decode-opts inst)))
     {}))
 
 (defn- dirs-of
