@@ -7,10 +7,7 @@ import { StoryBoard, StoryJsx } from "metabase/ui/stories/showcase";
 import S from "./Anchor.module.css";
 
 const SIZES = ["xs", "sm", "md", "lg", "xl"] as const;
-const WEIGHTS = [
-  { value: 400, props: {} },
-  { value: 700, props: { fw: 700 } },
-] as const;
+const WEIGHTS = [{ value: 400 }, { value: 700 }] as const;
 const STATES = [
   { id: "default", label: "Default", underline: undefined },
   { id: "hover", label: "Hover", underline: "always" },
@@ -83,7 +80,7 @@ const OverviewTemplate: StoryFn<AnchorProps> = () => (
                   href={sampleArgs.href}
                   size={size}
                   underline={state.underline}
-                  {...weight.props}
+                  fw={weight.value}
                 >
                   {sampleArgs.text}
                 </Anchor>
