@@ -48,13 +48,21 @@ export const Markdown = {
 
   // The editor loads lazily and CodeMirror paints its content in an effect, so
   // loki would otherwise capture the empty editor. Hold the snapshot until the
-  // content is on screen.
+  // content is on screen and syntax highlighting has been applied.
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const asyncCallback = createAsyncCallback();
     try {
       const canvas = within(canvasElement);
       await waitFor(() =>
         expect(canvas.getByText(/SQL analyst/)).toBeInTheDocument(),
+      );
+      // The document text renders a tick before CodeMirror colours its tokens,
+      // so waiting for the text alone let the burn-in catch a half-highlighted
+      // editor. Wait for the highlighted token spans too.
+      await waitFor(() =>
+        expect(
+          canvasElement.querySelectorAll(".cm-content .cm-line span").length,
+        ).toBeGreaterThan(0),
       );
     } finally {
       asyncCallback();
