@@ -42,6 +42,8 @@
   (doseq [[result message]
           [[{:result :invalid :head "h" :findings [{:rule :env-resolves :id "a"} {:rule :acyclic :ids #{"b"}}]}
             "The head of branch main breaks the rules acyclic, env-resolves, so nothing was deployed."]
+           [{:result :invalid :head "h" :findings [{:type :no-format :reason "The tree has no format version file."}]}
+            "The head of branch main breaks the rules no-format, so nothing was deployed."]
            [{:result :drift :head "h" :ids ["a" "b"]}
             "This read-only instance has 2 changed items that no commit holds, so nothing was deployed."]
            [{:result :drift :head "h" :ids ["a"]}
@@ -258,7 +260,8 @@
                                                                        :remote-sync-branch "main"
                                                                        :remote-sync-type   :read-only})]
                   (is (true? success))
-                  (is (=? {:task_type "deploy" :status tasks/ended-statuses} (tasks/task task_id)))))
+                  (is (= "deploy" (:task_type (tasks/task task_id))))
+                  (is (contains? tasks/ended-statuses (:status (tasks/task task_id))))))
               (testing "a save on a consumption instance starts a deploy"
                 (let [{:keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/library-branching/settings"
                                                               {:remote-sync-auto-import false})]

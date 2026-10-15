@@ -42,9 +42,9 @@
   (str n " " word (when-not (= 1 n) "s")))
 
 (defn- rules
-  "The names of the rules that `findings` break, sorted, each once."
+  "The names of the rules that `findings` break, sorted, each once. A finding of the format names its rule by `:type`."
   [findings]
-  (str/join ", " (sort (distinct (map (comp name :rule) findings)))))
+  (str/join ", " (sort (distinct (map (fn [{:keys [rule type]}] (name (or rule type))) findings)))))
 
 (defn push-task-result
   "The task result of `result`, a result of `push/push!` on branch `branch`: `{:outcome o}` when the push landed or had
