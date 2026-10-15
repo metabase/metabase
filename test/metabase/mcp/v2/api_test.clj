@@ -814,7 +814,7 @@
                             :uri            "/api/dataset"
                             :headers        {"x-metabase-mcp-ui-auth"
                                              (mcp.session/issue-ui-credential
-                                              session-id (mt/user->id :crowberto) #{"agent:search"})}})))))))))))
+                                              session-id (mt/user->id :crowberto) #{"agent:content:read"})}})))))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
