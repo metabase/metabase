@@ -47,9 +47,11 @@
 (deftest ^:parallel whole-backend-test
   (testing "before the module system every OSS and EE namespace belongs to one module"
     (let [prefix->module (#'module-history/prefix->module @#'module-history/whole-backend)]
-      (is (= '[backend backend backend]
+      (is (= '[backend backend backend backend]
              (mapv #(hooks.common.modules/resolve-module prefix->module %)
-                   '[metabase.lib.core metabase.query-processor.middleware.x metabase-enterprise.sso.core]))))))
+                   ;; `metabase-init.core` is the only namespace of the repository's first commit.
+                   '[metabase.lib.core metabase.query-processor.middleware.x metabase-enterprise.sso.core
+                     metabase-init.core]))))))
 
 (deftest ^:parallel legacy-modules-test
   (testing "the pre-:metabase/modules linter config translates root namespaces to module names"

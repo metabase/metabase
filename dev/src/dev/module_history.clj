@@ -146,10 +146,11 @@
         whole-backend)))
 
 (defn- prefix->module
-  "Namespace prefixes for `modules`; [[whole-backend]] owns every OSS and EE namespace."
+  "Namespace prefixes for `modules`. [[whole-backend]] owns every OSS and EE namespace, and `metabase-init`, the
+  only namespace of the repository's first commit."
   [modules]
   (if (= modules whole-backend)
-    {"metabase" 'backend, "metabase-enterprise" 'backend}
+    {"metabase" 'backend, "metabase-enterprise" 'backend, "metabase-init" 'backend}
     (modules/build-prefix->module modules)))
 
 ;;;; Cache
