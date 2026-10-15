@@ -162,30 +162,30 @@
   (anonymous-test-var! 'redefs-test
                        (fn []
                          (with-redefs [fixtures/tagged (constantly ::redefined)]
-                           (is (= :done (fixtures/count-down 3)))
+                           (is (= :done (fixtures/count-down (fixtures/magnitude -3))))
                            (is (= 5 (fixtures/clamp 1 5 9)))))))
 
 (deftest timeout-stops-test
   (testing "a mutation that makes a loop endless times out, and the run stops the loop before it returns"
     (let [threads-before (fixture-threads)
-          roots-before   (mapv root [#'fixtures/tagged #'fixtures/step #'fixtures/count-down #'fixtures/clamp])
+          vars           [#'fixtures/tagged #'fixtures/magnitude #'fixtures/step #'fixtures/count-down #'fixtures/clamp]
+          roots-before   (mapv root vars)
           results        (mut/run-mutations [{:name   :endless-in-target
                                               :doc    "clamp loops forever and calls no var."
                                               :target `fixtures/clamp
                                               :edits  [[:replace '(min hi x) '(loop [n 0] (recur (inc n)))]]}
                                              {:name   :endless-in-caller
-                                              :doc    "step returns its argument, so the loop of count-down never ends."
-                                              :target `fixtures/step
-                                              :edits  [[:replace '(dec n) 'n]]}]
+                                              :doc    (str "magnitude is negative, so the loop of count-down never "
+                                                           "ends, also after the run restores magnitude.")
+                                              :target `fixtures/magnitude
+                                              :edits  [[:replace '(abs x) '(- (abs x))]]}]
                                             {:tests [redefs-test] :timeout-ms 200})]
       (is (= [:timeout :timeout] (map :result results)))
       (is (= [nil nil] (map :leaked results)))
       (testing "no thread of the run still runs"
         (is (= threads-before (fixture-threads))))
       (testing "the redefinitions of the tests and the wrappers of the stop are gone"
-        (is (every? true? (map identical?
-                               roots-before
-                               (map root [#'fixtures/tagged #'fixtures/step #'fixtures/count-down #'fixtures/clamp]))))))))
+        (is (every? true? (map identical? roots-before (map root vars))))))))
 
 (deftest leaked-thread-test
   (testing "a loop that the run cannot stop gives :timeout with the thread that still runs, and the result fails"

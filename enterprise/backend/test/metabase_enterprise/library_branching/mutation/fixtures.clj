@@ -16,8 +16,13 @@
   [n]
   (dec n))
 
+(defn magnitude
+  "The absolute value of `x`."
+  [x]
+  (abs x))
+
 (defn count-down
-  "`:done`, after the [[step]]s from `n` to zero."
+  "`:done`, after the [[step]]s from `n` to zero. Endless for a negative `n`."
   [n]
   (loop [n n]
     (if (zero? n)
