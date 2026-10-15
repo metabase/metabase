@@ -30,7 +30,7 @@ export function useAuditRowCount(
       DEFAULT_DATE_FILTER,
       dateColumn,
     );
-    // Legacy MBQL keeps this scalar query's cache key stable across metadata UUID changes.
+    // Legacy MBQL has no generated clause UUIDs, so rebuilding this query sends the same request and reuses the cached count.
     return Lib.toLegacyQuery(Lib.aggregateByCount(query, 0));
   }, [provider, table, dateColumn]);
   const { currentData: data, error } = useGetAdhocQueryQuery(
