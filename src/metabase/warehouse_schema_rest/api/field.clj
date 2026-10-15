@@ -182,7 +182,8 @@
                                     {:status-code 400
                                      :base-type (:base_type field)
                                      :coercion-strategy coercion-strategy
-                                     :effective-type effective}))))))
+                                     :effective-type effective
+                                     :response/keys #{:base-type :coercion-strategy :effective-type}}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
     ;; validate that fk_target_field_id is a valid Field in the same database
@@ -267,6 +268,8 @@
         :type                    dimension-type
         :name                    dimension-name
         :human_readable_field_id human-readable-field-id})))
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
+                                              :user-id api/*current-user-id*})
   (warehouse-schema-rest.db/dimension-for-field id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -279,6 +282,8 @@
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (warehouse-schema-rest.db/delete-dimensions-for-field! id)
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
+                                              :user-id api/*current-user-id*})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -1,4 +1,5 @@
 import noResultsSource from "assets/img/no_results.svg";
+import bridgeImage from "img/bridge.svg?url";
 import type { IllustrationValue } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import {
@@ -59,7 +60,7 @@ export function getLoginPageIllustration(state: State): IllustrationValue {
   switch (illustrationOption) {
     case "default":
       return {
-        src: "app/img/bridge.svg",
+        src: bridgeImage,
         isDefault: true,
       };
 
@@ -86,7 +87,7 @@ export function getLandingPageIllustration(state: State): IllustrationValue {
   switch (illustrationOption) {
     case "default":
       return {
-        src: "app/img/bridge.svg",
+        src: bridgeImage,
         isDefault: true,
       };
 

@@ -1,23 +1,25 @@
-import fetchMock from "fetch-mock";
-
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   deriveChartShadeColor,
   deriveChartTintColor,
 } from "metabase/ui/colors/accents";
-import MetabaseSettings from "metabase/utils/settings";
-import type { SettingKey } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { ColorSettingsWidget } from "./ColorSettingsWidget";
 
-function setup(colors: Record<string, string>) {
-  // Unjustified type cast. FIXME
-  MetabaseSettings.set("application-colors" as SettingKey, colors);
-  fetchMock.get("path:/api/session/properties", {
-    "application-colors": colors,
+function setup(colors: ColorSettings) {
+  const settings = createMockSettings({ "application-colors": colors });
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([{ key: "application-colors", value: colors }]);
+  renderWithProviders(<ColorSettingsWidget />, {
+    storeInitialState: { settings: createMockSettingsState(settings) },
   });
-  fetchMock.get("path:/api/setting", {});
-  renderWithProviders(<ColorSettingsWidget />);
 }
 
 async function expectColorsToExist(colors: Record<string, string>) {

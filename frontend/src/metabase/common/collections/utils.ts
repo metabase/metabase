@@ -12,6 +12,7 @@ import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import {
   type Bookmark,
+  type BookmarkType,
   type CardType,
   type Collection,
   type CollectionContentModel,
@@ -239,10 +240,18 @@ export function isReadOnlyCollection(collection: CollectionItem) {
  * product sense, call it "card" because they are treated the same in the
  * back-end bookmark API.
  */
-export function getItemBookmarkType(item: CollectionItem) {
-  return item.model === "dataset" || item.model === "metric"
-    ? "card"
-    : item.model;
+export function getItemBookmarkType(
+  item: CollectionItem,
+): BookmarkType | undefined {
+  switch (item.model) {
+    case "dataset":
+    case "metric":
+      return "card";
+    case "action":
+      return undefined;
+    default:
+      return item.model;
+  }
 }
 
 export function isItemBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
@@ -265,6 +274,7 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
 
   switch (model) {
     case "table":
+    case "action":
       return false;
     case "collection":
       return !isLibraryCollection({ type });
@@ -426,6 +436,8 @@ export function getCollectionIcon(
         return { name: "table" };
       case "library-metrics":
         return { name: "metric" };
+      case "library-dashboards":
+        return { name: "dashboard" };
     }
   }
 

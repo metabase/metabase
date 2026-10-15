@@ -46,7 +46,6 @@ export interface InternalDatasetQuery {
   offset?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -468,15 +467,11 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
-  name: string;
-  tableId?: TableId;
-  sourceName?: string;
+  name?: string;
+  fieldId?: FieldId;
+  joinAlias?: string;
   sourceFieldId?: FieldId;
-  displayName?: string;
-
-  // When the columns cannot be disambiguated with name, sourceName and displayName
-  // use this index to pick one.
-  index?: number;
+  sourceFieldJoinAlias?: string;
 };
 
 export type TestExpressionSpec =
@@ -501,9 +496,14 @@ export type TestMetricSpec = {
 
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
+export type TestNamedAggregationSpec = {
+  name: string;
+  value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
+};
+
 export type TestAggregationSpec =
   | TestExpressionSpec
-  | TestNamedExpressionSpec
+  | TestNamedAggregationSpec
   | TestMeasureSpec
   | TestMetricSpec;
 
@@ -531,26 +531,45 @@ export type TestTemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type TestBinCountSpec = {
-  bins?: number | "auto";
+export type TestDefaultBinningSpec = {
+  strategy: "default";
 };
 
-export type TestBinWidthSpec = {
-  binWidth?: number | "auto";
+export type TestNumBinsBinningSpec = {
+  strategy: "num-bins";
+  numBins: number;
 };
 
-type TestBinningSpec =
-  | TestTemporalBucketSpec
-  | TestBinCountSpec
-  | TestBinWidthSpec;
+export type TestBinWidthBinningSpec = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
-export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+export type TestBinningSpec =
+  | TestDefaultBinningSpec
+  | TestNumBinsBinningSpec
+  | TestBinWidthBinningSpec;
 
-export type TestBreakoutSpec = TestColumnWithBinningSpec;
+type TestBucketSpec = TestTemporalBucketSpec & {
+  binning?: TestBinningSpec;
+};
+
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
+
+export type TestBreakoutWithNameSpec = {
+  type: "breakout";
+  name: string;
+  column: TestColumnWithBinningSpec;
+};
+
+export type TestBreakoutSpec =
+  | TestColumnWithBinningSpec
+  | TestBreakoutWithNameSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;
   strategy: JoinStrategy;
+  alias?: string;
 
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];
@@ -564,7 +583,7 @@ type TestJoinConditionSpec = {
 
 export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
-} & TestBinningSpec;
+} & TestBucketSpec;
 
 export type TestStageSpec = {
   fields?: readonly TestColumnSpec[];

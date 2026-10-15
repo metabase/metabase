@@ -113,7 +113,9 @@
                            :where  [:and
                                     (collection/visible-collection-filter-clause
                                      (keyword (name table-name) "collection_id")
-                                     {:include-archived-items include-archived-items}
+                                     {:include-archived-items include-archived-items
+                                      :root-namespace         (when (= model :model/NativeQuerySnippet)
+                                                                collection/snippets-ns)}
                                      {:current-user-id user-id
                                       :is-superuser?   is-superuser?})
                                     (case include-archived-items

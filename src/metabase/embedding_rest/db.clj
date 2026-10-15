@@ -73,7 +73,7 @@
 
 (mu/defn insert-embedding-themes!
   "Insert the EmbeddingTheme `rows`. Only seeding - the Light/Dark themes written on the first visit
-  to the themes page - sets `is_default`, so the single-row insert above leaves it out."
+  to the embedding hub - sets `is_default`, so the single-row insert above leaves it out."
   [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings :is_default])]]
   (t2/insert! :model/EmbeddingTheme rows))
 
@@ -87,3 +87,12 @@
   "Delete the EmbeddingTheme with `id`."
   [id :- ms/PositiveInt]
   (t2/delete! :model/EmbeddingTheme :id id))
+
+(mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
+  "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
+  (t2/select :model/EmbeddingSdkReact18Host {:select   [:id :host :created_at :last_seen_at]
+                                             :where    [:> :last_seen_at [:auto/param cutoff]]
+                                             :order-by [[:last_seen_at :desc] [:id :desc]]
+                                             :limit    limit}))

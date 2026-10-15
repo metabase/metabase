@@ -8,7 +8,7 @@ import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
 import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
-import StatusLarge from "metabase/status/components/StatusLarge";
+import { StatusLarge } from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { DatabaseId, GdrivePayload } from "metabase-types/api";

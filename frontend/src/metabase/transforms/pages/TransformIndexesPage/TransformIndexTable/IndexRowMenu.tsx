@@ -40,7 +40,7 @@ export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
           {t`Edit`}
         </Menu.Item>
         <Menu.Item
-          c={isDisabled ? undefined : "danger"}
+          c={isDisabled ? undefined : "feedback-negative"}
           leftSection={<Icon name="trash" />}
           onClick={() => onDelete(index)}
           disabled={isDisabled}

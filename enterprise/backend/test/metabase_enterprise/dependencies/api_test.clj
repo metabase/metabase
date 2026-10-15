@@ -775,7 +775,23 @@
                     (is (contains? dependent-ids (:id readable-card))
                         "Should see readable card as dependent")
                     (is (not (contains? dependent-ids (:id unreadable-card)))
-                        "Should not see unreadable card as dependent")))))))))))
+                        "Should not see unreadable card as dependent")))
+                (testing "User sees a root snippet with the snippets root permission, not the default root one"
+                  (mt/with-non-admin-groups-no-root-collection-for-namespace-perms collection/snippets-ns
+                    (let [snippet-node? (fn []
+                                          (contains? (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                                                :id (:id readable-card)
+                                                                                :type "card")
+                                                          :nodes
+                                                          (map (juxt :type :id))
+                                                          set)
+                                                     ["snippet" snippet-id]))]
+                      (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+                      (is (not (snippet-node?)))
+                      (perms/revoke-collection-permissions! (perms/all-users-group) collection/root-collection)
+                      (perms/grant-collection-read-permissions! (perms/all-users-group)
+                                                                (assoc collection/root-collection :namespace collection/snippets-ns))
+                      (is (snippet-node?)))))))))))))
 
 (deftest graph-table-permission-filtering-test
   (testing "GET /api/ee/dependencies/graph filters out tables when user lacks table permissions"

@@ -81,7 +81,7 @@
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              GET /api/metric/:id/dimension/:key/search/:query                                  |
@@ -121,7 +121,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
                                            :query "test")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               GET /api/metric/:id/dimension/:key/remapping                                     |
@@ -161,7 +161,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                            :value "1")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 (deftest dimension-remapping-requires-value-param-test
   (testing "GET /api/metric/:id/dimension/:key/remapping requires value parameter"
@@ -436,8 +436,9 @@
         (is (= "week" (:default_temporal_unit resp)))
         (is (= :week (:default-temporal-unit stored)))
         (is (= "week" (:default_temporal_unit fetched)))
-        (is (not-any? #{:event/metric-dimensions-update} @topics)
-            "changing presentation metadata does not invalidate the dependency graph")))))
+        (is (some #{:event/card-update} @topics)
+            (str "a presentation-only dimension edit still announces a Card update, so remote sync marks the "
+                 "metric dirty; re-running the dependency graph is the accepted cost"))))))
 
 (deftest update-dimension-default-temporal-unit-validation-test
   (testing "default_temporal_unit must be visible and compatible with the dimension type"
@@ -717,9 +718,10 @@
 (defn- legacy-dimension-set
   "The `{:dimensions ... :dimension-mappings ...}` a metric on `query` would have had at `card_schema` 23:
    the same full set [[metrics/compute-full-dimension-set]] produces, but *without* the table-prefixed
-   `:display-name`s that schema 24 introduced."
-  [query]
-  (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+   `:display-name`s that schema 24 introduced. `owner-key` seeds the dimension ids; pass the metric's
+   `:entity_id`, as the schema-24 upgrade does."
+  [owner-key query]
+  (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) owner-key query)
         {:keys [dimensions dimension-mappings]}
         (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
     {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
@@ -739,7 +741,7 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :orders)
                                        :dataset_query orders-q}]
-      (let [{:keys [dimensions dimension-mappings]} (legacy-dimension-set orders-q)]
+      (let [{:keys [dimensions dimension-mappings]} (legacy-dimension-set (:entity_id metric) orders-q)]
         ;; Raw UPDATE so nothing bumps the schema back up or re-modernizes on the way in.
         (t2/query-one {:update :report_card
                        :set    {:card_schema        23
@@ -813,7 +815,7 @@
        (t2/update! :model/Card metric-id {:dataset_query (people-metric-query)})
        (let [{:keys [card_schema dimensions]} (stored-card metric-id)
              stored-names (display-name-by-field-id dimensions)]
-         (is (= @#'card/current-schema-version card_schema)
+         (is (= card/current-card-schema-version card_schema)
              "the vintage advances alongside the migrated columns")
          (testing "the dimensions written alongside that bump are the modernized ones"
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
@@ -830,7 +832,7 @@
          (t2/update! :model/Card metric-id {:dimensions modernized})
          (let [{:keys [card_schema dimensions]} (stored-card metric-id)
                stored-names (display-name-by-field-id dimensions)]
-           (is (= @#'card/current-schema-version card_schema))
+           (is (= card/current-card-schema-version card_schema))
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
            (is (= "User - ID" (stored-names (mt/id :people :id))))
            (doseq [[field-id display-name] stored-names]

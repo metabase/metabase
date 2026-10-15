@@ -69,9 +69,10 @@ export const NativeQueryEditorActionButtons = (
       align="center"
     >
       {promptButton}
-      {PreviewQueryButton.shouldRender({ question }) && (
-        <PreviewQueryButton {...props} />
-      )}
+      {features.previewQuery !== false &&
+        PreviewQueryButton.shouldRender({ question }) && (
+          <PreviewQueryButton {...props} />
+        )}
       {features.dataReference && (
         <DataReferenceButton
           {...props}

@@ -44,7 +44,13 @@
 
 (defmethod driver/host-carrying-parameters :databricks
   [_driver]
-  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+  ["ProxyHost" "CFProxyHost" "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint"
+   "OAuth2AuthorizationEndPoint" "OAuth2TokenEndpoint" "OAuthDiscoveryURL" "OIDCDiscoveryEndpoint"])
+
+(defmethod driver/non-host-parameters :databricks
+  [_driver]
+  ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
+   "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
@@ -73,7 +79,8 @@
   [_driver details]
   (sql-jdbc/reject-dangerous-additional-options! details)
   (when-let [opts (not-empty (:additional-options details))]
-    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
+    ;; `StagingAllowedLocalPaths` is the older spelling of the same setting, and the client still honors it
+    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths|StagingAllowedLocalPaths" opts)
       (throw (Exception. "Potentially dangerous keys in connection details")))))
 
 (defn- catalog-present?

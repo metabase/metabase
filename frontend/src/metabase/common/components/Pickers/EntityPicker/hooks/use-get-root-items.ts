@@ -224,6 +224,17 @@ async function getRootItems({
     });
   }
 
+  if (namespaces.includes("data-actions")) {
+    collectionItems.push({
+      ...(await getRootCollectionItem({
+        namespace: "data-actions",
+        dispatch,
+      })),
+      here: ["collection"],
+      below: validCollectionModels,
+    });
+  }
+
   if (namespaces.includes("transforms") && transformsEnabled) {
     collectionItems.push({
       ...(await getRootCollectionItem({

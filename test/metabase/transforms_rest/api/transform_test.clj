@@ -599,6 +599,17 @@
                     (is (some #(true? (:source_readable %)) list-resp)
                         "At least one transform should have readable sources")))))))))))
 
+(deftest list-transforms-with-inactive-source-table-test
+  (mt/with-premium-features #{:transforms-basic :hosting}
+    (testing "a transform reading an inactive table does not break listing or fetching transforms"
+      (mt/with-temp [:model/Transform {id :id} {:source {:type  :query
+                                                         :query (lib/query (mt/metadata-provider)
+                                                                           (lib.metadata/table (mt/metadata-provider)
+                                                                                               (mt/id :venues)))}}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+          (is (some #(= id (:id %)) (mt/user-http-request :crowberto :get 200 "transform")))
+          (is (= id (:id (mt/user-http-request :crowberto :get 200 (format "transform/%d" id))))))))))
+
 (deftest filter-transforms-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
     (testing "should be able to filter transforms"
@@ -2187,7 +2198,7 @@
                     existing-table-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
                     other-existing-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_orders))]
                 (testing "POST /api/transform"
-                  (mt/user-http-request user :post 403 "transform"
+                  (mt/user-http-request user :post 409 "transform"
                                         {:name   "Colliding Transform"
                                          :source {:type "query" :query (make-query "Gadget")}
                                          :target {:type   "table"
@@ -2201,7 +2212,7 @@
                                                          :target {:type   "table"
                                                                   :schema schema
                                                                   :name   table-name}})]
-                      (mt/user-http-request user :put 403 (format "transform/%d" (:id created))
+                      (mt/user-http-request user :put 409 (format "transform/%d" (:id created))
                                             {:target {:type   "table"
                                                       :schema schema
                                                       :name   other-existing-name}}))))))))))))

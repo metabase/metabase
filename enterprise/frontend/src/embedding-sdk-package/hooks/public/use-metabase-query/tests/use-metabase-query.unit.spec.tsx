@@ -1,14 +1,16 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import {
+  PUBLISHED_QUESTION_ENTITY_ID,
   TEST_DATASET_QUERY,
   createDeferred,
   createMockDatasetQuery,
+  createMockStore,
+  mockPropsStore,
   mockUseLazySelector,
   resetTestState,
   stubSdkBundle,
 } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 
@@ -18,6 +20,8 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import { filter, useMetabaseQuery, useMetabaseQueryObject } from "..";
 import { defineQuery } from "../define-query";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 
@@ -67,6 +71,26 @@ describe("useMetabaseQueryObject", () => {
       }),
     );
   });
+
+  it.each([
+    { isDev: true, logged: true },
+    { isDev: false, logged: false },
+  ])(
+    "logs query creation errors only in the dev preview (isDev: $isDev)",
+    async ({ isDev, logged }) => {
+      const error = new Error("No column found");
+      const resolveDatasetQuery = jest.fn(() => () => Promise.reject(error));
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
+
+      stubSdkBundle({ resolveDatasetQuery });
+      mockPropsStore(createMockStore(), { name: "app", isDev });
+
+      const { result } = renderHook(() => useMetabaseQueryObject(query));
+
+      await waitFor(() => expect(result.current.error).toBe(error));
+      expect(consoleError.mock.calls).toEqual(logged ? [[error]] : []);
+    },
+  );
 
   it("waits for login before resolving the query", async () => {
     const resolveDatasetQuery = jest.fn(() => async () => TEST_DATASET_QUERY);
@@ -240,6 +264,27 @@ describe("useMetabaseQueryObject", () => {
 });
 
 describe("useMetabaseQuery", () => {
+  it.each([
+    { isDev: true, logged: true },
+    { isDev: false, logged: false },
+  ])(
+    "logs query errors only in the dev preview (isDev: $isDev)",
+    async ({ isDev, logged }) => {
+      const error = new Error("No column found");
+      const resolveDatasetQuery = jest.fn(() => () => Promise.reject(error));
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
+
+      stubSdkBundle({ resolveDatasetQuery, queryDataset: jest.fn() });
+      mockPropsStore(createMockStore(), { name: "app", isDev });
+
+      const query = defineQuery({ source: TEST_SCHEMA.tables.orders });
+      const { result } = renderHook(() => useMetabaseQuery(query));
+
+      await waitFor(() => expect(result.current.error).toBe(error));
+      expect(consoleError.mock.calls).toEqual(logged ? [[error]] : []);
+    },
+  );
+
   it("ignores a stale response after the query changes", async () => {
     const firstQuery = defineQuery({
       source: TEST_SCHEMA.tables.orders,
@@ -429,7 +474,7 @@ describe("dynamic query clauses", () => {
       useMetabaseQuery(
         defineQuery({
           source: TEST_SCHEMA.tables.orders,
-          savedQuestionSourceId: 41,
+          savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
         }),
         {
           filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "x")],

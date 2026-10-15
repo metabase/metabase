@@ -2,14 +2,6 @@ name: Driver Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -21,11 +13,21 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Read by the test-driver action. This suite is only ever dispatched by test.profile-backend.yml,
+  # so a dispatch is a profiling run.
+  PROFILE_TESTS: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: backend_all
+
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -49,6 +51,7 @@ jobs:
       sparksql-should-run: ${{ steps.driver-decisions.outputs.sparksql-should-run }}
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
+      starburst-should-run: ${{ steps.driver-decisions.outputs.starburst-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
     steps:
       - name: Checkout repository
@@ -57,9 +60,17 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DIFF_BASE: ${{ needs.gate.outputs.diff-base }}
         run: |
-          # Fetch the base branch to ensure its history is available for diffing
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          # Fetch what we diff against so its tree is available: the gate's diff-base on the top of
+          # a stack, the base branch otherwise.
+          if [ -n "$DIFF_BASE" ]; then
+            git fetch --depth=1 origin "$DIFF_BASE"
+          else
+            git fetch --depth=1 origin "$BASE_REF:$BASE_REF"
+          fi
       - name: Determine which drivers should run
         id: driver-decisions
         run: |
@@ -69,8 +80,6 @@ jobs:
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --skip="${{ inputs.skip }}"
-            --only-driver="${PROFILE_DRIVER}"
           )
           echo "Running:"
           echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
@@ -83,11 +92,8 @@ jobs:
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
-          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ inputs.force-run }}
-          # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
-          # alone; mage rejects a name that is not a driver.
-          PROFILE_DRIVER: ${{ github.event.inputs.db }}
+          BASE_REF: ${{ needs.gate.outputs.diff-base || github.event.pull_request.base.ref || github.ref_name }}
+          FORCE_RUN: ${{ needs.gate.outputs.force-run == 'true' }}
         shell: bash
 
   be-tests-athena-ee:
@@ -95,6 +101,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: athena
@@ -107,7 +117,7 @@ jobs:
       # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
-    name: Athena
+    name: Athena Driver Tests ${{ matrix.runner-index }}
     steps:
     - uses: actions/checkout@v7
     - name: Test Athena driver
@@ -118,6 +128,11 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -1146,33 +1161,35 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
-  # be-tests-starburst-ee:
-  #   needs: determine-driver-skips
-  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-  #   timeout-minutes: 40
-  #   env:
-  #     CI: 'true'
-  #     DRIVERS: starburst
-  #   services:
-  #     starburst:
-  #       image: trinodb/trino:latest
-  #       env:
-  #         CATALOG_MANAGEMENT: dynamic
-  #       ports:
-  #         - "8080:8080"
-  #   name: Starburst
-  #   steps:
-  #   - uses: actions/checkout@v7
-  #   - name: Make plugins directory
-  #     run: mkdir plugins
-  #   - name: Test Starburst driver
-  #     uses: ./.github/actions/test-driver
-  #     with:
-  #       junit-name: 'be-tests-starburst-ee'
-  #       test-args: >-
-  #         :only-tags [:mb/driver-tests]
+  be-tests-starburst-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.starburst-should-run == 'true' }}
+    # trino is a memory hog and frequently runs out of memory on 16GB runners.
+    # note that running out of memory manifests as random job cancellations
+    # that give no indication of memory being the root cause of the problem.
+    runs-on: ubuntu-latest-8-cores
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: starburst
+    services:
+      starburst:
+        image: trinodb/trino:latest
+        env:
+          CATALOG_MANAGEMENT: dynamic
+        ports:
+          - "8080:8080"
+    name: Starburst
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test Starburst driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-starburst-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
 
   login-to-ecr:
     needs: determine-driver-skips
@@ -1225,8 +1242,6 @@ jobs:
     name: Vertica
     steps:
     - uses: actions/checkout@v7
-    - name: Make plugins directory
-      run: mkdir plugins
     - name: Test Vertica driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1238,6 +1253,7 @@ jobs:
 
   drivers-tests-result:
     needs:
+      - gate
       - determine-driver-skips
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-athena-ee
@@ -1261,11 +1277,11 @@ jobs:
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       - be-tests-vertica-ee
-      # - be-tests-starburst-ee
+      - be-tests-starburst-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9
@@ -1275,8 +1291,8 @@ jobs:
           script: | # js
             const needs = JSON.parse(process.env.needs);
 
-            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
-            // job whose result gates this check.
+            // Drop the determine-driver-skips bookkeeping job; the rest -- the gate and the
+            // driver jobs -- gate this check.
             const jobs = Object.entries(needs)
               .filter(([jobName]) => jobName !== 'determine-driver-skips')
               .map(([jobName, jobValues]) => ({

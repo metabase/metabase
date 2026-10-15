@@ -8,6 +8,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -15,18 +16,19 @@ import { useDeleteBookmarkMutation } from "metabase/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
+import CS from "metabase/css/core/index.css";
 import { getIsTenantUser } from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Bookmark } from "metabase-types/api";
 
-import { SidebarHeading } from "../../MainNavbar.styled";
+import { SidebarHeading } from "../../Sidebar";
+import { DraggableSidebarLink } from "../../SidebarItems";
 import type { SelectedItem } from "../../types";
 
-import { SidebarBookmarkItem } from "./BookmarkList.styled";
+import S from "./BookmarkList.module.css";
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
@@ -64,7 +66,14 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 
 function getBookmarkModel(bookmark: Bookmark) {
   // we should really fix this on the backend
-  return bookmark.card_type === "model" ? "dataset" : bookmark.type;
+  switch (bookmark.card_type) {
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+    default:
+      return bookmark.type;
+  }
 }
 
 const BookmarkItem = ({
@@ -91,25 +100,23 @@ const BookmarkItem = ({
   );
   const onRemove = () => onDeleteBookmark(bookmark);
 
-  const isIrregularCollection =
-    bookmark.type === "collection" &&
-    !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
-
   const iconName = isSelected ? "bookmark_filled" : "bookmark";
 
   return (
     <Sortable id={bookmark.id} key={bookmark.id}>
-      <SidebarBookmarkItem
-        key={`bookmark-${bookmark.id}`}
+      <DraggableSidebarLink
+        className={S.bookmark}
         url={url}
         icon={icon}
         isSelected={isSelected}
         isDragging={isSorting}
         isDraggable={isDraggable}
-        hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
         right={
-          <button onClick={onRemove}>
+          <button
+            className={cx(S.removeButton, CS.cursorPointer)}
+            onClick={onRemove}
+          >
             <Tooltip label={t`Remove bookmark`} position="bottom">
               <Icon name={iconName} />
             </Tooltip>
@@ -117,7 +124,7 @@ const BookmarkItem = ({
         }
       >
         {bookmark.name}
-      </SidebarBookmarkItem>
+      </DraggableSidebarLink>
     </Sortable>
   );
 };

@@ -22,14 +22,14 @@
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
             (is (zero? (scheduled-by dependencies.entity-check/trigger-entity-check-job!))))
           (testing "but task/init! still puts the job on its periodic schedule"
             (is (= 1 (scheduled-by #(task/init! ::dependencies.entity-check/DependencyEntityCheck)))))
           (testing "and a run keeps the periodic chain going"
-            (with-redefs [premium-features/canonically-has-feature? (constantly true)]
+            (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly true)]
               (is (= 1 (scheduled-by #(#'dependencies.entity-check/reschedule-after-run! nil)))))))
         (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
@@ -47,10 +47,10 @@
     (let [scheduled (atom [])
           scheduled-by (fn [licence]
                          (reset! scheduled [])
-                         (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
+                         (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
                            (#'dependencies.entity-check/reschedule-after-run! nil))
                          (count @scheduled))]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (testing "licensed: keeps itself scheduled"
           (is (= 1 (scheduled-by true))))
         (testing "indeterminate: keeps the chain alive rather than ending it on a transient failure"
@@ -72,7 +72,7 @@
            came from content-change handlers. Enabling the feature on an idle instance left the periodic checker dead
            until the next process restart."
     (let [scheduled (atom [])]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (mt/with-premium-features #{:dependencies}
           (events/publish-event! :event/set-premium-embedding-token {})
           (is (contains? (scheduled-job-names @scheduled) entity-check-job-name)))))))

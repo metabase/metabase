@@ -1,16 +1,13 @@
+import cx from "classnames";
 import { memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { Text } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
 
-import {
-  BackButton,
-  BackIcon,
-  SidebarHeader,
-} from "./PermissionsSidebar.styled";
 import S from "./PermissionsSidebarContent.module.css";
 
 export interface PermissionsSidebarContentProps {
@@ -39,12 +36,21 @@ export const PermissionsSidebarContent = memo(
   }: PermissionsSidebarContentProps) {
     return (
       <>
-        <SidebarHeader>
+        <Box pt="md" px="xl" flex="0 0 auto">
           {onBack ? (
-            <BackButton onClick={onBack}>
-              <BackIcon name="arrow_left" />
+            <Flex
+              component="button"
+              className={cx(S.backButton, CS.cursorPointer)}
+              align="center"
+              fz="md"
+              fw={700}
+              py="sm"
+              ta="left"
+              onClick={onBack}
+            >
+              <Icon name="arrow_left" mr="sm" c="text-disabled" />
               {title}
-            </BackButton>
+            </Flex>
           ) : (
             <div className={S.SidebarContentTitle}>{title}</div>
           )}
@@ -59,7 +65,7 @@ export const PermissionsSidebarContent = memo(
               onChange={onEntityChange}
             />
           )}
-        </SidebarHeader>
+        </Box>
         <FilterableTree
           placeholder={filterPlaceholder}
           onSelect={onSelect}

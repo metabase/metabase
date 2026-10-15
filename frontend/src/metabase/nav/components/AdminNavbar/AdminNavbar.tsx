@@ -106,7 +106,7 @@ export const AdminNavbar = ({
           ))}
           {/* Security Center is rendered outside adminPaths because it
               needs a live query to show an active-advisories badge */}
-          {PLUGIN_SECURITY_CENTER.isEnabled && (
+          {PLUGIN_SECURITY_CENTER.isEnabled && isAdmin && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterNavItem
               currentPath={currentPath}
             />
@@ -116,7 +116,11 @@ export const AdminNavbar = ({
         {!isPaidPlan && isAdmin && <StoreLink />}
       </Flex>
       <Group gap="0.5rem" ms="auto">
-        <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
+        <MobileNavbar
+          adminPaths={adminPaths}
+          currentPath={currentPath}
+          isAdmin={isAdmin}
+        />
         <AppSwitcher />
       </Group>
     </Flex>
@@ -126,9 +130,14 @@ export const AdminNavbar = ({
 interface AdminMobileNavbarProps {
   adminPaths: AdminPath[];
   currentPath: string;
+  isAdmin: boolean;
 }
 
-const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
+const MobileNavbar = ({
+  adminPaths,
+  currentPath,
+  isAdmin,
+}: AdminMobileNavbarProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const ref = useClickOutside(() => setMobileNavOpen(false));
@@ -174,7 +183,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           ))}
           {/* Security Center is rendered outside adminPaths because it
               needs a live query to show an active-advisories badge */}
-          {PLUGIN_SECURITY_CENTER.isEnabled && (
+          {PLUGIN_SECURITY_CENTER.isEnabled && isAdmin && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem
               currentPath={currentPath}
             />

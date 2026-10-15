@@ -1,42 +1,39 @@
 import { t } from "ttag";
 
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Icon } from "metabase/ui";
+import { Box, Icon, Stack, Text, Title } from "metabase/ui";
 
-import {
-  EmptyFormPlaceholderWrapper,
-  ExplainerLink,
-  ExplainerList,
-  ExplainerText,
-  ExplainerTitle,
-  IconContainer,
-  TopRightIcon,
-} from "./EmptyFormPlaceholder.styled";
+import S from "./EmptyFormPlaceholder.module.css";
 
 export const EmptyFormPlaceholder = () => {
   const { url, showMetabaseLinks } = useDocsUrl("actions/custom");
 
   return (
-    <EmptyFormPlaceholderWrapper>
-      <IconContainer>
+    <Stack justify="center" h="100%" p="3rem" gap={0}>
+      <Box className={S.iconContainer}>
         <Icon name="sql" size={62} />
-        <TopRightIcon name="insight" size={24} />
-      </IconContainer>
-      <ExplainerTitle>{t`Build custom forms and business logic.`}</ExplainerTitle>
-      <ExplainerText>
+        <Icon name="insight" size={24} pos="absolute" top={0} right={0} />
+      </Box>
+      <Title order={3} size="h4" mb="sm">
+        {t`Build custom forms and business logic.`}
+      </Title>
+      <Text c="text-secondary" mt="sm">
         {t`Actions let you write parameterized SQL that writes back to your database. Actions can be attached to buttons on dashboards to create custom workflows. You can even publicly share the parameterized forms they generate to collect data.`}
-      </ExplainerText>
-      <ExplainerText>
+      </Text>
+      <Text c="text-secondary" mt="sm">
         {t`Here are a few ideas for what you can do with actions`}
-        <ExplainerList>
+        <Box component="ul" className={S.list}>
           <li>{t`Create a customer feedback form and embed it on your website.`}</li>
           <li>{t`Mark the customer you’re viewing in a dashboard as a VIP.`}</li>
           <li>{t`Let team members remove redundant data.`}</li>
-        </ExplainerList>
-      </ExplainerText>
+        </Box>
+      </Text>
       {showMetabaseLinks && (
-        <ExplainerLink href={url}>{t`See an example`}</ExplainerLink>
+        <ExternalLink className={S.link} href={url}>
+          {t`See an example`}
+        </ExternalLink>
       )}
-    </EmptyFormPlaceholderWrapper>
+    </Stack>
   );
 };

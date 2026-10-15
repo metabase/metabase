@@ -19,11 +19,7 @@ import type {
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
-import { PreviewImage, SailboatImage } from "./IllustrationWidget.styled";
-export interface StringSetting {
-  value: IllustrationSettingValue | null;
-  default: IllustrationSettingValue;
-}
+import S from "./IllustrationWidget.module.css";
 
 type IllustrationType = "background" | "icon";
 
@@ -188,11 +184,11 @@ export function IllustrationWidget({
       <Paper withBorder shadow="none">
         <Flex>
           <Flex
+            className={S.borderRight}
             align="center"
             justify="center"
             w="7.5rem"
             pos="relative"
-            style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
           >
             {getPreviewImage({
               value: localValue,
@@ -278,7 +274,7 @@ async function isFileIntact(dataUri: string) {
 
 const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
   background: <LighthouseIllustrationThumbnail />,
-  icon: <SailboatImage />,
+  icon: <Box className={S.sailboat} w="6.25rem" h="5.625rem" />,
 };
 
 interface GetPreviewImageProps {
@@ -301,7 +297,15 @@ function getPreviewImage({
   }
 
   if (value === "custom" && customSource) {
-    return <PreviewImage src={customSource} />;
+    return (
+      <Box
+        component="img"
+        className={S.previewImage}
+        src={customSource}
+        w="6.25rem"
+        h="5.625rem"
+      />
+    );
   }
 
   return null;

@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -1096,3 +1097,12 @@
             (is (= token (premium-features/premium-embedding-token))))
           (finally
             (token-check/clear-cache!)))))))
+
+(deftest invalid-token-error-response-test
+  (testing "an invalid token's error response carries its `:error-details`, and nothing else from the ex-data"
+    (let [data (try (token-check/-set-premium-embedding-token! "not-a-token")
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (is (= {:message       "Token format is invalid."
+              :error-details "Token should be 64 hexadecimal characters."}
+             (api-error/response-data data)))
+      (is (= 400 (:status-code data))))))

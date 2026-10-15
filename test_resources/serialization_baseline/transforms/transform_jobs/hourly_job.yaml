@@ -6,13 +6,8 @@ job_tags:
 - entity_id: RognTgBT2fXaxoQh4ws7z
   position: 0
   tag_id: wYLcUPbtF7jVPO0duGGHR
-  serdes/meta:
-  - id: RognTgBT2fXaxoQh4ws7z
-    model: TransformJobTransformTag
 name: Hourly job
 schedule: 0 0 * * * ? *
 ui_display_type: cron/builder
 serdes/meta:
-- id: RognTgBT2fXaxoQh4ws7z
-  label: hourly_job
-  model: TransformJob
+- model: TransformJob

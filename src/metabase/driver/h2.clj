@@ -113,6 +113,13 @@
   [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
+;; H2 loses a CTE's prepared-statement parameters under the outer `SELECT * FROM (<UNION ALL>)` wrap
+;; the pivot compiler emits — every branch counts zero rows. Opt out so the compiler inlines the
+;; pre-pivot subquery in each branch instead.
+(defmethod sql.qp/apply-cte-hoist? :h2
+  [_driver]
+  false)
+
 (defmethod driver/connection-properties :h2
   [_]
   (->>

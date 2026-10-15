@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 
-import { createProbes } from "./probes";
 import {
   REACT_PROBES,
   ReactProbeHost,
   useProbeCustomElement,
 } from "./ReactProbes";
+import { createProbes } from "./probes";
 import type { ReactMode } from "./types";
 import { describeError, getEnv } from "./utils";
 

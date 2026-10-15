@@ -1,0 +1,7 @@
+.item {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}

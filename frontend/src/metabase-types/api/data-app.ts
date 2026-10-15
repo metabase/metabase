@@ -1,13 +1,13 @@
 export type DataAppId = number;
 
 /**
- * A data app materialized from the connected repository. The repo's
- * `data_apps/<dir>/data_app.yaml` files are discovered on sync; one row exists
- * per app and the bundle is cached in the app DB and served at `/apps/:name`.
- * The repository itself is configured via the remote-sync settings.
+ * A data app: its manifest fields, plus a bundle cached in the app DB and
+ * served at `/apps/:name`.
  */
 export interface DataApp {
   id: DataAppId;
+  /** Stable identifier shared by the app's copies across instances. */
+  entity_id: string;
   /** The app's slug. */
   name: string;
   display_name: string;
@@ -20,32 +20,22 @@ export interface DataApp {
    * regular users never receive an outdated app.
    */
   outdated: boolean;
-  /** Path within the repo to the built bundle. */
+  /** Path to the built bundle, relative to the app's directory. */
   bundle_path: string;
   /** Admin toggle. When false the app is not served. */
   enabled: boolean;
   /** The collection that contains this app's saved questions and models. */
-  resource_collection_id: number | null;
-  /** The group that grants users access to this data app. */
-  permission_group_id: number | null;
+  resource_collection_id: number;
   /** Tables used by the last successful resource synchronization. */
   table_ids: number[];
-  /** Whether any app member lacks access to a table used by this app. */
-  has_user_permission_warnings?: boolean;
   /**
-   * External origins the app's sandboxed bundle may `fetch`/XHR, from its
-   * `data_app.yaml`. Empty means none (Metabase data still flows through the
-   * SDK). Each entry is an origin, optionally with a `*.` wildcard.
+   * External origins the app's sandboxed bundle may `fetch`/XHR. Empty means
+   * none (Metabase data still flows through the SDK). Each entry is an origin,
+   * optionally with a `*.` wildcard.
    */
   allowed_hosts: string[];
-  /** SHA-256 of the cached bundle; `null` until the first successful sync. */
+  /** SHA-256 of the cached bundle; `null` while the app has none. */
   bundle_hash: string | null;
-  /** Git commit the cached bundle was synced from; `null` until first sync. */
-  last_synced_sha: string | null;
-  /** ISO timestamp of the last successful sync; `null` if never synced. */
-  last_synced_at: string | null;
-  /** Message from this app's most recent failed sync; `null` when it succeeded. */
-  sync_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +57,22 @@ export interface SetDataAppEnabledRequest {
   enabled: boolean;
 }
 
+export interface DataAppGroup {
+  id: number;
+  name: string;
+  member_count: number;
+}
+
+export interface AddDataAppGroupsRequest {
+  name: string;
+  group_ids: number[];
+}
+
+export interface RemoveDataAppGroupRequest {
+  name: string;
+  group_id: number;
+}
+
 export interface DataAppMissingTable {
   id: number;
   name: string;
@@ -75,12 +81,7 @@ export interface DataAppMissingTable {
   database_name: string;
 }
 
-export interface DataAppUserPermissionWarning {
-  user_id: number;
+export interface DataAppGroupPermissionWarning {
+  group_id: number;
   missing_tables: DataAppMissingTable[];
-}
-
-export interface GetDataAppUserPermissionWarningsRequest {
-  name: string;
-  user_ids: number[];
 }

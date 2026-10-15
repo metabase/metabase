@@ -39,11 +39,12 @@ import {
 import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import { RouterTablePicker, TableSection } from "../../components";
-import type { TreePath } from "../../components/TablePicker/types";
-import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
+import { RouterTablePicker } from "./TablePicker";
+import type { TreePath } from "./TablePicker/types";
+import { TableSection } from "./TableSection";
+import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";

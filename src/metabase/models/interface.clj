@@ -46,6 +46,8 @@
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
+   (java.time OffsetDateTime ZoneOffset)
+   (java.time.temporal ChronoUnit)
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
@@ -238,6 +240,11 @@
   "Transform for keywords."
   {:in  u/qualified-name
    :out keyword})
+
+(def transform-boolean
+  "Transform for booleans; a boolean computed in SQL comes back as a number from MySQL and MariaDB."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
 
 (def transform-trim
   "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
@@ -610,6 +617,11 @@
   max (nanosecond) resolution)."
   []
   (h2x/current-datetime-honeysql-form (mdb/db-type)))
+
+(defn current-timestamp
+  "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
+  []
+  (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/MICROS))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj

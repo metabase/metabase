@@ -21,6 +21,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SaveButton,
   SdkSaveQuestionForm,
   SqlParametersList,
@@ -78,6 +79,7 @@ export type InteractiveQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -179,6 +181,7 @@ const subComponents: InteractiveQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,

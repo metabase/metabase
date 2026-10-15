@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "metabase/browse/components/DatabaseQuickLinksMenu";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -55,7 +56,7 @@ export const TableBrowserInner = ({
 
   return (
     <>
-      <Flex align="center" pt="lg" pr="sm" pb="sm">
+      <Flex align="center" justify="space-between" pt="lg" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -63,6 +64,7 @@ export const TableBrowserInner = ({
             ...(showSchemaInHeader ? [{ title: schemaName }] : []),
           ]}
         />
+        <DatabaseQuickLinksMenu databaseId={dbId} schemaName={schemaName} />
       </Flex>
       <BrowseGrid pt="xl">
         {tables.map((table) => (
