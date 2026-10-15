@@ -151,7 +151,9 @@
                                                        :on-commit (or on-commit (constantly nil))})]
           (cond
             (:ok result)
-            {:result :pulled :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
+            (let [{:keys [trashed-in-use renamed]} (:ok result)]
+              (cond-> {:result :pulled :head h :steps steps :trashed-in-use trashed-in-use}
+                renamed (assoc :renamed renamed)))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -165,9 +167,11 @@
 (defn pull!
   "Pulls the head of branch `branch` of `store` into instance `inst`. Returns one of:
 
-  - `{:result :pulled :head h :steps plan :trashed-in-use m ...}`: the instance holds the merge of the head with its
-    local changes, and its base is `h`, with the digests of the content of `h`; `m` is `{identity [user ...]}`, the
-    items that the pull moved to the trash and that content outside the Library uses;
+  - `{:result :pulled :head h :steps plan :trashed-in-use m :renamed r ...}`: the instance holds the merge of the head
+    with its local changes, and its base is `h`, with the digests of the content of `h`; `m` is `{identity [user
+    ...]}`, the items that the pull moved to the trash and that content outside the Library uses; `r` is `{identity
+    name}`, the items that the pull moved to the trash with a new name, so that the head could take their keys, and is
+    absent when there is none;
   - `{:result :up-to-date :head h}`: the head is the base;
   - `{:result :invalid :head h :findings [f ...]}`: the head does not decode, or breaks a structural rule; the
     instance stays on its base;

@@ -418,6 +418,22 @@
          (is (= remote (pltu/snapshot-of inst)))
          (is (= h (instance/base inst))))))))
 
+(deftest deploy-frees-the-name-of-a-removed-snippet-test
+  (enabled
+   (with-remote [repo s]
+     (let [c1       (pltu/commit-snapshot! repo ptu/branch [] (assoc ptu/sample other-id (other-snippet)))
+           [inst _] (deployed-instance! s)
+           new-id   "NewOtherSnippet000001"
+           remote   (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"}))
+           h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           new-name (str "Other (trashed " other-id ")")]
+       (testing "the head removes a snippet and adds one with a name of one key: the removed snippet goes to the trash
+                with a new name, and the deploy shows the head"
+         (is (=? {:result :deployed :head h :renamed {other-id new-name}} (deploy! inst s)))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (= h (instance/base inst)))
+         (is (= new-name (get-in @(:state inst) [:trash other-id :name]))))))))
+
 ;;; ------------------------------------------------- The whole workflow -----------------------------------------------
 
 (deftest sandbox-to-production-workflow-test

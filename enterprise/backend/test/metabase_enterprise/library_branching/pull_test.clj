@@ -529,6 +529,48 @@
          (is (= h (instance/base inst)))
          (is (= (dissoc ptu/sample ptu/orders-id) (pltu/snapshot-of inst))))))))
 
+(def ^:private toucan-old-id "ToucanOldSnippet00001")
+(def ^:private toucan-new-id "ToucanNewSnippet00001")
+
+(defn- toucan [id]
+  (ptu/item id :snippet "Toucan" "snippetssnippetssnipp" {:content "toucan = true"}))
+
+(deftest pull-frees-the-name-of-a-removed-snippet-test
+  (enabled
+   (with-remote [repo s]
+     (let [[inst c1] (pushed-instance! s (assoc ptu/sample toucan-old-id (toucan toucan-old-id)))
+           remote    (assoc ptu/sample toucan-new-id (toucan toucan-new-id))
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           new-name  (str "Toucan (trashed " toucan-old-id ")")]
+       (testing "the head removes a snippet and adds one with its name: the removed snippet goes to the trash with a new
+                name, so the new snippet takes the name, and the pull reports the new name"
+         (is (=? {:result :pulled :head h :renamed {toucan-old-id new-name}} (pltu/pull! inst s)))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (= h (instance/base inst)))
+         (is (= (assoc (toucan toucan-old-id) :name new-name) (get-in @(:state inst) [:trash toucan-old-id]))))))))
+
+(deftest rename-of-an-item-that-is-already-gone-test
+  (enabled
+   (with-remote [repo s]
+     (let [[inst c1] (pushed-instance! s (assoc ptu/sample toucan-old-id (toucan toucan-old-id)))
+           remote    (assoc ptu/sample toucan-new-id (toucan toucan-new-id))
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           reads     (atom 0)
+           racing    (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot]
+                                                               (let [r (read-snapshot)]
+                                                                 (when (= 1 (swap! reads inc))
+                                                                   ;; the snippet that the head removes is deleted
+                                                                   (swap! (:state inst) update :snapshot dissoc toucan-old-id))
+                                                                 r))})
+           result    (pltu/pull! racing s)]
+       (testing "the snippet that a rename and a trash step name is already gone: the apply skips both steps, so the
+                rename does not make the snippet again"
+         (is (= :pulled (:result result)))
+         (is (not (contains? result :renamed)))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (not (contains? (:trash @(:state inst)) toucan-old-id)))
+         (is (= h (instance/base inst))))))))
+
 (deftest fenced-apply-writes-nothing-test
   (enabled
    (with-remote [repo s]

@@ -212,6 +212,17 @@
                 [local local (snapshot m refs)]))
             (key-moves-gen "Key")))
 
+(defn key-trash-snapshots-gen
+  "Generates `[b o t]` as [[key-move-snapshots-gen]], but `t` lacks some of the snippets of `b`, and its references to
+  them: so a write can take the key of a snippet that `t` removes."
+  []
+  (gen/fmap (fn [[[b o t] drops]]
+              (let [snippets (filter #(= :snippet (:kind (get b %))) (sorted-ids b))
+                    gone     (keep-indexed (fn [i id] (when (nth drops i false) id)) snippets)
+                    t        (apply dissoc t gone)]
+                [b o (update-vals t #(keep-refs t %))]))
+            (gen/tuple (key-move-snapshots-gen) (gen/vector gen/boolean 5))))
+
 (def ^:private cycle-kinds [:collection :metric :published-table])
 
 (defn- cycle-items
