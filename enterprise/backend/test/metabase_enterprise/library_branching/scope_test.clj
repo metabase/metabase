@@ -6,6 +6,8 @@
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -25,8 +27,17 @@
   [table]
   [(t2/select-one-fn :name :model/Database (:db_id table)) (:schema table) (:name table)])
 
+(defn- venues-query []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (defn- metric-query []
-  (mt/mbql-query venues {:aggregation [[:count]]}))
+  (lib/aggregate (venues-query) (lib/count)))
+
+(defn- card-query
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
 
 (defn- archive-collection!
   [collection]
@@ -129,8 +140,7 @@
                      :model/Collection other-child {:name "Team child" :location (children-location other)}
                      :model/Card       user        {:name          "Revenue by month"
                                                     :collection_id (:id other)
-                                                    :dataset_query (mt/mbql-query nil
-                                                                     {:source-table (str "card__" (:id metric))})}
+                                                    :dataset_query (card-query (:id metric))}
                      :model/Dashboard  dashboard   {:name "Team overview" :collection_id (:id other)}
                      :model/Card       personal    {:name          "Rasta's revenue"
                                                     :type          :metric
@@ -198,7 +208,7 @@
                    :model/Action     action-in      {:name "Refund all" :type :http :collection_id (:id actions)}
                    :model/Collection app-collection {:name "Sales portal" :namespace "data-apps"}
                    :model/Action     action-app     {:name "Approve" :type :http :collection_id (:id app-collection)}
-                   :model/Card       model          {:name "Orders model" :type :model :dataset_query (mt/mbql-query venues)}
+                   :model/Card       model          {:name "Orders model" :type :model :dataset_query (venues-query)}
                    :model/Action     model-action   {:name "Model refund" :type :http :model_id (:id model)}
                    :model/DataApp    app            {}
                    :model/TransformTag tag          {:name "lb custom tag"}

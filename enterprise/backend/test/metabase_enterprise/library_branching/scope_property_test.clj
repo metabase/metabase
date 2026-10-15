@@ -153,7 +153,7 @@
         (select-keys (cons :collection item-kinds))
         (update-vals #(into #{} (filter ours) %)))))
 
-(defn- check-world
+(defn- check-world!
   "Writes `world` in a transaction that rolls back, and returns `{:expected :actual :counts-agree?}`."
   [world roots]
   (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -164,17 +164,17 @@
        :actual        (actual-scope world)
        :counts-agree? (= (update-vals (scope/scope-ids) count) (scope/scope-count))})))
 
-(defn- check-choices
+(defn- check-choices!
   [choices]
   (collections.tu/with-library [{:keys [library]}]
     (let [roots {:library  library
                  :personal (collections.tu/personal-collection (mt/user->id :rasta))}
-          {:keys [expected actual counts-agree?]} (check-world (fold choices) roots)]
+          {:keys [expected actual counts-agree?]} (check-world! (fold choices) roots)]
       (and (= expected actual) counts-agree?))))
 
 (defspec scope-matches-reference-model-test 100
   (prop/for-all [choices world-gen]
-    (check-choices choices)))
+    (check-choices! choices)))
 
 (deftest world-gen-coverage-test
   (testing "the generated worlds hold the cases that scope must decide"
