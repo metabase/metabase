@@ -286,6 +286,8 @@
   `opts`: `:tests`, the test vars or a loaded test namespace symbol for each mutation that names none; `:timeout-ms`
   (default 30000, nil for none), the time the tests of one mutation may take.
 
+  Each test var runs at most once with no mutation, however many mutations name it.
+
   Throws when a declaration is invalid, when a mutation has no tests, or when its tests fail with no mutation."
   ([mutations]
    (run-mutations mutations {}))
@@ -297,14 +299,14 @@
                          (or (some-> (or (:tests mutation) tests) test-vars seq vec)
                              (throw (ex-info (str "Mutation " (:name mutation) " has no tests.")
                                              {:mutation mutation}))))
-             baselines (atom {})
+             ;; The test vars that passed with no mutation. The lists of several mutations can share a test var.
+             passed    (atom #{})
              baseline! (fn [vars]
-                         (when-not (contains? @baselines vars)
-                           (let [{:keys [failed failure]} (run-tests vars)]
-                             (when (seq failed)
-                               (throw (ex-info (str "The tests fail with no mutation: " (str/join ", " failed))
-                                               {:failed failed :failure failure})))
-                             (swap! baselines assoc vars true))))]
+                         (let [{:keys [failed failure]} (run-tests (remove @passed vars))]
+                           (when (seq failed)
+                             (throw (ex-info (str "The tests fail with no mutation: " (str/join ", " failed))
+                                             {:failed failed :failure failure})))
+                           (swap! passed into vars)))]
          (mapv (fn [mutation]
                  (let [vars (vars-of mutation)]
                    (baseline! vars)
