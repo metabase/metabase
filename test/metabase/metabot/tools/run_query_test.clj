@@ -734,6 +734,11 @@
                                "the metric's base table as its source and the metric in `aggregation`, then run that "
                                "query with run_query.")}
                  (run-viewing! [{:type item-type, :id metric-card}] (str metric-card))))))
+      (testing "a metric over a table the user can't query offers no way to its values"
+        (mt/with-no-data-perms-for-all-users!
+          (is (= {:output (str "Query id " metric-card " is a metric, and a metric does not run by its id. "
+                               "Tell the user you can't read its results.")}
+                 (run-viewing! [] (str metric-card))))))
       (testing "a viewed metric built on a model names that model as the source, when the user can read it"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection {open :id}         {}
