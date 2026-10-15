@@ -938,6 +938,32 @@
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     native-query))))))))))))
 
+(deftest ui-credential-wildcard-is-not-agent-sql-run-test
+  (testing "GHY-4942: the iframe credential carries every scope string its token holds, a stale wildcard included.
+            The wildcard must not stand in for agent:sql:run at the native-SQL gate, or a client that cannot call
+            execute_sql runs raw SQL through POST /api/dataset instead"
+    (doseq [wildcard ["*" "agent:*" "agent:sql:*"]]
+      (testing (pr-str wildcard)
+        (do-with-bearer-token!
+         #{"agent:query:run" wildcard}
+         (fn [headers]
+           (let [session-id (-> (client/client-full-response :post 200 endpoint
+                                                             {:request-options {:headers headers}}
+                                                             (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+                                (get-in [:headers "Mcp-Session-Id"]))
+                 credential (-> (client/client-full-response
+                                 :post 200 endpoint
+                                 {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                 (jsonrpc-request "tools/call" {:name "refresh_ui_credential" :arguments {}}))
+                                (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))]
+             (is (string? credential)
+                 "refresh_ui_credential must hand back a credential, or this test passes vacuously")
+             (is (re-find #"agent:sql:run"
+                          (str (:body (client/client-full-response
+                                       :post 403 "dataset"
+                                       {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                                       {:database (mt/id) :type "native" :native {:query "SELECT 1"}}))))))))))))
+
 (deftest ui-credential-native-query-honors-the-execute-sql-group-policy-test
   (testing "a user whose groups deny execute_sql must not run raw SQL through the iframe credential either, or
             refresh_ui_credential plus POST /api/dataset rebuilds the tool an admin denied. The policy is read per

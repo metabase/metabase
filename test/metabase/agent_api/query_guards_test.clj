@@ -260,7 +260,6 @@
                                                  sql-allowed (ui-request scopes) legacy-native)))
       #{"agent:sql:run"}
       #{"agent:sql:execute"}                        ; v1's concrete scope keeps working
-      #{"agent:sql:*"}                              ; metabot permissions grant wildcards
       #{:metabase.api.macros.scope/unrestricted}))  ; browser-session MCP clients
   (testing "non-native queries are never gated, whatever the grant"
     (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
@@ -298,3 +297,11 @@
           (is (re-find #"agent:sql:run" msg))
           (is (not (re-find #"mcp-execute-sql-enabled" msg))
               "the scope refusal must not reveal the kill-switch setting to an unauthorized caller"))))))
+
+(deftest check-mcp-ui-native-query!-wildcard-test
+  (testing "GHY-4942: a wildcard is not a registered scope, so it does not cover agent:sql:run"
+    (are [scopes] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                          sql-allowed (ui-request scopes) legacy-native)))
+      #{"*"}
+      #{"agent:*"}
+      #{"agent:sql:*"})))

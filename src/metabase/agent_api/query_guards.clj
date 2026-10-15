@@ -225,9 +225,10 @@
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
       ;; state apart by which 403 message it got back.
       (let [token-scopes (:token-scopes claims)]
+        ;; Exact match: a wildcard is not a registered scope, so it does not stand in for agent:sql:run.
         (when-not (or (contains? token-scopes ::scope/unrestricted)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-execute))
+                      (contains? token-scopes metabot.scope/agent-sql-run)
+                      (contains? token-scopes metabot.scope/agent-sql-execute))
           (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
                                " scope, which this client was not granted.")
                           {:status-code 403}))))
