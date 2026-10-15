@@ -23,7 +23,7 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
    (java.sql Connection)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
@@ -368,6 +368,32 @@
                        pool-spec (get old-map cache-key)]
             :when     pool-spec]
       (destroy-pool! db-id pool-spec)
+      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
+
+(defn- empty-pool?
+  [data-source]
+  (and (instance? PooledDataSource data-source)
+       (try
+         (zero? (.getNumConnectionsDefaultUser ^PooledDataSource data-source))
+         (catch Throwable _
+           false))))
+
+(defn discard-pool-after-failed-checkout!
+  "Close the cached pool of `database-id` that has `data-source` if the pool has no Connections. Call this function
+  after a checkout from that pool fails. If the pool stays open, c3p0 continues to try to connect in the background."
+  [database-id data-source]
+  (when (empty-pool? data-source)
+    (doseq [[cache-key pool-spec] @pool-cache-key->connection-pool
+            :when (and (= (first cache-key) database-id)
+                       (identical? (:datasource pool-spec) data-source))
+            ;; only the thread that removes the pool from the cache closes it
+            :let  [[old-map] (swap-vals! pool-cache-key->connection-pool
+                                         (fn [m]
+                                           (cond-> m
+                                             (identical? (get m cache-key) pool-spec) (dissoc cache-key))))]
+            :when (identical? (get old-map cache-key) pool-spec)]
+      (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" database-id)
+      (destroy-pool! database-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
