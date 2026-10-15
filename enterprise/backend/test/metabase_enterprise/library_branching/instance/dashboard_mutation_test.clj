@@ -39,18 +39,16 @@
     :edits  [[:replace '(format.dashboard/dashcard-order tab-items entries) 'entries]]
     :tests  [#'dashboard-test/content-test]}
    {:name   :every-attribute-written
-    :doc    "A write sets every attribute, also one whose content did not change. Toucan skips an update to the values
-            that a row has, so no row changes: the mutation survives, and GetPut does not rest on this comparison."
+    :doc    "A write sets every attribute, also one whose content did not change, so a write of the current content
+            updates the dashboard row."
     :target `dashboard/write-dashboard!
     :edits  [[:replace '(content/changed-attrs format.dashboard/spec (:attrs old) attrs) '(set own)]]
-    :expect :survived
     :tests  [#'dashboard-test/get-put-test]}
    {:name   :every-card-written
-    :doc    "A write sets every column of each dashboard card that it keeps. Toucan skips an update to the values that a
-            row has, so no row changes: the mutation survives, and GetPut does not rest on this comparison."
+    :doc    "A write sets every column of each dashboard card that it keeps, so a write of the current content updates
+            the rows of the dashboard cards."
     :target `dashboard/write-dashcards!
     :edits  [[:replace '(not= (entry-v before k) (entry-v entry k)) true]]
-    :expect :survived
     :tests  [#'dashboard-test/get-put-test]}
    {:name   :series-not-written
     :doc    "A write of a dashboard card that it keeps leaves its series as they were."
