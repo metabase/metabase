@@ -1,6 +1,8 @@
 import type {
   CardId,
   CollectionId,
+  DashboardId,
+  DashboardSubscription,
   DatabaseId,
   ErdParams,
   FieldId,
@@ -115,6 +117,34 @@ export function dataStudioSnippets(params: ExpandedIdsParams = {}) {
 
 export function dataStudioActions(params: ExpandedIdsParams = {}) {
   return `${ROOT_URL}/actions${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDashboards(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/dashboards${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDashboard(dashboardId: DashboardId) {
+  return `${dataStudioDashboards()}/${dashboardId}`;
+}
+
+export function dataStudioDashboardContents(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/contents`;
+}
+
+export function dataStudioDashboardDependencies(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/dependencies`;
+}
+
+export function dataStudioDashboardUsage(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/usage`;
+}
+
+export function dataStudioDashboardSubscriptions(
+  dashboardId: DashboardId,
+  subscriptionId?: DashboardSubscription["id"],
+) {
+  const baseUrl = `${dataStudioDashboard(dashboardId)}/subscriptions`;
+  return subscriptionId != null ? `${baseUrl}/${subscriptionId}` : baseUrl;
 }
 
 export function dataStudioTable(tableId: TableId) {

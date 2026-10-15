@@ -24,7 +24,11 @@ export {
 export { useAdminSetting, useAdminSettings } from "./use-admin-setting";
 export { useSetting, useUserSetting } from "./use-setting";
 export { useSettingSwitch } from "./use-setting-switch";
-export { useTokenRefresh, useTokenRefreshUntil } from "./use-token-refresh";
+export {
+  useTokenRefresh,
+  useTokenRefreshUntil,
+  WAITING_REFRESH_INTERVAL,
+} from "./use-token-refresh";
 export {
   getPlan,
   hasAnySsoFeature,

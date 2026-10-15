@@ -22,6 +22,7 @@ import {
   getIncompleteTurnMessage,
   getIncompleteTurnReason,
   isChainOfThoughtMessage,
+  isContextFullError,
   isTextPart,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
@@ -710,7 +711,10 @@ export const Messages = ({
         ).unwrap();
         sendToast({ icon: "check", message: t`Conversation forked` });
       } catch {
-        sendToast({ icon: "warning", message: t`Failed to fork conversation` });
+        sendToast({
+          variant: "negative",
+          message: t`Failed to fork conversation`,
+        });
       } finally {
         setForkingMessageId(null);
       }
@@ -743,7 +747,7 @@ export const Messages = ({
         modal: undefined,
       }));
     } catch (error) {
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      sendToast({ variant: "negative", message: t`Failed to submit feedback` });
     }
   };
 
@@ -763,7 +767,9 @@ export const Messages = ({
                 conversationId={conversationId}
                 isStreaming={isDoingScience && isLastMessage}
                 onRetry={
-                  isLastMessage && onRetryMessage
+                  isLastMessage &&
+                  onRetryMessage &&
+                  !isContextFullError(message)
                     ? () => onRetryMessage(message.id)
                     : undefined
                 }

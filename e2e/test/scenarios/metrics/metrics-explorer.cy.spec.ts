@@ -1502,11 +1502,11 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       cy.log("should split the chart into separate panels");
-      H.splitPanelAxisLines().should("have.length", 2);
+      H.splitPanelSeparators().should("have.length", 1);
 
       cy.log("toggling off should return to unified view");
       cy.findByLabelText("Default layout").click();
-      H.splitPanelAxisLines().should("have.length", 0);
+      H.splitPanelSeparators().should("have.length", 0);
 
       cy.log("button should not be visible for non-line/area/bar charts");
       selectDimensionBreakout("State", { seeAll: true });
@@ -1860,10 +1860,6 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Segments", () => {
-    beforeEach(() => {
-      H.MetricsViewer.goToViewer();
-    });
-
     it("should apply a segment as a filter to a metric", () => {
       const SEGMENT_NAME = "Big orders";
 
@@ -1879,6 +1875,9 @@ describe("scenarios > metrics > explorer", () => {
           },
         },
       });
+      // Open the viewer only once the segment exists, so it can't load and
+      // cache the segment list before the segment is created.
+      H.MetricsViewer.goToViewer();
 
       addMetric("Count of orders");
 
@@ -1967,7 +1966,7 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("button", { name: /All time/i })
         .should("be.visible");
       H.ensureChartIsActive();
-      H.applyBrush(100, 250);
+      H.applyBrushToPoints(2, 7);
       H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All time/i })
         .should("not.exist");
@@ -2309,6 +2308,7 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
     // changed hash would hand the new state to the previous test's stale app.
     viewerVisitCount += 1;
     cy.visit(`/explore?visit=${viewerVisitCount}#${hash}`);
+    H.closeNavigationSidebar();
     H.MetricsViewer.searchBarPills().should("have.length", names.length);
     H.MetricsViewer.getAllMetricVisualizations().should(
       "have.length.at.least",

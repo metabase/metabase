@@ -1,5 +1,10 @@
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 import { getChartColor } from "../../lib/color-name";
 import type { ComputedVisualizationSettings } from "../../types";
@@ -88,6 +93,32 @@ export const getSeriesDefaultLineMissing = (
 export const getSeriesDefaultShowSeriesTrendline = (
   settings: ComputedVisualizationSettings,
 ) => settings["graph.show_trendline"];
+
+const getRawSeries = (series: Series): Series =>
+  isObjectWithRaw(series) && series._raw ? series._raw : series;
+
+const hasInsights = (single: SingleSeries | undefined) =>
+  (single?.data.insights?.length ?? 0) > 0;
+
+const hasMultipleDimensions = (settings: ComputedVisualizationSettings) =>
+  (settings["graph.dimensions"] ?? []).length > 1;
+
+export const isTrendLineUnavailable = (
+  series: Series,
+  settings: ComputedVisualizationSettings,
+) => hasMultipleDimensions(settings) || !hasInsights(getRawSeries(series)[0]);
+
+// unlike isTrendLineUnavailable, reads the insights of the series' own card
+export const isSeriesTrendLineUnavailable = (
+  single: SingleSeries,
+  series: Series,
+  settings: ComputedVisualizationSettings,
+) => {
+  const rawSeries = getRawSeries(series);
+  const sourceSeries =
+    rawSeries.find((raw) => raw.card.id === single.card.id) ?? rawSeries[0];
+  return hasMultipleDimensions(settings) || !hasInsights(sourceSeries);
+};
 
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,

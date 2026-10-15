@@ -103,8 +103,7 @@
 
 (def ^:private consent-scope-order
   "The MCP v2 scopes in the order the consent page lists them, least to most harmful."
-  ["agent:resource:read"
-   "agent:content:read"
+  ["agent:content:read"
    "agent:query:run"
    "agent:content:write"
    "agent:sql:run"

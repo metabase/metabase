@@ -51,6 +51,7 @@ jobs:
       sparksql-should-run: ${{ steps.driver-decisions.outputs.sparksql-should-run }}
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
+      starburst-should-run: ${{ steps.driver-decisions.outputs.starburst-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
     steps:
       - name: Checkout repository
@@ -1160,33 +1161,35 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
-  # be-tests-starburst-ee:
-  #   needs: determine-driver-skips
-  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-  #   timeout-minutes: 40
-  #   env:
-  #     CI: 'true'
-  #     DRIVERS: starburst
-  #   services:
-  #     starburst:
-  #       image: trinodb/trino:latest
-  #       env:
-  #         CATALOG_MANAGEMENT: dynamic
-  #       ports:
-  #         - "8080:8080"
-  #   name: Starburst
-  #   steps:
-  #   - uses: actions/checkout@v7
-  #   - name: Make plugins directory
-  #     run: mkdir plugins
-  #   - name: Test Starburst driver
-  #     uses: ./.github/actions/test-driver
-  #     with:
-  #       junit-name: 'be-tests-starburst-ee'
-  #       test-args: >-
-  #         :only-tags [:mb/driver-tests]
+  be-tests-starburst-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.starburst-should-run == 'true' }}
+    # trino is a memory hog and frequently runs out of memory on 16GB runners.
+    # note that running out of memory manifests as random job cancellations
+    # that give no indication of memory being the root cause of the problem.
+    runs-on: ubuntu-latest-8-cores
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: starburst
+    services:
+      starburst:
+        image: trinodb/trino:latest
+        env:
+          CATALOG_MANAGEMENT: dynamic
+        ports:
+          - "8080:8080"
+    name: Starburst
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test Starburst driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-starburst-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
 
   login-to-ecr:
     needs: determine-driver-skips
@@ -1239,8 +1242,6 @@ jobs:
     name: Vertica
     steps:
     - uses: actions/checkout@v7
-    - name: Make plugins directory
-      run: mkdir plugins
     - name: Test Vertica driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1276,7 +1277,7 @@ jobs:
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       - be-tests-vertica-ee
-      # - be-tests-starburst-ee
+      - be-tests-starburst-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result

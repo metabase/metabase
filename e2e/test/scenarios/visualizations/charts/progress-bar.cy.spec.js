@@ -9,46 +9,70 @@ describe("scenarios > visualizations > progress chart", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render progress bar in query builder and dashboard (metabase#40658, metabase#41243)", () => {
+  it("should render small progress bar and gauge cards on a dashboard, and the progress bar in query builder (metabase#40658, metabase#41243, metabase#15980)", () => {
     const QUESTION_NAME = "40658";
     const questionDetails = {
       name: QUESTION_NAME,
       query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
       display: "progress",
     };
+    const gaugeQuestionDetails = {
+      name: "15980",
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+      display: "gauge",
+      visualization_settings: {
+        "gauge.segments": [
+          { min: 0, max: 10000, color: "#ED6E6E", label: "" },
+          { min: 10000, max: 30000, color: "#84BB4C", label: "Goal" },
+        ],
+      },
+    };
 
-    // check dashboard chart render
-    H.createQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        // Make dashboard card really small (necessary for this repro as it doesn't show any labels)
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-              parameter_mappings: [],
-            },
-          ],
-        });
+    // Small dashboard cards trigger both regressions. A small gauge shows its
+    // segment labels in a tooltip on hover (metabase#15980).
+    H.createQuestion(gaugeQuestionDetails).then(
+      ({ body: { id: gaugeCardId } }) => {
+        H.createQuestionAndDashboard({ questionDetails }).then(
+          ({ body: { card_id, dashboard_id } }) => {
+            H.updateDashboardCards({
+              dashboard_id,
+              cards: [
+                { card_id, row: 0, col: 0, size_x: 5, size_y: 4 },
+                { card_id: gaugeCardId, row: 0, col: 5, size_x: 5, size_y: 4 },
+              ],
+            });
 
-        H.visitDashboard(dashboard_id);
+            H.visitDashboard(dashboard_id);
+          },
+        );
       },
     );
 
-    H.dashboardCards()
-      .first()
-      .within(() => {
-        cy.findByText("18,760").should("be.visible");
-        cy.findByText("Goal 0").should("be.visible");
-        cy.findByText("Goal exceeded").should("be.visible");
-      });
+    cy.log("gauge: hover a segment without a label, then one with a label");
+    H.getDashboardCard(1).findByTestId("gauge-arc-0").trigger("mousemove");
 
-    // check query builder chart render
-    H.dashboardCards().first().findByText(QUESTION_NAME).click();
+    // The value text covers the center of this arc
+    H.getDashboardCard(1)
+      .findByTestId("gauge-arc-1")
+      .trigger("mousemove", { force: true });
+    H.tooltip().should("contain", "Goal").and("contain", "10,000 - 30,000");
+
+    H.getDashboardCard(1).findByTestId("gauge-arc-1").should("be.visible");
+
+    H.getDashboardCard(1)
+      .findByTestId("gauge-arc-1")
+      .trigger("mouseout", { force: true });
+    H.tooltip().should("not.exist");
+
+    cy.log("progress bar: dashboard render");
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("18,760").should("be.visible");
+      cy.findByText("Goal 0").should("be.visible");
+      cy.findByText("Goal exceeded").should("be.visible");
+    });
+
+    cy.log("progress bar: query builder render");
+    H.getDashboardCard(0).findByText(QUESTION_NAME).click();
     H.queryBuilderMain().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText("Goal 0").should("be.visible");

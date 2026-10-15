@@ -38,7 +38,7 @@ export function UnarchiveCollectionButton({
               void dispatch(
                 addUndo({
                   message: t`"${collection.name}" could not be archived`,
-                  icon: "warning",
+                  variant: "negative",
                 }),
               );
             } else {
@@ -52,7 +52,7 @@ export function UnarchiveCollectionButton({
       void dispatch(
         addUndo({
           message: t`"${collection.name}" could not be unarchived`,
-          icon: "warning",
+          variant: "negative",
         }),
       );
     }

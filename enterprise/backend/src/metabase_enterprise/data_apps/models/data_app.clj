@@ -172,7 +172,7 @@
                                                         (or (get files path)
                                                             (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
                                                                             {:status-code 400}))))))}}
-   :defaults  {:description nil :version 1 :allowed_hosts []}})
+   :defaults  {:description nil :allowed_hosts []}})
 
 (defmethod serdes/extract-query "DataApp"
   [model-name {:keys [filter-column filter-ids] :as opts}]

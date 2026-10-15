@@ -209,7 +209,7 @@ const SourceFeedbackButtons = ({
       }).unwrap();
     } catch {
       setFeedback(previousFeedback);
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      sendToast({ variant: "negative", message: t`Failed to submit feedback` });
     }
   };
 
@@ -293,7 +293,7 @@ const SourceFeedbackRow = ({
           <EntityIcon
             {...getIcon({ model: source.iconModel })}
             size="0.75rem"
-            c="brand"
+            c="core-brand"
           />
           <Text fz="md" lh="sm" fw="bold" truncate>
             {source.name}
@@ -328,25 +328,23 @@ const SourceFeedbackModal = ({
     title={t`Give feedback`}
     data-testid="metabot-source-feedback-modal"
   >
-    <Stack gap="lg">
-      <Stack
-        gap={0}
-        bdrs="sm"
-        bd="1px solid var(--mb-color-border-neutral)"
-        className={S.feedbackList}
-      >
-        {sources.map((source) => (
-          <SourceFeedbackRow
-            key={`${source.model}-${source.id}`}
-            messageId={messageId}
-            source={source}
-          />
-        ))}
-      </Stack>
-      <Group justify="flex-end">
-        <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
-      </Group>
+    <Stack
+      gap={0}
+      bdrs="sm"
+      bd="1px solid var(--mb-color-border-neutral)"
+      className={S.feedbackList}
+    >
+      {sources.map((source) => (
+        <SourceFeedbackRow
+          key={`${source.model}-${source.id}`}
+          messageId={messageId}
+          source={source}
+        />
+      ))}
     </Stack>
+    <Modal.Footer>
+      <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
+    </Modal.Footer>
   </Modal>
 );
 

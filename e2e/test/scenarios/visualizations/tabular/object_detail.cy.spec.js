@@ -31,48 +31,10 @@ const TEST_QUESTION = {
   },
 };
 
-const TEST_PEOPLE_QUESTION = {
-  query: {
-    "source-table": PEOPLE_ID,
-  },
-};
-
 describe("scenarios > question > object details", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-  });
-
-  it("shows correct object detail card for questions with joins (metabase#27094)", () => {
-    const questionDetails = {
-      name: "14775",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-            ],
-            alias: "Products",
-          },
-        ],
-      },
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    drillPK({ id: 1 });
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
-        "be.visible",
-      );
-      cy.findByRole("heading", { name: "1" }).should("be.visible");
-    });
   });
 
   it("shows correct object detail card for questions with joins after clicking on view details (metabase#39477)", () => {
@@ -127,6 +89,17 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       );
       cy.findByRole("heading", { name: "2" }).should("be.visible");
       cy.findByText("110.93").should("be.visible");
+      cy.findByLabelText("Close").click();
+    });
+    cy.findByTestId("object-detail").should("not.exist");
+
+    cy.log("Open object details by clicking the PK cell (metabase#27094)");
+    drillPK({ id: 1 });
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
+        "be.visible",
+      );
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
     });
   });
 
@@ -160,7 +133,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
-    H.modal().findByRole("link", { name: "77 Orders" }).click();
+    cy.findByTestId("object-detail")
+      .findByRole("link", { name: "77 Orders" })
+      .click();
     cy.log("should close the modal when browsing relationships");
     cy.findByTestId("object-detail").should("not.exist");
 
@@ -205,22 +180,22 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
-    H.openPeopleTable();
-    H.tableInteractiveScrollContainer().scrollTo(2000, 14900);
-    H.openObjectDetail(417);
-    cy.findByRole("dialog")
-      .should("contain", "418")
-      .and("contain", "31942-31950 Oak Ridge Parkway")
-      .and("contain", "koss-ella@hotmail.com");
-  });
-
   it("handles browsing records by FKs (metabase#21756)", () => {
+    cy.intercept(
+      { method: "GET", pathname: "/api/action" },
+      cy.spy().as("getActions"),
+    );
     H.openOrdersTable();
 
     drillFK({ id: 1 });
 
-    assertUserDetailView({ id: 1, name: "Hudson Borer" });
+    cy.log("ad-hoc questions do not fetch actions (metabase#50266)");
+    cy.findByTestId("object-detail")
+      .findByRole("link", { name: /Orders/ })
+      .should("exist");
+    cy.get("@getActions").should("have.callCount", 0);
+
+    assertUserDetailView({ id: 1, heading: "Hudson Borer" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
 
@@ -231,39 +206,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     changeSorting("User ID", "desc");
     drillFK({ id: 2500 });
 
-    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
+    assertUserDetailView({ id: 2500, heading: "Kenny Schmidt" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
-  });
-
-  it.skip("handles opening a filtered out record", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    const FILTERED_OUT_ID = 1;
-
-    H.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}/${FILTERED_OUT_ID}`);
-      cy.wait("@cardQuery");
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(/We're a little lost/i);
-      });
-    });
-  });
-
-  it.skip("can view details of an out-of-range record", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    // since we only fetch 2000 rows, this ID is out of range
-    // and has to be fetched separately
-    const OUT_OF_RANGE_ID = 2150;
-
-    H.createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}/${OUT_OF_RANGE_ID}`);
-      cy.wait("@cardQuery");
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByRole("heading", { name: "Marcelina Kuhn" }).should(
-          "be.visible",
-        );
-      });
-    });
   });
 
   it("should allow to browse linked entities by FKs (metabase#21757)", () => {
@@ -292,22 +237,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("view-footer")
       .findByText("Showing 92 rows")
       .should("be.visible");
-  });
-
-  it("should not offer drill-through on the object detail records (metabase#20560)", () => {
-    H.openPeopleTable({ limit: 2 });
-
-    drillPK({ id: 2 });
-    cy.url().should("contain", "objectId=2");
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findByTestId("object-detail")
-      .findAllByText("Domenica Williamson")
-      .last()
-      .click();
-    // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
-    // Unfortunately, asserting that the popover does not exist will give us a false positive result.
-    cy.findByTestId("object-detail").findByText("Searsboro").click();
   });
 
   it("should work with non-numeric IDs (metabase#22768)", () => {
@@ -370,22 +299,33 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
-  });
 
-  it("should not call GET /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/action", cy.spy().as("getActions"));
+    cy.log(
+      "should display correct data when toggling columns (metabase#63745)",
+    );
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar")
+      .button("Add or remove columns")
+      .click();
 
-    cy.visit("/");
-    H.browseDatabases().click();
-    cy.findByRole("heading", { name: "Sample Database" }).click();
-    cy.findByRole("heading", { name: "Orders" }).click();
-    cy.wait("@dataset");
-    cy.findAllByTestId("cell-data").eq(11).click();
-    H.popover().findByText("View details").click();
-    cy.wait(["@dataset", "@dataset", "@dataset"]); // object detail + Orders relationship + Reviews relationship
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("ID")).to.eq("1");
+      expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
+    });
 
-    cy.get("@getActions").should("have.callCount", 0);
+    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
+
+    // A stale mapping shifts each value one label down: "Product ID" then shows the User ID value.
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.has("ID")).to.be.false;
+      expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
+    });
   });
 
   it("reset object detail navigation state on query change (metabase#54317)", () => {
@@ -488,7 +428,40 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("should support keyboard navigation and opened row highlighting", () => {
+  it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
+    H.openPeopleTable();
+    H.tableInteractiveScrollContainer().scrollTo(2000, 14900);
+    H.openObjectDetail(417);
+    cy.findByRole("dialog")
+      .should("contain", "418")
+      .and("contain", "31942-31950 Oak Ridge Parkway")
+      .and("contain", "koss-ella@hotmail.com");
+  });
+
+  it("should not offer drill-through on the object detail records (metabase#20560)", () => {
+    H.openPeopleTable({ limit: 2 });
+
+    H.tableInteractive()
+      .findByText("Searsboro")
+      .click({ scrollBehavior: false });
+    H.popover().should("be.visible");
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    drillPK({ id: 2 });
+    cy.url().should("contain", "objectId=2");
+
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findByTestId("object-detail")
+      .findAllByText("Domenica Williamson")
+      .last()
+      .click();
+    // A drill popover would cover "Searsboro", and the click would fail.
+    cy.findByTestId("object-detail").findByText("Searsboro").click();
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  });
+
+  it("should support keyboard navigation, row highlighting, sidebar toggling and viz settings", () => {
     H.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
@@ -524,26 +497,19 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .should("be.visible");
 
     cy.log("does not navigate outside of bounds");
+    getPreviousObjectDetailButton().should("have.attr", "disabled", "disabled");
     cy.realPress("ArrowUp");
     getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
     cy.findByTestId("object-detail")
       .findByRole("heading", { name: "Hudson Borer" })
       .should("be.visible");
-  });
 
-  it("should support toggling the sidebar", () => {
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": PEOPLE_ID },
-      },
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Address").should("be.visible");
+      assertDetailColumnOrder({ before: "Email", after: "State" });
     });
 
-    getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
-    H.openObjectDetail(0);
-
+    cy.log("toggles the sidebar from the detail shortcut");
     // realHover does not work behind the modal overlay, so we're working around it with realMouseMove
     getRow(0).then(($row) => {
       const rect = $row[0].getBoundingClientRect();
@@ -566,18 +532,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .should("be.visible");
       H.tooltip().should("be.visible").and("contain.text", "View details");
     });
-  });
 
-  it("should respect viz settings column order and visibility", () => {
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": PEOPLE_ID },
-      },
-    });
-
+    cy.log("respects viz settings column order and visibility");
     H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Address-hide-button").click();
@@ -599,13 +555,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByText("Address").should("not.exist");
 
       cy.log("viz settings columns order is respected");
-      cy.findAllByText(/State|Email/).then(($elements) => {
-        const texts = $elements
-          .map((_index, element) => element.textContent)
-          .get();
-
-        expect(texts.indexOf("State")).to.be.lessThan(texts.indexOf("Email"));
-      });
+      assertDetailColumnOrder({ before: "State", after: "Email" });
     });
   });
 
@@ -706,97 +656,80 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("should display correct data when toggling columns (metabase#63745)", () => {
-    H.visitQuestionAdhoc({
-      name: "63745",
-      display: "object",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
+  describe("detail page links", () => {
+    const PEOPLE_FIELDS = [
+      ["field", PEOPLE.ADDRESS],
+      ["field", PEOPLE.EMAIL],
+      ["field", PEOPLE.NAME],
+    ];
+    const NO_PK_QUERY = {
+      "source-table": PEOPLE_ID,
+      fields: PEOPLE_FIELDS,
+      limit: 5,
+    };
+    const ONE_PK_QUERY = {
+      "source-table": PEOPLE_ID,
+      fields: [["field", PEOPLE.ID], ...PEOPLE_FIELDS],
+      limit: 5,
+    };
+    const TWO_PKS_QUERY = {
+      ...ONE_PK_QUERY,
+      joins: [
+        {
           "source-table": ORDERS_ID,
-          limit: 5,
+          fields: [["field", ORDERS.ID]],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: ["=", ["field", PEOPLE.ID], ["field", ORDERS.USER_ID]],
         },
-      },
-    });
+      ],
+    };
 
-    H.openVizSettingsSidebar();
-    cy.findByTestId("chartsettings-sidebar")
-      .button("Add or remove columns")
-      .click();
-
-    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
-      const cellsFlat = $cells.toArray().map((el) => el.textContent);
-      const map = new Map(chunk(cellsFlat, 2));
-      expect(map.get("User ID")).to.eq("1");
-      expect(map.get("Product ID")).to.eq("14");
-    });
-
-    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
-
-    // A stale mapping shifts each value one label down: "Product ID" then shows the User ID value.
-    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
-      const cellsFlat = $cells.toArray().map((el) => el.textContent);
-      const map = new Map(chunk(cellsFlat, 2));
-      expect(map.has("ID")).to.be.false;
-      expect(map.get("User ID")).to.eq("1");
-      expect(map.get("Product ID")).to.eq("14");
-    });
-  });
-
-  describe("detail page links - questions", () => {
-    it("no primary keys (WRK-900)", () => {
+    function visitAdhocQuestion(query) {
       H.visitQuestionAdhoc({
         display: "table",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
-        },
+        dataset_query: { type: "query", database: SAMPLE_DB_ID, query },
       });
+    }
 
-      H.openObjectDetail(0);
+    function assertNoDetailPageLinks() {
       cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Close").should("be.visible");
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    }
 
+    beforeEach(() => {
+      H.grantClipboardPermissions();
+    });
+
+    it("questions", () => {
+      cy.log("no primary keys (WRK-900)");
+      cy.intercept("GET", `/api/table/${PEOPLE_ID}/fks`).as("peopleFks");
+      visitAdhocQuestion(NO_PK_QUERY);
+      H.openObjectDetail(0);
+      cy.wait("@peopleFks");
+      assertNoDetailPageLinks();
+      cy.findByTestId("object-detail").within(() => {
         cy.log("should not show relationships when there is no PK (WRK-900)");
         cy.findByText(/is connected to/).should("not.exist");
         cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
-    });
 
-    it("1 primary key", () => {
-      H.grantClipboardPermissions();
-      H.visitQuestionAdhoc({
-        display: "table",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
-        },
-      });
+      cy.log("2 primary keys");
+      visitAdhocQuestion(TWO_PKS_QUERY);
+      H.openObjectDetail(0);
+      assertNoDetailPageLinks();
 
+      cy.log("1 primary key");
+      visitAdhocQuestion(ONE_PK_QUERY);
       H.openObjectDetail(0);
       cy.findByTestId("object-detail").within(() => {
         const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}-people/detail/1`;
+
+        cy.findByText(/is connected to/).should("be.visible");
+        cy.findByRole("link", { name: /Orders/ }).should("be.visible");
 
         cy.findByLabelText("Copy link to this record").click();
         H.readClipboard().should("equal", expectedUrl);
@@ -805,92 +738,41 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         cy.location("href").should("eq", expectedUrl);
         cy.findByRole("heading", { name: "Hudson Borer" }).should("be.visible");
       });
-    });
 
-    it("2 primary keys", () => {
-      H.visitQuestionAdhoc({
-        display: "table",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ], //["field", ORDERS.ID],
-            joins: [
-              {
-                "source-table": ORDERS_ID,
-                fields: [["field", ORDERS.ID]],
-                strategy: "left-join",
-                alias: "Orders",
-                condition: [
-                  "=",
-                  ["field", PEOPLE.ID],
-                  ["field", ORDERS.USER_ID],
-                ],
-              },
-            ],
-            limit: 5,
-          },
+      cy.log("email values render as mailto links");
+      H.DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(
+        () => {
+          cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
+            "have.attr",
+            "href",
+            "mailto:borer-hudson@yahoo.com",
+          );
         },
-      });
-
-      H.openObjectDetail(0);
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByLabelText("Copy link to this record").should("not.exist");
-        cy.findByLabelText("Open in full page").should("not.exist");
-      });
+      );
     });
-  });
 
-  describe("detail page links - models", () => {
-    it("no primary keys (WRK-900)", () => {
+    it("models", () => {
+      cy.log("no primary keys (WRK-900)");
       H.createQuestion(
-        {
-          type: "model",
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
-        },
+        { type: "model", query: NO_PK_QUERY },
         { visitQuestion: true },
       );
-
       H.openObjectDetail(0);
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByLabelText("Copy link to this record").should("not.exist");
-        cy.findByLabelText("Open in full page").should("not.exist");
+      assertNoDetailPageLinks();
 
-        cy.log("should not show relationships when there is no PK (WRK-900)");
-        cy.findByText(/is connected to/).should("not.exist");
-        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
-      });
-    });
+      cy.log("2 primary keys");
+      H.createQuestion(
+        { type: "model", query: TWO_PKS_QUERY },
+        { visitQuestion: true },
+      );
+      H.openObjectDetail(0);
+      assertNoDetailPageLinks();
 
-    it("1 primary key", () => {
-      H.grantClipboardPermissions();
+      cy.log("1 primary key");
       H.createQuestion({
         type: "model",
         name: "model",
-        query: {
-          "source-table": PEOPLE_ID,
-          fields: [
-            ["field", PEOPLE.ID],
-            ["field", PEOPLE.ADDRESS],
-            ["field", PEOPLE.EMAIL],
-            ["field", PEOPLE.NAME],
-          ],
-          limit: 5,
-        },
+        query: ONE_PK_QUERY,
       }).then(({ body: card }) => {
         const slug = [card.id, card.name].join("-");
 
@@ -909,44 +791,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
             "be.visible",
           );
         });
-      });
-    });
-
-    it("2 primary keys", () => {
-      H.createQuestion(
-        {
-          type: "model",
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            joins: [
-              {
-                "source-table": ORDERS_ID,
-                fields: [["field", ORDERS.ID]],
-                strategy: "left-join",
-                alias: "Orders",
-                condition: [
-                  "=",
-                  ["field", PEOPLE.ID],
-                  ["field", ORDERS.USER_ID],
-                ],
-              },
-            ],
-            limit: 5,
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      H.openObjectDetail(0);
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByLabelText("Copy link to this record").should("not.exist");
-        cy.findByLabelText("Open in full page").should("not.exist");
       });
     });
   });
@@ -996,6 +840,15 @@ function assertUserDetailView({ id, heading, subtitle }) {
   assertDetailView({ id, heading, subtitle, byFK: true });
 }
 
+function assertDetailColumnOrder({ before, after }) {
+  cy.findAllByText(new RegExp(`^(${before}|${after})$`)).should(($elements) => {
+    const texts = $elements.map((_index, element) => element.textContent).get();
+
+    expect(texts).to.include(before);
+    expect(texts.indexOf(before)).to.be.lessThan(texts.indexOf(after));
+  });
+}
+
 function getPreviousObjectDetailButton() {
   return cy.findByLabelText("Previous row");
 }
@@ -1015,20 +868,23 @@ function changeSorting(columnName, direction) {
 
 ["postgres", "mysql"].forEach((dialect) => {
   describe(
-    `Object Detail > composite keys (${dialect})`,
+    `Object Detail > composite and missing primary keys (${dialect})`,
     { tags: ["@external"] },
     () => {
-      const TEST_TABLE = "composite_pk_table";
-
       beforeEach(() => {
         H.restore(`${dialect}-writable`);
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
+        H.resetTestTable({ type: dialect, table: "composite_pk_table" });
+        H.resetTestTable({ type: dialect, table: "no_pk_table" });
         cy.signInAsAdmin();
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+        H.resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tables: ["composite_pk_table", "no_pk_table"],
+        });
       });
 
-      it("can show object detail modal for items with composite keys", () => {
-        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
+      it("can browse object details for items with composite keys and with no primary key", () => {
+        cy.log("composite keys");
+        H.getTableId({ name: "composite_pk_table" }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -1038,48 +894,44 @@ function changeSorting(columnName, direction) {
           cy.findByRole("heading", { name: "Duck" }).should("be.visible");
           cy.findByLabelText("Next row").click();
           cy.findByRole("heading", { name: "Horse" }).should("be.visible");
+          cy.findByLabelText("Close").click();
         });
-      });
+        cy.findByRole("dialog").should("not.exist");
 
-      it("cannot navigate past the end of the list of objects with the keyboard", () => {
+        cy.log(
+          "cannot navigate past the end of the list of objects with the keyboard",
+        );
         // this bug only manifests on tables without single integer primary keys
         // it is also reproducible on tables with string keys
-
-        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
-          cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
-        });
-
         H.openObjectDetail(5);
 
         cy.findByRole("dialog").within(() => {
           cy.findByRole("heading", { name: "Rabbit" }).should("be.visible");
+          cy.findByLabelText("Next row").should(
+            "have.attr",
+            "disabled",
+            "disabled",
+          );
         });
+
+        cy.get("body").type("{uparrow}");
+        cy.findByRole("dialog")
+          .findByRole("heading", { name: "Chicken" })
+          .should("be.visible");
 
         cy.get("body").type("{downarrow}");
+        cy.findByRole("dialog")
+          .findByRole("heading", { name: "Rabbit" })
+          .should("be.visible");
 
+        cy.get("body").type("{downarrow}");
         cy.findByRole("dialog").within(() => {
           cy.findByRole("heading", { name: "Rabbit" }).should("be.visible");
-          cy.findByText("Empty").should("not.exist");
+          cy.findByText(/couldn't find that record/).should("not.exist");
         });
-      });
-    },
-  );
 
-  describe(
-    `Object Detail > no primary keys (${dialect})`,
-    { tags: ["@external"] },
-    () => {
-      const TEST_TABLE = "no_pk_table";
-
-      beforeEach(() => {
-        H.restore(`${dialect}-writable`);
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
-        cy.signInAsAdmin();
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
-      });
-
-      it("can show object detail modal for items with no primary key", () => {
-        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
+        cy.log("no primary keys");
+        H.getTableId({ name: "no_pk_table" }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -1101,37 +953,35 @@ describe("Object Detail > public", () => {
     cy.signInAsAdmin();
   });
 
-  it("can view a public object detail question", () => {
-    H.createQuestion({ ...TEST_QUESTION, display: "object" }).then(
-      ({ body: { id: questionId } }) => {
-        H.visitPublicQuestion(questionId);
-      },
-    );
-    cy.icon("warning").should("not.exist");
+  it("can view an object detail question on a public dashboard and as a public question", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: { ...TEST_QUESTION, display: "object" },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.wrap(card_id).as("questionId");
+      H.visitPublicDashboard(dashboard_id);
+    });
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("User ID").should("be.visible");
       cy.findByText("1283").should("be.visible");
     });
+    cy.icon("warning").should("not.exist");
 
     cy.findByTestId("pagination-footer").within(() => {
       cy.findByText("Item 1 of 3").should("be.visible");
     });
-  });
 
-  it("can view an object detail question on a public dashboard", () => {
-    H.createQuestionAndDashboard({
-      questionDetails: { ...TEST_QUESTION, display: "object" },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitPublicDashboard(dashboard_id);
+    cy.log("public question");
+    cy.signInAsAdmin();
+    cy.get("@questionId").then((questionId) => {
+      H.visitPublicQuestion(questionId);
     });
-
-    cy.icon("warning").should("not.exist");
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("User ID").should("be.visible");
       cy.findByText("1283").should("be.visible");
     });
+    cy.icon("warning").should("not.exist");
 
     cy.findByTestId("pagination-footer").within(() => {
       cy.findByText("Item 1 of 3").should("be.visible");
@@ -1155,6 +1005,7 @@ describe("issue 66957", () => {
     });
 
     H.openObjectDetail(5);
+    cy.findByTestId("object-detail").should("be.visible");
 
     H.queryBuilderFiltersPanel()
       .should("be.visible")

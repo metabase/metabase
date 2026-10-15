@@ -116,8 +116,10 @@
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
 (mr/def ::decoded-json
-  "A value decoded from JSON.
-  Object keys are strings from `json/decode` (replayed history) or keywords from `json/decode+kw` (the stream)."
+  "A value decoded from JSON with `json/decode`, with string object keys at every depth.
+
+  `{\"stages\" [{\"limit\" 1}]}` passes and `{:stages [{:limit 1}]}` does not. [[stringify-nested-keys]] gives this
+  shape below the argument names."
   [:or
    :string
    :keyword
@@ -125,13 +127,15 @@
    :boolean
    :nil
    [:sequential [:ref ::decoded-json]]
-   [:map-of [:or :string :keyword] [:ref ::decoded-json]]])
+   [:map-of :string [:ref ::decoded-json]]])
 
 (def ^:private ToolCallArguments
-  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
-  string keys off the wire, keyword keys when built in Clojure."
+  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by its argument names as keywords.
+
+  `{:query {\"stages\" []}}` passes. `{\"query\" {\"stages\" []}}` and `{:query {:stages []}}` do not: the argument
+  names are keywords, and the values are `::decoded-json`, with string keys."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::decoded-json])
+   :keyword ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -291,13 +295,16 @@
   A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
   finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
   (see the OpenAI builder, and Google Model Garden endpoints, which reach the vLLM builder with no context window)
-  or send it only when it fits the context window (see the vLLM builder), so one global knob would mislead.
+  or send it only when it fits the context window (see the vLLM and OpenRouter builders), so one global knob would
+  mislead.
 
-  Where a provider counts the cap against the context window, the cap also takes room from the prompt. Mistral
-  (https://docs.mistral.ai/api/endpoint/chat) and Moonshot (https://platform.kimi.ai/docs/api/chat) reject a
-  request whose prompt plus cap exceeds the window, and both send this cap on every request: on a 262,144-token
-  window a prompt over 230,144 tokens fails while the context meter shows about 88%. The agent loop resends the
-  full history and does not compact it, so a long enough conversation reaches this limit."
+  Some providers document that the cap takes room from the prompt. Mistral documents a 400 when the prompt plus
+  `max_tokens` exceeds the window (https://docs.mistral.ai/api/endpoint/chat). But a probe on mistral-medium-3-5
+  with a 240,000-token prompt and this cap got no 400: it got a 504 after about 5 minutes (probed 2026-10-09,
+  https://github.com/metabase/metabase/pull/83989). Moonshot documents the error for `max_completion_tokens`
+  (https://platform.kimi.ai/docs/api/chat), which Metabot sends (https://github.com/metabase/metabase/pull/83984).
+  The agent loop resends the full history and does not compact it, so a long enough conversation reaches the
+  window."
   32000)
 
 (defn mkid
@@ -371,22 +378,59 @@
     (get stop-reasons raw "other")))
 
 (defn- parse-tool-arguments
-  "Parse concatenated tool input deltas as JSON.
-  Falls back to returning the raw string wrapped in a map when parsing fails,
-  e.g. when the LLM produces malformed JSON in tool call arguments."
+  "Parse concatenated tool input deltas as a JSON object with keyword argument names.
+
+  `{\"query\":{\"stages\":[]}}` becomes `{:query {\"stages\" []}}`: only the top-level names are keywordized. Blank
+  input (a call to a tool with no arguments) parses to nil. Anything else comes back as a sentinel map that
+  [[unparsed-arguments]] describes and [[reject-unparsed-arguments!]] turns into an error for the model:
+  `{::raw-arguments raw}` for malformed JSON, and `{::non-object-arguments decoded}` for valid JSON that isn't an
+  object, e.g. `[\"orders\"]`. The keys are namespaced so they don't clash with a tool's argument names."
   [chunks]
   (let [raw (->> (map :inputTextDelta chunks)
                  (str/join ""))]
     (try
-      (json/decode+kw raw)
+      ;; Keywordize only the top-level argument names. Nested objects are data the model wrote and stay string-keyed
+      ;; JSON. The executor and title-fn keywordize the full arguments themselves.
+      (let [arguments (json/decode raw)]
+        (cond
+          (map? arguments) (update-keys arguments keyword)
+          (nil? arguments) nil
+          :else            {::non-object-arguments arguments}))
       (catch Exception e
         (log/warn "Failed to parse tool arguments as JSON, passing raw string"
                   {:tool    (:toolName (first chunks))
                    :error   (.getMessage e)
                    :raw-len (count raw)})
-        ;; Return a map with a sentinel key so the tool sees an error via schema validation
+        ;; Return a sentinel map so the model gets a repair message from [[reject-unparsed-arguments!]]
         ;; rather than a cryptic JSON parse stacktrace.
-        {:_raw_arguments raw}))))
+        {::raw-arguments raw}))))
+
+(defn unparsed-arguments
+  "Diagnostic data for tool `arguments` that are a [[parse-tool-arguments]] sentinel, or nil for parsed arguments.
+
+  `{::raw-arguments \"{oops\"}` gives `{:raw-arguments \"{oops\"}`, `{::non-object-arguments [\"orders\"]}` gives
+  `{:non-object-arguments [\"orders\"]}`, and `{:table \"orders\"}` or nil gives nil."
+  [arguments]
+  (when (map? arguments)
+    (cond
+      (contains? arguments ::raw-arguments)        {:raw-arguments (::raw-arguments arguments)}
+      (contains? arguments ::non-object-arguments) {:non-object-arguments (::non-object-arguments arguments)})))
+
+(defn stringify-nested-keys
+  "Return `arguments` with every map key below the top level as a string.
+
+  `{:query {:stages [{:limit 1}]}}` becomes `{:query {\"stages\" [{\"limit\" 1}]}}`. The top-level keys do not change,
+  so the argument names and the [[parse-tool-arguments]] sentinel keys stay keywords. A namespaced keyword key
+  becomes `\"ns/name\"`, the key `json/encode` writes for it."
+  [arguments]
+  (letfn [(below [x]
+            (cond
+              (map? x)        (u/for-map [[k v] x]
+                                [(cond-> k (keyword? k) u/qualified-name) (below v)])
+              (sequential? x) (mapv below x)
+              :else           x))]
+    (cond-> arguments
+      (map? arguments) (update-vals below))))
 
 (defn- try-decode-json-string
   "If `v` is a string that looks like a JSON object or array, decode it.
@@ -423,8 +467,8 @@
     ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
     ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
     ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
-    ;; limits, agent-loop exceptions) and Claude's error chunks, which keep the provider's own error
-    ;; object, already carry an `:error` map; pass those through unchanged.
+    ;; limits, agent-loop exceptions) and the error chunks of Claude and Chat Completions, which keep the
+    ;; provider's own error object, already carry an `:error` map; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
                              {:type :error :error {:message (:errorText chunk)}})
@@ -580,6 +624,13 @@
   (str "data: "
        (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
        "\n"))
+
+(def context-full-error-code
+  "The error code of a turn the provider rejected because the conversation does not fit the context window.
+
+  One name for the value the `error` column stores, the `finish` event streams as `messageMetadata.errorCode`,
+  and the client reads back as `error.type`."
+  "ai_provider_context_full")
 
 (defn format-error-line
   "An `:error` part's AI SDK `error` SSE event line."
@@ -972,23 +1023,36 @@
              (str "; received " (json-type-name (get arguments field))))
            "."))))
 
+(defn- non-object-arguments-message
+  "The error for tool `arguments` that are not a JSON object, e.g. `[\"orders\"]`."
+  [arguments]
+  (str "Invalid tool arguments: expected an object of named arguments; received " (json-type-name arguments) "."))
+
 (defn- invalid-arguments-message
   "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
   [schema arguments]
   (when-let [error (mr/explain schema arguments)]
     (let [humanized (me/humanize error)]
-      (str "Invalid tool arguments: "
-           (if (map? humanized)
+      (if (map? humanized)
+        (str "Invalid tool arguments: "
              (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
-                             (argument-error-text arguments field messages)))
-             (str "expected an object of named arguments; received "
-                  (json-type-name arguments) "."))))))
+                             (argument-error-text arguments field messages))))
+        ;; The error isn't per-field. Today that only happens when a tool's own `:decode` returns a non-map: a
+        ;; JSON array the model sent is rejected earlier by [[reject-unparsed-arguments!]].
+        (non-object-arguments-message arguments)))))
+
+(defn- reject-unparsed-arguments!
+  "Throw an agent error when `arguments` is a [[parse-tool-arguments]] sentinel rather than a JSON object."
+  [arguments]
+  (when-let [unparsed (unparsed-arguments arguments)]
+    (if (contains? unparsed :raw-arguments)
+      (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+                      {:agent-error? true}))
+      (throw (ex-info (non-object-arguments-message (:non-object-arguments unparsed))
+                      {:agent-error? true})))))
 
 (defn- validate-tool-arguments!
   [tool arguments]
-  (when (and (map? arguments) (contains? arguments :_raw_arguments))
-    (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
-                    {:agent-error? true})))
   (when-let [schema (tool-args-schema tool)]
     (when-let [message (invalid-arguments-message schema arguments)]
       (throw (ex-info message {:agent-error? true})))))
@@ -1039,6 +1103,9 @@
                                                 (str/join ", " (sort (keys tools))) ".")
                                            {:agent-error? true})))
                          (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                               ;; Before coercion: `coerce-stringified-json` would decode a double-encoded
+                               ;; `{::non-object-arguments "{...}"}` into an object and garble the message.
+                               _         (reject-unparsed-arguments! arguments)
                                arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
                                arguments (coerce-stringified-scalars tool arguments)
                                decode    (tool-decode-fn tool)
@@ -1118,7 +1185,8 @@
                (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
                  (vreset! errored? true)
                  (when (seq cut-off)
-                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (log/warn "Dropping tool calls that a stream error cut off"
+                             {:tool-calls (into {} (map (juxt identity #(get-in @active [% :chunks 0 :toolName]))) cut-off)})
                    (vswap! active #(apply dissoc % cut-off))))
 
                ;; otherwise: do nothing

@@ -14,7 +14,6 @@ const baseColors = {
   },
   transparent: "hsla(0, 0%, 100%, 0)",
   gold: "hsla(50.6, 100%, 50%, 1)",
-  upsellGem: "hsla(190, 100%, 50%, 1)",
 
   // Brand colors (dynamic based on --mb-color-core-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {

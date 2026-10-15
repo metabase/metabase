@@ -13,6 +13,15 @@
     }
   }
 
+  &[data-variant="static"] {
+    color: var(--mb-color-text-disabled);
+    background-color: transparent;
+
+    &:active {
+      transform: none;
+    }
+  }
+
   /* To be able to seamlessly support color property across variants we need
       to implement variantColorResolver. Same thing is pointed out in Button component. */
   &[data-variant="info"] {

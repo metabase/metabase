@@ -102,7 +102,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
         </Text>
         <Paper
           w="100%"
-          bd="1px solid border"
+          bd="1px solid border-neutral"
           bdrs="0.75rem"
           p="0.5rem 1rem 1rem"
           className={S.inputContainer}
@@ -206,10 +206,10 @@ function Banner() {
       justify="space-between"
       align="center"
       gap="xl"
-      bg="background-brand"
+      bg="background_surface-brand-subtle"
       px="xl"
       py="lg"
-      bd="1px solid border"
+      bd="1px solid border-neutral"
       bdrs="sm"
       data-testid="research-mode-banner"
     >

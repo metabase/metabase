@@ -190,8 +190,7 @@ export function ExplorationComments({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     } else {
@@ -283,8 +282,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to update comment`,
       });
     }
@@ -299,8 +297,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to delete comment`,
       });
     }
@@ -327,8 +324,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: errorMessage,
       });
     }

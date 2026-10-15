@@ -54,7 +54,10 @@
                                                    (impl/publish-sync-event! :event/remote-sync-import task-id
                                                                              {:branch branch :auto true} nil)))))))))))
 
-(task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
+(task/defjob AutoImport
+  "Auto-imports any remote collections."
+  {:saved-class "metabase_enterprise.remote_sync.task.import.AutoImport"}
+  [_]
   (auto-import!))
 
 (def ^:private auto-import-job-key "metabase.task.remote-sync.auto-import.job")

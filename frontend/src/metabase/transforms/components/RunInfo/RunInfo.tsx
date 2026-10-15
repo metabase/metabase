@@ -10,10 +10,8 @@ import {
   Box,
   Button,
   FocusTrap,
-  Group,
   Icon,
   Modal,
-  Stack,
   Tooltip,
 } from "metabase/ui";
 import type { TransformRunStatus } from "metabase-types/api";
@@ -55,7 +53,6 @@ export function RunInfo({ status, message, endTime }: RunInfoProps) {
         <Modal
           title={getTitle(status, endTime)}
           size="xl"
-          padding="xxl"
           opened
           onClick={handleModalClick}
           onClose={close}
@@ -98,16 +95,16 @@ type RunErrorModalContentProps = {
 
 function RunInfoModalContent({ message, onClose }: RunErrorModalContentProps) {
   return (
-    <Stack pt="lg" gap="xl">
+    <>
       <Box className={S.codeContainer} pos="relative" pr="xl">
         <CodeEditor value={message} readOnly />
         <Box p="sm" pos="absolute" right={0} top={0}>
           <CopyButton value={message} />
         </Box>
       </Box>
-      <Group justify="end">
+      <Modal.Footer>
         <Button onClick={onClose}>{t`Close`}</Button>
-      </Group>
-    </Stack>
+      </Modal.Footer>
+    </>
   );
 }
