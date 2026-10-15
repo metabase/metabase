@@ -948,6 +948,18 @@ Whether or not we should install the Metabase analytics database on startup. Def
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
 
+### `MB_INTERESTINGNESS_MAX_FIELDS_PER_SYNC`
+
+- Type: integer
+- Default: `100000`
+- [Exported as](../installation-and-operation/serialization.md): `interestingness-max-fields-per-sync`.
+
+Maximum number of fields per database to score for dimension interestingness in one sync. The leftovers pass
+  scores every field whose score is still NULL, which after a release that invalidates existing scores is every field
+  in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
+  `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
+  NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
+
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
 - Type: integer
