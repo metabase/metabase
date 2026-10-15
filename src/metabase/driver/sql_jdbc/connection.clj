@@ -375,7 +375,7 @@
   (and (instance? PooledDataSource data-source)
        (try
          (zero? (.getNumConnectionsDefaultUser ^PooledDataSource data-source))
-         (catch Throwable _
+         (catch Exception _
            false))))
 
 (defn discard-pool-after-failed-checkout!
