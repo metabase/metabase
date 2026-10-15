@@ -426,7 +426,6 @@ describe("scenarios > data studio > library", () => {
       beforeEach(() => {
         H.setupGitSync();
         H.configureGit("read-only");
-        H.createLibrary();
       });
 
       it("should hide +New button and empty state actions in read-only mode", () => {

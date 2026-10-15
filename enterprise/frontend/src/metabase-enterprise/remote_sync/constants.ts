@@ -16,7 +16,6 @@ export const BRANCH_KEY = "remote-sync-branch";
 export const REMOTE_SYNC_KEY = "remote-sync-enabled";
 export const AUTO_IMPORT_KEY = "remote-sync-auto-import";
 export const TRANSFORMS_KEY = "remote-sync-transforms";
-export const STRICT_MODE_KEY = "remote-sync-strict-mode";
 export const COLLECTIONS_KEY = "collections";
 // Used in modal variant when library doesn't exist yet but user wants to sync it
 export const SYNC_LIBRARY_PENDING_KEY = "sync-library-pending";

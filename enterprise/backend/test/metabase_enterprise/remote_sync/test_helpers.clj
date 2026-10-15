@@ -425,11 +425,10 @@ width: fixed
         (ensure-builtin-python-library!)))))
 
 (defn set-library-remote-synced!
-  "Sets `is_remote_synced` on the Library's system collections, the Library itself first so each one agrees with its
-  parent."
+  "Sets `is_remote_synced` on the Library's collections, the Library itself first so each one agrees with its parent."
   [synced?]
   (doseq [id (t2/select-pks-vec :model/Collection
-                                :entity_id [:in (vec collection/library-root-entity-ids)]
+                                :type [:in (vec collection/library-collection-types)]
                                 {:order-by [[:location :asc]]})]
     (t2/update! :model/Collection id {:is_remote_synced synced?})))
 
@@ -441,29 +440,6 @@ width: fixed
                                      remote-sync-strict-mode nil]
     (f)))
 
-(def ^:private default-mock-entity-ids
-  "The entity_ids of the content an import of [[create-mock-source]]'s default files creates, by model, in deletion
-  order."
-  [[:model/Dashboard  ["Q_jD-f-9clKLFZ2TfUG2h"]]
-   [:model/Card       ["f1C68pznmrpN1F5xFDj6d" "test-dev-cardxxxxxxxx"]]
-   [:model/Collection ["M-Q4pcV0qkiyJ0kiSWECl" "test-dev-collectionxx"]]])
-
-(defn- delete-default-mock-content!
-  "Deletes the content an import of [[create-mock-source]]'s default files creates."
-  []
-  (doseq [[model entity-ids] default-mock-entity-ids]
-    (t2/delete! model :entity_id [:in entity-ids])))
-
-(defn- clean-default-mock-content
-  "Test fixture that deletes the content imports of [[create-mock-source]]'s default files leave behind, so a later
-  import of a smaller tree doesn't see it as unsynced local content."
-  [f]
-  (delete-default-mock-content!)
-  (try
-    (f)
-    (finally
-      (delete-default-mock-content!))))
-
 (defn- clean-created-library
   "Test fixture that deletes the Library when the test created it, as enabling remote sync in strict mode does."
   [f]
@@ -472,15 +448,14 @@ width: fixed
       (f)
       (finally
         (when-not existed?
-          (t2/delete! :model/Collection :entity_id [:in (vec collection/library-root-entity-ids)]))))))
+          (t2/delete! :model/Collection :type [:in (vec collection/library-collection-types)]))))))
 
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
-  TransformTag, PythonLibrary), the default mock source's content, and a Library the test created are clean, and
-  transforms sync and strict mode are restored."
+  TransformTag, PythonLibrary), and a Library the test created are clean, and transforms sync and strict mode are
+  restored."
   (t/join-fixtures [restore-transforms-setting
                     clean-created-library
-                    clean-default-mock-content
                     clean-object
                     clean-task-table
                     clean-optional-feature-models]))

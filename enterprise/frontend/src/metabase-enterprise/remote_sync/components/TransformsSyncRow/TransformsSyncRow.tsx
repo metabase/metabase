@@ -1,11 +1,11 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
-import { Switch, Text } from "metabase/ui";
+import CS from "metabase/css/core/bordered.module.css";
+import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TRANSFORMS_KEY } from "../../constants";
-import { SyncListRow } from "../SyncList";
 
 interface TransformsSyncRowProps {
   isReadOnly: boolean;
@@ -21,14 +21,22 @@ export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
   };
 
   return (
-    <SyncListRow label={t`Transforms`} icon="transform">
-      <Switch
-        checked={isChecked}
-        onChange={(e) => handleToggle(e.currentTarget.checked)}
-        disabled={isReadOnly}
-        aria-label={t`Sync Transforms`}
-      />
-      <Text>{t`Sync`}</Text>
-    </SyncListRow>
+    <Box p="lg" className={CS.borderRowDivider}>
+      <Flex justify="space-between" align="center">
+        <Flex align="center" gap="sm">
+          <Icon name="transform" c="text-secondary" />
+          <Text fw="medium">{t`Transforms`}</Text>
+        </Flex>
+        <Flex align="center" gap="sm">
+          <Switch
+            checked={isChecked}
+            onChange={(e) => handleToggle(e.currentTarget.checked)}
+            disabled={isReadOnly}
+            aria-label={t`Sync Transforms`}
+          />
+          <Text>{t`Sync`}</Text>
+        </Flex>
+      </Flex>
+    </Box>
   );
 };

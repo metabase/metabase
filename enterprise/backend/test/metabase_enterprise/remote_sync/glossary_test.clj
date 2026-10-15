@@ -4,14 +4,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.events]
+   [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as sync-object]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase-enterprise.remote-sync.tracking :as rs-tracking]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
@@ -99,7 +98,7 @@
   (collections.tu/with-library-not-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
-        (rs-tracking/enable-library-tracking!)
+        (rs-events/enable-library-tracking!)
         (is (=? {:status "create" :model_name "ARR"} (rso entry)))))))
 
 (deftest disable-library-tracking-removes-every-entry-test
@@ -107,7 +106,7 @@
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (with-rso! entry "synced")
-        (rs-tracking/disable-library-tracking!)
+        (rs-events/disable-library-tracking!)
         (is (nil? (rso entry)))))))
 
 (deftest library-sync-status-change-toggles-glossary-tracking-test

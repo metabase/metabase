@@ -12,8 +12,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
-   [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [with-library]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -730,23 +728,3 @@
             (is (re-find #"local edit"
                          (get (files mock) (path-for-eid mock a-eid)))
                 "the local edit survives the overwrite")))))))
-
-(deftest incremental-export-writes-library-root-collections-test
-  (with-exported-collection!
-    (fn [{:keys [mock card-a]}]
-      (with-library [_]
-        (try
-          (rs.test/set-library-remote-synced! true)
-          (t2/update! :model/Card card-a {:description "edited in place"})
-          (set-status! "Card" card-a "update")
-          (let [task   (new-task!)
-                result (impl/export! (source.p/snapshot mock) task "edit")]
-            (is (= :success (:status result)))
-            (is (= "apply-changes-version" (written-version task)) "the export stays incremental")
-            (is (every? #(entity-exported? mock %) collection/library-root-entity-ids)
-                "the synced Library root collections are written without RemoteSyncObjects of their own")
-            (is (not (t2/exists? :model/RemoteSyncObject :model_type "Collection"
-                                 :model_id [:in (t2/select-pks-vec :model/Collection
-                                                                   :entity_id [:in (vec collection/library-root-entity-ids)])]))))
-          (finally
-            (rs.test/set-library-remote-synced! false)))))))

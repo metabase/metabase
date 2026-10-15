@@ -50,17 +50,18 @@
                        :initial-files {"main" {"collections/library/library.yaml"
                                                (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
                                                                                       :type "library" :is-remote-synced true)}})]
-          (is (= :success (:status (impl/import! (source.p/snapshot source) task-id))))
+          (is (= :success (:status (impl/import! (source.p/snapshot source) task-id :force? true))))
           (is (true? (remote-sync.settings/remote-sync-strict-mode)))
           (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now}))))
     (testing "a pull that syncs a collection outside the Library and transforms turns strict mode off"
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-        (is (= :success (:status (impl/import! (source.p/snapshot (test-helpers/create-mock-source
-                                                                   :initial-files {"main" {"collections/other/other.yaml"
-                                                                                           (test-helpers/generate-collection-yaml "other-collectionxxxxx" "Other"
-                                                                                                                                  :is-remote-synced true)}}))
-                                               task-id :force? true))))
-        (is (false? (remote-sync.settings/remote-sync-strict-mode)))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+          (is (= :success (:status (impl/import! (source.p/snapshot (test-helpers/create-mock-source
+                                                                     :initial-files {"main" {"collections/other/other.yaml"
+                                                                                             (test-helpers/generate-collection-yaml "other-collectionxxxxx" "Other"
+                                                                                                                                    :is-remote-synced true)}}))
+                                                 task-id :force? true))))
+          (is (false? (remote-sync.settings/remote-sync-strict-mode))))))))
 
 (deftest import!-with-branch-parameter-test
   (testing "import! with branch parameter uses provided branch"
@@ -1310,9 +1311,7 @@
               (is (= :success (:status result))
                   "Import should succeed")
               (is (true? (remote-sync.settings/remote-sync-transforms))
-                  "remote-sync-transforms should be auto-enabled after successful import with transforms")
-              (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
-                  "auto-enabling should leave nothing to push"))))))))
+                  "remote-sync-transforms should be auto-enabled after successful import with transforms"))))))))
 
 (deftest import!-auto-enables-transforms-setting-when-python-libraries-detected-test
   (testing "import! auto-enables remote-sync-transforms setting only after successful import with python-libraries"
@@ -1359,8 +1358,8 @@ serdes/meta:
                 (is (false? (remote-sync.settings/remote-sync-transforms))
                     "remote-sync-transforms should remain disabled when no transforms in remote")))))))))
 
-(deftest import!-keeps-transforms-setting-enabled-when-no-transforms-in-branch-test
-  (testing "import! keeps remote-sync-transforms setting enabled when importing a branch without transforms"
+(deftest import!-disables-transforms-setting-when-no-transforms-in-branch-test
+  (testing "import! disables remote-sync-transforms setting when importing a branch without transforms"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temporary-setting-values [remote-sync-transforms true]
@@ -1372,8 +1371,8 @@ serdes/meta:
                   "remote-sync-transforms should be initially enabled")
               (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result)))
-                (is (true? (remote-sync.settings/remote-sync-transforms))
-                    "remote-sync-transforms should stay enabled when no transforms in remote")))))))))
+                (is (false? (remote-sync.settings/remote-sync-transforms))
+                    "remote-sync-transforms should be disabled when no transforms in remote")))))))))
 
 (deftest import!-includes-all-optional-paths-regardless-of-settings-test
   (testing "import! always includes all optional paths (transforms, python-libraries, snippets)"
@@ -1400,59 +1399,19 @@ serdes/meta:
                       (is (some #(str/includes? % "snippets") filter-strs)
                           "snippets path should be included in filters"))))))))))))
 
-(deftest import!-no-conflict-with-empty-local-library-test
-  (testing "an unsynced local Library without content does not block importing a Library"
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
-      (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
-                                          :type "library"
-                                          :entity_id collection/library-entity-id
-                                          :location "/"}]
-        (let [test-files {"main" {"collections/main/lib/lib.yaml"
-                                  (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library"
-                                                                         :type "library" :is-remote-synced true)}}
-              mock-source (test-helpers/create-mock-source :initial-files test-files)
-              result (impl/import! (source.p/snapshot mock-source) task-id)]
-          (is (= :success (:status result))))))))
-
-(deftest import!-keeps-library-root-collections-missing-from-the-import-test
-  (testing "a synced Library's system collections survive an import that doesn't contain them"
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          root-ids #(t2/select-pks-set :model/Collection :entity_id [:in (vec collection/library-root-entity-ids)])]
-      (with-library [_]
-        (let [ids (root-ids)]
-          (try
-            (test-helpers/set-library-remote-synced! true)
-            (let [test-files {"main" {"collections/main/other/other.yaml"
-                                      (test-helpers/generate-collection-yaml "other-collection-xxxx" "Other"
-                                                                             :is-remote-synced true)}}
-                  mock-source (test-helpers/create-mock-source :initial-files test-files)]
-              (let [result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
-                (is (= :success (:status result)) (pr-str result)))
-              (is (= ids (root-ids))))
-            (finally
-              (test-helpers/set-library-remote-synced! false))))))))
-
-(deftest import!-blocks-deleting-unsynced-library-content-test
-  (testing "an import containing the Library blocks on unsynced local Library content it would delete"
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
-      (mt/with-temp [:model/Collection {library-id :id} {:name "Test Library Collection"
-                                                         :type "library"
-                                                         :entity_id collection/library-entity-id
-                                                         :location "/"}
-                     :model/Card {card-id :id} {:name "Local Card" :collection_id library-id}]
-        (let [test-files {"main" {"collections/main/lib/lib.yaml"
-                                  (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library"
-                                                                         :type "library" :is-remote-synced true)}}
-              mock-source (test-helpers/create-mock-source :initial-files test-files)
-              result (impl/import! (source.p/snapshot mock-source) task-id)]
-          (is (= :conflict (:status result)))
-          (is (= #{"Card"} (:conflicts result)))
-          (is (t2/exists? :model/Card card-id))
-          (testing "forcing the import deletes the content the conflict reported"
-            (is (= :success (:status (impl/import! (source.p/snapshot mock-source) task-id :force? true))))
-            (is (not (t2/exists? :model/Card card-id)))))))))
+(deftest import!-blocks-if-it-encounters-library-conflicts
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+    (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+    (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
+                                        :type "library"
+                                        :entity_id collection/library-entity-id
+                                        :location "/"}]
+      (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
+                                (test-helpers/generate-collection-yaml collection/library-entity-id "Another Library")}}
+            mock-source (test-helpers/create-mock-source :initial-files test-files)
+            result (impl/import! (source.p/snapshot mock-source) task-id)]
+        (is (= :conflict (:status result)))
+        (is (= #{"Library"} (:conflicts result)))))))
 
 (deftest import!-blocks-if-it-encounters-snippet-conflicts
   (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
@@ -1493,14 +1452,18 @@ serdes/meta:
               mock-source (test-helpers/create-mock-source :initial-files test-files)
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :conflict (:status result)))
-          (is (= #{"Transforms" "Snippets"} (:conflicts result))))))))
+          (is (= #{"Library" "Transforms" "Snippets"} (:conflicts result))))))))
 
 (deftest import!-force-bypasses-conflicts
   (testing "force?: true allows import to proceed despite conflicts"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/NativeQuerySnippet _ {:name "Test Snippet"}]
-        (let [test-files {"main" {"collections/main/snip/snip.yaml"
-                                  (test-helpers/generate-snippet-yaml "snip-entity-id" "Remote Snippet" "select 1")}}
+      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
+                                          :type "library"
+                                          :entity_id collection/library-entity-id
+                                          :location "/"}]
+        (let [test-files {"main" {"collections/main/lib/lib.yaml"
+                                  (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library")}}
               mock-source (test-helpers/create-mock-source :initial-files test-files)
               result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
           (is (= :success (:status result))))))))
@@ -1508,10 +1471,14 @@ serdes/meta:
 (deftest import!-conflicts-only-block-initial-import
   (testing "when last-imported-version is set, conflicts do not block subsequent imports"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/NativeQuerySnippet _ {:name "Local Snippet"}]
+      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (mt/with-temp [:model/Collection _ {:name "Local Library"
+                                          :type "library"
+                                          :entity_id collection/library-entity-id
+                                          :location "/"}]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "previous-version")]
-          (let [test-files {"main" {"collections/main/snip/snip.yaml"
-                                    (test-helpers/generate-snippet-yaml "snip-entity-id" "Remote Snippet" "select 1")}}
+          (let [test-files {"main" {"collections/main/lib/lib.yaml"
+                                    (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result))
@@ -1531,21 +1498,41 @@ serdes/meta:
       (is (= :success (:status result))
           "Should not trigger conflict when only remote has entities"))))
 
+(deftest import!-library-conflict-requires-correct-type
+  (testing "a Collection with library entity_id but type!=library does not trigger conflict"
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (mt/with-temp [:model/Collection _ {:name "Not A Library"
+                                          :type nil
+                                          :entity_id collection/library-entity-id
+                                          :location "/"}]
+        (let [test-files {"main" {"collections/main/lib/lib.yaml"
+                                  (test-helpers/generate-collection-yaml collection/library-entity-id "Remote Library")}}
+              mock-source (test-helpers/create-mock-source :initial-files test-files)
+              result (impl/import! (source.p/snapshot mock-source) task-id)]
+          (is (= :success (:status result))))))))
+
+;; --- Spec-driven conflict detection tests ---
+
 (deftest import!-returns-conflict-details-test
   (testing "import! returns detailed conflict information in :conflict-details"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/NativeQuerySnippet _ {:name "Test Snippet"}]
-        (let [test-files {"main" {"collections/main/snip/snip.yaml"
-                                  (test-helpers/generate-snippet-yaml "snip-entity-id" "Remote Snippet" "select 1")}}
+      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
+                                          :type "library"
+                                          :entity_id collection/library-entity-id
+                                          :location "/"}]
+        (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
+                                  (test-helpers/generate-collection-yaml collection/library-entity-id "Another Library")}}
               mock-source (test-helpers/create-mock-source :initial-files test-files)
               result (impl/import! (source.p/snapshot mock-source) task-id)]
           (is (= :conflict (:status result)))
-          (is (= #{"Snippets"} (:conflicts result))
+          (is (= #{"Library"} (:conflicts result))
               "Should return backward-compatible :conflicts set")
           (is (seq (:conflict-details result))
               "Should include detailed conflict information")
-          (is (some #(= :snippets-conflict (:type %)) (:conflict-details result))
-              "Should have snippets-conflict type in details"))))))
+          (is (some #(= :library-conflict (:type %)) (:conflict-details result))
+              "Should have library-conflict type in details"))))))
 
 (deftest remove-unsynced!-preserves-exploration-documents-test
   (testing "remove-unsynced! does not delete local exploration documents in remote-synced collections (UXW-4091)"
@@ -2505,3 +2492,13 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
+
+(deftest keep-library-dashboards-test
+  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
+    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
+           (get-in (#'impl/keep-library-dashboards
+                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
+                   [:by-entity-id "Collection"]))))
+  (testing "An import without the Library leaves it to be removed with the Library"
+    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
+           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

@@ -868,7 +868,7 @@ describe("RemoteSyncSettingsForm", () => {
       expect(screen.getByText("Collections to sync")).toBeInTheDocument();
     });
 
-    it("should display the synced content section instead of collections in strict mode", async () => {
+    it("should not display collections section in strict mode", async () => {
       setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
@@ -881,10 +881,6 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
-      expect(screen.getByText("Synced content")).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Open Library" }),
-      ).toHaveAttribute("href", "/data-studio/library");
     });
 
     it("should not display collections section in modal variant when read-write mode is selected", async () => {

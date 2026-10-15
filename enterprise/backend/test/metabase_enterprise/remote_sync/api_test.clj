@@ -1568,53 +1568,54 @@
                                "collections and guards against data loss.")]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings!      (constantly nil)
                                   source/source-from-settings       (constantly mock-main)]
-        (testing "rejects a branch switch in read-write mode (must use the guarded import)"
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            (is (= reject-message
-                   (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                         {:remote-sync-branch "develop"})))
-            (is (= "main" (settings/remote-sync-branch))
-                "the branch setting is left unchanged")))
-        (testing "rejects blanking the branch in read-write mode (would otherwise reset the guard)"
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            (is (= reject-message
-                   (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                         {:remote-sync-branch ""})))
-            (is (= "main" (settings/remote-sync-branch))
-                "the branch cannot be blanked to bypass the guard, then switched freely")))
-        (testing "allows an unchanged branch in read-write mode"
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"
-                                             remote-sync-type   :read-write]
-            (is (=? {:success true}
-                    (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                          {:remote-sync-branch "main"})))))
-        (testing "allows setting the branch during first-time configuration (no current branch)"
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch ""
-                                             remote-sync-type   :read-write]
-            (is (=? {:success true}
-                    (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                          {:remote-sync-branch "develop"})))
-            (is (= "develop" (settings/remote-sync-branch)))))
-        (testing "allows a branch change in read-only mode (the change triggers a reconciling import)"
-          (mt/with-dynamic-fn-redefs [impl/finish-remote-config! (constantly nil)]
+        (mt/with-temp-env-var-value! [mb-remote-sync-strict-mode "false"]
+          (testing "rejects a branch switch in read-write mode (must use the guarded import)"
             (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                                remote-sync-token  "test-token"
                                                remote-sync-branch "main"
-                                               remote-sync-type   :read-only]
+                                               remote-sync-type   :read-write]
+              (is (= reject-message
+                     (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                           {:remote-sync-branch "develop"})))
+              (is (= "main" (settings/remote-sync-branch))
+                  "the branch setting is left unchanged")))
+          (testing "rejects blanking the branch in read-write mode (would otherwise reset the guard)"
+            (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                               remote-sync-token  "test-token"
+                                               remote-sync-branch "main"
+                                               remote-sync-type   :read-write]
+              (is (= reject-message
+                     (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                           {:remote-sync-branch ""})))
+              (is (= "main" (settings/remote-sync-branch))
+                  "the branch cannot be blanked to bypass the guard, then switched freely")))
+          (testing "allows an unchanged branch in read-write mode"
+            (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                               remote-sync-token  "test-token"
+                                               remote-sync-branch "main"
+                                               remote-sync-type   :read-write]
               (is (=? {:success true}
                       (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                            {:remote-sync-branch "develop" :remote-sync-type :read-only})))
-              (is (= "develop" (settings/remote-sync-branch))))))))))
+                                            {:remote-sync-branch "main"})))))
+          (testing "allows setting the branch during first-time configuration (no current branch)"
+            (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                               remote-sync-token  "test-token"
+                                               remote-sync-branch ""
+                                               remote-sync-type   :read-write]
+              (is (=? {:success true}
+                      (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                            {:remote-sync-branch "develop"})))
+              (is (= "develop" (settings/remote-sync-branch)))))
+          (testing "allows a branch change in read-only mode (the change triggers a reconciling import)"
+            (mt/with-dynamic-fn-redefs [impl/finish-remote-config! (constantly nil)]
+              (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                                 remote-sync-token  "test-token"
+                                                 remote-sync-branch "main"
+                                                 remote-sync-type   :read-only]
+                (is (=? {:success true}
+                        (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                              {:remote-sync-branch "develop" :remote-sync-type :read-only})))
+                (is (= "develop" (settings/remote-sync-branch)))))))))))
 
 (deftest settings-requires-superuser-test
   (testing "PUT /api/ee/remote-sync/settings requires superuser permissions"

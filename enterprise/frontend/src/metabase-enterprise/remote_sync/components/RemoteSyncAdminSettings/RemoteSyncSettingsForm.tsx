@@ -19,7 +19,6 @@ import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import {
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
-  STRICT_MODE_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -40,7 +39,6 @@ import {
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
 import { SyncModeSection } from "./SyncModeSection";
-import { SyncedContentSection } from "./SyncedContentSection";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -55,8 +53,8 @@ export const RemoteSyncSettingsForm = ({
 }: RemoteSyncSettingsFormProps) => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY) ?? false;
-  const isStrictMode = useSetting(STRICT_MODE_KEY) ?? false;
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const isStrictMode = useSetting("remote-sync-strict-mode") ?? false;
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -110,11 +108,7 @@ export const RemoteSyncSettingsForm = ({
                 {isReadOnly && <ReadOnlyBranchSection />}
                 {(isRemoteSyncEnabled || isReadWrite) &&
                   !isModalVariant &&
-                  (isStrictMode ? (
-                    <SyncedContentSection />
-                  ) : (
-                    <CollectionsToSyncSection />
-                  ))}
+                  !isStrictMode && <CollectionsToSyncSection />}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />

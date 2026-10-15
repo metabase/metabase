@@ -503,20 +503,16 @@ describe("Remote Sync", () => {
         .clear()
         .type(LOCAL_GIT_URL);
       cy.findByTestId("admin-layout-content").findByText("Read-write").click();
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText("Synced content").scrollIntoView().should("be.visible");
-        cy.findByText("Collections to sync").should("not.exist");
-      });
+      cy.findByTestId("admin-layout-content")
+        .findByText("Collections to sync")
+        .should("not.exist");
       cy.button("Set up remote sync").click();
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
 
       cy.log("open the Library, which setup created");
-      cy.findByRole("link", { name: "Open Library" })
-        .should("have.attr", "target", "_blank")
-        .invoke("removeAttr", "target")
-        .click();
+      cy.visit("/data-studio/library");
       H.DataStudio.Library.collectionItem("Data").should("be.visible");
 
       cy.log("publish a table to the Library");
@@ -539,13 +535,13 @@ describe("Remote Sync", () => {
         .its("stdout")
         .should("match", /orders/i);
 
-      cy.log("the settings page still shows strict mode with nothing to push");
+      cy.log(
+        "the settings page still hides the collections, with nothing to push",
+      );
       cy.visit("/admin/settings/remote-sync");
       cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText("Synced content").scrollIntoView().should("be.visible");
+        cy.findByText("Sync branch").scrollIntoView().should("be.visible");
         cy.findByText("Collections to sync").should("not.exist");
-        cy.findByRole("link", { name: "Open Library" }).should("be.visible");
-        cy.findByRole("link", { name: "Open Transforms" }).should("be.visible");
         cy.findByText(/unsaved changes/).should("not.exist");
       });
     });

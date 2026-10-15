@@ -37,7 +37,7 @@
 (defn- snapshot-has-transforms?
   "Checks if the snapshot contains any Transform, PythonLibrary entities,
    non-built-in TransformTags, or transforms-namespace collections.
-   Used to auto-enable the remote-sync-transforms setting during import.
+   Used to auto-enable/disable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
    then also checks if any Collection entities have namespace=transforms.
@@ -58,6 +58,13 @@
                   (let [entity (serialization/ingest-one ingestable path)]
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
+
+(defn- keep-library-dashboards
+  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
+  [imported-data]
+  (cond-> imported-data
+    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
+    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -180,14 +187,15 @@
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
-   - :first-import-conflicts - feature/namespace conflicts that only block on the very first import
+   - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
    - :deletion-conflicts     - unsynced local entities of all-or-nothing models (transforms) that the import
                                would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
+   - :library-conflict - First import only, local Library exists, import has Library
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
-  [ingestable]
+  [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list #(serialization/ingest-one ingestable %))
         models-present (spec/models-in-import ingest-list)
@@ -210,7 +218,18 @@
         ns-coll-conflicts (spec/check-namespace-collection-conflicts
                            import-namespace-collections
                            (:entity-ids import-ns-info))
-        first-import-conflicts (concat feature-conflicts ns-coll-conflicts)]
+        library-conflict (when-let [local-library (remote-sync.db/library-collection collection/library-collection-type)]
+                           (when (and first-import?
+                                      (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
+                                                 collection/library-entity-id)
+                                      (not (:is_remote_synced local-library)))
+                             {:type :library-conflict
+                              :category "Library"
+                              :message "Import contains Library but local instance has an unsynced Library collection"}))
+        first-import-conflicts (concat
+                                feature-conflicts
+                                ns-coll-conflicts
+                                (when library-conflict [library-conflict]))]
     {:first-import-conflicts (vec first-import-conflicts)
      :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
                                    (spec/check-content-deletion-conflicts imported-data))}))
@@ -365,7 +384,7 @@
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
-  runs `load-metabase!`, enables the `remote-sync-transforms` setting when the snapshot has transforms,
+  runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
   deletes synced content not present in the snapshot, and refreshes the RemoteSyncObject table.
 
   Shared by [[import!]] (the pull path) and the post-merge reconcile in [[export!]] (where a clean merge
@@ -396,7 +415,7 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids imported-data)
+            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
@@ -408,6 +427,10 @@
         (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
+    (when (and (not has-transforms?)
+               (settings/remote-sync-transforms))
+      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
+      (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
@@ -646,7 +669,8 @@
             blocking-conflicts (delay
                                  (let [conflicts (delay
                                                    (report 0.02 {:force? true})
-                                                   (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})))]
+                                                   (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
+                                                                  first-import?))]
                                    (cond-> []
                                      (and first-import? (not force?))
                                      (into (:first-import-conflicts @conflicts))
@@ -1062,14 +1086,6 @@
                   (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
-(defn- library-root-collection-deps
-  "The remote-synced Library root collections as dependencies, written by every incremental export since they have no
-  RemoteSyncObject of their own."
-  []
-  (into #{}
-        (map (fn [id] {:model_type "Collection" :model_id id}))
-        (remote-sync.db/remote-synced-collection-ids-with-entity-ids collection/library-root-entity-ids)))
-
 (defn- incremental-export-plan
   "Build an incremental export plan for `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time.
 
@@ -1086,7 +1102,7 @@
         ;; the no-extraction rows first (cheap)
         plan          (->> other-rows
                            (map #(row->incremental-export-plan % nil))
-                           (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull (library-root-collection-deps)}))
+                           (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
         plan          (->> cu-rows
                            (->sized-chunks)
                            (map #(chunk->incremental-export-plan snapshot opts %))
@@ -1763,9 +1779,7 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
-  In strict mode, sets up the Library and transforms sync (see
-  [[remote-sync.core/enable-library-and-transforms-sync!]]), then imports the remote collection if you are in read-only
-  mode.
+  Will attempt, import the remote collection if no remote-collection exists locally or you are in read-only mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
   []

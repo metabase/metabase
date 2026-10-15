@@ -5,14 +5,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.events]
+   [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as sync-object]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase-enterprise.remote-sync.tracking :as rs-tracking]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -141,7 +140,7 @@
                        :model/NativeQuerySnippet snippet {:name "Existing Snippet" :content "SELECT 1" :collection_id coll-id}]
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Should have no snippet tracking entries initially")
-          (rs-tracking/enable-library-tracking!)
+          (rs-events/enable-library-tracking!)
           ;; Verify tracking entries created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
@@ -174,7 +173,7 @@
           (is (= 2 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "NativeQuerySnippet"]]
                              :model_id [:in [coll-id (:id snippet)]]))
               "Should have 2 tracking entries")
-          (rs-tracking/disable-library-tracking!)
+          (rs-events/disable-library-tracking!)
           ;; Verify tracking entries removed
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Snippet tracking entries should be removed")

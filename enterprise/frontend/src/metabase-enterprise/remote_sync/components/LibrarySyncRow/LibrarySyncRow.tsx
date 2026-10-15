@@ -1,11 +1,11 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
-import { Switch, Text } from "metabase/ui";
+import CS from "metabase/css/core/bordered.module.css";
+import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 
 import { SYNC_LIBRARY_PENDING_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
-import { SyncListRow } from "../SyncList";
 
 interface LibrarySyncRowProps {
   isReadOnly: boolean;
@@ -21,14 +21,22 @@ export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
   };
 
   return (
-    <SyncListRow label={t`Library`} icon="repository">
-      <Switch
-        checked={isChecked}
-        onChange={(e) => handleToggle(e.currentTarget.checked)}
-        disabled={isReadOnly}
-        aria-label={t`Sync Library`}
-      />
-      <Text>{t`Sync`}</Text>
-    </SyncListRow>
+    <Box p="lg" className={CS.borderRowDivider}>
+      <Flex justify="space-between" align="center">
+        <Flex align="center" gap="sm">
+          <Icon name="repository" c="text-secondary" />
+          <Text fw="medium">{t`Library`}</Text>
+        </Flex>
+        <Flex align="center" gap="sm">
+          <Switch
+            checked={isChecked}
+            onChange={(e) => handleToggle(e.currentTarget.checked)}
+            disabled={isReadOnly}
+            aria-label={t`Sync Library`}
+          />
+          <Text>{t`Sync`}</Text>
+        </Flex>
+      </Flex>
+    </Box>
   );
 };

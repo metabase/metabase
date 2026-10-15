@@ -44,6 +44,7 @@
   "Type of import conflict detected during pre-flight check."
   [:enum
    :entity-id-conflict    ; Local entity exists with same entity_id but not in RemoteSyncObject
+   :library-conflict      ; First import, local Library exists, import has Library
    :transforms-conflict   ; Local has transforms AND import has transforms
    :snippets-conflict     ; Local has snippets AND import has snippets
    :dirty])               ; RemoteSyncObject has items with status != "synced"

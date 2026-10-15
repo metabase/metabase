@@ -607,6 +607,40 @@
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
 
+(deftest bulk-set-remote-sync-only-updates-changed-descendants-test
+  (testing "bulk-set-remote-sync only updates descendants that need changing"
+    ;; Create all collections with is_remote_synced=false first (valid state),
+    ;; then update child2 directly to avoid before-insert validation
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
+                   :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced false}
+                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced false}]
+      ;; Set child2 to already be remote-synced directly in DB (bypasses hooks)
+      (t2/query-one {:update :collection :set {:is_remote_synced true} :where [:= :id child2-id]})
+      ;; Parent and Child 1 are false, Child 2 is already true
+      ;; When enabling parent, only parent and child1 should be updated, child2 should be skipped
+      (core/bulk-set-remote-sync {parent-id true})
+      ;; All should now be true
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+
+(deftest bulk-set-remote-sync-only-updates-changed-descendants-disable-test
+  (testing "bulk-set-remote-sync only updates descendants that need changing (disable)"
+    ;; Create all collections with is_remote_synced=true first (valid state),
+    ;; then update child2 directly to avoid before-insert validation
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
+                   :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced true}
+                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced true}]
+      ;; Set child2 to already be not remote-synced directly in DB (bypasses hooks)
+      (t2/query-one {:update :collection :set {:is_remote_synced false} :where [:= :id child2-id]})
+      ;; Parent and Child 1 are true, Child 2 is already false
+      ;; When disabling parent, only parent and child1 should be updated, child2 should be skipped
+      (core/bulk-set-remote-sync {parent-id false})
+      ;; All should now be false
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+
 ;;; ------------------------------------------- RSO Cleanup Tests -------------------------------------------
 
 (deftest bulk-set-remote-sync-marks-rsos-removed-on-disable-test
@@ -739,24 +773,3 @@
                               (core/bulk-set-remote-sync {coll-id true})))
         (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))
             "collection's is_remote_synced flag must remain unchanged when the guard fires")))))
-
-(defn- library-root-collection-ids []
-  (t2/select-pks-vec :model/Collection :entity_id [:in (vec collection/library-root-entity-ids)]))
-
-(deftest syncing-library-tracks-no-library-root-collections-test
-  (testing "Syncing the Library leaves its system collections untracked, so they never count as a change"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (with-library [{:keys [library]}]
-        (with-library-not-synced
-          (try
-            (core/bulk-set-remote-sync {(:id library) true})
-            (is (not (t2/exists? :model/RemoteSyncObject
-                                 :model_type "Collection"
-                                 :model_id [:in (library-root-collection-ids)])))
-            (testing "and un-syncing it records the removal"
-              (core/bulk-set-remote-sync {(:id library) false})
-              (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
-                                                 :model_type "Collection"
-                                                 :model_id (:id library)))))
-            (finally
-              (rs.test/set-library-remote-synced! false))))))))

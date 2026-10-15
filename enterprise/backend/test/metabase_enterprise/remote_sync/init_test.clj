@@ -9,7 +9,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.test-helpers :as th]
-   [metabase-enterprise.remote-sync.tracking :as rs-tracking]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
@@ -219,8 +219,8 @@
       (do-with-untracked-glossary-entry!
        :read-write
        (fn [_entry]
-         (is (= 1 (rs-tracking/backfill-glossary-tracking!)))
-         (is (= 0 (rs-tracking/backfill-glossary-tracking!)))
+         (is (= 1 (rs-events/backfill-glossary-tracking!)))
+         (is (= 0 (rs-events/backfill-glossary-tracking!)))
          (is (= 1 (glossary-rso-count))))))))
 
 (deftest remote-sync-init-glossary-backfill-skips-read-only-test
@@ -405,8 +405,18 @@
                                        :remote-sync-branch "main"
                                        :remote-sync-strict-mode true]
       (is (nil? (collection/library-collection)))
-      (impl/finish-remote-config!)
-      (is (library-synced?)))))
+      (mt/with-temp [:model/PythonLibrary {library-id :id} {:path      "common.py"
+                                                            :source    ""
+                                                            :entity_id transforms-python/builtin-entity-id}]
+        (impl/finish-remote-config!)
+        (is (library-synced?))
+        (testing "and leaves nothing to push without content, ignoring the unchanged built-in Python library"
+          (is (not (remote-sync.object/dirty?))))
+        (testing "while a changed built-in Python library is tracked when transforms sync is turned on"
+          (t2/update! :model/PythonLibrary library-id {:source "def f(): pass"})
+          (settings/remote-sync-transforms! false)
+          (settings/remote-sync-transforms! true)
+          (is (remote-sync.object/dirty?)))))))
 
 (deftest finish-remote-config-not-strict-mode-test
   (testing "Outside strict mode, saving remote sync settings leaves Library and transforms sync alone"
@@ -449,7 +459,8 @@
            (is (true? (settings/remote-sync-transforms)))))))))
 
 (deftest remote-sync-init-strict-mode-test
-  (testing "A read-write start without a strict mode value turns it on and syncs the Library and transforms"
+  (testing "A read-write start without a strict mode value turns it on and syncs the Library and transforms, so it
+            doesn't run the initial import of an instance with nothing synced"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-write
                                        :remote-sync-branch "main"
@@ -460,8 +471,4 @@
           (is (true? (settings/remote-sync-strict-mode)))
           (is (library-synced?))
           (is (true? (settings/remote-sync-transforms)))
-          (is (= [["main" true {}]] @calls) "the first import still runs")
-          (testing "and a later start with synced content doesn't import again"
-            (reset! calls [])
-            (#'init/remote-sync-init)
-            (is (empty? @calls))))))))
+          (is (empty? @calls)))))))

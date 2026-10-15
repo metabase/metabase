@@ -155,59 +155,101 @@
                                :model_id (:id coll)))
               "Transforms-namespace collection should NOT be tracked when setting is disabled"))))))
 
-(defn- rso-status [model-type model-id]
-  (t2/select-one-fn :status :model/RemoteSyncObject :model_type model-type :model_id model-id))
-
-(deftest enable-transform-sync-tracks-each-item-test
-  (testing "Enabling transform sync marks each transform, tag, and transforms collection 'create'"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
-                     :model/Transform {transform-id :id} {:name "Existing Transform" :collection_id coll-id}
-                     :model/TransformTag {tag-id :id} {:name "Existing Tag"}]
-        (settings/sync-transform-tracking! true)
-        (is (= "create" (rso-status "Collection" coll-id)))
-        (is (= "create" (rso-status "Transform" transform-id)))
-        (is (= "create" (rso-status "TransformTag" tag-id)))
-        (is (not (t2/exists? :model/RemoteSyncObject :model_type "TransformTag"
-                             :model_id [:in (t2/select-pks-vec :model/TransformTag :built_in_type [:not= nil])]))
-            "built-in tags are not tracked")
-        (is (not (t2/exists? :model/RemoteSyncObject :model_type "PythonLibrary"))
-            "the built-in Python library is not tracked")
-        (is (nil? (rso-status "Collection" settings/transforms-root-id)) "no Transforms root is recorded")
-        (testing "re-applying it, as every settings cache load does, keeps synced items synced"
-          (t2/update! :model/RemoteSyncObject {:model_type "Transform" :model_id transform-id} {:status "synced"})
+(deftest enable-transform-sync-marks-all-transforms-test
+  (testing "Enabling transform sync creates a single Transforms RSO with model_id=-1 and status 'create'"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-enabled true
+                                         remote-sync-type :read-write]
+        ;; Clean up any existing Transforms root RSO first
+        (t2/delete! :model/RemoteSyncObject
+                    :model_type "Collection"
+                    :model_id settings/transforms-root-id)
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
+                       :model/Transform _transform {:name "Existing Transform" :collection_id coll-id}
+                       :model/TransformTag _tag {:name "Existing Tag"}]
+          (is (not (t2/exists? :model/RemoteSyncObject
+                               :model_type "Collection"
+                               :model_id settings/transforms-root-id))
+              "Should not have Transforms root RSO initially")
           (settings/sync-transform-tracking! true)
-          (is (= "synced" (rso-status "Transform" transform-id)))
-          (is (= 1 (t2/count :model/RemoteSyncObject :model_type "Transform" :model_id transform-id))))
-        (testing "disabling it removes the tracking"
-          (settings/sync-transform-tracking! false)
-          (is (nil? (rso-status "Collection" coll-id)))
-          (is (nil? (rso-status "Transform" transform-id)))
-          (is (nil? (rso-status "TransformTag" tag-id))))))))
+          (is (t2/exists? :model/RemoteSyncObject
+                          :model_type "Collection"
+                          :model_id settings/transforms-root-id
+                          :status "create")
+              "Transforms root should be created with status 'create'")
+          (let [rso (t2/select-one :model/RemoteSyncObject
+                                   :model_type "Collection"
+                                   :model_id settings/transforms-root-id)]
+            (is (= "Transforms" (:model_name rso))
+                "Transforms root should have name 'Transforms'")))))))
 
-(deftest enable-transform-sync-without-transforms-test
-  (testing "Enabling transforms sync without any transforms leaves nothing to push"
+(deftest disable-transform-sync-removes-all-tracking-test
+  (testing "Disabling transform sync after the Transforms root was pushed marks it 'delete'"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms false
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
+                       :model/Transform _transform {:name "Test Transform" :collection_id coll-id}
+                       :model/TransformTag _tag {:name "Test Tag"}]
+          (mt/with-temporary-setting-values [remote-sync-transforms true]
+            (is (t2/exists? :model/RemoteSyncObject
+                            :model_type "Collection"
+                            :model_id settings/transforms-root-id
+                            :status "create")
+                "Should have Transforms root RSO with 'create' status")
+            (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
+                        {:status "synced"})
+            (settings/sync-transform-tracking! false)
+            (is (t2/exists? :model/RemoteSyncObject
+                            :model_type "Collection"
+                            :model_id settings/transforms-root-id
+                            :status "delete")
+                "Transforms root should now have 'delete' status")))))))
+
+(defn- transforms-root-status
+  "The status of the Transforms root RSO, or nil when there is none."
+  []
+  (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Collection" :model_id settings/transforms-root-id))
+
+(deftest transform-tracking-keeps-tracked-root-test
+  (testing "Enabling transforms sync without transforms content to publish records no root"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (settings/sync-transform-tracking! true)
-      (is (not (sync-object/dirty?))))))
-
-(deftest transform-tracking-removes-transforms-root-test
-  (testing "Changing the transforms setting removes the Transforms root that earlier versions recorded"
+      (is (nil? (transforms-root-status)))))
+  (testing "Disabling transforms sync before the root was pushed drops it"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (doseq [enabled? [true false]]
+      (mt/with-temp [:model/Transform _ {:name "T"}]
+        (settings/sync-transform-tracking! true)
+        (is (= "create" (transforms-root-status)))
+        (settings/sync-transform-tracking! false)
+        (is (nil? (transforms-root-status))))))
+  (testing "Re-applying an enabled transforms setting, as every settings cache load does, keeps a synced root synced"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Transform _ {:name "T"}]
+        (settings/sync-transform-tracking! true)
+        (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
+                    {:status "synced"})
+        (settings/sync-transform-tracking! true)
+        (is (= "synced" (transforms-root-status)))
+        (testing "and disabling then re-enabling marks it again"
+          (settings/sync-transform-tracking! false)
+          (is (= "delete" (transforms-root-status)))
+          (settings/sync-transform-tracking! true)
+          (is (= "create" (transforms-root-status))))))))
+
+(deftest transform-tracking-read-only-test
+  (testing "A read-only instance never tracks the Transforms root, so it never reports it as unsaved"
+    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (settings/sync-transform-tracking! true)
+      (is (nil? (transforms-root-status)))
+      (is (not (sync-object/dirty?)))
+      (testing "and drops one left over from before the fix"
         (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id
                                              :model_name "Transforms" :status "create"
                                              :status_changed_at (t/offset-date-time)})
-        (settings/sync-transform-tracking! enabled?)
-        (is (nil? (rso-status "Collection" settings/transforms-root-id)))))))
-
-(deftest transform-tracking-read-only-test
-  (testing "A read-only instance never tracks transforms, so it never reports them as unsaved"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
-      (mt/with-temp [:model/Transform {transform-id :id} {:name "Existing Transform"}]
         (settings/sync-transform-tracking! true)
-        (is (nil? (rso-status "Transform" transform-id)))
-        (is (not (sync-object/dirty?)))))))
+        (is (nil? (transforms-root-status)))))))
 
 (deftest switching-to-read-only-with-transforms-test
   (testing "Saving read-only settings with transforms on, as the setup guide does, leaves nothing unsaved"
@@ -219,6 +261,7 @@
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                 {:remote-sync-type :read-only :remote-sync-transforms true})
           (is (true? (settings/remote-sync-transforms)))
+          (is (nil? (transforms-root-status)))
           (is (not (sync-object/dirty?))))))))
 
 (deftest transforms-included-in-dirty-check-when-enabled-test

@@ -11,11 +11,13 @@
    To add a new syncable model, add a spec entry to `remote-sync-specs` and
    optionally implement custom multimethods if the default behavior doesn't fit."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]))
@@ -202,22 +204,22 @@
     :enabled?       true}
 
    :model/Collection
-   {:model-type         "Collection"
-    :model-key          :model/Collection
-    :identity           :entity-id
-    :events             {:prefix :event/collection
-                         :types  [:create :update]}  ; no delete event for collections
-    :eligibility        {:type       :collection
-                         :collection :any}  ; remote-synced OR transforms-namespace
-    :archived-key       :archived
-    :tracking           {:select-fields  [:name :id]
-                         :field-mappings {:model_name          :name
-                                          :model_collection_id :id}}  ; collection_id is self
-    :removal-conditions {:entity_id [:not-in (into [] collections/library-root-entity-ids)]}  ; every instance has the Library
-    :removal            {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
-                         :scope-key :id}  ; collections are scoped by their own id
-    :export-scope       :root-collections  ; query for root-level remote-synced + transforms-namespace collections
-    :enabled?           true}
+   {:model-type     "Collection"
+    :model-key      :model/Collection
+    :identity       :entity-id
+    :events         {:prefix :event/collection
+                     :types  [:create :update]}  ; no delete event for collections
+    :eligibility    {:type       :collection
+                     :collection :any}  ; remote-synced OR transforms-namespace
+    :archived-key   :archived
+    :tracking       {:select-fields  [:name :id]
+                     :field-mappings {:model_name          :name
+                                      :model_collection_id :id}}  ; collection_id is self
+    :removal        {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
+                     :scope-key :id}  ; collections are scoped by their own id
+    :removal-conditions {:entity_id [:not-in (vec collection/library-root-entity-ids)]}
+    :export-scope   :root-collections  ; query for root-level remote-synced + transforms-namespace collections
+    :enabled?       true}
 
    :model/Table
    {:model-type     "Table"
@@ -554,6 +556,32 @@
        (map (fn [path] (:model (last path))))
        (into #{})))
 
+(defn check-entity-id-conflicts
+  "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
+   Returns map of {model-type #{conflicting-entity-ids}}.
+
+   Excludes the Library's system collections, which every instance with a Library has."
+  [imported-entity-ids-by-model]
+  (into {}
+        (for [[model-type entity-ids] imported-entity-ids-by-model
+              :when (seq entity-ids)
+              :let [spec (spec-for-model-type model-type)
+                    model-key (:model-key spec)]
+              :when (and spec model-key (#{:entity-id :hybrid} (:identity spec)))
+              :let [local-entity-ids (remote-sync.db/existing-entity-ids model-key entity-ids)
+                    tracked-entity-ids (when (seq local-entity-ids)
+                                         (let [pks (remote-sync.db/ids-by-entity-ids model-key local-entity-ids)]
+                                           (into #{}
+                                                 (map (fn [rso]
+                                                        (:entity_id (remote-sync.db/instance model-key (:model_id rso)))))
+                                                 (remote-sync.db/rsos-of-models model-type pks))))
+                    conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
+                    conflicting-entity-ids (if (= model-type "Collection")
+                                             (into #{} (remove collection/library-root-entity-ids) conflicting-entity-ids)
+                                             conflicting-entity-ids)]
+              :when (seq conflicting-entity-ids)]
+          [model-type conflicting-entity-ids])))
+
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
    Excludes entities filtered by removal-conditions (e.g., built-in TransformTags and the built-in common.py
@@ -744,12 +772,6 @@
    a whole collection's worth of content would be swept. The :count field always holds the true total."
   100)
 
-(defn- imported-collection-ids
-  "The IDs of the local Collections that `by-entity-id` imports, which the import makes synced."
-  [by-entity-id]
-  (when-let [entity-ids (not-empty (set (get by-entity-id "Collection")))]
-    (remote-sync.db/ids-by-entity-ids :model/Collection entity-ids)))
-
 (defn check-content-deletion-conflicts
   "Detects unsynced local content an import would delete because it is absent from the import, but which
    holds unsaved local work — it has no RemoteSyncObject in 'synced' status, so its removal is data loss
@@ -758,14 +780,12 @@
    Covers the entity-id content models [[check-deletion-conflicts]] does not (that one handles only the
    all-or-nothing, setting-gated transform family): Cards/metrics, Dashboards, Documents, Timelines, and
    NativeQuerySnippets. Collection is excluded — it is structural, its deletion cascades, and its contents
-   are already covered here. The scope includes the local Collections the import makes synced, like an
-   unsynced Library, so the count matches what an import would actually delete.
+   are already covered here. The count matches what an import would actually delete.
 
    Takes imported-data from [[extract-imported-entities]]. Returns a vector of conflict maps
    ({:type :category :model :count :names :message}), one per affected model type."
   [{:keys [by-entity-id]}]
-  (let [synced-collection-ids (into [] (comp cat (distinct)) [(all-syncable-collection-ids)
-                                                              (imported-collection-ids by-entity-id)])]
+  (let [synced-collection-ids (all-syncable-collection-ids)]
     (into []
           (for [[model-key spec] (specs-for-deletion)
                 :when (and (not (get-in spec [:removal :all-on-setting-disable]))

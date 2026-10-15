@@ -33,12 +33,12 @@
   library-collection
   library-collection-type
   library-collection-types
+  library-root-collection?
+  library-root-entity-ids
   library-dashboards-collection-type
   library-dashboards-collection?
   library-data-collection-type
   library-metrics-collection-type
-  library-root-collection?
-  library-root-entity-ids
   location-path
   location-path->ids
   moving-from-remote-synced?
