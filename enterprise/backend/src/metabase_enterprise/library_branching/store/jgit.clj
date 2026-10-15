@@ -147,18 +147,32 @@
           (.flush inserter)
           (.name id))))))
 
-(defn- cas-ref!* [^Repository repo url token timeout-seconds ref _expected new]
-  (let [ref      (qualify ref)
-        update   (RemoteRefUpdate. repo nil (ObjectId/fromString ^String new) ref false nil nil)
+(defn- cas-ref!* [^Repository repo url token timeout-seconds ref ^String expected ^String new]
+  ;; JGit refuses the update when the advertised ref is not `expected` (REJECTED_REMOTE_CHANGED), and sends
+  ;; `expected` as the old id of the push command, so the receiving side checks it again under its ref lock.
+  ;; Forced: the expected id is the only condition, so a move that is not a fast-forward is allowed.
+  (let [ref        (qualify ref)
+        update     (RemoteRefUpdate. repo nil (ObjectId/fromString new) ref true nil
+                                     (if expected (ObjectId/fromString expected) (ObjectId/zeroId)))
         ^PushResult result (with-open [transport (open-transport repo url token timeout-seconds)]
                              (try
                                (.push transport NullProgressMonitor/INSTANCE [update])
                                (catch Exception e
                                  (throw (transport-failure "push" url e)))))
-        status   (.getStatus (.getRemoteUpdate result ref))]
-    (if (#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} status)
-      :ok
-      (throw (ex-info (format "Git push of %s to %s failed: %s" ref url status) {:ref ref :status status})))))
+        remote     (.getRemoteUpdate result ref)
+        advertised (some-> (.getAdvertisedRef result ref) .getObjectId .name)
+        status     (.getStatus remote)]
+    (condp = status
+      RemoteRefUpdate$Status/OK                      :ok
+      ;; the remote is at `new` already; that is a move only when it is also at `expected`
+      RemoteRefUpdate$Status/UP_TO_DATE              (if (= expected advertised) :ok {:moved advertised})
+      RemoteRefUpdate$Status/REJECTED_REMOTE_CHANGED {:moved advertised}
+      ;; the receiving side refused it: when the ref moved after the advertisement, that is a lost race
+      (let [actual (fetch-head repo url token timeout-seconds ref)]
+        (if (not= expected actual)
+          {:moved actual}
+          (throw (ex-info (format "Git push of %s to %s failed: %s %s" ref url status (.getMessage remote))
+                          {:ref ref :status status :message (.getMessage remote)})))))))
 
 (defn- ancestor?* [^Repository repo a b]
   (with-open [rw (RevWalk. repo)]
