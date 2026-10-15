@@ -11,7 +11,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private model-of
-  {:measure :model/Measure
+  {:action  :model/Action
+   :measure :model/Measure
    :metric  :model/Card
    :segment :model/Segment
    :snippet :model/NativeQuerySnippet})
@@ -36,19 +37,23 @@
   [in-scope {:keys [id kind]}]
   (when-let [row-id (some-> (model-of kind) (library-branching.db/row-id-by-entity-id id))]
     (let [uses?      (fn [refs] (some (fn [[role target]] (and (= id target) (contains? (roles kind) role))) refs))
-          cards      (for [[card refs] (card-refs (library-branching.db/cards-mentioning row-id))
-                           :when (and (not (contains? in-scope (:entity_id card))) (uses? refs))]
-                       {:kind :card :id (:entity_id card) :name (:name card)})
-          dashboards (when (= :metric kind)
-                       (for [{:keys [entity_id name]} (library-branching.db/dashboards-showing row-id)
-                             :when (not (contains? in-scope entity_id))]
-                         {:kind :dashboard :id entity_id :name name}))]
+          cards      (when (contains? roles kind)
+                       (for [[card refs] (card-refs (library-branching.db/cards-mentioning row-id))
+                             :when (and (not (contains? in-scope (:entity_id card))) (uses? refs))]
+                         {:kind :card :id (:entity_id card) :name (:name card)}))
+          ;; A dashboard uses a metric through a card of it, and an action through a button.
+          dashboards (for [{:keys [entity_id name]} (case kind
+                                                      :metric (library-branching.db/dashboards-showing row-id)
+                                                      :action (library-branching.db/dashboards-with-action row-id)
+                                                      nil)
+                           :when (not (contains? in-scope entity_id))]
+                       {:kind :dashboard :id entity_id :name name})]
       (not-empty (vec (sort-by (juxt :kind :name :id) (concat cards dashboards)))))))
 
 (defn trashed-in-use
   "`{identity [{:kind :id :name} ...]}`: of the trashed items `trashed` (`[{:id :kind}]`), each one that a card or a
   dashboard outside the scope of `roots` (default `scope/roots`) uses, with those users, sorted. Only metrics,
-  snippets, segments and measures have such users. Reads in the current transaction."
+  snippets, segments, measures and actions have such users. Reads in the current transaction."
   ([trashed]
    (trashed-in-use scope/roots trashed))
   ([roots trashed]

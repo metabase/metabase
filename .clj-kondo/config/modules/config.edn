@@ -4013,9 +4013,11 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/Glossary
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/ParameterCard
+                    :model/QueryAction
                     :model/Segment
                     :model/Table
                     :model/TableUserSettings

@@ -292,8 +292,12 @@
   "`[item-kinds item-places]`. Item i has its place at the root level or in an item before it whose kind can contain
   a kind of `kinds`; then its kind is one that the place allows. So places are inside, acyclic, and kinds fit."
   [{:keys [kinds may-contain root-kinds]} choices]
-  (let [contained (fn [kind] (sorted-kinds (set/intersection (set (get may-contain kind)) (set kinds))))
-        roots     (sorted-kinds root-kinds)]
+  (let [;; The kinds that can contain an item first: a small choice names one, so a shrunk snapshot keeps its depth
+        ;; with the first container kind, whatever leaf kinds sort before it.
+        ordered   (fn [ks] (vec (sort-by (juxt #(empty? (set/intersection (set (get may-contain %)) (set kinds))) identity)
+                                         ks)))
+        contained (fn [kind] (ordered (set/intersection (set (get may-contain kind)) (set kinds))))
+        roots     (ordered root-kinds)]
     (reduce (fn [[item-kinds item-places] {:keys [place kind]}]
               ;; The newest container first: a small choice names a recent container, also after a shrink removes
               ;; an older one.
