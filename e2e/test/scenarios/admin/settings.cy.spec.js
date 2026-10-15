@@ -301,86 +301,9 @@ describe("scenarios > admin > settings > email settings", () => {
 });
 
 describe("scenarios > admin > localization", () => {
-  function setFirstWeekDayTo(day) {
-    H.updateSetting("start-of-week", day.toLowerCase());
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    setFirstWeekDayTo("monday");
-  });
-
-  it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
-    // programatically create and save a question based on Orders table
-    // filter: created before June 1st, 2025
-    // summarize: Count by CreatedAt: Week
-    H.createQuestion(
-      {
-        name: "Orders created before June 1st 2025",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
-        },
-        display: "bar",
-      },
-      { visitQuestion: true },
-    );
-
-    cy.log("Assert the dates on the X axis");
-    // it's hard and tricky to invoke hover in Cypress, especially in our graphs
-    // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
-    H.echartsContainer().find("text").should("contain", "April 28, 2025");
-  });
-
-  it("should use currency settings for number columns with style set to currency (metabase#10787) and search for and select a new timezone", () => {
-    cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
-    cy.visit("/admin/settings/localization");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Unit of currency");
-    cy.findByDisplayValue("US Dollar").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Euro").click();
-    H.undoToast().findByText("Changes saved").should("be.visible");
-
-    // Runs after the currency toast assertion because saving the timezone shows another toast
-    cy.log("should search for and select a new timezone");
-    cy.findByRole("textbox", { name: /timezone/i })
-      .as("timezoneSelect")
-      .clear()
-      .type("Centr");
-    H.selectDropdown().findByText("US/Central").click();
-    cy.wait("@reportTimezone");
-    cy.get("@timezoneSelect").should("have.value", "US/Central");
-
-    cy.log(
-      "should use currency settings for number columns with style set to currency (metabase#10787)",
-    );
-    H.visitQuestionAdhoc({
-      display: "scalar",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "SELECT 10 as A",
-          "template-tags": {},
-        },
-        database: SAMPLE_DB_ID,
-      },
-      visualization_settings: {
-        column_settings: {
-          '["name","A"]': {
-            number_style: "currency",
-          },
-        },
-      },
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("€10.00");
   });
 
   it("should apply date and time style settings to table cells and the date filter widget (metabase#11394, metabase#9151, metabase#12472)", () => {
@@ -474,42 +397,6 @@ describe("scenarios > admin > localization", () => {
 
     cy.findByTextEnsureVisible("Created At");
     cy.findAllByTestId("cell-data").should("contain", "2028/2/11, 9:40 PM");
-  });
-});
-
-describe("scenarios > admin > settings > map settings", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.intercept("GET", "/api/geojson*").as("getGeoJson");
-    cy.signInAsAdmin();
-  });
-
-  it("should be able to load a custom map before a name is added, then save it (#14635)", () => {
-    cy.visit("/admin/settings/maps");
-    cy.button("Add a map").click();
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type(
-      "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
-    );
-    cy.log("Loading works before a map name is entered (#14635)");
-    cy.button("Load").click();
-    cy.wait("@getGeoJson").then((interception) => {
-      expect(interception.response.statusCode).to.eq(200);
-    });
-
-    cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
-      "Test Map",
-    );
-    cy.findByTestId("map-region-key-select").click();
-    H.selectDropdown().contains("NAME").click();
-    cy.findByTestId("map-region-name-select").click();
-    H.selectDropdown().contains("NAME").click();
-    cy.button("Add map").click();
-    cy.findByTestId("admin-layout-content").within(() => {
-      cy.contains("NAME").should("not.exist");
-      cy.contains("Test Map");
-    });
   });
 });
 

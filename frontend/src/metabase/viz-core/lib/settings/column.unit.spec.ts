@@ -1,4 +1,6 @@
+import { mockSettings } from "__support__/settings";
 import { checkNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,
@@ -123,6 +125,30 @@ describe("column settings", () => {
       computed.column?.(series[0].data.cols[0]),
     );
     expect(number_style).toBe("percent");
+  });
+
+  describe("global formatting settings", () => {
+    afterEach(() => {
+      mockSettings();
+    });
+
+    it("should apply the global currency to a non-currency column with the currency style (metabase#10787)", () => {
+      mockSettings({
+        "custom-formatting": { "type/Currency": { currency: "EUR" } },
+      });
+      const series = seriesWithColumn({
+        base_type: "type/Integer",
+        semantic_type: null,
+      });
+      const computed = getComputedSettings({ ...columnSettings() }, series, {
+        column_settings: {
+          '["name","foo"]': { number_style: "currency" },
+        },
+      });
+      const settings = checkNotNull(computed.column?.(series[0].data.cols[0]));
+
+      expect(formatValue(10, settings)).toBe("€10.00");
+    });
   });
 
   describe("NUMBER_COLUMN_SETTINGS", () => {

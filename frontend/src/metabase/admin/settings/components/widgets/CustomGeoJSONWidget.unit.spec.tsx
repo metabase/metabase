@@ -7,6 +7,7 @@ import {
   setupMalformedGeoJSONEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
@@ -48,13 +49,17 @@ const CUSTOM_GEO_JSON = {
   },
 };
 
+interface SetupOpts {
+  customGeoJSON?: CustomGeoJSONSetting;
+  isEnvVar?: boolean;
+  hasStatefulSettings?: boolean;
+}
+
 const setup = async ({
   customGeoJSON = CUSTOM_GEO_JSON,
   isEnvVar,
-}: {
-  customGeoJSON?: CustomGeoJSONSetting;
-  isEnvVar?: boolean;
-}) => {
+  hasStatefulSettings = false,
+}: SetupOpts) => {
   const settings = createMockSettings({
     "custom-geojson": customGeoJSON,
   });
@@ -65,8 +70,12 @@ const setup = async ({
     is_env_setting: isEnvVar,
   });
 
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+  if (hasStatefulSettings) {
+    setupStatefulSettingsEndpoints(settings);
+  } else {
+    setupPropertiesEndpoints(settings);
+    setupUpdateSettingEndpoint();
+  }
   setupSettingsEndpoints([geoJSONDefinition]);
   setupGeoJSONEndpoint({
     featureCollection: createMockGeoJSONFeatureCollection(),
@@ -209,6 +218,73 @@ describe("CustomGeoJSONWIdget", () => {
       region_name: "featureclass",
       url: "https://test.com/download/GeoJSON_two.json",
     });
+  });
+
+  it("should load a map before a name is entered (metabase#14635)", async () => {
+    await setup({});
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
+    expect(
+      screen.getByPlaceholderText(/e.g. United Kingdom, Brazil, Mars/i),
+    ).toHaveValue("");
+
+    await userEvent.type(
+      screen.getByPlaceholderText(
+        "Like https://my-mb-server.com/maps/my-map.json",
+      ),
+      "https://test.com/download/GeoJSON_two.json",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Load" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Refresh" }),
+    ).toBeInTheDocument();
+
+    const keySelect = within(screen.getByTestId("map-region-key-select"));
+    await userEvent.click(keySelect.getByPlaceholderText(/Select/));
+    expect(
+      await screen.findByRole("option", { name: /scalerank/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /featureclass/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("should show a new map in the list after it is saved", async () => {
+    await setup({ hasStatefulSettings: true });
+
+    expect(screen.queryByText("Test Map")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
+    await userEvent.type(
+      screen.getByPlaceholderText(
+        "Like https://my-mb-server.com/maps/my-map.json",
+      ),
+      "https://test.com/download/GeoJSON_two.json",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Load" }));
+    await screen.findByRole("button", { name: "Refresh" });
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/e.g. United Kingdom, Brazil, Mars/i),
+      "Test Map",
+    );
+
+    const keySelect = within(screen.getByTestId("map-region-key-select"));
+    await userEvent.click(keySelect.getByPlaceholderText(/Select/));
+    await userEvent.click(await screen.findByText("scalerank"));
+
+    const nameSelect = within(screen.getByTestId("map-region-name-select"));
+    await userEvent.click(nameSelect.getByPlaceholderText(/Select/));
+    await userEvent.click(await screen.findByText("featureclass"));
+
+    await userEvent.click(screen.getByRole("button", { name: "Add map" }));
+
+    expect(
+      await screen.findByRole("cell", { name: "Test Map" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Test" })).toBeInTheDocument();
   });
 
   it("should edit a map", async () => {

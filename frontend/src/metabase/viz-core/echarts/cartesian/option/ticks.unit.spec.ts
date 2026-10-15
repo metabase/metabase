@@ -59,6 +59,56 @@ describe("getTicksOptions", () => {
     expect(model.toEChartsAxisValue(first)).toBe("2025-03-30T00:00:00Z");
     expect(model.toEChartsAxisValue(last)).toBe("2025-04-01T00:00:00Z");
   });
+
+  it("anchors week ticks on the weekday the data starts on (metabase#13516)", () => {
+    // With start-of-week set to Monday, weekly buckets start on Mondays.
+    const weekColumn = createMockDatetimeColumn({ unit: "week" });
+    const dimensionModel: DimensionModel = {
+      column: weekColumn,
+      columnIndex: 0,
+      columnByCardId: { 1: weekColumn },
+      columns: [weekColumn],
+    };
+    const mondays = [
+      "2025-04-14",
+      "2025-04-21",
+      "2025-04-28",
+      "2025-05-05",
+      "2025-05-12",
+    ];
+    const dataset = mondays.map((monday, index) => ({
+      [X_AXIS_DATA_KEY]: monday,
+      "0": index,
+    }));
+    const rawSeries = [
+      createMockSingleSeries(
+        { display: "bar" },
+        { data: { results_timezone: "UTC" } },
+      ),
+    ];
+    const settings = createMockVisualizationSettings({
+      "graph.x_axis.scale": "timeseries",
+    });
+
+    const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
+    if (!isTimeSeriesAxis(model)) {
+      throw new Error("Expected a time series x-axis model");
+    }
+
+    const { customValues, formatter } = getTicksOptions(
+      model,
+      createMockChartLayout(),
+    );
+    const tickDates = (customValues ?? []).map((value) =>
+      model.fromEChartsAxisValue(value),
+    );
+
+    expect(tickDates.map((date) => date.format("YYYY-MM-DD"))).toEqual(mondays);
+    expect(tickDates.every((date) => date.day() === 1)).toBe(true);
+    expect(
+      tickDates.map((date) => formatter(date.format("YYYY-MM-DDTHH:mm:ss[Z]"))),
+    ).toContain("April 28, 2025");
+  });
 });
 
 describe("year tick grids", () => {
