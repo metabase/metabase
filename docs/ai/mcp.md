@@ -164,7 +164,7 @@ Most clients ask for all of them. A scope never grants more than your Metabase p
 
 ### Headless access with JWT
 
-On [Pro and Enterprise plans](https://www.metabase.com/pricing), if you sign people in with [JWT authentication](../people-and-groups/authenticating-with-jwt.md), your backend can get an MCP token for each person without a browser. Sign a JWT for the person as you would for SSO, and post it to the token endpoint:
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), if you sign people in with [JWT authentication](../people-and-groups/authenticating-with-jwt.md), an agent in your own app can use the MCP server as the person signed in to your app, with no browser sign-in or consent page. Your backend signs a JWT for the person as it would for SSO, and posts it to the token endpoint:
 
 ```
 curl https://{your-metabase.example.com}/oauth/token \
