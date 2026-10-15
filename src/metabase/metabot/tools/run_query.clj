@@ -126,7 +126,7 @@
     :else                          no-values-hint))
 
 (defn- metric-refusal
-  "The refusal for `query-id`, the id of `metric`, a metric the user is viewing and can read.
+  "The refusal for `query-id`, the id of `metric`, a metric the user can read.
    It says what to aggregate the metric over: the model or question it is built on, or else its base table.
    Where the user can't read the card it is built on, it offers no way to its values."
   [query-id metric]
@@ -139,34 +139,28 @@
 
                       (and (nil? (:source_card_id metric)) (:table_id metric))
                       "the metric's base table as its source")]
-    (refusal (str "Query id " query-id " is a metric the user is viewing, and a metric does not run by its id. "
+    (refusal (str "Query id " query-id " is a metric, and a metric does not run by its id. "
                   (if source
                     (str "To get its values, build a notebook query with construct_notebook_query that has " source
                          " and the metric in `aggregation`, then run that query with run_query.")
                     no-values-hint)))))
 
-(defn- viewed-saved-question
-  "`{:query :saved-card}` for the saved question or model the user is viewing whose id is `query-id`, or nil:
-   a notebook query over the saved version, and the question itself.
+(defn- saved-question
+  "`{:query :saved-card}` for the saved question or model whose id is `query-id`, or nil when the user
+   can't read it: a notebook query over the saved version, and the question itself.
    Throws a refusal for a metric the user can read.
-   Only run_query reads a viewed question this way: the chart, link and save tools still take a query the
+   Only run_query reads a saved question this way: the chart, link and save tools still take a query the
    conversation holds."
   [query-id]
   ;; The conversation holds no query under a saved question's id.
-  ;; The client sends the query on screen with the item, but that is not what runs.
-  ;; The saved question runs instead, as a source-card query.
+  ;; The saved question runs as a source-card query, the same query the model could build itself.
   ;; That keeps its own permissions, and the checks on SQL that Metabot saved.
-  (when-let [card-id (some (fn [{:keys [id type]}]
-                             (when (and (= query-id (str id))
-                                        (contains? #{"question" "model" "metric"} (some-> type name)))
-                               (let [parsed (parse-long (str id))]
-                                 (when (pos-int? parsed)
-                                   parsed))))
-                           (get-in (shared/current-memory) [:context :user_is_viewing]))]
+  (when-let [card-id (let [parsed (parse-long query-id)]
+                       (when (and (pos-int? parsed) (= query-id (str parsed)))
+                         parsed))]
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
       (when (some-> card mi/can-read?)
-        ;; The client sets the item's type, so the card decides whether this is a metric.
         (when (= :metric (:type card))
           (throw (metric-refusal query-id card)))
         {:saved-card card
@@ -177,19 +171,17 @@
 
 (defn- stored-query
   "`{:query :saved-card}` for the query `query-id` names: one the conversation holds, or with `allow-non-sql?` a
-   saved question the user is viewing, which is then `:saved-card`."
+   saved question the user can read, which is then `:saved-card`."
   [query-id allow-non-sql?]
   (let [queries (shared/current-queries-state)]
     (or (when-let [query (get queries query-id)]
           {:query query})
         (when allow-non-sql?
-          (viewed-saved-question query-id))
+          (saved-question query-id))
         (throw (refusal (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "]. "
                              (cond
                                allow-non-sql?
-                               (str "Only a saved question or model the user is viewing runs by its own id: to run "
-                                    "another, build a notebook query with it as the source-card using "
-                                    "construct_notebook_query, then run that query.")
+                               "Only a query you built, or a saved question or model the user can read, runs by its id."
 
                                (scope/sql-execution-allowed?)
                                (str "A saved question or model has no query id: to run one, write SQL that reads it "
@@ -653,8 +645,7 @@
   "Run a query you already have and read its first rows (default 20, max 200).
   Use it when the answer needs actual values: a number, the top item, whether a filter matches anything.
   `query_id` is the id of a query you built, or of a query the user is viewing.
-  For a saved question or model the user is viewing, `query_id` is its own id. Any other has no query id: build a
-  notebook query with it as the source-card and run that.
+  For a saved question or model, `query_id` is its own id.
   A SQL query, whether built with create_sql_query or viewed by the user, runs only where SQL execution is
   on, and only when it is a single read-only SELECT statement; otherwise it is refused, and you get values by
   building the question with construct_notebook_query.
