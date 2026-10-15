@@ -93,7 +93,7 @@
     :doc    "A later table with the name of an archived published table takes its key, so the item reads an unpublished
             table."
     :target `library-branching.db/key-row
-    :edits  [[:remove '(comp not true? :is_published)]]
+    :edits  [[:remove '(comp not published? :is_published)]]
     :tests  [#'kinds-test/archived-published-table-test]}
    {:name   :archived-table-not-found
     :doc    "A lookup by natural key does not find a table that warehouse sync archived."

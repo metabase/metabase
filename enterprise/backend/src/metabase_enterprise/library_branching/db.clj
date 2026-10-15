@@ -275,11 +275,17 @@
   [entity-ids :- ::entity-ids]
   (t2/select :model/NativeQuerySnippet :entity_id [:in entity-ids]))
 
+(defn- published?
+  "True iff `v`, the published flag of a table row as a query returns it, is true."
+  [v]
+  ;; MySQL and MariaDB return the flag of the user settings overlay, an expression, as 1 or 0.
+  (or (true? v) (= 1 v)))
+
 (defn- key-row
   "The row of several table rows with one natural key: the published one, then the one that warehouse sync did not
   archive, then the newest. Of the published rows, it is the owner of [[shadowed-table]]."
   [rows]
-  (first (sort-by (juxt (comp not true? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
+  (first (sort-by (juxt (comp not published? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
 
 (mu/defn tables-by-key :- [:sequential ::row]
   "`{:id :db :schema :table :display_name :collection_id}` of each table of `table-keys`, natural keys `[database
