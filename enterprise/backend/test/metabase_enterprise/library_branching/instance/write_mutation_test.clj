@@ -16,9 +16,12 @@
    [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.instance.write-property-test]
    [metabase-enterprise.library-branching.instance.write-test]
-   [metabase-enterprise.library-branching.mutation.core :as mut]))
+   [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the write side."

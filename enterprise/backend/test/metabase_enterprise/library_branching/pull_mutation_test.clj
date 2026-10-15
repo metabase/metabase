@@ -11,9 +11,12 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-app-db-test :as pull-app-db-test]
-   [metabase-enterprise.library-branching.pull-test :as pull-test]))
+   [metabase-enterprise.library-branching.pull-test :as pull-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the apply, the pull or merge-branch."
