@@ -5,6 +5,7 @@
   kind decodes) or into parts of an item; [[assemblers]] has one function per kind whose item is several files."
   (:require
    [metabase-enterprise.library-branching.format.codec :as codec]
+   [metabase-enterprise.library-branching.format.old.action :as old.action]
    [metabase-enterprise.library-branching.format.old.card :as old.card]
    [metabase-enterprise.library-branching.format.old.collection :as old.collection]
    [metabase-enterprise.library-branching.format.old.common :as common]
@@ -28,7 +29,8 @@
   - `{:skip reason}`: the document holds no content of the new format.
 
   It throws `codec/invalid!` for a document that it refuses."
-  {"Card"               #'old.card/decode
+  {"Action"             #'old.action/decode
+   "Card"               #'old.card/decode
    "Collection"         #'old.collection/decode
    "Dashboard"          #'old.dashboard/decode
    "Dimension"          #'old.published-table/decode-dimension

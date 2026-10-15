@@ -49,10 +49,16 @@
   (testing "one codec for each kind of the snapshot"
     (is (= snapshot/kinds (set (keys by-kind)))))
   (testing "the words and directory kinds of the layout"
+<<<<<<< HEAD
     (is (= {:collection ["collection" true] :dashboard ["dashboard" false] :glossary-term ["term" false]
             :measure ["measure" false] :metric ["metric" false] :model ["model" false]
             :published-table ["table" false] :question ["question" false] :segment ["segment" false]
             :snippet ["snippet" false] :timeline ["timeline" false]}
+=======
+    (is (= {:action ["action" false] :collection ["collection" true] :glossary-term ["term" false]
+            :measure ["measure" false] :metric ["metric" false] :model ["model" false] :published-table ["table" false]
+            :question ["question" false] :segment ["segment" false] :snippet ["snippet" false]}
+>>>>>>> fleet/GALDRE-762
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
 ;;; ------------------------------------------------------ Laws -------------------------------------------------------
@@ -107,9 +113,16 @@
       (is (some #(re-find #"\.table\.yaml$" %) paths) "a published table")
       (is (some #(re-find #"\.table/[^/]+\.segment\.yaml$" %) paths) "a segment in the directory of its table")
       (is (some #(re-find #"\.table/[^/]+\.measure\.yaml$" %) paths) "a measure in the directory of its table")
+<<<<<<< HEAD
       (is (some #(re-find #"\.timeline\.yaml$" %) paths) "a timeline")
       (is (some #(< 1 (count (get-in % [:attrs :events]))) items) "a timeline with several events")
       (is (some (fn [item] (some #(get-in item [:attrs :events % :description]) [0 1 2])) items) "an event with a description")
+=======
+      (is (some #(re-find #"^actions/[^/]+\.action\.yaml$" %) paths) "an action at the root of the data actions area")
+      (is (some #(re-find #"\.action\.yaml$" %) (remove #(str/starts-with? % "actions/") paths))
+          "an action in a collection of another area")
+      (is (some #(re-find #"\.model/[^/]+\.action\.yaml$" %) paths) "an action in the directory of its model")
+>>>>>>> fleet/GALDRE-762
       (is (some #(some (fn [[role]] (= :segment role)) (:refs %)) items) "a reference to a segment")
       (is (some #(some (fn [[role]] (= :measure role)) (:refs %)) items) "a reference to a measure")
       (is (some #(str/includes? % "~") paths) "an identity suffix")
@@ -163,12 +176,18 @@
 (def ^:private orders [sd "PUBLIC" "ORDERS"])
 (def ^:private large-orders-id "lArGeOrDeRsSeGmEnT001")
 (def ^:private order-total-id "oRdErToTaLmEaSuRe0001")
+<<<<<<< HEAD
 (def ^:private snippets-root "snippetssnippetssnipp")
 (def ^:private transforms-root "transformstransformst")
 (def ^:private glossary-root "glossaryglossarygloss")
 (def ^:private dashboards-id "dAsHbOaRdScOlLeCtIoN1")
 (def ^:private releases-id "rElEaSeStImElInE00001")
 (def ^:private overview-id "7RZUq1g5o1C5ws_e3ppKf")
+=======
+(def ^:private refunds-id "rEfUnDsCoLlEcTiOn0001")
+(def ^:private refund-order-id "rEfUnDoRdErAcTiOn0001")
+(def ^:private refund-all-id "rEfUnDaLlAcTiOn000001")
+>>>>>>> fleet/GALDRE-762
 
 (defn- collection [nm place & {:as attrs}]
   {:kind :collection :name nm :place place :refs #{} :attrs (or attrs {})})
@@ -179,9 +198,15 @@
    data-id     (collection "Data" library-id :type "library-data")
    metrics-id  (collection "Metrics" library-id :type "library-metrics")
    revenue-id  (collection "Revenue" metrics-id :description "Revenue metrics that finance signs off on.")
+<<<<<<< HEAD
    filters-id  (collection "Filters" snippets-root :namespace "snippets")
    dashboards-id (collection "Dashboards" library-id :type "library-dashboards")
    finance-id  (collection "Finance" transforms-root :namespace "transforms")
+=======
+   filters-id  (collection "Filters" nil :namespace "snippets")
+   finance-id  (collection "Finance" nil :namespace "transforms")
+   refunds-id  (collection "Refunds" nil :namespace "data-actions")
+>>>>>>> fleet/GALDRE-762
 
    total-revenue-id
    {:kind  :metric
@@ -278,6 +303,7 @@
                                                      ["field" {:base-type "type/Float"} [sd "PUBLIC" "ORDERS" "TOTAL"]]
                                                      ["segment" {} large-orders-id]]]}]}}}
 
+<<<<<<< HEAD
    overview-id
    {:kind  :dashboard
     :name  "Revenue overview"
@@ -305,6 +331,40 @@
                            :size_x                 12
                            :size_y                 2
                            :visualization_settings {:text "Revenue is in US dollars." :virtual_card {:display "text"}}}]}}
+=======
+   refund-order-id
+   {:kind  :action
+    :name  "Refund order"
+    :place nil
+    :refs  #{[:database [:env [sd]]]}
+    :attrs {:description            "Marks one order as refunded."
+            :type                   "query"
+            :dataset_query          {:lib/type "mbql/query"
+                                     :database sd
+                                     :stages   [{:lib/type      "mbql.stage/native"
+                                                 :native        "UPDATE orders SET refunded = true WHERE id = {{id}}"
+                                                 :template-tags [{:id           "6a1f0c2e-61a4-4a70-a1d1-3b2c5d7e9f10"
+                                                                  :display-name "ID"
+                                                                  :name         "id"
+                                                                  :type         "number"}]}]}
+            :parameters             [{:id       "6a1f0c2e-61a4-4a70-a1d1-3b2c5d7e9f10"
+                                      :name     "ID"
+                                      :position 0
+                                      :slug     "id"
+                                      :target   ["variable" ["template-tag" "id"]]
+                                      :type     "number/="}]
+            :visualization_settings {:confirmMessage "Refund this order?" :successMessage "Refunded."}}}
+
+   refund-all-id
+   {:kind  :action
+    :name  "Refund all"
+    :place refunds-id
+    :refs  #{[:database [:env [sd]]]}
+    :attrs {:type          "query"
+            :dataset_query {:lib/type "mbql/query"
+                            :database sd
+                            :stages   [{:lib/type "mbql.stage/native" :native "UPDATE orders SET refunded = true"}]}}}
+>>>>>>> fleet/GALDRE-762
 
    base-filter-id
    {:kind :snippet :name "Base filter" :place snippets-root :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
@@ -408,8 +468,12 @@
                        [:glossary-term (get golden-snapshot churn-id)]
                        [:segment (get golden-snapshot large-orders-id)]
                        [:measure (get golden-snapshot order-total-id)]
+<<<<<<< HEAD
                        [:timeline (get golden-snapshot releases-id)]
                        [:dashboard (get golden-snapshot overview-id)]]]
+=======
+                       [:action (get golden-snapshot refund-order-id)]]]
+>>>>>>> fleet/GALDRE-762
     (testing (str kind " with " k)
       (is (not (mr/validate (codec/schema (get by-kind kind)) (assoc-in item [:attrs k] "x"))))))
   (testing "a metric file with a public link or the embedding settings is invalid, and decode-tree reports it"

@@ -1,0 +1,19 @@
+kind: action
+id: rEfUnDoRdErAcTiOn0001
+dataset_query:
+  database: Sample Database
+  stages:
+  - native: UPDATE orders SET refunded = true WHERE id = {{id}}
+    template-tags:
+    - {id: 6a1f0c2e-61a4-4a70-a1d1-3b2c5d7e9f10, display-name: ID, name: id, type: number}
+description: Marks one order as refunded.
+name: Refund order
+parameters:
+- id: 6a1f0c2e-61a4-4a70-a1d1-3b2c5d7e9f10
+  name: ID
+  position: 0
+  slug: id
+  target: [variable, [template-tag, id]]
+  type: number/=
+type: query
+visualization_settings: {confirmMessage: 'Refund this order?', successMessage: Refunded.}

@@ -7,6 +7,7 @@
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
+   [metabase-enterprise.library-branching.instance.kinds.action :as kinds.action]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.dashboard :as kinds.dashboard]
    [metabase-enterprise.library-branching.instance.kinds.glossary :as kinds.glossary]
@@ -25,7 +26,8 @@
 
 (def kind-stores
   "`{kind KindStore}`: the kinds that this instance syncs, each with its store."
-  {:collection      kinds.collection/kind-store
+  {:action          kinds.action/kind-store
+   :collection      kinds.collection/kind-store
    :dashboard       kinds.dashboard/kind-store
    :glossary-term   kinds.glossary/kind-store
    :measure         kinds.measure/kind-store

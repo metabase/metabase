@@ -570,6 +570,13 @@
                    :where           [:and
                                      [:= :d.archived false]
                                      [:like :dc.visualization_settings [:auto/param (str "%" dashboard-id "%")]]]})))
+(mu/defn dashboards-with-action :- [:sequential ::row]
+  "`{:entity_id :name}` of each dashboard not in the trash that has a button of the action `action-id`."
+  [action-id :- pos-int?]
+  (t2/query {:select-distinct [:d.entity_id :d.name]
+             :from            [[(t2/table-name :model/Dashboard) :d]]
+             :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
+             :where           [:and [:= :dc.action_id [:auto/param action-id]] [:= :d.archived false]]}))
 
 (defn- values-source-users
   "The ParameterCard rows that `card-condition` (HoneySQL on `pc.card_id`) selects, each with `:user_collection_id`:
@@ -986,3 +993,90 @@
                                 :from   [(t2/table-name :model/Card)]
                                 :where  [:= :dashboard_id [:auto/param dashboard-id]]}]
     (t2/query (values-source-users [:in :pc.card_id cards]))))
+;;; ---------------------------------------------------- Actions -----------------------------------------------------
+
+(mu/defn actions-by-entity-id :- [:sequential ::row]
+  "The actions of `entity-ids`, as instances of `:model/Action`."
+  [entity-ids :- ::entity-ids]
+  (t2/select :model/Action :entity_id [:in entity-ids]))
+
+(mu/defn query-actions-by-action-id :- [:sequential ::row]
+  "The query rows of the actions of `ids`, as instances of `:model/QueryAction`."
+  [ids :- ::ids]
+  (if (empty? ids)
+    []
+    (t2/select :model/QueryAction :action_id [:in ids])))
+
+(mu/defn implicit-actions-by-action-id :- [:sequential ::row]
+  "The implicit rows of the actions of `ids`, as instances of `:model/ImplicitAction`."
+  [ids :- ::ids]
+  (if (empty? ids)
+    []
+    (t2/select :model/ImplicitAction :action_id [:in ids])))
+
+(mu/defn lock-action :- [:maybe ::row]
+  "`{:id :type :model_id :collection_id :archived}` of the action of `entity-id`, after a lock on its row and on its
+  query or implicit row until the current transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (when-let [row (t2/query-one {:select [:id :type :model_id :collection_id :archived]
+                                :from   [(t2/table-name :model/Action)]
+                                :where  [:= :entity_id [:auto/param entity-id]]
+                                :for    [:update]})]
+    (doseq [model [:model/QueryAction :model/ImplicitAction]]
+      (t2/query {:select [:action_id]
+                 :from   [(t2/table-name model)]
+                 :where  [:= :action_id [:auto/param (:id row)]]
+                 :for    [:update]}))
+    row))
+
+(mu/defn card-by-entity-id :- [:maybe ::row]
+  "`{:id :type :collection_id :archived}` of the card of `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :type :collection_id :archived]
+                 :from   [(t2/table-name :model/Card)]
+                 :where  [:= :entity_id [:auto/param entity-id]]}))
+
+(mu/defn resource-collection? :- :boolean
+  "True iff collection `collection-id` is the resource collection of a data app."
+  [collection-id :- pos-int?]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id))
+
+(defn- type-model
+  "The model of the query or implicit row of an action of type `type`."
+  [type]
+  (case (keyword type)
+    :query    :model/QueryAction
+    :implicit :model/ImplicitAction))
+
+(mu/defn insert-action! :- pos-int?
+  "Inserts an action with the columns `row` through the Action model, and `type-row`, the query or implicit row of
+  its type, through the model of that row; returns the id of the action."
+  [row      :- ::row
+   type-row :- ::row]
+  (let [id (t2/insert-returning-pk! :model/Action row)]
+    (t2/insert! (type-model (:type row)) (assoc type-row :action_id id))
+    id))
+
+(mu/defn update-action! :- :nil
+  "Sets the columns `changes` of the action `id`, of type `old-type`, through the Action model, and `type-changes` of
+  its query or implicit row through the model of that row. When `changes` gives the action another type, the row of
+  `old-type` is deleted, and `type-changes` is the row of the new type."
+  [id           :- pos-int?
+   old-type     :- [:or :keyword :string]
+   changes      :- ::row
+   type-changes :- ::row]
+  (let [new-type (get changes :type old-type)]
+    (when (seq changes)
+      (t2/update! :model/Action id changes))
+    (if (= (keyword new-type) (keyword old-type))
+      (when (seq type-changes)
+        (t2/update! (type-model old-type) id type-changes))
+      (do (t2/delete! (type-model old-type) :action_id id)
+          (t2/insert! (type-model new-type) (assoc type-changes :action_id id))))
+    nil))
+
+(mu/defn archive-action! :- :int
+  "Moves the action `id` to the trash through the Action model, and changes no dashboard card; returns the number of
+  rows."
+  [id :- pos-int?]
+  (t2/update! :model/Action id {:archived true :archived_directly true}))

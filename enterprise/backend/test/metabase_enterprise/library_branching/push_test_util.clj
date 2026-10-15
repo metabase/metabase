@@ -267,6 +267,12 @@
     :snippet    (update item :attrs dissoc :template_tags)
     :segment    (assoc-in item [:attrs :definition :stages 0 :filters] [[">" {} ["field" {:base-type "type/Integer"} "ID"] 1]])
     :measure    (assoc-in item [:attrs :definition :stages 0 :aggregation] [["count" {}]])
+    :action     (update item :attrs #(-> %
+                                         (assoc :dataset_query {:lib/type "mbql/query"
+                                                                :database (first orders-table)
+                                                                :stages   [{:lib/type "mbql.stage/native"
+                                                                            :native   "UPDATE orders SET x = 1"}]})
+                                         (dissoc :visualization_settings :parameters :parameter_mappings)))
     item))
 
 (def pushable-snapshot-gen

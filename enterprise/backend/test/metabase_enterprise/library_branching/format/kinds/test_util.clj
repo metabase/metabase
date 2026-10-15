@@ -425,6 +425,7 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
+<<<<<<< HEAD
 (def ^:private timeline-icons
   "The icons of Metabase other than the default."
   ["cake" "mail" "mail_at" "warning" "bell" "cloud" "info" "note" "event"])
@@ -543,6 +544,35 @@
   "`{kind generator}` of the `:attrs` of each kind."
   {:collection      collection-attrs-gen
    :dashboard       dashboard-attrs-gen
+=======
+(def action-attrs-gen
+  "Generates the `:attrs` of an action with no model: a query action."
+  (gen/fmap #(assoc % :type "query")
+            (attrs-of {:description            [false text-gen]
+                       :dataset_query          [true query-gen]
+                       :parameters             [false (gen/vector document-map-gen 1 2)]
+                       :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
+                       :visualization_settings [false visualization-settings-gen]})))
+
+(def ^:private implicit-action-attrs-gen
+  (gen/fmap #(assoc % :type "implicit")
+            (attrs-of {:description            [false text-gen]
+                       :implicit_kind          [true (gen/elements ["row/create" "row/update" "row/delete"
+                                                                    "bulk/create" "bulk/update" "bulk/delete"])]
+                       :parameters             [false (gen/vector document-map-gen 1 2)]
+                       :visualization_settings [false visualization-settings-gen]})))
+
+(defn model-action-attrs-gen
+  "Generates the `:attrs` of an action on the model with identity `model`: a query action or an implicit action."
+  [model]
+  (gen/fmap #(assoc % :model model) (gen/one-of [action-attrs-gen implicit-action-attrs-gen])))
+
+(def attrs-gens
+  "`{kind generator}` of the `:attrs` of each kind. An action of [[action-attrs-gen]] has no model; [[complete]] gives
+  an action in a model its model."
+  {:action          action-attrs-gen
+   :collection      collection-attrs-gen
+>>>>>>> fleet/GALDRE-762
    :glossary-term   glossary-attrs-gen
    :measure         measure-attrs-gen
    :metric          metric-attrs-gen
@@ -577,6 +607,7 @@
                                                                (assoc-in [:stages 0 :source-table] place)))
                      item))))
 
+<<<<<<< HEAD
 (def ^:private area-of-kind
   "The area of the top-level items of each kind that is in an area by its kind alone."
   {:glossary-term :glossary
@@ -597,6 +628,19 @@
 (def complete
   "[[with-refs]] of [[on-their-tables]] of [[in-areas]]."
   (comp with-refs on-their-tables in-areas))
+=======
+(defn on-their-models
+  "Snapshot `s` with each action whose place is a model of `s` an action on that model: its `:model` is the place."
+  [s]
+  (update-vals s (fn [{:keys [kind place] :as item}]
+                   (if (and (= :action kind) (= :model (:kind (get s place))))
+                     (assoc-in item [:attrs :model] place)
+                     item))))
+
+(def complete
+  "[[with-refs]] of [[on-their-tables]] and [[on-their-models]]."
+  (comp with-refs on-their-models on-their-tables))
+>>>>>>> fleet/GALDRE-762
 
 (defn snapshot-gen
   "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the schemas

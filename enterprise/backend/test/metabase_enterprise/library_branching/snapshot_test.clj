@@ -269,11 +269,15 @@
       (rose/root tree))))
 
 (deftest ^:parallel well-formed-snapshot-gen-shrinks-test
-  (testing "a failure on a snapshot with an item two levels deep shrinks to three items"
+  (testing "a failure on a snapshot with an item two levels deep shrinks to three items, with no references and no
+            attributes, under a root collection"
+    ;; The kinds of the items below the root depend on the order of the kinds: the first kind that a collection can
+    ;; contain, :action, contains nothing, so the chain goes through the first kind that contains one.
     (let [smallest (smallest-failure (lb.tu/well-formed-snapshot-gen)
                                      (fn [s] (not-any? #(<= 2 (depth s %)) (keys s))))]
       (is (= 3 (count smallest)))
-      (is (every? #(and (= :collection (:kind %)) (empty? (:refs %)) (empty? (:attrs %))) (vals smallest))))))
+      (is (every? #(and (empty? (:refs %)) (empty? (:attrs %))) (vals smallest)))
+      (is (= [:collection] (keep #(when (nil? (:place %)) (:kind %)) (vals smallest)))))))
 
 (deftest ^:parallel well-formed-snapshot-gen-timing-test
   (testing "1,000 well-formed snapshots of size up to 30"
