@@ -74,7 +74,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
@@ -426,18 +426,21 @@
     (let [field-ids   (lib/all-field-ids query)
           cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
           cols-by-tid (group-by :table-id cols)]
-      (lib.util/update-query-stage
-       query 0
-       update :joins
-       (fn [the-joins]
-         (mapv (fn [a-join]
-                 (let [thing (lib/joined-thing query a-join)
-                       tid   (when (and (= :metadata/table (:lib/type thing))
-                                        (empty? (-> a-join :stages first :breakout)))
+      (lib.walk/walk
+       query
+       (fn [query path-type path a-join]
+         (when (and (= path-type :lib.walk/join)
+                    ;; only the joins of the first stage: the joins inside a semi-join's sub-select were tightened
+                    ;; when the sub-select was built
+                    (= (lib.walk/join-parent-stage-path path) [:stages 0]))
+           (let [thing       (lib/joined-thing query a-join)
+                 summarized? (seq (lib.walk/apply-f-for-stage-at-path
+                                   lib/breakouts query (lib.walk/join-last-stage-path path a-join)))
+                 tid         (when (and (= :metadata/table (:lib/type thing))
+                                        (not summarized?))
                                (:id thing))]
-                   (cond-> a-join
-                     tid (lib/with-join-source-fields (get cols-by-tid tid)))))
-               the-joins))))))
+             (when tid
+               (lib/with-join-source-fields a-join (get cols-by-tid tid))))))))))
 
 (defn- one-to-many-join?
   "Whether `join-info` follows an FK backwards, from the Field it references to the referencing Field, so that one row
@@ -1014,12 +1017,12 @@
     (let [mbql-query (chain-filter-mbql-query field-id
                                               (for [id filter-field-ids]
                                                 {:field-id id, :op :=, :value nil})
-                                              nil)]
-      (into #{}
-            (mapcat lib/all-field-ids)
-            (concat (lib/filters mbql-query)
-                    ;; constraints applied in semi-joins are filters of the joined sub-selects
-                    (for [a-join (lib/joins mbql-query)
-                          stage  (:stages a-join)
-                          clause (:filters stage)]
-                      clause))))))
+                                              nil)
+          ;; constraints on Tables behind one-to-many joins are filters of the semi-joins' sub-selects, so collect the
+          ;; filters of every stage, including the stages inside joins
+          filters    (volatile! [])]
+      (lib.walk/walk-stages mbql-query
+                            (fn [query path _stage]
+                              (vswap! filters into (lib.walk/apply-f-for-stage-at-path lib/filters query path))
+                              nil))
+      (into #{} (mapcat lib/all-field-ids) @filters))))
