@@ -9,6 +9,7 @@
    [metabase-enterprise.library-branching.format.kinds.published-table :as format.published-table]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.content :as content]
+   [metabase-enterprise.library-branching.instance.kinds.table-item :as table-item]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
    [metabase-enterprise.library-branching.scope :as scope]
@@ -288,4 +289,5 @@
     (read-models [_] models-of-read)
     (current [_ id] (current-published-table id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-published-table! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-published-table! id)))))
+    (trash! [_ id] (library-branching.db/do-in-transaction
+                    #(table-item/do-keeping-archive-closed (fn [] (trash-published-table! id)))))))

@@ -83,6 +83,29 @@
                                                                    :type     "library-metrics"}))))))
           (is (= "/" (t2/select-one-fn :location :model/Collection (:id folder)))))))))
 
+(deftest click-behavior-link-out-of-scope-is-refused-test
+  (collections.tu/with-library [{:keys [metrics]}]
+    (let [personal (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+      (mt/with-temp [:model/Card          question  {:name "Outside question" :collection_id personal
+                                                     :dataset_query (write-test/sum-query :venues :price)}
+                     :model/Dashboard     dashboard {:name "Outside dashboard" :collection_id personal}
+                     :model/DashboardCard _         {:dashboard_id (:id dashboard) :card_id (:id question)}
+                     :model/Card          inside    (metric "Library metric" (:id metrics)
+                                                            (write-test/sum-query :venues :price))]
+        (testing (str "a save that links a Library metric by click behavior to a dashboard outside the Library is "
+                      "refused, and only the dashboard is named, not the question on it")
+          (is (= [{:user      (:entity_id inside)
+                   :user-kind :metric
+                   :user-name "Library metric"
+                   :role      :dashboard
+                   :target    (:entity_id dashboard)}]
+                 (:findings (refusal #(t2/update! :model/Card (:id inside)
+                                                  {:visualization_settings
+                                                   {:click_behavior {:type     "link"
+                                                                     :linkType "dashboard"
+                                                                     :targetId (:id dashboard)}}})))))
+          (is (nil? (:click_behavior (t2/select-one-fn :visualization_settings :model/Card (:id inside))))))))))
+
 (deftest saves-the-rule-allows-test
   (collections.tu/with-library [{:keys [metrics]}]
     (let [personal (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]

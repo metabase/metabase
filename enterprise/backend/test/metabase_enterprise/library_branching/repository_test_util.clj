@@ -1,12 +1,17 @@
 (ns metabase-enterprise.library-branching.repository-test-util
-  "Helpers of the repository, operation and route tests: remotes on disk with branches and a default branch, the
-  repository settings of a test, a record of the stores that the code opens, and a synchronous task start."
+  "Helpers of the repository, operation, status and route tests: remotes on disk with branches and a default branch,
+  the repository settings of a test, a record of the stores that the code opens, a synchronous task start, and a
+  committed metric of the Library."
   (:require
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.tasks :as tasks]
+   [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs])
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.charset StandardCharsets)
@@ -120,3 +125,42 @@
   [& body]
   `(dynamic-redefs/with-dynamic-fn-redefs [tasks/submit! synchronous-submit!]
      ~@body))
+
+;;; ------------------------------------------------------ Content -----------------------------------------------------
+
+(defn- children-location
+  [{:keys [id location]}]
+  (str location id "/"))
+
+(defn- sum-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))))
+
+(defn do-with-library-metric!
+  "Calls `(f metric)` with a committed metric named \"Before\" in a committed metrics collection of the Library, with
+  library branching on, no task row and no base. Deletes the rows that it inserted afterwards."
+  [f]
+  (let [rows    (atom ())
+        insert! (fn [model row]
+                  (let [inserted (t2/insert-returning-instance! model row)]
+                    (swap! rows conj [model inserted])
+                    inserted))]
+    (tasks.tu/with-no-tasks
+      (try
+        (mt/with-temporary-setting-values [library-branching-enabled true]
+          (let [library (or (t2/select-one :model/Collection :type "library" :archived false)
+                            (insert! :model/Collection {:name "Library" :type "library" :location "/"}))
+                metrics (insert! :model/Collection {:name     "Operation metrics"
+                                                    :type     "library-metrics"
+                                                    :location (children-location library)})]
+            (f (insert! :model/Card {:name                   "Before"
+                                     :type                   :metric
+                                     :collection_id          (:id metrics)
+                                     :creator_id             (mt/user->id :crowberto)
+                                     :display                :scalar
+                                     :visualization_settings {}
+                                     :dataset_query          (sum-query)}))))
+        (finally
+          (doseq [[model row] @rows]
+            (t2/delete! model :id (:id row))))))))

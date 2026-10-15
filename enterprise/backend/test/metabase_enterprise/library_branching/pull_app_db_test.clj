@@ -10,7 +10,6 @@
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
-   [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
@@ -91,7 +90,7 @@
   "Pushes the app DB instance, and returns `[inst commit snapshot]`."
   [s]
   (let [inst (app-db/app-db-instance)
-        {:keys [result commit]} (push/push! inst s ptu/branch)]
+        {:keys [result commit]} (ptu/push! inst s)]
     (is (= :pushed result))
     [inst commit (ptu/commit-snapshot s commit)]))
 
