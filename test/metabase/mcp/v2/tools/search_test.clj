@@ -511,7 +511,7 @@
             (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
                                                     {:token-scopes #{"agent:content:read"}})]
               (is (= [inside-id outside-id]
-                     (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id)))))))))))
+                     (->> content :content first :text json/decode+kw :data (map :id)))))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must
