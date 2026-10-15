@@ -136,6 +136,10 @@
             literal block for text with a line break; a set as a sorted sequence; 0.0 for -0.0; UTF-8 with no escape"
     (is (= golden-text (text (codec/write-yaml golden-doc))))
     (is (= golden-text (text (codec/write-yaml (scramble golden-doc))))))
+  (testing "a file is in block style also when it holds only scalars; an empty map or vector is in flow style"
+    (is (= "kind: leaf\nid: x\nname: Robin\n" (text (codec/write-yaml {:name "Robin" :id "x" :kind "leaf"}))))
+    (is (= "- a\n- b\n" (text (codec/write-yaml ["a" "b"]))))
+    (is (= "{}\n" (text (codec/write-yaml {})))))
   (testing "-0.0 and 0.0 are equal, so they give equal bytes"
     (is (= (seq (codec/write-yaml {:x 0.0})) (seq (codec/write-yaml {:x -0.0})))))
   (testing "a value outside the document model throws"

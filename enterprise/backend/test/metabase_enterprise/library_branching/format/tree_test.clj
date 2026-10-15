@@ -77,9 +77,9 @@
                   "name: Robin\n"
                   "place: fOlDeRfOlDeRfOlDeRfOl\n"
                   "refs:\n"
-                  "- {role: card, target: fOlDeRfOlDeRfOlDeRfOl}\n"
                   "- env: [Aviary, null, SIGHTINGS]\n"
-                  "  role: source-table\n")
+                  "  role: source-table\n"
+                  "- {role: card, target: fOlDeRfOlDeRfOlDeRfOl}\n")
              (String. ^bytes (get t "area/birds/robin.leaf.yaml") "UTF-8")))))
   (testing "a kind with no codec throws"
     (is (thrown? clojure.lang.ExceptionInfo (tree/encode-tree (rest toy/codecs) example)))))
@@ -103,9 +103,7 @@
       (is (not (contains? r :snapshot)))
       (is (= leaf-id (:id dup)))
       (is (= 2 (count (:files dup))))
-      (is (= #{leaf-file} (set (map #(get files %) (remove #(bytes= leaf-file (get files %)) (:files dup)))))
-          "one of the two named files is the added one")
-      (is (some #(bytes= leaf-file (get files %)) (:files dup)))))
+      (is (= (dec (count files)) (peek (:files dup))) "the added file is the second one named")))
   (testing "two equal files with one identity are a finding too"
     (is (= #{:duplicate-identity} (finding-types [format-file leaf-file leaf-file])))))
 

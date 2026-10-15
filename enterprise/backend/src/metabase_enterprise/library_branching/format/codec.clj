@@ -149,13 +149,20 @@
     (integer? x)     (scalar-node Tag/INT (str x) DumperOptions$ScalarStyle/PLAIN)
     :else            (scalar-node Tag/FLOAT (str x) DumperOptions$ScalarStyle/PLAIN)))
 
+(defn- block-root
+  "`node` in block style when it is a collection: a file is never one line of flow style."
+  ^Node [^Node node]
+  (when-not (instance? ScalarNode node)
+    (.setFlowStyle ^org.yaml.snakeyaml.nodes.CollectionNode node DumperOptions$FlowStyle/BLOCK))
+  node)
+
 (defn- yaml-text
   "The YAML text of canonical form `x`."
   ^String [x]
   (let [w (StringWriter.)
         s (Serializer. (Emitter. w dumper-options) (Resolver.) dumper-options nil)]
     (.open s)
-    (.serialize s (->node x))
+    (.serialize s (block-root (->node x)))
     (.close s)
     (str w)))
 
