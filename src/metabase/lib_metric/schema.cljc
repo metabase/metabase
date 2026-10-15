@@ -2,16 +2,19 @@
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
   (:refer-clojure :exclude [some])
   (:require
+   [malli.util :as mut]
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [some]]
+   [metabase.util.time.impl :as time.impl]))
 
 (comment lib.schema.ref/keep-me)
 
@@ -32,6 +35,7 @@
                             (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
+            :ts/dispatch-key :strategy
             :error/fn (fn [{:keys [value]} _]
                         (str "Invalid binning strategy" (pr-str value)))}
     [:default   [:map {:closed true}
@@ -326,6 +330,41 @@
   "A sequence of typed projections."
   [:sequential ::typed-projection])
 
+;;; ------------------------------------------------- JS-facing Metric Definition Serialization -------------------------------------------------
+;;; These schemas describe objects returned by metabase.lib-metric.js helpers after CLJS->JS conversion.
+
+(mr/def ::source-instance.js
+  "Serialized expression leaf instance returned by sourceInstances: [\"metric\"|\"measure\", {\"lib/uuid\": uuid}, id]."
+  [:tuple
+   [:enum "metric" "measure"]
+   [:map ["lib/uuid" ::lib.schema.common/non-blank-string]]
+   pos-int?])
+
+(mr/def ::instance-filter.js
+  "Serialized per-instance filter in a JS metric definition."
+  [:map
+   ["lib/uuid" ::lib.schema.common/non-blank-string]
+   [:filter :any]])
+
+(mr/def ::typed-projection.js
+  "Serialized typed projection in a JS metric definition."
+  [:map
+   [:type [:enum "metric" "measure"]]
+   [:id pos-int?]
+   ["lib/uuid" ::lib.schema.common/non-blank-string]
+   [:projection [:sequential ::dimension-reference]]])
+
+(mr/def ::metric-expression.js
+  "Serialized metric math expression. Arithmetic operands can nest recursively, so keep nested operands broad for now."
+  [:any {:typescript "Metabase_LibMetric_Schema_SourceInstanceJs | number | [\"+\" | \"-\" | \"*\" | \"/\", Record<string, unknown>, unknown, unknown, ...unknown[]]"}])
+
+(mr/def ::metric-definition.js
+  "JS object produced by toJsMetricDefinition for API serialization."
+  [:map
+   [:expression ::metric-expression.js]
+   [:filters {:optional true} [:sequential ::instance-filter.js]]
+   [:projections {:optional true} [:sequential ::typed-projection.js]]])
+
 ;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
 ;;; These schemas are used for storage format in the database.
 
@@ -376,9 +415,13 @@
 ;;; These schemas support dimensions as first-class metadata entities
 ;;; fetchable through the MetricContextMetadataProvider.
 
-(mr/def ::dimension-source-type
+(mr/def ::metadata-dimension.source-type
   "Source type indicating whether a dimension comes from a metric or measure."
   [:enum :metric :measure])
+
+(mr/def ::dimension-source-type
+  "Source type indicating whether a dimension comes from a metric or measure."
+  ::metadata-dimension.source-type)
 
 (mr/def ::metadata-dimension
   "Schema for dimension metadata fetchable via metadata provider.
@@ -401,7 +444,7 @@
    [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
-   [:source-type      ::dimension-source-type]
+   [:source-type      ::metadata-dimension.source-type]
    [:source-id        pos-int?]
    ;; Optional mapping for field resolution
    [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]
@@ -454,6 +497,7 @@
    [:effective-type {:optional true} :keyword]
    [:semantic-type {:optional true} :keyword]
    [:description {:optional true} [:maybe :string]]
+   [:column-name {:optional true} :string]
    [:selected {:optional true} :boolean]
    [:default {:optional true} :boolean]
    [:short-name {:optional true} :string]
@@ -468,3 +512,140 @@
    [:is-implicitly-joinable {:optional true} :boolean]
    ;; Temporal bucket specific
    [:is-temporal-extraction {:optional true} :boolean]])
+
+;;; ------------------------------------------------- Metric Filter Parts -------------------------------------------------
+
+(mr/def ::default-filter-operator ::lib.schema.filter/default-filter-operator)
+(mr/def ::string-filter-operator ::lib.schema.filter/string-filter-operator)
+(mr/def ::string-filter-options ::lib.schema.filter/string-filter-options)
+(mr/def ::number-filter-operator ::lib.schema.filter/number-filter-operator)
+(mr/def ::number-filter-value ::lib.schema.filter/number-filter-value)
+(mr/def ::coordinate-filter-operator ::lib.schema.filter/coordinate-filter-operator)
+(mr/def ::boolean-filter-operator ::lib.schema.filter/boolean-filter-operator)
+(mr/def ::specific-date-filter-operator ::lib.schema.filter/specific-date-filter-operator)
+(mr/def ::exclude-date-filter-operator ::lib.schema.filter/exclude-date-filter-operator)
+(mr/def ::exclude-date-filter-unit ::lib.schema.filter/exclude-date-filter-unit)
+(mr/def ::time-filter-operator ::lib.schema.filter/time-filter-operator)
+(mr/def ::time-interval-options ::lib.schema.filter/time-interval-options)
+
+;; The JS parts converter retains dimension maps without renaming their keys.
+(mr/def ::string-filter-parts
+  [:map
+   [:operator ::string-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:values [:sequential :string]]
+   [:options ::string-filter-options]])
+
+(mr/def ::number-filter-parts
+  [:map
+   [:operator ::number-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:values [:sequential ::number-filter-value]]])
+
+(mr/def ::coordinate-filter-parts
+  [:map
+   [:operator ::coordinate-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:longitude-dimension [:maybe [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]]
+   [:values [:sequential ::number-filter-value]]])
+
+(mr/def ::boolean-filter-parts
+  [:map
+   [:operator ::boolean-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:values [:sequential :boolean]]])
+
+(mr/def ::specific-date-filter-parts
+  [:map
+   [:operator ::specific-date-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:values [:sequential ::lib.schema.literal/literal]]
+   [:has-time :boolean]])
+
+(mr/def ::relative-date-filter-parts
+  [:map
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:value :int]
+   [:unit ::lib.schema.temporal-bucketing/unit.date-time.interval]
+   [:offset-value [:maybe :int]]
+   [:offset-unit [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
+   [:options ::time-interval-options]])
+
+(mr/def ::exclude-date-filter-parts
+  [:map
+   [:operator ::exclude-date-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:unit [:maybe ::exclude-date-filter-unit]]
+   [:values [:sequential :int]]])
+
+(mr/def ::time-filter-value
+  [:fn {:typescript "import('dayjs').Dayjs"} time.impl/time?])
+
+(mr/def ::time-filter-parts
+  [:map
+   [:operator ::time-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]
+   [:values [:sequential ::time-filter-value]]])
+
+(mr/def ::default-filter-parts
+  [:map
+   [:operator ::default-filter-operator]
+   [:dimension [:schema {:ts/key-transform :none} [:ref ::metadata-dimension]]]])
+
+;;; ------------------------------------------------- Native JS Filter Parts -------------------------------------------------
+
+(defn- js-filter-parts [schema]
+  ;; Native objects/arrays are not Malli maps/sequences. Derive only their static shape here;
+  ;; the canonical schemas above validate the persistent values before conversion.
+  [:any {:ts/object-of (mut/update-properties (if (keyword? schema) (mr/registered-schema schema) schema)
+                                              assoc :closed true)
+         :ts/key-transform :camelCase}])
+
+(mr/def ::string-filter-parts.js
+  (js-filter-parts (mut/assoc (mr/registered-schema ::string-filter-parts) :options [:maybe ::string-filter-options])))
+
+(mr/def ::string-filter-parts.js-input
+  (js-filter-parts (mut/optional-keys
+                    (mut/assoc (mr/registered-schema ::string-filter-parts) :options [:maybe ::string-filter-options])
+                    [:options])))
+
+(mr/def ::number-filter-parts.js (js-filter-parts ::number-filter-parts))
+(mr/def ::coordinate-filter-parts.js (js-filter-parts ::coordinate-filter-parts))
+(mr/def ::boolean-filter-parts.js (js-filter-parts ::boolean-filter-parts))
+
+(mr/def ::js-date
+  [:fn {:typescript "Date"} #?(:clj #(instance? java.util.Date %) :cljs #(instance? js/Date %))])
+
+(mr/def ::specific-date-filter-parts.js
+  (js-filter-parts (mut/assoc (mr/registered-schema ::specific-date-filter-parts) :values [:sequential [:maybe ::js-date]])))
+
+(mr/def ::specific-date-filter-parts.js-input
+  (js-filter-parts (mut/assoc (mr/registered-schema ::specific-date-filter-parts)
+                              :values [:sequential [:or ::js-date :string ::time-filter-value]])))
+
+(mr/def ::relative-date-filter-parts.js
+  (js-filter-parts (mut/optional-keys
+                    (-> (mr/registered-schema ::relative-date-filter-parts)
+                        (mut/assoc :offset-unit ::lib.schema.temporal-bucketing/unit.date-time.interval)
+                        (mut/assoc :options [:maybe ::time-interval-options]))
+                    [:offset-unit])))
+
+(mr/def ::relative-date-filter-parts.js-input
+  (js-filter-parts (mut/optional-keys
+                    (mut/assoc (mr/registered-schema ::relative-date-filter-parts) :options [:maybe ::time-interval-options])
+                    [:offset-unit :offset-value :options])))
+
+(mr/def ::exclude-date-filter-parts.js
+  (js-filter-parts (mut/optional-keys
+                    (mut/assoc (mr/registered-schema ::exclude-date-filter-parts) :unit ::exclude-date-filter-unit)
+                    [:unit])))
+
+(mr/def ::exclude-date-filter-parts.js-input
+  (js-filter-parts (mut/optional-keys (mr/registered-schema ::exclude-date-filter-parts) [:unit])))
+
+(mr/def ::time-filter-parts.js (js-filter-parts ::time-filter-parts))
+
+(mr/def ::time-filter-parts.js-input
+  (js-filter-parts (mut/assoc (mr/registered-schema ::time-filter-parts)
+                              :values [:sequential [:or ::js-date :string ::time-filter-value]])))
+(mr/def ::default-filter-parts.js (js-filter-parts ::default-filter-parts))

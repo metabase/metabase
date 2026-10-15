@@ -114,6 +114,23 @@ export const GEO_DIM_IDX = {
 
 export { createMetricMetadata, setupDefinition };
 
+export function setupDefinitionWithDateFilter(value: string) {
+  const metadata = createMetricMetadata([REVENUE_METRIC]);
+  const provider = LibMetric.metadataProvider(metadata);
+  const instanceUuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  const definition = LibMetric.fromJsMetricDefinition(provider, {
+    expression: ["metric", { "lib/uuid": instanceUuid }, REVENUE_METRIC.id],
+    filters: [
+      {
+        "lib/uuid": instanceUuid,
+        filter: ["=", {}, ["dimension", {}, "dim-created-at"], value],
+      },
+    ],
+  });
+  const [filter] = LibMetric.filters(definition);
+  return { definition, filter };
+}
+
 export function setupDefinitionWithBreakout(
   metadata: Metadata,
   metricId: number,

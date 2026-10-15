@@ -15,6 +15,7 @@ import type {
   RelativeDatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
+import type { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
@@ -47,77 +48,105 @@ export function getDatePickerUnits(
     .filter(isDatePickerUnit);
 }
 
+type MetricDateFilterDisplayValue = Extract<
+  Parameters<typeof getDateFilterDisplayName>[0],
+  { type: "specific" | "relative" | "exclude" }
+>;
+
+type MetricDateFilterParts =
+  | ({ type: "specific-date" } & Omit<
+      LibMetric.SpecificDateFilterParts,
+      "dimension"
+    >)
+  | ({ type: "relative-date" } & Omit<
+      LibMetric.RelativeDateFilterParts,
+      "dimension"
+    >)
+  | ({ type: "exclude-date" } & Omit<
+      LibMetric.ExcludeDateFilterParts,
+      "dimension"
+    >);
+
+export function toDateFilterDisplayValue(
+  filter: MetricDateFilterParts,
+): MetricDateFilterDisplayValue {
+  switch (filter.type) {
+    case "specific-date":
+      return {
+        type: "specific",
+        operator: filter.operator,
+        values: filter.values,
+        hasTime: filter.hasTime,
+      };
+    case "relative-date":
+      return {
+        type: "relative",
+        unit: filter.unit,
+        value: filter.value,
+        offsetUnit: filter.offsetUnit ?? undefined,
+        offsetValue: filter.offsetValue ?? undefined,
+        options: filter.options ?? undefined,
+      };
+    case "exclude-date":
+      return {
+        type: "exclude",
+        operator: filter.operator,
+        unit: filter.unit ?? undefined,
+        values: filter.values,
+      };
+  }
+}
+
+export function getDateFilterDisplayValue(
+  definition: LibMetric.MetricDefinition,
+  filterClause: LibMetric.FilterClause,
+): MetricDateFilterDisplayValue | undefined {
+  const specificParts = LibMetric.specificDateFilterParts(
+    definition,
+    filterClause,
+  );
+  if (specificParts) {
+    return toDateFilterDisplayValue({
+      type: "specific-date",
+      ...specificParts,
+    });
+  }
+  const relativeParts = LibMetric.relativeDateFilterParts(
+    definition,
+    filterClause,
+  );
+  if (relativeParts) {
+    return toDateFilterDisplayValue({
+      type: "relative-date",
+      ...relativeParts,
+    });
+  }
+  const excludeParts = LibMetric.excludeDateFilterParts(
+    definition,
+    filterClause,
+  );
+  if (excludeParts) {
+    return toDateFilterDisplayValue({ type: "exclude-date", ...excludeParts });
+  }
+  return undefined;
+}
+
 export function getDatePickerValue(
   definition: LibMetric.MetricDefinition,
   filterClause: LibMetric.FilterClause,
 ): DatePickerValue | undefined {
-  return (
-    getSpecificDateValue(definition, filterClause) ??
-    getRelativeDateValue(definition, filterClause) ??
-    getExcludeDateValue(definition, filterClause)
-  );
-}
-
-function getSpecificDateValue(
-  definition: LibMetric.MetricDefinition,
-  filterClause: LibMetric.FilterClause,
-): SpecificDatePickerValue | undefined {
-  const filterParts = LibMetric.specificDateFilterParts(
-    definition,
-    filterClause,
-  );
-  if (filterParts == null) {
+  const value = getDateFilterDisplayValue(definition, filterClause);
+  if (value?.type !== "relative") {
+    return value;
+  }
+  const { unit, offsetUnit } = value;
+  if (
+    !isDatePickerTruncationUnit(unit) ||
+    (offsetUnit != null && !isDatePickerTruncationUnit(offsetUnit))
+  ) {
     return undefined;
   }
-
-  return {
-    type: "specific",
-    operator: filterParts.operator,
-    values: filterParts.values,
-    hasTime: filterParts.hasTime,
-  };
-}
-
-function getRelativeDateValue(
-  definition: LibMetric.MetricDefinition,
-  filterClause: LibMetric.FilterClause,
-): RelativeDatePickerValue | undefined {
-  const filterParts = LibMetric.relativeDateFilterParts(
-    definition,
-    filterClause,
-  );
-  if (filterParts == null) {
-    return undefined;
-  }
-
-  return {
-    type: "relative",
-    unit: filterParts.unit,
-    value: filterParts.value,
-    offsetUnit: filterParts.offsetUnit ?? undefined,
-    offsetValue: filterParts.offsetValue ?? undefined,
-    options: filterParts.options,
-  };
-}
-
-function getExcludeDateValue(
-  definition: LibMetric.MetricDefinition,
-  filterClause: LibMetric.FilterClause,
-): ExcludeDatePickerValue | undefined {
-  const filterParts = LibMetric.excludeDateFilterParts(
-    definition,
-    filterClause,
-  );
-  if (filterParts == null) {
-    return undefined;
-  }
-
-  return {
-    type: "exclude",
-    operator: filterParts.operator,
-    unit: filterParts.unit ?? undefined,
-    values: filterParts.values,
-  };
+  return { ...value, unit, offsetUnit };
 }
 
 export function getDateFilterClause(
@@ -160,7 +189,7 @@ function getRelativeFilterClause(
     value: value.value,
     offsetUnit: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
-    options: value.options ?? {},
+    options: { ...value.options },
   });
 }
 

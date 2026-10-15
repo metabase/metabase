@@ -291,7 +291,7 @@ export const NativeQueryEditorRoot = forwardRef<
   const handleFormatQuery = useCallback(async () => {
     const query = questionRef.current.query();
     const engine = Lib.engine(query);
-    const queryText = Lib.rawNativeQuery(query);
+    const queryText = Lib.rawNativeQuery(query) ?? "";
     const canFormatQuery = engine != null && canFormatForEngine(engine);
     if (!canFormatQuery) {
       return undefined;

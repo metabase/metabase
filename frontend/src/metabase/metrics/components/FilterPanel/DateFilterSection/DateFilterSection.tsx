@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { getDatePickerValue } from "metabase/common/metrics/utils/dates";
+import { getDateFilterDisplayValue } from "metabase/common/metrics/utils/dates";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -14,7 +14,7 @@ export function DateFilterSection({
 }: FilterSectionWidgetProps) {
   const filterInfo = useMemo(() => {
     const filterParts = LibMetric.filterParts(definition, filter);
-    const filterValue = getDatePickerValue(definition, filter);
+    const filterValue = getDateFilterDisplayValue(definition, filter);
     if (filterParts == null || filterValue == null) {
       return null;
     }

@@ -12,7 +12,7 @@ import type {
 import { RowToggleIconRoot } from "./PivotTable.styled";
 
 interface RowToggleIconProps {
-  value: number | string[];
+  value: number | RowValue[] | null;
   settings: VisualizationSettings;
   updateSettings: (settings: VisualizationSettings) => void;
   hideUnlessCollapsed?: boolean;

@@ -150,7 +150,8 @@
 
 (mr/def ::positive-number
   [:fn
-   {:error/message "positive number"}
+   {:error/message "positive number"
+    :typescript    "number"}
    (every-pred number? pos?)])
 
 (mr/def ::visualization-settings
@@ -451,7 +452,8 @@
    (defn- instance-of-class* [& classes]
      [:fn {:error/message (str "instance of "
                                (str/join " or "
-                                         (map #(.getName ^Class %) classes)))}
+                                         (map #(.getName ^Class %) classes)))
+           :typescript    "never"}
       (fn [x]
         (some (fn [klass]
                 (instance? klass x))

@@ -5,11 +5,22 @@
    [metabase.util.formatting.internal.date-builder :as builder]
    [metabase.util.formatting.internal.date-formatters :as formatters]
    [metabase.util.formatting.internal.date-options :as options]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
 (def range-separator
   "The range separator is a Unicode en-dash, not an ASCII hyphen."
   " \u2013 ")
+
+(def ^:private TimeConfig
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "time formatting config"}]])
+
+(def ^:private FormattableDate
+  [:schema {::mr/deliberately-open true, :description "a value coercible to a date or datetime"} :any])
+
+(def ^:private FormatOptions
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "date formatting options"}]])
 
 ;;; -------------------------------------------- Parameter Formatting ---------------------------------------------
 (def ^:private parameter-formatters
@@ -17,9 +28,11 @@
    :quarter (builder/->formatter ["Q" :quarter "-" :year])
    :day     formatters/big-endian-day})
 
-(defn ^:export format-for-parameter
+(mu/defn ^:export format-for-parameter :- :string
   "Returns a formatting date string for a datetime used as a parameter to a Card."
-  [time-config value options]
+  [time-config :- TimeConfig
+   value       :- FormattableDate
+   options     :- FormatOptions]
   (let [options      (options/prepare-options options)
         time-options (merge options time-config)
         t            (u.time/coerce-to-timestamp value time-options)]
@@ -55,9 +68,11 @@
                range-separator
                ((builder/->formatter [:day-of-month-d ", " :year]) end))))
 
-(defn ^:export format-range-with-unit
+(mu/defn ^:export format-range-with-unit :- :string
   "Returns a string with this datetime formatted as a range, rounded to the given `:unit`."
-  [time-config value options]
+  [time-config :- TimeConfig
+   value       :- FormattableDate
+   options     :- FormatOptions]
   (let [options      (options/prepare-options options)
         time-options (merge options time-config)
         t            (u.time/coerce-to-timestamp value time-options)]
@@ -67,9 +82,11 @@
       (str value))))
 
 ;;; ---------------------------------------------- Format Single Date -----------------------------------------------
-(defn ^:export format-datetime-with-unit
+(mu/defn ^:export format-datetime-with-unit :- :string
   "Returns a string with this datetime formatted as a single value, rounded to the given `:unit`."
-  [time-config value options]
+  [time-config :- TimeConfig
+   value       :- FormattableDate
+   options     :- FormatOptions]
   (let [{:keys [is-exclude no-range type unit]
          :as options}                          (options/prepare-options options)
         time-options                           (merge options time-config)
@@ -87,12 +104,12 @@
 
       :else ((formatters/options->formatter options) t))))
 
-(defn ^:export date->iso-string
+(mu/defn ^:export date->iso-string :- :string
   "Coerce date and format as big-endian-day string."
-  [d]
+  [d :- FormattableDate]
   (formatters/big-endian-day (u.time/coerce-to-timestamp d)))
 
-(defn ^:export datetime->iso-string
+(mu/defn ^:export datetime->iso-string :- :string
   "Coerce datetime and format as iso string."
-  [dt]
+  [dt :- FormattableDate]
   (formatters/->iso (u.time/coerce-to-timestamp dt)))

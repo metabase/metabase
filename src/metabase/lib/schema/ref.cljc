@@ -308,7 +308,7 @@
 
 (mr/def ::ref
   [:and
-   ::mbql-clause/clause
+   [:ref ::mbql-clause/clause]
    [:fn
     {:error/fn (fn [_ _]
                  (str "Valid reference, must be one of these clauses: "

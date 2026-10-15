@@ -17,12 +17,163 @@ permissions:
   security-events: write
 
 jobs:
+<<<<<<< HEAD
+  # `force-run` and `force-skip` are global overrides; `defer` means this
+  # job has no opinion and every downstream gate behaves as it always has.
+  #
+  # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
+  # ref is the stack base. Every PR above it is force-skipped and gets tested
+  # once it reaches the bottom of the stack.
+  should-run:
+    name: Decide which jobs should run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      verdict: ${{ steps.decide.outputs.verdict }}
+    steps:
+      - name: Decide
+        id: decide
+        # Precedence matters for the conditions below.
+        env:
+          VERDICT: >-
+            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
+            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
+            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
+            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
+            || 'defer' }}
+        run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+
+  files-changed:
+    needs: should-run
+    name: Detect changed files
+    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+      e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
+      backend_all: ${{ steps.changes.outputs.backend_all }}
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+      frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
+      frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
+      shared_sources: ${{ steps.changes.outputs.shared_sources }}
+      cljs_typescript_declarations: ${{ steps.changes.outputs.cljs_typescript_declarations }}
+      documentation: ${{ steps.changes.outputs.documentation }}
+      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
+      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
+      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
+      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
+      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
+      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
+      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
+      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
+      no_source_code_changes: >-
+        ${{ (steps.changes.outputs.documentation == 'true'
+        || steps.changes.outputs.project_ratchet_checks == 'true')
+        && steps.changes.outputs.backend_all == 'false'
+        && steps.changes.outputs.frontend_all == 'false'
+        && steps.changes.outputs.e2e_all == 'false' }}
+
+      all_changed_files: ${{ steps.changes.outputs.all_changed_files }}
+      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
+      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
+      frontend_sources_files: ${{ steps.changes.outputs.frontend_sources_files }}
+      backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          # comma separated list of files
+          list-files: csv
+          filters: .github/file-paths.yaml
+||||||| 99f918928c9
+  # `force-run` and `force-skip` are global overrides; `defer` means this
+  # job has no opinion and every downstream gate behaves as it always has.
+  #
+  # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
+  # ref is the stack base. Every PR above it is force-skipped and gets tested
+  # once it reaches the bottom of the stack.
+  should-run:
+    name: Decide which jobs should run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      verdict: ${{ steps.decide.outputs.verdict }}
+    steps:
+      - name: Decide
+        id: decide
+        # Precedence matters for the conditions below.
+        env:
+          VERDICT: >-
+            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
+            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
+            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
+            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
+            || 'defer' }}
+        run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+
+  files-changed:
+    needs: should-run
+    name: Detect changed files
+    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+      e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
+      backend_all: ${{ steps.changes.outputs.backend_all }}
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+      frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
+      frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
+      shared_sources: ${{ steps.changes.outputs.shared_sources }}
+      documentation: ${{ steps.changes.outputs.documentation }}
+      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
+      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
+      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
+      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
+      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
+      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
+      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
+      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
+      no_source_code_changes: >-
+        ${{ (steps.changes.outputs.documentation == 'true'
+        || steps.changes.outputs.project_ratchet_checks == 'true')
+        && steps.changes.outputs.backend_all == 'false'
+        && steps.changes.outputs.frontend_all == 'false'
+        && steps.changes.outputs.e2e_all == 'false' }}
+
+      all_changed_files: ${{ steps.changes.outputs.all_changed_files }}
+      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
+      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
+      frontend_sources_files: ${{ steps.changes.outputs.frontend_sources_files }}
+      backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          # comma separated list of files
+          list-files: csv
+          filters: .github/file-paths.yaml
+=======
   # Force-cancel is the only decision left here. The jobs below read `matched`;
   # each suite that owns its gating calls the gate itself with the filters it cares about.
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
       filters: build_embedding_sdk_package build_uberjar e2e_all
+>>>>>>> origin/master
 
   # The plan only ever narrows a PR's suites; every other run skips this and they run in full. A
   # planner failure does the same, so it must not fail the run either.

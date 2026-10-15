@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as CljsLibMetric from "cljs/metabase.lib_metric.js";
 import type { JsMetricDefinition } from "metabase-types/api";
 import {
   createMockMetric,
@@ -971,6 +972,7 @@ describe("metabase-lib/metric/core", () => {
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.operator).toBe("=");
       expect(extractedParts?.values).toEqual(["Electronics", "Clothing"]);
+      expect(extractedParts?.options).toBeNull();
     });
 
     it("should extract parts from contains filter", () => {
@@ -1072,6 +1074,26 @@ describe("metabase-lib/metric/core", () => {
   });
 
   describe("relativeDateFilterParts", () => {
+    it.each(["second", "millisecond"] as const)(
+      "preserves the supported %s interval unit",
+      (unit) => {
+        const { definition } = setupDefinition();
+        const dimension = LibMetric.filterableDimensions(definition)[0];
+        const clause = CljsLibMetric.relativeDateFilterClause({
+          dimension,
+          unit,
+          value: -1,
+        });
+        expect(
+          LibMetric.relativeDateFilterParts(definition, clause),
+        ).toMatchObject({
+          unit,
+          value: -1,
+          offsetValue: null,
+          options: null,
+        });
+      },
+    );
     it("should extract parts from simple time-interval", () => {
       const { definition } = setupDefinition();
       const dimensions = LibMetric.filterableDimensions(definition);
@@ -1096,6 +1118,7 @@ describe("metabase-lib/metric/core", () => {
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.unit).toBe("day");
       expect(extractedParts?.value).toBe(-30);
+      expect(extractedParts?.options).toBeNull();
     });
 
     it("should extract offset values when present", () => {
@@ -1381,7 +1404,67 @@ describe("metabase-lib/metric/core", () => {
     });
   });
 
+  it("preserves required options and non-null optional units in reader types", () => {
+    const { definition } = setupDefinition();
+    const dimensions = LibMetric.filterableDimensions(definition);
+    const stringClause = LibMetric.stringFilterClause({
+      operator: "=",
+      dimension: dimensions[DIM_IDX.STRING],
+      values: ["bird"],
+    });
+    const stringParts: ReturnType<typeof CljsLibMetric.stringFilterParts> =
+      LibMetric.stringFilterParts(definition, stringClause);
+    expect(stringParts?.options).toBeNull();
+    const excludeClause = LibMetric.excludeDateFilterClause({
+      operator: "is-null",
+      dimension: dimensions[DIM_IDX.DATE_TIME],
+      values: [],
+    });
+    const excludeParts: ReturnType<
+      typeof CljsLibMetric.excludeDateFilterParts
+    > = LibMetric.excludeDateFilterParts(definition, excludeClause);
+    expect(excludeParts).not.toHaveProperty("unit");
+  });
+
   describe("specificDateFilterParts", () => {
+    it.each([new Date(NaN), "not-a-date", "2024-02-30"])(
+      "rejects an invalid date at the shared native writer: %s",
+      (value) => {
+        const { definition } = setupDefinition();
+        const dimension = LibMetric.filterableDimensions(definition)[0];
+        expect(() =>
+          CljsLibMetric.specificDateFilterClause({
+            operator: "=",
+            dimension,
+            values: [value],
+            hasTime: false,
+          }),
+        ).toThrow("Invalid date");
+      },
+    );
+
+    it("treats an unreadable persisted date as non-extractable without fabricating a Date", () => {
+      const { provider } = setupDefinition();
+      const definition = LibMetric.fromJsMetricDefinition(provider, {
+        expression: [
+          "metric",
+          { "lib/uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" },
+          SAMPLE_METRIC.id,
+        ],
+        filters: [
+          {
+            "lib/uuid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            filter: ["=", {}, ["dimension", {}, "dim-1"], "Invalid Date"],
+          },
+        ],
+      });
+      const [clause] = LibMetric.filters(definition);
+      expect(
+        CljsLibMetric.specificDateFilterParts(definition, clause)?.values,
+      ).toEqual([null]);
+      expect(LibMetric.specificDateFilterParts(definition, clause)).toBeNull();
+      expect(LibMetric.filterParts(definition, clause)).toBeNull();
+    });
     it("should extract parts from equals date filter", () => {
       const { definition } = setupDefinition();
       const dimensions = LibMetric.filterableDimensions(definition);
@@ -1405,7 +1488,8 @@ describe("metabase-lib/metric/core", () => {
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.operator).toBe("=");
       expect(extractedParts?.hasTime).toBe(false);
-      expect(extractedParts?.values.length).toBe(1);
+      expect(extractedParts?.values).toHaveLength(1);
+      expect(extractedParts?.values[0]).toBeInstanceOf(Date);
     });
 
     it("should extract parts from between date filter", () => {
@@ -1522,7 +1606,8 @@ describe("metabase-lib/metric/core", () => {
 
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.operator).toBe(">");
-      expect(extractedParts?.values.length).toBe(1);
+      expect(extractedParts?.values).toHaveLength(1);
+      expect(extractedParts?.values[0]).toBeInstanceOf(Date);
     });
 
     it("should extract parts from between time filter", () => {

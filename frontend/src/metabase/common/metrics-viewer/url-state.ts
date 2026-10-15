@@ -15,14 +15,26 @@ import type {
   MetricsViewerDisplayType,
 } from "./types";
 
-function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
+function reviveFilter(
+  filter: DimensionFilterValue,
+): DimensionFilterValue | undefined {
+  if (filter.type === "specific-date" && !Array.isArray(filter.values)) {
+    return undefined;
+  }
   if (filter.type === "specific-date" || filter.type === "time") {
-    return {
-      ...filter,
-      values: filter.values.map((value) =>
-        typeof value === "string" ? new Date(value) : value,
-      ),
-    };
+    const values = filter.values.map((value) =>
+      typeof value === "string" ? new Date(value) : value,
+    );
+    // URL data is untrusted; don't pass unreadable dates to the strict clause writer.
+    if (
+      filter.type === "specific-date" &&
+      !values.every(
+        (value) => value instanceof Date && !Number.isNaN(value.getTime()),
+      )
+    ) {
+      return undefined;
+    }
+    return { ...filter, values };
   } else if (filter.type === "number" || filter.type === "coordinate") {
     return {
       ...filter,
@@ -195,6 +207,13 @@ function emptyState(): SerializedMetricsViewerPageState {
   };
 }
 
+function reviveFilters(filters: SerializedUrlFilter[]): SerializedUrlFilter[] {
+  return filters.flatMap((filter) => {
+    const value = reviveFilter(filter.value);
+    return value ? [{ ...filter, value }] : [];
+  });
+}
+
 // After JSON.parse, Date values are ISO strings. Walk the decoded state and revive them.
 function reviveStateDates(
   state: SerializedMetricsViewerPageState,
@@ -205,10 +224,7 @@ function reviveStateDates(
       if ("filters" in entity && entity.filters) {
         return {
           ...entity,
-          filters: entity.filters.map((filter) => ({
-            ...filter,
-            value: reviveFilter(filter.value),
-          })),
+          filters: reviveFilters(entity.filters),
         };
       }
       if ("tokens" in entity && entity.tokens) {
@@ -218,10 +234,7 @@ function reviveStateDates(
             if ("filters" in token && token.filters) {
               return {
                 ...token,
-                filters: token.filters.map((filter) => ({
-                  ...filter,
-                  value: reviveFilter(filter.value),
-                })),
+                filters: reviveFilters(token.filters),
               };
             }
             return token;
@@ -230,19 +243,21 @@ function reviveStateDates(
       }
       return entity;
     }),
-    dimensionBreakouts: state.dimensionBreakouts.map((dimensionBreakout) =>
-      dimensionBreakout.projectionConfig?.dimensionFilter
-        ? {
-            ...dimensionBreakout,
-            projectionConfig: {
-              ...dimensionBreakout.projectionConfig,
-              dimensionFilter: reviveFilter(
-                dimensionBreakout.projectionConfig.dimensionFilter,
-              ),
-            },
-          }
-        : dimensionBreakout,
-    ),
+    dimensionBreakouts: state.dimensionBreakouts.map((dimensionBreakout) => {
+      if (!dimensionBreakout.projectionConfig?.dimensionFilter) {
+        return dimensionBreakout;
+      }
+      const { dimensionFilter, ...projectionConfig } =
+        dimensionBreakout.projectionConfig;
+      const revivedFilter = reviveFilter(dimensionFilter);
+      return {
+        ...dimensionBreakout,
+        projectionConfig: {
+          ...projectionConfig,
+          ...(revivedFilter ? { dimensionFilter: revivedFilter } : {}),
+        },
+      };
+    }),
   };
 }
 

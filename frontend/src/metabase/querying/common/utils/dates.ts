@@ -13,8 +13,18 @@ import type { DateFormattingSettings } from "metabase-types/api";
 
 export type { DateFilterDisplayOpts } from "metabase/querying/common/types";
 
+type DateFilterDisplayValue =
+  | Exclude<DateFilterValue, { type: "relative" }>
+  | (Omit<
+      Extract<DateFilterValue, { type: "relative" }>,
+      "unit" | "offsetUnit"
+    > & {
+      unit: NonNullable<Parameters<typeof Lib.describeTemporalInterval>[1]>;
+      offsetUnit?: Parameters<typeof Lib.describeRelativeDatetime>[1];
+    });
+
 export function getDateFilterDisplayName(
-  value: DateFilterValue,
+  value: DateFilterDisplayValue,
   { withPrefix, formattingSettings }: DateFilterDisplayOpts = {},
 ) {
   return match(value)

@@ -1,76 +1,46 @@
+import type {
+  Metabase_LibMetric_Schema_Binning,
+  Metabase_LibMetric_Schema_BinningOption,
+  Metabase_LibMetric_Schema_DimensionReference,
+  Metabase_LibMetric_Schema_MetadataDimension,
+  Metabase_LibMetric_Schema_MetricDefinition,
+  Metabase_LibMetric_Schema_SourceInstanceJs,
+  Metabase_Lib_Schema_MbqlClause_Clause,
+  Metabase_Lib_Schema_Metadata_Measure,
+  Metabase_Lib_Schema_Metadata_Metric,
+  Metabase_Lib_Schema_Metadata_Segment,
+  Metabase_Lib_Schema_TemporalBucketing_Option,
+} from "cljs/metabase.lib.shared";
+import type * as LibMetric from "cljs/metabase.lib_metric.js";
 import type { DimensionId, TemporalUnit } from "metabase-types/api";
 
-import type {
-  BooleanFilterOperator,
-  CoordinateFilterOperator,
-  DefaultFilterOperator,
-  ExcludeDateFilterOperator,
-  ExcludeDateFilterUnit,
-  NumberFilterOperator,
-  NumberFilterValue,
-  RelativeDateFilterOptions,
-  RelativeDateFilterUnit,
-  SpecificDateFilterOperator,
-  StringFilterOperator,
-  StringFilterOptions,
-  TimeFilterOperator,
-} from "../common";
-
 declare const _MetadataProviderSymbol: unique symbol;
-declare const _MetricMetadataSymbol: unique symbol;
-declare const _MeasureMetadataSymbol: unique symbol;
-declare const _MetricDefinitionSymbol: unique symbol;
-declare const _DimensionMetadataSymbol: unique symbol;
-declare const _FilterClauseSymbol: unique symbol;
-declare const _ProjectionClauseSymbol: unique symbol;
-declare const _TemporalBucketSymbol: unique symbol;
-declare const _BinningStrategySymbol: unique symbol;
-declare const _SourceInstanceSymbol: unique symbol;
-declare const _SegmentMetadataSymbol: unique symbol;
 
 export type MetadataProvider = unknown & {
   _opaque: typeof _MetadataProviderSymbol;
 };
 
-export type MetricMetadata = unknown & {
-  _opaque: typeof _MetricMetadataSymbol;
-};
+export type MetricMetadata = Metabase_Lib_Schema_Metadata_Metric;
 
-export type MeasureMetadata = unknown & {
-  _opaque: typeof _MeasureMetadataSymbol;
-};
+export type MeasureMetadata = Metabase_Lib_Schema_Metadata_Measure;
 
-export type MetricDefinition = unknown & {
-  _opaque: typeof _MetricDefinitionSymbol;
-};
+export type MetricDefinition = Metabase_LibMetric_Schema_MetricDefinition;
 
-export type DimensionMetadata = unknown & {
-  _opaque: typeof _DimensionMetadataSymbol;
-};
+export type DimensionMetadata = Metabase_LibMetric_Schema_MetadataDimension;
 
-export type FilterClause = unknown & {
-  _opaque: typeof _FilterClauseSymbol;
-};
+export type FilterClause = Metabase_Lib_Schema_MbqlClause_Clause;
 
-export type ProjectionClause = unknown & {
-  _opaque: typeof _ProjectionClauseSymbol;
-};
+export type ProjectionClause = Metabase_LibMetric_Schema_DimensionReference;
 
-export type TemporalBucket = unknown & {
-  _opaque: typeof _TemporalBucketSymbol;
-};
+export type TemporalBucket = Metabase_Lib_Schema_TemporalBucketing_Option;
 
-export type BinningStrategy = unknown & {
-  _opaque: typeof _BinningStrategySymbol;
-};
+export type BinningStrategy =
+  | Metabase_LibMetric_Schema_Binning
+  | Metabase_LibMetric_Schema_BinningOption;
 
-export type SourceInstance = unknown & {
-  _opaque: typeof _SourceInstanceSymbol;
-};
+export type SourceInstance = Metabase_LibMetric_Schema_SourceInstanceJs;
 
-export type SegmentMetadata = unknown & {
-  _opaque: typeof _SegmentMetadataSymbol;
-};
+export type SegmentMetadata = Metabase_Lib_Schema_Metadata_Segment;
 
 export type SegmentDisplayInfo = {
   name?: string;
@@ -148,76 +118,67 @@ export type DisplayInfo =
   | BinningStrategyDisplayInfo
   | SegmentDisplayInfo;
 
-export type FilterParts =
-  | StringFilterParts
-  | NumberFilterParts
-  | CoordinateFilterParts
-  | BooleanFilterParts
-  | SpecificDateFilterParts
-  | RelativeDateFilterParts
-  | ExcludeDateFilterParts
-  | TimeFilterParts
-  | DefaultFilterParts;
+export type FilterParts = NonNullable<
+  | ReturnType<typeof LibMetric.stringFilterParts>
+  | ReturnType<typeof LibMetric.numberFilterParts>
+  | ReturnType<typeof LibMetric.coordinateFilterParts>
+  | ReturnType<typeof LibMetric.booleanFilterParts>
+  | SpecificDateFilterPartsOutput
+  | ReturnType<typeof LibMetric.relativeDateFilterParts>
+  | ReturnType<typeof LibMetric.excludeDateFilterParts>
+  | TimeFilterPartsOutput
+  | ReturnType<typeof LibMetric.defaultFilterParts>
+>;
 
-export type StringFilterParts = {
-  operator: StringFilterOperator;
-  dimension: DimensionMetadata;
-  values: string[];
-  options: StringFilterOptions;
-};
-
-export type NumberFilterParts = {
-  operator: NumberFilterOperator;
-  dimension: DimensionMetadata;
-  values: NumberFilterValue[];
-};
-
-export type CoordinateFilterParts = {
-  operator: CoordinateFilterOperator;
-  dimension: DimensionMetadata;
-  longitudeDimension: DimensionMetadata | null;
-  values: NumberFilterValue[];
-};
-
-export type BooleanFilterParts = {
-  operator: BooleanFilterOperator;
-  dimension: DimensionMetadata;
-  values: boolean[];
-};
-
-export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperator;
-  dimension: DimensionMetadata;
-  values: Date[];
-  hasTime: boolean;
-};
-
-export type RelativeDateFilterParts = {
-  dimension: DimensionMetadata;
-  unit: RelativeDateFilterUnit;
-  value: number;
-  offsetUnit: RelativeDateFilterUnit | null;
-  offsetValue: number | null;
-  options: RelativeDateFilterOptions;
-};
-
-export type ExcludeDateFilterParts = {
-  operator: ExcludeDateFilterOperator;
-  dimension: DimensionMetadata;
-  unit: ExcludeDateFilterUnit | null;
-  values: number[];
-};
-
-export type TimeFilterParts = {
-  operator: TimeFilterOperator;
-  dimension: DimensionMetadata;
+type DateValuesFilterParts<Parts> = Omit<NonNullable<Parts>, "values"> & {
   values: Date[];
 };
 
-export type DefaultFilterParts = {
-  operator: DefaultFilterOperator;
-  dimension: DimensionMetadata;
-};
+export type SpecificDateFilterPartsOutput = DateValuesFilterParts<
+  ReturnType<typeof LibMetric.specificDateFilterParts>
+>;
+
+export type TimeFilterPartsOutput = DateValuesFilterParts<
+  ReturnType<typeof LibMetric.timeFilterParts>
+>;
+
+type DimensionFilterParts<Parts> = Parts & { dimension: DimensionMetadata };
+
+export type StringFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.stringFilterClause>[0]
+>;
+
+export type NumberFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.numberFilterClause>[0]
+>;
+
+export type CoordinateFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.coordinateFilterClause>[0]
+> & { longitudeDimension: DimensionMetadata | null };
+
+export type BooleanFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.booleanFilterClause>[0]
+>;
+
+export type SpecificDateFilterParts = DimensionFilterParts<
+  Omit<Parameters<typeof LibMetric.specificDateFilterClause>[0], "values">
+> & { values: Date[] };
+
+export type RelativeDateFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.relativeDateFilterClause>[0]
+>;
+
+export type ExcludeDateFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.excludeDateFilterClause>[0]
+>;
+
+export type TimeFilterParts = DimensionFilterParts<
+  Omit<Parameters<typeof LibMetric.timeFilterClause>[0], "values">
+> & { values: Date[] };
+
+export type DefaultFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.defaultFilterClause>[0]
+>;
 
 export type DimensionValuesInfo = {
   id: DimensionId;

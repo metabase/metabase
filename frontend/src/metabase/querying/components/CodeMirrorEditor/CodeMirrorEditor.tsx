@@ -170,7 +170,7 @@ export const CodeMirrorEditor = forwardRef<
   );
 
   const value = useMemo(() => {
-    return Lib.rawNativeQuery(proposedQuery ?? query);
+    return Lib.rawNativeQuery(proposedQuery ?? query) ?? "";
   }, [proposedQuery, query]);
 
   return (

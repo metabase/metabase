@@ -19,6 +19,12 @@ shared_specs: &shared_specs
   - "test/**/*.cljc"
   - "test/**/*.cljs"
 
+cljs_typescript_declarations: &cljs_typescript_declarations
+  - "cljs/**"
+  - "shadow-cljs.edn"
+  - "bin/check-cljs-dts-exports.mjs"
+  - "bin/type-check-cljs-dts.mjs"
+
 shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
@@ -79,6 +85,7 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+  - *cljs_typescript_declarations
   - "frontend/lint/**/!(*.md)"
 
 frontend_loki_ci: &frontend_loki_ci
@@ -150,6 +157,7 @@ backend_ci: &backend_ci
 backend_sources: &backend_sources
   - *shared_sources
   - "**deps.edn"
+  - "cljs/**"
   - "enterprise/backend/src/**"
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
@@ -193,7 +201,7 @@ project_tests_infra: &project_tests_infra
 
 project_backend_checks:
   - *project_tests_infra
-  - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
+  - "{src,test,cljs,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
   - "modules/**/*.clj"
   - "modules/**/*.cljc"
   - "modules/**/*.cljs"
@@ -312,6 +320,7 @@ build_embedding_sdk_package:
   - *embedding_sdk_host_sample_apps
   - *embedding_documentation
   - *frontend_sources
+  - *cljs_typescript_declarations
 
 # The uberjar only exists to feed e2e, the SDK suites that boot a Metabase instance, bundle-size and
 # containerize, so it is worth building exactly when one of them might run. The SDK's type checks run
@@ -342,6 +351,7 @@ i18n:
 cljs:
   - *shared_sources
   - *shared_specs
+  - "cljs/**"
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
 

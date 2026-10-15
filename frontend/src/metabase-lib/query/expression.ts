@@ -27,9 +27,10 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function withExpressionName<
-  Clause extends AggregationClause | ExpressionClause,
->(clause: Clause, newName: string): Clause {
+export function withExpressionName(
+  clause: AggregationClause | ExpressionClause,
+  newName: string,
+): AggregationClause | ExpressionClause {
   return ML.with_expression_name(clause, newName);
 }
 
@@ -51,9 +52,48 @@ export function expressionableColumns(
 export function expressionParts(
   query: Query,
   stageIndex: number,
+  clause: AggregationClause | FilterClause | JoinCondition,
+): ExpressionParts;
+export function expressionParts(
+  query: Query,
+  stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
-): ExpressionParts {
-  return ML.expression_parts(query, stageIndex, clause);
+): ExpressionParts | ExpressionArg;
+export function expressionParts(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
+): ExpressionParts | ExpressionArg {
+  const parts = ML.expression_parts(query, stageIndex, clause);
+  if (parts == null) {
+    throw new TypeError("Expected expression_parts to return a value");
+  }
+  if (isExpressionParts(parts) || isExpressionArg(parts)) {
+    return parts;
+  }
+  throw new TypeError("Expected expression_parts to return an expression");
+}
+
+function isExpressionParts(value: unknown): value is ExpressionParts {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "operator" in value &&
+    typeof value.operator === "string" &&
+    "args" in value &&
+    Array.isArray(value.args) &&
+    value.args.every(isExpressionArg)
+  );
+}
+
+function isExpressionArg(value: unknown): value is ExpressionArg {
+  return (
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "bigint" ||
+    typeof value === "string" ||
+    (typeof value === "object" && value != null)
+  );
 }
 
 export function expressionClause(

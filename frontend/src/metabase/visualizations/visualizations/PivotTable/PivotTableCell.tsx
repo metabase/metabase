@@ -133,7 +133,7 @@ export function Cell({
 }
 
 type CellClickHandler = (
-  clicked: PivotTableClicked,
+  clicked: PivotTableClicked | null,
 ) => ((e: React.MouseEvent) => void) | undefined;
 
 interface TopHeaderCellProps {

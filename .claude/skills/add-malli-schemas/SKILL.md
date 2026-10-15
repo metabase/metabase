@@ -9,10 +9,11 @@ This skill helps you efficiently and uniformly add Malli schemas to API endpoint
 
 ## Reference Files (Best Examples)
 
-- `src/metabase/warehouses/api.clj` - Most comprehensive schemas, custom error messages
+- `src/metabase/warehouses_rest/api.clj` - Most comprehensive schemas, custom error messages
 - `src/metabase/api_keys/api.clj` - Excellent response schemas
-- `src/metabase/collections/api.clj` - Great named schema patterns
+- `src/metabase/collections_rest/api.clj` - Great named schema patterns
 - `src/metabase/timeline/api/timeline.clj` - Clean, simple examples
+- `.claude/skills/add-malli-schemas/CLJS_TYPESCRIPT.md` - ClojureScript export and TypeScript declaration guidance
 
 ## Quick Checklist
 
@@ -25,6 +26,14 @@ When adding Malli schemas to an endpoint:
 - [ ] Use existing schema types from `ms` namespace when possible
 - [ ] Consider creating named schemas for reusable or complex types
 - [ ] Add contextual error messages for validation failures
+
+For every schema:
+
+- [ ] Match the value at the actual validation point
+- [ ] Reuse registered schemas and `metabase.util.malli.schema` types when possible
+- [ ] Use `mr/def` for reusable or complex shapes
+- [ ] Represent optionality, nullability, collection kind, and key names accurately
+- [ ] Test valid, invalid, optional, and nullable cases as applicable
 
 ## Basic Structure
 
@@ -139,7 +148,7 @@ Add properties for `{:optional true ...}` and `:default` values:
 
 ### From `metabase.util.malli.schema` (aliased as `ms`)
 
-Prefer the schemas in the ms/* namespace, since they work better with our api infrastructure. 
+Prefer the schemas in the ms/\* namespace, since they work better with our api infrastructure.
 
 For example use `ms/PositiveInt` instead of `pos-int?`.
 
@@ -149,12 +158,13 @@ ms/NonBlankString               ;; Non-empty string
 ms/BooleanValue                 ;; String "true"/"false" or boolean
 ms/MaybeBooleanValue            ;; BooleanValue or nil
 ms/TemporalString               ;; ISO-8601 date/time string (for REQUEST params only!)
+ms/TemporalInstant              ;; Java Time value before response serialization
 ms/OpaqueJSONObject             ;; JSON object whose keys are not ours to declare; string-keyed
 ms/PositiveNum                  ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```
 
-**IMPORTANT:** For response schemas, use `:any` for temporal fields, not `ms/TemporalString`!
+For response schemas, use the producer's actual temporal type, such as `:time/local-date` or `:time/offset-date-time`, not `ms/TemporalString`. Use `ms/TemporalInstant` when the contract accepts multiple Java Time types.
 Response schemas validate BEFORE JSON serialization, so they see Java Time objects.
 
 ### Built-in Malli Types
@@ -182,6 +192,7 @@ Avoid using sequence schemas unless completely necessary.
 ### Example: Adding return schema to `GET /api/field/:id/related`
 
 **Before:**
+
 ```clojure
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
@@ -287,7 +298,6 @@ Avoid using sequence schemas unless completely necessary.
 [:limit {:optional true :default 0} [:maybe ms/PositiveInt]]  ;; RIGHT
 ```
 
-
 ### Don't: Mix up route params, query params, and body
 
 ```clojure
@@ -306,12 +316,12 @@ Avoid using sequence schemas unless completely necessary.
 ;; WRONG - Java Time objects aren't strings yet
 [:date_joined ms/TemporalString]
 
-;; RIGHT - schemas validate BEFORE JSON serialization
-[:date_joined :any]  ;; Java Time object, serialized to string by middleware
-[:last_login [:maybe :any]]  ;; Java Time object or nil
+;; RIGHT - for producers returning LocalDate and OffsetDateTime, respectively
+[:date_joined :time/local-date]
+[:last_login [:maybe :time/offset-date-time]]
 ```
 
-**Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects.
+**Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects. Match the concrete type to the producer; use `ms/TemporalInstant` for a genuinely heterogeneous temporal contract, rather than accepting every value with `:any`.
 
 ### Don't: Use `[:sequential X]` when the data is actually a set
 
@@ -366,15 +376,17 @@ Tests often show the expected response structure.
 **CRITICAL CONCEPT:** Schemas validate at different points in the request/response lifecycle:
 
 ### Request Parameter Schemas (Query/Body/Route)
+
 - Validate AFTER JSON parsing
 - Data is already deserialized (strings, numbers, booleans)
 - Use `ms/TemporalString` for date/time inputs
 - Use `ms/BooleanValue` for boolean query params
 
 ### Response Schemas
+
 - Validate BEFORE JSON serialization
 - Data is still in Clojure format (Java Time objects, sets, keywords)
-- Use `:any` for Java Time objects
+- Use the producer's concrete `:time/...` schema for Java Time objects, or `ms/TemporalInstant` for a heterogeneous temporal contract
 - Use `[:set X]` for sets
 - Use `[:enum :keyword]` for keyword enums
 
@@ -412,8 +424,13 @@ After adding schemas, verify:
 - **Follow conventions** - look at similar endpoints in the same namespace
 - **Check the actual data** - use REPL to inspect what's actually returned before serialization
 
+## ClojureScript Files
+
+When working on ClojureScript files, JavaScript exports, or generated TypeScript declarations, first read `.claude/skills/add-malli-schemas/CLJS_TYPESCRIPT.md`.
+
 ## Additional Resources
 
 - [Malli Documentation](https://github.com/metosin/malli)
 - Metabase Malli utilities: `src/metabase/util/malli/schema.clj`
 - Metabase schema registry: `src/metabase/util/malli/registry.clj`
+- TypeScript declaration guide: `cljs/src/metabase/util/malli/typescript.md`

@@ -719,9 +719,9 @@ class Question {
     return this.setDatasetQuery(Lib.toJsQuery(query));
   }
 
-  generateQueryDescription() {
+  generateQueryDescription(): string {
     const query = this.query();
-    return Lib.suggestedName(query);
+    return Lib.suggestedName(query) ?? "";
   }
 
   getModerationReviews() {

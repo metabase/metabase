@@ -6,6 +6,7 @@ import {
   createMetricMetadata,
   measureMetadata,
   setupDefinition,
+  setupDefinitionWithDateFilter,
   setupMeasureDefinition,
 } from "./__tests__/test-helpers";
 import type { DimensionFilterValue } from "./dimension-filters";
@@ -33,6 +34,34 @@ function getFilterableDimension(
 }
 
 describe("extractDefinitionFilters", () => {
+  it("skips an unreadable persisted date without throwing", () => {
+    const { definition } = setupDefinitionWithDateFilter("Invalid Date");
+    expect(extractDefinitionFilters(definition)).toEqual([]);
+  });
+
+  it("keeps a valid persisted date", () => {
+    const { definition } = setupDefinitionWithDateFilter("2024-01-15");
+    expect(extractDefinitionFilters(definition)).toMatchObject([
+      { value: { type: "specific-date", values: [expect.any(Date)] } },
+    ]);
+  });
+
+  it.each(["second", "millisecond"] as const)(
+    "keeps relative %s filters",
+    (unit) => {
+      const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+      const dimension = getFilterableDimension(definition, "Created At");
+      const clause = LibMetric.relativeDateFilterClause({
+        dimension,
+        unit,
+        value: -2,
+      });
+      expect(
+        extractDefinitionFilters(LibMetric.filter(definition, clause)),
+      ).toMatchObject([{ value: { type: "relative-date", unit, value: -2 } }]);
+    },
+  );
+
   describe("metric", () => {
     it("returns empty array for definition with no filters", () => {
       const definition = setupDefinition(metadata, REVENUE_METRIC.id);

@@ -1,0 +1,384 @@
+(ns metabase.util.malli.typescript.refs
+  (:require
+   [clojure.string :as str]
+   [metabase.util.malli.typescript.declaration :as declaration]
+   [metabase.util.malli.typescript.schema :as schema]
+   [metabase.util.malli.typescript.type :as type]))
+
+(set! *warn-on-reflection* true)
+
+(defn- resolve-definition
+  [resolve-schema registry schema-keyword]
+  (or (get registry schema-keyword)
+      (when resolve-schema
+        (resolve-schema schema-keyword))))
+
+(defn dependency-closure
+  "Compile the transitive registry dependency closure for `initial-refs`.
+
+  Required options:
+  - `:resolve-schema` resolves a schema keyword to its Malli definition.
+
+  Optional `:expand?` can stop traversal at references owned by another module."
+  [initial-refs {:keys [resolve-schema compile-options expand? dependency-refs]
+                 :or {compile-options {}
+                      expand? (constantly true)
+                      dependency-refs :registry-refs}}]
+  (loop [pending           (vec (sort-by str initial-refs))
+         processed         #{}
+         definitions       (sorted-map-by #(compare (str %1) (str %2)))
+         graph             {}
+         refs-used         (set initial-refs)
+         local-definitions (:registry compile-options)
+         diagnostics       []]
+    (if-let [schema-keyword (first pending)]
+      (let [remaining (subvec pending 1)]
+        (cond
+          (processed schema-keyword)
+          (recur remaining processed definitions graph refs-used local-definitions diagnostics)
+
+          (not (expand? schema-keyword))
+          (recur remaining (conj processed schema-keyword) definitions graph refs-used local-definitions diagnostics)
+
+          :else
+          (if-let [definition (resolve-definition resolve-schema local-definitions schema-keyword)]
+            (let [compiled (schema/schema->result
+                            definition
+                            (cond-> (update compile-options :registry merge local-definitions)
+                              resolve-schema (assoc :resolve-schema resolve-schema)))
+                  discovered (get compiled dependency-refs)
+                  new-local  (merge local-definitions (:local-definitions compiled))
+                  new-pending (->> discovered
+                                   (remove processed)
+                                   (concat remaining)
+                                   distinct
+                                   (sort-by str)
+                                   vec)]
+              (recur new-pending
+                     (conj processed schema-keyword)
+                     (assoc definitions schema-keyword compiled)
+                     (assoc graph schema-keyword discovered)
+                     (into refs-used discovered)
+                     new-local
+                     (into diagnostics (:diagnostics compiled))))
+            (recur remaining
+                   (conj processed schema-keyword)
+                   (assoc definitions schema-keyword (schema/result (type/unknown)))
+                   (assoc graph schema-keyword #{})
+                   refs-used
+                   local-definitions
+                   (conj diagnostics {:type :unresolved-schema-ref
+                                      :schema schema-keyword})))))
+      {:definitions definitions
+       :graph graph
+       :refs-used refs-used
+       :local-definitions local-definitions
+       :diagnostics diagnostics})))
+
+(defn- reachable?
+  [graph start target]
+  (loop [pending [start]
+         seen #{}]
+    (if-let [current (peek pending)]
+      (cond
+        (= current target) true
+        (seen current) (recur (pop pending) seen)
+        :else (recur (into (pop pending) (get graph current))
+                     (conj seen current)))
+      false)))
+
+(defn- cyclic-edge?
+  [graph schema-keyword ref-keyword]
+  (or (= schema-keyword ref-keyword)
+      (reachable? graph ref-keyword schema-keyword)))
+
+(def ^:private transparent-generic-names
+  "Built-in TypeScript utility types that are type aliases (`type Record<K, T> = ...`)
+  rather than interfaces, and therefore do not defer recursive type alias evaluation."
+  #{"Partial" "Record"})
+
+(defn- generic-guards-recursion?
+  [node]
+  (not (contains? transparent-generic-names (:name node))))
+
+(defn- unguarded-refs
+  "Return registry references reachable from `node` without crossing a guarded
+  TypeScript type constructor (object, array, tuple, interface-backed generic, or function)."
+  [node]
+  (case (:kind node)
+    :ref #{(:schema-keyword node)}
+    (:union :intersection) (into #{} (mapcat unguarded-refs) (:members node))
+    :generic (if (generic-guards-recursion? node)
+               #{}
+               (into #{} (mapcat unguarded-refs) (:arguments node)))
+    :key-transform (unguarded-refs (:inner node))
+    #{}))
+
+(defn- preserve-node-flags
+  "Rebuilt nodes drop flags the constructors don't take; carry them over."
+  [original rebuilt]
+  (cond-> rebuilt
+    (:readonly? original) (assoc :readonly? true)))
+
+(declare make-recursion-safe*)
+
+(defn- resolves-to-unknown?
+  ([node lookup-type]
+   (resolves-to-unknown? node lookup-type #{}))
+  ([node lookup-type seen]
+   (case (:kind node)
+     :unknown true
+     :ref (let [schema-keyword (:schema-keyword node)]
+            (and (not (contains? seen schema-keyword))
+                 (when-let [target (lookup-type schema-keyword)]
+                   (resolves-to-unknown? target lookup-type (conj seen schema-keyword)))))
+     :intersection (every? #(resolves-to-unknown? % lookup-type seen) (:members node))
+     false)))
+
+(defn- transform-tuple-item
+  [schema-keyword graph lookup-type guarded? item]
+  (if (and (map? item) (contains? item :type))
+    (let [[item-type diagnostics]
+          (make-recursion-safe* schema-keyword graph lookup-type guarded? (:type item))]
+      [(assoc item :type item-type) diagnostics])
+    (make-recursion-safe* schema-keyword graph lookup-type guarded? item)))
+
+(defn- transform-many
+  [schema-keyword graph lookup-type guarded? nodes]
+  (reduce (fn [[transformed diagnostics] node]
+            (let [[new-node node-diagnostics]
+                  (make-recursion-safe* schema-keyword graph lookup-type guarded? node)]
+              [(conj transformed new-node)
+               (into diagnostics node-diagnostics)]))
+          [[] []]
+          nodes))
+
+(defn- make-recursion-safe*
+  [schema-keyword graph lookup-type guarded? node]
+  (case (:kind node)
+    :ref
+    (let [ref-keyword (:schema-keyword node)]
+      (if (and (not guarded?)
+               (cyclic-edge? graph schema-keyword ref-keyword))
+        [(type/unknown)
+         [{:type :unsafe-recursive-ref
+           :schema schema-keyword
+           :ref ref-keyword}]]
+        [node []]))
+
+    :union
+    (let [[members diagnostics]
+          (transform-many schema-keyword graph lookup-type guarded? (:members node))]
+      [(type/union members) diagnostics])
+
+    :intersection
+    (let [[members diagnostics]
+          (transform-many schema-keyword graph lookup-type guarded? (:members node))
+          non-unknown-members (vec (remove #(resolves-to-unknown? % lookup-type) members))]
+      [(type/intersection (if (seq non-unknown-members)
+                            non-unknown-members
+                            [(type/unknown)]))
+       diagnostics])
+
+    :array
+    (let [[element diagnostics]
+          (make-recursion-safe* schema-keyword graph lookup-type true (:element node))]
+      [(preserve-node-flags node (type/array element)) diagnostics])
+
+    :generic
+    (let [child-guarded? (or guarded? (generic-guards-recursion? node))
+          [arguments diagnostics]
+          (transform-many schema-keyword graph lookup-type child-guarded? (:arguments node))]
+      [(preserve-node-flags node (type/generic (:name node) arguments)) diagnostics])
+
+    :tuple
+    (let [[items item-diagnostics]
+          (reduce (fn [[transformed diagnostics] item]
+                    (let [[new-item new-diagnostics]
+                          (transform-tuple-item schema-keyword graph lookup-type true item)]
+                      [(conj transformed new-item)
+                       (into diagnostics new-diagnostics)]))
+                  [[] []]
+                  (:items node))
+          [rest-type rest-diagnostics]
+          (if-let [rest-type (:rest node)]
+            (make-recursion-safe* schema-keyword graph lookup-type true rest-type)
+            [nil []])]
+      [(preserve-node-flags node (type/tuple items rest-type))
+       (into item-diagnostics rest-diagnostics)])
+
+    :object
+    (let [[properties property-diagnostics]
+          (reduce (fn [[transformed diagnostics] property]
+                    (let [[property-type new-diagnostics]
+                          (make-recursion-safe* schema-keyword graph lookup-type true (:type property))]
+                      [(conj transformed (assoc property :type property-type))
+                       (into diagnostics new-diagnostics)]))
+                  [[] []]
+                  (:properties node))
+          [index-value index-diagnostics]
+          (if-let [index-signature (:index-signature node)]
+            (make-recursion-safe* schema-keyword graph lookup-type true (:value index-signature))
+            [nil []])
+          index-signature (when-let [signature (:index-signature node)]
+                            (assoc signature :value index-value))]
+      [(preserve-node-flags node (type/object properties index-signature))
+       (into property-diagnostics index-diagnostics)])
+
+    :key-transform
+    (let [[inner diagnostics]
+          (make-recursion-safe* schema-keyword graph lookup-type guarded? (:inner node))]
+      [(preserve-node-flags node (type/key-transform-type (:name node) inner)) diagnostics])
+
+    :function
+    (let [[parameters parameter-diagnostics]
+          (reduce (fn [[transformed diagnostics] parameter]
+                    (let [[parameter-type new-diagnostics]
+                          (make-recursion-safe* schema-keyword graph lookup-type true (:type parameter))]
+                      [(conj transformed (assoc parameter :type parameter-type))
+                       (into diagnostics new-diagnostics)]))
+                  [[] []]
+                  (:parameters node))
+          [return-type return-diagnostics]
+          (make-recursion-safe* schema-keyword graph lookup-type true (:return node))
+          rebuilt (type/function-type parameters return-type)
+          [predicate predicate-diagnostics]
+          (if-let [predicate (:predicate node)]
+            (let [[predicate-type diagnostics]
+                  (make-recursion-safe* schema-keyword graph lookup-type true (:type predicate))]
+              [{:parameter (:parameter predicate), :type predicate-type} diagnostics])
+            [nil []])]
+      [(cond-> rebuilt predicate (type/function-predicate (:parameter predicate) (:type predicate)))
+       (into parameter-diagnostics (concat return-diagnostics predicate-diagnostics))])
+
+    [node []]))
+
+(defn- phantom-discriminant
+  "Optional synthetic tag distinguishing structurally identical aliases.
+  Compiler-controlled; never written by hand."
+  [type-name]
+  (type/object [{:name "__kind", :optional? true, :type (type/literal type-name)}]))
+
+(defn- declares-phantom-key?
+  ([node safe-types]
+   (declares-phantom-key? node safe-types #{}))
+  ([node safe-types seen]
+   (case (:kind node)
+     :object (some #(= "__kind" (:name %)) (:properties node))
+     (:union :intersection) (some #(declares-phantom-key? % safe-types seen) (:members node))
+     :ref (let [schema-keyword (:schema-keyword node)]
+            (when-not (contains? seen schema-keyword)
+              (declares-phantom-key? (get-in safe-types [schema-keyword :type])
+                                     safe-types
+                                     (conj seen schema-keyword))))
+     false)))
+
+(defn- collidable-kind?
+  ([node safe-types]
+   (collidable-kind? node safe-types #{}))
+  ([node safe-types seen]
+   ;; Arrays, tuples, functions, and object-only compounds remain object-like
+   ;; even when their elements or properties are nullable or primitive.
+   (case (:kind node)
+     (:object :array :tuple :function) true
+     :union (every? #(collidable-kind? % safe-types seen) (:members node))
+     :intersection (some #(collidable-kind? % safe-types seen) (:members node))
+     :ref (let [schema-keyword (:schema-keyword node)]
+            (and (not (contains? seen schema-keyword))
+                 (collidable-kind? (get-in safe-types [schema-keyword :type])
+                                   safe-types
+                                   (conj seen schema-keyword))))
+     false)))
+
+(def ^:private typescript-identifier-pattern
+  #"[A-Za-z_$][\w$]*")
+
+(defn type-aliases
+  "Generate deterministic TypeScript aliases for a registry dependency closure.
+
+  Options extend `dependency-closure` and require `:type-name` and `:ref-name`."
+  [initial-refs {:keys [type-name ref-name contextual-input? input-ref-name key-transform-name
+                        resolve-schema compile-options]
+                 :or {compile-options {}}
+                 :as options}]
+  (let [input-ref-name (or input-ref-name
+                           #(let [reference (ref-name %)]
+                              (if (str/starts-with? reference "Shared.")
+                                (str "Shared.Input_" (subs reference (count "Shared.")))
+                                (str "Input_" reference))))
+        render-options (cond-> {:ref-name ref-name
+                                :input-ref-name input-ref-name}
+                         key-transform-name
+                         (assoc :key-transform-name key-transform-name))
+        {:keys [definitions local-definitions refs-used diagnostics] :as closure}
+        (dependency-closure initial-refs options)
+        lookup-type (memoize
+                     (fn [schema-keyword]
+                       (or (get-in definitions [schema-keyword :type])
+                           (when-let [definition (resolve-definition resolve-schema local-definitions schema-keyword)]
+                             (:type (schema/schema->result
+                                     definition
+                                     (update compile-options :registry merge local-definitions)))))))
+        unguarded-graph (update-vals definitions #(unguarded-refs (:type %)))
+        safe-types
+        (into {}
+              (map (fn [[schema-keyword compiled]]
+                     (let [[safe-type recursion-diagnostics]
+                           (make-recursion-safe* schema-keyword unguarded-graph lookup-type false (:type compiled))]
+                       [schema-keyword {:type safe-type
+                                        :diagnostics recursion-diagnostics
+                                        :multi-branches (:multi-branches compiled)}])))
+              definitions)
+        ;; Aliases whose rendered bodies are byte-identical collide structurally;
+        ;; only object/union-shaped collisions get a phantom discriminant so
+        ;; mutually interchangeable primitives stay interchangeable.
+        body-groups (group-by (fn [schema-keyword]
+                                (type/render (get-in safe-types [schema-keyword :type]) render-options))
+                              (keys safe-types))
+        render-entry
+        (fn [schema-keyword]
+          (let [{:keys [type multi-branches]} (get safe-types schema-keyword)
+                alias-name (if contextual-input?
+                             (input-ref-name schema-keyword)
+                             (type-name schema-keyword))
+                ;; Contextual aliases need different declaration names, but their
+                ;; phantom tag identifies the same schema in either context.
+                phantom-name (type-name schema-keyword)
+                body (type/render type render-options)
+                phantom (when (and (collidable-kind? type safe-types)
+                                   (not (declares-phantom-key? type safe-types))
+                                   (> (count (get body-groups body)) 1))
+                          (phantom-discriminant phantom-name))
+                rendered-type (if phantom
+                                (type/intersection [type phantom])
+                                type)
+                declaration (str "export type " alias-name " = "
+                                 (type/render rendered-type render-options) ";")
+                ;; Extract<> distributes over a union (including a union intersected with common fields);
+                ;; skip it when the alias was phantom-wrapped into an intersection.
+                extract-declarations
+                (when (and (nil? phantom)
+                           (or (= :union (:kind type))
+                               (and (= :intersection (:kind type))
+                                    (some #(= :union (:kind %)) (:members type))))
+                           (:key-string multi-branches)
+                           (<= 2 (count (filter :literal? (:branches multi-branches)))))
+                  (keep (fn [{:keys [value value-string literal?]}]
+                          (let [tag-name (declaration/branch-type-name value)]
+                            (when (and literal?
+                                       value-string
+                                       (re-matches typescript-identifier-pattern tag-name))
+                              (str "export type " alias-name "_" tag-name
+                                   " = Extract<"
+                                   (if contextual-input?
+                                     (input-ref-name schema-keyword)
+                                     (ref-name schema-keyword))
+                                   ", { \"" (:key-string multi-branches) "\": " value-string " }>;"))))
+                        (:branches multi-branches)))]
+            {:declarations (into [declaration] extract-declarations)
+             :diagnostics (:diagnostics (get safe-types schema-keyword))}))
+        rendered (mapv render-entry (sort-by str (keys safe-types)))]
+    (assoc closure
+           :declarations (into [] (mapcat :declarations) rendered)
+           :refs-used refs-used
+           :diagnostics (into (vec diagnostics) (mapcat :diagnostics) rendered))))

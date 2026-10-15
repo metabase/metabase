@@ -202,7 +202,8 @@
                             (:type tag) (update :type common/normalize-keyword))))
     :decode/api       common/remove-internal-keys
     :encode/serialize common/remove-internal-keys}
-   [:multi {:dispatch #(keyword (:type %))}
+   [:multi {:dispatch #(keyword (:type %))
+            :ts/dispatch-key :type}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
     [:snippet       [:ref ::snippet]]

@@ -79,6 +79,12 @@
 ;;
 ;; In MBQL 4, the optional default value is part of the options map; in MBQL 5 it is an optional final standalone
 ;; value.
+(mr/def ::pred-expr-pair
+  [:tuple
+   {:error/message "Valid [pred expr] pair"}
+   #_pred [:ref ::expression/boolean]
+   #_expr [:ref ::expression/expression]])
+
 (doseq [tag [:case :if]]
   (mbql-clause/define-mbql-clause
     tag
@@ -86,10 +92,7 @@
      (mbql-clause/catn-clause-schema tag
                                      [:pred-expr-pairs
                                       [:sequential {:min 1}
-                                       [:tuple
-                                        {:error/message "Valid [pred expr] pair"}
-                                        #_pred [:ref ::expression/boolean]
-                                        #_expr [:ref ::expression/expression]]]]
+                                       [:ref ::pred-expr-pair]]]
                                      [:default [:? [:schema [:ref ::expression/expression]]]])])
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]

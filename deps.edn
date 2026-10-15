@@ -296,7 +296,7 @@
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
+   :extra-paths ["dev/src" "local/src" "cljs/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -492,7 +492,7 @@
              :main-opts ["-m" "antq.core" "--skip=github-action"]}
 
   :cljs
-  {:extra-paths ["test"]
+  {:extra-paths ["cljs/src" "test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.warehouse.allowed.networks=allow-all"]
    :extra-deps
@@ -569,6 +569,7 @@
     #_"--debug"
     "--lint"
     "src"
+    "cljs/src"
     "test"
     "enterprise/backend/src"
     "enterprise/backend/test"
@@ -644,6 +645,7 @@
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
                :source-paths    ["src"
+                                 "cljs/src"
                                  "enterprise/backend/src"
                                  "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
@@ -728,6 +730,7 @@
                                    ".clj-kondo"
                                    ".github"
                                    "bin"
+                                   "cljs"
                                    "enterprise"
                                    "frontend"
                                    "resources"

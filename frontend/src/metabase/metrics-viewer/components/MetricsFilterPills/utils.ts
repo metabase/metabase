@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getDatePickerValue } from "metabase/common/metrics/utils/dates";
+import { getDateFilterDisplayValue } from "metabase/common/metrics/utils/dates";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
@@ -53,7 +53,7 @@ export function getFilterDisplayParts(
     return { label: `${dimName} ${op}:`, value: formattedValues };
   }
 
-  const dateValue = getDatePickerValue(definition, filter);
+  const dateValue = getDateFilterDisplayValue(definition, filter);
   if (dateValue) {
     const dateParts = LibMetric.filterParts(definition, filter);
     if (dateParts) {

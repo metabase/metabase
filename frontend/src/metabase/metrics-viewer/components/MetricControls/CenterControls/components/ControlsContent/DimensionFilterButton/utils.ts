@@ -1,43 +1,10 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { toDateFilterDisplayValue } from "metabase/common/metrics/utils/dates";
 import type { DimensionFilterValue } from "metabase/metrics-viewer/utils";
-import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as Lib from "metabase-lib";
-
-function toDatePickerValue(
-  filter: Extract<
-    DimensionFilterValue,
-    { type: "specific-date" | "relative-date" | "exclude-date" }
-  >,
-): DatePickerValue {
-  switch (filter.type) {
-    case "specific-date":
-      return {
-        type: "specific",
-        operator: filter.operator,
-        values: filter.values,
-        hasTime: filter.hasTime,
-      };
-    case "relative-date":
-      return {
-        type: "relative",
-        unit: filter.unit,
-        value: filter.value,
-        offsetUnit: filter.offsetUnit ?? undefined,
-        offsetValue: filter.offsetValue ?? undefined,
-        options: filter.options,
-      };
-    case "exclude-date":
-      return {
-        type: "exclude",
-        operator: filter.operator,
-        unit: filter.unit ?? undefined,
-        values: filter.values,
-      };
-  }
-}
 
 export function getFilterDisplayName(
   dimensionFilter: DimensionFilterValue,
@@ -76,7 +43,7 @@ export function getFilterDisplayName(
       { type: "specific-date" },
       { type: "relative-date" },
       { type: "exclude-date" },
-      (filter) => getDateFilterDisplayName(toDatePickerValue(filter)),
+      (filter) => getDateFilterDisplayName(toDateFilterDisplayValue(filter)),
     )
     .with({ type: "default" }, (filter) =>
       Lib.describeFilterOperator(filter.operator).toLowerCase(),

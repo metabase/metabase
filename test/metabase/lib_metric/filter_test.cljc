@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.filter :as lib-metric.filter]
    [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
+   [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
@@ -715,6 +717,129 @@
           parts (lib-metric.filter/specific-date-filter-parts mock-definition clause)]
       (is (= :between (:operator parts)))
       (is (= ["2024-01-01" "2024-12-31"] (:values parts))))))
+
+(deftest ^:parallel filter-parts-schema-test
+  (doseq [[parts-schema producer clause]
+          [[::lib-metric.schema/string-filter-parts lib-metric.filter/string-filter-parts
+            [:contains {:case-sensitive false} [:dimension {} (:id mock-string-dim)] "bird"]]
+           [::lib-metric.schema/number-filter-parts lib-metric.filter/number-filter-parts
+            [:> {} [:dimension {} (:id mock-number-dim)] 5]]
+           [::lib-metric.schema/coordinate-filter-parts lib-metric.filter/coordinate-filter-parts
+            [:> {} [:dimension {} (:id mock-lat-dim)] 5]]
+           [::lib-metric.schema/boolean-filter-parts lib-metric.filter/boolean-filter-parts
+            [:= {} [:dimension {} (:id mock-boolean-dim)] true]]
+           [::lib-metric.schema/specific-date-filter-parts lib-metric.filter/specific-date-filter-parts
+            [:= {} [:dimension {} (:id mock-datetime-dim)] "2024-01-15"]]
+           [::lib-metric.schema/relative-date-filter-parts lib-metric.filter/relative-date-filter-parts
+            [:time-interval {} [:dimension {} (:id mock-datetime-dim)] -5 :second]]
+           [::lib-metric.schema/exclude-date-filter-parts lib-metric.filter/exclude-date-filter-parts
+            [:is-null {} [:dimension {} (:id mock-datetime-dim)]]]
+           [::lib-metric.schema/time-filter-parts lib-metric.filter/time-filter-parts
+            [:> {} [:dimension {} (:id mock-time-dim)] "09:30:00"]]
+           [::lib-metric.schema/default-filter-parts lib-metric.filter/default-filter-parts
+            [:is-null {} [:dimension {} (:id mock-datetime-dim)]]]]]
+    (testing (str parts-schema)
+      (let [parts (producer mock-definition clause)]
+        (is (some? parts))
+        (is (mr/validate parts-schema parts) (pr-str (mr/explain parts-schema parts)))
+        (is (not (mr/validate parts-schema "not filter parts")))
+        (is (not (mr/validate parts-schema (assoc parts :dimension "not a dimension"))))))))
+
+(deftest ^:parallel relative-date-filter-parts-current-test
+  (let [parts (lib-metric.filter/relative-date-filter-parts
+               mock-definition [:time-interval {} [:dimension {} (:id mock-datetime-dim)] :current :month])]
+    (is (= 0 (:value parts)))
+    (is (= {} (:options parts)))
+    (is (contains? parts :offset-unit))
+    (is (nil? (:offset-unit parts)))
+    (is (contains? parts :offset-value))
+    (is (nil? (:offset-value parts)))))
+
+(deftest ^:parallel number-filter-value-schema-test
+  (is (mr/validate ::lib-metric.schema/number-filter-value 5))
+  (is (mr/validate ::lib-metric.schema/number-filter-value 5.5))
+  (is (not (mr/validate ::lib-metric.schema/number-filter-value "5"))))
+
+#?(:clj
+   (deftest ^:parallel number-filter-parts-return-validation-test
+     (let [provider (lib-metric.metadata.provider/metric-context-metadata-provider
+                     (constantly []) (constantly [])
+                     (constantly [(assoc mock-number-dim :display-name 42)])
+                     (constantly nil) (constantly nil) (constantly nil))]
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid output"
+                             (lib-metric.filter/number-filter-parts
+                              (assoc mock-definition :metadata-provider provider)
+                              [:> {} [:dimension {} (:id mock-number-dim)] 5]))))))
+
+(deftest ^:parallel filter-parts-unsupported-values-test
+  (doseq [[reader dimension operator prefix values]
+          [[lib-metric.filter/number-filter-parts mock-number-dim := [] [1 2]]
+           [lib-metric.filter/number-filter-parts mock-number-dim :between [] [1 2]]
+           [lib-metric.filter/string-filter-parts mock-string-dim := [] ["bird" "heron"]]
+           [lib-metric.filter/string-filter-parts mock-string-dim :contains [] ["bird"]]
+           [lib-metric.filter/coordinate-filter-parts mock-lat-dim := [] [1 2]]
+           [lib-metric.filter/coordinate-filter-parts mock-lat-dim :between [] [1 2]]
+           [lib-metric.filter/coordinate-filter-parts mock-lat-dim :inside
+            [[:dimension {} (:id mock-lon-dim)]] [1 2 3 4]]
+           [lib-metric.filter/specific-date-filter-parts mock-datetime-dim := [] ["2024-01-15"]]
+           [lib-metric.filter/specific-date-filter-parts mock-datetime-dim :between []
+            ["2024-01-15" "2024-02-15"]]]]
+    (let [head (into [operator {} [:dimension {} (:id dimension)]] prefix)]
+      (testing (str operator " on " (:name dimension))
+        (is (some? (reader mock-definition (into head values))))
+        (doseq [index (range (count values))
+                unsupported [[:dimension {} (:id dimension)] [:+ {} 1 2]
+                             [:relative-datetime {} -1 :day]
+                             [:absolute-datetime {} "2024-01-15" :day]
+                             [:datetime-add {} [:relative-datetime {} -1 :day] 1 :day]]]
+          (is (nil? (reader mock-definition (into head (assoc values index unsupported)))))))))
+  (is (nil? (lib-metric.filter/number-filter-parts
+             mock-definition [:> {} [:dimension {} (:id mock-number-dim)] "bird"])))
+  (is (nil? (lib-metric.filter/string-filter-parts
+             mock-definition [:= {} [:dimension {} (:id mock-string-dim)] 5])))
+  (is (nil? (lib-metric.filter/number-filter-parts
+             mock-definition [:between {} [:dimension {} (:id mock-number-dim)] 1]))))
+
+(deftest ^:parallel relative-date-filter-parts-unsupported-values-test
+  (doseq [value [:last :next [:+ {} 1 2] nil]]
+    (is (nil? (lib-metric.filter/relative-date-filter-parts
+               mock-definition [:time-interval {} [:dimension {} (:id mock-datetime-dim)] value :day])))))
+
+(deftest ^:parallel relative-date-filter-parts-unsupported-offsets-test
+  (doseq [options [{:offset-value [:+ {} 1 2]} {:offset-unit :bird}]]
+    (is (nil? (lib-metric.filter/relative-date-filter-parts
+               mock-definition [:time-interval options [:dimension {} (:id mock-datetime-dim)] -1 :day])))))
+
+(deftest ^:parallel time-filter-parts-unsupported-values-test
+  (doseq [index [0 1]]
+    (is (nil? (lib-metric.filter/time-filter-parts
+               mock-definition
+               (into [:between {} [:dimension {} (:id mock-time-dim)]]
+                     (assoc ["09:00:00" "17:00:00"] index [:dimension {} (:id mock-time-dim)])))))))
+
+(deftest ^:parallel exclude-date-filter-parts-unsupported-values-test
+  (doseq [index [0 1]
+          value ["Mon" 1.5 nil [:+ {} 1 2]]]
+    (is (nil? (lib-metric.filter/exclude-date-filter-parts
+               mock-definition
+               (into [:!= {} [:get-day-of-week {} [:dimension {} (:id mock-datetime-dim)]]]
+                     (assoc [1 7] index value)))))))
+
+(deftest ^:parallel filter-parts-absence-values-test
+  (doseq [[reader dimension operators]
+          [[lib-metric.filter/number-filter-parts mock-number-dim [:is-null :not-null]]
+           [lib-metric.filter/string-filter-parts mock-string-dim [:is-empty :not-empty]]
+           [lib-metric.filter/boolean-filter-parts mock-boolean-dim [:is-null :not-null]]
+           [lib-metric.filter/exclude-date-filter-parts mock-datetime-dim [:is-null :not-null]]
+           [lib-metric.filter/time-filter-parts mock-time-dim [:is-null :not-null]]]
+          operator operators]
+    (is (= [] (:values (reader mock-definition [operator {} [:dimension {} (:id dimension)]]))))))
+
+(deftest ^:parallel specific-date-filter-clause-invalid-values-test
+  (doseq [value ["not-a-date" "2024-02-30" "2024-13-15"]]
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"Invalid date"
+                          (lib-metric.filter/specific-date-filter-clause
+                           {:operator := :dimension mock-datetime-dim :values [value] :has-time false})))))
 
 (deftest ^:parallel relative-date-filter-parts-simple-test
   (testing "relative-date-filter-parts extracts simple time-interval parts"

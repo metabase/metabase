@@ -16,6 +16,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.time :as time])
   (:import
    #?@(:clj
@@ -306,22 +308,29 @@
                str/join)]
     (str/replace s non-optional-block-regex second)))
 
-(defn ^:export tag-names
+(mu/defn ^:export tag-names :- [:any {:ts/array-of :string}]
   "Given the content of a text dashboard card, return a set of the unique names of template tags in the text."
-  [text]
+  [text :- [:maybe :string]]
   (let [tag-names (->> (re-seq template-tag-regex (or text ""))
                        (map second)
                        set)]
     #?(:clj  tag-names
        :cljs (clj->js tag-names))))
 
-(defn ^:export substitute-tags
+(def ^:private TagParams
+  [:schema {::mr/deliberately-open true, :description "map or JS object of tag name to parameter"} :any])
+
+(mu/defn ^:export substitute-tags :- [:maybe :string]
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately if escape-markdown is true. Specifically escape-markdown should be false when the
   output isn't being rendered directly as markdown, such as in header cards."
-  ([text tag->param]
+  ([text       :- [:maybe :string]
+    tag->param :- TagParams]
    (substitute-tags text tag->param "en" true))
-  ([text tag->param locale escape-markdown]
+  ([text            :- [:maybe :string]
+    tag->param      :- TagParams
+    locale          :- [:maybe :string]
+    escape-markdown :- [:maybe :boolean]]
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
