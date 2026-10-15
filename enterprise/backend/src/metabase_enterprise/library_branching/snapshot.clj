@@ -3,11 +3,8 @@
 
   A snapshot maps the identity of each item to the item's content. Two items are equal iff their values are equal."
   (:require
-   [clojure.string :as str]
-   [metabase-enterprise.library-branching.registry :as registry])
-  (:import
-   (java.text Normalizer Normalizer$Form)
-   (java.util Locale)))
+   [metabase-enterprise.library-branching.collation :as collation]
+   [metabase-enterprise.library-branching.registry :as registry]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,16 +27,14 @@
   {:snippet {:path [:name] :name? true}})
 
 (defn fold-name
-  "Name `s` in the form in which two names are one key: Unicode NFKD, with no combining mark, in lower case."
+  "Name `s` in the form in which two names are one key: its primary weights under utf8mb4_unicode_ci, so two names are
+  one key iff that collation takes them as equal."
   ^String [^String s]
-  ;; MySQL and MariaDB compare names with utf8mb4_unicode_ci, which ignores case and accents. The engine compares
-  ;; names in this one form on every app DB, so a snapshot that validates on one app DB validates on all. The collation
-  ;; also makes some names one key that this form keeps apart: ß and ss, ς and σ, Œ and OE, a name with trailing
-  ;; spaces and the name without them, a name with an ignorable character (U+200B) and the name without it, and any two
-  ;; supplementary characters, such as two emoji.
-  (let [s (Normalizer/normalize s Normalizer$Form/NFKD)
-        s ^String (str/replace s #"\p{M}" "")]
-    (.toLowerCase s Locale/ROOT)))
+  ;; MySQL and MariaDB app DBs keep snippet names unique under utf8mb4_unicode_ci: case, accents, expansions such as ß
+  ;; and ss, trailing spaces and ignorable characters do not count, and all supplementary characters are equal.
+  ;; Postgres and H2 compare names exactly, so this form only refuses more there. The engine uses this one form on every
+  ;; app DB, so a snapshot that validates on one app DB validates on all.
+  (collation/primary-key s))
 
 (defn unique-key
   "The unique key of `item` by `unique-keys` (in the form of [[unique-keys]]), in the form in which keys compare; nil
