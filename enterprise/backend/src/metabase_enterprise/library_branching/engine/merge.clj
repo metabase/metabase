@@ -25,10 +25,10 @@
   "The items that structural finding `finding` is about."
   [{:keys [rule id place ids ref]}]
   (case rule
-    (:place-inside :kind-fits :namespace) [id place]
-    (:refs-closed :ref-kind)              [id (second ref)]
-    (:acyclic :unique-key)                (sort snapshot/compare-identities ids)
-    :root                                 [id]))
+    (:place-inside :kind-fits :namespace)   [id place]
+    (:refs-closed :ref-kind)                [id (second ref)]
+    (:acyclic :unique-key :nested-identity) (sort snapshot/compare-identities ids)
+    (:root :area-root)                      [id]))
 
 (defn- pair
   "`[i j]`: two different items of `ids`, `i` changed in `o` and `j` changed in `t` against `b`; nil when there are

@@ -22,10 +22,16 @@
   [target]
   (and (vector? target) (= :env (first target))))
 
+(defn- area-of
+  "The area root (of `snapshot/area-roots`) that `place` names, when no item of snapshot `s` has the identity `place`."
+  [s place]
+  (when-not (contains? s place)
+    (get snapshot/area-roots place)))
+
 (defn places-inside?
-  "True iff the place of every item of snapshot `s` is nil or an identity of `s`."
+  "True iff the place of every item of snapshot `s` is nil, an identity of `s`, or an area root."
   [s]
-  (every? (fn [{:keys [place]}] (or (nil? place) (contains? s place))) (vals s)))
+  (every? (fn [{:keys [place]}] (or (nil? place) (contains? s place) (some? (area-of s place)))) (vals s)))
 
 (defn- on-cycle?
   [s id]
@@ -43,13 +49,16 @@
 
 (defn kinds-fit?
   "True iff, for every item of snapshot `s` whose place is in `s`, `may-contain` of the container's kind holds the
-  item's kind. `may-contain` defaults to [[snapshot/may-contain]]."
+  item's kind, and for every item whose place is an area root, the area's `:kinds` hold it. `may-contain` defaults to
+  [[snapshot/may-contain]]."
   ([s] (kinds-fit? s snapshot/may-contain))
   ([s may-contain]
    (every? (fn [{:keys [kind place]}]
              (if-let [container (get s place)]
                (contains? (get may-contain (:kind container) #{}) kind)
-               true))
+               (if-let [area (area-of s place)]
+                 (contains? (:kinds area) kind)
+                 true)))
            (vals s))))
 
 (defn refs-closed?
@@ -70,14 +79,22 @@
 
 (defn namespaces-fit?
   "True iff every collection of snapshot `s` whose container is a collection of `s` has the `:namespace` attribute of
-  its container: both absent, or equal."
+  its container (both absent, or equal), and every collection at an area root has the area's `:namespace`."
   [s]
   (every? (fn [{:keys [kind place attrs]}]
-            (let [container (get s place)]
+            (let [container (get s place)
+                  area      (area-of s place)]
               (or (not= :collection kind)
-                  (not= :collection (:kind container))
-                  (= (:namespace attrs) (:namespace (:attrs container))))))
+                  (if area
+                    (= (:namespace attrs) (:namespace area))
+                    (or (not= :collection (:kind container))
+                        (= (:namespace attrs) (:namespace (:attrs container))))))))
           (vals s)))
+
+(defn area-ids-free?
+  "True iff no item of snapshot `s` has the identity of an area root."
+  [s]
+  (not-any? (partial contains? snapshot/area-roots) (keys s)))
 
 (defn ref-kinds-fit?
   "True iff, for every item of snapshot `s` and each of its references `[role target]` for which `ref-kinds`
@@ -96,14 +113,23 @@
                      refs))
            (vals s))))
 
+(defn nested-ids-unique?
+  "True iff no two items of snapshot `s` of one kind hold a nested entry with one identity
+  ([[snapshot/nested-identities]])."
+  [s]
+  (let [ks (mapcat (fn [{:keys [kind] :as item}]
+                     (map (partial vector kind) (distinct (snapshot/nested-identities snapshot/nested-ids item))))
+                   (vals s))]
+    (= (count ks) (count (set ks)))))
+
 (defn well-formed?
   "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
-  [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the two rules that the
-  model does not have: [[namespaces-fit?]] and [[ref-kinds-fit?]]."
+  [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the rules that the
+  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]], [[area-ids-free?]] and [[nested-ids-unique?]]."
   ([s] (well-formed? s snapshot/may-contain))
   ([s may-contain]
    (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s)
-        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s))))
+        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (area-ids-free? s) (nested-ids-unique? s))))
 
 ;;; --------------------------------------------- Identities and values ----------------------------------------------
 
@@ -255,7 +281,8 @@
   (case tag
     :item     (nth ids (mod x (count ids)))
     :env      [:env x]
-    :dangling (dangling-id prefix (count ids) x)))
+    :dangling (dangling-id prefix (count ids) x)
+    :area     (let [roots (vec (sort (keys snapshot/area-roots)))] (nth roots (mod x (count roots))))))
 
 (defn- assemble
   "The snapshot of `choices`, given the kind and the place (an `[:item k]` or `[:dangling k]` choice, or nil) of each
@@ -339,6 +366,11 @@
   (gen/one-of [(gen/tuple (gen/return :item) gen/nat)
                (gen/tuple (gen/return :env) env-key-gen)]))
 
+(def ^:private place-choice-gen
+  ;; Mostly a small choice: the root level or one of the newest containers, so chains of containment are long also
+  ;; when a container can hold many kinds. A larger choice saturates at the oldest container.
+  (gen/frequency [[2 (gen/choose 0 3)] [1 gen/nat]]))
+
 ;;; -------------------------------------------------- Generators ----------------------------------------------------
 
 (defn well-formed-snapshot-gen
@@ -364,12 +396,13 @@
      (gen/fmap (fn [choices]
                  (let [[item-kinds item-places] (well-formed-structure opts choices)]
                    (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
-               (choices-gen opts gen/nat item-target-gen)))))
+               (choices-gen opts place-choice-gen item-target-gen)))))
 
 (defn arbitrary-snapshot-gen
   "Generates snapshots with no structural guarantee: a place or a reference can name an identity that is not in the
-  snapshot, places can form cycles, and any kind can be in any container. A snapshot has at most min(size,
-  `:max-items`) items. With the default options, every snapshot validates against `::snapshot/snapshot`.
+  snapshot, a place can name an area root, places can form cycles, and any kind can be in any container. A snapshot
+  has at most min(size, `:max-items`) items. With the default options, every snapshot validates against
+  `::snapshot/snapshot`.
 
   Options: `:kinds`, `:attrs` and `:max-items`, as for [[well-formed-snapshot-gen]]."
   ([] (arbitrary-snapshot-gen {}))
@@ -381,7 +414,8 @@
                                     [1 (gen/tuple (gen/return :dangling) gen/nat)]])
          place-gen  (gen/frequency [[1 (gen/return nil)]
                                     [4 (gen/tuple (gen/return :item) gen/nat)]
-                                    [1 (gen/tuple (gen/return :dangling) gen/nat)]])]
+                                    [1 (gen/tuple (gen/return :dangling) gen/nat)]
+                                    [1 (gen/tuple (gen/return :area) gen/nat)]])]
      (gen/fmap (fn [choices]
                  (assemble choices
                            (mapv #(nth kinds (mod (:kind %) (count kinds))) choices)

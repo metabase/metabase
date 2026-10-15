@@ -4,12 +4,14 @@
 
   A directory kind (a collection) is a directory with its own file `_<word>.yaml`; the items it contains are in that
   directory. An item of another kind is the file `<name>.<word>.yaml`; the items it contains are in the directory
-  `<name>.<word>/` next to it. A root-level item sits where its kind's [[home]] says. `<name>` is the [[slug]] of the
-  item's name. Siblings with one entry name (one slug, and one word for a file kind): the least identity keeps the
-  plain name; each other one gets `~<identity>` after the slug."
+  `<name>.<word>/` next to it. A root-level item, and an item whose place is an area root (`snapshot/area-roots`),
+  sits where its kind's [[home]] says. `<name>` is the [[slug]] of the item's name. Siblings with one entry name (one
+  slug, and one word for a file kind): the least identity keeps the plain name; each other one gets `~<identity>` after
+  the slug."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.library-branching.format.codec :as codec])
+   [metabase-enterprise.library-branching.format.codec :as codec]
+   [metabase-enterprise.library-branching.snapshot :as snapshot])
   (:import
    (java.nio.charset StandardCharsets)
    (java.text Normalizer Normalizer$Form)
@@ -24,9 +26,10 @@
   (directory? [codec]
     "True iff an item of this kind is a directory that holds its own file `_<word>.yaml` and the items it contains.")
   (home [codec item]
-    "Where root-level item `item` sits: `{:dir segments}`, and optionally `:segment`, a fixed name in place of the slug
-    of the item's name. An item at the repository root (`:dir []`) has a `:segment`. A `:dir` segment is lower-case
-    letters, digits, _ and -; a `:segment` is the same and does not start with _."))
+    "Where `item` sits when it is at the root level or at an area root: `{:dir segments}`, and optionally `:segment`,
+    a fixed name in place of the slug of the item's name. An item at the repository root (`:dir []`) has a
+    `:segment`. A `:dir` segment is lower-case letters, digits, _ and -; a `:segment` is the same and does not start
+    with _."))
 
 ;;; ------------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -104,6 +107,13 @@
                        {:kind (codec/kind codec) :home h}))
     h))
 
+(defn- at-home?
+  "True iff an item of snapshot `s` with the place `place` sits at the home of its kind: `place` is nil, or names an
+  area root and no item of `s`."
+  [s place]
+  (or (nil? place)
+      (and (not (contains? s place)) (contains? snapshot/area-roots place))))
+
 (defn- depths
   "`{id n}`: the number of directory segments above the entry of each item of snapshot `s`. Throws when a place is
   not in `s` or when places form a cycle."
@@ -117,7 +127,7 @@
                           (reverse (partition 2 1 chain)))
                   (let [{:keys [place] :as item} (get s at)]
                     (cond
-                      (nil? place)
+                      (at-home? s place)
                       (recur chain (assoc acc at (count (:dir (home-of item)))))
 
                       (not (contains? s place))
@@ -132,10 +142,10 @@
           (keys s)))
 
 (defn parent-dir
-  "The directory segments that hold the entry of `item`: its container's own directory, or its home at the root
-  level. `dirs` maps each container to its own directory."
-  [dirs home-of {:keys [place] :as item}]
-  (if place (get dirs place) (:dir (home-of item))))
+  "The directory segments that hold the entry of `item` of snapshot `s`: its container's own directory, or its home
+  at the root level or at an area root. `dirs` maps each container to its own directory."
+  [s dirs home-of {:keys [place] :as item}]
+  (if (at-home? s place) (:dir (home-of item)) (get dirs place)))
 
 (defn entries
   "`{id entry}`: the entry name of each item of `items` in its directory. An item is a map with `:id`, `:dir`,
@@ -179,7 +189,8 @@
 (defn layout
   "`{identity path}` of snapshot `s`, with the codecs `codecs` (each a `codec/Codec` and a [[Layout]]). Paths are
   relative, separated by /, unique, and end in .yaml; no path is a directory of another. Throws when a kind of `s` has
-  no codec, when a place is not in `s`, when places form a cycle, or when a codec gives an unsafe word or home.
+  no codec, when a place is neither in `s` nor an area root, when places form a cycle, or when a codec gives an unsafe
+  word or home.
 
   `taken` is a set of paths of files that sync does not write (the foreign files of a tree). An item whose file or
   own directory would be at one of them, or whose file would be at one of their directories, gets a suffix
@@ -204,8 +215,8 @@
                                  c    (codec-of kind)
                                  dir? (boolean (directory? c))
                                  w    (word c)
-                                 base (or (when-not place (:segment (home-of item))) (slug name))]]
-                       {:id id :name name :dir (parent-dir dirs home-of item) :base base :word w :directory? dir?
+                                 base (or (when (at-home? s place) (:segment (home-of item))) (slug name))]]
+                       {:id id :name name :dir (parent-dir s dirs home-of item) :base base :word w :directory? dir?
                         :entry (if dir? base (str base "." w))})
                named (entries items (free-entry? taken))]
            (reduce (fn [acc {:keys [id dir word directory?]}]

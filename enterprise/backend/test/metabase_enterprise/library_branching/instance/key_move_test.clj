@@ -22,7 +22,7 @@
 
 (defn- snippet
   [item-name]
-  {:kind :snippet :name item-name :place nil :refs #{} :attrs {:content "1 = 1"}})
+  {:kind :snippet :name item-name :place "snippetssnippetssnipp" :refs #{} :attrs {:content "1 = 1"}})
 
 (defn- apply-moves!
   "Writes a snippet named `name` for each `[id name]` of `l`, then plans the names `m` (`{id name}`, for those snippets

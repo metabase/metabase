@@ -621,6 +621,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - remote-sync-create-branch
 - remote-sync-export
 - remote-sync-import
+- remote-sync-merge-branch
 - remote-sync-settings-update
 - remote-sync-stash
 - security-advisory-acknowledge

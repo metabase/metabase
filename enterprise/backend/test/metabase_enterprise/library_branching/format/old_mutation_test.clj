@@ -11,7 +11,9 @@
    [metabase-enterprise.library-branching.format.old.collection :as old.collection]
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
+   [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
    [metabase-enterprise.library-branching.format.old.table-item :as old.table-item]
+   [metabase-enterprise.library-branching.format.old.timeline :as old.timeline]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.test.fixtures :as fixtures]))
 
@@ -122,11 +124,36 @@
     :target `old.published-table/assemble
     :edits  [[:replace '(get table-names table-key) nil]]
     :tests  [#'old-test/display-names-test]}
+   {:name   :namespace-collection-unplaced
+    :doc    "A collection of a namespace with no parent is at the root level, not at the root of its area."
+    :target `old.collection/decode
+    :edits  [[:replace '(namespace-root (:namespace doc)) nil]]
+    :tests  [#'old-test/top-level-collections-of-areas-test]}
+   {:name   :snippet-unplaced
+    :doc    "A snippet with no collection is at the root level, not at the root of the Snippets area."
+    :target `old.snippet/decode
+    :edits  [[:replace '(snapshot/area-root :snippets) nil]]
+    :tests  [#'old-test/snippets-test]}
    {:name   :table-item-unplaced
     :doc    "A segment or a measure is at the root level: its place is not the source table of its definition."
     :target `old.table-item/decode-as
     :edits  [[:replace '(table-item/source-table (:definition doc)) nil]]
     :tests  [#'old-test/table-items-test]}
+   {:name   :archived-timeline-kept
+    :doc    "An archived timeline is in the snapshot."
+    :target `old.timeline/decode
+    :edits  [[:replace '(common/archived? doc) false]]
+    :tests  [#'old-test/timelines-test]}
+   {:name   :archived-events-kept
+    :doc    "An event in the trash is content of its timeline, so a pull brings it back out of the trash."
+    :target `old.timeline/decode
+    :edits  [[:replace '(remove common/archived?) '(map identity)]]
+    :tests  [#'old-test/timelines-test #'old-test/remote-sync-files-decode-to-the-golden-items-test]}
+   {:name   :event-identity-dropped
+    :doc    "An event has no identity, so a pull cannot match it to its row."
+    :target `old.timeline/event
+    :edits  [[:replace '(assoc (select-keys e event-keys) :id (:entity_id e)) '(select-keys e event-keys)]]
+    :tests  [#'old-test/timelines-test]}
    {:name   :old-format-unread
     :doc    "`claims/decode` does not read the old format, so production cannot pull main before the switch."
     :target `claims/decode

@@ -6,6 +6,7 @@
   difference of the content of the base and the synced snapshot of the instance; the remote changes are the difference
   of the content of the base and of the head of the branch."
   (:require
+   [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.engine.diff :as diff]
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.format.claims :as claims]
@@ -207,24 +208,27 @@
   rule). `lc` is the change set of [[local-changes]]; `rc` the remote changes, nil when the head has
   findings, does not exist, or the content of the base is not known. `ts` holds the published tables that scope
   leaves out because another published table owns their key, as [[local-changes]] gives them. Each commit decodes
-  with `pull/decode-opts` of `inst`. `opts`: `:codecs`."
+  with `pull/decode-opts` of `inst`. `opts`: `:codecs`, `:consumption?`: `inst` is a consumption instance. Then the
+  status also has `:drift`, the identities of `deploy/drift`: the changes on the instance that stop a deploy of the
+  head, in the order of the identities."
   [inst store branch opts]
   (let [opts     (with-instance-names opts inst)
         codecs   (codecs-of opts)
         h        (store/head store branch)
-        {b :base local :changes shadowed :shadowed-tables} (local-changes inst (fn [f] (f store)) branch opts)
+        {b :base l :local local :changes shadowed :shadowed-tables} (local-changes inst (fn [f] (f store)) branch opts)
         checked  (when h (pull/check-commit store codecs h (select-keys opts [:table-names])))
         findings (:findings checked)
         remote   (when (:snapshot checked)
                    (:changes (remote-changes store b h (assoc opts :base-digests (base-digests-of inst b)))))]
-    {:base           b
-     :head           h
-     :branch-missing (nil? h)
-     :base-lost      (boolean (and b (not (pull/held? store b branch h))))
-     :head-findings  findings
-     :local           local
-     :remote          remote
-     :shadowed-tables shadowed}))
+    (cond-> {:base           b
+             :head           h
+             :branch-missing (nil? h)
+             :base-lost      (boolean (and b (not (pull/held? store b branch h))))
+             :head-findings  findings
+             :local           local
+             :remote          remote
+             :shadowed-tables shadowed}
+      (:consumption? opts) (assoc :drift (vec (deploy/drift inst store codecs b l (:snapshot checked)))))))
 
 ;;; --------------------------------------------------- Push preview --------------------------------------------------
 

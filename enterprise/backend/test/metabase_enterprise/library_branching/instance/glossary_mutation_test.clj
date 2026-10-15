@@ -21,6 +21,11 @@
     :target `library-branching.db/lock-glossary-term
     :edits  [[:remove :for] [:remove '[:update]]]
     :tests  [#'lock-test/current-locks-the-row-test]}
+   {:name   :unplaced
+    :doc    "A read gives a glossary term no place, so the term is not at the root of the Glossary area."
+    :target `kinds.glossary/term-item
+    :edits  [[:replace '(:fixed-place format.glossary/spec) nil]]
+    :tests  [#'glossary-test/glossary-content-test]}
    {:name   :definition-not-written
     :doc    "A write of a changed definition leaves the old one, so a pull of a new definition shows as a conflict."
     :target `kinds.glossary/write-glossary-term!

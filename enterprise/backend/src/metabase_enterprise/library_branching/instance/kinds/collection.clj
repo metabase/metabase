@@ -31,12 +31,15 @@
        (content/attrs format.collection/spec)))
 
 (defn- portable-content
-  [{:keys [location] :as row}]
-  {:place (serdes/*export-fk* (parent-id location) :model/Collection)
+  [{:keys [location namespace] :as row}]
+  {:place (if-let [parent (parent-id location)]
+            (serdes/*export-fk* parent :model/Collection)
+            (some-> namespace name keyword snapshot/area-root))
    :attrs (attrs row)})
 
 (defn read-collections
-  "`{entity-id item}` of the collections of `entity-ids`."
+  "`{entity-id item}` of the collections of `entity-ids`. The place of a collection of a namespace at the root level
+  is the root of the namespace's area."
   [entity-ids]
   (let [rows     (content/in-chunks library-branching.db/collections-by-entity-id (vec entity-ids))
         contents (portable/export-batch portable-content rows)]
@@ -47,10 +50,9 @@
                contents))))
 
 (defn- root?
-  "True iff an item with the attributes `attrs` may be at the root level: a fixed root of scope."
-  [{:keys [type namespace]}]
-  (or (contains? (:collection-types scope/roots) type)
-      (contains? (:namespaces scope/roots) (some-> namespace keyword))))
+  "True iff a collection with the attributes `attrs` may be at the root level: a fixed root of scope by its type."
+  [{:keys [type]}]
+  (contains? (:collection-types scope/roots) type))
 
 (defn current-collection
   "The state of collection `id` (`instance/current`), after a lock on its row."
@@ -67,12 +69,16 @@
 
 (defn write-collection!
   "Makes the content of collection `id` equal to `item`, by the contract of `instance/write!`. A move also moves the
-  subtree."
+  subtree. A collection at an area root is at the root level of the area's namespace, and has that namespace."
   [id {:keys [name place attrs] :as item}]
   (content/check-item! :collection id item)
   (let [row      (library-branching.db/lock-collection id)
         _        (when row (tree/check-in-tree! id (tree/collection-in-tree? row)))
-        parent   (tree/place-collection id place)
+        area     (tree/place-area :collection id place)
+        _        (when (and area (not= (:namespace area) (:namespace attrs)))
+                   (instance/refuse! :place id (str "A collection at the root of the " (:name area)
+                                                    " area has the namespace " (:namespace area) ".")))
+        parent   (when-not area (tree/place-collection id place))
         _        (when (and (nil? place) (not (root? attrs)))
                    (instance/refuse! :place id "Only a fixed root of the Library is at the root level."))
         location (tree/children-location parent)]

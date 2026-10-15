@@ -128,6 +128,20 @@
                          (collection-yaml "V57ChildCollXXXXXXXXX" "V57 Child"
                                           :parent-id "V57ParentCollXXXXXXXX" :type "remote-synced")])))))
 
+(deftest top-level-collections-of-areas-test
+  (testing "a collection of a namespace with no parent is at the root of the namespace's area"
+    (doseq [[ns-name area-root] [["snippets" "snippetssnippetssnipp"] ["transforms" "transformstransformst"]
+                                 ["data-actions" "dataactionsdataaction"] ["data-apps" "dataappsdataappsdatap"]]]
+      (testing ns-name
+        (is (= {"AreaCollectionXXXXXXX" (item :collection "Folder" area-root {:namespace ns-name})}
+               (snapshot-of [(collection-yaml "AreaCollectionXXXXXXX" "Folder" :namespace ns-name)]))))))
+  (testing "a collection of a namespace with a parent stays in its parent"
+    (is (= {"AreaParentCollXXXXXXX" (item :collection "Parent" "snippetssnippetssnipp" {:namespace "snippets"})
+            "AreaChildCollXXXXXXXX" (item :collection "Child" "AreaParentCollXXXXXXX" {:namespace "snippets"})}
+           (snapshot-of [(collection-yaml "AreaParentCollXXXXXXX" "Parent" :namespace "snippets")
+                         (collection-yaml "AreaChildCollXXXXXXXX" "Child" :namespace "snippets"
+                                          :parent-id "AreaParentCollXXXXXXX")])))))
+
 (deftest old-format-paths-test
   (testing "a tree at old paths (the entity id in the file name) decodes: the identity and the place are in the file"
     (let [eid  "OldFmtCollXXXXXXXXXXX"
@@ -250,7 +264,7 @@
 
 (deftest snippets-test
   (testing "a snippet: no template tags is the default; a snippet tag refers to its snippet"
-    (is (= {"BaseFilterSnippetXXXX" (item :snippet "Base filter" nil {:content "x IS NULL"})
+    (is (= {"BaseFilterSnippetXXXX" (item :snippet "Base filter" "snippetssnippetssnipp" {:content "x IS NULL"})
             "ActiveSnippetXXXXXXXX"
             (item :snippet "Active" "SnippetCollectionXXXX"
                   {:content       "{{snippet: Base filter}}"
@@ -290,11 +304,13 @@
   (testing "a glossary file keyed by its term has an identity that is a function of the term: the same on every
            instance and in every pull"
     (let [s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])]
-      (is (= {(old.glossary/term-identity "Churn") (item :glossary-term "Churn" nil {:definition "Customers who cancel."})}
+      (is (= {(old.glossary/term-identity "Churn") (item :glossary-term "Churn" "glossaryglossarygloss"
+                                                            {:definition "Customers who cancel."})}
              s))
       (is (= s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])))))
   (testing "a file with an entity id has that identity"
-    (is (= {"ChurnTermEntityIdXXXX" (item :glossary-term "Churn" nil {:definition "Customers who cancel."})}
+    (is (= {"ChurnTermEntityIdXXXX" (item :glossary-term "Churn" "glossaryglossarygloss"
+                                          {:definition "Customers who cancel."})}
            (snapshot-of [(glossary-yaml "ChurnTermEntityIdXXXX" "Churn" "Customers who cancel.")])))))
 
 (deftest nano-id-shaped-term-test
@@ -302,7 +318,8 @@
            one with an entity id"
     (let [term "AbCdEfGhIjKlMnOpQrStU"]
       (is (= 21 (count term)))
-      (is (= {(old.glossary/term-identity term) (item :glossary-term term nil {:definition "Looks like an id."})}
+      (is (= {(old.glossary/term-identity term) (item :glossary-term term "glossaryglossarygloss"
+                                                      {:definition "Looks like an id."})}
              (snapshot-of [(legacy-glossary-yaml term "Looks like an id.")])))
       (is (not= term (old.glossary/term-identity term))))))
 
@@ -511,6 +528,37 @@
                    ["CountMeasureXXXXXXXXX" :place]))))
   (testing "an archived segment is not in the snapshot"
     (is (= {} (snapshot-of [(str/replace segment-yaml "archived: false" "archived: true")])))))
+
+;;; ------------------------------------------------- Timelines --------------------------------------------------------
+
+(def ^:private timeline-yaml
+  (str "name: Releases\nentity_id: ReleasesTimelineXXXXX\ncollection_id: DashboardsCollXXXXXXX\n"
+       "description: null\nicon: star\ndefault: false\narchived: false\n"
+       "created_at: '2024-08-28T09:46:18.671622Z'\ncreator_id: rasta@metabase.com\n"
+       "events:\n"
+       "- {entity_id: LaunchEventXXXXXXXXXX, name: Launch, description: null, timestamp: '2024-03-01T11:00:00+01:00',"
+       " timezone: Europe/Paris, time_matters: true, icon: cake, archived: false,"
+       " created_at: '2024-08-28T09:46:18.671622Z', creator_id: rasta@metabase.com}\n"
+       "- {entity_id: GoneEventXXXXXXXXXXXX, name: Gone, timestamp: '2024-01-01T00:00:00Z', timezone: UTC,"
+       " time_matters: false, icon: star, archived: true}\n"
+       "- {entity_id: OutageEventXXXXXXXXXX, name: Outage, timestamp: '2024-02-01T00:00:00Z', timezone: UTC,"
+       " time_matters: false, icon: star, archived: false}\n"
+       "serdes/meta:\n- model: Timeline\n"))
+
+(deftest timelines-test
+  (testing "a timeline file holds its events: an event in the trash is not content; the others are in the order of
+           their times, with the times in UTC and no key at its default"
+    (is (= {"ReleasesTimelineXXXXX"
+            (item :timeline "Releases" "DashboardsCollXXXXXXX"
+                  {:events [{:id "OutageEventXXXXXXXXXX" :name "Outage" :timestamp "2024-02-01T00:00:00Z" :timezone "UTC"}
+                            {:id "LaunchEventXXXXXXXXXX" :name "Launch" :timestamp "2024-03-01T10:00:00Z"
+                             :timezone "Europe/Paris" :time_matters true :icon "cake"}]})}
+           (snapshot-of [timeline-yaml]))))
+  (testing "a timeline with no events key has no events"
+    (is (= {} (get-in (snapshot-of [(str/replace timeline-yaml #"(?s)events:.*serdes" "serdes")])
+                      ["ReleasesTimelineXXXXX" :attrs]))))
+  (testing "an archived timeline is not in the snapshot"
+    (is (= {} (snapshot-of [(str/replace timeline-yaml "archived: false\ncreated_at" "archived: true\ncreated_at")])))))
 
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 

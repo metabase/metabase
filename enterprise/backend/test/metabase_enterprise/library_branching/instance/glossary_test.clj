@@ -29,7 +29,7 @@
 (defn- term-item
   "The content of a glossary term."
   [term definition]
-  {:kind :glossary-term :name term :place nil :refs #{} :attrs {:definition definition}})
+  {:kind :glossary-term :name term :place "glossaryglossarygloss" :refs #{} :attrs {:definition definition}})
 
 (defn- write! [id item] (instance/write! (store) id item))
 
@@ -64,7 +64,8 @@
 ;;; ---------------------------------------------------- Content ---------------------------------------------------
 
 (deftest glossary-content-test
-  (testing "a glossary term: its term as the name, no place, no references, and its definition"
+  (testing "a glossary term: its term as the name, the Glossary area root as the place, no references, and its
+           definition"
     (t2/with-transaction [_ nil {:rollback-only true}]
       (let [row (insert-term! "lb churn" "The share of customers who cancel.")]
         (is (= (term-item "lb churn" "The share of customers who cancel.")
@@ -174,7 +175,9 @@
       (let [item (term-item "lb refused" "Some text.")]
         (doseq [[label bad] [["another kind" (assoc item :kind :snippet)]
                              ["no definition" (assoc item :attrs {})]
-                             ["a place" (assoc item :place "lbNoSuchCollection001")]
+                             ["another place" (assoc item :place "lbNoSuchCollection001")]
+                             ["no place" (assoc item :place nil)]
+                             ["another area root" (assoc item :place "snippetssnippetssnipp")]
                              ["a reference" (assoc item :refs #{[:card "IW8kbqZVaMxdGtCM2F4U6"]})]
                              ["an instance-local attribute" (assoc-in item [:attrs :creator_id] 1)]
                              ["a term of 256 characters" (assoc item :name (apply str (repeat 256 "x")))]]]

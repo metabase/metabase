@@ -23,7 +23,8 @@
                    :min                      {:type "number" :name "min" :id "8c0d2f0e-0a8b-4b55-9b8f-62e4d1c3a003"}}})
 
 (def ^:private item
-  {:kind :snippet :name "Filter" :place nil :refs (kinds/refs :snippet snippet-id attrs) :attrs attrs})
+  {:kind  :snippet :name "Filter" :place "snippetssnippetssnipp" :refs (kinds/refs :snippet snippet-id attrs)
+   :attrs attrs})
 
 (deftest template-tag-ids-round-trip-test
   ;; The remote-sync scenario of template tag ids that survive an export and an import: a changed tag id would show
@@ -42,7 +43,7 @@
     (is (= #{} (kinds/refs :snippet snippet-id {:content "x"})))))
 
 (deftest home-test
-  (testing "a snippet at the root of the snippets namespace is in snippets/"
+  (testing "a snippet at the root of the Snippets area is in snippets/"
     (is (= {snippet-id "snippets/filter.snippet.yaml"} (layout/layout kinds/codecs {snippet-id item})))))
 
 (def ^:private mutations

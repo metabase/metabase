@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [diehard.core :as dh]
+   [metabase-enterprise.library-branching.gates :as library-branching.gates]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -18,7 +19,9 @@
 
 (defn- auto-import!
   []
-  (when (and (settings/remote-sync-enabled)
+  ;; While library branching is on, its scheduled deploy deploys the branch.
+  (when (and (not (library-branching.gates/governs?))
+             (settings/remote-sync-enabled)
              (= :read-only (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
     (let [branch (settings/remote-sync-branch)

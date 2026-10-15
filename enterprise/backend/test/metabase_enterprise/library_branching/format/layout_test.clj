@@ -313,7 +313,7 @@
    {:name   :place-ignored
     :doc    "Every item sits at its home, as if it were at the root level: containment no longer shows in the paths."
     :target `layout/parent-dir
-    :edits  [[:replace '(if place (get dirs place) (:dir (home-of item))) '(:dir (home-of item))]]}])
+    :edits  [[:replace '(if (at-home? s place) (:dir (home-of item)) (get dirs place)) '(:dir (home-of item))]]}])
 
 (deftest layout-mutations-test
   (mut/check mutations {:tests [#'example-layout-test #'slug-test #'unique-paths-test #'git-safe-paths-test

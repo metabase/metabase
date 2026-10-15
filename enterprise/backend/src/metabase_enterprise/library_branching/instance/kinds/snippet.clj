@@ -30,11 +30,14 @@
 
 (defn- portable-content
   [snippet]
-  {:place (serdes/*export-fk* (:collection_id snippet) :model/Collection)
+  {:place (if-let [collection-id (:collection_id snippet)]
+            (serdes/*export-fk* collection-id :model/Collection)
+            (snapshot/area-root :snippets))
    :attrs (attrs snippet)})
 
 (defn read-snippets
-  "`{entity-id item}` of the snippets of `entity-ids`."
+  "`{entity-id item}` of the snippets of `entity-ids`. The place of a snippet in no collection is the root of the
+  Snippets area."
   [entity-ids]
   (let [snippets (content/in-chunks library-branching.db/snippets-by-entity-id (vec entity-ids))
         contents (portable/export-batch portable-content snippets)]
@@ -82,12 +85,17 @@
 
 (defn write-snippet!
   "Makes the content of snippet `id` equal to `item`, by the contract of `instance/write!`. Metabase computes the
-  template tags of a snippet from its content on each save, so the content and the tags are written together."
+  template tags of a snippet from its content on each save, so the content and the tags are written together. A
+  snippet at the root of the Snippets area is in no collection."
   [id {:keys [name place attrs] :as item}]
   (content/check-item! :snippet id item)
   (let [row    (library-branching.db/lock-snippet id)
+        _      (when (nil? place)
+                 (instance/refuse! :place id
+                                   "A snippet is in a snippet collection or at the root of the Snippets area."))
         ;; Every snippet is in the snippets namespace, a root namespace: a snippet row is always in the Library tree.
-        parent (tree/place-collection id place)]
+        parent (when-not (tree/place-area :snippet id place)
+                 (tree/place-collection id place))]
     (if-not row
       (library-branching.db/insert-snippet!
        (merge {:entity_id     id

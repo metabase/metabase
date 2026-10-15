@@ -425,6 +425,43 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
+(def ^:private timeline-icons
+  "The icons of Metabase other than the default."
+  ["cake" "mail" "mail_at" "warning" "bell" "cloud" "info" "note" "event"])
+
+(def instant-gen
+  "Generates the canonical text of an instant from 1970 to 2100: whole seconds, or with milliseconds."
+  (gen/fmap (fn [[s ms]] (str (.plusMillis (java.time.Instant/ofEpochSecond s) ms)))
+            (gen/tuple (gen/choose 0 4102444800) (gen/elements [0 500 1]))))
+
+(def ^:private event-gen
+  (attrs-of {:name         [true non-empty-text-gen]
+             :description  [false text-gen]
+             :timestamp    [true instant-gen]
+             :timezone     [true (gen/elements ["UTC" "Europe/Paris" "America/New_York"])]
+             :time_matters [false (gen/return true)]
+             :icon         [false (gen/elements timeline-icons)]}))
+
+(def events-gen
+  "Generates the events of a timeline: identities with one random prefix, so two timelines have none in common, in the
+  order of their times, then of their identities. Two events can have one time."
+  (gen/fmap (fn [[prefix events]]
+              (->> events
+                   (map-indexed (fn [i e] (assoc e :id (str (subs prefix 0 16) (format "%05d" i)))))
+                   (sort-by (fn [{:keys [timestamp id]}] [(java.time.Instant/parse timestamp) id]))
+                   vec))
+            (gen/tuple lb.tu/entity-id-gen
+                       (gen/vector (gen/frequency [[3 event-gen]
+                                                   [1 (gen/fmap #(assoc % :timestamp "2024-03-01T10:00:00Z") event-gen)]])
+                                   1 3))))
+
+(def timeline-attrs-gen
+  "Generates the `:attrs` of a timeline."
+  (attrs-of {:description [false text-gen]
+             :icon        [false (gen/elements timeline-icons)]
+             :default     [false (gen/return true)]
+             :events      [false events-gen]}))
+
 ;;; ---------------------------------------------------- Dashboards ---------------------------------------------------
 
 (def ^:private nested-id-prefix-gen
@@ -513,7 +550,8 @@
    :published-table published-table-attrs-gen
    :question        question-attrs-gen
    :segment         segment-attrs-gen
-   :snippet         snippet-attrs-gen})
+   :snippet         snippet-attrs-gen
+   :timeline        timeline-attrs-gen})
 
 (def table-item-kinds
   "The kinds whose items live on a published table."
@@ -539,14 +577,32 @@
                                                                (assoc-in [:stages 0 :source-table] place)))
                      item))))
 
+(def ^:private area-of-kind
+  "The area of the top-level items of each kind that is in an area by its kind alone."
+  {:glossary-term :glossary
+   :snippet       :snippets})
+
+(defn in-areas
+  "Snapshot `s` in which each item at the root level that belongs to an area has the area root as its place
+  (`snapshot/area-root`): a glossary term, a snippet, and a collection of a namespace. The Library collection, and a
+  collection of no namespace, stay at the root level."
+  [s]
+  (update-vals s (fn [{:keys [kind place attrs] :as item}]
+                   (if-some [area (when (nil? place)
+                                    (or (area-of-kind kind)
+                                        (when (= :collection kind) (some-> (:namespace attrs) keyword))))]
+                     (assoc item :place (snapshot/area-root area))
+                     item))))
+
 (def complete
-  "[[with-refs]] of [[on-their-tables]]."
-  (comp with-refs on-their-tables))
+  "[[with-refs]] of [[on-their-tables]] of [[in-areas]]."
+  (comp with-refs on-their-tables in-areas))
 
 (defn snapshot-gen
   "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the schemas
-  of their codecs. A segment or a measure is on a published table, never at the root level. The references of an item
-  are those of its attributes; they can name items that are not in the snapshot."
+  of their codecs. A segment or a measure is on a published table, never at the root level. A glossary term, a snippet
+  at the top level and a collection of a namespace at the top level are at their area roots ([[in-areas]]). The
+  references of an item are those of its attributes; they can name items that are not in the snapshot."
   ([] (snapshot-gen 30))
   ([max-items]
    (gen/fmap complete

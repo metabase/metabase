@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -15,6 +16,13 @@
   [s]
   (str/replace (u/lower-case-en s) #"[^a-z0-9]+" "_"))
 
+(defn- container
+  "The collection id of the old format for `place`: nil for an area root, as master writes an item at the root level
+  of its namespace."
+  [place]
+  (when-not (contains? snapshot/area-roots place)
+    place))
+
 (defn collection-doc
   "The old document of collection `id`."
   [id {:keys [name place attrs]}]
@@ -24,7 +32,7 @@
           :created_at       created-at
           :archived         false
           :is_remote_synced true
-          :parent_id        place
+          :parent_id        (container place)
           :serdes/meta      [{:model "Collection"}]}
          (select-keys attrs [:description :type :namespace :authority_level])))
 
@@ -61,7 +69,7 @@
           :created_at    created-at
           :creator_id    "crowberto@metabase.com"
           :archived      false
-          :collection_id place
+          :collection_id (container place)
           :template_tags (:template_tags attrs)
           :serdes/meta   [{:model "NativeQuerySnippet"}]}
          (select-keys attrs [:description :content])))
@@ -97,6 +105,33 @@
           :archived    false
           :serdes/meta [{:model "Measure"}]}
          attrs))
+
+(defn timeline-doc
+  "The old document of timeline `id`, with its events under `events`, each with every column. The time of an event has
+  an offset, as the export keeps the offset that the app DB returns."
+  [id {:keys [name place attrs]}]
+  (merge {:name          name
+          :entity_id     id
+          :created_at    created-at
+          :creator_id    "crowberto@metabase.com"
+          :archived      false
+          :default       false
+          :icon          "star"
+          :collection_id place
+          :serdes/meta   [{:model "Timeline"}]}
+         (dissoc attrs :events)
+         {:events (mapv (fn [{:keys [id timestamp] :as e}]
+                          (merge {:entity_id    id
+                                  :created_at   created-at
+                                  :creator_id   "crowberto@metabase.com"
+                                  :archived     false
+                                  :description  nil
+                                  :time_matters false
+                                  :icon         "star"}
+                                 (dissoc e :id)
+                                 {:timestamp (str (.atOffset (java.time.Instant/parse timestamp)
+                                                             (java.time.ZoneOffset/ofHours 2)))}))
+                        (:events attrs))}))
 
 (defn dashboard-doc
   "The old document of dashboard `id`: the parameters sorted by id with their positions, each tab with its position,
@@ -224,6 +259,7 @@
                    :glossary-term   [(glossary-doc id item)]
                    :segment         [(segment-doc id item)]
                    :measure         [(measure-doc id item)]
+                   :timeline        [(timeline-doc id item)]
                    :published-table (cons (table-settings-doc id item)
                                           (for [[field-key settings] (sort-by (comp pr-str key)
                                                                               (flat-fields id (:fields attrs)))
