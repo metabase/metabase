@@ -30,9 +30,21 @@
   [{:keys [id location]}]
   (str location id "/"))
 
+(defn- do-uninterrupted
+  "Calls `f` with no arguments with the interrupt status of the thread clear, and returns its result; then sets the
+  status again iff it was set. So a cancel of the thread, as a mutation run does at its timeout, does not stop `f`."
+  [f]
+  (let [interrupted? (Thread/interrupted)]
+    (try
+      (f)
+      (finally
+        (when interrupted?
+          (.interrupt (Thread/currentThread)))))))
+
 (defn- do-with-committed-content
   "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and with the Library
-  collection (made for the call when there is none). Deletes every inserted row afterwards, the last first."
+  collection (made for the call when there is none). Deletes every inserted row afterwards, the last first, also when
+  the thread is interrupted."
   [f]
   (let [inserted (atom ())
         insert!  (fn [model row]
@@ -43,11 +55,12 @@
       (f insert! (or (t2/select-one :model/Collection :type "library" :archived false)
                      (insert! :model/Collection {:name "Library" :type "library" :location "/"})))
       (finally
-        (doseq [[model row] @inserted]
-          (case model
-            :model/TableUserSettings (t2/delete! :model/TableUserSettings :table_id (:table_id row))
-            :model/FieldUserSettings (t2/delete! :model/FieldUserSettings :field_id (:field_id row))
-            (t2/delete! model :id (:id row))))))))
+        (do-uninterrupted
+         #(doseq [[model row] @inserted]
+            (case model
+              :model/TableUserSettings (t2/delete! :model/TableUserSettings :table_id (:table_id row))
+              :model/FieldUserSettings (t2/delete! :model/FieldUserSettings :field_id (:field_id row))
+              (t2/delete! model :id (:id row)))))))))
 
 (defn- with-short-lock-wait!
   "Calls `f` in a transaction on a connection of its own whose lock waits end in an error after at most 1 s, and
@@ -78,19 +91,29 @@
 
 (defn- while-current-holds!
   "Calls `(current ks id)` in a transaction of another thread, and while that transaction is open, `(save-result!
-  save!)`. Returns `[the content that current returned, the save result while it held, the save result after]`."
+  save!)`. Returns `[the content that current returned, the save result while it held, the save result after]`. The
+  transaction of the other thread has ended when this returns or throws, also when this thread is interrupted."
   [ks id save!]
-  (let [held     (promise)
-        release  (promise)
-        holder   (future
-                   (t2/with-transaction [_]
-                     (deliver held (instance/current ks id))
-                     (deref release 60000 nil)))
-        content  (deref held 60000 ::no-content)
-        during   (save-result! save!)]
-    (deliver release true)
-    @holder
-    [content during (save-result! save!)]))
+  (let [held    (promise)
+        release (promise)
+        holder  (future
+                  (try
+                    (t2/with-transaction [_]
+                      (deliver held (instance/current ks id))
+                      (deref release 60000 nil))
+                    (finally
+                      ;; When current throws, the wait for `held` ends at once, and `@holder` rethrows.
+                      (deliver held ::no-content))))]
+    (try
+      (let [content (deref held 60000 ::no-content)
+            during  (save-result! save!)]
+        (deliver release true)
+        @holder
+        [content during (save-result! save!)])
+      (finally
+        ;; The row locks of the other transaction would make the deletes of the cleanup wait.
+        (deliver release true)
+        (do-uninterrupted #(try (deref holder 60000 nil) (catch Exception _ nil)))))))
 
 (deftest current-locks-the-row-test
   (testing (str "while a transaction holds an item from current, another connection waits to save it; app DB "
