@@ -1,13 +1,13 @@
 import { getSubpathSafeUrl } from "metabase/urls";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
+import { formatValue as internalFormatValue } from "metabase/value-formatting";
 import type {
+  ColumnSettings,
+  CustomVizDisplayType,
   CustomVizPluginId,
   CustomVizPluginRuntime,
-  VisualizationDisplay,
 } from "metabase-types/api";
 
-export function formatValue(value: unknown, options?: OptionsType): string {
+export function formatValue(value: unknown, options?: ColumnSettings): string {
   const result = internalFormatValue(value, {
     ...options,
     jsx: false,
@@ -42,7 +42,7 @@ export function resolveCustomVizAssetUrl(
 
 export function getCustomPluginIdentifier(
   pluginOrIdentifier: Pick<CustomVizPluginRuntime, "identifier"> | string,
-): VisualizationDisplay {
+): CustomVizDisplayType {
   const identifier =
     typeof pluginOrIdentifier === "string"
       ? pluginOrIdentifier

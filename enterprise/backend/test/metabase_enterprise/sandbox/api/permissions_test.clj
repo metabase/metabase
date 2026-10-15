@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -152,3 +154,93 @@
                               :query {:source-table (str "card__" (u/the-id card))}
                               :type :query}))
                     "metabase_cache"))))))))
+
+(deftest oss-preserves-sandboxed-view-data-test
+  (testing "PUT /api/permissions/graph in OSS preserves stored EE sandbox config on rows it never surfaces"
+    (mt/with-model-cleanup [:model/Sandbox]
+      (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                     :model/Card {cid1 :id} {}
+                     :model/Card {cid2 :id} {}]
+        (mt/with-premium-features #{:advanced-permissions :sandboxes}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups gid (mt/id) :view-data]
+                         {"PUBLIC" {(mt/id :orders) :sandboxed (mt/id :people) :sandboxed}})
+               (assoc :sandboxes [{:table_id (mt/id :orders) :group_id gid :card_id cid1 :attribute_remappings {"foo" 1}}
+                                  {:table_id (mt/id :people) :group_id gid :card_id cid2 :attribute_remappings {"foo" 1}}]))))
+        (mt/with-premium-features #{}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (data-perms.graph/api-graph)
+                     [:groups gid (mt/id) :create-queries]
+                     {"PUBLIC" {(mt/id :orders) :query-builder}})))
+        (testing "both sandbox rows survive the OSS create-queries edit"
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :orders) :group_id gid))
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :people) :group_id gid)))
+        (testing "the graph still surfaces :sandboxed view-data under EE"
+          (mt/with-premium-features #{:advanced-permissions :sandboxes}
+            (is (=? {(mt/id :orders) :sandboxed
+                     (mt/id :people) :sandboxed}
+                    (get-in (data-perms.graph/api-graph)
+                            [:groups gid (mt/id) :view-data "PUBLIC"])))))))))
+
+(defn- venues-sandboxed-view-data
+  "API-graph `:view-data` for the test DB with VENUES sandboxed and every other PUBLIC Table unrestricted."
+  []
+  {"PUBLIC" (into {}
+                  (for [table-id (t2/select-pks-set :model/Table :db_id (mt/id) :schema "PUBLIC" :active true)]
+                    [table-id (if (= table-id (mt/id :venues)) :sandboxed :unrestricted)]))})
+
+(def ^:private native-with-sandbox-error
+  "A group with row and column security on a database cannot also have native query access to it.")
+
+(deftest graph-rejects-native-access-with-sandboxes-test
+  (testing "PUT /api/permissions/graph rejects granting native query access to a group with a sandbox on the database"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-model-cleanup [:model/Sandbox]
+        (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                       :model/Card             {cid :id} {:dataset_query (mt/mbql-query venues {:filter [:= $category_id 50]})}]
+          (let [create-queries (fn []
+                                 (get-in (data-perms.graph/api-graph) [:groups gid (mt/id) :create-queries]))
+                sandbox-ids    (fn []
+                                 (t2/select-pks-set :model/Sandbox :group_id gid))
+                sandbox-venues (fn [graph]
+                                 (-> graph
+                                     (assoc-in [:groups gid (mt/id) :view-data] (venues-sandboxed-view-data))
+                                     (assoc :sandboxes [{:table_id (mt/id :venues) :group_id gid :card_id cid}])))]
+            (perms/set-database-permission! gid (mt/id) :perms/create-queries :query-builder)
+            (testing "when the sandbox and native access are granted in the same request"
+              (is (= native-with-sandbox-error
+                     (mt/user-http-request :crowberto :put 400 "permissions/graph"
+                                           (-> (data-perms.graph/api-graph)
+                                               sandbox-venues
+                                               (assoc-in [:groups gid (mt/id) :create-queries] :query-builder-and-native)))))
+              (is (empty? (sandbox-ids)))
+              (is (= :query-builder (create-queries))))
+            (testing "sandboxing a Table for a group with native access still revokes native access"
+              (perms/set-database-permission! gid (mt/id) :perms/create-queries :query-builder-and-native)
+              (mt/user-http-request :crowberto :put 200 "permissions/graph" (sandbox-venues (data-perms.graph/api-graph)))
+              (is (= 1 (count (sandbox-ids))))
+              (is (not= :query-builder-and-native (create-queries))))
+            (testing "when native access is granted to a group that already has a sandbox"
+              (is (= native-with-sandbox-error
+                     (mt/user-http-request :crowberto :put 400 "permissions/graph"
+                                           (assoc-in (data-perms.graph/api-graph)
+                                                     [:groups gid (mt/id) :create-queries]
+                                                     :query-builder-and-native))))
+              (is (not= :query-builder-and-native (create-queries)))
+              (is (= 1 (count (sandbox-ids)))))
+            (testing "unrelated changes to a sandboxed group are still allowed"
+              (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                    (assoc-in (data-perms.graph/api-graph)
+                                              [:groups gid (mt/id) :download]
+                                              {:schemas :limited}))
+              (is (= 1 (count (sandbox-ids)))))
+            (testing "granting native access along with unrestricted access removes the sandbox, as the UI does"
+              (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                    (update-in (data-perms.graph/api-graph) [:groups gid (mt/id)] assoc
+                                               :view-data      :unrestricted
+                                               :create-queries :query-builder-and-native))
+              (is (= :query-builder-and-native (create-queries)))
+              (is (empty? (sandbox-ids))))))))))

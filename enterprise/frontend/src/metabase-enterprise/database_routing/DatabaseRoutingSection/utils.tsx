@@ -1,13 +1,13 @@
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import {
   hasActionsEnabled,
-  hasFeature,
   hasTableEditingEnabled,
   hasWritableConnectionDetails,
 } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
@@ -31,11 +31,11 @@ export const getDisabledFeatureMessage = (
     .with(
       { hasActionsEnabled: true, isPersisted: true },
       () =>
-        t`Database routing can't be enabled if model actions and persistence are enabled.`,
+        t`Database routing can't be enabled if data actions and model persistence are enabled.`,
     )
     .with(
       { hasActionsEnabled: true },
-      () => t`Database routing can't be enabled if model actions are enabled.`,
+      () => t`Database routing can't be enabled if data actions are enabled.`,
     )
     .with(
       { isPersisted: true },

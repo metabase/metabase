@@ -11,6 +11,7 @@
   (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.parameters.parse.types :as params.types]
@@ -20,6 +21,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -73,7 +75,10 @@
     ::params.types/no-value
     ::single-value
     [:sequential ::single-value]
-    :map]])
+    ::params.types/referenced-card-query
+    ::params.types/referenced-table-query
+    ::params.types/referenced-query-snippet
+    ::params.types/temporal-unit]])
 
 (mu/defn- tag-targets
   "Given a template tag, returns a set of `target` structures that can be used to target the tag.
@@ -216,6 +221,19 @@
         value    (field-filter-value tag params)]
     (lib/parsed-field-filter-param field value alias)))
 
+(defn- persisted-cache-allowed-for-current-user?
+  "Whether the current user may read directly from a persisted Model cache table. The cache holds the Model's full,
+  unfiltered results as seen through the Database's own connection, so it must never be substituted for a user whose
+  queries would otherwise be rewritten by sandboxing or connection impersonation, or routed to a Destination Database.
+  Substituting the cache here skips [[qp.compile/compile]] (and thus preprocessing) for the referenced Model entirely,
+  so we cannot rely on the [[metabase.query-processor.middleware.persistence/substitute-persisted-query]] middleware
+  to disable it for us."
+  [database-id]
+  (not (and api/*current-user-id*
+            (or (perms/sandboxed-user-for-db? database-id)
+                (perms/impersonation-enforced-for-db? database-id)
+                (perms/routing-token-for-db database-id)))))
+
 (mu/defmethod parse-tag :card :- ::params.types/referenced-card-query
   [metadata-providerable      :- ::lib.schema.metadata/metadata-providerable
    {:keys [card-id], :as tag} :- ::lib.schema.template-tag/template-tag
@@ -230,12 +248,12 @@
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
-      (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
+      (log/tracef "Compiling referenced query for Card %d" card-id)
       (let [query                  (assoc query :info {:card-id card-id})
-            {:keys [query params]} (or (when (qp.persistence/can-substitute? card persisted-info)
-                                         {:query (qp.persistence/persisted-info-native-query
-                                                  (u/the-id (lib.metadata/database metadata-providerable))
-                                                  persisted-info)})
+            database-id            (u/the-id (lib.metadata/database metadata-providerable))
+            {:keys [query params]} (or (when (and (qp.persistence/can-substitute? card persisted-info)
+                                                  (persisted-cache-allowed-for-current-user? database-id))
+                                         {:query (qp.persistence/persisted-info-native-query database-id persisted-info)})
                                        (qp.compile/compile (qp/disable-max-results query)))]
         (lib/parsed-referenced-card-query-param card-id query params))
       (catch ExceptionInfo e
@@ -366,7 +384,7 @@
   code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
   changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated numeric
   values to work we'll allow that (with validation) and return a vector to be converted to a list in the native query."
-  [value]
+  [value :- [:or number? :string [:sequential [:or number? :string]]]]
   (cond
     ;; already parsed
     (number? value)
@@ -384,7 +402,8 @@
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- ::lib.schema.common/base-type value]
+  [effective-type :- ::lib.schema.common/base-type
+   value          :- :string]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)
@@ -408,8 +427,8 @@
                          (every? string? value))
                     (mapv (partial parse-value-for-field-type effective-type) value))]
     (when (not= value new-value)
-      (log/tracef "update filter for base-type: %s value: %s -> %s"
-                  (pr-str effective-type) (pr-str value) (pr-str new-value)))
+      (log/tracef "updated filter value for base-type: %s"
+                  (pr-str effective-type)))
     (cond-> field-filter
       new-value (assoc-in [:value :value] new-value))))
 
@@ -419,7 +438,8 @@
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
   additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
   base type Fields as UUIDs."
-  [param-type :- ::lib.schema.template-tag/type value]
+  [param-type :- ::lib.schema.template-tag/type
+   value      :- ::parsed-param-value]
   (cond
     (= value lib/parsed-param-no-value-placeholder)
     value
@@ -475,13 +495,14 @@
   [[metabase.query-processor.middleware.parameters/expand-stage]]. "
   [metadata-providerable                                 :- ::lib.schema.metadata/metadata-providerable
    {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
-  (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
+  (log/tracef "Building params map out of %d tag(s) and %d param(s)" (count tags) (count params))
   (try
-    (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag metadata-providerable tag params)]]
+    (into {} (for [{tag-name :name, :as tag} tags
+                   :let                      [v (value-for-tag metadata-providerable tag params)]]
                (do
-                 (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 [(or (lib/match-and-normalize-tag-name k) k) v])))
+                 (log/tracef "Resolved value for tag %s" (pr-str tag-name))
+                 (let [k' (or (lib/match-and-normalize-tag-name tag-name) tag-name)]
+                   [k' v]))))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)

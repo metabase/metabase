@@ -3,6 +3,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   SdkVisualizationWrapper,
@@ -12,22 +13,16 @@ import {
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import * as data from "./stories-data";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
-registerVisualization(Table);
+registerVisualizations();
 
 const settings = mockSettings();
 
@@ -35,6 +30,7 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 export default {
@@ -48,7 +44,7 @@ const DefaultTemplate: StoryFn<{
 }> = ({
   series,
   isDashboard,
-  bgColor = "white",
+  bgColor = "core-white",
   theme,
   hasDevWatermark,
 }: {
@@ -200,6 +196,90 @@ export const DashboardTable = {
   args: {
     series: data.ordersWithPeople,
     isDashboard: true,
+  },
+};
+
+const stripedOrdersWithPeople = [
+  {
+    ...ordersWithPeople,
+    card: {
+      ...ordersWithPeople.card,
+      visualization_settings: {
+        ...ordersWithPeople.card.visualization_settings,
+        "table.striped": true,
+      },
+    },
+  },
+];
+
+export const DashboardTableStripedRows = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+  },
+};
+
+export const TableStripedRows = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+  },
+};
+
+export const DashboardTableStripedRowsEmbeddingTheme = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+    theme: {
+      components: {
+        table: {
+          cell: { textColor: "#dfe4ea", backgroundColor: "#2f3640" },
+        },
+      },
+    },
+    hasDevWatermark: false,
+  },
+};
+
+export const DashboardTableStripedRowsEmbeddingThemeStripeColor = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+    theme: {
+      components: {
+        table: {
+          cell: { textColor: "#dfe4ea", backgroundColor: "#2f3640" },
+          stripedBackgroundColor: "#4b3a5a",
+        },
+      },
+    },
+    hasDevWatermark: false,
+  },
+};
+
+const STRIPED_CONDITIONAL_FORMATTING_SERIES = CONDITIONA_FORMATTING_SERIES.map(
+  (series) => ({
+    ...series,
+    card: {
+      ...series.card,
+      visualization_settings: {
+        ...series.card.visualization_settings,
+        "table.striped": true,
+      },
+    },
+  }),
+);
+
+export const StripedRowsWithConditionalFormatting = {
+  parameters: {
+    layout: "fullscreen",
+  },
+  render: ColumnFormattingTemplate,
+  args: {
+    series: STRIPED_CONDITIONAL_FORMATTING_SERIES,
   },
 };
 

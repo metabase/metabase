@@ -2,13 +2,13 @@
   cursor: pointer;
 
   &:focus {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 }
 
 .tableRowSkeleton {
   &:focus {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:hover {
@@ -26,7 +26,7 @@
   }
 
   &:focus {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
 
     button,
     a {
@@ -41,7 +41,7 @@
   }
 
   &:focus {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
 
     button,
     a {

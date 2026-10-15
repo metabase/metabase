@@ -149,8 +149,7 @@ ms/NonBlankString               ;; Non-empty string
 ms/BooleanValue                 ;; String "true"/"false" or boolean
 ms/MaybeBooleanValue            ;; BooleanValue or nil
 ms/TemporalString               ;; ISO-8601 date/time string (for REQUEST params only!)
-ms/Map                          ;; Any map
-ms/JSONString                   ;; JSON-encoded string
+ms/OpaqueJSONObject             ;; JSON object whose keys are not ours to declare; string-keyed
 ms/PositiveNum                  ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```

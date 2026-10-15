@@ -16,10 +16,8 @@ export const CommandPaletteTrigger = ({
         tabIndex={-1}
         onClick={onClick}
         p="0.25rem"
-        bg="background-secondary"
-        fw={700}
-        fz="8pt"
-        lh="8pt"
+        bg="background_page-secondary"
+        size="sm"
         mr="0.5rem"
         style={{
           borderRadius: "0.25rem",

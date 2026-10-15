@@ -1,6 +1,4 @@
-import type { Path } from "history";
-import type { ReactNode } from "react";
-
+import { Outlet } from "metabase/router";
 import { Box, rem } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -9,12 +7,10 @@ import { AccountHeader } from "../AccountHeader";
 interface AccountLayoutProps {
   user: User | null;
   path?: string;
-  onChangeLocation: (nextLocation: Path) => void;
-  children?: ReactNode;
+  onChangeLocation: (nextLocation: string) => void;
 }
 
 const AccountLayout = ({
-  children,
   user,
   path,
   onChangeLocation,
@@ -32,11 +28,11 @@ const AccountLayout = ({
       />
       <Box
         mx="auto"
-        px={{ base: "sm", sm: "md" }}
-        py={{ base: "sm", sm: "xl" }}
+        px={{ base: "sm", sm: "lg" }}
+        py={{ base: "sm", sm: "xxl" }}
         w={{ base: "100%", sm: rem(540) }}
       >
-        {children}
+        <Outlet />
       </Box>
     </div>
   );

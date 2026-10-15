@@ -176,6 +176,7 @@ describe("QuestionInfoSidebar", () => {
     it("should not show entity id", () => {
       const card = createMockCard({
         name: "Question",
+        // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as BaseEntityId,
       });
       setup({ card });
@@ -299,10 +300,9 @@ function getJoinedQuery() {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "PRODUCT_ID",
                 },
-                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                right: { type: "column", name: "ID" },
               },
             ],
           },

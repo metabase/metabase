@@ -1,0 +1,15 @@
+## Destination databases (those with a non-null router_database_id) must never carry permissions of
+## their own — their permissions are resolved through the router. Delete any data_permissions rows
+## left pointing at a destination db.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.destperm-cleanup
+      author: galdre
+      comment: Delete data_permissions rows for destination databases (they must never carry permissions).
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM data_permissions
+              WHERE db_id IN (SELECT id FROM metabase_database WHERE router_database_id IS NOT NULL)
+      rollback: # nothing to restore; a cleanup DELETE of invalid rows is intentionally irreversible

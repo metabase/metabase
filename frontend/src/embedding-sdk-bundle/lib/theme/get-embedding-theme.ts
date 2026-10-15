@@ -2,6 +2,7 @@ import { merge } from "icepick";
 import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import type {
   MetabaseColor,
   MetabaseComponentTheme,
@@ -12,6 +13,7 @@ import {
   DEFAULT_SDK_FONT_SIZE,
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
+import { getEmbeddingCartesianColors } from "metabase/embedding-sdk/theme/cartesian-colors";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
   SDK_MISSING_COLORS_FALLBACK,
@@ -24,6 +26,7 @@ import type {
   MetabaseColorKey,
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
@@ -41,12 +44,20 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
  * into a Mantine theme override for internal use.
  */
 export function getEmbeddingThemeOverride(
-  theme: MetabaseTheme,
+  userTheme: MetabaseTheme,
   font: string | undefined,
   whitelabeledColors?: ColorSettings | undefined,
 ): MantineThemeOverride {
+  const theme = applyThemePreset(userTheme) ?? userTheme;
+  const { axisColor, gridlineColor } = getEmbeddingCartesianColors({
+    background: theme.colors?.background,
+    foreground: theme.colors?.["text-primary"],
+    border: userTheme.colors?.border,
+  });
   const components: MetabaseComponentTheme = merge(
-    DEFAULT_EMBEDDED_COMPONENT_THEME,
+    merge(DEFAULT_EMBEDDED_COMPONENT_THEME, {
+      cartesian: { splitLine: { lineStyle: { color: gridlineColor } } },
+    }),
     stripUndefinedKeys(theme.components),
   );
 
@@ -60,38 +71,28 @@ export function getEmbeddingThemeOverride(
     other: {
       ...components,
       fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
+      hasCustomChartFontSize:
+        theme.fontSize !== undefined ||
+        theme.components?.cartesian?.label?.fontSize !== undefined,
     },
 
     components: getEmbeddingComponentOverrides(),
-    colors: {},
+    colors: { "chart-axis": colorTuple(axisColor) },
   };
 
-  // Apply whitelabeled colors from appearance settings
-  for (const key in whitelabeledColors) {
+  const whitelabeledTokens = mapWhitelabelColorsToTokens(whitelabeledColors);
+
+  for (const [key, value] of Object.entries(whitelabeledTokens)) {
+    if (value === undefined) {
+      continue;
+    }
+
     if (!override.colors) {
       override.colors = {};
     }
 
-    override.colors[key as MetabaseColorKey] = colorTuple(
-      whitelabeledColors[key],
-    );
-  }
-
-  // Whitelabel keys flow in here directly (admin form + DB still use the
-  // legacy `brand`/`filter`/`summarize` names), bypassing
-  // SDK_TO_MAIN_APP_COLORS_MAPPING. Mirror them to the `core-*` counterparts
-  // so consumers reading `var(--mb-color-core-brand)` see the whitelabel value.
-  // Temporary compatibility layer for the colors migration (GDGT-2517).
-  if (override.colors) {
-    if (override.colors.brand) {
-      override.colors["core-brand"] = override.colors.brand;
-    }
-    if (override.colors.filter) {
-      override.colors["core-filter"] = override.colors.filter;
-    }
-    if (override.colors.summarize) {
-      override.colors["core-summarize"] = override.colors.summarize;
-    }
+    // `Object.entries` widens `ColorPalette` keys to `string`, need to manually narrow it back
+    override.colors[key as MetabaseColorKey] = colorTuple(value);
   }
 
   if (theme.colors) {
@@ -105,6 +106,7 @@ export function getEmbeddingThemeOverride(
     // For example, if they forgot to define `background-secondary` but have
     // defined `background`, we use it as a fallback.
     for (const key in SDK_MISSING_COLORS_FALLBACK) {
+      // Unjustified type cast. FIXME
       const targetColor = key as MappableSdkColor;
       const fallbackColor = SDK_MISSING_COLORS_FALLBACK[targetColor];
 
@@ -119,10 +121,12 @@ export function getEmbeddingThemeOverride(
 
     // Apply color palette overrides
     for (const name in userColors) {
+      // Unjustified type cast. FIXME
       const color = userColors[name as MetabaseColor];
 
       if (color && typeof color === "string") {
         const themeColorNames =
+          // Unjustified type cast. FIXME
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
         // If the sdk color does not exist in the mapping, skip it.
@@ -144,6 +148,7 @@ export function getEmbeddingThemeOverride(
       const accents = mapChartColorsToAccents(theme.colors.charts);
 
       for (const _accentKey in accents) {
+        // Unjustified type cast. FIXME
         const accentKey = _accentKey as MetabaseAccentColorKey;
         const accentColor = accents[accentKey];
 
@@ -163,6 +168,7 @@ export function getEmbeddingThemeOverride(
 
     for (const _tooltipKey in SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING) {
       type TooltipKey = keyof NonNullable<MetabaseComponentTheme["tooltip"]>;
+      // Unjustified type cast. FIXME
       const tooltipKey = _tooltipKey as TooltipKey;
       const colorKey = SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING[tooltipKey];
       const tooltipColor = theme.components.tooltip[tooltipKey];

@@ -9,6 +9,8 @@ summary: Route queries to different databases based on who's viewing them. Great
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
+![Database routing diagram](./images/database-routing-diagram.png)
+
 Database routing is useful for:
 
 - Managing modular and full app embedding setups where each customer has their own database with identical schemas.
@@ -42,11 +44,13 @@ Database routing **can't be used** on databases with:
 
 - [Writable connections](../databases/writable-connection.md)
 - [Editable tables](../data-modeling/editable-tables.md)
-- [Actions](../actions/introduction.md)
+- [Actions](../data-modeling/models/actions/introduction.md)
 - [CSV uploads](../databases/uploads.md)
-- [Model persistence](../data-modeling/model-persistence.md)
+- [Model persistence](../data-modeling/models/model-persistence.md)
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
+
+**Public links** will not work with database routing.
 
 ## How database routing works
 
@@ -82,7 +86,7 @@ To see if database routing is working:
 1. Log in as an admin.
 2. Create a question that queries the router database.
 3. Create a user account and add the user attribute you associated with your router database. Set the value as the slug of one of your destination databases.
-4. In a private/incognito tab, log in as the user and view the question you created. You should see data from the destination database associated with person's user attribute, not the data in the router database.
+4. In a private/incognito tab, log in as the user and view the question you created. You should see data from the destination database associated with the person's user attribute, not the data in the router database.
 
 ## Adding destination databases with the API
 

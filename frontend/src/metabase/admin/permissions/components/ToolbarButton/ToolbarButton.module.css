@@ -1,0 +1,12 @@
+.button {
+  color: var(--mb-color-text-primary);
+  transition: color 200ms;
+}
+
+.adminButton:hover {
+  color: var(--mb-color-core-filter);
+}
+
+.hubButton:hover {
+  color: var(--mb-color-core-brand);
+}

@@ -21,7 +21,7 @@ body:where(:global(.mb-wrapper)) {
 .ParameterPanel.IsSticky {
   background-color: color-mix(
     in srgb,
-    var(--mb-color-background-primary),
+    var(--mb-color-background_page-primary),
     var(--mb-color-bg-dashboard) 15%
   );
   border-bottom-color: var(--mb-color-border-neutral);
@@ -46,19 +46,21 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-primary-inverse) 65%,
     transparent
   );
-  --mb-color-text-tertiary: color-mix(
+  --mb-color-text-disabled: color-mix(
     in srgb,
     var(--mb-color-text-primary-inverse) 45%,
     transparent
   );
-  --mb-color-background-secondary: var(--mb-color-background-tertiary-inverse);
+  --mb-color-background_page-secondary: var(
+    --mb-color-background_page-tertiary-inverse
+  );
 }
 
 [data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
   .ParameterPanel.IsSticky {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 15%
     );
     border-bottom-color: transparent;
@@ -81,4 +83,38 @@ body:where(:global(.mb-wrapper)) {
   The reason we need `z-index: 4` here is because the parameter container is defined after this download button in the DOM, and it
   has `z-index: 3`. */
   z-index: 4;
+}
+
+.overflowAuto {
+  overflow: auto;
+
+  /* Prevents https://github.com/metabase/metabase/issues/40660 when printing an embedded dashboard */
+  @media print {
+    &.printOverflowVisible {
+      overflow: visible;
+    }
+  }
+}
+
+.border {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 2px var(--mb-color-shadow-default);
+}
+
+.borderBottom {
+  border-bottom: 2px solid var(--mb-color-border-neutral);
+}
+
+/* Full-bleed tab row on small screens, with higher specificity than FullWidthContainer's padding */
+div.dashboardTabs {
+  @media screen and (max-width: 40em) {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Leaves room for the floating PDF button next to a scrolling tab row */
+.narrowTabs [role="tablist"]:global(.scrollable) {
+  width: calc(100% - 3.75rem);
 }

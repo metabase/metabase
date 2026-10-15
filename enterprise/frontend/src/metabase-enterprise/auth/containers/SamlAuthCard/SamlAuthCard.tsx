@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
 import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import type { EnterpriseSettings } from "metabase-types/api";
+import { useAdminSetting } from "metabase/settings";
 
 import { SAML_SCHEMA } from "../../constants";
 
@@ -19,9 +18,7 @@ export function SamlAuthCard() {
   const { value: isEnabled } = useAdminSetting("saml-enabled");
 
   const handleDeactivate = () => {
-    return updateSettings(
-      SAML_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
-    );
+    return updateSettings(SAML_SCHEMA.getDefault());
   };
 
   const hasFeature = useHasTokenFeature("sso_saml");
@@ -48,7 +45,7 @@ export function SamlAuthCard() {
           value: newValue,
         })
       }
-      setting={settingDetails as any}
+      setting={settingDetails}
     />
   );
 }

@@ -1,4 +1,6 @@
-(ns metabase.app-db.query-cancelation)
+(ns metabase.app-db.query-cancelation
+  (:require
+   [metabase.app-db.h2 :as mdb.h2]))
 
 (set! *warn-on-reflection* true)
 
@@ -9,7 +11,7 @@
 
 (defmethod query-canceled-exception?* :h2
   [_db-type ^java.sql.SQLException e]
-  (= (.getErrorCode e) org.h2.api.ErrorCode/STATEMENT_WAS_CANCELED))
+  (= (.getErrorCode e) mdb.h2/statement-was-canceled-error-code))
 
 (defn- sql-state
   [^java.sql.SQLException e]

@@ -3,10 +3,9 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honey.sql :as sql]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.liquibase.h2 :as liquibase.h2]
    [metabase.app-db.liquibase.mysql :as liquibase.mysql]
    [metabase.classloader.core :as classloader]
@@ -16,8 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2])
+   [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
    (java.sql Connection)
@@ -61,6 +59,9 @@
 (doto ^liquibase.ui.ConsoleUIService (.getUI (Scope/getCurrentScope))
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
+
+;; Disable phoning home to Liquibase analytics (since 4.28)
+(System/setProperty "liquibase.analytics.enabled" "false")
 
 (def ^{:private true
        :doc     "Liquibase setting used for upgrading instances running version < 45."}
@@ -173,10 +174,7 @@
 (defn changelog-by-id
   "Return the changelog row value for the given `changelog-id`."
   [app-db changelog-id]
-  (let [table-name (case (:db-type app-db)
-                     (:postgres :h2) "databasechangelog"
-                     :mysql "DATABASECHANGELOG")]
-    (t2/query-one (format "select * from %s where id = '%s'" table-name changelog-id))))
+  (app-db.db/changelog-by-id (:db-type app-db) changelog-id))
 
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom migrations will be ignored."
@@ -224,7 +222,7 @@
       (when (= (mdb.connection/db-type) :h2)
         (force-release-locks! liquibase))
       (catch Exception e
-        (log/error e "Unable to release the Liquibase lock")))))
+        (log/errorf "Unable to release the Liquibase lock: %s" (ex-message e))))))
 
 (defn- lock-service ^LockService [^Liquibase liquibase]
   (.getLockService (LockServiceFactory/getInstance) (.getDatabase liquibase)))
@@ -308,6 +306,7 @@
             (log/warn "Releasing liquibase lock before migrations finished")
             (release-lock-if-needed! liquibase)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *lock-depth* 0)
 
 (defn- assert-locked [liquibase]
@@ -586,7 +585,7 @@
            (let [change-listener (proxy [liquibase.changelog.visitor.AbstractChangeExecListener] []
                                    (rollbackFailed [^ChangeSet change-set _dbchangelog _db ^Exception e]
                                      (swap! error-ids conj (.getId change-set))
-                                     (log/errorf e "Error rolling back migration %s" (.getId change-set))))]
+                                     (log/errorf "Error rolling back migration %s: %s" (.getId change-set) (ex-message e))))]
              (AbstractRollbackCommandStep/doRollback lb-db
                                                      changelog-file
                                                      nil
@@ -594,11 +593,7 @@
                                                      (.getChangeLogParameters liquibase)
                                                      changelog
                                                      change-listener))
-           (let [remaining-query (-> (sql.helpers/select :id)
-                                     (sql.helpers/from (keyword (changelog-table-name liquibase)))
-                                     (sql.helpers/where [:in :id ids-to-drop]))
-                 formatted-sql (sql/format remaining-query)
-                 remaining-ids   (map :id (t2/query conn formatted-sql))]
+           (let [remaining-ids (app-db.db/changelog-ids conn (changelog-table-name liquibase) ids-to-drop)]
              (when (seq remaining-ids)
                (log/warnf "The following changesets were not rolled back. Likely because %s: %s"
                           (if (seq @error-ids)

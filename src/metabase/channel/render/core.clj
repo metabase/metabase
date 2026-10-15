@@ -3,6 +3,7 @@
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.pdf :as render.pdf]
    [metabase.channel.render.preview :as render.preview]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table-data :as table-data]
@@ -34,6 +35,8 @@
   render-adhoc-card-to-png
   render-pulse-card-to-base64
   png-from-render-info]
+ [render.pdf
+  render-dashboard-to-pdf]
  [js.svg
   icon]
  [table-data

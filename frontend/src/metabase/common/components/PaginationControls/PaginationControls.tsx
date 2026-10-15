@@ -35,6 +35,12 @@ export const PaginationControls = ({
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
+  const rangeStart = page * pageSize + 1;
+  const rangeEnd =
+    total != null
+      ? Math.min(page * pageSize + itemsLength, total)
+      : page * pageSize + itemsLength;
+
   return (
     <Group
       align="center"
@@ -44,10 +50,10 @@ export const PaginationControls = ({
       {...props}
     >
       <Text component="span" mr="sm">
-        {page * pageSize + 1} - {page * pageSize + itemsLength}
+        {rangeStart} - {rangeEnd}
         {showTotal && (
           <>
-            <Text component="span" c="text-tertiary">
+            <Text component="span" c="text-disabled">
               &nbsp;
               {c(
                 "Appears in phrases like '1-10 of 100', referring to a page of results",

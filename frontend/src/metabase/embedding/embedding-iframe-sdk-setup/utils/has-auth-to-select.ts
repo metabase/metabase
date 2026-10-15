@@ -1,4 +1,4 @@
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 
 /**
  * Whether the experience offers an auth choice (SSO vs Guest). True only for

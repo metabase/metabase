@@ -7,8 +7,8 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo
 import {
@@ -168,6 +168,7 @@ describe("WhatsNewNotification", () => {
 
       await waitFor(async () => {
         const lastCall = fetchMock.callHistory.lastCall(LAST_ACK_SETTINGS_URL);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
           value: currentVersionTag,
         });

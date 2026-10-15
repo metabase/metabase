@@ -2,16 +2,16 @@ import type { VisualizerVizDefinition } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
+  createMockDashCardDataSeries,
   createMockDataset,
   createMockDatasetData,
-  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { getMissingColumnsFromVisualizationSettings } from "./utils";
 
 describe("getMissingColumnsFromVisualizationSettings", () => {
   const createMockSeriesWithCols = (cardId: number, cols: string[]) => [
-    createMockSingleSeries(
+    createMockDashCardDataSeries(
       createMockCard({ id: cardId }),
       createMockDataset({
         data: createMockDatasetData({

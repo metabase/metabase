@@ -1,0 +1,16 @@
+.resultLink {
+  color: var(--mb-color-text-secondary);
+  line-height: unset;
+  transition: color 0.2s ease-in-out;
+}
+
+.resultLink[href]:hover,
+.resultLink[href]:focus,
+.resultLink[href]:focus-within {
+  color: var(--mb-color-core-brand);
+  outline: 0;
+}
+
+.resultLinkWrapper {
+  overflow: hidden;
+}

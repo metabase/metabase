@@ -1,40 +1,32 @@
-import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/redux";
+import { Link } from "metabase/common/components/Link";
+import { useDispatch } from "metabase/redux";
 import { forgotPassword } from "metabase/redux/auth";
-import { Button } from "metabase/ui";
+import type { Location } from "metabase/router";
+import { useSetting } from "metabase/settings";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 
-import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
 import { ForgotPasswordForm } from "../ForgotPasswordForm";
 
-import {
-  InfoBody,
-  InfoIcon,
-  InfoIconContainer,
-  InfoLink,
-  InfoMessage,
-} from "./ForgotPassword.styled";
+import S from "./ForgotPassword.module.css";
 
 type ViewType = "form" | "disabled" | "success";
 
-interface ForgotPasswordQueryString {
-  email?: string;
-}
-
 interface ForgotPasswordProps {
-  location?: Location<ForgotPasswordQueryString>;
+  location?: Location;
 }
 
 export const ForgotPassword = ({
   location,
 }: ForgotPasswordProps): JSX.Element => {
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
-  const isLdapEnabled = useSelector(getIsLdapEnabled);
+  const isEmailConfigured = useSetting("email-configured?");
+  const isLdapEnabled = useSetting("ldap-enabled");
   const canResetPassword = isEmailConfigured && !isLdapEnabled;
-  const initialEmail = location?.query?.email;
+  const initialEmail =
+    new URLSearchParams(location?.search).get("email") ?? undefined;
 
   const [view, setView] = useState<ViewType>(
     canResetPassword ? "form" : "disabled",
@@ -65,29 +57,29 @@ export const ForgotPassword = ({
 
 const ForgotPasswordSuccess = (): JSX.Element => {
   return (
-    <InfoBody>
-      <InfoIconContainer>
-        <InfoIcon name="check" />
-      </InfoIconContainer>
-      <InfoMessage>
+    <Flex direction="column" align="center">
+      <Box className={S.infoIconContainer}>
+        <Icon name="check" display="block" c="core-brand" size={24} />
+      </Box>
+      <Box c="text-primary" ta="center" mb="lg">
         {t` If the email exists, we'll send instructions on how to reset your password.`}
-      </InfoMessage>
+      </Box>
       <Button
         variant="filled"
         component="a"
         href="/auth/login"
       >{t`Back to sign in`}</Button>
-    </InfoBody>
+    </Flex>
   );
 };
 
 const ForgotPasswordDisabled = (): JSX.Element => {
   return (
-    <InfoBody>
-      <InfoMessage>
+    <Flex direction="column" align="center">
+      <Box c="text-primary" ta="center" mb="lg">
         {t`Please contact an administrator to have them reset your password.`}
-      </InfoMessage>
-      <InfoLink to="/auth/login">{t`Back to sign in`}</InfoLink>
-    </InfoBody>
+      </Box>
+      <Link className={S.infoLink} to="/auth/login">{t`Back to sign in`}</Link>
+    </Flex>
   );
 };

@@ -25,7 +25,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       expect(
-        await screen.findByRole("radio", { name: "Shared collections" }),
+        await screen.findByRole("tab", { name: "Shared collections" }),
       ).toBeInTheDocument();
     });
 
@@ -37,7 +37,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       expect(
-        screen.queryByRole("radio", { name: "Shared collections" }),
+        screen.queryByRole("tab", { name: "Shared collections" }),
       ).not.toBeInTheDocument();
     });
   });

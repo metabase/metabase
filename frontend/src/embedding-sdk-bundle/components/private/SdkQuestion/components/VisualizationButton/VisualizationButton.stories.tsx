@@ -8,6 +8,7 @@ import { useRunVisualization } from "../../hooks/use-run-visualization";
 
 import { VisualizationButton } from "./VisualizationButton";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
@@ -23,7 +24,7 @@ export const QuestionVisualizationButton = {
   render: function Render() {
     const [count, setCount] = useState(0);
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion
           questionId={QUESTION_ID}
           onRun={() => setCount((cnt) => cnt + 1)}
@@ -56,7 +57,7 @@ export const CustomVisualizationButton = {
     const [count, setCount] = useState(0);
 
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion
           questionId={QUESTION_ID}
           onRun={() => setCount((cnt) => cnt + 1)}

@@ -146,6 +146,7 @@ describe("retry", () => {
 
     const result = await resultPromise;
     expect(result).toBeInstanceOf(DOMException);
+    // Unjustified type cast. FIXME
     expect((result as DOMException).name).toBe("AbortError");
     expect(fn).toHaveBeenCalledTimes(1);
   });

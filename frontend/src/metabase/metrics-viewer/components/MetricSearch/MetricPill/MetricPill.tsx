@@ -113,7 +113,7 @@ export function MetricPill({
           }
         }}
         position="bottom-start"
-        shadow="md"
+        shadow="sm"
         withinPortal
         trapFocus
         // these are the defaults, but listing them explicitly
@@ -124,9 +124,9 @@ export function MetricPill({
           <Pill
             className={S.metricPill}
             c="text-primary"
-            h="2rem"
+            fz="md"
             px="sm"
-            py="xs"
+            py="xxs"
             fw={600}
             withRemoveButton
             onRemove={() => {
@@ -144,14 +144,14 @@ export function MetricPill({
             }}
             data-testid="metrics-viewer-pill"
           >
-            <Flex align="center" gap="xs">
+            <Flex align="center" gap="xxs">
               {metric.isLoading ? (
-                <Skeleton mt="xs" w="4.5rem" h="1rem" />
+                <Skeleton mt="xxs" w="4.5rem" h="1rem" />
               ) : (
                 <>
                   <SourceColorIndicator
                     colors={
-                      isDisabled ? ["var(--mb-color-icon-disabled)"] : colors
+                      isDisabled ? ["var(--mb-color-icon-secondary)"] : colors
                     }
                     fallbackIcon={
                       metric.sourceType === "measure" ? "ruler" : "metric"
@@ -256,7 +256,7 @@ export function MetricPill({
             }
           }}
           position="bottom-start"
-          shadow="md"
+          shadow="sm"
           withinPortal
         >
           <Popover.Target>

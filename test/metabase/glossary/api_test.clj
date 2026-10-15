@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -92,3 +93,66 @@
       (testing "returns 404 when deleting non-existent entry"
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 "glossary/99999")))))))
+
+(deftest glossary-authorization-test
+  (testing "Only data analysts (or superusers) can mutate glossary entries"
+    (mt/with-model-cleanup [:model/Glossary]
+      (mt/with-temp [:model/Glossary {gid :id} {:term       "Existing"
+                                                :definition "An existing entry"
+                                                :creator_id (mt/user->id :crowberto)}]
+        (testing "regular authenticated users cannot mutate the glossary"
+          (testing "POST is forbidden"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "glossary"
+                                         {:term "Hacked" :definition "Tampered"}))))
+          (testing "PUT is forbidden"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "glossary/" gid)
+                                         {:term "Hacked" :definition "Tampered"}))))
+          (testing "DELETE is forbidden"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :delete 403 (str "glossary/" gid)))))
+          (testing "the entry was not modified"
+            (is (=? {:term "Existing" :definition "An existing entry"}
+                    (t2/select-one :model/Glossary :id gid)))))
+        (testing "regular users can still read the glossary, and the response reports it as not writable"
+          (is (false? (:can_write (mt/user-http-request :rasta :get 200 "glossary")))))
+        (testing "superusers see the glossary as writable"
+          (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary")))))))
+    (testing "data analysts can mutate the glossary with advanced-permissions"
+      (mt/with-model-cleanup [:model/Glossary]
+        (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
+                       :model/PermissionsGroupMembership _ {:user_id  analyst-id
+                                                            :group_id (:id (perms-group/data-analyst))}]
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (true? (:can_write (mt/user-http-request analyst-id :get 200 "glossary"))))
+             (let [{gid :id} (mt/user-http-request analyst-id :post 200 "glossary"
+                                                   {:term "Analyst" :definition "Created by analyst"})]
+               (is (pos-int? gid))
+               (is (=? {:definition "Edited by analyst"}
+                       (mt/user-http-request analyst-id :put 200 (str "glossary/" gid)
+                                             {:term "Analyst" :definition "Edited by analyst"})))
+               (is (nil? (mt/user-http-request analyst-id :delete 204 (str "glossary/" gid)))))))
+          (mt/with-premium-features #{}
+            (testing "without advanced-permissions the data analyst is refused"
+              (is (false? (:can_write (mt/user-http-request analyst-id :get 200 "glossary"))))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request analyst-id :post 403 "glossary"
+                                           {:term "Gated" :definition "Refused"}))))))))))
+
+(deftest glossary-search-escapes-like-wildcards-test
+  (testing "GET /api/glossary?search= matches % and _ literally rather than as LIKE wildcards"
+    (mt/with-temp [:model/Glossary _ {:term "g1" :definition "a literal % sign"}
+                   :model/Glossary _ {:term "g2" :definition "a literal _ underscore"}
+                   :model/Glossary _ {:term "g3" :definition "no metacharacters here"}]
+      (are [search expected-terms] (= expected-terms
+                                      (->> (mt/user-http-request :rasta :get 200 "glossary" :search search)
+                                           :data
+                                           (map :term)
+                                           set))
+        "%"     #{"g1"}
+        "_"     #{"g2"}
+        "l%s"   #{}
+        "a%a%a" #{}
+        "literal" #{"g1" "g2"}))))

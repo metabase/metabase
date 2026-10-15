@@ -4,13 +4,13 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import {
   ActionIcon,
   Box,
   Flex,
   Group,
   Icon,
+  Loader,
   Stack,
   Tabs,
   Text,
@@ -78,12 +78,12 @@ function ExecutionResultTabs({
 }) {
   return (
     <Group className={S.header} justify="space-between">
-      <Box mt="xs">
+      <Box mt="xxs">
         <Tabs
           value={tab}
           onChange={(value) => {
             if (value) {
-              onTabChange(value as ResultsTab);
+              onTabChange(value);
             }
           }}
         >
@@ -103,8 +103,8 @@ function getRunQueryShortcut() {
 
 function LoadingState() {
   return (
-    <Flex p="md" className={S.loading}>
-      <LoadingSpinner />
+    <Flex p="lg" align="center" justify="center" className={S.loading}>
+      <Loader size="lg" color="core-brand" />
     </Flex>
   );
 }
@@ -131,7 +131,7 @@ function EmptyState() {
 
 function ErrorState({ error }: { error: string }) {
   return (
-    <Stack gap="sm" h="100%" p="md" c="error" className={S.error}>
+    <Stack gap="sm" h="100%" p="lg" c="feedback-negative" className={S.error}>
       <Group fw="bold" gap="sm">
         <Icon name="warning" />
         {t`Error`}
@@ -156,11 +156,16 @@ function ResultsFooter({
 
   if (executionResult.error) {
     return (
-      <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
-        <Icon size="1rem" style={{ flexShrink: 0 }} name="warning" c="error" />
+      <Flex className={S.footer} gap="xxs" align="center" px="lg" py="lg">
+        <Icon
+          size="1rem"
+          style={{ flexShrink: 0 }}
+          name="warning"
+          c="feedback-negative"
+        />
         <Text
           c="text-primary"
-          ml="xs"
+          ml="xxs"
         >{t`An error occurred while executing your Python script.`}</Text>
         <DismissButton onDismiss={onDismiss} />
       </Flex>
@@ -172,17 +177,17 @@ function ResultsFooter({
   }
 
   return (
-    <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
+    <Flex className={S.footer} gap="xxs" align="center" px="lg" py="lg">
       <Icon
         size="1rem"
         style={{ flexShrink: 0 }}
         name="check_filled"
-        c="success"
+        c="feedback-positive"
       />
       <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
       <Text
-        c="text-tertiary"
-        ml="xs"
+        c="text-disabled"
+        ml="xxs"
         lh="xs"
       >{t`Preview based on the first 100 rows from each table.`}</Text>
       <DismissButton onDismiss={onDismiss} />
@@ -197,7 +202,7 @@ function DismissButton({ onDismiss }: { onDismiss: () => void }) {
       size="1.5rem"
       radius="xl"
       variant="subtle"
-      c="text-tertiary"
+      c="text-disabled"
       onClick={onDismiss}
       aria-label={t`Dismiss`}
     >
@@ -212,12 +217,18 @@ function ExecutionOutputLogs({
   executionResult: TestPythonTransformResponse | null;
 }) {
   return (
-    <Box fz="sm" p="md" bg="background-secondary" h="100%" className={S.logs}>
+    <Box
+      fz="sm"
+      p="lg"
+      bg="background_page-secondary"
+      h="100%"
+      className={S.logs}
+    >
       {executionResult?.logs ? (
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
         <Text
-          c="text-tertiary"
+          c="text-disabled"
           fz="sm"
           fs="italic"
         >{t`No logs to display`}</Text>

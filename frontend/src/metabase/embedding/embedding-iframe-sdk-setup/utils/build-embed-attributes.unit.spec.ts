@@ -1,7 +1,4 @@
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
 import {
   buildEmbedAttributes,
@@ -38,7 +35,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -68,7 +65,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -95,7 +92,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -117,7 +114,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -139,7 +136,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -165,7 +162,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -190,7 +187,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -219,7 +216,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: null,
         wrapWithQuotes: true,
       });
@@ -245,7 +242,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: null,
         wrapWithQuotes: true,
       });
@@ -271,7 +268,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -293,7 +290,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
+        experience: "exploration",
         token: null,
         wrapWithQuotes: true,
       });
@@ -318,7 +315,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
+        experience: "exploration",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -339,7 +336,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
+        experience: "exploration",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -350,6 +347,7 @@ describe("buildEmbedAttributes", () => {
 
   describe("base settings exclusion", () => {
     it("should exclude base configuration keys from attributes", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
@@ -362,7 +360,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -387,7 +385,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: false,
       });
@@ -402,6 +400,7 @@ describe("buildEmbedAttributes", () => {
 
   describe("undefined and null values", () => {
     it("should omit undefined values from attributes", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         questionId: 123,
         withTitle: undefined,
@@ -411,7 +410,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -422,16 +421,19 @@ describe("buildEmbedAttributes", () => {
     });
 
     it("should omit null values from attributes", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         questionId: 123,
+        // Unjustified type cast. FIXME
         withTitle: null as any,
+        // Unjustified type cast. FIXME
         drills: null as any,
         apiKey: "test-api-key",
       } as SdkIframeEmbedSetupSettings;
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -444,6 +446,7 @@ describe("buildEmbedAttributes", () => {
 
   describe("camelCase to dash-case conversion", () => {
     it("should convert camelCase keys to dash-case", () => {
+      // Unjustified type cast. FIXME
       const settings: SdkIframeEmbedSetupSettings = {
         questionId: 123,
         isSaveEnabled: true,
@@ -454,7 +457,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });

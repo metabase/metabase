@@ -1,35 +1,23 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core/index.css";
-import { Button, Modal, Title } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 interface AlertProps {
   message?: string | null;
   onClose: () => void;
 }
 
-const Alert = ({ message, onClose }: AlertProps) => (
+export const Alert = ({ message, onClose }: AlertProps) => (
   <Modal
     size="md"
-    opened={!!message}
+    opened={Boolean(message)}
     onClose={onClose}
     withCloseButton={false}
-    padding="0"
     data-testid="alert-modal"
   >
-    <div className={cx(CS.flex, CS.flexColumn, CS.layoutCentered, CS.p4)}>
-      <Title order={3} className={cx(CS.mb2, CS.textWrap)}>
-        {message}
-      </Title>
-      <Button
-        className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
-        variant="primary"
-        onClick={onClose}
-      >{t`Ok`}</Button>
-    </div>
+    <Text>{message}</Text>
+    <Modal.Footer>
+      <Button variant="filled" onClick={onClose}>{t`Ok`}</Button>
+    </Modal.Footer>
   </Modal>
 );
-
-export { Alert };

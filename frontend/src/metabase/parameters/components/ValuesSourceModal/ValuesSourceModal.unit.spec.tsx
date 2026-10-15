@@ -17,6 +17,7 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -24,7 +25,6 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -235,16 +235,12 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        await userEvent.click(
-          screen.getByRole("button", { name: /Pick a column/ }),
-        );
+        await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
         expect(
-          screen.queryByRole("heading", { name: "ID" }),
+          screen.queryByRole("option", { name: "ID" }),
         ).not.toBeInTheDocument();
 
-        await userEvent.click(
-          screen.getByRole("heading", { name: "Category" }),
-        );
+        await userEvent.click(screen.getByRole("option", { name: "Category" }));
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
         expect(onSubmit).toHaveBeenCalledWith("card", {
           card_id: 1,
@@ -334,12 +330,12 @@ describe("ValuesSourceModal", () => {
           screen.getByText("Column to supply the labels"),
         ).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole("button", { name: /Title/ }));
-        const categoryOption = await screen.findByRole("heading", {
+        await userEvent.click(screen.getByDisplayValue("Title"));
+        const categoryOption = await screen.findByRole("option", {
           name: "Category",
         });
         expect(
-          screen.queryByRole("heading", { name: "ID" }),
+          screen.queryByRole("option", { name: "ID" }),
         ).not.toBeInTheDocument();
         await userEvent.click(categoryOption);
 
@@ -387,8 +383,8 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        await userEvent.click(screen.getByRole("button", { name: /Title/ }));
-        const noneOption = await screen.findByRole("heading", { name: "None" });
+        await userEvent.click(screen.getByDisplayValue("Title"));
+        const noneOption = await screen.findByRole("option", { name: "None" });
         await userEvent.click(noneOption);
 
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -428,7 +424,9 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+          "A\nB\nC",
+        );
       });
 
       it("should display a message when the user has no access to the card", async () => {
@@ -530,7 +528,9 @@ describe("ValuesSourceModal", () => {
             }),
           ],
         });
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+          "A\nB\nC",
+        );
 
         await userEvent.click(
           screen.getByRole("radio", { name: "Custom list" }),
@@ -938,14 +938,12 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: /Pick a column/ }),
-      );
+      await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
       expect(
-        screen.queryByRole("heading", { name: "Category" }),
+        screen.queryByRole("option", { name: "Category" }),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("heading", { name: "ID" }));
+      await userEvent.click(screen.getByRole("option", { name: "ID" }));
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
@@ -1009,7 +1007,7 @@ const setup = async ({
   const databases = [createMockDatabase()];
   const rootCollection = createMockCollection(ROOT_COLLECTION);
   const personalCollection = createMockCollection({
-    id: currentUser.personal_collection_id,
+    id: currentUser.personal_collection_id ?? undefined,
   });
   const onSubmit = jest.fn();
   const onClose = jest.fn();

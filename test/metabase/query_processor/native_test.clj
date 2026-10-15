@@ -9,6 +9,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.date-time-zone-functions-test :as dt-fn-test]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -49,6 +50,7 @@
     ;; allow duplicate column names in the `SELECT` list (all of them, I think?). That was the original intention of
     ;; this test but because of a coding error it only ever ran against H2. I updated it to run against PG as well
     ;; until we can verify it works on other drivers without issue.
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers #{:h2 :postgres}
       (let [mp (lib.tu/mock-metadata-provider

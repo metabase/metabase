@@ -189,6 +189,41 @@
                   (map :archived)
                   (every? false?))))))))
 
+(deftest rename-timeline-test
+  (testing "PUT /api/timeline/:id can rename a timeline"
+    (mt/with-temp [:model/Timeline {tl-id :id} {:name "Timeline A"}]
+      (is (= "Launches"
+             (:name (mt/user-http-request :rasta :put 200 (str "timeline/" tl-id) {:name "Launches"}))))
+      (is (= "Launches" (t2/select-one-fn :name :model/Timeline :id tl-id))))))
+
+(deftest move-timeline-test
+  (testing "PUT /api/timeline/:id can move a timeline to another collection"
+    (mt/with-temp [:model/Collection {coll-a :id} {}
+                   :model/Collection {coll-b :id} {}
+                   :model/Timeline   {tl-id :id}  {:collection_id coll-a}]
+      (is (= coll-b (:collection_id (mt/user-http-request :crowberto :put 200 (str "timeline/" tl-id)
+                                                          {:collection_id coll-b}))))
+      (testing "a user without write permission on the destination collection is denied"
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-a)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "timeline/" tl-id) {:collection_id coll-a})))))))
+
+(deftest delete-timeline-test
+  (testing "DELETE /api/timeline/:id cascades to its events"
+    (mt/with-temp [:model/Timeline      {tl-id :id} {:name "Releases"}
+                   :model/TimelineEvent {ev-id :id} {:timeline_id tl-id :name "RC1"}]
+      (is (nil? (mt/user-http-request :crowberto :delete 204 (str "timeline/" tl-id))))
+      (is (nil? (t2/select-one :model/Timeline :id tl-id)))
+      (is (nil? (t2/select-one :model/TimelineEvent :id ev-id))))))
+
+(deftest create-timeline-permissions-test
+  (testing "POST /api/timeline is denied to a user with only read permission on the collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "timeline" {:name "nope" :collection_id coll-id}))))))
+
 (defn- include-events-request
   [timeline archived?]
   (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id timeline))

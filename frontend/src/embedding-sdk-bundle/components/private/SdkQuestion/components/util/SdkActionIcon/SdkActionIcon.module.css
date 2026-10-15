@@ -1,10 +1,10 @@
 .sdkActionIcon:not([data-css-specificity-hack]) {
   color: var(--mb-color-text-primary);
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
 
   &:hover {
-    background: var(--mb-color-background-hover);
+    background: var(--mb-color-background_surface-hover);
   }
 
   &[data-active="true"] {

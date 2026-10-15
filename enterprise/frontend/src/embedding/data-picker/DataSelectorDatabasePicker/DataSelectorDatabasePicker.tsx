@@ -5,35 +5,37 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import type {
+  DataSelectorDatabase,
+  DataSelectorSchema,
+} from "metabase/querying/common/components/DataSelector";
 import { Icon } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import DataSelectorLoading from "../DataSelectorLoading";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabasePickerProps = {
-  databases: Database[];
+  databases: DataSelectorDatabase[];
   hasBackButton?: boolean;
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  selectedDatabase?: Database;
-  selectedSchema?: Schema;
-  onBack?: () => void;
-  onChangeDatabase: (database: Database) => void;
+  selectedDatabase?: DataSelectorDatabase | null;
+  selectedSchema?: DataSelectorSchema | null;
+  onBack?: (() => void) | null;
+  onChangeDatabase: (database: DataSelectorDatabase) => void;
 };
 
 type Item = {
   name: string;
   index: number;
-  database: Database;
+  database: DataSelectorDatabase;
 };
 
-const DataSelectorDatabasePicker = ({
+export const DataSelectorDatabasePicker = ({
   databases,
   selectedDatabase,
   onChangeDatabase,
@@ -88,7 +90,7 @@ const DataSelectorDatabasePicker = ({
       onChange={(item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(item) =>
-        selectedDatabase && item.database.id === selectedDatabase.id
+        selectedDatabase != null && item.database.id === selectedDatabase.id
       }
       renderItemIcon={() => (
         <Icon
@@ -102,6 +104,3 @@ const DataSelectorDatabasePicker = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDatabasePicker;

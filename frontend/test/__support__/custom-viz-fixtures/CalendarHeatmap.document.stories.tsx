@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   ForceDocumentCardRenderDecorator,
@@ -18,7 +19,6 @@ import { Editor } from "metabase/documents/components/Editor/Editor";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -79,9 +79,11 @@ function DocumentProviders({
       entities: createMockEntitiesState({}),
     });
     const commonReducerNames = Object.keys(commonReducers);
+    // Unjustified type cast. FIXME
     const initialState = _.pick(
       storeInitialState,
       ...commonReducerNames,
+      "settings", // `getStore` uses settings to seed the `getSessionProperties` cache entry
     ) as State;
     return getStore(commonReducers, initialState, [Api.middleware]);
   }, []);

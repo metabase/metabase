@@ -1,5 +1,5 @@
 export const treeTableStyles = {
   headerRow: {
-    backgroundColor: "var(--mb-color-background-secondary)",
+    backgroundColor: "var(--mb-color-background_page-secondary)",
   },
 };

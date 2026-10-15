@@ -2,21 +2,22 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import { Link } from "metabase/common/components/Link";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Flex, Stack, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import type { ForgotPasswordData } from "../../types";
 
-import {
-  PasswordFormFooter,
-  PasswordFormLink,
-  PasswordFormTitle,
-} from "./ForgotPasswordForm.styled";
+import S from "./ForgotPasswordForm.module.css";
 
 const FORGOT_PASSWORD_SCHEMA = Yup.object({
   email: Yup.string().required(Errors.required).email(Errors.email),
@@ -45,30 +46,39 @@ export const ForgotPasswordForm = ({
 
   return (
     <div>
-      <PasswordFormTitle>{t`Forgot password`}</PasswordFormTitle>
+      <Title
+        order={1}
+        size="h3"
+        c="text-primary"
+        ta="center"
+        mb="xl"
+      >{t`Forgot password`}</Title>
       <FormProvider
         initialValues={initialValues}
         validationSchema={FORGOT_PASSWORD_SCHEMA}
         onSubmit={handleSubmit}
       >
-        <Form>
-          <FormInput
+        <Form as={Stack} gap="lg">
+          <FormTextInput
             name="email"
-            title={t`Email address`}
+            label={t`Email address`}
             placeholder={t`The email you use for your ${applicationName} account`}
             autoFocus
           />
           <FormSubmitButton
-            title={t`Send password reset email`}
-            primary
+            label={t`Send password reset email`}
+            variant="filled"
             fullWidth
           />
           <FormErrorMessage />
         </Form>
       </FormProvider>
-      <PasswordFormFooter>
-        <PasswordFormLink to="/auth/login">{t`Back to sign in`}</PasswordFormLink>
-      </PasswordFormFooter>
+      <Flex direction="column" align="center" mt="xl">
+        <Link
+          className={S.passwordFormLink}
+          to="/auth/login"
+        >{t`Back to sign in`}</Link>
+      </Flex>
     </div>
   );
 };

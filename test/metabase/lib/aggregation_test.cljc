@@ -228,9 +228,13 @@
                     [:+ {:lib/uuid (str (random-uuid))} field 1]
                     [:- {:lib/uuid (str (random-uuid))} field 1]
                     [:* {:lib/uuid (str (random-uuid))} field 1]])
-            :let [clause [tag
-                          {:lib/uuid (str (random-uuid))}
-                          arg]]]
+            :let [clause (cond-> [tag
+                                  {:lib/uuid (str (random-uuid))}
+                                  arg]
+                           (= tag :percentile) (conj 0.5)
+                           (= tag :sum-where)  (conj [:> {:lib/uuid (str (random-uuid))}
+                                                      [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]
+                                                      1]))]]
       (testing (str \newline (pr-str clause))
         (is (= :type/Number
                (lib.schema.expression/type-of clause)))
@@ -1030,3 +1034,108 @@
       (when (and sum-where-idx sum-idx)
         (is (< sum-where-idx sum-idx)
             "Sum-where pattern should come before plain Sum pattern")))))
+
+(deftest ^:parallel aggregable-columns-from-nested-aggregating-source-test
+  (testing "#24839 a nested question on an aggregating card offers its aggregation columns as aggregable columns"
+    (let [source (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))
+                     (lib/aggregate (lib/avg (meta/field-metadata :orders :total)))
+                     (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                       (lib/with-temporal-bucket :month))))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 source)
+          query  (lib/query mp (lib.metadata/card mp 1))]
+      (is (set/subset? #{"Sum of Quantity" "Average of Total"}
+                       (set (map :display-name (lib/aggregable-columns query nil))))))))
+
+(deftest ^:parallel expression-references-named-aggregation-test
+  (testing "an expression can reference a named aggregation column from the previous stage"
+    (let [q       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/aggregate (-> (lib/sum (meta/field-metadata :orders :total))
+                                         (lib/with-expression-name "Custom Sum")))
+                      (lib/breakout (meta/field-metadata :orders :user-id))
+                      lib/append-stage)
+          agg-col (m/find-first #(= "Custom Sum" (:display-name %)) (lib/visible-columns q))]
+      (is (some? agg-col))
+      (let [q'      (lib/expression q "Custom Sum + 1" (lib/+ agg-col 1))
+            new-col (m/find-first #(= "Custom Sum + 1" (:display-name %)) (lib/returned-columns q'))]
+        (is (some? new-col))
+        (is (lib.types.isa/numeric? new-col))))))
+
+(deftest ^:parallel aggregations-over-native-card-survive-normalize-test
+  (testing "#15725 aggregations built over a native card survive a convert round-trip and are not dropped"
+    (let [mp     (lib.tu/metadata-provider-with-mock-cards)
+          card   (:orders/native (lib.tu/mock-cards))
+          query  (lib/query mp card)
+          total  (m/find-first #(= "TOTAL" (:name %)) (lib/visible-columns query))
+          pid    (m/find-first #(= "PRODUCT_ID" (:name %)) (lib/visible-columns query))
+          q      (-> query
+                     (lib/aggregate (lib/count))
+                     (lib/aggregate (lib/sum total))
+                     (lib/breakout pid))
+          q'     (lib/query mp (lib.convert/->legacy-MBQL q))]
+      (is (= 2 (count (lib/aggregations q'))))
+      (is (= 1 (count (lib/breakouts q')))))))
+
+(deftest ^:parallel aggregation-named-same-as-aggregated-column-test
+  (testing "#44567 an aggregation named the same as the column it aggregates still resolves the inner field"
+    (let [total (meta/field-metadata :orders :total)
+          q     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (-> (lib/sum total) (lib/with-expression-name "Total"))))
+          agg   (first (lib/aggregations q))]
+      (testing "the aggregation display name is the custom name"
+        (is (= "Total" (:display-name (lib/display-info q agg)))))
+      (testing "the inner field ref still resolves to the Total column (not Unknown Field)"
+        (is (= "Total" (lib/display-name q (last agg)))))
+      (testing "Sum([Total]) + 1 still validates as an aggregation"
+        (is (= 2 (count (lib/aggregations (lib/aggregate q (lib/+ (lib/sum total) 1))))))))))
+
+(deftest ^:parallel aggregate-over-joined-card-aggregation-column-test
+  (testing "#32020 aggregation columns from source and joined cards can feed a new aggregation"
+    (let [card1  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                     (lib/breakout (meta/field-metadata :orders :user-id)))
+          card2  (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                     (lib/aggregate (lib/max (meta/field-metadata :people :longitude)))
+                     (lib/breakout (meta/field-metadata :people :id)))
+          mp     (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [card1 card2])
+          base   (lib/query mp (lib.metadata/card mp 1))
+          c2     (lib.metadata/card mp 2)
+          lhs    (m/find-first #(= "USER_ID" (:name %))
+                               (lib/join-condition-lhs-columns base c2 nil nil))
+          rhs    (m/find-first #(= "ID" (:name %))
+                               (lib/join-condition-rhs-columns base c2 (lib/ref lhs) nil))
+          joined (lib/join base (lib/join-clause c2 [(lib/= lhs rhs)]))
+          sum-op (m/find-first #(= :sum (:short %)) (lib/available-aggregation-operators joined))
+          cols   (lib/aggregation-operator-columns sum-op)
+          maxcol (m/find-first #(and (= "max" (:name %)) (= :source/joins (:lib/source %))) cols)]
+      (testing "the source card's aggregation column is offered as an aggregation input"
+        (is (some #(and (= "sum" (:name %)) (= :source/card (:lib/source %))) cols)))
+      (testing "the joined card's aggregation column is offered as an aggregation input"
+        (is (some? maxcol)))
+      (is (= 1 (count (lib/aggregations (lib/aggregate joined (lib/sum maxcol)))))))))
+
+(deftest ^:parallel aggregation-column-test
+  (testing "column each aggregation produces, named before the stage deduplicates its column names"
+    (let [measure-mp (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Revenue"
+                                   :table-id   (meta/id :venues)
+                                   :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                                   (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))}]})
+          query      (lib/test-query measure-mp
+                                     {:stages [{:source       {:type :table :id (meta/id :venues)}
+                                                :breakouts    [{:type :column :name "NAME"}]
+                                                :aggregations [{:type :operator :operator :sum :args [{:type :column :name "PRICE"}]}
+                                                               {:type :operator :operator :sum :args [{:type :column :name "LATITUDE"}]}
+                                                               {:type :operator :operator :count}
+                                                               {:type :operator :operator :distinct :args [{:type :column :name "CATEGORY_ID"}]}
+                                                               {:type :operator :operator :count :name "NAME"}
+                                                               {:type :measure :id 1}
+                                                               {:name "revenue" :value {:type :measure :id 1}}]}]})]
+      (is (= ["sum" "sum" "count" "count" "NAME" "sum" "revenue"]
+             (map #(:name (lib/aggregation-column query -1 %)) (lib/aggregations query))))
+      (is (=? [{:display-name "Sum of Price" :lib/source :source/aggregations}]
+              [(lib/aggregation-column query -1 (first (lib/aggregations query)))]))
+      (is (= ["NAME" "sum" "sum_2" "count" "count_2" "NAME_2" "sum_3" "revenue"]
+             (map :name (lib/returned-columns query)))))))

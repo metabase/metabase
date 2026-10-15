@@ -1,0 +1,42 @@
+;;
+;; Synthetic modules config used by dev.modules-config-test. Small, but structurally a full config:
+;; a header comment block plus a `:metabase/modules` map. Each module here is shaped to exercise a
+;; different branch of the rewriter (sentinel preservation, resorting, append, removal, comment
+;; preservation, and the library-module skip). See the test for the intent behind each.
+;;
+{:metabase/modules
+ {alpha
+  {:team "Test Team"
+   ;; :api is a sentinel — must survive even though a real :api is computed for alpha.
+   :api  :any
+   ;; unsorted + carries an element comment; rewriting to sorted order drops the comment.
+   :uses #{gamma ; used heavily
+           beta}
+   ;; stale: missing :model/Gamma, must be rewritten.
+   :model-imports #{:model/Beta}}
+
+  beta
+  {:team "Test Team"
+   ;; :api missing entirely — must be appended.
+   :uses #{}
+   :model-exports #{:model/Beta}}
+
+  connection-pool
+  {:team "Test Team"
+   ;; Library-sourced module absent from the deps graph; the rewriter must leave it untouched.
+   :api  #{metabase.connection-pool}}
+
+  gamma
+  {:team "Test Team"
+   :api  :any
+   :uses :any
+   ;; bypass sentinel — preserved; also means gamma drives no model-imports.
+   :model-imports :bypass}
+
+  enterprise/zeta
+  {:team "Test Team"
+   :api  #{}
+   ;; already correct + sorted; the element comment must be preserved untouched.
+   :uses #{alpha ; core dependency
+           beta}
+   :model-exports #{:model/Zeta}}}}

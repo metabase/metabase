@@ -4,7 +4,7 @@ import type { ColorName } from "metabase/ui/colors/types";
 
 const avatarColors: ColorName[] = [
   "core-brand",
-  "error",
+  "feedback-negative",
   "accent1",
   "accent2",
   "accent3",

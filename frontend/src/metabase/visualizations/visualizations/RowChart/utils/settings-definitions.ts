@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
-import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import {
+  GRAPH_GOAL_SETTINGS,
+  type VisualizationSettingsDefinitions,
+  getDefaultDimensionLabel,
+} from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
@@ -227,8 +229,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: (series: Series, vizSettings: VisualizationSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
-      const [metric] =
-        (vizSettings["graph.metrics"] as string[] | undefined) ?? [];
+      const [metric] = vizSettings["graph.metrics"] ?? [];
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {

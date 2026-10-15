@@ -78,9 +78,9 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
         {
           source: { type: "table", id: PRODUCTS_ID },
           fields: [
-            { type: "column", name: "ID", sourceName: "PRODUCTS" },
-            { type: "column", name: "TITLE", sourceName: "PRODUCTS" },
-            { type: "column", name: "PRICE", sourceName: "PRODUCTS" },
+            { type: "column", name: "ID" },
+            { type: "column", name: "TITLE" },
+            { type: "column", name: "PRICE" },
           ],
           limit: 10,
         },
@@ -130,9 +130,9 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
         {
           source: { type: "table", id: PRODUCTS_ID },
           fields: [
-            { type: "column", name: "ID", sourceName: "PRODUCTS" },
-            { type: "column", name: "TITLE", sourceName: "PRODUCTS" },
-            { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+            { type: "column", name: "ID" },
+            { type: "column", name: "TITLE" },
+            { type: "column", name: "CATEGORY" },
           ],
           limit: 10,
         },
@@ -183,6 +183,19 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
       query: { "source-table": ORDERS_ID },
     }).then(({ body: question }) => {
       cy.wrap(question.id).as("questionId");
+    });
+  }
+
+  // Takes no parameters, unlike the question the initial token names, so a token
+  // swap between the two also changes which parameters are valid.
+  function createOtherStandaloneQuestion() {
+    createQuestion({
+      name: "Products",
+      enable_embedding: true,
+      embedding_type: "guest-embed",
+      query: { "source-table": PRODUCTS_ID },
+    }).then(({ body: question }) => {
+      cy.wrap(question.id).as("otherQuestionId");
     });
   }
 
@@ -675,6 +688,94 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
               );
             },
           );
+        });
+      });
+    });
+
+    describe("provider returns a different resource", () => {
+      beforeEach(() => {
+        H.prepareGuestEmbedSdkIframeEmbedTest({
+          onPrepare: () => {
+            createQuestionWithCategoryFilter();
+            createOtherStandaloneQuestion();
+          },
+        });
+      });
+
+      it("switches to the question the refreshed token names", () => {
+        cy.get<number>("@questionId").then((questionId) => {
+          cy.get<number>("@otherQuestionId").then((otherQuestionId) => {
+            signJwt({ questionId, expirationSeconds: 600 }).then(
+              (initialToken) => {
+                signJwt({
+                  questionId: otherQuestionId,
+                  expirationSeconds: 600,
+                }).then((freshToken) => {
+                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
+                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
+                  }).as("guestTokenProvider");
+
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-question",
+                        attributes: { token: initialToken },
+                      },
+                    ],
+                  });
+
+                  // Apply a filter value so the question runs with a parameter
+                  // set, which is the state that has to survive the swap.
+                  H.getSimpleEmbedIframeContent().within(() => {
+                    cy.findByLabelText("Category").click();
+                    H.popover().within(() => {
+                      cy.findByRole("checkbox", { name: "Doohickey" }).click();
+                      cy.button("Add filter").click();
+                    });
+
+                    H.assertTableData({
+                      columns: ["ID", "TITLE", "CATEGORY"],
+                    });
+                  });
+
+                  cy.get("iframe[data-metabase-embed]")
+                    .its("0.contentWindow")
+                    .should("exist")
+                    .then((contentWindow) => {
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
+                    });
+
+                  H.getSimpleEmbedIframeContent().within(() => {
+                    // The refresh only fires on the next request, so re-running
+                    // the query with a new filter value is what triggers it.
+                    cy.findByLabelText("Category").click();
+                    H.popover().within(() => {
+                      cy.findByRole("checkbox", { name: "Gadget" }).click();
+                      cy.button("Update filter").click();
+                    });
+
+                    cy.wait("@guestTokenProvider");
+                  });
+
+                  // The refreshed token names a question that takes no
+                  // parameters, so the old filter value must not be sent along
+                  // with it.
+                  H.getSimpleEmbedIframeContent()
+                    .findByText(/Unknown parameter/)
+                    .should("not.exist");
+
+                  // "Vendor" is only on the question the refreshed token names.
+                  H.getSimpleEmbedIframeContent()
+                    .findByText("Vendor")
+                    .should("exist");
+                });
+              },
+            );
+          });
         });
       });
     });

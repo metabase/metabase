@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/redux/entities/questions-reducer";
 import type { Dispatch } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
@@ -60,8 +59,16 @@ const WRITABLE_CARD_PROPERTIES = [
   "size",
 ] as const;
 
-const pickWritable = (card: object) =>
-  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES) as Record<string, unknown>;
+// Accepted by POST /api/card only, so it stays out of the shared list above:
+// it tells the backend the new card is a copy of an existing one.
+const CREATE_ONLY_CARD_PROPERTIES = ["source_card_id"] as const;
+
+const pickWritable = (card: object, extraProperties: readonly string[] = []) =>
+  // Unjustified type cast. FIXME
+  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES, ...extraProperties) as Record<
+    string,
+    unknown
+  >;
 
 /**
  * Creates a card and notifies the retired-entity reducers. Replaces
@@ -73,7 +80,7 @@ export const createQuestionCard =
   (request: object) =>
   async (dispatch: Dispatch): Promise<Card> => {
     const { collection_id, dashboard_id, dashboard_tab_id, ...rest } =
-      pickWritable(request);
+      pickWritable(request, CREATE_ONLY_CARD_PROPERTIES);
 
     const destination = dashboard_id
       ? { dashboard_id, dashboard_tab_id }
@@ -85,10 +92,6 @@ export const createQuestionCard =
       cardApi.endpoints.createCard,
     );
     dispatch(cardCreated(card));
-    // Hydrate the normalized `questions` slice so `getMetadata(state).question(id)`
-    // reflects the write immediately, instead of waiting for a later GET — the
-    // entity framework used to do this when normalizing the create response.
-    dispatch({ type: INJECT_RTK_QUERY_QUESTION_VALUE, payload: card });
     return card;
   };
 
@@ -105,9 +108,5 @@ export const updateQuestionCard =
       cardApi.endpoints.updateCard,
     );
     dispatch(cardUpdated(card));
-    // Hydrate the normalized `questions` slice so `getMetadata(state).question(id)`
-    // reflects the write immediately, instead of waiting for a later GET — the
-    // entity framework used to do this when normalizing the update response.
-    dispatch({ type: INJECT_RTK_QUERY_QUESTION_VALUE, payload: card });
     return card;
   };

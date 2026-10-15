@@ -14,6 +14,7 @@
   flex-flow: column nowrap;
   outline: none;
   overflow: auto;
+  overscroll-behavior-x: contain;
   flex-grow: 1;
   width: 100%;
   height: 100%;
@@ -85,6 +86,13 @@
   width: 100%;
   position: relative;
 
+  &.striped {
+    background-color: var(
+      --data-grid-striped-bg-color,
+      var(--mb-color-background_surface-hover)
+    );
+  }
+
   &.active {
     background-color: color-mix(
       in srgb,
@@ -105,7 +113,7 @@
 
 .focusedCell {
   user-select: text;
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
   outline-offset: -2px;
 }
 

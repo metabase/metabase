@@ -168,6 +168,7 @@ export const DatabaseReplicationForm = ({
                 label={t`Select schemas to replicate`}
                 onChange={(value) =>
                   setSchemaFiltersType(
+                    // Unjustified type cast. FIXME
                     value as typeof initialValues.schemaFiltersType,
                   )
                 }
@@ -194,21 +195,26 @@ export const DatabaseReplicationForm = ({
                     }
                   />
                   {previewResponse?.errors?.invalidSchemaFiltersPattern && (
-                    <Text c="error" fz="sm" mt="xs">
+                    <Text c="feedback-negative" fz="sm" mt="xxs">
                       {t`Invalid schema filters pattern`}
                     </Text>
                   )}
                 </Box>
               )}
 
-              <Card radius="md" bg="background-secondary" p={0} shadow="none">
+              <Card
+                radius="sm"
+                bg="background_page-secondary"
+                p={0}
+                shadow="none"
+              >
                 <Flex
                   align="flex-start"
                   direction="row"
                   gap="sm"
                   justify="flex-start"
                   wrap="nowrap"
-                  p="md"
+                  p="lg"
                 >
                   <Icon name="info_outline" size={16} mt="1px" />
                   <Box>
@@ -223,14 +229,14 @@ export const DatabaseReplicationForm = ({
                       c="core-brand"
                       fz="md"
                       h="auto"
-                      mt="xs"
+                      mt="xxs"
                       p={0}
                       w="auto"
                     >
                       <Flex
                         align="center"
                         direction="row"
-                        gap="xs"
+                        gap="xxs"
                         justify="flex-start"
                         wrap="nowrap"
                       >
@@ -253,12 +259,12 @@ export const DatabaseReplicationForm = ({
                     <Divider />
                     <Box
                       mah={180}
-                      px="md"
+                      px="lg"
                       style={{
                         overflowY: "auto",
                       }}
                     >
-                      <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
+                      <List spacing="xxs" size="sm" fz="md" ml="sm" my="lg">
                         {noSyncTables.map((table) => (
                           <List.Item
                             key={`${table.tableSchema}.${table.tableName}`}
@@ -276,7 +282,7 @@ export const DatabaseReplicationForm = ({
                               <Text span c="text-secondary" display="inline">
                                 .{table.tableName}
                               </Text>{" "}
-                              <Text span c="text-tertiary" display="inline">
+                              <Text span c="text-disabled" display="inline">
                                 {noSyncReason(table)}
                               </Text>
                             </Text>
@@ -288,14 +294,19 @@ export const DatabaseReplicationForm = ({
                 )}
               </Card>
 
-              <Card radius="md" bg="background-secondary" p={0} shadow="none">
+              <Card
+                radius="sm"
+                bg="background_page-secondary"
+                p={0}
+                shadow="none"
+              >
                 <Flex
                   align="flex-start"
                   direction="row"
                   gap="sm"
                   justify="flex-start"
                   wrap="nowrap"
-                  p="md"
+                  p="lg"
                 >
                   <Icon name="check" size={16} mt="1px" />
                   <Box>
@@ -311,14 +322,14 @@ export const DatabaseReplicationForm = ({
                       c="core-brand"
                       fz="md"
                       h="auto"
-                      mt="xs"
+                      mt="xxs"
                       p={0}
                       w="auto"
                     >
                       <Flex
                         align="center"
                         direction="row"
-                        gap="xs"
+                        gap="xxs"
                         justify="flex-start"
                         wrap="nowrap"
                       >
@@ -343,12 +354,12 @@ export const DatabaseReplicationForm = ({
                     <Divider />
                     <Box
                       mah={180}
-                      px="md"
+                      px="lg"
                       style={{
                         overflowY: "auto",
                       }}
                     >
-                      <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
+                      <List spacing="xxs" size="sm" fz="md" ml="sm" my="lg">
                         {replicatedTables.map((table) => (
                           <List.Item
                             key={`${table.tableSchema}.${table.tableName}`}
@@ -376,16 +387,16 @@ export const DatabaseReplicationForm = ({
               </Card>
 
               <Card
-                radius="md"
-                bg="background-secondary"
-                p="md"
+                radius="sm"
+                bg="background_page-secondary"
+                p="lg"
                 my="sm"
                 shadow="none"
               >
                 <Stack>
                   <Group justify="space-between">
                     <Box ta="left">
-                      <Text c="text-tertiary">{database.name}</Text>
+                      <Text c="text-disabled">{database.name}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.totalEstimatedRowCount ===
                         "number" ? (
@@ -400,7 +411,7 @@ export const DatabaseReplicationForm = ({
                     {previewResponseLoading && <Loader />}
 
                     <Box ta="right">
-                      <Text c="text-tertiary">{t`Available Cloud Storage`}</Text>
+                      <Text c="text-disabled">{t`Available Cloud Storage`}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.freeQuota === "number" ? (
                         <Text fw="bold" w="100%">
@@ -417,7 +428,9 @@ export const DatabaseReplicationForm = ({
                     <Progress
                       value={storageUtilizationPercent}
                       color={
-                        previewResponse?.canSetReplication ? "success" : "error"
+                        previewResponse?.canSetReplication
+                          ? "feedback-positive"
+                          : "feedback-negative"
                       }
                     />
                   ) : (
@@ -438,7 +451,7 @@ export const DatabaseReplicationForm = ({
                     }
                     label={t`Start replication`}
                     variant="filled"
-                    mt="xs"
+                    mt="xxs"
                   />
                 </Group>
               </Flex>

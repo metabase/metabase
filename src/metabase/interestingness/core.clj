@@ -22,6 +22,8 @@
  [metabase.interestingness.dimension
   dimension-interestingness]
  [metabase.interestingness.chart.repr
-  generate-representation]
+  generate-representation
+  temporal-context]
  [metabase.interestingness.chart.stats
+  chart-stats-schema
   compute-chart-stats])

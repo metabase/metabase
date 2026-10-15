@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Icon, UnstyledButton } from "metabase/ui";
@@ -41,11 +41,9 @@ export const ViewButton = ({
         },
         className,
       )}
-      style={
-        {
-          "--view-button-color": color ?? "var(--mb-color-core-brand)",
-        } as CSSProperties
-      }
+      style={{
+        "--view-button-color": color ?? "var(--mb-color-core-brand)",
+      }}
       {...props}
     >
       {icon && <Icon name={icon} size={iconSize} />}

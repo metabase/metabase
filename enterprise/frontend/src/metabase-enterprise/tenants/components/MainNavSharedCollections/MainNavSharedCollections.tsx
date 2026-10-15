@@ -9,15 +9,17 @@ import { CreateCollectionForm } from "metabase/common/collections/components/Cre
 import type { CreateCollectionProperties } from "metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm";
 import { buildCollectionTree } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import { useSetting } from "metabase/common/hooks";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/current-user";
 import {
-  PaddedSidebarLink,
   SidebarHeading,
   SidebarSection,
-} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
-import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+} from "metabase/nav/containers/MainNavbar/Sidebar";
+import {
+  SidebarCollectionLink,
+  SidebarLink,
+} from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import {
   tenantSpecificCollections,
@@ -147,21 +149,19 @@ export const MainNavSharedCollections = ({
             }
           />
           {canAccessTenantSpecificCollections && (
-            <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
+            <SidebarLink icon="group" url={tenantSpecificCollections()}>
               {t`Tenant collections`}
-            </PaddedSidebarLink>
+            </SidebarLink>
           )}
           {isAdmin && (
-            <PaddedSidebarLink
-              icon="group"
-              url={tenantUsersPersonalCollections()}
-            >
+            <SidebarLink icon="group" url={tenantUsersPersonalCollections()}>
               {t`Tenant users' personal collections`}
-            </PaddedSidebarLink>
+            </SidebarLink>
           )}
         </SidebarSection>
       )}
       <Modal
+        density="relaxed"
         opened={modalOpen}
         title={t`New shared collection`}
         onClose={() => setModalOpen(false)}

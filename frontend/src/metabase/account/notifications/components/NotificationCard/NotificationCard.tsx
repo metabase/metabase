@@ -58,9 +58,9 @@ export const NotificationCard = ({
       className={S.root}
       data-testid="notification-alert-item"
       align="center"
-      px="lg"
-      py="md"
-      bg="background-primary"
+      px="xl"
+      py="lg"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
         {entityLink ? (
@@ -70,7 +70,7 @@ export const NotificationCard = ({
         ) : (
           formatTitle(listItem)
         )}
-        <Flex wrap="wrap" mt="xs">
+        <Flex wrap="wrap" mt="xxs">
           <Text
             component="span"
             className={S.message}
@@ -103,7 +103,7 @@ export const NotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
@@ -113,7 +113,7 @@ export const NotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />

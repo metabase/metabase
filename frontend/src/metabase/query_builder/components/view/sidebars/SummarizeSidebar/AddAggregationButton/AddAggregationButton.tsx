@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import { Button, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -37,7 +37,6 @@ export function AddAggregationButton({
           <Button
             className={AddAggregationButtonS.AddAggregationButtonRoot}
             variant="subtle"
-            size="sm"
             leftSection={<Icon name="add" />}
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Add aggregation`}

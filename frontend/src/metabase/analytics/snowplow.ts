@@ -13,6 +13,8 @@ export const createSnowplowTracker = (getUserId: GetUserId): void => {
     appId: "metabase",
     platform: "web",
     eventMethod: "post",
+    // Keep the v3 wire format; v4 defaults to plain JSON for POST.
+    encodeBase64: true,
     discoverRootDomain: true,
     contexts: { webPage: true },
     anonymousTracking: { withServerAnonymisation: true },
@@ -41,7 +43,7 @@ const createSnowplowPlugin = (getUserId: GetUserId) => {
           data: {
             id,
             version: {
-              tag: (version as { tag?: string }).tag,
+              tag: version.tag,
             },
             created_at: createdAt,
             token_features: tokenFeatures,

@@ -16,15 +16,13 @@ export const DependencyGraph = {
 };
 
 export const DependencyDiagnostics = {
-  visitBrokenDependencies: () =>
-    cy.visit("/data-studio/dependency-diagnostics/broken"),
+  visitBrokenDependencies: () => {
+    cy.visit("/monitor/dependency-diagnostics/broken");
+    waitForDependencyList();
+  },
   visitUnreferencedEntities: () => {
-    cy.intercept("GET", "/api/ee/dependencies/graph/unreferenced*").as(
-      "unreferencedEntities",
-    );
-    cy.visit("/data-studio/dependency-diagnostics/unreferenced");
-    cy.wait("@unreferencedEntities");
-    DependencyDiagnostics.list().should("be.visible");
+    cy.visit("/monitor/dependency-diagnostics/unreferenced");
+    waitForDependencyList();
   },
   list: () => cy.findByTestId("dependency-list"),
   searchInput: () => cy.findByTestId("dependency-list-search-input"),
@@ -47,6 +45,14 @@ export const DependencyDiagnostics = {
 
 const WAIT_TIMEOUT = 30000;
 const WAIT_INTERVAL = 100;
+
+// The list loads after the app starts and the saved list params load, which
+// can take longer than the default timeout after a page reload.
+function waitForDependencyList() {
+  cy.findByTestId("dependency-list", { timeout: WAIT_TIMEOUT }).should(
+    "be.visible",
+  );
+}
 
 export function waitForBackfillComplete(
   timeout = WAIT_TIMEOUT,
@@ -123,7 +129,7 @@ export function waitForBreakingDependencies(
   return cy
     .request<ListBreakingGraphNodesResponse>(
       "GET",
-      "/api/ee/dependencies/graph/breaking",
+      "/api/ee/dependencies/graph/breaking?include-personal-collections=true",
     )
     .then((response) => {
       if (filter(response.body.data)) {

@@ -142,6 +142,7 @@ export const createMockEmbedDataset = (
     };
   }
 
+  // Unjustified type cast. FIXME
   return opts as ErrorEmbedDataset;
 };
 

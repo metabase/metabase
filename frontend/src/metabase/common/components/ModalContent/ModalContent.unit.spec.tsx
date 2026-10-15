@@ -4,7 +4,7 @@ import { getIcon, render, screen } from "__support__/ui";
 
 import type { ModalContentProps } from "./ModalContent";
 import { ModalContent } from "./ModalContent";
-import { ModalContentActionIcon } from "./ModalContent.styled";
+import { ModalContentActionIcon } from "./ModalHeader";
 
 describe("ModalContent", () => {
   it("should render header action buttons", async () => {
@@ -44,10 +44,33 @@ describe("ModalContent", () => {
 
     setup({ onBack });
 
-    const backButton = screen.getByLabelText("chevronleft icon");
+    const backButton = screen.getByRole("button", { name: "Back" });
     expect(backButton).toBeInTheDocument();
 
     await userEvent.click(backButton);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("should activate the back button with the keyboard", async () => {
+    const onBack = jest.fn();
+
+    setup({ onBack });
+
+    screen.getByRole("button", { name: "Back" }).focus();
+
+    await userEvent.keyboard("{Enter}");
+    expect(onBack).toHaveBeenCalledTimes(1);
+
+    await userEvent.keyboard(" ");
+    expect(onBack).toHaveBeenCalledTimes(2);
+  });
+
+  it("should go back when the title is clicked", async () => {
+    const onBack = jest.fn();
+
+    setup({ onBack });
+
+    await userEvent.click(screen.getByText(/Long Modal title/));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,7 +9,9 @@ import {
 } from "embedding-sdk-bundle/components/private/util/MultiStepPopover";
 import { type PopoverProps, Tooltip } from "metabase/ui";
 
+import { useSdkQuestionContext } from "../../../context";
 import { useStageChangeTooltip } from "../../../hooks/use-stage-change-tooltip";
+import { shouldRenderQueryBuilderEditingControl } from "../../../utils/should-render-query-builder-editing-control";
 import { ToolbarButton } from "../../util/ToolbarButton";
 import { SummarizeBadgeList } from "../SummarizeBadgeList";
 import {
@@ -48,6 +50,12 @@ export const SummarizeDropdown = ({
     useState<SDKAggregationItem>();
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
+
+  const { question } = useSdkQuestionContext();
+
+  if (!shouldRenderQueryBuilderEditingControl(question)) {
+    return null;
+  }
 
   const onSelectBadge = (item?: SDKAggregationItem) => {
     setSelectedAggregationItem(item);

@@ -19,7 +19,8 @@ export const InsightsLink = ({
 
   const collection = dashboard
     ? dashboard.collection
-    : (question.collection() as Collection);
+    : // Unjustified type cast. FIXME
+      (question.collection() as Collection);
 
   if (isLoading) {
     return <div data-testid="loading-indicator" />;
@@ -65,7 +66,7 @@ export const InsightsLink = ({
       role="link"
       {...linkProps}
     >
-      <Flex gap="xs" className={SidesheetS.TabSibling}>
+      <Flex gap="xxs" className={SidesheetS.TabSibling}>
         <Icon name="external" />
         {t`Insights`}
       </Flex>

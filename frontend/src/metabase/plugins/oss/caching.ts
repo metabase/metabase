@@ -13,6 +13,8 @@ import type {
   CardId,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 // Types
 
 export type StrategyLabel =
@@ -62,6 +64,8 @@ export type SidebarCacheFormProps = {
   overlayProps?: ModalOverlayProps;
   onClose: () => void;
   onBack: () => void;
+  /** When false, the form is not a sub-page with a title to go back by */
+  withBackButton?: boolean;
 } & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
@@ -83,6 +87,7 @@ export const defaultMinDurationMs = 1000;
 /** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
 export const getPositiveIntegerSchema = () =>
   Yup.number()
+    .typeError(t`Enter a positive number.`)
     .positive(t`Enter a positive number.`)
     .integer(t`Enter an integer.`);
 
@@ -107,6 +112,7 @@ export const getAdaptiveStrategyValidationSchema = () => {
   });
 };
 
+// Unjustified type cast. FIXME
 export const strategies = {
   inherit: {
     // NOTE: We use functions for labels because otherwise t doesn't work properly
@@ -143,15 +149,16 @@ export const strategies = {
 } as Record<string, StrategyData>;
 
 export const getPerformanceTabMetadata = () =>
+  // Unjustified type cast. FIXME
   [
     {
-      name: t`Database caching`,
+      getName: () => t`Database caching`,
       path: "/admin/performance/databases",
       key: "performance-databases",
       tabId: PerformanceTabId.Databases,
     },
     {
-      name: t`Model persistence`,
+      getName: () => t`Model persistence`,
       path: "/admin/performance/models",
       key: "performance-models",
       tabId: PerformanceTabId.Models,
@@ -162,30 +169,30 @@ export const getPerformanceTabMetadata = () =>
 
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
-  StrategyFormLauncherPanel: PluginPlaceholder as any,
-  GranularControlsExplanation: PluginPlaceholder as any,
+  // The placeholder renders nothing and accepts the EE page component's (empty) props
+  DatabaseCachingEditor: PluginPlaceholder as ComponentType,
   SidebarCacheSection:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
+  // Unjustified type cast. FIXME
   SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
+  // Unjustified type cast. FIXME
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
+  // Unjustified type cast. FIXME
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
   MetricCachingModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<MetricCachingModalProps>,
 });
 
-export const PLUGIN_CACHING = getDefaultPluginCaching();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_CACHING, getDefaultPluginCaching());
-}
+export const PLUGIN_CACHING = definePluginSlot(getDefaultPluginCaching);

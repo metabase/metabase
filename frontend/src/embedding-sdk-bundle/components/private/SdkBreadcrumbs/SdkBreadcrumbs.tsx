@@ -7,7 +7,7 @@ import type {
   SdkBreadcrumbItemType,
 } from "embedding-sdk-bundle/types/breadcrumb";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -37,7 +37,7 @@ export const SdkBreadcrumbs = ({
     <PublicComponentStylesWrapper className={className} style={style}>
       <Flex align="center" data-testid="sdk-breadcrumbs">
         {breadcrumbs.map((breadcrumb, index) => (
-          <Fragment key={breadcrumb.id}>
+          <Fragment key={`${breadcrumb.type}-${breadcrumb.id}`}>
             <Breadcrumb
               icon={getBreadcrumbIcon(breadcrumb.type)}
               onClick={() => {
@@ -60,6 +60,7 @@ export const SdkBreadcrumbs = ({
 
 const getBreadcrumbIcon = (type: SdkBreadcrumbItemType): IconName =>
   match<SdkBreadcrumbItemType, IconName>(type)
+    .with("all-collections", () => "folder")
     .with("collection", () => "folder")
     .with("dashboard", () => "dashboard")
     .with("question", () => "table2")

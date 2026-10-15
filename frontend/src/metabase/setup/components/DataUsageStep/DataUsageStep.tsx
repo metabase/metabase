@@ -6,6 +6,7 @@ import { ActionButton } from "metabase/common/components/ActionButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Box, Flex, Switch } from "metabase/ui";
 
 import { goToNextStep, updateTracking } from "../../actions";
 import { getIsTrackingAllowed } from "../../selectors";
@@ -14,14 +15,7 @@ import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 
-import {
-  StepDescription,
-  StepError,
-  StepInfoList,
-  StepToggle,
-  StepToggleContainer,
-  StepToggleLabel,
-} from "./DataUsageStep.styled";
+import S from "./DataUsageStep.module.css";
 
 export const DataUsageStep = ({
   stepLabel,
@@ -67,31 +61,45 @@ export const DataUsageStep = ({
       title={getStepTitle(isTrackingAllowed, isStepCompleted)}
       label={stepLabel}
     >
-      <StepDescription>
+      <Box c="text-secondary" mt="md" mb="lg">
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
         <ExternalLink
           href={docsUrl}
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
-      </StepDescription>
-      <StepToggleContainer>
-        <StepToggle
-          value={isTrackingAllowed}
+      </Box>
+      <Flex
+        align="center"
+        mr="xxl"
+        mb="lg"
+        p="lg"
+        bd="2px solid var(--mb-color-border-neutral)"
+        bdrs="sm"
+      >
+        <Switch
+          flex="0 0 auto"
+          checked={isTrackingAllowed}
           autoFocus
-          onChange={handleTrackingChange}
+          onChange={(e) => handleTrackingChange(e.currentTarget.checked)}
           aria-labelledby="anonymous-usage-events-label"
         />
-        <StepToggleLabel id="anonymous-usage-events-label">
+        <Box id="anonymous-usage-events-label" c="text-secondary" ml="sm">
           {t`Allow Metabase to anonymously collect usage events`}
-        </StepToggleLabel>
-      </StepToggleContainer>
+        </Box>
+      </Flex>
       {isTrackingAllowed && (
-        <StepInfoList>
+        <Box
+          component="ul"
+          className={S.infoList}
+          c="text-secondary"
+          mb="lg"
+          lh={2}
+        >
           <li>{jt`Metabase ${(
             <strong key="message">{t`never`}</strong>
           )} collects anything about your data or question results.`}</li>
           <li>{t`All collection is completely anonymous.`}</li>
           <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
-        </StepInfoList>
+        </Box>
       )}
       <ActionButton
         normalText={t`Finish`}
@@ -102,7 +110,11 @@ export const DataUsageStep = ({
         type="button"
         actionFn={handleStepSubmit}
       />
-      {errorMessage && <StepError>{errorMessage}</StepError>}
+      {errorMessage && (
+        <Box c="feedback-negative" mt="sm">
+          {errorMessage}
+        </Box>
+      )}
     </ActiveStep>
   );
 };

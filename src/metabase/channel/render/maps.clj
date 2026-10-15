@@ -5,11 +5,12 @@
   draws pin tiles for the live app); the new part is fetching + stitching the OSM basemap under the
   overlay."
   (:require
-   [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.tiles.settings :as tiles.settings]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [metabase.util.web-mercator :as mercator])
   (:import
@@ -84,22 +85,25 @@
   from hammering the tile server — important for OSM's usage policy."
   (u/hours->ms 1))
 
+(def ^:private tile-max-bytes
+  "Download cap per tile. A 256×256 basemap tile is a few tens of KB; this is a backstop against a
+  hostile or misconfigured tile server streaming forever."
+  (* 4 1024 1024))
+
 (def ^:private fetch-tile*
-  ;; Throws on any failure (non-200, undecodable image) so that only successful fetches are cached —
-  ;; otherwise a transient failure would leave a blank strip in every render until the TTL expires.
+  ;; Throws on any failure (refused, non-200, undecodable image) so that only successful fetches are cached
+  ;; — otherwise a transient failure would leave a blank strip in every render until the TTL expires.
   (memoize/ttl
    (fn [template ^long z ^long x ^long y]
-     (let [url  (expand-tile-url template z x y)
-           resp (http/get url {:as                 :byte-array
-                               :socket-timeout     5000
-                               :connection-timeout 5000
-                               :throw-exceptions   false
-                               ;; OSM rejects requests without a valid User-Agent.
-                               :headers            {"User-Agent" "Metabase static map renderer"}})]
-       (when-not (= 200 (:status resp))
-         (throw (ex-info (format "Tile fetch failed with status %d" (:status resp))
-                         {:url url :status (:status resp)})))
-       (or (ImageIO/read (ByteArrayInputStream. ^bytes (:body resp)))
+     (let [url (expand-tile-url template z x y)
+           {:keys [^bytes bytes]} (u.http/fetch-bytes url {:max-bytes      tile-max-bytes
+                                                           :timeout-ms     5000
+                                                           :network-policy (tiles.settings/map-tile-server-allowed-networks)
+                                                           ;; OSM rejects requests without a valid User-Agent.
+                                                           :user-agent     "Metabase static map renderer"})]
+       (when-not bytes
+         (throw (ex-info "Tile fetch failed" {:url url})))
+       (or (ImageIO/read (ByteArrayInputStream. bytes))
            (throw (ex-info "Tile response is not a decodable image" {:url url})))))
    :ttl/threshold tile-cache-ttl-ms))
 
@@ -110,7 +114,7 @@
   (try
     (fetch-tile* template z x y)
     (catch Throwable e
-      (log/warn e "Failed to fetch map tile")
+      (log/warnf "Failed to fetch map tile: %s" (ex-message e))
       nil)))
 
 ;;; ------------------------------------------------ color (HCL) ------------------------------------------------
@@ -260,7 +264,7 @@
         (.toByteArray out))
       ;; Return nil on failure so the caller can degrade to a table rather than email a blank/partial map.
       (catch Throwable e
-        (log/warn e "Failed to render map")
+        (log/warnf "Failed to render map: %s" (ex-message e))
         nil)
       (finally
         (.dispose g)))))

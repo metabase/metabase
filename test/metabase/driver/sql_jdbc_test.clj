@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.quoting :as quoting]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -29,7 +31,7 @@
                                      "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
                           {:name table, :schema "PUBLIC",
                            :description nil, :is_writable true}))
-                   (:tables (driver/describe-database :h2 (mt/db))))))
+                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
@@ -74,8 +76,9 @@
                  (update :category_id int)
                  (update :id int)))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel invalid-ssh-credentials-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
@@ -104,6 +107,34 @@
                  (or (when (instance? java.net.ConnectException e)
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
+
+(deftest validate-db-details-additional-options-test
+  (testing "validate-db-details! rejects disallowed connection properties in additional-options"
+    (doseq [opt ["socketFactory=a.b.C"
+                 "sslfactory=a.b.C"
+                 "sslhostnameverifier=a.b.C"
+                 "sslpasswordcallback=a.b.C"
+                 "xmlFactoryFactory=a.b.C"
+                 "loggerFile=a/b"
+                 ;; class-instantiation sinks on drivers that inherit this method:
+                 "queryInterceptors=a.b.C"   ; presto-jdbc
+                 "dnsResolver=a.b.C"         ; starburst / trino
+                 "hostnameverifier=a.b.C"    ; vertica (bare, not just the ssl-prefixed form)
+                 "socketfactoryname=a.b.C"   ; vertica
+                 "sslsocketfactoryname=a.b.C" ; vertica
+                 "socketFactoryClass=a.b.C"  ; sqlserver-style spelling
+                 ;; matching is case-insensitive
+                 "SOCKETFACTORY=a.b.C"
+                 "DnsResolver=a.b.C"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :sql-jdbc {:additional-options opt}))))))
+  (testing "benign additional options and no additional options are allowed"
+    (doseq [details [{}
+                     {:additional-options nil}
+                     {:additional-options "prepareThreshold=5&tcpKeepAlive=true"}]]
+      (is (nil? (driver/validate-db-details! :sql-jdbc details))))))
 
 (defn- test-spliced-count-of [table filter-clause expected]
   (let [query        (mt/mbql-query nil
@@ -179,11 +210,11 @@
                                              :+features   [:actions]
                                              :+conn-props ["schema-filters"]})
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
-      (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                             (fn [metadata]
-                                                               (eduction
-                                                                cat
-                                                                [(orig metadata) [fake-schema-name]])))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas (let [orig (mt/original-fn #'sql-jdbc.describe-database/all-schemas)]
+                                                                           (fn [metadata]
+                                                                             (eduction
+                                                                              cat
+                                                                              [(orig metadata) [fake-schema-name]])))]
         (let [syncable (driver/syncable-schemas driver/*driver* (mt/db))]
           (is (contains? syncable "public"))
           (is (contains? syncable fake-schema-name))))
@@ -258,10 +289,8 @@
         ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (let [mbql5-driver? (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-            field (get (lib/ref col) 2)
-            col-ref (cond-> (lib/ref col)
-                      (not mbql5-driver?) lib/->legacy-MBQL)]
+      (let [field (get (lib/ref col) 2)
+            col-ref (lib/ref col)]
         (testing ":= uses indexable query"
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
@@ -271,18 +300,14 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   (sql.qp/mbql-clause driver/*driver*
-                                       := col-ref
-                                       (sql.qp/mbql-clause-with-opts driver/*driver* :value {:base_type :type/UUID} (str uuid))))))
+                   [:= {} col-ref (lib/normalize [:value {:base-type :type/UUID} (str uuid)])])))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed
                                  [:cast (str uuid) [:raw "uuid"]]
                                  {:database-type "uuid"}]
                                 %))]
-                  (sql.qp/->honeysql
-                   driver/*driver*
-                   (sql.qp/mbql-clause driver/*driver* := col-ref uuid)))))))))
+                  (sql.qp/->honeysql driver/*driver* [:= {} col-ref uuid]))))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"
@@ -307,86 +332,152 @@
 
 (deftest rename-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :atomic-renames)
-    (testing "rename-tables should rename multiple tables atomically"
-      (let [db-id             (mt/id)
-            driver            driver/*driver*
-            schema            (sql.tx/session-schema driver)
-            test-table-1      (mt/random-name)
-            test-table-2      (mt/random-name)
-            qualified-table-1 (qualified-table-name schema test-table-1)
-            qualified-table-2 (qualified-table-name schema test-table-2)
-            temp-table-1      (str test-table-1 "_temp")
-            temp-table-2      (str test-table-2 "_temp")
-            qualified-temp-1  (qualified-table-name schema temp-table-1)
-            qualified-temp-2  (qualified-table-name schema temp-table-2)
-            test-data-1       [[1 "Alice"] [2 "Bob"]]
-            test-data-2       [[1 "Product A"] [2 "Product B"]]]
-        (driver/create-table! driver db-id qualified-table-1
-                              {"id" "INTEGER", "name" "VARCHAR(255)"} {})
-        (driver/create-table! driver db-id qualified-table-2
-                              {"id" "INTEGER", "name" "VARCHAR(255)"} {})
-        (try
-          (driver/insert-into! driver db-id qualified-table-1 ["id" "name"] test-data-1)
-          (driver/insert-into! driver db-id qualified-table-2 ["id" "name"] test-data-2)
-          (testing "basic rename operations work correctly"
-            (driver/rename-tables! driver db-id
-                                   {qualified-table-1 qualified-temp-1
-                                    qualified-table-2 qualified-temp-2})
-            (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
-            (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
-            (is (not (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema})))
-            (is (not (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
-            (is (= test-data-1 (table-rows qualified-temp-1)))
-            (is (= test-data-2 (table-rows qualified-temp-2)))
-            (driver/rename-tables! driver db-id
-                                   {qualified-temp-1 qualified-table-1
-                                    qualified-temp-2 qualified-table-2}))
-          (testing "atomicity: all renames fail if any rename fails"
-            (let [conflict-table (str test-table-2 "_conflict")
-                  qualified-conflict (qualified-table-name schema conflict-table)]
-              (driver/create-table! driver db-id qualified-conflict {"id" "INTEGER"} {})
-              (try
-                (is (thrown? Exception
-                             (driver/rename-tables! driver db-id
-                                                    {qualified-table-1 qualified-temp-1
-                                                     qualified-table-2 qualified-conflict})))
-                (testing "original tables should still exist after failed atomic rename"
-                  (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
-                  (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
-                (testing "temp tables should not exist after failed atomic rename"
-                  (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
-                  (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
-                (testing "original data should be intact after failed atomic rename"
-                  (is (= test-data-1 (table-rows qualified-table-1)))
-                  (is (= test-data-2 (table-rows qualified-table-2))))
-                (finally
-                  (driver/drop-table! driver db-id qualified-conflict)))))
-          (finally
-            (driver/drop-table! driver db-id qualified-table-1)
-            (driver/drop-table! driver db-id qualified-table-2)))))))
+    (mt/dataset (mt/dataset-definition "rename_tables" [])
+      (testing "rename-tables should rename multiple tables atomically"
+        (let [db-id             (mt/id)
+              driver            driver/*driver*
+              schema            (sql.tx/session-schema driver)
+              test-table-1      (mt/random-name)
+              test-table-2      (mt/random-name)
+              qualified-table-1 (qualified-table-name schema test-table-1)
+              qualified-table-2 (qualified-table-name schema test-table-2)
+              temp-table-1      (str test-table-1 "_temp")
+              temp-table-2      (str test-table-2 "_temp")
+              qualified-temp-1  (qualified-table-name schema temp-table-1)
+              qualified-temp-2  (qualified-table-name schema temp-table-2)
+              test-data-1       [[1 "Alice"] [2 "Bob"]]
+              test-data-2       [[1 "Product A"] [2 "Product B"]]]
+          (driver/create-table! driver db-id qualified-table-1
+                                {"id" "INTEGER", "name" "VARCHAR(255)"} {})
+          (driver/create-table! driver db-id qualified-table-2
+                                {"id" "INTEGER", "name" "VARCHAR(255)"} {})
+          (try
+            (driver/insert-into! driver db-id qualified-table-1 ["id" "name"] test-data-1)
+            (driver/insert-into! driver db-id qualified-table-2 ["id" "name"] test-data-2)
+            (testing "basic rename operations work correctly"
+              (driver/rename-tables! driver db-id
+                                     {qualified-table-1 qualified-temp-1
+                                      qualified-table-2 qualified-temp-2})
+              (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
+              (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
+              (is (not (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema})))
+              (is (not (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+              (is (= test-data-1 (table-rows qualified-temp-1)))
+              (is (= test-data-2 (table-rows qualified-temp-2)))
+              (driver/rename-tables! driver db-id
+                                     {qualified-temp-1 qualified-table-1
+                                      qualified-temp-2 qualified-table-2}))
+            (testing "atomicity: all renames fail if any rename fails"
+              (let [conflict-table (str test-table-2 "_conflict")
+                    qualified-conflict (qualified-table-name schema conflict-table)]
+                (driver/create-table! driver db-id qualified-conflict {"id" "INTEGER"} {})
+                (try
+                  (is (thrown? Exception
+                               (driver/rename-tables! driver db-id
+                                                      {qualified-table-1 qualified-temp-1
+                                                       qualified-table-2 qualified-conflict})))
+                  (testing "original tables should still exist after failed atomic rename"
+                    (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
+                    (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+                  (testing "temp tables should not exist after failed atomic rename"
+                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
+                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
+                  (testing "original data should be intact after failed atomic rename"
+                    (is (= test-data-1 (table-rows qualified-table-1)))
+                    (is (= test-data-2 (table-rows qualified-table-2))))
+                  (finally
+                    (driver/drop-table! driver db-id qualified-conflict)))))
+            (finally
+              (driver/drop-table! driver db-id qualified-table-1)
+              (driver/drop-table! driver db-id qualified-table-2))))))))
 
 (deftest rename-table-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:rename]})
-    (testing "rename-table! should rename a single table correctly"
-      (let [db-id           (mt/id)
-            driver          driver/*driver*
-            schema          (sql.tx/session-schema driver)
-            test-table      (mt/random-name)
-            renamed-table   (str test-table "_renamed")
-            qualified-table (qualified-table-name schema test-table)
-            qualified-renamed (qualified-table-name schema renamed-table)]
-        (driver/create-table! driver db-id qualified-table
-                              {"id" "INTEGER", "name" "VARCHAR(255)"} {})
-        (try
-          (testing "single table rename works correctly"
-            (driver/rename-table! driver db-id qualified-table qualified-renamed)
-            (is (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
-                "Renamed table should exist")
-            (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
-                "Original table should not exist"))
-          (finally
-            (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
-              (driver/drop-table! driver db-id qualified-renamed))
-            (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
-              (driver/drop-table! driver db-id qualified-table))))))))
+    (mt/dataset (mt/dataset-definition "rename_tables" [])
+      (testing "rename-table! should rename a single table correctly"
+        (let [db-id           (mt/id)
+              driver          driver/*driver*
+              schema          (sql.tx/session-schema driver)
+              test-table      (mt/random-name)
+              renamed-table   (str test-table "_renamed")
+              qualified-table (qualified-table-name schema test-table)
+              qualified-renamed (qualified-table-name schema renamed-table)]
+          (driver/create-table! driver db-id qualified-table
+                                {"id" "INTEGER", "name" "VARCHAR(255)"} {})
+          (try
+            (testing "single table rename works correctly"
+              (driver/rename-table! driver db-id qualified-table qualified-renamed)
+              (is (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+                  "Renamed table should exist")
+              (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
+                  "Original table should not exist"))
+            (finally
+              (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+                (driver/drop-table! driver db-id qualified-renamed))
+              (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
+                (driver/drop-table! driver db-id qualified-table)))))))))
+
+(defn- sql-jdbc-drivers
+  "Every registered sql-jdbc driver. These tests build SQL without connecting, so they run against the
+  whole hierarchy rather than whichever drivers happen to be available."
+  []
+  (descendants driver/hierarchy :sql-jdbc))
+
+(deftest ^:parallel insert-into-sqls-boolean-literal-test
+  (testing "boolean row values bind as parameters, never as inlined literals -- not every
+            dialect has a boolean literal keyword"
+    (doseq [driver (sql-jdbc-drivers)]
+      (testing driver
+        (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
+                                                                         [[1 true] [2 false]] false))]
+          (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
+          (is (= [1 true 2 false] params)))))))
+
+(deftest ^:parallel dot-qualified-test
+  (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
+    (are [table-name expected] (= expected (quoting/dot-qualified table-name))
+      (keyword "test-data" "some_tbl") :test-data.some_tbl
+      (keyword "test-data" "a.b")      :test-data.a.b
+      (keyword "some_tbl")             :some_tbl
+      "test-data.tbl"                  :test-data.tbl
+      "some_tbl"                       :some_tbl)))
+
+(deftest ^:parallel create-table-sql-preserves-dashes-test
+  (let [create-sql #(#'driver.sql-jdbc/create-table!-sql %1 %2 [["id" [:int]]])]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, CREATE TABLE
+              targets a schema that isn't there"
+      (doseq [driver (sql-jdbc-drivers)]
+        (testing driver
+          (let [sql (create-sql driver (keyword "test-data" "some_tbl"))]
+            (is (re-find #"test-data" sql))
+            (is (not (re-find #"test_data" sql)))))))
+    (testing "the whole statement, for one dialect"
+      (is (= "CREATE TABLE \"test-data\".\"some_tbl\" (\"id\" INT)"
+             (create-sql :h2 (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "CREATE TABLE \"some_tbl\" (\"id\" INT)"
+             (create-sql :h2 (keyword "some_tbl")))))
+    (testing "dot-qualified strings split into segments"
+      (is (= "CREATE TABLE \"schema\".\"name\" (\"id\" INT)"
+             (create-sql :h2 "schema.name"))))))
+
+(deftest ^:parallel drop-table-sql-preserves-dashes-test
+  (let [drop-sql #'driver.sql-jdbc/drop-table-sql]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, DROP TABLE IF
+              EXISTS targets a nonexistent object and silently no-ops, leaking the table"
+      (doseq [driver (sql-jdbc-drivers)]
+        (testing driver
+          (let [sql (drop-sql driver (keyword "test-data" "some_tbl"))]
+            (is (re-find #"test-data" sql))
+            (is (not (re-find #"test_data" sql)))))))
+    (testing "the whole statement, for one dialect"
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"some_tbl\""
+             (drop-sql :h2 (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "DROP TABLE IF EXISTS \"some_tbl\"" (drop-sql :h2 (keyword "some_tbl")))))
+    (testing "dot-qualified strings (metabase.upload.impl/table-identifier's shape) split into segments"
+      (is (= "DROP TABLE IF EXISTS \"schema\".\"name\"" (drop-sql :h2 "schema.name"))))
+    (testing "a dot inside the name splits too -- no call site produces this shape, but keep it uniform"
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"a\".\"b\""
+             (drop-sql :h2 (keyword "test-data" "a.b")))))))

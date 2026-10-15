@@ -373,7 +373,7 @@
                                        :id     uuid}]}]
               (is (= [[1 1574982000000 "Event A"]
                       [2 1575068400000 "Event B"]]
-                     (mt/rows (qp/process-query query)))))))))))
+                     (mt/formatted-rows [int long str] (qp/process-query query)))))))))))
 
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse

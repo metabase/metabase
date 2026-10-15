@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon } from "metabase/ui";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { keyForSingleSeries } from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn, Series } from "metabase-types/api";
 
@@ -36,15 +36,19 @@ type ChartSettingFieldPickerProps = {
   dragHandleRef?: Ref<HTMLElement>;
   fieldSettingWidget?: string | null;
   onChange?: (value: string) => void;
-  onChangeSeriesColor?: (seriesKey: string, value: string) => void;
-  onRemove?: () => void;
+  onChangeSeriesColor?: (
+    seriesKey: string,
+    hexValue: string,
+    colorName?: string,
+  ) => void;
+  onRemove?: (() => void) | null;
   onShowWidget?: (widget: MenuWidgetInfo, target: HTMLElement) => void;
   options?: Array<{ name: string; value: string }>;
   series?: Series;
   showColorPicker?: boolean;
   showColumnSetting?: boolean;
   showDragHandle?: boolean;
-  value?: string;
+  value?: string | null;
 };
 
 export const ChartSettingFieldPicker = ({
@@ -122,10 +126,11 @@ export const ChartSettingFieldPicker = ({
     <Group
       className={cx(S.root, className)}
       data-testid="chartsettings-field-picker"
-      bg="background-primary"
+      bg="background_page-primary"
       align="center"
     >
       <ChartSettingSelect
+        variant="unstyled"
         pl={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
@@ -134,9 +139,17 @@ export const ChartSettingFieldPicker = ({
         onChange={(value) => onChange?.(String(value))}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
+            <Group
+              wrap="nowrap"
+              gap="xxs"
+              p="xxs"
+              ml="sm"
+              mr="lg"
+              align="center"
+            >
               {showDragHandle && (
                 <Icon
+                  // Unjustified type cast. FIXME
                   ref={dragHandleRef as Ref<SVGSVGElement>}
                   name="grabber"
                   {...dragHandleListeners}
@@ -150,8 +163,9 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
-                  onChange={(value) => {
-                    onChangeSeriesColor?.(seriesKey, value);
+                  forwardColorName
+                  onChange={(hexValue, colorName) => {
+                    onChangeSeriesColor?.(seriesKey, hexValue, colorName);
                   }}
                   className={CS.pointerEventsAll}
                 />

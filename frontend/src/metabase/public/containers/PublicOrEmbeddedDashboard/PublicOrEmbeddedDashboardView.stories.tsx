@@ -6,6 +6,11 @@ import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
@@ -15,17 +20,12 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
+import { registerVisualization } from "metabase/viz-core";
 import type {
   Dashboard,
   DashboardCard,
@@ -44,9 +44,7 @@ import {
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 export default {
@@ -66,6 +64,7 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({
     currentUser: null,
@@ -221,6 +220,15 @@ export const NarrowWithManyTabs = {
     }),
   },
   decorators: [NarrowDecorator],
+};
+
+export const NarrowWithManyTabsDarkTheme = {
+  render: Template,
+  args: {
+    ...NarrowWithManyTabs.args,
+    theme: "night",
+  },
+  decorators: [NarrowDecorator, DarkBackgroundDecorator],
 };
 
 export const LightThemeDefault = {
@@ -382,7 +390,7 @@ export function ComponentCompatibility() {
           Mantine Tooltip
         </Card>
       </Tooltip>
-      <Popover withArrow shadow="md" opened>
+      <Popover withArrow shadow="sm" opened>
         <Popover.Target>
           <Card withBorder display="inline-block">
             Mantine Popover
@@ -400,7 +408,6 @@ export function ComponentCompatibility() {
 
 // Card visualizations
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(ObjectDetail);
 
 export const CardVisualizationsLightTheme = {

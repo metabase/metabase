@@ -8,7 +8,6 @@ describe("scenarios > custom column > field resolution", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    H.openOrdersTable({ mode: "notebook" });
   });
 
   it("should be possible to resolve fields in custom columns", () => {
@@ -32,6 +31,7 @@ describe("scenarios > custom column > field resolution", () => {
 
     Object.entries(QUESTION.query.expressions ?? []).forEach(
       ([name, expression]) => {
+        // Unjustified type cast. FIXME
         const str = (expression as ["value", string])[1];
         H.getNotebookStep("expression").icon("add").click();
 

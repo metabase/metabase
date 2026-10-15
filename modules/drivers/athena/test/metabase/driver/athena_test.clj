@@ -142,6 +142,17 @@
       "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
       "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
 
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :athena details))
+    {:region "us-east-1"}
+    ["athena.us-east-1.amazonaws.com"]
+
+    {:region "cn-north-1"}
+    ["athena.cn-north-1.amazonaws.com.cn"]
+
+    {:region "us-east-1" :hostname "athena.internal.example"}
+    ["athena.internal.example"]))
+
 (deftest ^:parallel athena-subname-uses-hostname-test
   (mt/test-driver :athena
     (doseq [[test-desc details exp-subname]
@@ -239,7 +250,7 @@
 
 (deftest hard-coded-iam-credential-handling
   (testing "When not hosted"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
@@ -249,7 +260,7 @@
              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
              :CredentialsProvider)))))
   (testing "When hosted"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
@@ -281,7 +292,7 @@
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_driver _conn sql _params _canceled-chan]
                        (throw (ex-info "DONE" {:sql sql})))]
-    (with-redefs [sql-jdbc.execute/statement-or-prepared-statement check-sql-fn]
+    (mt/with-dynamic-fn-redefs [sql-jdbc.execute/statement-or-prepared-statement check-sql-fn]
       (try
         (qp/process-query query)
         (catch Throwable e
@@ -291,7 +302,7 @@
 ;; TODO: If we are extending remove remark functionality to other drivers, we should consider making this
 ;;       test (1) general, so other drivers can use it and (2) parallel. That would require making
 ;;       `sql-jdbc.execute/statement-or-prepared-statement` dynamic so it can be temporarily modified using `binding`
-;;       instead of `with-redefs` in [[query->native!]].
+;;       instead of `mt/with-dynamic-fn-redefs` in [[query->native!]].
 ;; TODO: If that is the case, also the solution should be generalized, taking into account existing functionality
 ;;       for removing remark in other drivers, eg. bigquery. Generalization could be accomplished with help
 ;;       of [[metabase.driver.sql-jdbc.execute/inject-remark]].
@@ -393,10 +404,10 @@
                                   (lib/filter (lib/= (meta/field-metadata :venues :name) "BBQ"))
                                   (lib/limit 1))
             executed-query    (atom nil)]
-        (with-redefs [sql-jdbc.execute/execute-reducible-query (let [orig sql-jdbc.execute/execute-reducible-query]
-                                                                 (fn [driver query context respond]
-                                                                   (reset! executed-query query)
-                                                                   (orig driver query context respond)))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/execute-reducible-query (let [orig (mt/original-fn #'sql-jdbc.execute/execute-reducible-query)]
+                                                                               (fn [driver query context respond]
+                                                                                 (reset! executed-query query)
+                                                                                 (orig driver query context respond)))]
           (try
             (qp/process-query query)
             (catch Throwable _))
@@ -538,6 +549,7 @@
                                         [true? {:dbname ""}]
                                         [false? {:dbname "db_name"}]]]
     (is (schemas-supported? (driver/database-supports? :athena :schemas {:lib/type :metadata/database
+                                                                         :id       1
                                                                          :details  details})))))
 
 (deftest ^:parallel athena-describe-database

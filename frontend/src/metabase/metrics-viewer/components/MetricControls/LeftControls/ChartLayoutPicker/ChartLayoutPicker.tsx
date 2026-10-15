@@ -17,10 +17,10 @@ export function ChartLayoutPicker({
   return (
     <Flex
       className={S.root}
-      gap="xs"
-      bg="background-secondary"
-      p="xs"
-      bdrs="md"
+      gap="xxs"
+      bg="background_page-secondary"
+      p="xxs"
+      bdrs="sm"
       data-testid="chart-layout-picker"
     >
       <Tooltip label={t`Default layout`}>
@@ -28,7 +28,7 @@ export function ChartLayoutPicker({
           w="2rem"
           h="1.5rem"
           variant={!isStacked ? "filled" : "subtle"}
-          bg={!isStacked ? "background-primary" : undefined}
+          bg={!isStacked ? "background_page-primary" : undefined}
           onClick={() => onToggle(false)}
           aria-label={t`Default layout`}
           className={!isStacked ? S.selected : undefined}
@@ -44,7 +44,7 @@ export function ChartLayoutPicker({
           w="2rem"
           h="1.5rem"
           variant={isStacked ? "filled" : "subtle"}
-          bg={isStacked ? "background-primary" : undefined}
+          bg={isStacked ? "background_page-primary" : undefined}
           onClick={() => {
             onToggle(true);
             trackStackedSeriesEnabled();

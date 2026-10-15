@@ -7,7 +7,7 @@ import ReactDOMServer from "react-dom/server";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 import {
   createMockColumn,
@@ -17,6 +17,7 @@ import {
 import { StaticChoropleth } from "./StaticChoropleth";
 import { getStaticChoroplethSettings } from "./utils";
 
+// Unjustified type cast. FIXME
 const renderingContext = {
   getColor: (name: string) =>
     name === "text-secondary" ? "#888888" : "#000000",
@@ -64,6 +65,7 @@ const geoJson: FeatureCollection = {
   ],
 };
 
+// Unjustified type cast. FIXME
 const rawSeries = [
   {
     card: { display: "map" },

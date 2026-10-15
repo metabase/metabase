@@ -8,5 +8,6 @@ export type SortingOptions<SortColumn extends string> = {
 
 export const guardSortDirection = (value: string): value is SortDirection =>
   (SORT_DIRECTIONS satisfies readonly SortDirection[]).includes(
+    // Unjustified type cast. FIXME
     value as SortDirection,
   );

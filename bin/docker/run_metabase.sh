@@ -11,6 +11,9 @@ JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
 JAVA_OPTS="${JAVA_OPTS} -XX:+CrashOnOutOfMemoryError"
 JAVA_OPTS="${JAVA_OPTS} -server"
 JAVA_OPTS="${JAVA_OPTS} --add-opens java.base/java.nio=ALL-UNNAMED"
+# Truffle (GraalJS/GraalPy) loads a native library; JDK 25+ warns and future JDKs
+# will block it unless native access is enabled
+JAVA_OPTS="${JAVA_OPTS} --enable-native-access=ALL-UNNAMED"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"

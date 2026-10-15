@@ -1,7 +1,9 @@
 (ns metabase-enterprise.sso.integrations.saml-utils
   "Functions for handling SAML authentication with the SDK side, including HTML popups"
   (:require
-   [java-time.api :as t])
+   [java-time.api :as t]
+   [metabase.server.middleware.security :as mw.security]
+   [metabase.util.json :as json])
   (:import
    (java.time Instant)))
 
@@ -15,7 +17,7 @@
   <title>Authentication Complete</title>
   <script nonce=\"" nonce "\">
     const authData = {
-      id: \"" key "\",
+      id: " (json/encode key) ",
       exp: " (.getEpochSecond exp) ",
       iat: " (.getEpochSecond iat) ",
       status: \"ok\"
@@ -25,7 +27,7 @@
         window.opener.postMessage({
           type: 'SAML_AUTH_COMPLETE',
           authData: authData
-        }, '" origin "');
+        }, " (json/encode origin) ");
 
         setTimeout(function() {
           window.close();
@@ -35,7 +37,7 @@
         document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
       }
     } else {
-      window.location.href = '" continue-url "';
+      window.location.href = " (json/encode continue-url) ";
     }
   </script>
 </head>
@@ -48,10 +50,13 @@
 </html>"))
 
 (defn create-token-response
-  "Create a token response with HTML and JavaScript to post the auth message"
+  "Create a token response with HTML and JavaScript to post the auth message. The inline script carries the
+  session key and timestamps, so it varies per request and no build-time hash can cover it. The response
+  opts into a `script-src` nonce for that reason."
   [session origin continue-url nonce]
   (let [current-time (t/instant)
         expiration-time (t/plus current-time (t/seconds 86400))]
     {:status 200
      :headers {"Content-Type" "text/html"}
+     mw.security/script-nonce-response-key true
      :body (generate-saml-html-popup (:key session) expiration-time current-time origin continue-url nonce)}))

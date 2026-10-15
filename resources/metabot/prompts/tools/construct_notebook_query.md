@@ -3,8 +3,9 @@
 Construct a Metabase MBQL 5 query as a JSON object describing the query shape. Metabase validates, repairs, and resolves it.
 
 Return:
-- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
+- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by search / `read_resource` / metadata tools.
 - `title`: required short, human-friendly title for the resulting chart, shown above it (e.g. `"Orders by month"`).
+- `description`: required concise one- or two-sentence description of what the chart shows (the metric, the grouping, and any notable filter); it is used as the saved question's description.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 ## Minimal example — count of orders by month
@@ -12,10 +13,10 @@ Return:
 ```json
 {"lib/type": "mbql/query",
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "source-table": ["Sample Database", null, "ORDERS"],
              "aggregation": [["count", {}]],
              "breakout": [["field", {"temporal-unit": "month"},
-                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
 ```
 
 Every clause is `["op", {}, ...args]` with a mandatory `{}` options map at position 1; every field reference uses a 4-segment portable FK in the last slot. These are the two most-violated rules.
@@ -47,7 +48,7 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
 ```
 
-The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
+The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
 
 Inside later stages, refer to a column produced by the previous stage by **string name** instead of a portable FK: `["field", {}, "count"]`, `["field", {}, "PRODUCT_ID"]`.
 
@@ -67,14 +68,14 @@ Filter (comparison + boolean combination):
 
 ```json
 "filters": [["and", {},
-  [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]]
+  [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+  ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]]
 ```
 
 Aggregation (on a field, plus `count`):
 
 ```json
-"aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]],
+"aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]],
                 ["count", {}]]
 ```
 
@@ -82,13 +83,13 @@ Breakout with temporal bucket:
 
 ```json
 "breakout": [["field", {"temporal-unit": "month"},
-              ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]
+              ["Sample Database", null, "ORDERS", "CREATED_AT"]]]
 ```
 
 Order by — direction wraps a ref; works on field refs or aggregation refs:
 
 ```json
-"order-by": [["desc", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]],
+"order-by": [["desc", {}, ["field", {}, ["Sample Database", null, "ORDERS", "CREATED_AT"]]],
              ["desc", {}, ["aggregation", {}, 0]]]
 ```
 
@@ -109,8 +110,8 @@ Define custom columns inside a stage using `expressions` and reference by name w
 ```json
 "expressions": {
   "Subtotal": ["+", {},
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]],
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TAX"]]]
+               ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]],
+               ["field", {}, ["Sample Database", null, "ORDERS", "TAX"]]]
 },
 "aggregation": [["sum", {}, ["expression", {}, "Subtotal"]]]
 ```
@@ -124,14 +125,14 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
   "alias": "Products",
   "strategy": "left-join",
   "stages": [{"lib/type": "mbql.stage/mbql",
-              "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+              "source-table": ["Sample Database", null, "PRODUCTS"]}],
   "conditions": [["=", {},
-    ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+    ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
     ["field", {"join-alias": "Products"},
-     ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]
+     ["Sample Database", null, "PRODUCTS", "ID"]]]]
 }],
 "breakout": [["field", {"join-alias": "Products"},
-              ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+              ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - `alias` is a free-choice string; use it consistently in conditions, breakout, aggregation, order-by.
@@ -144,9 +145,9 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
 Reference a field on a related table directly — when the source has exactly one FK to that target, the tool auto-fills `source-field` and performs the implicit join:
 
 ```json
-"source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+"source-table": ["Sample Database", null, "ORDERS"],
 "aggregation": [["count", {}]],
-"breakout": [["field", {}, ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+"breakout": [["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - **Multiple FKs** to the target → `:ambiguous-fk` lists them. Retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field.
@@ -155,7 +156,7 @@ Reference a field on a related table directly — when the source has exactly on
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).
 - If multiple explicit joins all expose the target FK, `:ambiguous-fk-via-join` lists them — set `{"source-field-join-alias": "<alias>"}` to pick one.
 
-**Tip:** discover FKs with `entity_details` / `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
+**Tip:** discover FKs with `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
 
 ## Multi-stage queries
 
@@ -166,9 +167,9 @@ Post-aggregation filter — count orders per product, keep only those with > 10:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+   "source-table": ["Sample Database", null, "ORDERS"],
    "aggregation": [["count", {}]],
-   "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]]},
+   "breakout": [["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]]]},
   {"lib/type": "mbql.stage/mbql",
    "filters": [[">", {}, ["field", {}, "count"], 10]]}
 ]
@@ -179,27 +180,31 @@ Re-aggregate — average daily total by month:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+   "source-table": ["Sample Database", null, "ORDERS"],
+   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
    "breakout": [["field", {"temporal-unit": "day"},
-                 ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                 ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
   {"lib/type": "mbql.stage/mbql",
    "aggregation": [["avg", {}, ["field", {}, "sum"]]],
    "breakout": [["field", {"temporal-unit": "month"}, ["field", {}, "CREATED_AT"]]]}
 ]
 ```
 
-- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is whatever the previous stage's aggregation/breakout/field produced (`count`, `sum`, or the source field's name).
+- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is the previous stage column's **machine name**, never its UI display label:
+  - An aggregation's output name is the **bare function**: `max`, `min`, `avg`, `sum`, `count`, `median` — the operand is dropped. `["max", {}, ["expression", {}, "Instance Has SC"]]` produces a column named **`max`** (display label "Max of Instance Has SC"). Reference it as `["field", {}, "max"]`, **not** `["field", {}, "Max of Instance Has SC"]`.
+  - A breakout keeps the source field's machine name even when its label is bucketed: a month breakout of `CREATED_AT` is still named `CREATED_AT` (display "Created At: Month").
+  - If a stage has several aggregations of the same function, the outputs are suffixed in order: `max`, `max_2`, `max_3`. So the second `max` is referenced as `["field", {}, "max_2"]`.
+- A `["field", {}, "<name>"]` cross-stage ref whose name matches no column the previous stage produced is an error — name it exactly.
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see §Aggregation references). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
 ## Saved questions and models (`source-card`)
 
-Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by `entity_details` and search tools as `portable_entity_id`.
+Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by search and `read_resource` as `portable_entity_id`.
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`).
+3. Reference the card's columns by output **machine name** (string in slot 3), not portable FK and not the UI display label. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`) — a ref whose name matches no column the card produces is an error.
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -252,15 +257,24 @@ When you need to **compose on top of** a measure or segment (add an extra filter
 - Never invent a `portable_entity_id` — only use the value reported in a tool response.
 - The matching aggregation-only opaque-id clause is `["metric", {}, "<portable_entity_id>"]` (for metrics, which live independently of a table — see §Metrics above).
 
+## Translating the request
+
+Before the shape rules: map the user's wording to the right clause. These mismatches produce a query that runs cleanly and returns the wrong answer, so they're easy to miss.
+
+- **A constraint is a filter, not a breakout.** "where/only/with X = Y", "for active cards", "USD transactions only" → a `filters` entry restricting to that value. Reserve `breakout` for grouping language: "by", "per", "for each", "broken down by", "over time". "Open rate **where** opens are multiple" filters to multiple-opens rows; it does **not** group by the multiple-opens flag.
+- **Apply every constraint in the request.** Each "where/only/for/with" condition the user states must appear as a filter — don't drop one because you already added the aggregation.
+- **Don't add analysis the user didn't ask for.** If the request is only "travel expenses", filter to travel and return the rows; don't tack on an average or count that wasn't requested.
+- **An explicit date or year is an absolute filter.** "in 2024", "for 2024", "between 2024-01-01 and 2024-12-31" → an absolute filter on that range. Use `relative-datetime` / `time-interval` only when the user uses relative language ("last year", "past 30 days", "year to date").
+
 ## Rules and common mistakes
 
 Shape rules:
 - **Always include `{}` options in every clause**, even when empty. `["count"]` is wrong — it must be `["count", {}]`.
 - **The query is a JSON object**, not a string. Send it directly as the `"query"` field of the call.
-- **Use the exact database name** reported by `entity_details` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
+- **Use the exact database name** reported by search / `read_resource` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
 - **Use portable FKs**, not numeric IDs. Schemaless databases use `null` in the schema slot. JSON-unfolded fields append path segments.
 - **Clause heads are lowercase, hyphenated**: `"count"`, `"sum-where"`, `"time-interval"`, `"get-day-of-week"`. Not underscores, not camelCase.
-- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from `entity_details` / search — no patterns, no numeric ids, no `card__<id>`.
+- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
 
 Anti-hallucination:
@@ -379,6 +393,9 @@ Temporal:
 - `["absolute-datetime", {}, "<iso-string>", "<unit?>"]`
 - `["date", {}, <expr>]` / `["datetime", {}, <expr>]` / `["time", {}, <expr>]`
 - `["now", {}]` / `["today", {}]`
+
+Window:
+- `["offset", {}, <expr>, <n>]` — value of `<expr>` from `<n>` rows back (negative `<n>`) or ahead (positive). Valid **only** inside an `aggregation:` or `order-by:` clause — **never** in a custom column (`expressions:`) or a filter.
 
 ### Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
 

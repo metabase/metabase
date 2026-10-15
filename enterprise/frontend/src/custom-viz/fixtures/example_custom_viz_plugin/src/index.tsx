@@ -1,18 +1,53 @@
 import { defineConfig } from "../../../src/index";
-import type { CreateCustomVisualization } from "../../../src/types/viz";
+import type {
+  BaseWidgetProps,
+  CreateCustomVisualization,
+} from "../../../src/types/viz";
+
 import { Visualization } from "./Visualization";
 
 type Settings = {
   threshold?: number;
+  metricColumn?: string | null;
+  renameQuestion?: null;
+  columns?: string[];
 };
+
+function ColumnsWidget({
+  value,
+  onChange,
+}: BaseWidgetProps<string[], Settings>) {
+  return (
+    <button type="button" onClick={() => onChange([...(value ?? []), "extra"])}>
+      Add column from plugin
+    </button>
+  );
+}
+
+function RenameQuestionWidget({
+  onChangeSettings,
+}: BaseWidgetProps<null, Settings>) {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        onChangeSettings({
+          // @ts-expect-error -- the SDK type rejects internal Metabase setting ids on purpose
+          "card.title": "Plugin title",
+          threshold: 7,
+        })
+      }
+    >
+      Rename question from plugin
+    </button>
+  );
+}
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
   locale,
 }) => {
   return defineConfig<Settings>({
-    id: "example_custom_viz_plugin",
-    getName: () => "example_custom_viz_plugin",
     minSize: { width: 2, height: 2 },
     checkRenderable(series, settings) {
       if (series.length !== 1) {
@@ -44,7 +79,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     settings: {
       threshold: defineSetting({
         id: "threshold",
-        title: "Threspachold",
+        title: "Threshold",
         widget: "number",
         getDefault() {
           return 0;
@@ -57,6 +92,41 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
             },
             placeholder: "Set threshold",
           };
+        },
+      }),
+      metricColumn: defineSetting({
+        id: "metricColumn",
+        title: "Metric column",
+        widget: "field",
+        getDefault(series) {
+          return series[0].data.cols[0]?.name;
+        },
+        getProps(series) {
+          const columns = series[0].data.cols;
+          return {
+            columns,
+            options: columns.map((col) => ({
+              name: col.display_name,
+              value: col.name,
+            })),
+            showColumnSetting: true,
+          };
+        },
+      }),
+      renameQuestion: defineSetting({
+        id: "renameQuestion",
+        title: "Rename question",
+        widget: RenameQuestionWidget,
+        getDefault() {
+          return null;
+        },
+      }),
+      columns: defineSetting({
+        id: "columns",
+        title: "Columns",
+        widget: ColumnsWidget,
+        getDefault(series) {
+          return series[0].data.cols.map((col) => col.name);
         },
       }),
     },

@@ -60,7 +60,7 @@ export function MetricCachingModal({
       onClose={handleClose}
       title={t`Caching`}
       size="lg"
-      padding="lg"
+      padding="xl"
       classNames={{ content: S.content, body: S.body }}
     >
       <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
@@ -73,7 +73,7 @@ export function MetricCachingModal({
           savedStrategy={savedStrategy}
           shouldAllowInvalidation
           shouldShowName={false}
-          onReset={handleClose}
+          onCancel={handleClose}
           layout="modal"
         />
       </DelayedLoadingAndErrorWrapper>

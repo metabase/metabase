@@ -1,0 +1,25 @@
+```ts
+type MetabaseFontFamily =
+  | "Roboto"
+  | "Merriweather"
+  | "Open Sans"
+  | "Lato"
+  | "Inter"
+  | "Noto Sans"
+  | "Roboto Slab"
+  | "Source Sans Pro"
+  | "Raleway"
+  | "Slabo 27px"
+  | "PT Sans"
+  | "Poppins"
+  | "PT Serif"
+  | "JetBrains Mono"
+  | "Roboto Mono"
+  | "Roboto Condensed"
+  | "Playfair Display"
+  | "Oswald"
+  | "Ubuntu"
+  | "Montserrat"
+  | "Lora"
+  | "Custom";
+```

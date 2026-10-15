@@ -6,19 +6,27 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import { getFinalNavigateToMessageIdsPerTurn } from "metabase/metabot/state";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import {
+  type MetabotGeneratedCardPart,
+  type MetabotMessagePart,
+  getFinalChartMessageIdsPerTurn,
+  getMetabotConversationId,
+  isGeneratedCardPart,
+  isTextPart,
+} from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
+import * as Urls from "metabase/urls";
 
 /**
  * Public-facing hook for interacting with Metabot in the SDK.
@@ -74,34 +82,62 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
-  const agentResetConversation = agent.resetConversation;
+  const agentContinueResponse = agent.continueResponse;
+  const incompleteTurn = agent.incompleteTurn;
+  const incompleteResponse = useMemo<MetabotIncompleteResponse | null>(() => {
+    if (!incompleteTurn) {
+      return null;
+    }
+    return {
+      reason: incompleteTurn.reason,
+      message: incompleteTurn.message,
+      ...(agentContinueResponse && {
+        continueResponse: () =>
+          agentContinueResponse({ preventOpenSidebar: true }).then(
+            () => undefined,
+          ),
+      }),
+    };
+  }, [incompleteTurn, agentContinueResponse]);
+
+  const agentCreateNewConversation = agent.createNewConversation;
   const resetConversation = useCallback(() => {
     chartComponentsCache.current.clear();
-    agentResetConversation();
-  }, [agentResetConversation]);
+    agentCreateNewConversation();
+  }, [agentCreateNewConversation]);
 
-  // keep only the last navigate_to per turn — agent may emit several mid-stream
-  const finalNavigateToIds = useSelector((state) =>
-    getFinalNavigateToMessageIdsPerTurn(state, "omnibot"),
+  // keep only the last chart per turn — agent may emit several mid-stream
+  const finalChartIds = useSelector((state) =>
+    getFinalChartMessageIdsPerTurn(
+      state,
+      getMetabotConversationId(state, "omnibot"),
+    ),
   );
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
-        .filter((message) => isPublicMessage(message, finalNavigateToIds))
-        .map((message) =>
-          mapMessage(message, chartComponentsCache.current, authConfig),
+        .flatMap((message) => message.parts)
+        .filter((part) => isPublicPart(part, finalChartIds))
+        .map((part) =>
+          mapMessage(part, chartComponentsCache.current, authConfig),
         ),
-    [agent.messages, finalNavigateToIds, authConfig],
+    [agent.messages, finalChartIds, authConfig],
   );
 
   const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
     () =>
       agent.messages
-        .filter((m) => m.role === "agent" && m.type === "turn_errored")
-        .map(
-          (m) =>
-            m.display ?? { type: "message", message: t`Something went wrong` },
-        ),
+        .filter((m) => m.status.type === "errored")
+        .map((m) => {
+          const display = m.status.type === "errored" && m.status.display;
+          if (!display) {
+            return { type: "message", message: t`Something went wrong` };
+          }
+          return {
+            type: display.type === "aborted" ? "message" : display.type,
+            message: display.message,
+          };
+        }),
     [agent.messages],
   );
 
@@ -113,7 +149,10 @@ export const useMetabot = (): UseMetabotResult => {
 
     messages,
     errorMessages,
+    incompleteResponse,
     isProcessing: agent.isDoingScience,
+    contextWindowPercentUsage: agent.contextWindowPercentUsage,
+    isContextWindowFull: agent.isContextWindowFull,
 
     CurrentChart,
   };
@@ -158,19 +197,14 @@ function getCachedChartComponent(
 // see the comment on `MetabotMessage` in `embedding-sdk-bundle/types/metabot.ts`
 // for the full rationale.
 type PublicChatMessage =
-  | Extract<MetabotChatMessage, { type: "text" }>
-  | (Extract<MetabotChatMessage, { type: "data_part" }> & {
-      part: { type: "navigate_to" };
-    });
+  | Extract<MetabotMessagePart, { type: "text" }>
+  | MetabotGeneratedCardPart;
 
-const isPublicMessage = (
-  message: MetabotChatMessage,
-  finalNavigateToIds: Set<string>,
-): message is PublicChatMessage =>
-  message.type === "text" ||
-  (message.type === "data_part" &&
-    message.part.type === "navigate_to" &&
-    finalNavigateToIds.has(message.id));
+const isPublicPart = (
+  part: MetabotMessagePart,
+  finalChartIds: Set<string>,
+): part is PublicChatMessage =>
+  isTextPart(part) || (isGeneratedCardPart(part) && finalChartIds.has(part.id));
 
 const mapMessage = (
   message: PublicChatMessage,
@@ -189,9 +223,13 @@ const mapMessage = (
         ({ id, role: "agent", type: "text", message }) as const,
     )
     .with(
-      { role: "agent", type: "data_part", part: { type: "navigate_to" } },
+      {
+        role: "agent",
+        type: "data_part",
+        part: { type: "data-generated_entity", data: { type: "card" } },
+      },
       ({ id, part }) => {
-        const questionPath = part.value;
+        const questionPath = Urls.generatedCard(part.data);
         const Chart = authConfig
           ? getCachedChartComponent(questionPath, cache, authConfig)
           : FallbackChartComponent;

@@ -31,14 +31,14 @@ export const Banner = ({
     <Flex
       data-testid="app-banner"
       align="center"
-      bg={bg || "background-tertiary"}
+      bg={bg || "background_page-tertiary"}
       py="sm"
       justify="space-between"
       pl="1.325rem"
-      pr="md"
+      pr="lg"
       {...flexProps}
     >
-      <Group gap="xs" {...contentGroupProps}>
+      <Group gap="xxs" {...contentGroupProps}>
         {icon && <Icon name={icon} w={36} c={iconColor} />}
         {body}
       </Group>

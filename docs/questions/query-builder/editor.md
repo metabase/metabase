@@ -31,11 +31,11 @@ To the right of each step in the query builder is a **Preview** button (looks li
 
 ## Pick data
 
-To start building a question with the query builder, you need to select the data you want to work with. You can pick a table from a database, a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
+To start building a question with the query builder, you need to select the data you want to work with. You can pick a table from a database, a [model](../../data-modeling/models/models.md), a [metric](../../data-modeling/semantic-layer/metrics.md), or another saved question. You can search by typing, or browse your databases and collections.
 
 ![data picker](../images/data-picker.png)
 
-If your Metabase has the [Library collection](../../data-studio/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
+If your Metabase has the [Library collection](../../data-modeling/semantic-layer/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
 
 ![library data picker](../images/library-data-picker.png)
 
@@ -61,7 +61,7 @@ Custom columns are helpful when you need to create a new column based on a calcu
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
-You can add custom columns after the [Pick data](#pick-data) step or after [Summarize](#summarize-and-group-data) step.
+You can add custom columns after the [Pick data](#pick-data) step or after the [Summarize](#summarize-and-group-data) step.
 
 See [Custom expressions](../query-builder/expressions.md).
 
@@ -130,8 +130,8 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-through-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The full drill-through menu is only available for questions built using the query builder. Questions built with the SQL/native editor have [limited drill-through actions](../native-editor/writing-sql.md#drill-through-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](../../questions/visualizations/drill-through.md).
 
 ### Column heading drill-through
 
-When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the column's data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).

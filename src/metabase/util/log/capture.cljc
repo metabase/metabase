@@ -23,6 +23,7 @@
    [clojure.set :as set]
    [clojure.string :as str]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:arglists '([namespace-str level-int])} *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
   be used to capture a log message, if messages at that level should be captured. Its signature is
@@ -187,7 +188,6 @@
   "Impl for log message capturing for [[metabase.util.log/logf]]."
   [f & args]
   (let [{e :e, [format-string & args] :args} (parse-args args)]
-    #_{:clj-kondo/ignore [:unresolved-namespace]}
     (f e (apply #?(:clj format
                    :cljs gstring/format)
                 format-string args))))

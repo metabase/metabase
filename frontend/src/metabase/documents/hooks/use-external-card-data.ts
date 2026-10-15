@@ -1,13 +1,9 @@
-import { useMemo } from "react";
-
 import { skipToken, useGetPublicDocumentCardQueryQuery } from "metabase/api";
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/v1/Question";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
 import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
 
-import type { UseCardDataResult } from "./use-card-data";
+import { useExternalCardData } from "../components/editor-extensions/CardEmbed/ExternalCardDataContext";
 
 function buildSeries(card: Card, dataset: Dataset): RawSeries {
   return [
@@ -24,7 +20,6 @@ export function useExternalCardDataLoader(
   { skip = false }: { skip?: boolean } = {},
 ): UseCardDataResult {
   const context = useExternalCardData();
-  const metadata = useSelector(getMetadata);
 
   const card = context?.cards?.[cardId];
   const documentUuid = context?.documentUuid;
@@ -39,10 +34,7 @@ export function useExternalCardDataLoader(
     shouldSkip ? skipToken : { uuid: documentUuid, cardId },
   );
 
-  const question = useMemo(
-    () => (card ? new Question(card, metadata) : undefined),
-    [card, metadata],
-  );
+  const question = useQuestionFromCard(card);
 
   if (!context) {
     return {

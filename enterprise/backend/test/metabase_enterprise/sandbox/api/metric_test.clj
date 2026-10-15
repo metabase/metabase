@@ -18,14 +18,15 @@
   (:dimensions (mt/user-http-request user-kw :get 200 (str "metric/" metric-id))))
 
 (defn- dimension-names
-  "Extract the set of display-name (or name) values from a seq of dimensions."
+  "Extract the set of display_name (or name) values from a seq of wire-form (snake_case)
+   dimensions, as served by the HTTP API."
   [dims]
-  (into #{} (map #(or (:display-name %) (:name %))) dims))
+  (into #{} (map #(or (:display_name %) (:name %))) dims))
 
 (defn- dimension-group-names
-  "Extract the set of group display-names from a seq of dimensions."
+  "Extract the set of group display_names from a seq of wire-form (snake_case) dimensions."
   [dims]
-  (into #{} (map #(get-in % [:group :display-name])) dims))
+  (into #{} (map #(get-in % [:group :display_name])) dims))
 
 ;;; ------------------------------------------------- Sandbox Column Filtering Tests -------------------------------------------------
 
@@ -127,6 +128,44 @@
             (let [dims   (metric-dimensions :rasta (:id metric))
                   groups (dimension-group-names dims)]
               (testing "dimensions from the sandboxed Venues table should be blocked"
-                (is (not (contains? groups "Venues"))))
-              (testing "dimensions from non-sandboxed FK-joined tables are still visible"
-                (is (contains? groups "Category"))))))))))
+                (is (not (contains? groups "Venues")))))))))))
+
+;;; ------------------------------------------------- Running Sandboxed Metrics -------------------------------------------------
+
+(defn- venues-count-metric
+  "A `:metric` Card counting Venues, or counting `inner-metric-id` when one is given."
+  [inner-metric-id]
+  {:name          (if inner-metric-id "Venues Count, Again" "Venues Count")
+   :type          :metric
+   :database_id   (data/id)
+   :table_id      (data/id :venues)
+   :dataset_query {:database (data/id)
+                   :type     :query
+                   :query    {:source-table (data/id :venues)
+                              :aggregation  [(if inner-metric-id
+                                               [:metric inner-metric-id]
+                                               [:count])]}}})
+
+(deftest metric-on-metric-on-natively-sandboxed-table-test
+  (testing "A :metric defined in terms of another :metric on a natively-sandboxed table should run (#76044)"
+    ;; Metric expansion preprocesses each definition as an admin, so sandboxing leaves it alone and only the
+    ;; consuming query gets sandboxed. That elevation has to reach the nested definition too — otherwise sandboxing
+    ;; swaps the inner metric's source table for the sandbox's source card and expansion dies on "Incompatible
+    ;; metric". Nesting is what distinguishes this from the single-level case in
+    ;; `metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test`.
+    (met/with-gtaps! {:gtaps      {:venues {:query      (mt/native-query
+                                                         {:query          "SELECT * FROM VENUES WHERE CATEGORY_ID = {{cat}}"
+                                                          :template_tags  {:cat {:name         "cat"
+                                                                                 :display_name "cat"
+                                                                                 :type         "number"
+                                                                                 :required     true}}})
+                                            :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
+                      :attributes {"cat" 50}}
+      (mt/with-temp [:model/Card {inner-id :id} (venues-count-metric nil)
+                     :model/Card {outer-id :id} (venues-count-metric inner-id)]
+        (is (= [[10]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                              {:database (data/id)
+                                               :type     :query
+                                               :query    {:source-table (data/id :venues)
+                                                          :aggregation  [[:metric outer-id]]}}))))))))

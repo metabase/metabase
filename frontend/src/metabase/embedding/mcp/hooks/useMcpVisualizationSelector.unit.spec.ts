@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
+import { getSensibleVisualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
@@ -12,13 +12,15 @@ interface HookProps {
   queryResults: Dataset[] | null;
 }
 
-jest.mock("metabase/visualizations/lib/sensibility", () => ({
+jest.mock("metabase/viz-core", () => ({
+  ...jest.requireActual("metabase/viz-core"),
   getSensibleVisualizations: jest.fn(),
 }));
 
 const mockGetSensibleVisualizations = jest.mocked(getSensibleVisualizations);
 
 const createQuestion = (display: CardDisplayType): Question =>
+  // Unjustified type cast. FIXME
   ({
     display: jest.fn(() => display),
     setDisplay: jest.fn(
@@ -30,6 +32,7 @@ const createQuestion = (display: CardDisplayType): Question =>
   }) as unknown as Question;
 
 const createQueryResult = (rowCount: number) =>
+  // Unjustified type cast. FIXME
   ({
     data: { rows: Array.from({ length: rowCount }, () => []) },
   }) as unknown as Dataset;

@@ -19,17 +19,18 @@ export const ChannelSettingsBlock = ({
   return (
     <Stack gap="0.75rem" w="100%" data-testid="channel-block">
       <Group justify="space-between" align="center">
-        <Group gap="xs" align="center">
+        <Group gap="xxs" align="center">
           <Icon name={iconName} />
           <Text className={CS.textShortLineHeight}>{title}</Text>
         </Group>
 
+        {/* TODO: replace with ActionIcon (GDGT-2457) */}
         <Button
+          variant="subtle"
+          color="neutral"
+          size="sm"
           data-testid="remove-channel-button"
           leftSection={<Icon name="close" />}
-          color="text-primary"
-          variant="subtle"
-          size="compact-md"
           onClick={onRemoveChannel}
         />
       </Group>

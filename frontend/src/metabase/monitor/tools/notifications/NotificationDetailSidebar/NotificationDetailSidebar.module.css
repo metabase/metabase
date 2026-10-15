@@ -1,0 +1,7 @@
+.avatarStack {
+  flex-shrink: 0;
+}
+
+.channelAvatar {
+  flex-shrink: 0;
+}

@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import {
@@ -30,6 +29,7 @@ import type {
 import { ChartSettingInputNumeric } from "../ChartSettingInputNumeric";
 import { ChartSettingRadio } from "../ChartSettingRadio";
 import { ChartSettingToggle } from "../ChartSettingToggle";
+import { ColorRangeSelector } from "../ColorRangeSelector";
 
 import { COLORS, COLOR_RANGES, DEFAULTS_BY_TYPE } from "./constants";
 import { getOperatorsForColumns } from "./get-operators-for-columns";
@@ -89,8 +89,8 @@ export const RuleEditor = ({
   };
 
   return (
-    <Stack gap="lg">
-      <Stack gap="xs">
+    <Stack gap="xl">
+      <Stack gap="xxs">
         <Text fw="bold" fz="lg">{t`Which columns should be affected?`}</Text>
         <MultiSelect
           comboboxProps={{ withinPortal: false }}
@@ -106,7 +106,7 @@ export const RuleEditor = ({
         />
       </Stack>
       {isNumericRule && !isKeyRule && (
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text fw="bold" fz="lg">{t`Formatting style`}</Text>
           <ChartSettingRadio
             options={[
@@ -116,6 +116,7 @@ export const RuleEditor = ({
             value={rule.type}
             onChange={(type) =>
               onChange({
+                // Unjustified type cast. FIXME
                 ...DEFAULTS_BY_TYPE[type as "single" | "range"],
                 columns: rule.columns,
               })
@@ -125,7 +126,7 @@ export const RuleEditor = ({
       )}
       {rule.type === "single" ? (
         <>
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Text fw="bold" fz="lg">
               {ngettext(
                 msgid`When a cell in this column…`,
@@ -158,7 +159,7 @@ export const RuleEditor = ({
               />
             </Box>
           </Stack>
-          <Stack gap="xs" align="flex-start">
+          <Stack gap="xxs" align="flex-start">
             <Text fw="bold" fz="lg">{t`…turn its background this color:`}</Text>
 
             <ColorSelector
@@ -170,7 +171,7 @@ export const RuleEditor = ({
             />
           </Stack>
           {canHighlightRow && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text fw="bold" fz="lg">{t`Highlight the whole row`}</Text>
 
               <ChartSettingToggle
@@ -187,7 +188,7 @@ export const RuleEditor = ({
         </>
       ) : rule.type === "range" ? (
         <>
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Text fw="bold" fz="lg">{t`Colors`}</Text>
             <ColorRangeSelector
               value={rule.colors}
@@ -199,7 +200,7 @@ export const RuleEditor = ({
               withinPortal={false}
             />
           </Stack>
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Text fw="bold" fz="lg">{t`Start the range at`}</Text>
             <ChartSettingRadio
               value={rule.min_type}
@@ -207,6 +208,7 @@ export const RuleEditor = ({
                 onChange({
                   ...rule,
                   min_type:
+                    // Unjustified type cast. FIXME
                     min_type as ColumnRangeFormattingSetting["min_type"],
                 })
               }
@@ -231,7 +233,7 @@ export const RuleEditor = ({
               />
             )}
           </Stack>
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Text fw="bold" fz="lg">{t`End the range at`}</Text>
             <ChartSettingRadio
               value={rule.max_type}
@@ -239,6 +241,7 @@ export const RuleEditor = ({
                 onChange({
                   ...rule,
                   max_type:
+                    // Unjustified type cast. FIXME
                     max_type as ColumnRangeFormattingSetting["max_type"],
                 })
               }

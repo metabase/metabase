@@ -39,9 +39,8 @@
 (deftest ^:parallel invoke-tool-with-args-test
   (testing "invoke-tool with arguments schema that encodes keys"
     (mr/def ::test-args
-      [:and
-       [:map [:user_id :int]]
-       [:map {:encode/tool-api-request #(set/rename-keys % {:user_id :user-id})}]])
+      [:map {:closed true, :encode/tool-api-request #(set/rename-keys % {:user_id :user-id})}
+       [:user_id :int]])
     (let [received-args (atom nil)
           handler       (fn [args]
                           (reset! received-args args)

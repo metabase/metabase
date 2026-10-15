@@ -23,13 +23,6 @@ export const trackClickActionPerformed = (action: RegularClickAction) => {
   }
 };
 
-export const trackStackedSeriesEnabled = () => {
-  trackSimpleEvent({
-    event: "stack_series_enabled",
-    triggered_from: "viz_settings",
-  });
-};
-
 export const trackTableFreezeColumnsEnabled = () => {
   trackSimpleEvent({
     event: "table_freeze_columns_enabled",

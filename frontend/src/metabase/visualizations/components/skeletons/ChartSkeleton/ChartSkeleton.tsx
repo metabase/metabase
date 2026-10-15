@@ -12,11 +12,10 @@ import RowSkeleton from "metabase/visualizations/components/skeletons/RowSkeleto
 import SankeySkeleton from "metabase/visualizations/components/skeletons/SankeySkeleton";
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
 import ScatterSkeleton from "metabase/visualizations/components/skeletons/ScatterSkeleton";
-import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
 import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, VisualizationDisplay } from "metabase-types/api";
 
 export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   display?: CardDisplayType;
@@ -25,9 +24,12 @@ export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   actionMenu?: JSX.Element | null;
 };
 
-const skeletonComponent: (display?: CardDisplayType) => JSX.Element | null = (
-  display?: CardDisplayType,
-) => {
+// Returns just the chart-shaped skeleton image for a display type (no caption
+// or surrounding chrome), suitable for embedding inside a chart's own render
+// area.
+export const getChartSkeletonImage: (
+  display?: VisualizationDisplay,
+) => JSX.Element | null = (display?: VisualizationDisplay) => {
   if (!display) {
     return null;
   }
@@ -77,7 +79,6 @@ const ChartSkeleton = ({
     return (
       <ScalarSkeleton
         className={className}
-        scalarType={display}
         name={name}
         description={description}
         actionMenu={actionMenu}
@@ -92,13 +93,10 @@ const ChartSkeleton = ({
       description={description}
       actionMenu={actionMenu}
     >
-      {skeletonComponent(display)}
+      {getChartSkeletonImage(display)}
     </VisualizationSkeleton>
   );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(ChartSkeleton, {
-  Title: SkeletonCaption.Title,
-  Description: SkeletonCaption.Description,
-});
+export default ChartSkeleton;

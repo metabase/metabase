@@ -90,10 +90,21 @@ export function mergeVisualizerData({
       .flat(),
   );
 
+  // Carry the timezone from the source dataset(s) so time-series charts format datetimes in the query's
+  // report timezone. Without it the cartesian axis falls back to UTC (#73972).
+  const sourceData = referencedColumns
+    .map((ref) => datasets[ref.sourceId])
+    .find(
+      (dataset) =>
+        dataset?.error == null && dataset?.data?.results_timezone != null,
+    )?.data;
+
   return {
     cols: columns,
     rows: _.zip(...unzippedRows),
     insights,
+    results_timezone: sourceData?.results_timezone,
+    requested_timezone: sourceData?.requested_timezone,
     // this is incorrect - `data.cols` are not the same as `data.results_metadata.columns`
     results_metadata: { columns: columns as unknown as Field[] },
   };

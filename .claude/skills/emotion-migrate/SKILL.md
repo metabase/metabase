@@ -21,7 +21,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
 
 - `display` → `display` prop
 - `color` → `c` prop (`c="core-brand"`, `c="text-primary"`)
-- `background-color` → `bg` prop (`bg="background-primary"`)
+- `background-color` → `bg` prop (`bg="background_page-primary"`)
 - `font-size` → `fz` prop (`fz="md"`)
 - `font-weight` → `fw` prop (`fw="bold"`)
 - `line-height` → `lh` prop (`lh="md"`)
@@ -57,7 +57,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
   align="center"            /* style prop */
   gap="sm"                  /* style prop */
   p="md"                    /* style prop */
-  bg="background-primary"   /* style prop */
+  bg="background_page-primary"   /* style prop */
 >
 ```
 
@@ -172,7 +172,7 @@ Create `ComponentName.module.css` alongside the component file:
 .root {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 /* Conditional states as separate classes, combined with cx() */
@@ -182,7 +182,7 @@ Create `ComponentName.module.css` alongside the component file:
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   pointer-events: none;
 }
 
@@ -192,7 +192,7 @@ Create `ComponentName.module.css` alongside the component file:
 
   &:hover {
     color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -255,9 +255,9 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** (`c`, `bg`):
 
-- Text: `"text-primary"`, `"text-secondary"`, `"text-tertiary"`
-- Background: `"background-primary"`, `"background-secondary"`, `"background-hover"`
-- Brand: `"core-brand"`, `"error"`, `"success"`, `"warning"`
+- Text: `"text-primary"`, `"text-secondary"`, `"text-disabled"`
+- Background: `"background_page-primary"`, `"background_page-secondary"`, `"background_surface-hover"`
+- Brand: `"core-brand"`, `"feedback-negative"`, `"feedback-positive"`, `"feedback-warning"`
 
 **Typography** (`fz`, `fw`, `lh`, `ta`, `ff`):
 
@@ -279,12 +279,12 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** — `var(--mb-color-<name>)`:
 
-- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-tertiary`
-- `--mb-color-background-primary`, `--mb-color-background-secondary`, `--mb-color-background-hover`
+- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-disabled`
+- `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
 - `--mb-color-border-neutral`, `--mb-color-border-neutral-strong`, `--mb-color-border-neutral-subtle`
 - `--mb-color-core-brand`, `--mb-color-core-brand-hover`
-- `--mb-color-error`, `--mb-color-success`, `--mb-color-warning`
-- `--mb-color-shadow`, `--mb-color-focus`
+- `--mb-color-feedback-negative`, `--mb-color-feedback-positive`, `--mb-color-feedback-warning`
+- `--mb-color-shadow-default`, `--mb-color-input-focus`
 - `--mb-color-accent0` through `--mb-color-accent7`
 
 **Mantine spacing** — `var(--mantine-spacing-<size>)`:
@@ -398,7 +398,7 @@ export const Wrapper = styled.div`
 ```tsx
 export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
   color: ${(props) =>
-    props.disabled ? color("text-tertiary") : color("text-primary")};
+    props.disabled ? color("text-disabled") : color("text-primary")};
   background-color: ${(props) =>
     props.isSelected ? color("core-brand") : "transparent"};
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
@@ -427,11 +427,11 @@ export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: default;
 
   &:hover {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 }
 ```
@@ -623,9 +623,9 @@ export const Bar = styled.div<{ width: number }>`
 
 ### Pattern 9: Core CSS Utility Classes (Discouraged)
 
-**Do NOT introduce new `CS` utility class usage.** Core CSS utilities (`CS` from `metabase/css/core/index.css`) are legacy and discouraged for new code. Prefer Mantine style props or CSS modules instead.
+**Don't use `CS` utility classes in new, moved, or otherwise edited code.** Core CSS utilities (`CS` from `metabase/css/core/index.css`) are legacy. Prefer Mantine style props or CSS modules instead.
 
-If existing code already uses `CS` classes and you're not migrating that specific code, leave them alone. But when migrating Emotion → Mantine, replace with the proper alternative:
+Existing `CS` usage may remain on lines this change neither edits nor moves; editing a neighboring line doesn't require migrating untouched usage. When moving or editing the usage itself, including during an Emotion → Mantine migration, replace it with the proper alternative:
 
 | Instead of `CS.*`   | Use                                                          |
 | ------------------- | ------------------------------------------------------------ |
@@ -801,7 +801,6 @@ After switching, reload the page for the theme to take effect.
 For each state (**after** = migrated code, **before** = stashed original), capture screenshots in both themes at both viewport widths. This produces **8 screenshots total**.
 
 1. **Take "after" screenshots first** (migrated code is already in place):
-
    - Navigate to the page that renders the migrated components (`browser_navigate`)
    - Wait for content to load (`browser_wait_for` with key text, or `textGone: "Loading..."`)
    - Close the sidebar if it overlaps content on narrow viewports (`browser_click` the toggle button)
@@ -813,7 +812,6 @@ For each state (**after** = migrated code, **before** = stashed original), captu
      - Narrow (640x900), close sidebar: `after-dark-narrow.png`
 
 2. **Stash changes to capture "before" screenshots**:
-
    - Run `git stash --include-untracked` to temporarily revert to the Emotion version
    - Repeat the same 4 screenshots with `before-` prefix:
      - `before-light-desktop.png`, `before-light-narrow.png`

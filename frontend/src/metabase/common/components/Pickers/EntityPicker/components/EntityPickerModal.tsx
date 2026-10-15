@@ -12,6 +12,7 @@ import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
 import resizeObserver from "metabase/utils/resize-observer";
 import type { RecentContexts } from "metabase-types/api";
 
+import { SEARCH_DEBOUNCE_MS } from "../constants";
 import { useLogRecentItem } from "../hooks";
 import type {
   EntityPickerOptions,
@@ -164,6 +165,13 @@ export function EntityPickerModal({
       w="100vw"
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       yOffset="10dvh"
+      /**
+       * react-remove-scroll (used by Mantine's scroll lock) treats Shift+wheel as a
+       * vertical gesture and preventDefault()s it once the hovered column can't scroll
+       * vertically, which blocks the picker's native horizontal Shift+scroll. This modal
+       * fills the viewport and never scrolls the page, so the lock is unnecessary here. (#66456)
+       */
+      lockScroll={false}
     >
       <Modal.Overlay />
       <Modal.Content
@@ -174,7 +182,12 @@ export function EntityPickerModal({
         maw="80vw"
         ref={modalContentCallbackRef}
       >
-        <Modal.Header px="1.5rem" pt="1rem" pb="1rem" bg="background-primary">
+        <Modal.Header
+          px="1.5rem"
+          pt="1rem"
+          pb="1rem"
+          bg="background_page-primary"
+        >
           <Modal.Title id={titleId} fz="lg">
             {title}
           </Modal.Title>
@@ -215,7 +228,7 @@ const SearchInput = ({
   const [localValue, setLocalValue] = useState(value);
   const debouncedOnChange = useDebouncedCallback((newValue: string) => {
     onChange(newValue);
-  }, 300);
+  }, SEARCH_DEBOUNCE_MS);
   return (
     <TextInput
       classNames={{ input: S.textInput }}

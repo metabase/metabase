@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; the canonical QP entrypoint name predates the module layout
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.query-processor
   "Primary entrypoints to running Metabase (MBQL) queries.
@@ -6,7 +7,9 @@
 
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
+  (:refer-clojure :exclude [select-keys])
   (:require
+   [medley.core :as m]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.debug :as qp.debug]
@@ -21,7 +24,8 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (def around-middleware
   "Middleware that goes AROUND [[process-query]]. Does extra stuff like handling `:internal` Audit v1 queries or saving
@@ -76,7 +80,7 @@
 
 (mu/defn process-query :- [:fn {:error/message "process-query unexpectedly returned nil."} some?]
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (process-query query nil))
 
   ([query :- ::qp.schema/any-query
@@ -98,14 +102,17 @@
 
   3. A few extra keys like `:running_time` and `:started_at` are added to the QP
      response (see [[process-userland-query/process-userland-query-middleware]])"
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (userland-query query nil))
 
   ([query :- ::qp.schema/any-query
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
-       (update :info merge info))))
+       (cond-> info (update :info merge info)))))
+
+(def ^:private userland-query-middleware-options
+  #{:js-int-to-string? :ignore-cached-results?})
 
 (mu/defn userland-query-with-default-constraints :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
@@ -113,12 +120,14 @@
   see [[qp.constraints/add-default-userland-constraints]].
 
   This ultimately powers most of the REST API entrypoints into the QP."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (userland-query-with-default-constraints query nil))
 
   ([query :- ::qp.schema/any-query
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
+       (dissoc :constraints)
+       (m/update-existing :middleware select-keys userland-query-middleware-options)
        (userland-query info)
        (assoc-in [:middleware :add-default-userland-constraints?] true))))
 ;; test

@@ -5,7 +5,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
 import type { RemoteSyncEntity } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 

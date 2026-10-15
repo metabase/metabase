@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { DASHBOARD_NAME_MAX_LENGTH } from "metabase/common/utils/dashboard";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDashboardTitle } from "metabase/dashboard/hooks/use-dashboard-title";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
 export const DashboardTitle = ({ className }: { className?: string }) => {
   const [title, setTitle] = useDashboardTitle();

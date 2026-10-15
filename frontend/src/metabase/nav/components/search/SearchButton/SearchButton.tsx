@@ -1,21 +1,17 @@
 import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getSearchTextFromLocation } from "metabase/common/search";
-import type { SearchAwareLocation } from "metabase/common/search/types";
+import { useLocation } from "metabase/router";
 import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
 import S from "./SearchButton.module.css";
 
-type SearchButtonProps = ButtonProps & {
-  location: SearchAwareLocation;
-};
-
-const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
+export const SearchButton = (props: ButtonProps) => {
+  const location = useLocation();
   const kbar = useKBar();
   const { setVisualState } = kbar.query;
   const searchText = getSearchTextFromLocation(location);
@@ -27,13 +23,14 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
   const isSmallScreen = useIsSmallScreen();
 
   if (isSmallScreen) {
+    // TODO: replace with ActionIcon (GDGT-2457)
     return (
       <Button
-        h="36px"
-        leftSection={<Icon name="search" />}
         variant="subtle"
+        color="neutral"
+        size="sm"
+        leftSection={<Icon name="search" />}
         onClick={handleClick}
-        color="text-secondary"
         aria-label="Search"
       />
     );
@@ -41,9 +38,8 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
 
   return (
     <Button
-      h="36px"
       w="240px"
-      c={searchText ? "text-primary" : "text-tertiary"}
+      c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}
       onClick={handleClick}
       styles={{
@@ -61,12 +57,10 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
       {...props}
     >
       <span>{searchText || t`Search...`}</span>
-      <Flex gap="xs">
+      <Flex gap="xxs">
         <span className={S.shortcutText}>{METAKEY}</span>
         <span className={S.shortcutText}>{t`K`}</span>
       </Flex>
     </Button>
   );
 };
-
-export const SearchButton = withRouter(SearchButtonView);

@@ -18,7 +18,7 @@ To complete any build of the Metabase code, you'll need to install the following
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 21 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 25 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
 
 3. [Node.js (https://nodejs.org/)](https://nodejs.org/) - latest LTS release
 
@@ -33,7 +33,7 @@ curl -fsSL https://bun.sh/install | bash
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure and Bun, can be installed by using:
 
 ```
-sudo apt install openjdk-21-jdk nodejs
+sudo apt install openjdk-25-jdk nodejs
 ```
 
 If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with:
@@ -42,7 +42,7 @@ If you have multiple JDK versions installed in your machine, be sure to switch y
 sudo update-alternatives --config java
 ```
 
-Then select Java 21 in the menu.
+Then select Java 25 in the menu.
 
 ### Running on M1 Apple computers
 
@@ -168,7 +168,7 @@ After running the build script simply look in `target/uberjar` for the output .j
 If you want to build Metabase without installing Clojure, Java, and Node.js on your host machine, you can build the Uberjar inside a container by running:
 
 ```
-DOCKER_BUILDKIT=1 docker build --output container-output/ .
+DOCKER_BUILDKIT=1 docker build --output container-output/ --build-arg VERSION=vx.x.x .
 ```
 
-Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.
+Replace `VERSION=vx.x.x` with `vx.x.x` matching your major and minor release tag like `VERSION=v0.63.18`. Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.

@@ -13,7 +13,7 @@ This setup:
 - Only works on localhost when developing your app (though your Metabase doesn't need to be running locally).
 - Works with both the Enterprise and Open Source editions of Metabase, both self-hosted and on Metabase Cloud.
 
-If you want to use the SDK in production, however, you'll also need to [set up JWT SSO authentication](../authentication.md), which requires a [Pro](https://store.metabase.com/checkout/embedding) or [Enterprise plan](https://www.metabase.com/pricing/). To enable JWT SSO when you're self-hosting Metabase, you'll need to run the Enterprise Edition Docker image or JAR, and [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
+If you want to use the SDK in production, however, you'll also need to [set up JWT SSO authentication](../authentication.md), which requires a [Pro](https://store.metabase.com/checkout/embedding) or [Enterprise plan](https://www.metabase.com/pricing). To enable JWT SSO when you're self-hosting Metabase, you'll need to run the Enterprise Edition Docker image or JAR, and [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Prerequisites
 
@@ -36,11 +36,11 @@ To embed a dashboard in your app using the SDK, you'll need to:
 
 ## 1. Enable the SDK in Metabase
 
-In Metabase, click the grid icon in the upper right and navigate to **Admin > Embedding > Modular** and enable the **SDK for React**.
+In Metabase, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Security**. Toggle on **Modular embedding React SDK**.
 
 ## 2. Create an API key in Metabase
 
-Still in the Admin console, go to **Settings > Authentication** and click on the **API keys** tab. [Create a new API key](../../people-and-groups/api-keys.md).
+Click the **grid** icon, select **Admin**, and go to **Settings > Authentication > API keys**. [Create a new API key](../../people-and-groups/api-keys.md).
 
 - Key name: "Modular embedding SDK" (just to make the key easy to identify).
 - Group: select “Admin” (since this is only for local testing).

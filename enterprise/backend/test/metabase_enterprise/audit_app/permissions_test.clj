@@ -8,6 +8,9 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.collection.graph :refer [update-graph!]]
    [metabase.permissions.models.collection.graph-test :refer [graph]]
@@ -100,7 +103,7 @@
 (deftest analytics-permissions-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
-                   :model/Database         {database-id :id} {}
+                   :model/Database         {database-id :id} {:is_audit true}
                    :model/Table            view-table        {:db_id database-id :name "v_users"}
                    :model/Collection       collection        {:namespace "analytics"}]
       (with-redefs [audit/audit-db-id                 database-id
@@ -178,3 +181,28 @@
   (let [dashboard (t2/select-one :model/Dashboard :collection_id (:id (audit/default-audit-collection)))]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard)) {:name "My new title"})))))
+
+(deftest audit-db-adhoc-query-and-collection-write-perms-test
+  (audit-test/with-audit-db-restoration!
+    (mt/with-premium-features #{:audit-app}
+      (testing "An ad-hoc aggregation query on top of a saved audit model runs successfully (#43088)"
+        (mt/with-test-user :crowberto
+          (let [audit-card (t2/select-one :model/Card :database_id audit/audit-db-id :type :model :name "People")]
+            (is (some? audit-card)
+                "Expected the audit DB's 'People' model card to exist after installation")
+            (let [mp    (lib.metadata.jvm/application-database-metadata-provider audit/audit-db-id)
+                  query (-> (lib/query mp (lib.metadata/card mp (u/the-id audit-card)))
+                            (lib/aggregate (lib/count)))]
+              (is (partial= {:status :completed}
+                            (qp/process-query query)))))))
+      (testing "the analytics collection is read-only via the API"
+        (let [audit-coll-id (:id (audit/default-audit-collection))
+              items         (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
+              analytics     (first (filter #(and (= (:model %) "collection") (= (:id %) audit-coll-id)) items))]
+          (is (some? analytics)
+              "the analytics collection is listed under the root collection")
+          (is (false? (:can_write analytics)))))
+      (testing "GET /api/permissions/graph does not include the audit DB"
+        (let [resp (mt/user-http-request :crowberto :get 200 "permissions/graph")]
+          (is (every? #(not (contains? % audit/audit-db-id))
+                      (vals (:groups resp)))))))))

@@ -10,6 +10,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
@@ -69,10 +70,23 @@
   "Set of all valid models to search for. "
   (set (keys model-to-db-model)))
 
+(def curated-search-models
+  "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
+  keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536).
+  Measures and segments count as curated when their parent table is published into the Library."
+  #{"card"
+    "dashboard"
+    "dataset"
+    "measure"
+    "metric"
+    "segment"
+    "table"})
+
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "transform" "database"])
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "exploration" "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -96,8 +110,8 @@
    ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
    :official-collection 1
    :verified            1
-   ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
-   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   ;; Library membership is a curation signal for choosing data sources, so :library is off by default.
+   ;; The :data-picker and :metabot contexts turn it on, at a level an exact match can override.
    :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
@@ -146,11 +160,51 @@
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot
-   {:data-layer          33
+   ;; Metabot searches for data sources, so it uses the data picker's library boost.
+   ;; General search needs the boost too, because library-only retrieval falls back to it.
+   {:library             80
+    ;; An exact name match must win.
+    ;; So :exact is larger than the library boost, the largest type boost and the tie-breakers combined.
+    :exact               150
+    ;; Popularity and recency only break ties within a tier.
+    ;; Recency alone (0.4) stays below the narrowest tier gap (1).
+    ;; All of them together (1.9) stay below the gap that keeps a metric over a final-layer table (2).
+    :view-count          0.5
+    :bookmarked          0.5
+    :mine                0.5
+    :recency             0.2
+    :user-recency        0.2
+    ;; Relevance has to be able to cross that gap, or any metric that matches at all outranks a better-matching table.
+    ;; The scorer maps cosine distance d to 1 - d/2, so at double the default a 0.2 difference in distance (2) does it.
+    :semantic-distance   20
+    :data-layer          33
     :data-layer/final    1     ; ≈ 33
+    ;; New tables use the internal layer by default, so an ordinary table gets this score even if nobody has vetted it.
+    ;; That score ranks it above dashboards, questions, and models.
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    }})
+    ;; Semantic-layer content ranks above saved questions, and saved questions above models.
+    ;; Tables are ranked mostly by :data-layer; their small type boost only keeps a table above a model.
+    ;; A metric beats every table on an equal match: the semantic layer leads a final-layer table (33 + 1) by 2.
+    ;; That is more than the tie-breakers add together, but small enough that a clearly better match wins.
+    ;;
+    ;; Every search model is listed, because [[models-search-order]] supplies a fallback boost for any left out.
+    ;; Collections and actions are here because the Agent API and MCP search use this context and return them.
+    :model                10
+    :model/metric         3.6   ; = 36
+    :model/measure        3.6   ; = 36
+    :model/segment        3.6   ; = 36
+    :model/dashboard      0.3   ; = 3
+    :model/card           0.3   ; = 3
+    :model/table          0.1   ; = 1
+    :model/collection     0.1   ; = 1
+    :model/dataset        0
+    :model/document       0
+    :model/transform      0
+    :model/database       0
+    :model/action         0
+    :model/exploration    0
+    :model/indexed-entity 0}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every
@@ -160,6 +214,17 @@
         (map #(if (namespace %) (keyword (namespace %)) %))
         (concat (keys static-default-weights)
                 (mapcat keys (vals static-context-weights)))))
+
+(defn- scorer-key? [k]
+  (and (keyword? k) (contains? known-rankers (if (namespace k) (keyword (namespace k)) k))))
+
+(mr/def ::scorer-key
+  "A weights map key: a scorer name, optionally namespaced with a scorer-specific parameter (e.g.
+  `:model/dashboard`), that collapses to one of [[known-rankers]]."
+  [:fn scorer-key?])
+
+(mr/def ::weights
+  [:map-of ::scorer-key number?])
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -183,6 +248,33 @@
    [:required-feature [:maybe :keyword]]
    [:engine           [:maybe :keyword]]])
 
+(def ^:private FilterDefNoKey
+  "[[FilterDef]] without the `:key` entry, which [[build-filters]] fills in from the map key."
+  [:map {:closed true}
+   [:type                              :keyword]
+   [:field            {:optional true} :string]
+   [:context-key      {:optional true} :keyword]
+   [:supported-value? {:optional true} ifn?]
+   [:required-feature {:optional true} :keyword]
+   [:engine           {:optional true} :keyword]])
+
+(def ^:private FilterDefs
+  "The filter-name -> (relaxed) filter-definition map [[build-filters]] accepts, keyed by every filter name in
+  [[filters]]."
+  [:map {:closed true}
+   [:archived       {:optional true} FilterDefNoKey]
+   [:collection-id  {:optional true} FilterDefNoKey]
+   [:created-at     {:optional true} FilterDefNoKey]
+   [:creator-id     {:optional true} FilterDefNoKey]
+   [:database-id    {:optional true} FilterDefNoKey]
+   [:id             {:optional true} FilterDefNoKey]
+   [:last-edited-at {:optional true} FilterDefNoKey]
+   [:last-editor-id {:optional true} FilterDefNoKey]
+   [:native-query   {:optional true} FilterDefNoKey]
+   [:verified       {:optional true} FilterDefNoKey]
+   [:curated        {:optional true} FilterDefNoKey]
+   [:display-type   {:optional true} FilterDefNoKey]])
+
 (mu/defn- build-filter :- Filter
   [{k :key t :type :keys [context-key field supported-value? required-feature engine]} :- FilterDef]
   {:key              k
@@ -194,7 +286,7 @@
    :engine           (or engine :all)})
 
 (mu/defn- build-filters :- [:map-of :keyword Filter]
-  [m]
+  [m :- FilterDefs]
   (-> (reduce #(assoc-in %1 [%2 :key] %2) m (keys m))
       (update-vals build-filter)))
 
@@ -213,8 +305,11 @@
     :last-editor-id          {:type :list, :context-key :last-edited-by}
     :native-query            {:type :native-query, :context-key :search-native-query}
     :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
-    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
-    :has-temporal-dim        {:type :single-value :engine :appdb}
+    ;; "Verified or curated content" (Metabot). Backed by the precomputed `curated` index column
+    ;; (an OR over verified + official + library/published + authoritative, computed at ingestion),
+    ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
+    ;; its feature is present, so the precomputed flag is already feature-correct.
+    :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
     :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
@@ -305,28 +400,44 @@
 (def vector-search-strategies
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
-  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
-  separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
-  [:hnsw :brute-force])
+  Note: the per-strategy dispatch in [[metabase-enterprise.search.semantic.index/semantic-search-query]] is a
+  separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
+  adding a strategy.
+
+   - `:hnsw`                   approximate, index-backed, post-filters the candidate set
+   - `:brute-force`            exact, filter-first full scan (skips the index)
+   - `:hnsw-iterative-relaxed` index-backed iterative scan, filters inline, results in approximate distance
+                               order (pgvector `hnsw.iterative_scan = relaxed_order`)
+   - `:hnsw-iterative-strict`  as above but exact distance order (`hnsw.iterative_scan = strict_order`)
+
+  The iterative scan keeps pulling neighbours until the limit is met or `hnsw.max_scan_tuples` is hit; the
+  `ef-search` and `max-scan-tuples` knobs tune it further."
+  [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict])
+
+(def hnsw-index-backed-strategies
+  "The subset of [[vector-search-strategies]] that read the HNSW index. Selecting one of these must build the
+  index just-in-time, and a query under one must fail fast when the index is missing. `:brute-force` is the
+  only strategy that needs no index."
+  #{:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict})
 
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
   Keep in sync with the frontend `SearchContext` type (frontend/src/metabase-types/api/search.ts).
   Give every value a comment naming the surface that issues it."
-  [:search-bar          ; the global navbar search typeahead
-   :search-app          ; the full-page search results app
-   :command-palette     ; the ⌘K command palette
-   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
-   :data-picker         ; picking a data source (table/model/metric) while building a query
-   :type-filter         ; the search type-filter dropdown's available-models lookup
-   :basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
+  [:basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
    :browse              ; the Browse models / Browse metrics pages
-   :embedding-setup     ; embedding/SDK setup and preview resource selection
-   :document            ; entity references embedded in documents
-   :library             ; the data-studio Library page (EE)
+   :command-palette     ; the ⌘K command palette
+   :data-picker         ; picking a data source (table/model/metric) while building a query
    :dependencies        ; the dependency-graph entry search (EE)
-   :model-migration])   ; the migrate-models admin page (EE)
+   :document            ; entity references embedded in documents
+   :embedding-setup     ; embedding/SDK setup and preview resource selection
+   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
+   :library             ; the data-studio Library page (EE)
+   :model-migration     ; the migrate-models admin page (EE)
+   :search-app          ; the full-page search results app
+   :search-bar          ; the global navbar search typeahead
+   :type-filter])       ; the search type-filter dropdown's available-models lookup
 
 (def ^:private non-ui-contexts
   "Search `context` values for non-frontend callers.
@@ -391,20 +502,34 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    [:is-data-analyst?   :boolean]
+   ;; whether a lens -- sandboxing, impersonation, routing -- narrows what this user may see; see
+   ;; [[metabase.search.permissions/sandboxed-impersonated-or-routed-user?]]
+   [:is-impersonated-user? :boolean]
+   [:is-sandboxed-user?    :boolean]
+   [:is-routed-user?       :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
-   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
-   ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
-   ;; configured default setting.
-   [:vector-search-strategy {:optional true} [:maybe keyword?]]
+   ;; Semantic-engine vector-search strategy (see [[search.config/vector-search-strategies]]). When absent,
+   ;; the engine uses its configured default setting. The remaining vector-search-* knobs are experimental
+   ;; tuning parameters; they only affect the `:hnsw-iterative-*` strategies (except `explain?`, which works
+   ;; for any strategy). Each falls back to its EE setting default when absent.
+   [:vector-search-strategy        {:optional true} [:maybe keyword?]]
+   ;; pgvector `hnsw.ef_search` -- HNSW candidate-list size
+   [:vector-search-ef-search       {:optional true} [:maybe pos-int?]]
+   ;; pgvector `hnsw.max_scan_tuples` -- soft cap on tuples an iterative scan visits
+   [:vector-search-max-scan-tuples {:optional true} [:maybe pos-int?]]
+   ;; true to run gated EXPLAIN (ANALYZE) instrumentation of the inner vector subquery (expensive)
+   [:vector-search-explain?        {:optional true} [:maybe :boolean]]
+   ;; true to `SET LOCAL enable_seqscan = off` to force the planner onto the HNSW index (experiment knob;
+   ;; deliberately not exposed over HTTP)
+   [:vector-search-force-index?    {:optional true} [:maybe :boolean]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
-   [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
+   [:weights            {:optional true} [:maybe ::weights]]
    ;;
    ;; optional
    ;;
@@ -421,11 +546,11 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
+   ;; true to restrict to verified-or-curated content (precomputed `curated` index column)
+   [:curated?                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
-   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]
    [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string

@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockQueryBuilderState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
@@ -12,7 +13,6 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -51,6 +51,7 @@ function patchQuestion(question: Question) {
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setQuery(nextQuery);
   } else {
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
   }

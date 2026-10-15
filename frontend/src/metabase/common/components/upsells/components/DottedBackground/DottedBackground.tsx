@@ -26,7 +26,7 @@ export interface DottedBackgroundProps extends Omit<
  *
  * @example
  * ```tsx
- * <DottedBackground p="xl">
+ * <DottedBackground p="xxl">
  *   <Card>Content with dotted background</Card>
  * </DottedBackground>
  * ```
@@ -36,7 +36,7 @@ export function DottedBackground({
   dotOpacity = 0.2,
   dotSpacing = "1rem",
   dotSize = "1px",
-  bg = "var(--mb-color-background-secondary)",
+  bg = "var(--mb-color-background_page-secondary)",
   className,
   style,
   children,

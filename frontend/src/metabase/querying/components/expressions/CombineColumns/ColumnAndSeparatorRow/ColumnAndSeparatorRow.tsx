@@ -3,7 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
 import type * as Lib from "metabase-lib";
 
 import { formatSeparator, label } from "../util";
@@ -49,7 +48,6 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-
       <ColumnInput
         query={query}
         stageIndex={stageIndex}
@@ -60,17 +58,15 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {showRemove && (
         <Button
-          styles={{
-            root: {
-              border: "none",
-            },
-          }}
+          variant="subtle"
+          color="neutral"
+          size="sm"
+          mb="sm"
           aria-label={t`Remove column`}
           leftSection={<Icon name="close" />}
-          variant="default"
           onClick={() => {
             onRemove(index);
           }}
@@ -79,8 +75,6 @@ export const ColumnAndSeparatorRow = ({
     </Flex>
   );
 };
-
-const { fontFamilyMonospace } = getThemeOverrides();
 
 function SeparatorInput({
   showSeparator,
@@ -124,12 +118,12 @@ function SeparatorInput({
         onBlur={handleBlur}
         styles={{
           input: {
-            fontFamily: fontFamilyMonospace as string,
+            fontFamily: "var(--mb-default-monospace-font-family)",
           },
         }}
       />
       {!hasFocus && formatSeparator(value) !== value && (
-        <Text color="text-tertiary" className={styles.placeholder}>
+        <Text color="text-disabled" className={styles.placeholder}>
           {formatSeparator(value)}
         </Text>
       )}

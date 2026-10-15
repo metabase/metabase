@@ -20,6 +20,7 @@ import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
+import { useTimeConfig } from "../use-time-config";
 import {
   formatDateRange,
   getInterval,
@@ -49,10 +50,11 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
+  const timeConfig = useTimeConfig();
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
-  const dateRangeText = formatDateRange(value);
-  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
+  const dateRangeText = formatDateRange(timeConfig, value);
+  const outOfBounds = isOutOfBounds(timeConfig, value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -81,7 +83,7 @@ export function DateIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Flex p="md" align="center">
+      <Flex p="lg" align="center">
         <NumberInputWithFallbackValue
           allowDecimal={false}
           value={interval}
@@ -93,7 +95,7 @@ export function DateIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          ml="md"
+          ml="lg"
           onChange={handleUnitChange}
           comboboxProps={{
             withinPortal: false,
@@ -101,20 +103,23 @@ export function DateIntervalPicker({
           }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            aria-label={t`Starting from…`}
-            c="text-secondary"
             variant="subtle"
+            color="neutral"
+            size="sm"
+            ml="sm"
+            aria-label={t`Starting from…`}
             leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />
         </Tooltip>
       </Flex>
-      <Flex p="md" pt={0}>
+      <Flex p="lg" pt={0}>
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
-      <Group px="md" py="sm" justify="space-between">
+      <Group px="lg" py="sm" justify="space-between">
         <Group c="text-secondary" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>

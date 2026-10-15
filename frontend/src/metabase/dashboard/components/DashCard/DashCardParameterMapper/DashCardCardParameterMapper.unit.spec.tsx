@@ -1,5 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
+import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -8,8 +11,6 @@ import {
   screen,
 } from "__support__/ui";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card, VirtualCard } from "metabase-types/api";
 import {
@@ -18,6 +19,7 @@ import {
   createMockDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
+  createMockMetricDimension,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockParameter,
@@ -40,7 +42,7 @@ const state = createMockState({
   }),
 });
 
-const metadata = getMetadata(state); // metabase-lib Metadata instance
+const metadata = createMockMetadataFromState(state); // metabase-lib Metadata instance
 
 type MapperProps = React.ComponentProps<typeof DashCardCardParameterMapper>;
 type SetupOptions = Partial<MapperProps>;
@@ -249,6 +251,59 @@ describe("DashCardCardParameterMapper", () => {
     });
 
     expect(screen.getByText("Section.Name")).toBeInTheDocument();
+  });
+
+  it("shows only curated metric dimensions", async () => {
+    const card = createMockCard({ type: "metric" });
+    setupMetricDimensionsEndpoints(card.id, {
+      added: [
+        createMockMetricDimension({
+          id: "category",
+          display_name: "Product category",
+          sources: [{ type: "field", "field-id": 2 }],
+        }),
+        createMockMetricDimension({
+          id: "title",
+          display_name: "Product title",
+          sources: [{ type: "field", "field-id": 1 }],
+        }),
+      ],
+      addable: [],
+    });
+
+    setup({
+      card,
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 1, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Title",
+        },
+        {
+          target: ["dimension", ["field", 2, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "Product",
+          name: "Category",
+        },
+        {
+          target: ["dimension", ["field", 3, null]],
+          icon: "string",
+          isForeign: true,
+          sectionName: "User",
+          name: "Email",
+        },
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Select…"));
+
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveTextContent("Product category");
+    expect(options[1]).toHaveTextContent("Product title");
   });
 
   describe("Auto-connected hint", () => {

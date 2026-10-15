@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Text, type TextProps, Textarea } from "metabase/ui";
@@ -35,6 +35,7 @@ export const StyledInput = styled(Textarea)`
   ${interactiveDashcardElementCss}
 `;
 
+// Unjustified type cast. FIXME
 export const InteractiveText = styled(Text)<TextProps>`
   ${interactiveDashcardElementCss}
 ` as unknown as typeof Text;

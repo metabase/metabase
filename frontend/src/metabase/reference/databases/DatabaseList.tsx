@@ -2,42 +2,27 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
-import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
-import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
-import type { NormalizedDatabase } from "metabase-types/api";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
+import { ListItem } from "metabase/reference/components/ListItem";
+import type { Database } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import type { StateWithReference } from "../selectors";
-import { getError, getLoading } from "../selectors";
 
 interface DatabaseListProps {
-  entities: Record<string, NormalizedDatabase>;
+  entities: Database[];
   loading?: boolean;
   loadingError?: unknown;
 }
-
-const mapStateToProps = (state: StateWithReference) => ({
-  entities: getDatabases(state),
-  loading: getLoading(state),
-  loadingError: getError(state),
-});
-
-const mapDispatchToProps = {
-  ...metadataActions,
-};
 
 class DatabaseList extends Component<DatabaseListProps> {
   render() {
     const { entities, loadingError, loading } = this.props;
 
-    const databases = Object.values(entities)
+    const databases = entities
       .filter((database) => {
         const exists = Boolean(database?.id && database?.name);
         return exists && !database.is_saved_questions;
@@ -57,7 +42,7 @@ class DatabaseList extends Component<DatabaseListProps> {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
+            entities.length > 0 ? (
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {databases.map((database) => (
@@ -84,4 +69,4 @@ class DatabaseList extends Component<DatabaseListProps> {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(DatabaseList);
+export default DatabaseList;

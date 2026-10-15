@@ -3,6 +3,7 @@
   (:require
    [metabase.analyze.classifiers.category]
    [metabase.analyze.classifiers.core]
+   [metabase.analyze.classifiers.data-sensitivity]
    [metabase.analyze.classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters]
    [metabase.analyze.query-results]
@@ -11,6 +12,7 @@
 (comment
   metabase.analyze.classifiers.category/keep-me
   metabase.analyze.classifiers.core/keep-me
+  metabase.analyze.classifiers.data-sensitivity/keep-me
   metabase.analyze.classifiers.name/keep-me
   metabase.analyze.fingerprint.fingerprinters/keep-me
   metabase.analyze.query-results/keep-me)
@@ -21,6 +23,8 @@
   category-cardinality-threshold]
  [metabase.analyze.classifiers.core
   run-classifiers]
+ [metabase.analyze.classifiers.data-sensitivity
+  infer-data-sensitivity]
  [metabase.analyze.classifiers.name
   infer-entity-type-by-name
   infer-semantic-type-by-name]

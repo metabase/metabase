@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.collections.models.collection :as collections]
+   [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -552,7 +554,7 @@
 
 (deftest transform-superuser-can-read-test
   (testing "can_read should be true for superusers"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -611,7 +613,7 @@
 
 (deftest transform-writable-when-remote-sync-read-write-test
   (testing "can_write should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -632,7 +634,7 @@
 
 (deftest transform-writable-when-remote-sync-disabled-test
   (testing "can_write should be true for transforms when remote-sync is not enabled"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         ;; remote-sync-url is not set, so remote-sync-enabled returns false
         (mt/with-temporary-setting-values [settings/remote-sync-url nil
@@ -674,7 +676,7 @@
 
 (deftest transform-creation-allowed-in-read-write-mode-test
   (testing "can_create should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -712,6 +714,30 @@
             (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
                 "Non-superuser should not be able to write transforms even when remote-sync-type is read-write")))))))
 
+(deftest transform-write-endpoints-return-403-in-read-only-remote-sync-test
+  (testing "PUT/DELETE /api/transform/:id reject with 403 when remote-sync is enabled and read-only"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                         settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                        :namespace :transforms}
+                       :model/Transform {transform-id :id} {:name "Read-only Transform"
+                                                            :collection_id coll-id
+                                                            :source {:type "query"
+                                                                     :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                            :target {:database (mt/id)
+                                                                     :type "table"
+                                                                     :schema "public"
+                                                                     :name "target_table"}}]
+          (testing "PUT is rejected"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :put 403 (str "transform/" transform-id) {:name "renamed"}))))
+          (testing "DELETE is rejected"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :delete 403 (str "transform/" transform-id)))))
+          (testing "transform is untouched"
+            (is (= "Read-only Transform" (t2/select-one-fn :name :model/Transform :id transform-id)))))))))
+
 (deftest transform-non-superuser-cannot-create-test
   (testing "can_create should be false for non-superusers even when remote-sync-type is read-write"
     (mt/with-premium-features #{:transforms-basic}
@@ -730,3 +756,48 @@
                                                                    :schema "public"
                                                                    :name "target_table"}}))
                 "Non-superuser should not be able to create transforms even when remote-sync-type is read-write")))))))
+
+;;; ------------------------------------------- Glossary -------------------------------------------
+
+(deftest glossary-write-endpoints-return-403-in-read-only-remote-sync-test
+  (testing "POST/PUT/DELETE /api/glossary reject with 403 when remote sync is read-only and the Library is synced"
+    (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                       settings/remote-sync-type :read-only]
+      (collections.tu/with-library-synced
+        (mt/with-model-cleanup [:model/Glossary :model/RemoteSyncObject]
+          (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "Annual recurring revenue"}]
+            (testing "POST is rejected"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :post 403 "glossary" {:term "MRR" :definition "Monthly recurring revenue"}))))
+            (testing "PUT is rejected"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :put 403 (str "glossary/" id) {:term "ARR" :definition "changed"}))))
+            (testing "DELETE is rejected"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :delete 403 (str "glossary/" id)))))
+            (testing "the entry is untouched"
+              (is (= "Annual recurring revenue" (t2/select-one-fn :definition :model/Glossary :id id))))
+            (testing "GET still works and reports the glossary as not writable"
+              (let [response (mt/user-http-request :crowberto :get 200 "glossary")]
+                (is (some #(= id (:id %)) (:data response)))
+                (is (false? (:can_write response)))))))))))
+
+(deftest glossary-write-endpoints-allowed-when-editable-test
+  (mt/with-model-cleanup [:model/Glossary :model/RemoteSyncObject]
+    (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "Annual recurring revenue"}]
+      (testing "PUT /api/glossary/:id succeeds in read-write mode with the Library synced"
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-write]
+          (collections.tu/with-library-synced
+            (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
+            (is (= "read-write edit"
+                   (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
+                                                      {:term "ARR" :definition "read-write edit"})))))))
+      (testing "PUT /api/glossary/:id succeeds in read-only mode when the Library is not synced"
+        (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                           settings/remote-sync-type :read-only]
+          (collections.tu/with-library-not-synced
+            (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
+            (is (= "unsynced edit"
+                   (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
+                                                      {:term "ARR" :definition "unsynced edit"}))))))))))

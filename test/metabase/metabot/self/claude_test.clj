@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -15,10 +16,34 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved Anthropic connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-ant-byok" :base-url "https://api.anthropic.com"})
+
 (defn- fixture
   "Load cached Claude raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (metabot.tu/raw-fixture fixture-name #(claude/claude-raw (merge {:model "claude-haiku-4-5"} opts))))
+  (metabot.tu/raw-fixture
+   fixture-name
+   #(claude/claude-raw (merge {:model "claude-haiku-4-5" :credentials byok-credentials} opts))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; e2e localhost safeguard
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest request-e2e-localhost-safeguard-test
+  (testing "during e2e tests, self.core/request refuses a non-localhost URL before hitting the network"
+    (with-redefs [config/is-e2e? true
+                  http/request  (fn [& _] (throw (ex-info "http/request should not be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"non-localhost"
+           (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"})))))
+  (testing "outside e2e mode the safeguard is inert (request proceeds to http/request)"
+    (with-redefs [config/is-e2e? false
+                  http/request  (fn [_] {:status 200 :body "ok"})]
+      (is (= {:status 200 :body "ok"}
+             (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -40,14 +65,32 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-text-id-from-content-block-index-test
+  (testing "text blocks (no provider id) take their id from the content-block index, matching @ai-sdk/anthropic"
+    (let [raw    [{:type "message_start" :message {:id "msg-1" :model "claude-haiku-4-5"}}
+                  {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "Hello"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "world"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) raw)]
+      (is (= [["text-start" "0"] ["text-delta" "0"] ["text-end" "0"]
+              ["text-start" "1"] ["text-delta" "1"] ["text-end" "1"]]
+             (->> chunks
+                  (filter #(#{:text-start :text-delta :text-end} (:type %)))
+                  (mapv (juxt (comp name :type) :id))))))))
+
 (deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
   (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
     (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
                  {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
           parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
           err   (m/find-first #(= :error (:type %)) parts)]
-      (is (=? {:message "Overloaded"} (:error err)))
-      (is (= "3:\"Overloaded\"" (self.core/format-error-line err))))))
+      (is (=? {:type "overloaded_error" :message "Overloaded"} (:error err)))
+      (is (= (self.core/format-sse-event {:type "error" :errorText "Overloaded"})
+             (self.core/format-error-line err))))))
 
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
@@ -149,6 +192,89 @@
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
+(deftest ^:parallel claude-stop-reason-on-usage-chunk-test
+  (letfn [(usage-chunk [stop-reason]
+            (let [events [{:type "message_start"
+                           :message {:id "msg-1" :model "claude-haiku-4-5" :usage {:input_tokens 10}}}
+                          {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                          {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "hi"}}
+                          {:type "message_delta"
+                           :delta {:stop_reason stop-reason}
+                           :usage {:input_tokens 10 :output_tokens 64}}
+                          {:type "message_stop"}]]
+              (->> (into [] (claude/claude->aisdk-chunks-xf) events)
+                   (filter #(= :usage (:type %)))
+                   first)))]
+    (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "max_tokens"                    "length"
+        "model_context_window_exceeded" "length"
+        "refusal"                       "content-filter"
+        "end_turn"                      "stop"
+        "pause_turn"                    "stop"
+        "compaction"                    "other"))))
+
+(deftest ^:parallel claude-thinking-blocks-translated-test
+  (testing "thinking content blocks become reasoning chunks; signature rides the end"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-1" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  ;; a thinking block arrives before the text
+                  {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "let me think"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "signature_delta" :signature "abc"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text" :id "text-1"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "hi"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_delta" :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens 10 :output_tokens 5}}
+                  {:type "message_stop"}]]
+      (testing "reasoning start/delta/end surround the text; signature_delta emits no chunk"
+        (is (=? [{:type :start}
+                 {:type :reasoning-start} {:type :reasoning-delta :delta "let me think"}
+                 {:type :reasoning-end :providerMetadata {:anthropic {:signature "abc"}}}
+                 {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into []
+                      (comp (claude/claude->aisdk-chunks-xf)
+                            (m/distinct-by :type))
+                      events))))
+      (testing "through the full pipeline the reasoning coalesces into one part with metadata"
+        (is (=? [{:type :start}
+                 {:type :reasoning :text "let me think" :provider-metadata {:anthropic {:signature "abc"}}}
+                 {:type :text :text "hi"} {:type :usage}]
+                (into []
+                      (comp (claude/claude->aisdk-chunks-xf)
+                            (self.core/aisdk-xf))
+                      events))))))
+  (testing "redacted_thinking carries its data on the reasoning-end, streaming no deltas"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-r" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  {:type "content_block_start" :index 0 :content_block {:type "redacted_thinking" :data "ENC"}}
+                  {:type "content_block_stop" :index 0}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-end :providerMetadata {:anthropic {:redactedData "ENC"}}}
+               {:type :usage}]
+              (into []
+                    (comp (claude/claude->aisdk-chunks-xf)
+                          (m/distinct-by :type))
+                    events)))))
+  (testing "a stream that ends mid-thinking flushes an unsigned reasoning-end then usage"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-2" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "partial"}}]]
+      (is (=? [{:type :start} {:type :reasoning-start} {:type :reasoning-delta}
+               {:type :reasoning-end} {:type :usage}]
+              (into []
+                    (comp (claude/claude->aisdk-chunks-xf)
+                          (m/distinct-by :type))
+                    events))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->claude-messages tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -172,6 +298,210 @@
             (claude/parts->claude-messages
              [{:type :text :text "Let me check..."}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "revenue"}}])))))
+
+(deftest ^:parallel parts->claude-messages-reasoning-test
+  (testing "signed reasoning replays as a thinking block ahead of the tool_use it preceded"
+    (is (=? [{:role    "assistant"
+              :content [{:type "thinking" :thinking "let me think" :signature "abc"}
+                        {:type "tool_use" :id "call-1" :name "search"}]}]
+            (claude/parts->claude-messages
+             [{:type :reasoning :id "r1" :text "let me "}
+              {:type :reasoning :id "r1" :text "think"}
+              {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "abc"}}}
+              {:type :tool-input :id "call-1" :function "search" :arguments {:q "x"}}]))))
+  (testing "redacted reasoning replays as a redacted_thinking block verbatim"
+    (is (=? [{:role    "assistant"
+              :content [{:type "redacted_thinking" :data "ENC"}
+                        {:type "tool_use" :id "call-1"}]}]
+            (claude/parts->claude-messages
+             [{:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:redactedData "ENC"}}}
+              {:type :tool-input :id "call-1" :function "search" :arguments {}}]))))
+  (testing "unsigned reasoning (no signature/redacted) is dropped"
+    (is (=? [{:role    "assistant"
+              :content [{:type "tool_use" :id "call-1"}]}]
+            (claude/parts->claude-messages
+             [{:type :reasoning :id "r1" :text "unsigned"}
+              {:type :tool-input :id "call-1" :function "search" :arguments {}}])))))
+
+(deftest ^:parallel claude-request-body-fast-mode-test
+  (let [input [{:role :user :content "hi"}]
+        speed #(:speed (claude/claude-request-body (merge {:input input} %)))]
+    (testing ":fast? requests fast mode on models that support it"
+      (is (= "fast" (speed {:model "claude-opus-5-5" :fast? true})))
+      (is (= "fast" (speed {:model "claude-opus-5" :fast? true})))
+      (is (= "fast" (speed {:model "claude-opus-4-8" :fast? true}))))
+    (testing "no speed without :fast?"
+      (is (nil? (speed {:model "claude-opus-5"}))))
+    (testing "no speed on models without fast mode"
+      (is (nil? (speed {:model "claude-opus-4-7" :fast? true})))
+      (is (nil? (speed {:model "claude-opus-6" :fast? true})))
+      (is (nil? (speed {:model "claude-sonnet-4-6" :fast? true})))
+      (is (nil? (speed {:model "claude-haiku-4-5" :fast? true}))))
+    (testing "no speed through the AI proxy"
+      (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
+
+(deftest ^:parallel claude-request-body-nested-object-arguments-test
+  (testing "a replayed tool call whose arguments hold nested string-keyed objects is accepted and sent as-is"
+    ;; Replayed tool calls go through this instrumented entry point, so their arguments must validate here.
+    (let [arguments {:query         {"lib/type" "mbql/query"
+                                     "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                     :visualization {"chart_type" "line"}
+                     :title         "Orders per month"
+                     :description   "Monthly orders in 2025"}
+          body      (claude/claude-request-body
+                     {:input [{:role :user :content "How many orders were placed each month in 2025?"}
+                              {:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments arguments}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "construct_notebook_query"
+                               :result   {:output "query built"}}]})]
+      (is (=? [{:role "user"}
+               {:role    "assistant"
+                :content [{:type "tool_use" :id "call-1" :name "construct_notebook_query" :input arguments}]}
+               {:role "user" :content [{:type "tool_result" :tool_use_id "call-1"}]}]
+              (:messages body))))))
+
+(defn- close-tracking-json-body
+  "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
+  response body the adapter must not leak."
+  [closed? m]
+  ;; ByteArrayInputStream.close is documented as having no effect, so there is nothing to
+  ;; pass on to the parent
+  (proxy [java.io.ByteArrayInputStream] [(.getBytes (json/encode m) "UTF-8")]
+    (close []
+      (reset! closed? true))))
+
+(defn- rejection-ex
+  [closed? status message]
+  (ex-info (str "clj-http: status " status)
+           {:status  status
+            :headers {"content-type" "application/json"}
+            :body    (close-tracking-json-body
+                      closed?
+                      {:type  "error"
+                       :error {:type    ({400 "invalid_request_error"
+                                          429 "rate_limit_error"
+                                          529 "overloaded_error"} status)
+                               :message message}})}))
+
+(deftest claude-raw-fast-mode-fallback-test
+  (testing "a fast-mode rejection is retried once at standard speed, closing the failed body"
+    (doseq [[status message] [[400 "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"]
+                              [429 "This request would exceed the rate limit for your organization"]]]
+      (testing (str "HTTP " status)
+        (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+          (let [requests (atom [])
+                closed?  (atom false)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (swap! requests conj req)
+                                                                  (if (:speed (json/decode+kw (:body req)))
+                                                                    (throw (rejection-ex closed? status message))
+                                                                    {:body req}))]
+              (claude/claude-raw {:model       "claude-opus-5"
+                                  :fast?       true
+                                  :credentials byok-credentials
+                                  :input       [{:role :user :content "hi"}]})
+              (let [[fast-req retry-req] @requests]
+                (is (= 2 (count @requests)))
+                (is (true? @closed?))
+                (is (= "fast" (:speed (json/decode+kw (:body fast-req)))))
+                (is (= "fast-mode-2026-02-01" (get-in fast-req [:headers "anthropic-beta"])))
+                (is (nil? (:speed (json/decode+kw (:body retry-req)))))
+                (is (nil? (get-in retry-req [:headers "anthropic-beta"])))))))))))
+
+(deftest claude-raw-unrelated-400-not-retried-test
+  (testing "a 400 that does not read as a fast-mode rejection surfaces instead of retrying"
+    (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+      (let [requests (atom [])
+            closed?  (atom false)]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    http/request            (fn [req]
+                                                              (swap! requests conj req)
+                                                              (throw (rejection-ex closed? 400 "max_tokens: Input should be greater than 0")))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API error \(HTTP 400\)"
+                                (claude/claude-raw {:model       "claude-opus-5"
+                                                    :fast?       true
+                                                    :credentials byok-credentials
+                                                    :input       [{:role :user :content "hi"}]})))
+          (is (= 1 (count @requests)))
+          (is (true? @closed?)))))))
+
+(deftest claude-raw-fast-mode-529-test
+  (testing "a fast-mode 529 arms the cooldown but surfaces for the caller's retry loop to pace"
+    (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+      (let [requests (atom [])
+            closed?  (atom false)
+            call!    #(claude/claude-raw {:model       "claude-opus-5"
+                                          :fast?       true
+                                          :credentials byok-credentials
+                                          :input       [{:role :user :content "hi"}]})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    http/request            (fn [req]
+                                                              (swap! requests conj req)
+                                                              (if (:speed (json/decode+kw (:body req)))
+                                                                (throw (rejection-ex closed? 529 "Overloaded"))
+                                                                {:body req}))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API is overloaded"
+                                (call!)))
+          (is (true? @closed?))
+          (call!)
+          (is (= ["fast" nil]
+                 (map (comp :speed json/decode+kw :body) @requests))))))))
+
+(deftest claude-raw-fast-mode-cooldown-test
+  (let [cooldown (atom 0)
+        requests (atom [])]
+    (with-redefs [claude/fast-mode-cooldown-until cooldown]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                  http/request            (fn [req]
+                                                            (swap! requests conj req)
+                                                            (if (:speed (json/decode+kw (:body req)))
+                                                              (throw (rejection-ex (atom false) 429 "This request would exceed the rate limit for your organization"))
+                                                              {:body req}))]
+        (let [call!  #(claude/claude-raw {:model       "claude-opus-5"
+                                          :fast?       true
+                                          :credentials byok-credentials
+                                          :input       [{:role :user :content "hi"}]})
+              speeds #(map (comp :speed json/decode+kw :body) @requests)]
+          (testing "a rejection arms the cooldown, so the next call goes straight to standard speed"
+            (call!)
+            (call!)
+            (is (= ["fast" nil nil] (speeds))))
+          (testing "fast mode is attempted again once the cooldown expires"
+            (reset! cooldown 0)
+            (call!)
+            (is (= ["fast" nil nil "fast" nil] (speeds)))))))))
+
+(deftest claude-fast-mode-beta-header-test
+  (let [headers (fn [opts]
+                  (let [captured (atom nil)]
+                    (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                                http/request            (fn [req]
+                                                                          (reset! captured (:headers req))
+                                                                          {:body req})]
+                      (claude/claude-raw (merge {:credentials byok-credentials
+                                                 :input       [{:role :user :content "hi"}]}
+                                                opts)))
+                    @captured))]
+    (testing "fast-mode requests carry the beta header"
+      (is (= "fast-mode-2026-02-01"
+             (get (headers {:model "claude-opus-5" :fast? true}) "anthropic-beta"))))
+    (testing "other requests don't"
+      (is (nil? (get (headers {:model "claude-opus-5"}) "anthropic-beta"))))))
+
+(deftest ^:parallel claude-request-body-reasoning-disabled-test
+  (testing ":reasoning? false disables thinking and strips reasoning replay"
+    (let [body (claude/claude-request-body
+                {:model      "claude-opus-4-8"
+                 :reasoning? false
+                 :input      [{:type :reasoning :id "r1" :text "let me think"}
+                              {:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "abc"}}}
+                              {:type :tool-input :id "call-1" :function "search" :arguments {}}]})]
+      (is (not (contains? body :thinking)))
+      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
+              (:messages body))))))
 
 (deftest ^:parallel parts->claude-messages-tool-result-test
   (testing "tool output becomes user message with tool_result content block"
@@ -239,41 +569,47 @@
 (deftest claude-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
-                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
-          (with-redefs [self.core/sse-reducible identity
-                        debug/capture-stream    (fn [r _] r)
-                        http/request            (fn [req] {:body req})]
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Prefers the connection's own credentials over the ai proxy"
+          (with-redefs [self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
+                        debug/capture-stream                (fn [r _] r)
+                        http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.anthropic.com/v1/messages"
                      :headers {"x-api-key" "sk-ant-byok"}
                      :body    string?}
-                    (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+                    (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                        :credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
-          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
-                        self.core/sse-reducible             identity
+          (with-redefs [self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://proxy.example/anthropic/v1/messages"
                      :headers {"x-metabase-instance-token" "proxy-token"}
                      :body    string?}
-                    (claude/claude-raw {:input [{:role :user :content "hi"}]
+                    (claude/claude-raw {:input     [{:role :user :content "hi"}]
                                         :ai-proxy? true})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Anthropic API key is set"
+               (claude/claude-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Anthropic API key is set"
-                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+                 (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                     :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-            (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"No Anthropic API key is set"
-                   (claude/claude-raw {:input [{:role :user :content "hi"}]}))))))))))
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))))))
 
 (defn- capture-claude-request-body!
   "Invoke `claude-raw` with stubbed HTTP, returning the decoded request body map."
@@ -283,7 +619,7 @@
                   http/request            (fn [req]
                                             (reset! captured (json/decode+kw (:body req)))
                                             {:body req})]
-      (claude/claude-raw opts))
+      (claude/claude-raw (merge {:credentials byok-credentials} opts)))
     @captured))
 
 (deftest claude-tools-cache-breakpoint-test
@@ -306,6 +642,97 @@
           (is (= 1 (count (:tools body))))
           (is (= "structured_output" (-> body :tools first :name)))
           (is (not (contains? (-> body :tools first) :cache_control))))))))
+
+(deftest claude-thinking-config-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [input    [{:role :user :content "hi"}]
+          thinking #(:thinking (capture-claude-request-body! (merge {:input input} %)))]
+      (testing "current-gen models stream summarized reasoning"
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-fable-5"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-8"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-haiku-5-5"})))
+        (testing "bedrock vendor prefix is stripped"
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"})))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-haiku-5-5"}))))
+        (testing "the dotted display-name spelling of the minor version parses the same
+                 (Azure admins name deployments freely)"
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4.8"})))))
+      (testing "4.6 models also get an explicit display param, not just the (currently matching) default"
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-6"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-4-6"}))))
+      (testing "older budget-token models get no thinking (off in v1)"
+        (is (nil? (thinking {:model "claude-haiku-4-5"})))
+        (is (nil? (thinking {:model "claude-sonnet-4-5"}))))
+      (testing "forced tool choice is incompatible with thinking, so it is suppressed"
+        (is (nil? (thinking {:model "claude-opus-4-8"
+                             :schema {:type "object" :properties {:answer {:type "string"}}}})))
+        (is (nil? (thinking {:model       "claude-opus-4-8"
+                             :tools       [(metabot.tu/get-time-tool)]
+                             :tool_choice "required"})))))))
+
+(deftest ^:parallel forced-tool-choice-test
+  (let [schema {:type "object" :properties {:answer {:type "string"}}}
+        tools  [(metabot.tu/get-time-tool)]
+        body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
+    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names and on Haiku"
+      (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"
+                     "claude-fable-5" "claude-mythos-5" "claude-haiku-5-5" "anthropic.claude-haiku-5-5"]]
+        (testing model
+          (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
+                  (body {:model model :schema schema :max-tokens 512})))
+          (is (=? {:tool_choice {:type "any"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
+    (testing "Opus/Sonnet >=5.5 and Fable/Mythos >=5.1 get auto tool choice and keep thinking"
+      (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
+                     "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"
+                     "claude-fable-5-1" "anthropic.claude-fable-5-1" "claude-fable-5-1-prod" "claude-fable-5.1-prod"
+                     "claude-mythos-5-1"]]
+        (testing model
+          (is (=? {:tool_choice {:type "auto"}
+                   :tools       [{:name "structured_output"}]
+                   :thinking    {:type "adaptive"}}
+                  (body {:model model :schema schema})))
+          (is (=? {:tool_choice {:type "auto"} :thinking {:type "adaptive"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
+    (testing "their structured-output cap is floored, since the thinking bills against it"
+      (are [expected opts] (= expected (:max_tokens (body (assoc opts :model "claude-opus-5-5"))))
+        2048 {:schema schema :max-tokens 512}
+        4096 {:schema schema :max-tokens 4096}
+        512  {:max-tokens 512}))))
+
+(deftest ^:parallel every-supported-model-has-a-display-name-test
+  (doseq [[id {:keys [display-name]}] @#'claude/supported-models]
+    (is (seq display-name) id)))
+
+(deftest claude-max-tokens-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [max-tokens #(:max_tokens (capture-claude-request-body!
+                                    (merge {:input [{:role :user :content "hi"}]} %)))]
+      (testing "every model gets the same default cap, and a caller's own cap wins"
+        (are [opts tokens] (= tokens (max-tokens opts))
+          {:model "claude-opus-4-8"}                     32000
+          {:model "claude-fable-5-1"}                    32000
+          {:model "claude-haiku-4-5-20251001"}           32000
+          {:model "claude-opus-4-8" :max-tokens 4096}     4096
+          ;; Bedrock ids reach us vendor-prefixed
+          {:model "anthropic.claude-opus-4-8"}           32000
+          {:model "my-deployment-3"}                     32000)))))
+
+(deftest ^:parallel context-window-tokens-undated-alias-test
+  (testing "an undated alias reads its dated row"
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "anthropic.claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5-20251001"))))
+  (testing "only a whole alias matches"
+    (is (nil? (claude/context-window-tokens "claude-haiku-4")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-4-5-x")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-9-9")))))
+
+(deftest ^:parallel undated-aliases-are-unambiguous-test
+  (testing "each undated alias names one dated row, so an alias never picks a row at random"
+    (let [stems (keep #(second (re-matches #"(.+)-\d{8}" %)) (keys claude/supported-models))]
+      (is (= (count stems) (count (set stems)))))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
@@ -349,6 +776,17 @@
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
 
+(deftest claude-system-cache-breakpoint-blank-suffix-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (testing "a trailing sentinel with nothing after it produces a single cached block, not an empty text block (the API rejects empty text)"
+      (let [body (capture-claude-request-body!
+                  {:input  [{:role :user :content "hi"}]
+                   :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
+        (is (= [{:type          "text"
+                 :text          "Stable prefix content."
+                 :cache_control {:type "ephemeral"}}]
+               (:system body)))))))
+
 (deftest system-templates-cache-breakpoint-presence-test
   (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
     (let [system-dir (io/file (io/resource "metabot/prompts/system"))
@@ -363,7 +801,8 @@
                                    #"\{%\s*if\s+current_user_info\s*%\}"
                                    #"\{%\s*if\s+viewing_context\s*%\}"
                                    #"\{\{\s*viewing_context"
-                                   #"\{\{\s*first_day_of_week\s*\}\}"])]
+                                   #"\{\{\s*first_day_of_week\s*\}\}"
+                                   #"\{%\s*if\s+research_plan\s*%\}"])]
           (testing (.getName f)
             (if has-volatile?
               (is (= 1 n) "exactly one sentinel expected when template references volatile context vars")
@@ -372,56 +811,126 @@
 (deftest claude-list-models-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
-                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Prefers the connection's own credentials over the ai proxy"
           (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                      (is (=? {:method  :get
                                                               :url     "https://api.anthropic.com/v1/models"
                                                               :headers {"anthropic-version" "2023-06-01"
                                                                         "x-api-key"        "sk-ant-byok"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
-                   (claude/list-models {})))))
+                   (claude/list-models {:credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
-                                      http/request                        (fn [req]
-                                                                            (is (=? {:method  :get
-                                                                                     :url     "https://proxy.example/anthropic/v1/models"
-                                                                                     :headers {"anthropic-version"         "2023-06-01"
-                                                                                               "x-metabase-instance-token" "proxy-token"}}
-                                                                                    req))
-                                                                            {:body "{\"data\":[]}"})]
+          (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                     (is (=? {:method  :get
+                                                              :url     "https://proxy.example/anthropic/v1/models"
+                                                              :headers {"anthropic-version"         "2023-06-01"
+                                                                        "x-metabase-instance-token" "proxy-token"}}
+                                                             req))
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Anthropic API key is set"
+               (claude/list-models {}))))
+        (testing "Throws an error if nothing is defined"
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Anthropic API key is set"
-                 (claude/list-models {})))))
-        (testing "Throws an error if nothing is defined"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-            (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"No Anthropic API key is set"
-                   (claude/list-models {}))))))))))
+                 (claude/list-models {})))))))))
 
-;;; ──────────────────────────────────────────────────────────────────
-;;; temperature support tests
-;;; ──────────────────────────────────────────────────────────────────
+(deftest claude-raw-explicit-credentials-test
+  (testing "the connection's api-key and base-url are what get used"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key      "sk-ant-elsewhere"
+                                       llm.settings/llm-anthropic-api-base-url "https://elsewhere.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/messages"
+                                                          :headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key  "sk-ant-explicit"
+                                               :base-url "https://explicit.example"}})))))))
+
+(deftest list-models-explicit-credentials-test
+  (testing "the connection's api-key is what gets used"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-elsewhere"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 {:status 200 :body {:data []}})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
+
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Anthropic API key is set"
+           (claude/list-models {:credentials {:api-key ""}}))))))
+
+(deftest list-models-blank-credentials-without-configured-key-test
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Anthropic API key is set"
+           (claude/list-models {:credentials {:api-key ""}}))))))
+
+(deftest ^:parallel supported-models-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["claude-fable-5" "claude-opus-5-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5-5" "claude-sonnet-5"
+                "claude-haiku-5-5" "claude-haiku-4-5-20251001"]]
+      (is (contains? claude/supported-models id) id)))
+  (testing "non-whitelisted models are not supported"
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
+      (is (not (contains? claude/supported-models id)) id))))
+
+(deftest list-models-filters-catalog-to-whitelist-test
+  (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    ;; the catalog request is `:as :json`, so clj-http hands the adapter an already-decoded body
+    (with-redefs [http/request (fn [_]
+                                 {:status 200
+                                  :body   {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                  {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                  {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                  {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]}})]
+      (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
+              {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
+              {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
+             (:models (claude/list-models {:credentials byok-credentials})))))))
+
+(deftest list-models-does-not-offer-undated-aliases-test
+  (testing "an undated alias in the account's catalog is not offered: only the dated row is supported"
+    (let [catalog {:data [{:id "claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}
+                          {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]}]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body catalog})]
+        (is (= [{:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]
+               (:models (claude/list-models {:credentials byok-credentials}))))))))
 
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
-                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1" "claude-opus-4-20250514"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
-  (testing "sampling parameters were removed starting with Opus 4.7 and on Fable models"
+  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, Haiku 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-opus-5" "claude-opus-5-0" "claude-fable-5"]]
+                   "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
+                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
+                   "claude-fable-5" "claude-fable-5-1" "claude-mythos-5-1"
+                   "claude-haiku-5-5" "anthropic.claude-haiku-5-5"
+                   ;; an Azure deployment name without a version
+                   "claude-fable-prod"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))
 
@@ -440,4 +949,16 @@
       (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
     (testing "temperature is omitted for models that reject sampling parameters"
       (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
-      (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))
+      (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
+      (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))
+    (testing "temperature is omitted when thinking is enabled (4.6 accepts sampling but streams thinking here)"
+      (is (not (contains? (request-body "claude-opus-4-6") :temperature))))
+    (testing "a structured-output call sends no thinking config, so only the model decides whether temperature is sent"
+      (let [schema {:type "object" :properties {:answer {:type "string"}}}
+            body   #(claude/claude-request-body {:model       %
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :schema      schema
+                                                 :temperature 0.3})]
+        (is (= 0.3 (:temperature (body "claude-haiku-4-5"))))
+        (is (not (contains? (body "claude-haiku-5-5") :temperature)))
+        (is (not (contains? (body "anthropic.claude-haiku-5-5") :temperature)))))))

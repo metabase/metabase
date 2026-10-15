@@ -3,10 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { LimitInput } from "metabase/querying/components/LimitInput";
-import { Box } from "metabase/ui";
+import { Box, Radio, Stack } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -60,20 +59,9 @@ export const LimitPopover = ({
         }
       }}
     >
-      <Radio
-        vertical
+      <Radio.Group
         value={isCustom ? "custom" : "maximum"}
-        options={[
-          {
-            name: t`Show maximum (first ${formatNumber(HARD_ROW_LIMIT)})`,
-            value: "maximum",
-          },
-          {
-            name: t`Set custom limit`,
-            value: "custom",
-          },
-        ]}
-        onChange={(selected: string) => {
+        onChange={(selected) => {
           if (selected === "maximum") {
             setIsCustom(false);
           } else {
@@ -82,8 +70,16 @@ export const LimitPopover = ({
             inputRef.current?.select();
           }
         }}
-      />
-      <Box mt="sm" ml="1.25rem">
+      >
+        <Stack gap="sm">
+          <Radio
+            value="maximum"
+            label={t`Show maximum (first ${formatNumber(HARD_ROW_LIMIT)})`}
+          />
+          <Radio value="custom" label={t`Set custom limit`} />
+        </Stack>
+      </Radio.Group>
+      <Box mt="sm" ml="1.7rem">
         <LimitInput
           ref={inputRef}
           small

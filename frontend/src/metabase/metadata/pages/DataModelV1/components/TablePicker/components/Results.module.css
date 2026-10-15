@@ -10,21 +10,21 @@
   cursor: pointer;
   padding-left: var(--mantine-spacing-sm);
   padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  left: var(--mantine-spacing-xxl);
+  right: var(--mantine-spacing-xxl);
 
   &:focus-visible,
   &.selected {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &.active {
     color: var(--mb-color-text-brand);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
 
     .icon {
       opacity: 1;
@@ -32,7 +32,7 @@
   }
 
   &.table {
-    padding-left: var(--mantine-spacing-md);
+    padding-left: var(--mantine-spacing-lg);
   }
 }
 

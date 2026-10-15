@@ -1,4 +1,4 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -23,6 +23,7 @@ import {
   createMockSegmentDependencyNode,
   createMockSegmentDependencyNodeData,
   createMockSnippetDependencyNode,
+  createMockSnippetDependencyNodeData,
   createMockTable,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
@@ -399,6 +400,19 @@ describe("getNodeLocationInfo", () => {
     expect(result?.links[0].label).toBe("My Collection");
   });
 
+  it("should link a snippet's folder to the SQL snippets tab", () => {
+    const node = createMockSnippetDependencyNode({
+      data: createMockSnippetDependencyNodeData({
+        collection: createMockCollection({ name: "My Folder" }),
+      }),
+    });
+    const result = getNodeLocationInfo(node);
+    expect(result?.links[0]).toEqual({
+      label: "My Folder",
+      url: "/data-studio/snippets",
+    });
+  });
+
   it("should return database location for table", () => {
     const node = createMockTableDependencyNode({
       data: createMockTableDependencyNodeData({
@@ -645,7 +659,10 @@ describe("getDependencyGroupTypeInfo", () => {
     },
     {
       groupType: "sandbox",
-      expected: { label: "Row and column security rule", color: "error" },
+      expected: {
+        label: "Row and column security rule",
+        color: "feedback-negative",
+      },
     },
   ])("should get type info for $groupType", ({ groupType, expected }) => {
     expect(getDependencyGroupTypeInfo(groupType)).toEqual(expected);

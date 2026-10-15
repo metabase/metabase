@@ -66,7 +66,7 @@ export function DimensionPillBar({
   return (
     <Flex
       className={S.container}
-      bg="background-primary"
+      bg="background_page-primary"
       w="100%"
       align="center"
       justify="center"
@@ -106,7 +106,7 @@ function DimensionLabel({
   }
 
   return (
-    <Flex align="center" gap="xs" className={S.label}>
+    <Flex align="center" gap="xxs" className={S.label}>
       <SourceColorIndicator
         colors={colors}
         fallbackIcon={icon ?? "add"}

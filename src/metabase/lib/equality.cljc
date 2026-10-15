@@ -29,7 +29,7 @@
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
   ;; two things with different dispatch values (for maps, the `:lib/type` key; for MBQL clauses, the tag, and for
-  ;; everything else, the `:dispatch-type/*` key) can't be equal.
+  ;; everything else, a `:dispatch-type/...` keyword) can't be equal.
   (fn [x y]
     (let [x-dispatch-value (lib.dispatch/dispatch-value x)
           y-dispatch-value (lib.dispatch/dispatch-value y)]
@@ -69,6 +69,7 @@
               (or (empty? more-x)
                   (recur more-x more-y))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *side->uuid->index* nil)
 
 (defn- aggregation-uuid->index
@@ -293,9 +294,7 @@ are known to be the same."
   (or (when-let [join-alias (:join-alias opts)]
         (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
             ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
-            (do (log/warnf "Failed to find match for column %s with join alias %s, looking for match without join alias..."
-                           (pr-str ref-name)
-                           (pr-str join-alias))
+            (do (log/warn "Failed to find match for column with its join alias, looking for match without join alias...")
                 nil)))
       (plausible-matches-for-name-no-join-alias ref-name columns)))
 
@@ -319,7 +318,7 @@ are known to be the same."
            {:ref a-ref
             :columns columns}))
 
-(mu/defn- expression-column? [column]
+(mu/defn- expression-column? [column :- ::lib.schema.metadata/column]
   (or (clojure.core/= (:lib/source column) :source/expressions)
       (:lib/expression-name column)))
 
@@ -336,7 +335,7 @@ are known to be the same."
       ;; In all other cases, this is an ambiguous match.
       #_(throw (ambiguous-match-error a-ref columns))
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
-         :clj  (log/warn (ambiguous-match-error a-ref columns)))))
+         :clj  (log/warn (ex-message (ambiguous-match-error a-ref columns))))))
 
 (defn- matching-col-with-fn [columns col-fn]
   (let [matching-columns (filter col-fn columns)]
@@ -409,15 +408,16 @@ are known to be the same."
          ;; try again ignoring join alias.
          (do
            (when join-alias
-             (#?(:cljs js/console.warn :clj log/warn)
-              "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-              {:ref     a-ref
-               :matches matches}))
+             #?(:cljs (js/console.warn
+                       "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+                       {:ref     a-ref
+                        :matches matches})
+                :clj  (log/warn "Multiple plausible matches with the same :join-alias - more disambiguation needed")))
            nil)))
      (disambiguate-matches-ignoring-join-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
-  [:map [:generous? {:optional true} :boolean]])
+  [:map {:closed true} [:generous? {:optional true} :boolean]])
 
 (mu/defn find-matching-column :- [:maybe ::lib.schema.metadata/column]
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
@@ -443,7 +443,8 @@ are known to be the same."
     - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
   Returns the matching column, or nil if no match is found."
-  ([a-ref columns]
+  ([a-ref   :- ::lib.schema.ref/ref
+    columns :- [:sequential ::lib.schema.metadata/column]]
    (find-matching-column a-ref columns {}))
 
   ([[ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
@@ -465,7 +466,10 @@ are known to be the same."
                       (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
-  ([query stage-number a-ref-or-column columns]
+  ([query           :- [:maybe ::lib.schema/query]
+    stage-number    :- :int
+    a-ref-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+    columns         :- [:sequential ::lib.schema.metadata/column]]
    (find-matching-column query stage-number a-ref-or-column columns {}))
 
   ([query           :- [:maybe ::lib.schema/query]
@@ -575,12 +579,14 @@ are known to be the same."
 (mu/defn find-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
   "Like [[find-matching-column]], but takes a legacy MBQL reference. The name here is for consistency with other
   FE names for similar functions."
-  ([query legacy-ref metadatas]
+  ([query        :- ::lib.schema/query
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
+    metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-column-for-legacy-ref query -1 legacy-ref metadatas))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- :some
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 
@@ -606,7 +612,7 @@ are known to be the same."
                                         (keep (fn [selected-col-or-ref]
                                                 (or (find-matching-column query stage-number selected-col-or-ref cols)
                                                     (do
-                                                      (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str selected-col-or-ref))
+                                                      (log/warn "[mark-selected-columns] failed to find match for a selected column or ref")
                                                       nil))))
                                         selected-columns-or-refs)]
        (when-not (clojure.core/= (count selected-columns-or-refs) (count matching-selected-cols))

@@ -227,7 +227,7 @@ export const CSVUpload = ({
             <div>
               <Text fw="bold">{primaryText}</Text>
               {!uploadState.file && (
-                <Text c="text-tertiary">
+                <Text c="text-disabled">
                   {c("{0} is the allowed size of a file in MB")
                     .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
                 </Text>
@@ -235,18 +235,16 @@ export const CSVUpload = ({
             </div>
             {uploadState.file ? (
               <Button
-                variant="subtle"
-                p={0}
-                h="auto"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setUploadState({ file: null, error: null })}
               >
                 {t`Remove`}
               </Button>
             ) : (
               <Button
-                variant="subtle"
-                p={0}
-                h="auto"
+                variant="transparent"
+                size="compact-md"
                 onClick={handleFileSelectClick}
               >
                 {t`Select a file`}
@@ -258,18 +256,17 @@ export const CSVUpload = ({
           <Button
             aria-label={t`Select a collection`}
             onClick={() => openCollectionPicker()}
+            leftSection={<Icon name="folder" />}
             rightSection={<Icon name="chevrondown" />}
             styles={{
               inner: {
                 justifyContent: "space-between",
               },
+              label: { flex: 1 },
               root: { flex: 1 },
             }}
           >
-            <Group gap="sm" flex={1}>
-              <Icon name="folder" />
-              <CollectionName id={uploadCollectionId} />
-            </Group>
+            <CollectionName id={uploadCollectionId} />
           </Button>
           <Button
             variant="filled"

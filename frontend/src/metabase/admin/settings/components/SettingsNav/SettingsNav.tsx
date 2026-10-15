@@ -2,14 +2,13 @@ import { t } from "ttag";
 
 import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
+import { DataAppsNav } from "./DataAppsNav";
 import { SettingsNavItem } from "./SettingsNavItem";
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -25,7 +24,6 @@ export function SettingsNav() {
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
   const tokenFeatures = useSetting("token-features");
-  const isAdmin = useSelector(getUserIsAdmin);
   const isPro = isProPlan(getPlan(tokenFeatures));
   const { isEnabled: isSecurityCenterEnabled, SecurityCenterPromoCard } =
     PLUGIN_SECURITY_CENTER;
@@ -52,6 +50,7 @@ export function SettingsNav() {
         {hasJwt && <SettingsNavItem path="authentication/jwt" label="JWT" />}
         {hasOidc && <SettingsNavItem path="authentication/oidc" label="OIDC" />}
       </SettingsNavItem>
+      <SettingsNavItem path="domains" label={t`Domains`} icon="globe" />
       {PLUGIN_REMOTE_SYNC.isEnabled ? (
         <PLUGIN_REMOTE_SYNC.LibraryNav />
       ) : !isPro ? (
@@ -75,11 +74,11 @@ export function SettingsNav() {
       <SettingsNavItem
         path="localization"
         label={t`Localization`}
-        icon="globe"
+        icon="pinmap"
       />
-      {/* do not allow users with "Settings access" permissions to access custom viz pages */}
-      {isAdmin && <CustomVisualizationsNav />}
-      <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
+      <CustomVisualizationsNav />
+      <DataAppsNav />
+      <SettingsNavItem path="maps" label={t`Maps`} icon="map" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}
         folderPattern="whitelabel"
@@ -136,8 +135,8 @@ export function SettingsNav() {
         <Box
           pos="sticky"
           bottom={0}
-          pt="md"
-          bg="background-primary"
+          pt="lg"
+          bg="background_page-primary"
           style={{ marginTop: "auto", zIndex: 1 }}
         >
           <SecurityCenterPromoCard />

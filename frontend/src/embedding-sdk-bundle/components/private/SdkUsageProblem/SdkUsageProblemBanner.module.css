@@ -32,8 +32,3 @@
 .Indicator .Logo {
   border-radius: 3px 0 0 3px;
 }
-
-.DocsButton:not([data-css-specificity-hack="🤣"]) {
-  color: #509ee3;
-  border: 1px solid #509ee3;
-}

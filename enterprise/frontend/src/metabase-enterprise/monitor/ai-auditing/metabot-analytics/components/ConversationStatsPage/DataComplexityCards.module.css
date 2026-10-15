@@ -1,0 +1,36 @@
+.accordionRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.accordionItem {
+  border: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.accordionControl {
+  background-color: var(--mb-color-background_page-secondary);
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+}
+
+.accordionContent {
+  background-color: var(--mb-color-background_page-secondary);
+  border-top: 1px solid var(--mb-color-border-neutral-subtle);
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.accordionChevron {
+  border: 0;
+  color: var(--mb-color-text-primary);
+  height: 0.75rem;
+  margin-left: 1rem;
+  width: 0.75rem;
+}
+
+.accordionLabel {
+  padding: 0;
+}

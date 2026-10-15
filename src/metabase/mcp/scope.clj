@@ -8,17 +8,21 @@
    [metabase.api.macros.scope :as api.scope]))
 
 (defn matches?
-  "Does `token-scopes` grant access to an entity with the given `required-scope`?
+  "Does `token-scopes` grant access to an entity with the given `required-scope`, or any member of a set of
+   alternative scopes?
    - nil `token-scopes` always matches (internal callers).
    - `::api.scope/unrestricted` in `token-scopes` always matches.
+   - A set of required scopes matches when any member matches.
    - nil `required-scope` only matches the two cases above (callers that want
      \"public to any authenticated MCP user\" should use [[public-or-matches?]]).
    - Otherwise delegates wildcard/exact matching to [[api.scope/scope-satisfied?]]."
   [token-scopes required-scope]
   (or (nil? token-scopes)
       (contains? token-scopes ::api.scope/unrestricted)
-      (boolean (and (some? required-scope)
-                    (api.scope/scope-satisfied? token-scopes required-scope)))))
+      (if (set? required-scope)
+        (boolean (some #(matches? token-scopes %) required-scope))
+        (boolean (and (some? required-scope)
+                      (api.scope/scope-satisfied? token-scopes required-scope))))))
 
 (defn public-or-matches?
   "Like [[matches?]] but treats a nil `required-scope` as \"public to any caller\"

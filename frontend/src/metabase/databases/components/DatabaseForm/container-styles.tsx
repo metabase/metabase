@@ -51,10 +51,10 @@ function GridContainer({
 function Backdrop({ children }: { children: React.ReactNode }) {
   return (
     <Box
-      p="lg"
-      bg="background-secondary"
-      bdrs="md"
-      mb="lg"
+      p="xl"
+      bg="background_page-secondary"
+      bdrs="sm"
+      mb="xl"
       display="grid"
       pb={0}
     >

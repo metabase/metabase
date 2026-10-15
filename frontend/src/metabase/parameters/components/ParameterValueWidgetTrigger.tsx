@@ -42,11 +42,12 @@ function ParameterValueWidgetTriggerInner(
         // are not compatible with Ref<HTMLButtonElement> and we need to cast it to "button"
         // to sidestep this issue.
         component: UnstyledButton as unknown as "button",
-        ref: ref as Ref<HTMLButtonElement>,
+        ref: ref,
         type: "button" as const,
       }
     : {
         component: "div" as const,
+        // Unjustified type cast. FIXME
         ref: ref as Ref<HTMLDivElement>,
       };
 

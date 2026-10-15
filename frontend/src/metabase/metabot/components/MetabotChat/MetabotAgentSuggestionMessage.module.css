@@ -7,24 +7,24 @@
 }
 
 .suggestionEditor {
-  :global {
-    .cm-content {
-      padding: 0;
-    }
+  :global(.cm-content) {
+    padding: 0;
+  }
 
-    .cm-collapsedLines {
-      padding-left: 0;
-    }
+  :global(.cm-collapsedLines) {
+    padding-left: 0;
   }
 }
 
 .suggestionEditorOnlyNew {
-  background: color-mix(in srgb, var(--mb-color-success) 11%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--mb-color-feedback-positive) 11%,
+    transparent
+  );
 
-  :global {
-    .cm-gutters {
-      background: transparent;
-    }
+  :global(.cm-gutters) {
+    background: transparent;
   }
 }
 

@@ -1,13 +1,12 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { databaseFetched } from "metabase/metadata-store";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
-import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
-import { DatabaseSchema } from "metabase/schema";
+import { navigate } from "metabase/router";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 const DELETE_DATABASE = createAction<{ databaseId: DatabaseId }>(
@@ -28,7 +27,7 @@ export const updateDatabase = function (database: DatabaseData) {
       dispatch,
       databaseApi.endpoints.updateDatabase,
     );
-    dispatch(updateMetadata(result, DatabaseSchema));
+    dispatch(databaseFetched(result));
     return result;
   };
 };
@@ -53,7 +52,7 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
         dispatch,
         databaseApi.endpoints.deleteDatabase,
       );
-      dispatch(push("/admin/databases/"));
+      navigate("/admin/databases/");
 
       dispatch(DELETE_DATABASE({ databaseId }));
     } catch (error) {
@@ -64,12 +63,13 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
 };
 
 export const databasesReducer = combineReducers({
-  deletionError: createReducer(null as null | unknown, (builder) => {
+  deletionError: createReducer<null | unknown>(null, (builder) => {
     builder.addCase(
       DELETE_DATABASE_FAILED,
       (_state, action) => action.payload.error,
     );
   }),
+  // Unjustified type cast. FIXME
   deletes: createReducer([] as DatabaseId[], (builder) => {
     builder
       .addCase(DELETE_DATABASE_STARTED, (state, action) =>

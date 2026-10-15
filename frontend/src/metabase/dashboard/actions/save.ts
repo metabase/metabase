@@ -3,15 +3,17 @@ import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
+import { isReturningToDataStudio } from "metabase/common/data-studio/utils/return-to";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import type {
   DashCardId,
   ParameterId,
   UpdateCardRequest,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
@@ -29,7 +31,7 @@ export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
-  function () {
+  function (location?: Omit<Location, "query" | "action">) {
     return async function (dispatch, getState) {
       const startTime = performance.now();
       const state = getState();
@@ -67,6 +69,7 @@ export const updateDashboardAndCards = createThunkAction(
         );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
+          dispatch(setEditingDashboard(null, location));
           return;
         }
       }
@@ -154,6 +157,7 @@ export const updateDashboardAndCards = createThunkAction(
           .map((dc) =>
             dispatch(
               cardApi.endpoints.updateCard.initiate(
+                // Unjustified type cast. FIXME
                 dc.card as UpdateCardRequest,
               ),
             ).unwrap(),
@@ -191,7 +195,7 @@ export const updateDashboardAndCards = createThunkAction(
         .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({ id, name }));
 
-      await runRtkEndpoint(
+      const updatedDashboard = await runRtkEndpoint(
         {
           ...dashboard,
           dashcards: dashcardsToUpdate,
@@ -210,24 +214,27 @@ export const updateDashboardAndCards = createThunkAction(
         });
       }
 
-      dispatch(setEditingDashboard(null));
+      dispatch(setEditingDashboard(null, location));
 
-      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      //
-      // UPD 16.09.2024
-      // This code is a source of race condition on slow network.
-      // it fetches a dashboard without parameters and if `fetchDashboardCardData` from the lines below is slow
-      // the dashboard itself is re-rendered and re-fetches data again without parameters, so later on
-      // dashboard component re-fetches data and cancels correct query with parameters
-      // e.g. `should pass a temporal unit with 'update dashboard filter' click behavior` from temporal-unit-parameters.cy.spec.js
-      // with 3g simulation is an example of such race condition
+      // Returning to Data Studio unmounts the dashboard, which resets its state
+      if (isReturningToDataStudio(location)) {
+        return;
+      }
+
+      // Reset the dashboard state from the save response instead of re-fetching
+      // it. Re-using the just-returned dashboard avoids an extra round-trip and
+      // the race condition where a parameter-less GET could cancel the
+      // parameterized card-data fetch below on slow networks.
       await dispatch(
         fetchDashboard({
           dashId: dashboard.id,
           queryParams: {},
-          options: { preserveParameters: false },
+          options: {
+            preserveParameters: false,
+            prefetchedDashboard: updatedDashboard,
+          },
         }),
-      ); // disable using query parameters when saving
+      );
 
       // There might have been changes to dashboard card-filter wiring,
       // which require re-fetching card data (issue #35503). We expect

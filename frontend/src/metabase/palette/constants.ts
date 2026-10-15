@@ -22,12 +22,26 @@ export const GROUP_LABELS = {
 
 export const ELLIPSIS = "...";
 
+export const METABASE_DOCS_LABELS = {
+  get section() {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.
+    return t`Metabase documentation`;
+  },
+  searchLabel(searchTerm: string) {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.
+    return t`Search Metabase's docs for "${searchTerm}"`;
+  },
+  get viewLabel() {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.
+    return t`View Metabase documentation`;
+  },
+};
+
 type AdminSettingsSections = Record<
   string,
   {
     name: string;
     hidden?: boolean;
-    adminOnly?: boolean;
   }
 >;
 
@@ -40,7 +54,6 @@ export const getAdminSettingsSections = (
   updates: {
     name: t`Updates`,
     hidden: settings["token-features"]?.hosting,
-    adminOnly: true,
   },
   email: {
     name: t`Email`,
@@ -53,16 +66,16 @@ export const getAdminSettingsSections = (
   },
   authentication: {
     name: t`Authentication`,
-    adminOnly: true,
   },
   "authentication/user-provisioning": {
     name: t`User provisioning`,
     hidden: !settings["token-features"].scim,
-    adminOnly: true,
   },
   "authentication/api-keys": {
     name: t`Api keys`,
-    adminOnly: true,
+  },
+  domains: {
+    name: t`Domains`,
   },
   maps: {
     name: t`Maps`,

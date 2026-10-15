@@ -1,7 +1,8 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
+   [metabase-enterprise.transforms-python.schema]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -70,17 +71,15 @@
   [path]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (t2/select-one :model/PythonLibrary :path normalized-path)))
+    (transforms-python.db/python-library-by-path normalized-path)))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (let [id (app-db/update-or-insert! :model/PythonLibrary
-                                       {:path normalized-path}
-                                       (constantly {:path normalized-path :source source}))]
-      (t2/select-one :model/PythonLibrary id))))
+    (let [id (transforms-python.db/upsert-python-library-source! normalized-path source)]
+      (transforms-python.db/python-library id))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
@@ -89,19 +88,15 @@
   {:copy      [:path :source :entity_id]
    :transform {:created_at (serdes/date)}})
 
-(defmethod serdes/hash-fields :model/PythonLibrary
-  [_model]
-  [:path])
-
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
 
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 
 ;; Event type hierarchy for remote-sync tracking
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 (doseq [e [:event/python-library-create :event/python-library-update :event/python-library-delete]]
-  (derive e ::event))
+  (events/derive! e ::event))
 
 (t2/define-after-insert :model/PythonLibrary
   [library]

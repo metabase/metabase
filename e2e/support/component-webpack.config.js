@@ -13,8 +13,11 @@ const {
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
-const { isEmbeddingSdkPackageInstalled, embeddingSdkPath } =
-  resolveEmbeddingSdkPackage();
+const {
+  isEmbeddingSdkPackageInstalled,
+  embeddingSdkPath,
+  embeddingSdkDistPath,
+} = resolveEmbeddingSdkPackage();
 
 console.log(
   `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? chalk.green("installed") : `${chalk.red("NOT installed")}, ${chalk.bold("using locally built version")} from "resources/embedding-sdk"'}`}`,
@@ -29,6 +32,20 @@ module.exports = {
     extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".svg"],
     alias: {
       ...RESOLVE_ALIASES,
+      ...(embeddingSdkDistPath
+        ? {
+            // The package alias below points at a bundle file, so subpath
+            // exports cannot resolve through it and each needs its own entry.
+            [`${SDK_PACKAGE_NAME}/data-app-dev`]: path.join(
+              embeddingSdkDistPath,
+              "data-app-dev.js",
+            ),
+            [`${SDK_PACKAGE_NAME}/data-app`]: path.join(
+              embeddingSdkDistPath,
+              "data-app.js",
+            ),
+          }
+        : null),
       ...(embeddingSdkPath ? { [SDK_PACKAGE_NAME]: embeddingSdkPath } : null),
     },
     fallback: {
@@ -112,6 +129,7 @@ function resolveEmbeddingSdkPackage() {
       return {
         isEmbeddingSdkPackageInstalled: true,
         embeddingSdkPath: sdkInNodeModulesPath,
+        embeddingSdkDistPath: path.join(sdkInNodeModulesPath, "dist"),
       };
     }
 
@@ -122,6 +140,7 @@ function resolveEmbeddingSdkPackage() {
       return {
         isEmbeddingSdkPackageInstalled: true,
         embeddingSdkPath: requirePackagePath,
+        embeddingSdkDistPath: path.dirname(requirePackagePath),
       };
     }
   } catch (err) {
@@ -137,6 +156,7 @@ function resolveEmbeddingSdkPackage() {
     return {
       isEmbeddingSdkPackageInstalled: false,
       embeddingSdkPath: sdkLocalPackagePath,
+      embeddingSdkDistPath: path.dirname(sdkLocalPackagePath),
     };
   }
 
@@ -147,5 +167,6 @@ function resolveEmbeddingSdkPackage() {
   return {
     isEmbeddingSdkPackageInstalled: false,
     embeddingSdkPath: null,
+    embeddingSdkDistPath: null,
   };
 }

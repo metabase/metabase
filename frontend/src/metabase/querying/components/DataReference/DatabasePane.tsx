@@ -19,8 +19,6 @@ import type {
 import CS from "metabase/css/core/index.css";
 import {
   type Card,
-  type CollectionId,
-  type SchemaName,
   type SearchResult,
   type Table,
   isConcreteTableId,
@@ -43,14 +41,11 @@ import type {
 } from "./types";
 
 const groupModelsByCollection = (models: SearchResult[]) => {
-  const grouped = _.groupBy(
-    models,
-    (model) => model.collection?.id ?? ("root" as CollectionId),
-  );
+  const grouped = _.groupBy(models, (model) => model.collection?.id ?? "root");
 
   return _.pairs(grouped).map(
     ([id, models = []]): ITreeNodeItem => ({
-      id: id as CollectionId,
+      id: id,
       name: getCollectionName(models[0]?.collection),
       icon: "folder",
       children: models.map((model: SearchResult) => ({
@@ -64,10 +59,7 @@ const groupModelsByCollection = (models: SearchResult[]) => {
 };
 
 const groupTablesBySchema = (tables: SearchResult[]) => {
-  const grouped = _.groupBy(
-    tables,
-    (table) => table.table_schema ?? ("" as SchemaName),
-  );
+  const grouped = _.groupBy(tables, (table) => table.table_schema ?? "");
 
   return _.pairs(grouped).map(
     ([id, tables = []]): ITreeNodeItem => ({

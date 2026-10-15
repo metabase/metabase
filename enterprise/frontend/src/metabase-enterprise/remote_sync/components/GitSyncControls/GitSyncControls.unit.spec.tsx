@@ -4,8 +4,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -143,7 +143,8 @@ describe("GitSyncControls", () => {
 
       expect(await findOption(/Push changes/)).toBeInTheDocument();
       expect(await findOption(/Pull changes/)).toBeInTheDocument();
-      expect(await findOption(/Switch branch/)).toBeInTheDocument();
+      // Branch switching moved to the Settings panel (GHY-4019); it is no longer offered here.
+      expect(screen.queryByText(/Switch branch/)).not.toBeInTheDocument();
     });
   });
 
@@ -266,11 +267,14 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
       // Wait until the dirty state has settled (push disabled, since nothing is dirty) so the pull takes
-      // the non-dirty direct-import path deterministically.
+      // the non-dirty direct-import path deterministically, and until the remote check enables the pull.
       await waitFor(async () => {
         expect(await findOption(/Push changes/)).toHaveAttribute(
           "data-combobox-disabled",
           "true",
+        );
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
         );
       });
       await userEvent.click(await findOption(/Pull changes/));
@@ -303,9 +307,13 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
+      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path, and
+      // until the remote check enables the pull.
       await waitFor(async () => {
         expect(await findOption(/Push changes/)).toBeEnabled();
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+        );
       });
       await userEvent.click(await findOption(/Pull changes/));
 
@@ -381,58 +389,6 @@ describe("GitSyncControls", () => {
         await screen.findByText(
           "Failed to check for changes — check your authentication token",
         ),
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe("switch branch option", () => {
-    it("should show branch dropdown when switch branch is clicked", async () => {
-      setup({ branches: ["main", "develop", "feature-1"] });
-
-      await waitFor(() => {
-        expect(getBranchButton(/main/)).toBeInTheDocument();
-      });
-      await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(await findOption(/Switch branch/));
-
-      await waitFor(() => {
-        expect(
-          screen.getByPlaceholderText("Find or create a branch..."),
-        ).toBeInTheDocument();
-      });
-    });
-
-    it("shows a refresh modal when a clean branch switch is rejected for a stale branch", async () => {
-      setup({ branches: ["main", "develop"] });
-
-      // Another session already switched the branch; the import CAS guard rejects the switch.
-      fetchMock.removeRoute("remote-sync-import");
-      fetchMock.post(
-        "path:/api/ee/remote-sync/import",
-        {
-          status: 409,
-          body: {
-            message:
-              "The sync branch changed to 'develop' in another session. Refresh and try again.",
-            branch_mismatch: true,
-            current_branch: "develop",
-          },
-        },
-        { name: "remote-sync-import" },
-      );
-
-      await waitFor(() => {
-        expect(getBranchButton(/main/)).toBeInTheDocument();
-      });
-      await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(await findOption(/Switch branch/));
-      await userEvent.click(await findOption(/develop/));
-
-      expect(
-        await screen.findByText(/changed .* in another session/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Refresh/ }),
       ).toBeInTheDocument();
     });
   });

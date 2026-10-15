@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -155,6 +157,38 @@
                                             (fake-uuid 0)]]]}]}
               (serdes/import-mbql query))))))
 
+(deftest ^:parallel import-mbql-legacy-query-test
+  (binding [serdes/*import-database-fk* (constantly 1)
+            serdes/*import-table-fk*    (constantly 2)
+            serdes/*import-field-fk*    (constantly 3)]
+    (testing "a legacy MBQL query is converted to MBQL 5, keeping integer literals in comparisons and aggregations as literals"
+      (is (=? {:lib/type :mbql/query
+               :database 1
+               :stages   [{:source-table 2
+                           :filters      [[:= {} [:field {} 3] 1]
+                                          [:= {} 1 1]
+                                          [:< {} 4 5]]
+                           :aggregation  [[:sum-where {} [:field {} 3] [:= {} 6 6]]]
+                           :joins        [{:alias      "J"
+                                           :conditions [[:= {} 1 1]]}]}]}
+              (serdes/import-mbql
+               {:database "DB"
+                :type     "query"
+                :query    {:source-table ["DB" "SCHEMA" "TABLE"]
+                           :filter       ["and"
+                                          ["=" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] nil] 1]
+                                          ["=" 1 1]
+                                          ["<" 4 5]]
+                           :aggregation  [["sum-where" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] nil] ["=" 6 6]]]
+                           :joins        [{:source-table ["DB" "SCHEMA" "TABLE"]
+                                           :alias        "J"
+                                           :condition    ["=" 1 1]}]}}))))
+    (testing "a legacy native query is not converted"
+      (is (=? {:database 1
+               :type     "native"
+               :native   {:query "SELECT 1"}}
+              (serdes/import-mbql {:database "DB", :type "native", :native {:query "SELECT 1"}}))))))
+
 (deftest ^:parallel hydrate-mbql-5-uuids-on-import-test-2
   (binding [serdes/*import-field-fk* (constantly 3)]
     (are [x expected] (=? expected
@@ -182,6 +216,17 @@
 
         ["fk->" ["field-id" 1] ["field-id" 2]]
         ["fk->" [:field-id ["A" "B" "C" "D"]] [:field-id ["A" "B" "C" "D"]]]))))
+
+(deftest ^:parallel normalize-field-ref-reuses-cached-coercer-test
+  (testing "normalizing :field refs hits the registry coercer cache after the first call"
+    (let [misses (atom 0)]
+      (binding [mr/*cache-miss-hook* (fn [k _schema _value]
+                                       (when (= k ::lib.normalize/coercer)
+                                         (swap! misses inc)))]
+        (dotimes [_ 3]
+          (#'serdes/normalize-mbql-ref [:field 1 nil])
+          (#'serdes/normalize-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
+      (is (<= @misses 1)))))
 
 (deftest ^:parallel export-visualization-settings-test
   (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])
@@ -216,6 +261,52 @@
                   :target {:type      "dimension"
                            :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                            :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
+
+(deftest ^:parallel import-old-timeline-events-settings-test
+  (testing "source-instance numeric IDs cannot select unrelated destination timelines or hide their events"
+    (let [settings {:graph.show_values                    true
+                    :timeline.selected_timeline_ids       [7]
+                    :timeline.excluded_timeline_event_ids [42]}]
+      (is (= {:graph.show_values                    true
+              :timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
+
+(deftest ^:parallel export-malformed-timeline-events-settings-test
+  (testing "values that are not numeric IDs are dropped on export instead of failing it"
+    (let [settings {:timeline.selected_timeline_ids       [1 "abc" nil]
+                    :timeline.excluded_timeline_event_ids [2 -1 "xyz"]}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       ["Timeline___1"]
+                :timeline.excluded_timeline_event_ids ["TimelineEvent___2"]}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{[{:model "Timeline" :id 1}]}
+             (serdes/visualization-settings-deps true (update settings :timeline.excluded_timeline_event_ids
+                                                              (partial remove pos-int?))))))))
+
+(deftest ^:parallel scalar-timeline-events-settings-test
+  (testing "a setting holding a scalar instead of a list counts as no ids rather than failing export or deps"
+    (let [settings {:timeline.selected_timeline_ids       7
+                    :timeline.excluded_timeline_event_ids true}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       []
+                :timeline.excluded_timeline_event_ids []}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{} (serdes/visualization-settings-deps true settings)))
+      (is (= {:timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
+
+(deftest ^:parallel excluded-timeline-events-deps-without-selection-test
+  (testing "excluded events pull in their Timeline even when the card selects no timelines, so the Timeline loads
+            first and the exclusions survive the import instead of un-hiding the events"
+    (let [eid (fn [c] (apply str (repeat 21 c)))]
+      (is (= #{[{:model "Timeline" :id (eid \a)}]
+               [{:model "Timeline" :id (eid \c)}]}
+             (serdes/visualization-settings-deps
+              false
+              {:timeline.excluded_timeline_event_ids [[(eid \a) (eid \b)]
+                                                      [(eid \c) (eid \d)]]}))))))
 
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
@@ -262,10 +353,39 @@
                (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
 
 (deftest ^:parallel template-tag-table-id-deps-test
-  (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
-            dependency (it's synthesized on import if missing)"
-    (is (= #{[{:model "Database" :id "DB"}]}
-           (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})))))
+  (testing "template tag :table-id is not a dependency — the referenced Database and Table are synthesized on import if
+            missing"
+    (is (= #{}
+           (#'serdes/mbql-deps-map false {:table-id ["DB" "SCHEMA" "TABLE"]})))))
+
+(deftest ^:parallel mbql-deps-format-parity-test
+  (testing "mbql-deps finds each reference on both the serialized (portable) and the raw (numeric) form of a query.
+            serialization-dependencies runs on raw entities and existence-checks the referenced Table/Field;
+            deserialization-dependencies runs on the serialized form, where Database/Table/Field are synthesized on
+            import, so it reports none of them. Every other ref type resolves to the same model in both forms. This is
+            the parity guard for the two dependency codepaths sharing mbql-deps."
+    (let [models (fn [deps] (into #{} (map (comp :model last)) deps))
+          eid    (fn [c] (apply str (repeat 21 c)))]
+      (testing "MBQL ref clauses"
+        (doseq [[label serialized raw ser-models raw-models]
+                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{}           #{"Field"}]
+                 ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{}           #{"Field"}]
+                 ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
+                 ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
+                 ["measure"        [:measure {} (eid \c)]         [:measure {} 3]  #{"Measure"}  #{"Measure"}]]]
+          (testing label
+            (is (= ser-models (models (serdes/mbql-deps false serialized))) "serialized (portable) form")
+            (is (= raw-models (models (serdes/mbql-deps true raw)))
+                "raw (numeric) form"))))
+      (testing "MBQL map keys"
+        (doseq [[label serialized raw ser-models raw-models]
+                [["source-table" {:source-table ["DB" "S" "T"]} {:source-table 9} #{}                     #{"Table"}]
+                 ["source-card"  {:source-card (eid \d)}         {:source-card 7}  #{"Card"}               #{"Card"}]
+                 ["snippet-id"   {:snippet-id (eid \e)}          {:snippet-id 2}   #{"NativeQuerySnippet"} #{"NativeQuerySnippet"}]]]
+          (testing label
+            (is (= ser-models (models (#'serdes/mbql-deps-map false serialized))) "serialized")
+            (is (= raw-models (models (#'serdes/mbql-deps-map true raw)))
+                "raw")))))))
 
 (deftest ^:parallel export-parameters-test
   (binding [serdes/*export-fk*       (fn [id model]
@@ -284,3 +404,53 @@
                                        :values_source_type   :card
                                        :values_source_config {:card_id 1, :value_field [:field 53 nil]}
                                        :position             0}])))))
+
+(def ^:private native-query-with-template-tag
+  "A native query with one variable, already past FK resolution (numeric `:database`), as [[serdes/import-mbql]]
+  sees it mid-import."
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type      :mbql.stage/native
+               :native        "SELECT * FROM PRODUCTS WHERE ID = {{id}}"
+               :template-tags {"id" {:type :number :name "id" :display-name "ID" :id "abc-123"}}}]})
+
+(def ^:private query-with-unknown-tag-type
+  "The same query with a template tag whose `:type` this version has no representation for - what an export from a
+  newer Metabase that introduced a new tag type would look like. It normalizes without complaint, so only validating
+  the result catches it."
+  (assoc-in native-query-with-template-tag [:stages 0 :template-tags]
+            {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}}))
+
+(deftest ^:parallel import-mbql-validates-against-local-schema-test
+  (testing "GHY-4241: a query shape this version cannot represent is refused instead of stored"
+    (testing "a query matching this instance's schema imports"
+      (is (=? {:lib/type :mbql/query}
+              (serdes/import-mbql native-query-with-template-tag))))
+    (testing "a query carrying a shape with no representation here is refused"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"does not match this Metabase's query schema"
+           (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel import-mbql-schema-validation-opt-out-test
+  (testing "GHY-4241: binding *skip-schema-validation?* disables the schema check"
+    ;; Skipping does not make the import succeed - `repair-card-template-tag-names` rejects a tag type it does not
+    ;; know on its own. Asserting on that downstream failure keeps this from passing for the wrong reason.
+    (binding [serdes/*skip-schema-validation?* true]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid input.*:template-tags"
+           (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel field-path->field-ref-test
+  (testing "a Field path turns into the reference `*import-field-fk*` takes, with or without a schema"
+    (is (= ["db" "PUBLIC" "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Schema" :id "PUBLIC"}
+                                          {:model "Table" :id "orders"} {:model "Field" :id "id"}])))
+    (is (= ["db" nil "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "id"}]))))
+  (testing "a nested Field of a Table without a schema keeps the Table and every parent Field in place"
+    (is (= ["db" nil "orders" "customer" "tier"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))

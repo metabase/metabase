@@ -1,0 +1,39 @@
+{:catalog-version 1
+ :models
+ {"Snowflake/snowflake-arctic-embed-xs"
+  {:bundle-name       "snowflake-arctic-embed-xs-d8c86521100d3556476a063fc2342036d45c106f"
+   :model-revision    "d8c86521100d3556476a063fc2342036d45c106f"
+   :vector-dimensions 384
+   :runtime           {:inference-contract-version 1
+                       :djl-version                "0.36.0"
+                       :engine                     "OnnxRuntime"
+                       :pooling                    "cls"
+                       :normalize?                 true
+                       :include-token-types?       true}
+   :architectures     {"arm64" {:source "onnx/model_int8.onnx"
+                                :sha256 "e6aa5e656466a73d7c3111e9a3378bd13e5b93af30eaac2b3f13fd56692589a1"}
+                       "avx2"  {:source "onnx/model_uint8.onnx"
+                                :sha256 "9295adb7774fe42f62fec11ad8cd07ed80c6b3ea112b2b737c683f562469b21b"}}
+   :tokenizer-files   {"tokenizer.json"          "91f1def9b9391fdabe028cd3f3fcc4efd34e5d1f08c3bf2de513ebb5911a1854"
+                       "tokenizer_config.json"   "9ca59277519f6e3692c8685e26b94d4afca2d5438deff66483db495e48735810"
+                       "special_tokens_map.json" "5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a"
+                       "config.json"             "d7d071046ab952af96b7abad788db7ab3fc997b465e1b9914ff39707092254ec"}}
+
+  "sentence-transformers/all-MiniLM-L6-v2"
+  {:bundle-name       "all-minilm-l6-v2-1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+   :model-revision    "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+   :vector-dimensions 384
+   :runtime           {:inference-contract-version 1
+                       :djl-version                "0.36.0"
+                       :engine                     "OnnxRuntime"
+                       :pooling                    "mean"
+                       :normalize?                 true
+                       :include-token-types?       true}
+   :architectures     {"arm64" {:source "onnx/model_qint8_arm64.onnx"
+                                :sha256 "4278337fd0ff3c68bfb6291042cad8ab363e1d9fbc43dcb499fe91c871902474"}
+                       "avx2"  {:source "onnx/model_quint8_avx2.onnx"
+                                :sha256 "b941bf19f1f1283680f449fa6a7336bb5600bdcd5f84d10ddc5cd72218a0fd21"}}
+   :tokenizer-files   {"tokenizer.json"          "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037"
+                       "tokenizer_config.json"   "acb92769e8195aabd29b7b2137a9e6d6e25c476a4f15aa4355c233426c61576b"
+                       "special_tokens_map.json" "303df45a03609e4ead04bc3dc1536d0ab19b5358db685b6f3da123d05ec200e3"
+                       "config.json"             "953f9c0d463486b10a6871cc2fd59f223b2c70184f49815e7efbcab5d8908b41"}}}}

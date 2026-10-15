@@ -22,14 +22,14 @@ export const ToggleFullList = ({
   return (
     <Group gap="sm" mt="sm" lh={1}>
       {
-        <Text c="text-tertiary" lh={1}>
+        <Text c="text-disabled" lh={1}>
           {isExpanded
             ? c("{0} is a number").t`Showing all ${fullLength} questions`
             : c("The variables are numbers")
                 .t`Showing ${sliceLength} of ${fullLength} questions`}
         </Text>
       }
-      <Button p={0} lh={1} variant="subtle" onClick={toggle}>
+      <Button variant="transparent" size="compact-md" onClick={toggle}>
         {isExpanded ? t`Show less` : t`Show all`}
       </Button>
     </Group>

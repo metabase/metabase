@@ -1,17 +1,18 @@
 (ns metabase-enterprise.database-routing.common
   (:require
+   [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.api.common :as api]
-   [metabase.config.core :as config]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
+  (database-routing.db/router-user-attribute (u/the-id db-or-id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
 (defn- router-db-or-id->destination-db-id*
@@ -27,7 +28,7 @@
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
                                                                                                 :database-routing-enabled true
                                                                                                 :database-or-id db-or-id
-                                                                                                :database-name (t2/select-one-fn :name :model/Database (u/the-id db-or-id))}))
+                                                                                                :database-name (database-routing.db/database-name (u/the-id db-or-id))}))
 
         (= database-name "__METABASE_ROUTER__")
         nil
@@ -45,9 +46,7 @@
                          :status-code 400}))
 
         :else
-        (or (t2/select-one-pk :model/Database
-                              :router_database_id (u/the-id db-or-id)
-                              :name database-name)
+        (or (database-routing.db/destination-database-id (u/the-id db-or-id) database-name)
             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
                                  database-name)
                             {:database-name database-name
@@ -65,6 +64,51 @@
    api/*is-superuser?*
    db-or-id))
 
+(defenterprise routed-user?
+  "Whether the current user's queries against ANY router database they can view data from resolve to a destination
+  database rather than the router itself, mirroring [[router-db-or-id->destination-db-id*]]. Routers whose
+  `:perms/view-data` is `:blocked` for the user are ignored: they cannot run anything against them, so routing there
+  doesn't change what they see. A user whose attribute is the `__METABASE_ROUTER__` sentinel is not routed. A superuser
+  missing the attribute defaults to the router, so is not routed, but a superuser whose attribute names a destination
+  database is routed like anyone else. A non-admin missing the attribute would be refused at query time, so counts as
+  routed here (fail closed). Uses `:feature :none` so a routed user is recognized even when the `:database-routing`
+  feature is momentarily unavailable. Throws if no current user is bound."
+  :feature :none
+  []
+  (boolean
+   (if api/*current-user-id*
+     (let [attributes     (api/current-user-attributes)
+           routes-user?   (fn [attribute-name]
+                            (let [value (get attributes attribute-name)]
+                              (if (nil? value)
+                                (not api/*is-superuser?*)
+                                (not= "__METABASE_ROUTER__" value))))
+           routing-db-ids (into []
+                                (keep (fn [[db-id attribute-name]]
+                                        (when (routes-user? attribute-name)
+                                          db-id)))
+                                (database-routing.db/all-router-user-attributes))]
+       (perms/prime-database-perms-cache {:db-ids routing-db-ids})
+       (some (fn [db-id]
+               (not= :blocked
+                     (perms/most-permissive-database-permission-for-user
+                      api/*current-user-id* :perms/view-data db-id)))
+             routing-db-ids))
+     ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
+     ;; returning `false` for users who should actually be routed.
+     (throw (ex-info (str (tru "No current user found"))
+                     {:status-code 403})))))
+
+(defenterprise routing-token-for-db
+  "Database-routing fingerprint for the current user on router `db-id` (the resolved destination
+  database id), or nil when the user resolves to the router db itself (admins, or non-admins
+  routed via the __METABASE_ROUTER__ sentinel) or when `db-id` is not a router database. May
+  throw when a routed non-admin is missing the required routing attribute."
+  :feature :none
+  [db-id]
+  (when-let [dest (router-db-or-id->destination-db-id db-id)]
+    {:destination-db-id dest}))
+
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:
 ;;
@@ -75,14 +119,19 @@
 ;; only use router databases. In these cases we don't want database routing, we just want to ensure we're not hitting
 ;; a Destination Database
 ;;
-;; The former looks like:
-;; - I am looking at a Router Database,
-;; - `router-db-or-id->destination-db-id` returns a *different* database ID, and
-;; - `*database-routing-on*` is `:on` or `:unset`
+;; `*database-routing-on*` records our intent: `:on` inside a routed query (destinations are expected), `:off` when we
+;; explicitly want the router (e.g. sync), `:unset` otherwise. Concretely:
 ;;
-;; The latter looks like:
-;; - I am looking at a destination Database,
-;; - `*database-routing-on*` is `:off` or `:unset`
+;; (a) looks like:
+;; - I am looking at a Router Database,
+;; - the current user's attribute would route me to a *different* destination, and
+;; - `*database-routing-on*` is `:on` or `:unset`.
+;; A correctness concern, owned by the routing middleware (which makes the routing decision); not enforced here.
+;;
+;; (b) looks like:
+;; - I am looking at a destination Database, and
+;; - `*database-routing-on*` is not `:on` (i.e. `:off` or `:unset`).
+;; A tenancy boundary, enforced by `check-allowed-access!` below.
 
 (defenterprise with-database-routing-on-fn
   "Enterprise version. Calls the function with Database Routing allowed."
@@ -98,34 +147,25 @@
   (binding [*database-routing-on* :off]
     (f)))
 
-(defn- is-disallowed-router-db-access?
-  [db-or-id]
-  (and (some-> (router-db-or-id->destination-db-id db-or-id)
-               (not= db-or-id))
-       (not= *database-routing-on* :off)))
-
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
-  (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
+  (and (database-routing.db/destination-database? db-or-id)
        (not= *database-routing-on* :on)))
 
+(defn assert-not-direct-destination-access!
+  "Throws a 403 when `db-or-id` is a destination database queried directly, outside a routing-on
+  context. A destination is reachable only through its router; a direct query bypasses the router's
+  attribute check, and with it tenant isolation."
+  [db-or-id]
+  (when (is-disallowed-destination-db-access? (u/the-id db-or-id))
+    (throw (ex-info (tru "You cannot query a destination database directly.")
+                    {:status-code 403}))))
+
 (defenterprise check-allowed-access!
-  "This is intended as a safety harness. In dev/testing, if any access to a router or destination database is detected
-  outside those circumstances where we've explicitly declared it okay, throw an exception.
-
-  In production, skip this (fairly expensive) check.
-
-  The idea here is that at all times we should be aware of whether:
-
-  - we're explicitly accessing a router database (e.g. sync) and DO NOT want to reroute to a destination database, or
-
-  - we're explicitly using the Database Routing feature (e.g. a query) and DO NOT want to access the router
-  database (unless that was the user's intent, i.e. the user's attribute was `__METABASE_ROUTER__`) "
+  "Throws a 403 if `db-or-id-or-spec` is a destination database accessed while database routing is
+  not `:on`, i.e. a direct hit that bypasses its router. Legitimate access to a destination goes
+  through its router, which turns routing `:on`."
   :feature :database-routing
   [db-or-id-or-spec]
-  (when-let [db-id (and (not config/is-prod?)
-                        (u/id db-or-id-or-spec))]
-    (when (is-disallowed-router-db-access? db-id)
-      (throw (ex-info "Forbidden access to Router Database without `with-database-routing-off`" {})))
-    (when (is-disallowed-destination-db-access? db-id)
-      (throw (ex-info "Forbidden access to Destination Database without `with-database-routing-on`" {})))))
+  (when-let [db-id (u/id db-or-id-or-spec)]
+    (assert-not-direct-destination-access! db-id)))

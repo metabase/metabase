@@ -1,5 +1,11 @@
 import { chain } from "icepick";
 
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
@@ -7,28 +13,32 @@ import {
   getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
+  getIsLastSeenDashboardFixedWidth,
   getIsSharing,
+  getLastSeenDashboard,
+  getLastSeenDashboardHeaderParameters,
+  getLastSeenTabDashcards,
   getParameters,
+  getQuestionByCard,
+  getSelectedTabId,
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import Field from "metabase-lib/v1/metadata/Field";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
+  createMockDatabase,
   createMockField,
   createMockHeadingDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
@@ -460,6 +470,210 @@ describe("dashboard/selectors", () => {
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
       expect(cards[0].card.id).toBe(2);
+    });
+  });
+});
+
+describe("getSelectedTabId", () => {
+  const DASHBOARD_ID = 1;
+
+  const createTabbedState = (siteUrl: string) =>
+    createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD_ID,
+        selectedTabId: null,
+        dashboards: {
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            id: DASHBOARD_ID,
+            tabs: [
+              createMockDashboardTab({ id: 1 }),
+              createMockDashboardTab({ id: 2 }),
+            ],
+          }),
+        },
+      }),
+      settings: createMockSettingsState({ "site-url": siteUrl }),
+    });
+
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("initializes from the tab query param", () => {
+    window.history.replaceState({}, "", "/dashboard/1?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("initializes from the tab query param on a subpath deployment (metabase#76946)", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/metabase/dashboard/1?tab=2-second-tab",
+    );
+
+    const state = createTabbedState("http://localhost:3000/metabase");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("falls back to the first tab while navigating to another dashboard", () => {
+    window.history.replaceState({}, "", "/dashboard/999?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(1);
+  });
+});
+
+describe("getQuestionByCard", () => {
+  function makeState(cards: Card[]): State {
+    const table = createMockTable({
+      id: 1,
+      db_id: 1,
+      fields: [createMockField({ id: 1, table_id: 1 })],
+    });
+
+    return createMockState({
+      settings: createMockSettingsState(),
+      entities: createMockEntitiesState({
+        databases: [createMockDatabase({ id: 1, tables: [table] })],
+        tables: [table],
+        questions: cards,
+      }),
+    });
+  }
+
+  it("returns the identical Question for the same card and state", () => {
+    const card = createMockCard({ id: 1 });
+    const state = makeState([card]);
+
+    // connect() shallow-compares mapped props, so a fresh Question here would
+    // re-render DashCardCardParameterMapper on every store change.
+    expect(getQuestionByCard(state, { card })).toBe(
+      getQuestionByCard(state, { card }),
+    );
+  });
+
+  it("holds an entry per card rather than only the most recent one", () => {
+    const cards = [1, 2, 3].map((id) => createMockCard({ id }));
+    const state = makeState(cards);
+
+    const first = cards.map((card) => getQuestionByCard(state, { card }));
+    // Reading the other cards in between must not evict the first. A one-entry
+    // cache would recompute here and re-render every mapped dashcard.
+    const second = cards.map((card) => getQuestionByCard(state, { card }));
+
+    first.forEach((question, index) => {
+      expect(question).toBe(second[index]);
+    });
+  });
+
+  describe("getLastSeenTabDashcards", () => {
+    // The active pointer is null, mimicking the window during a (re)fetch when
+    // the layout can only be read from the in-memory Redux cache by id.
+    const CACHED_STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10, 11, 12],
+            tabs: [
+              createMockDashboardTab({ id: 100 }),
+              createMockDashboardTab({ id: 200 }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, dashboard_tab_id: 100 }),
+          11: createMockDashboardCard({ id: 11, dashboard_tab_id: 100 }),
+          12: createMockDashboardCard({ id: 12, dashboard_tab_id: 200 }),
+        },
+      }),
+    });
+
+    it("returns the cached default-tab dashcards even when the active dashboard id is reset", () => {
+      const cards = getLastSeenTabDashcards(CACHED_STATE, 5);
+      expect(cards.map((dc) => dc.id)).toEqual([10, 11]);
+    });
+
+    it("returns an empty array for a dashboard that isn't cached", () => {
+      expect(getLastSeenTabDashcards(CACHED_STATE, 999)).toEqual([]);
+      expect(getLastSeenTabDashcards(CACHED_STATE, null)).toEqual([]);
+    });
+  });
+
+  describe("getLastSeenDashboard", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: { 5: createMockStoreDashboard({ id: 5 }) },
+      }),
+    });
+
+    it("returns the dashboard from the cache even when the active dashboard id is reset", () => {
+      expect(getLastSeenDashboard(STATE, 5)).toMatchObject({ id: 5 });
+    });
+
+    it("returns nothing for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboard(STATE, 999)).toBeUndefined();
+      expect(getLastSeenDashboard(STATE, null)).toBeUndefined();
+    });
+  });
+
+  describe("getIsLastSeenDashboardFixedWidth", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({ id: 5, width: "fixed" }),
+          6: createMockStoreDashboard({ id: 6, width: "full" }),
+        },
+      }),
+    });
+
+    it("follows the cached dashboard's width", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 5)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 6)).toBe(false);
+    });
+
+    it("assumes the default fixed width for a dashboard that isn't cached", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 999)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, null)).toBe(true);
+    });
+  });
+
+  describe("getLastSeenDashboardHeaderParameters", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10],
+            parameters: [
+              createMockParameter({ id: "a" }),
+              createMockParameter({ id: "b" }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, inline_parameters: ["b"] }),
+        },
+      }),
+    });
+
+    it("returns the cached dashboard's parameters except those inline on a dashcard", () => {
+      expect(
+        getLastSeenDashboardHeaderParameters(STATE, 5).map(({ id }) => id),
+      ).toEqual(["a"]);
+    });
+
+    it("returns no parameters for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboardHeaderParameters(STATE, 999)).toEqual([]);
     });
   });
 });

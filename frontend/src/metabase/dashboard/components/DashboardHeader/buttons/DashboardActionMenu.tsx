@@ -1,18 +1,28 @@
-import { type MouseEvent, forwardRef, useState } from "react";
-import { Link, type LinkProps, withRouter } from "react-router";
-import type { WithRouterProps } from "react-router/lib/withRouter";
+import { type MouseEvent, forwardRef, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
+import { openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
-import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
-import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import {
+  PLUGIN_CACHING,
+  PLUGIN_LIBRARY,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
+
+import {
+  AutoRefreshMenuItem,
+  AutoRefreshMenuOptions,
+} from "../../RefreshWidget";
 
 type DashboardActionMenuProps = {
   canResetFilters: boolean;
@@ -35,32 +45,42 @@ const DashboardActionMenuInner = ({
   canResetFilters,
   onResetFilters,
   canEdit,
-  location,
   openSettingsSidebar,
-}: DashboardActionMenuProps & WithRouterProps) => {
-  const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
-    useDashboardContext();
-  const [opened, setOpened] = useState(false);
+}: DashboardActionMenuProps) => {
+  const location = useLocation();
   const dispatch = useDispatch();
+  const {
+    dashboard,
+    isFullscreen,
+    onFullscreenChange,
+    onChangeLocation,
+    withTimelineEvents = false,
+  } = useDashboardContext();
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
+  const [opened, setOpened] = useState(false);
+  const [showAutoRefreshOptions, setShowAutoRefreshOptions] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpened(isOpen);
+    if (!isOpen) {
+      setShowAutoRefreshOptions(false);
+    }
+  };
+
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location?.search ?? ""),
+    [location?.search],
+  );
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
-    parameterQueryParams: location?.query,
+    parameterQueryParams,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard ?? undefined,
     refreshDashboard,
   );
-
-  const isDashboardSubscriptionSidebarOpen = useSelector(
-    getIsDashboardSubscriptionSidebarOpen,
-  );
-
-  const toggleSubscriptionSidebar = () =>
-    dispatch(
-      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
-    );
 
   // solely for the dependency list below, so we don't ever have an undefined
   const pathname = location?.pathname ?? "";
@@ -84,9 +104,12 @@ const DashboardActionMenuInner = ({
 
   const canConfigureCaching =
     dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
+  const showDataStudioLink =
+    hasDataStudioAccess &&
+    PLUGIN_LIBRARY.isLibraryCollectionType(dashboard.collection?.type);
 
   return (
-    <Menu position="bottom-end" opened={opened} onChange={setOpened}>
+    <Menu position="bottom-end" opened={opened} onChange={handleOpenChange}>
       <Menu.Target>
         <div>
           <ToolbarButton
@@ -97,66 +120,94 @@ const DashboardActionMenuInner = ({
         </div>
       </Menu.Target>
       <Menu.Dropdown>
-        {canResetFilters && (
-          <Menu.Item
-            leftSection={<Icon name="revert" />}
-            onClick={onResetFilters}
-          >
-            {t`Reset all filters`}
-          </Menu.Item>
-        )}
-
-        <DashboardSubscriptionMenuItem
-          dashboard={dashboard}
-          onClick={toggleSubscriptionSidebar}
-        />
-
-        <Menu.Item
-          leftSection={<Icon name="expand" />}
-          onClick={(e: MouseEvent) =>
-            onFullscreenChange(!isFullscreen, !e.altKey)
-          }
-        >
-          {t`Enter fullscreen`}
-        </Menu.Item>
-
-        {(canEdit || canConfigureCaching) && (
-          <Menu.Item
-            leftSection={<Icon name="gear" />}
-            onClick={openSettingsSidebar}
-          >
-            {t`Edit settings`}
-          </Menu.Item>
-        )}
-
-        {canEdit && moderationItems}
-
-        {canEdit && (
+        {showAutoRefreshOptions ? (
+          <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
+        ) : (
           <>
-            <Menu.Divider />
+            {showDataStudioLink && (
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="grid_bordered" />}
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioDashboard(dashboard.id)}
+                >{t`Open in Data Studio`}</Menu.Item>
+                <Menu.Divider />
+              </>
+            )}
+
+            {canResetFilters && (
+              <Menu.Item
+                leftSection={<Icon name="revert" />}
+                onClick={onResetFilters}
+              >
+                {t`Reset all filters`}
+              </Menu.Item>
+            )}
 
             <Menu.Item
-              leftSection={<Icon name="move" />}
-              component={ForwardRefLink}
-              to={`${location?.pathname}/move`}
-            >{c("A verb, not a noun").t`Move`}</Menu.Item>
-          </>
-        )}
+              leftSection={<Icon name="expand" />}
+              onClick={(e: MouseEvent) =>
+                onFullscreenChange(!isFullscreen, !e.altKey)
+              }
+            >
+              {t`Enter fullscreen`}
+            </Menu.Item>
 
-        <Menu.Item
-          leftSection={<Icon name="clone" />}
-          component={ForwardRefLink}
-          to={`${location?.pathname}/copy`}
-        >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+            <AutoRefreshMenuItem
+              onClick={() => setShowAutoRefreshOptions(true)}
+            />
 
-        {canEdit && (
-          <>
-            <Menu.Divider />
+            {/* fullscreen hides every sidebar, so the panel this opens could never appear */}
+            {withTimelineEvents && !isFullscreen && (
+              <Menu.Item
+                leftSection={<Icon name="calendar" />}
+                onClick={() =>
+                  dispatch(openEventsSidebar({}, "dashboard_menu"))
+                }
+              >
+                {t`Events`}
+              </Menu.Item>
+            )}
+
+            {(canEdit || canConfigureCaching) && (
+              <Menu.Item
+                leftSection={<Icon name="gear" />}
+                onClick={openSettingsSidebar}
+              >
+                {t`Edit settings`}
+              </Menu.Item>
+            )}
+
+            {canEdit && moderationItems}
+
+            {canEdit && (
+              <>
+                <Menu.Divider />
+
+                <Menu.Item
+                  leftSection={<Icon name="move" />}
+                  component={ForwardRefLink}
+                  to={`${location?.pathname}/move`}
+                >{c("A verb, not a noun").t`Move`}</Menu.Item>
+              </>
+            )}
+
             <Menu.Item
-              leftSection={<Icon name="trash" />}
+              leftSection={<Icon name="clone" />}
               component={ForwardRefLink}
-              to={`${location?.pathname}/archive`}
-            >{t`Move to trash`}</Menu.Item>
+              to={`${location?.pathname}/copy`}
+            >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+
+            {canEdit && (
+              <>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<Icon name="trash" />}
+                  component={ForwardRefLink}
+                  to={`${location?.pathname}/archive`}
+                >{t`Move to trash`}</Menu.Item>
+              </>
+            )}
           </>
         )}
       </Menu.Dropdown>
@@ -164,4 +215,4 @@ const DashboardActionMenuInner = ({
   );
 };
 
-export const DashboardActionMenu = withRouter(DashboardActionMenuInner);
+export const DashboardActionMenu = DashboardActionMenuInner;

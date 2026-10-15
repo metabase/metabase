@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   getAvatarColumn,
   getRowValue,
@@ -7,7 +8,6 @@ import {
   getTitleColumn,
   renderValue,
 } from "metabase/detail-view/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Group, Icon, Image, Stack, Text, rem } from "metabase/ui";
 import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 
@@ -44,7 +44,7 @@ export const Header = ({ columns, icon, row }: Props) => {
   }
 
   return (
-    <Group data-testid="detail-view-header" gap="xl" wrap="nowrap">
+    <Group data-testid="detail-view-header" gap="xxl" wrap="nowrap">
       {(avatar || icon) && (
         <Box className={S.avatarFrame} flex="0 0 auto">
           {avatar && (

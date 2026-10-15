@@ -51,7 +51,7 @@ const Indicator = ({ tab, activeTabKey }: IndicatorProps) => {
         )
         .exhaustive()}
     >
-      <Icon name="clock" size={12} c="text-tertiary" />
+      <Icon name="clock" size={12} c="text-disabled" />
     </Tooltip>
   );
 };
@@ -67,8 +67,8 @@ export const LensNavigator = ({
     <Stack
       gap="0"
       bd="1px solid border-neutral"
-      bdrs="sm"
-      bg="background-primary"
+      bdrs="xs"
+      bg="background_page-primary"
       pt={rem(6)}
     >
       <Tabs
@@ -76,10 +76,10 @@ export const LensNavigator = ({
         onChange={(value) => value && onSwitchTab(value)}
         className={styles.tabs}
       >
-        <Tabs.List px="lg" className={styles.tabsList}>
+        <Tabs.List px="xl" className={styles.tabsList}>
           {tabs.map((tab) => (
             <Tabs.Tab key={tab.key} value={tab.key} className={styles.tab}>
-              <Group gap="xs" wrap="nowrap">
+              <Group gap="xxs" wrap="nowrap">
                 <Text
                   size="md"
                   fw={700}
@@ -103,7 +103,7 @@ export const LensNavigator = ({
                     lh={1}
                     style={{ cursor: "pointer" }}
                   >
-                    <Icon name="close" size={16} c="text-tertiary" />
+                    <Icon name="close" size={16} c="text-disabled" />
                   </Box>
                 )}
               </Group>
@@ -111,7 +111,7 @@ export const LensNavigator = ({
           ))}
         </Tabs.List>
       </Tabs>
-      <Box p="lg">{children}</Box>
+      <Box p="xl">{children}</Box>
     </Stack>
   );
 };

@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
+import { useMetadataProvider } from "metabase/metadata-store";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
@@ -31,14 +30,13 @@ export const TransformPaneHeaderActions = (props: Props) => {
     transform,
     readOnly,
   } = props;
-  const metadata = useSelector(getMetadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  const metadataProvider = useMetadataProvider(
+    source.type === "query" ? source.query.database : null,
   );
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
-      const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);
+      const libQuery = Lib.fromJsQuery(metadataProvider, source.query);
       const validationResult = getValidationResult(libQuery);
       return {
         validationResult,
@@ -51,16 +49,10 @@ export const TransformPaneHeaderActions = (props: Props) => {
         PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source),
       isNative: false,
     };
-  }, [source, metadata]);
+  }, [source, metadataProvider]);
   const isPythonTransform = source.type === "python";
 
-  if (
-    !readOnly &&
-    !isPythonTransform &&
-    !isNative &&
-    !isEditMode &&
-    !isRemoteSyncReadOnly
-  ) {
+  if (!readOnly && !isPythonTransform && !isNative && !isEditMode) {
     return <EditDefinitionButton transformId={transform.id} />;
   }
 

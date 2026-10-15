@@ -311,7 +311,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
       actionId: SdkActionId | null;
     }) => {
       // Wait for the SDK's auth flow to complete before firing the action —
-      // otherwise the legacy-client POST goes out without credentials and
+      // otherwise the action POST goes out without credentials and
       // the backend rejects with a 401.
       const authStatus = useMetabaseAuthStatus();
       const { execute, result, error, isExecuting } = useAction<{

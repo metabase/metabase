@@ -7,6 +7,7 @@ export interface ApplicationPermissionsState extends State {
     applicationPermissionsPlugin: {
       applicationPermissions: ApplicationPermissions;
       originalApplicationPermissions: ApplicationPermissions;
+      applicationPermissionsRevision: number | null;
     };
   };
 }

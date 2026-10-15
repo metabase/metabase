@@ -18,10 +18,7 @@
 (defn- loaded-tables
   "Actual Tables loaded into `database`. Returns a set of `[schema-name table-name]` pairs."
   [{:keys [driver database]}]
-  (->> (driver/describe-database driver database)
-       :tables
-       (map (juxt :schema :name))
-       set))
+  (into #{} (map (juxt :schema :name)) (:tables (driver/describe-database driver database))))
 
 (defn- loaded-fields
   "Actual Fields loaded into a Table. Returns set of field names."

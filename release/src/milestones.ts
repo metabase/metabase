@@ -199,18 +199,9 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone, ignor
     });
   }
 
-  const commentBody = existingMilestoneIsNewer
-    ? `🚀 This should also be released by [v${existingMilestone.title}](${existingMilestone.html_url})`
-    : `🚀 This should also be released by [v${milestone.title}](${milestone.html_url})`;
 
-  console.log(`Adding comment to issue ${issueNumber} that already has milestone ${existingMilestone.title}`);
-
-  return github.rest.issues.createComment({
-    owner,
-    repo,
-    issue_number: issueNumber,
-    body: commentBody,
-  });
+  console.log(`${issueNumber} is already part of ${existingMilestone.title}, no updates made.`);
+  return;
 }
 
 // get the next open milestone (e.g. 0.57.8) for the given major version (e.g 57)

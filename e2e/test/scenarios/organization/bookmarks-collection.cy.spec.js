@@ -168,7 +168,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
       H.visitCollection("root");
 
       pin(name);
-      H.tableHeaderColumn("ID");
+      H.getPinnedSection().findByText("A question");
       bookmarkPinnedItem(name);
 
       H.expectUnstructuredSnowplowEvent({
@@ -296,7 +296,8 @@ function archive(name) {
 }
 
 function bookmarkPinnedItem(name) {
-  cy.findByText(name)
+  H.getPinnedSection()
+    .findByText(name)
     .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });

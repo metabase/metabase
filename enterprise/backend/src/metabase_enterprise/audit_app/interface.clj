@@ -10,9 +10,12 @@
    {:min 1}
    [:tuple
     ms/KeywordOrString
-    [:map
-     [:base_type    ms/FieldType]
-     [:display_name ms/NonBlankString]]]])
+    [:map {:closed true}
+     [:base_type      ms/FieldType]
+     [:display_name   ms/NonBlankString]
+     [:remapped_to    {:optional true} :keyword]
+     [:remapped_from  {:optional true} :keyword]
+     [:code           {:optional true} :boolean]]]])
 
 (defmulti internal-query
   "Define a new internal query type. Conventionally `query-type` should be a namespaced keyword with the namespace in
@@ -28,11 +31,18 @@
   (throw (ex-info (str (tru "Unable to run internal query function: cannot resolve {0}" query-type))
                   {:status-code 400})))
 
+(def ^:private loadable-namespaces
+  "Namespaces that register [[internal-query]] methods on load, and so may be loaded on demand to resolve an
+  `:internal` query. Add to this when you add an audit page."
+  #{"metabase-enterprise.audit-app.pages.queries"})
+
 (defn resolve-internal-query
   "Invoke the internal query with `query-type` (invokes the corresponding implementation of [[internal-query]])."
   [query-type & args]
   (let [query-type (keyword query-type)
         ns-str     (namespace query-type)]
-    (when ns-str
+    (when (contains? loadable-namespaces ns-str)
+      ;; The namespace comes from the fixed allowlist above.
+      #_{:clj-kondo/ignore [:metabase/modules]}
       (classloader/require (symbol ns-str)))
     (apply internal-query query-type args)))

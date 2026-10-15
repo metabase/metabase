@@ -1,13 +1,11 @@
 import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
-import { Link } from "react-router";
-import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { Link } from "metabase/common/components/Link";
+import { useStore } from "metabase/redux";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
@@ -26,11 +24,12 @@ interface Props {
 }
 
 export const Relationship = ({ fk, rowId, onClick }: Props) => {
-  const metadata = useSelector(getMetadata);
-  const metadataRef = useLatest(metadata);
+  // Read at build time rather than subscribed: the query feeds an ad-hoc
+  // request, and rebuilding it on every metadata change would refetch.
+  const store = useStore();
   const fkQuery = useMemo(
-    () => getForeignKeyQuery(fk, rowId, metadataRef.current),
-    [fk, rowId, metadataRef],
+    () => getForeignKeyQuery(store.getState(), fk, rowId),
+    [store, fk, rowId],
   );
   const fkCountQuery = useMemo(
     () => (fkQuery != null ? getForeignKeyCountQuery(fkQuery) : undefined),
@@ -73,11 +72,11 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
         ? { component: Link, to: fkQuestionUrl, onClick }
         : undefined)}
     >
-      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+      {isFetching && <Loader size="md" />}
 
       {!isFetching && (
         <Text
-          c={count === 0 ? "text-tertiary" : "text-secondary"}
+          c={count === 0 ? "text-disabled" : "text-secondary"}
           className={S.text}
           fw="bold"
           fz={rem(24)}
@@ -88,7 +87,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
       )}
 
       <Text
-        c={count === 0 ? "text-tertiary" : "text-secondary"}
+        c={count === 0 ? "text-disabled" : "text-secondary"}
         className={S.text}
         fw="bold"
         lh={1}

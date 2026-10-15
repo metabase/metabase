@@ -3,9 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -18,28 +20,31 @@ import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/privat
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { EmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
+import {
+  clearGuestToken,
+  setInitialGuestToken,
+} from "embedding-sdk-bundle/store/guest-embed";
 import {
   getError,
+  getGuestTokenForMount,
   getIsGuestEmbed,
   getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
   type OnCreateOptions,
   useCreateQuestion,
-} from "metabase/query_builder/containers/use-create-question";
-import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+  useSaveQuestion,
+} from "metabase/query_builder";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -83,7 +88,7 @@ export const SdkQuestionProvider = ({
   withAlerts,
   targetDashboardId,
   backToDashboard,
-  getClickActionMode: userGetClickActionMode,
+  clickActionMode: userClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
   onDrillThrough,
   onVisualizationChange,
@@ -93,8 +98,13 @@ export const SdkQuestionProvider = ({
   const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
   const [isFirstRender, setIsFirstRender] = useState(true);
-  const { rawToken: tokenFromStore, error: tokenFetchError } =
-    useSdkSelector(getSessionTokenState);
+  // Stable per-mount id: keeps this mount's guest token isolated from any
+  // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
+  const mountId = useId();
+  const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
+  const tokenFromStore = useSdkSelector((state) =>
+    getGuestTokenForMount(state, mountId),
+  );
 
   const effectiveInitialSqlParameters = getEffectiveParameterValues(
     sqlParameters,
@@ -104,9 +114,18 @@ export const SdkQuestionProvider = ({
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken(rawToken));
+      dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch]);
+  }, [rawToken, isGuestEmbed, dispatch, mountId]);
+
+  // Own effect: folding this into the one above would clear the token on every
+  // rawToken change, leaving a window with no token for the refresh handler.
+  useEffect(
+    () => () => {
+      dispatch(clearGuestToken(mountId));
+    },
+    [dispatch, mountId],
+  );
 
   useEffect(() => {
     setIsFirstRender(false);
@@ -217,20 +236,16 @@ export const SdkQuestionProvider = ({
     return { ...globalPlugins, ...componentPlugins };
   }, [globalPlugins, componentPlugins]);
 
-  const getClickActionMode: ClickActionModeGetter =
-    userGetClickActionMode ??
-    (({ question }: { question: Question }) => {
-      return (
-        question &&
-        getEmbeddingMode({
-          question,
-          queryMode: EmbeddingSdkMode,
-          plugins: plugins as InternalMetabasePluginsConfig,
-        })
-      );
-    });
-
-  const mode = (question && getClickActionMode({ question })) ?? null;
+  const mode = useMemo(
+    () =>
+      userClickActionMode ??
+      getEmbeddingMode({
+        queryMode: EmbeddingSdkMode,
+        // Unjustified type cast. FIXME
+        plugins: plugins as InternalMetabasePluginsConfig,
+      }),
+    [userClickActionMode, plugins],
+  );
 
   // Wrap navigateToNewCard to intercept navigation to new card
   const navigateToNewCardWithDrillThrough = useCallback(
@@ -292,6 +307,19 @@ export const SdkQuestionProvider = ({
     [updateQuestion],
   );
 
+  // How the user's `navigateToNewCard` prop maps to the context value:
+  //   - null      → navigation disabled (e.g. StaticQuestion / ad-hoc questions).
+  //                 Passed through as null; `Visualization` turns it into
+  //                 `undefined`, so the chart never wires `onChangeCardAndRun`
+  //                 (which would load a card by its undefined id → `/card/undefined`).
+  //   - undefined → the SDK's internal navigation (the default).
+  //   - a handler → run through the drill-through wrapper.
+  const contextNavigateToNewCard: SdkQuestionContextType["navigateToNewCard"] =
+    match(userNavigateToNewCard)
+      .with(null, () => null)
+      .with(undefined, () => navigateToNewCardWithSdkInternalNavigation)
+      .otherwise(() => navigateToNewCardWithDrillThrough);
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     lastVisibleStageIndex,
@@ -306,10 +334,7 @@ export const SdkQuestionProvider = ({
     updateQuestion,
     updateAndNormalizeQuestion,
     updateParameterValues,
-    navigateToNewCard:
-      userNavigateToNewCard !== undefined
-        ? navigateToNewCardWithDrillThrough
-        : navigateToNewCardWithSdkInternalNavigation,
+    navigateToNewCard: contextNavigateToNewCard,
     plugins,
     question,
     originalQuestion,

@@ -2,11 +2,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
-import { useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Button, Modal, Stack, rem } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
 
@@ -60,10 +60,10 @@ export const AlertListModal = ({
       opened={opened}
       size={rem(600)}
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       title={t`Edit alerts`}
     >
-      <Stack gap="lg" mb="lg" mt="1rem">
+      <Stack gap="xl" mb="xl" mt="1rem">
         {sortedQuestionAlerts.map((alert) => {
           const canEditAlert =
             isAdmin ||

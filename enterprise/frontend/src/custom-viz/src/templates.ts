@@ -5,7 +5,6 @@ import readmeTemplate from "./templates/README.md?raw";
 import iconSvgTemplate from "./templates/icon.svg?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
 import manifestTemplate from "./templates/metabase-plugin.json?raw";
-import packTemplate from "./templates/pack.mjs?raw";
 import packageJsonTemplate from "./templates/package.json?raw";
 import tsconfigTemplate from "./templates/tsconfig.json?raw";
 import viteConfigTemplate from "./templates/vite.config.ts?raw";
@@ -37,19 +36,12 @@ export function generateViteConfig(): string {
   return viteConfigTemplate;
 }
 
-export function generatePackScript(): string {
-  return packTemplate;
-}
-
 export function generateTsConfig(): string {
   return tsconfigTemplate;
 }
 
-export function generateIndexTsx(name: string, displayName: string): string {
-  return replaceDisplayName(
-    replaceName(replaceImportPath(indexTsxTemplate), name),
-    displayName,
-  );
+export function generateIndexTsx(displayName: string): string {
+  return replaceDisplayName(replaceImportPath(indexTsxTemplate), displayName);
 }
 
 export function generateManifest(name: string): string {

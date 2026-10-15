@@ -1,7 +1,9 @@
 import { registerStaticVisualizations } from "metabase/static-viz/register";
-import { getVisualizationTransformed } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import {
+  type StaticVisualizationProps,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 
 import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
@@ -13,6 +15,7 @@ import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
+import { TreemapChart } from "../TreemapChart";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
 
 registerStaticVisualizations();
@@ -22,6 +25,10 @@ export const StaticVisualization = ({
   renderingContext,
   isStorybook,
   hasDevWatermark,
+  width,
+  height,
+  fitWithinBounds,
+  gridSize,
 }: StaticVisualizationProps) => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
@@ -32,6 +39,10 @@ export const StaticVisualization = ({
     renderingContext,
     isStorybook,
     hasDevWatermark,
+    width,
+    height,
+    fitWithinBounds,
+    gridSize,
   };
 
   switch (display) {
@@ -56,6 +67,8 @@ export const StaticVisualization = ({
       return <PieChart {...props} />;
     case "sankey":
       return <SankeyChart {...props} />;
+    case "treemap":
+      return <TreemapChart {...props} />;
     case "progress":
       return <ProgressBar {...props} />;
     case "row":

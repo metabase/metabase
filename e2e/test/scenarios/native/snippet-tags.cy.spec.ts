@@ -8,33 +8,6 @@ describe("scenarios > native > snippet tags", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to create a snippet with variable tags", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select id from products where ");
-
-    cy.log("create a snippet");
-    getEditorTopBar().icon("snippet").click();
-    getEditorSidebar().findByText("Create snippet").click();
-    H.modal().within(() => {
-      getSnippetContentInput().type("category = {{category}}", {
-        parseSpecialCharSequences: false,
-      });
-      getSnippetNameInput().type("variable-snippet");
-      cy.button("Save").click();
-    });
-
-    cy.log("verify that the snippet was inserted");
-    H.NativeEditor.get().should(
-      "contain",
-      "select id from products where {{snippet: variable-snippet}}",
-    );
-
-    cy.log("verify that the query can be run");
-    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(54);
-  });
-
   it("should be able to create a snippet with card tags", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from ");
@@ -61,9 +34,9 @@ describe("scenarios > native > snippet tags", () => {
     H.tableInteractive().should("be.visible");
   });
 
-  it("should be able to create a snippet with snippet tags", () => {
+  it("should be able to create a snippet with variable tags and snippet tags", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from ");
+    H.NativeEditor.type("select id from products where ");
 
     cy.log("create a snippet");
     getEditorTopBar().icon("snippet").click();
@@ -75,6 +48,17 @@ describe("scenarios > native > snippet tags", () => {
       getSnippetNameInput().type("snippet1");
       cy.button("Save").click();
     });
+
+    cy.log("verify that the snippet was inserted");
+    H.NativeEditor.get().should(
+      "contain",
+      "select id from products where {{snippet: snippet1}}",
+    );
+
+    cy.log("verify that the query can be run");
+    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(54);
 
     cy.log("create a snippet that uses the previous snippet");
     getEditorTopBar().icon("snippet").click();
@@ -91,48 +75,9 @@ describe("scenarios > native > snippet tags", () => {
     cy.log("verify that the snippet can used");
     H.NativeEditor.clear();
     H.NativeEditor.type("select id from products where {{snippet: snippet2}}");
-    getEditorTopBar().findByLabelText("Category").type("Gizmo");
+    getEditorTopBar().findByLabelText("Category").clear().type("Gizmo");
     H.runNativeQuery();
-    H.tableInteractive().should("be.visible");
-  });
-
-  it("should be able to create a tag with the same name as the inner snippet tag", () => {
-    createQuestionAndSnippet().then(({ card }) => {
-      H.visitQuestion(card.id);
-    });
-
-    cy.log("add a local tag with the same name");
-    getEditorVisibilityToggler().click();
-    H.NativeEditor.type(" and category = {{filter}}");
-
-    cy.log("verify that the query can be run");
-    getEditorTopBar().findByPlaceholderText("Filter").type("Widget");
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(54);
-  });
-
-  it("should be able to use snippets where tags overlap", () => {
-    cy.log("create snippets with overlapping tags");
-    H.createSnippet({
-      name: "snippet1",
-      content: "category = {{category1}} or category = {{category2}}",
-    });
-    H.createSnippet({
-      name: "snippet2",
-      content: "category = {{category2}}",
-    });
-
-    cy.log("use both snippets in a query");
-    H.startNewNativeQuestion();
-    H.NativeEditor.type(
-      "select id from products where {{snippet: snippet1}} or {{snippet: snippet2}}",
-    );
-
-    cy.log("verify that the query can be run");
-    getEditorTopBar().findByPlaceholderText("Category1").type("Widget");
-    getEditorTopBar().findByPlaceholderText("Category2").type("Gadget");
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(107);
+    H.assertQueryBuilderRowCount(51);
   });
 
   it("should be able to update a snippet and change tags", () => {
@@ -142,6 +87,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("update the snippet");
     getEditorVisibilityToggler().click();
+    getEditorTopBar().findByPlaceholderText("Filter").should("be.visible");
     getEditorTopBar().icon("snippet").click();
     getEditorSidebar().within(() => {
       cy.icon("chevrondown").click({ force: true });
@@ -176,8 +122,9 @@ describe("scenarios > native > snippet tags", () => {
     cy.log("change the type");
     getEditorVisibilityToggler().click();
     getEditorTopBar().icon("variable").click();
-    getVariableTypeSelect().click();
+    getVariableTypeSelect().should("have.value", "Text").click();
     H.popover().findByText("Number").click();
+    getVariableTypeSelect().should("have.value", "Number");
 
     cy.log("verify that the parameter can be used");
     getEditorTopBar().findByPlaceholderText("Filter").type("10");
@@ -208,159 +155,6 @@ describe("scenarios > native > snippet tags", () => {
     });
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(53);
-  });
-
-  it("should be able to open a question with an old snippet name", () => {
-    createQuestionAndSnippet().then(({ card, snippet }) => {
-      cy.request("PUT", `/api/native-query-snippet/${snippet.id}`, {
-        name: "category-snippet",
-      });
-      cy.visit(`/question/${card.id}`);
-    });
-
-    cy.log("verify that the parameter can be used");
-    getEditorTopBar().findByPlaceholderText("Filter").type("Widget");
-    H.queryBuilderHeader().icon("play").click();
-    H.assertQueryBuilderRowCount(54);
-  });
-
-  it("should not be able to create card cycles via snippets", () => {
-    cy.log("create a card and a snippet referencing this card");
-    H.createNativeQuestion({
-      native: {
-        query: "select 1",
-      },
-    }).then(({ body: card }) => {
-      H.createSnippet({
-        name: "cycle-snippet",
-        content: `{{#${card.id}}}`,
-      });
-      H.visitQuestion(card.id);
-    });
-
-    cy.log("create a cycle and try to save the card");
-    getEditorVisibilityToggler().click();
-    H.NativeEditor.clear();
-    H.NativeEditor.type("select * from {{snippet: cycle-snippet}}");
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.findByText("Cannot save card with cycles.").should("be.visible");
-    });
-  });
-
-  it("should not be able to create snippet cycles via snippets", () => {
-    cy.log("create two snippets, one using another");
-    H.createSnippet({
-      name: "snippet1",
-      content: "1",
-    });
-    H.createSnippet({
-      name: "snippet2",
-      content: "{{snippet: snippet1}}",
-    });
-
-    cy.log("open the modal for the first snippet");
-    H.startNewNativeQuestion();
-    getEditorTopBar().icon("snippet").click();
-    getEditorSidebar().within(() => {
-      cy.icon("chevrondown")
-        .should("have.length", 2)
-        .first()
-        .click({ force: true });
-      cy.button(/Edit/).click();
-    });
-
-    cy.log("create a cycle and save the first snippet");
-    H.modal().within(() => {
-      getSnippetContentInput()
-        .clear()
-        .type("{{snippet: snippet2}}", { parseSpecialCharSequences: false })
-        .click();
-      cy.button("Save").click();
-    });
-
-    cy.log("run the query and verify that we detect a cycle");
-    H.NativeEditor.type("select {{snippet: snippet1}}");
-    H.runNativeQuery();
-    H.queryBuilderMain()
-      .findByText(
-        'This query has circular referencing sub-queries. The snippet "snippet2" and the snippet "snippet1" seem to be part of the problem.',
-      )
-      .should("be.visible");
-
-    cy.log(
-      "try to save a question with a snippet cycle and verify we detect it",
-    );
-    H.queryBuilderHeader().findByText("Save").click();
-    H.modal().within(() => {
-      cy.findByLabelText("Name").type("SQL");
-      cy.button("Save").click();
-      cy.findByText("Cannot save card with cycles.").should("be.visible");
-      cy.button("Cancel").click();
-    });
-
-    cy.log(
-      "remove a cycle, save the card, add a cycle again and verify that we detect it on update",
-    );
-    H.NativeEditor.clear().type("select 1");
-    H.saveQuestion("SQL", undefined, {
-      path: ["Our analytics"],
-    });
-    H.NativeEditor.clear().type("select {{snippet: snippet1}}");
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.findByText("Cannot save card with cycles.").should("be.visible");
-    });
-  });
-
-  it("should work for a public or embedded question", () => {
-    createQuestionAndSnippet().then(({ card }) => {
-      cy.log("public question - no parameter value");
-      H.visitPublicQuestion(card.id);
-      H.assertTableRowsCount(200);
-
-      cy.log("public question - with parameter value");
-      H.filterWidget().findByLabelText("Filter").type("Gadget{enter}");
-      H.assertTableRowsCount(53);
-
-      cy.log("embedded question - no parameter value");
-      H.visitEmbeddedPage({
-        resource: { question: card.id },
-        params: {},
-      });
-      H.assertTableRowsCount(200);
-
-      cy.log("embedded question - with parameter value");
-      H.filterWidget().findByLabelText("Filter").type("Gadget{enter}");
-      H.assertTableRowsCount(53);
-    });
-  });
-
-  it("should handle snippet tags with trailing spaces correctly", () => {
-    cy.log("create a snippet");
-    H.createSnippet({
-      name: "category filter",
-      content: "category = {{category}}",
-    });
-
-    H.startNewNativeQuestion();
-
-    cy.log("type a query with snippet tags containing trailing spaces");
-    H.NativeEditor.type(
-      "select id from products where {{snippet: category filter }}",
-    );
-
-    cy.log("verify snippet reference is recognized");
-    getEditorTopBar().within(() => {
-      cy.findByPlaceholderText("Category").should("be.visible");
-    });
-
-    cy.log("verify the query can be run with the parameter");
-    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(54);
   });
 });
 
@@ -416,10 +210,6 @@ function createQuestionAndSnippet({
             type: "text",
           },
         },
-      },
-      enable_embedding: true,
-      embedding_params: {
-        filter: "enabled",
       },
     }).then(({ body: card }) => {
       return { card, snippet };

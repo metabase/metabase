@@ -1,6 +1,4 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
 
 import {
   skipToken,
@@ -11,12 +9,15 @@ import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
+import { useNavigate } from "metabase/router";
+import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
-import { NavRoot, Sidebar } from "./MainNavbar.styled";
+import S from "./MainNavbar.module.css";
 import MainNavbarContainer from "./MainNavbarContainer";
+import { Sidebar } from "./Sidebar";
 import {
   getSelectedItems,
   isCollectionPath,
@@ -39,14 +40,10 @@ interface StateProps {
   collectionId?: CollectionId | null;
 }
 
-interface DispatchProps extends MainNavbarDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
-}
-
 type Props = MainNavbarOwnProps &
   EntityLoaderProps &
   StateProps &
-  DispatchProps;
+  MainNavbarDispatchProps;
 
 function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
@@ -58,7 +55,6 @@ function mapStateToProps(state: State, props: MainNavbarOwnProps) {
 const mapDispatchToProps = {
   openNavbar,
   closeNavbar,
-  onChangeLocation: push,
 };
 
 function MainNavbarInner({
@@ -70,9 +66,9 @@ function MainNavbarInner({
   dashboard,
   openNavbar,
   closeNavbar,
-  onChangeLocation,
   ...props
 }: Props) {
+  const navigate = useNavigate();
   const { currentData: card } = useGetCardQuery(
     questionId
       ? {
@@ -122,7 +118,13 @@ function MainNavbarInner({
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
     >
-      <NavRoot isOpen={isOpen}>
+      <Flex
+        component="nav"
+        className={S.nav}
+        direction="column"
+        pt="sm"
+        h="100%"
+      >
         <MainNavbarContainer
           isOpen={isOpen}
           location={location}
@@ -130,11 +132,11 @@ function MainNavbarInner({
           selectedItems={selectedItems}
           openNavbar={openNavbar}
           closeNavbar={closeNavbar}
-          onChangeLocation={onChangeLocation}
+          onChangeLocation={navigate}
           {...props}
         />
         <NavbarPromoSlot />
-      </NavRoot>
+      </Flex>
     </Sidebar>
   );
 }
@@ -144,9 +146,10 @@ function maybeGetQuestionId(
   { location, params }: MainNavbarOwnProps,
 ) {
   const { pathname } = location;
-  const canFetchQuestion =
+  const canFetchCard =
     isQuestionPath(pathname) || isModelPath(pathname) || isMetricPath(pathname);
-  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+  const cardId = isMetricPath(pathname) ? params.cardId : params.slug;
+  return canFetchCard ? Urls.extractEntityId(cardId) : null;
 }
 
 function maybeGetCollectionId(

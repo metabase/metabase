@@ -53,8 +53,8 @@ const PreviewSectionBase = ({
       className={className}
       data-testid="preview-section"
       h="100%"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       withBorder
     >
       <Group justify="space-between">

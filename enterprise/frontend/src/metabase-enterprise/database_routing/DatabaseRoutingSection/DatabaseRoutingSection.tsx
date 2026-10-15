@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -12,15 +11,16 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import {
   skipToken,
+  useListEnginesQuery,
   useListTransformsQuery,
   useListUserAttributesQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
   Box,
@@ -51,7 +51,7 @@ export const DatabaseRoutingSection = ({
 }) => {
   const [sendToast] = useToast();
 
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
 
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
@@ -139,12 +139,12 @@ export const DatabaseRoutingSection = ({
             <Text lh="lg">{t`Enable database routing`}</Text>
           </Label>
           {error ? (
-            <Error role="alert" color="error">
+            <Error role="alert" color="feedback-negative">
               {getErrorMessage(error)}
             </Error>
           ) : null}
         </Stack>
-        <Flex gap="md">
+        <Flex gap="lg">
           <Tooltip label={disabledFeatMsg} disabled={!disabledFeatMsg}>
             <Box data-testid="database-routing-toggle-wrapper">
               <Switch
@@ -156,7 +156,7 @@ export const DatabaseRoutingSection = ({
             </Box>
           </Tooltip>
           {disabledFeatMsg == null && (
-            <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
+            <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xxs">
               <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
             </UnstyledButton>
           )}
@@ -167,10 +167,10 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
-            mb="md"
+            mb="lg"
           >
             {disabledFeatMsg}
           </Alert>
@@ -183,24 +183,28 @@ export const DatabaseRoutingSection = ({
 
           {hasDbRoutingEnabled(database) && (
             <Alert
+              size="compact"
               variant="light"
-              color="info"
               icon={<Icon name="info" />}
-              mb="md"
+              mb="lg"
             >
               {t`In guest embeds, database queries will always be routed to the router database.`}
             </Alert>
           )}
-          <Stack mb="xl" gap="sm">
+          <Stack mb="xxl" gap="sm">
             <Flex justify="space-between" align="center" gap="sm">
               <Box>
                 <Label htmlFor="db-routing-user-attribute">
                   {t`User attribute to match destination database slug`}{" "}
-                  <Text component="span" c="error">
+                  <Text component="span" c="feedback-negative">
                     *
                   </Text>
                 </Label>
-                <Text c="text-secondary" mt="xs" style={{ textWrap: "pretty" }}>
+                <Text
+                  c="text-secondary"
+                  mt="xxs"
+                  style={{ textWrap: "pretty" }}
+                >
                   {t`This attribute determines which destination database the person queries.`}
                 </Text>
               </Box>

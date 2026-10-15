@@ -1,20 +1,14 @@
 import type {
-  BreakoutChartColumns,
-  MultipleMetricsChartColumns,
-} from "metabase/visualizations/lib/graph/columns";
-import type {
   BarData,
-  Series,
-} from "metabase/visualizations/shared/components/RowChart/types";
-import type {
+  BreakoutChartColumns,
   GroupedDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type {
+  MultipleMetricsChartColumns,
   RemappingHydratedDatasetColumn,
+  Series,
+  SeriesInfo,
   TooltipRowModel,
-} from "metabase/visualizations/types";
-import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
+} from "metabase/viz-core";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockNumericColumn,
@@ -28,8 +22,11 @@ import {
 } from "./events";
 
 const datasetColumns = [
+  // Unjustified type cast. FIXME
   { name: "y", display_name: "Y" } as RemappingHydratedDatasetColumn,
+  // Unjustified type cast. FIXME
   { name: "x", display_name: "X" } as RemappingHydratedDatasetColumn,
+  // Unjustified type cast. FIXME
   { name: "x1", display_name: "X1" } as RemappingHydratedDatasetColumn,
 ];
 
@@ -119,7 +116,7 @@ describe("events utils", () => {
           series_settings: {
             [chartColumns.metrics[0].column.name]: {
               title: "my custom label",
-            } as SeriesSettings,
+            },
           },
         },
         {
@@ -149,6 +146,7 @@ describe("events utils", () => {
           barData,
           {
             "stackable.stack_type":
+              // Unjustified type cast. FIXME
               stackType as VisualizationSettings["stackable.stack_type"],
           },
           chartColumns,

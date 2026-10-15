@@ -103,6 +103,7 @@ export const LoginAttributeMappingEditor = ({
   const [entries, setEntries] = useState<MappingEditorEntry[]>(
     structuredAttributes ? [] : buildEntries(simpleAttributes),
   );
+  const [autoFocusIndex, setAutoFocusIndex] = useState<number | null>(null);
 
   useEffect(() => {
     // structuredAttributes can change if a different tenant is selected
@@ -121,6 +122,7 @@ export const LoginAttributeMappingEditor = ({
       onError(hasError(newEntries));
     } else {
       onChange(buildMapping(newEntries));
+      setAutoFocusIndex(newEntries.length - 1);
     }
   };
 
@@ -143,9 +145,10 @@ export const LoginAttributeMappingEditor = ({
                 }}
                 keyOpts={keyOpts}
                 error={entryError(entries, key)}
+                autoFocus={index === autoFocusIndex}
               />
             </Flex>
-            <Flex gap="sm" w="50%">
+            <Flex gap="sm" w="50%" align="center">
               <ValueInput
                 canDelete={canDeleteThis}
                 canRevert={!!canRevert}
@@ -172,11 +175,13 @@ export const LoginAttributeMappingEditor = ({
         );
       })}
       <Button
-        variant="light"
-        size="xs"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="add" />}
-        onClick={() => handleChange(addEntry(entries))}
-        mt="md"
+        onClick={() => {
+          handleChange(addEntry(entries));
+        }}
+        mt="lg"
         disabled={_.some(
           entries,
           (entry) => entry.value === "" || entry.key === "",
@@ -193,11 +198,13 @@ const KeyInput = ({
   value,
   onChange,
   error,
+  autoFocus,
 }: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   keyOpts: MappingEditorEntry["keyOpts"];
   error?: string | boolean;
+  autoFocus?: boolean;
 }) => {
   if (keyOpts?.disabled) {
     return (
@@ -215,6 +222,7 @@ const KeyInput = ({
       w="100%"
       onChange={onChange}
       error={error}
+      autoFocus={autoFocus}
     />
   );
 };
@@ -245,18 +253,26 @@ const ValueInput = ({
         w="100%"
         {...valueOpts}
       />
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canDelete && (
         <Button
+          variant="subtle"
+          color="neutral"
+          size="sm"
           leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"
         />
       )}
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canRevert && (
         <Tooltip
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
           <Button
+            variant="subtle"
+            color="neutral"
+            size="sm"
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"
@@ -288,7 +304,7 @@ const InfoCard = ({
   !["tenant", "system", "jwt"].includes(source ?? "") ? null : (
     <HoverCard>
       <HoverCard.Target>
-        <Icon name="info" c="text-tertiary" />
+        <Icon name="info" c="text-disabled" />
       </HoverCard.Target>
       <HoverCard.Dropdown maw="20rem">
         <Text p="sm" maw="20rem">

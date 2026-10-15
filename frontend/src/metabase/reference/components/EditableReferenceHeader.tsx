@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { memo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import L from "metabase/common/components/List/List.module.css";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import L from "metabase/reference/components/List/List.module.css";
 import { Button, Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -102,11 +102,12 @@ const EditableReferenceHeader = ({
             headerLink && (
               <Button
                 key="2"
+                component={ForwardRefLink}
+                to={headerLink}
                 variant="filled"
                 className={cx(CS.flex, CS.flexAlignRight, CS.mr2)}
-                style={{ fontSize: 14 }}
               >
-                <Link to={headerLink}>{t`See this ${type}`}</Link>
+                {t`See this ${type}`}
               </Button>
             ),
           ]
@@ -114,7 +115,6 @@ const EditableReferenceHeader = ({
         {user && user.is_superuser && !isEditing && (
           <Button
             leftSection={<Icon name="pencil" />}
-            style={{ fontSize: 14 }}
             type="button"
             onClick={startEditing}
           >

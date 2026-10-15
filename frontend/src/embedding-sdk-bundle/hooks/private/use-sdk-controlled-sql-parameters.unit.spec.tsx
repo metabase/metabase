@@ -3,7 +3,6 @@ import { renderHook } from "@testing-library/react";
 import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterValuesMap } from "metabase-types/api";
 
 import type { SqlParameterValues } from "../../types";
@@ -13,16 +12,15 @@ import { useSdkControlledSqlParameters } from "./use-sdk-controlled-sql-paramete
 jest.mock("metabase/redux", () => ({
   useSelector: jest.fn(),
 }));
-jest.mock("metabase/selectors/metadata", () => ({
-  getMetadata: jest.fn(),
-}));
-jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
-  getCardUiParameters: jest.fn(),
-}));
 
+// Unjustified type cast. FIXME
 const useSelectorMock = useSelector as unknown as jest.Mock;
-const getCardUiParametersMock = getCardUiParameters as unknown as jest.Mock;
 
+// The hook reads its definitions off the question, so the stub question below
+// serves them. This spec covers the push and observe logic, not the derivation.
+let stubDefinitions: UiParameter[] = [];
+
+// Unjustified type cast. FIXME
 const STATE_PARAM = {
   id: "p1",
   slug: "state",
@@ -31,6 +29,7 @@ const STATE_PARAM = {
   target: ["variable", ["template-tag", "state"]],
 } as unknown as UiParameter;
 
+// Unjustified type cast. FIXME
 const CITY_PARAM = {
   id: "p2",
   slug: "city",
@@ -41,12 +40,17 @@ const CITY_PARAM = {
 
 const DEFAULT_DEFINITIONS: UiParameter[] = [STATE_PARAM, CITY_PARAM];
 
-const makeQuestion = (id: number): Question =>
-  ({
+const makeQuestion = (id: number): Question => {
+  const question = {
     id: () => id,
+    // Unjustified type cast. FIXME
     card: () => ({}) as unknown,
-    parameters: () => undefined,
-  }) as unknown as Question;
+    parameters: () => stubDefinitions,
+    setParameterValues: () => question,
+  };
+  // Unjustified type cast. FIXME
+  return question as unknown as Question;
+};
 
 type SetupOptions = {
   sqlParameters?: SqlParameterValues | null;
@@ -66,7 +70,7 @@ const setup = (options: SetupOptions = {}) => {
   } = options;
 
   useSelectorMock.mockReturnValue({});
-  getCardUiParametersMock.mockReturnValue(parameterDefinitions);
+  stubDefinitions = parameterDefinitions;
 
   const updateParameterValues = jest.fn();
 
@@ -175,7 +179,7 @@ describe("useSdkControlledSqlParameters", () => {
 
       expect(updateParameterValues).not.toHaveBeenCalled();
 
-      getCardUiParametersMock.mockReturnValue(DEFAULT_DEFINITIONS);
+      stubDefinitions = DEFAULT_DEFINITIONS;
       rerender({
         sqlParameters: stableSqlParameters,
         onSqlParametersChange: undefined,
@@ -364,7 +368,7 @@ describe("useSdkControlledSqlParameters", () => {
         "initial-state",
       );
 
-      getCardUiParametersMock.mockReturnValue([STATE_PARAM]);
+      stubDefinitions = [STATE_PARAM];
       rerender({
         sqlParameters: inputParameters,
         onSqlParametersChange,
@@ -394,7 +398,7 @@ describe("useSdkControlledSqlParameters", () => {
       });
       expect(onSqlParametersChange).toHaveBeenCalledTimes(1);
 
-      getCardUiParametersMock.mockReturnValue([STATE_PARAM]);
+      stubDefinitions = [STATE_PARAM];
       rerender({
         sqlParameters: { state: "NY" },
         onSqlParametersChange,

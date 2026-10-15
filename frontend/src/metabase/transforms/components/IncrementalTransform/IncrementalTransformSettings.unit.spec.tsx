@@ -108,4 +108,36 @@ describe("IncrementalTransformSettings", () => {
 
     expect(getSwitch()).toBeEnabled();
   });
+
+  it("shows the merge key field when incremental is enabled", () => {
+    setup({ incremental: true });
+    expect(screen.getByText("Merge key")).toBeInTheDocument();
+  });
+
+  it("does not show the merge key field when incremental is disabled", () => {
+    setup({ incremental: false });
+    expect(screen.queryByText("Merge key")).not.toBeInTheDocument();
+  });
+
+  it("links to the incremental section of the query transforms docs", () => {
+    setup();
+
+    expect(screen.getByRole("link", { name: "Learn more." })).toHaveAttribute(
+      "href",
+      expect.stringContaining(
+        "data-modeling/transforms/query.html#incremental-query-transforms",
+      ),
+    );
+  });
+
+  it("links to the incremental section of the Python transforms docs", () => {
+    setup({ hookOverrides: { transformType: "python" } });
+
+    expect(screen.getByRole("link", { name: "Learn more." })).toHaveAttribute(
+      "href",
+      expect.stringContaining(
+        "data-modeling/transforms/python.html#incremental-python-transforms",
+      ),
+    );
+  });
 });

@@ -12,10 +12,12 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -32,6 +34,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
@@ -41,27 +44,57 @@
     :table (lib.metadata/table metadata-providerable spec-id)
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
+(defn- deduplicated-name [column]
+  ((some-fn :lib/deduplicated-name :name) column))
+
+(defn- original-name [column]
+  ((some-fn :lib/original-name :name) column))
+
+(mu/defn- matches-join-and-fk? :- :boolean
+  [{:keys [join-alias source-field-id source-field-join-alias]} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                                        :- ::lib.schema.metadata/column]
+  (and (= join-alias (lib.join.util/current-join-alias column))
+       (= source-field-id (:fk-field-id column))
+       (= source-field-join-alias (:fk-join-alias column))))
+
 (mu/defn- matches-column? :- :boolean
-  [query                                   :- ::lib.schema/query
-   _stage-number                           :- :int
-   {:keys [name source-name display-name]} :- ::lib.schema.test-spec/test-column-spec
-   column                     :- ::lib.schema.metadata/column]
-  (cond-> (= name (:name column))
-    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
-    (some? display-name) (and (= display-name (:display-name column)))))
+  [{:keys [name field-id] :as column-spec} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                  :- ::lib.schema.metadata/column]
+  (and (if field-id
+         (= field-id (:id column))
+         (= name (deduplicated-name column)))
+       (matches-join-and-fk? column-spec column)))
+
+(mu/defn- check-unambiguous-name :- :nil
+  "Throws when `column` shares its original name with another of `available-columns` that only a deduplication
+  suffix tells apart from it."
+  [available-columns :- [:sequential ::lib.schema.metadata/column]
+   column-spec       :- ::lib.schema.test-spec/test-order-by-spec
+   column            :- ::lib.schema.metadata/column]
+  (when-let [others (seq (filter #(and (= (original-name column) (original-name %))
+                                       (not= (deduplicated-name column) (deduplicated-name %))
+                                       (matches-join-and-fk? column-spec %))
+                                 available-columns))]
+    (throw (ex-info (str "Ambiguous column: " (count others) " other column(s) are also named "
+                         (pr-str (original-name column)))
+                    {:column-spec column-spec, :columns (cons column others)}))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
-  [query             :- ::lib.schema/query
-   stage-number      :- :int
+  "Finds the one column a spec names, by field ID or else by deduplicated name. A name is refused when its column
+  shares its original name with another column that only a deduplication suffix tells apart, like a previous stage's
+  `ID` and `ID_2`; a field broken out twice is named apart instead."
+  [_query            :- ::lib.schema/query
+   _stage-number     :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
-   column-spec       :- ::lib.schema.test-spec/test-column-spec]
-  (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
+   column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
+  (let [columns (filterv (partial matches-column? column-spec) available-columns)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
-      1 (first columns)
-      (if (:index column-spec)
-        (get columns (:index column-spec))
-        (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec}))))))
+      1 (let [column (first columns)]
+          (when-not (:field-id column-spec)
+            (check-unambiguous-name available-columns column-spec column))
+          column)
+      (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 
 (mu/defn- append-fields :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -98,57 +131,54 @@
        (lib.temporal-bucket/with-temporal-bucket column)))
 
 (mu/defn- matches-binning? :- :boolean
-  [strategy       :- ::lib.schema.binning/strategy
-   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width ::lib.schema.test-spec/test-auto-bin-spec]
-   {:keys [mbql]} :- ::lib.schema.binning/binning-option]
-  (or
-   (and
-    (= :default (:strategy mbql))
-    (= value :auto))
-   (and
-    (= strategy (:strategy mbql))
-    (== value (strategy mbql)))))
+  [{:keys [strategy] :as binning} :- ::lib.schema.test-spec/test-binning-spec
+   {:keys [mbql]}                 :- ::lib.schema.binning/binning-option]
+  (and (= strategy (:strategy mbql))
+       (or (= strategy :default)
+           (== (strategy binning) (strategy mbql)))))
 
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
-        matches (filterv (partial matches-binning? strategy value) binning-strategies)]
+        matches (filterv (partial matches-binning? binning) binning-strategies)]
     (case (count matches)
-      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies strategy value}))
+      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :binning binning}))
       1 (first matches)
-      (throw (ex-info "Multiple binning strategies found" {:matches matches strategy value})))))
+      (throw (ex-info "Multiple binning strategies found" {:matches matches :binning binning})))))
 
 (mu/defn- add-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (->> (find-binning-strategy query stage-number strategy value column)
+  (->> (find-binning-strategy query stage-number binning column)
        (lib.binning/with-binning column)))
 
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-  [query                         :- ::lib.schema/query
-   stage-number                  :- :int
-   {:keys [unit bins bin-width]} :- ::lib.schema.test-spec/test-column-with-binning-spec
-   column                       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [unit binning]} :- [:or ::lib.schema.test-spec/test-order-by-spec ::lib.schema.test-spec/test-join-source-spec]
+   column                 :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (cond->> column
-    unit      (add-temporal-bucket query stage-number unit)
-    bins      (add-binning query stage-number :num-bins bins)
-    bin-width (add-binning query stage-number :bin-width bin-width)))
+    unit    (add-temporal-bucket query stage-number unit)
+    binning (add-binning query stage-number binning)))
 
 (mu/defn- append-breakout :- ::lib.schema/query
   [query               :- ::lib.schema/query
    stage-number        :- :int
    columns             :- [:sequential ::lib.schema.metadata/column]
    breakout-spec       :- ::lib.schema.test-spec/test-breakout-spec]
-  (->> (find-column query stage-number columns breakout-spec)
-       (apply-binning query stage-number breakout-spec)
-       (lib.breakout/breakout query stage-number)))
+  (let [named?      (= :breakout (keyword (:type breakout-spec)))
+        column-spec (if named? (:column breakout-spec) breakout-spec)
+        column      (->> (find-column query stage-number columns column-spec)
+                         (apply-binning query stage-number column-spec))]
+    (lib.breakout/breakout query stage-number
+                           (cond-> column
+                             named? (-> lib.ref/ref
+                                        (lib.options/update-options assoc :name (:name breakout-spec)))))))
 
 (mu/defn- append-breakouts :- ::lib.schema/query
   [query          :- ::lib.schema/query
@@ -162,7 +192,7 @@
 (mu/defn- expression-spec->expression-parts
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   expression-spec   :- ::lib.schema.test-spec/test-expression-spec
+   expression-spec   :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-join-source-spec]
    available-columns :- [:sequential ::lib.schema.metadata/column]]
   (case (:type expression-spec)
     :literal  (:value expression-spec)
@@ -174,7 +204,10 @@
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean
-  [expression-spec :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-named-expression-spec]]
+  [expression-spec :- [:or
+                       ::lib.schema.test-spec/test-expression-spec
+                       ::lib.schema.test-spec/test-join-source-spec
+                       ::lib.schema.test-spec/test-named-expression-spec]]
   (and
    (contains? expression-spec :name)
    (contains? expression-spec :value)
@@ -183,7 +216,10 @@
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
   [query                                    :- ::lib.schema/query
    stage-number                             :- :int
-   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-named-expression-spec]
+   {:keys [name value] :as expression-spec} :- [:or
+                                                ::lib.schema.test-spec/test-expression-spec
+                                                ::lib.schema.test-spec/test-join-source-spec
+                                                ::lib.schema.test-spec/test-named-expression-spec]
    available-columns                        :- [:sequential ::lib.schema.metadata/column]]
   (if (named-expression-spec? expression-spec)
     (-> (expression-spec->expression-clause query stage-number value available-columns)
@@ -239,13 +275,14 @@
 (mu/defn- append-join :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   {:keys [source strategy conditions]} :- ::lib.schema.test-spec/test-join-spec]
+   {:keys [source strategy conditions], join-alias :alias} :- ::lib.schema.test-spec/test-join-spec]
   (let [join-target (find-source query source)
         join-strategy (find-join-strategy query stage-number strategy)
         join-conditions (if conditions
                           (mapv (partial join-condition-spec->join-condition query stage-number join-target) conditions)
                           (lib.join/suggested-join-conditions query stage-number join-target))
-        join-clause (lib.join/join-clause join-target join-conditions join-strategy)]
+        join-clause (cond-> (lib.join/join-clause join-target join-conditions join-strategy)
+                      join-alias (lib.join/with-join-alias join-alias))]
     (lib.join/join query stage-number join-clause)))
 
 (mu/defn- append-joins :- ::lib.schema/query
@@ -259,26 +296,52 @@
 (mu/defn- append-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   filter-spec  :- ::lib.schema.test-spec/test-expression-spec]
-  (->> (lib.filter/filterable-columns query stage-number)
-       (expression-spec->expression-clause query stage-number filter-spec)
-       (lib.filter/filter query stage-number)))
+   filter-spec  :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-segment-spec]]
+  (if (= (keyword (:type filter-spec)) :segment)
+    (if-let [segment (lib.metadata/segment query (:id filter-spec))]
+      (lib.filter/filter query stage-number segment)
+      (throw (ex-info "No segment found" {:segment-spec filter-spec})))
+    (->> (lib.filter/filterable-columns query stage-number)
+         (expression-spec->expression-clause query stage-number filter-spec)
+         (lib.filter/filter query stage-number))))
 
 (mu/defn- append-filters :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   filter-specs :- [:sequential ::lib.schema.test-spec/test-expression-spec]]
+   filter-specs :- [:sequential [:or ::lib.schema.test-spec/test-expression-spec
+                                 ::lib.schema.test-spec/test-segment-spec]]]
   (reduce #(append-filter %1 stage-number %2)
           query
           filter-specs))
+
+(mu/defn- saved-aggregation-spec? :- :boolean
+  [aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
+  (boolean (#{:measure :metric} (keyword (:type aggregation-spec)))))
+
+(mu/defn- saved-aggregation :- [:maybe [:or ::lib.schema.metadata/measure ::lib.schema.metadata/metric]]
+  [query            :- ::lib.schema/query
+   aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
+  (case (keyword (:type aggregation-spec))
+    :measure (lib.metadata/measure query (:id aggregation-spec))
+    :metric  (lib.metadata/metric query (:id aggregation-spec))))
 
 (mu/defn- append-aggregation :- ::lib.schema/query
   [query            :- ::lib.schema/query
    stage-number     :- :int
    aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
-  (->> (lib.aggregation/aggregable-columns query stage-number)
-       (expression-spec->expression-clause query stage-number aggregation-spec)
-       (lib.aggregation/aggregate query stage-number)))
+  (let [saved-spec (cond
+                     (saved-aggregation-spec? aggregation-spec)                aggregation-spec
+                     (some-> (:value aggregation-spec) saved-aggregation-spec?) (:value aggregation-spec))
+        clause     (if saved-spec
+                     (if-let [aggregation (saved-aggregation query saved-spec)]
+                       (lib.ref/ref aggregation)
+                       (throw (ex-info "No saved aggregation found" {:aggregation-spec saved-spec})))
+                     (->> (lib.aggregation/aggregable-columns query stage-number nil)
+                          (expression-spec->expression-clause query stage-number aggregation-spec)))]
+    (lib.aggregation/aggregate query stage-number
+                               (cond-> clause
+                                 ;; Only the name a later stage refers to; the display name stays derived.
+                                 (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec))))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query
@@ -322,22 +385,27 @@
     fields             (append-fields stage-number fields)
     limit              (lib.limit/limit stage-number limit)))
 
+(mr/def ::raw-spec
+  "A test query spec as callers write it, possibly with string or camelCase keys and without defaults, before parsing."
+  [:map {:closed false, ::mr/deliberately-open true, :description "an unparsed test query spec"}])
+
 (def parse-query-spec
   "Parser for query-spec."
   (mc/decoder [:ref ::lib.schema.test-spec/test-query-spec]
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               {:name :normalize}
                mtx/strip-extra-keys-transformer
                mtx/default-value-transformer)))
 
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   query-spec            :- :any]
+   query-spec            :- ::raw-spec]
   (let [{:keys [stages]} (parse-query-spec query-spec)
-        source (->> stages first :source (find-source metadata-providerable))
-        query  (lib.query/query metadata-providerable source)]
+        source           (->> stages first :source (find-source metadata-providerable))
+        query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
 (mu/defn- field-id->field-ref :- :mbql.clause/field
@@ -352,34 +420,48 @@
    spec  :- ::lib.schema.test-spec/test-template-tag-spec]
   (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
 
-(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tags
   [query                  :- ::lib.schema/query
-   inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
+   inferred-template-tags :- ::lib.schema.template-tag/template-tags
    template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (merge-with merge
-              inferred-template-tags
-              (update-vals template-tags-spec #(adjust-template-tag query %))))
+  (let [spec-tags              (for [spec template-tags-spec]
+                                 (adjust-template-tag query spec))
+        inferred-tag-name->tag (into {} (map (juxt :name identity)) inferred-template-tags)
+        spec-tag-name->tag     (into {} (map (juxt :name identity)) spec-tags)
+        tag-names              (into []
+                                     (comp cat
+                                           (map :name)
+                                           (distinct))
+                                     [inferred-template-tags
+                                      spec-tags])]
+    (into []
+          (map (fn [tag-name]
+                 (merge (inferred-tag-name->tag tag-name)
+                        (spec-tag-name->tag tag-name))))
+          tag-names)))
 
 (mu/defn- add-template-tags :- ::lib.schema/query
   [query              :- ::lib.schema/query
    template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (let [inferred-template-tags (or (lib.native/template-tags query) {})]
+  (let [inferred-template-tags (or (lib.native/template-tags query) [])]
     (->> template-tags-spec
          (adjust-template-tags query inferred-template-tags)
          (lib.native/with-template-tags query))))
 
-(def parse-native-query-spec
+(def ^:private parse-native-query-spec
   "Parser for native-query-spec."
   (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               {:name :normalize}
+               mtx/strip-extra-keys-transformer
                mtx/default-value-transformer)))
 
 (mu/defn test-native-query :- ::lib.schema/query
   "Creates a native query from a test native query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   native-query-spec     :- :any]
+   native-query-spec     :- ::raw-spec]
   (let [{:keys [query template-tags]} (parse-native-query-spec native-query-spec)]
     (-> (lib.native/native-query metadata-providerable query)
         (add-template-tags template-tags))))

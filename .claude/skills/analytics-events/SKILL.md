@@ -10,23 +10,23 @@ This skill helps you add product analytics (Snowplow) events to track user inter
 
 ## Quick Reference
 
-Analytics events in Metabase use Snowplow with typed event schemas. All events must be defined in TypeScript types before use.
+Analytics events in Metabase use Snowplow with typed event schemas. Simple events are declared **where they are used** — `trackSimpleEvent` is generic and validates the payload at the call site.
 
 **Key Files:**
-- `frontend/src/metabase-types/analytics/event.ts` - Event type definitions
-- `frontend/src/metabase-types/analytics/schema.ts` - Schema registry
-- `frontend/src/metabase/analytics/` - Core tracking functions (import from `metabase/analytics`)
-- Feature-specific `analytics.ts` files - Tracking function wrappers
+- `frontend/src/metabase/analytics/event.ts` - Core tracking functions, `trackSimpleEvent` / `trackSchemaEvent` (import from `metabase/analytics`)
+- `frontend/src/metabase-types/analytics/event.ts` - The shared `SimpleEventSchema` only. **Do not add event types here** (see below)
+- `frontend/src/metabase-types/analytics/schema.ts` - Schema registry (custom/legacy schemas only)
+- Feature-specific `analytics.ts` files - Where your tracking functions and any local types live
 
 ## Quick Checklist
 
 When adding a new analytics event:
 
-- [ ] Define event type in `frontend/src/metabase-types/analytics/event.ts`
-- [ ] Add event to appropriate union type (e.g., `DataStudioEvent`, `SimpleEvent`)
-- [ ] Create tracking function in feature's `analytics.ts` file
-- [ ] Import and call tracking function at the interaction point
-- [ ] Use `trackSimpleEvent()` for basic events (most common)
+- [ ] Pick an event name (snake_case, past tense)
+- [ ] Add a tracking function to the feature's `analytics.ts` file, calling `trackSimpleEvent()`
+- [ ] Keep any field unions (e.g. `"success" | "failure"`) as local types in that same file
+- [ ] Import and call the tracking function at the interaction point
+- [ ] Do **not** add an event type to `metabase-types/analytics/event.ts` or to any union
 
 ## Event Schema Types
 
@@ -47,6 +47,25 @@ type SimpleEventSchema = {
 
 **When to use:** 90% of events fit this schema. Use for clicks, opens, closes, creates, deletes, etc.
 
+`trackSimpleEvent` is generic and enforces this schema on the object literal you pass it:
+
+```typescript
+// frontend/src/metabase/analytics/event.ts
+export function trackSimpleEvent<
+  T extends SimpleEventSchema &
+    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
+>(event: T) {
+  trackSchemaEvent("simple_event", event);
+}
+```
+
+That means a missing `event` or any field outside `SimpleEventSchema` is a compile error at the call
+site. There is no separate event type to declare and no `satisfies` clause to add — the old
+`ValidateEvent<...>` helper is no longer exported and is not part of the workflow.
+
+`trackSchemaEvent` is generic too: it correlates the schema name with the payload type, so you can't
+send a dashboard event under the `simple_event` schema.
+
 ### 2. Custom Schemas (legacy, no events are being added)
 
 Consider adding new event schema only in very special cases.
@@ -57,36 +76,7 @@ Consider adding new event schema only in very special cases.
 
 ### Example: Track when a user applies filters in a table picker
 
-#### Step 1: Define Event Types
-
-Add event type definitions to `frontend/src/metabase-types/analytics/event.ts`:
-
-```typescript
-export type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
-  event: "data_studio_table_picker_filters_applied";
-}>;
-
-export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
-  event: "data_studio_table_picker_filters_cleared";
-}>;
-```
-
-#### Step 2: Add to Union Type
-
-Find or create the appropriate union type and add your events:
-
-```typescript
-export type DataStudioEvent =
-  | DataStudioLibraryCreatedEvent
-  | DataStudioTablePublishedEvent
-  | DataStudioGlossaryCreatedEvent
-  | DataStudioGlossaryEditedEvent
-  | DataStudioGlossaryDeletedEvent
-  | DataStudioTablePickerFiltersAppliedEvent  // <- Add here
-  | DataStudioTablePickerFiltersClearedEvent; // <- Add here
-```
-
-#### Step 3: Create Tracking Functions
+#### Step 1: Create Tracking Functions
 
 In your feature's `analytics.ts` file (e.g., `enterprise/frontend/src/metabase-enterprise/data-studio/analytics.ts`):
 
@@ -106,7 +96,7 @@ export const trackDataStudioTablePickerFiltersCleared = () => {
 };
 ```
 
-#### Step 4: Use in Components
+#### Step 2: Use in Components
 
 Import and call the tracking function at the interaction point:
 
@@ -138,16 +128,11 @@ function FilterPopover({ filters, onSubmit }) {
 
 ## Using SimpleEventSchema Fields
 
+All examples below live in the feature's own `analytics.ts` — nothing is registered centrally.
+
 ### Example: Event with target_id
 
 ```typescript
-// Type definition
-export type DataStudioLibraryCreatedEvent = ValidateEvent<{
-  event: "data_studio_library_created";
-  target_id: number | null;
-}>;
-
-// Tracking function
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   trackSimpleEvent({
     event: "data_studio_library_created",
@@ -162,14 +147,10 @@ trackDataStudioLibraryCreated(newLibrary.id);
 ### Example: Event with triggered_from
 
 ```typescript
-// Type definition
-export type NewButtonClickedEvent = ValidateEvent<{
-  event: "new_button_clicked";
-  triggered_from: "app-bar" | "empty-collection";
-}>;
+// Local union, exported only if another feature needs to pass the same value
+export type NewButtonLocation = "app-bar" | "empty-collection";
 
-// Tracking function
-export const trackNewButtonClicked = (location: "app-bar" | "empty-collection") => {
+export const trackNewButtonClicked = (location: NewButtonLocation) => {
   trackSimpleEvent({
     event: "new_button_clicked",
     triggered_from: location,
@@ -187,44 +168,31 @@ export const trackNewButtonClicked = (location: "app-bar" | "empty-collection") 
 
 ### Example: Event with event_detail
 
-```typescript
-// Type definition
-export type MetadataEditEvent = ValidateEvent<{
-  event: "metadata_edited";
-  event_detail: "type_casting" | "semantic_type_change" | "visibility_change";
-  triggered_from: "admin" | "data_studio";
-}>;
+Real example — `frontend/src/metabase/metadata/pages/shared/analytics.ts`:
 
-// Tracking function
-export const trackMetadataChange = (
-  detail: "type_casting" | "semantic_type_change" | "visibility_change",
-  location: "admin" | "data_studio"
-) => {
+```typescript
+export type MetadataEditEventDetail =
+  | "type_casting"
+  | "semantic_type_change"
+  | "visibility_change";
+
+export const trackMetadataChange = (detail: MetadataEditEventDetail) => {
   trackSimpleEvent({
     event: "metadata_edited",
     event_detail: detail,
-    triggered_from: location,
+    triggered_from: "admin",
   });
 };
 
 // Usage
-trackMetadataChange("semantic_type_change", "data_studio");
+trackMetadataChange("semantic_type_change");
 ```
 
 ### Example: Event with result and duration
 
-```typescript
-// Type definition
-export type MoveToTrashEvent = ValidateEvent<{
-  event: "moved-to-trash";
-  target_id: number | null;
-  triggered_from: "collection" | "detail_page" | "cleanup_modal";
-  duration_ms: number | null;
-  result: "success" | "failure";
-  event_detail: "question" | "model" | "metric" | "dashboard";
-}>;
+See `frontend/src/metabase/archive/analytics.ts` for the real version of this.
 
-// Tracking function
+```typescript
 export const trackMoveToTrash = (params: {
   targetId: number | null;
   triggeredFrom: "collection" | "detail_page" | "cleanup_modal";
@@ -280,17 +248,16 @@ try {
 "filters-applied"            // Use underscore, not hyphen
 ```
 
-### Event Type Names (PascalCase with "Event" suffix)
+### Local Field Types (PascalCase, named after the field)
+
+There is usually no `...Event` type to name anymore. When you do need a union for a field, name it
+after the field it feeds:
 
 ```typescript
 // Good
-DataStudioLibraryCreatedEvent
-TablePickerFiltersAppliedEvent
-MetabotChatOpenedEvent
-
-// Bad
-dataStudioLibraryCreated      // Wrong case
-DataStudioLibraryCreated      // Missing "Event" suffix
+type MetricDimensionResult = "success" | "failure";     // -> result
+export type MetadataEditEventDetail = "type_casting";   // -> event_detail
+type NewButtonLocation = "app-bar" | "empty-collection"; // -> triggered_from
 ```
 
 ### Tracking Function Names (camelCase with "track" prefix)
@@ -309,28 +276,27 @@ logLibraryCreated             // Use "track" prefix
 
 ## Common Patterns
 
-### Pattern 1: Feature-Specific Union Types
+### Pattern 1: Sharing Field Types Across Features
 
-Group related events together:
+When two features send the same event with a different `triggered_from`, export the field union from
+the owning feature's `analytics.ts` and import it — don't hoist anything into `metabase-types`:
 
 ```typescript
-export type DataStudioEvent =
-  | DataStudioLibraryCreatedEvent
-  | DataStudioTablePublishedEvent
-  | DataStudioGlossaryCreatedEvent;
+// frontend/src/metabase/data-studio/data-model/analytics.ts
+import { trackSimpleEvent } from "metabase/analytics";
+import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 
-export type MetabotEvent =
-  | MetabotChatOpenedEvent
-  | MetabotRequestSentEvent
-  | MetabotFixQueryClickedEvent;
-
-// Then add to SimpleEvent union
-export type SimpleEvent =
-  | /* other events */
-  | DataStudioEvent
-  | MetabotEvent
-  | /* more events */;
+export function trackMetadataChange(detail: MetadataEditEventDetail) {
+  trackSimpleEvent({
+    event: "metadata_edited",
+    event_detail: detail,
+    triggered_from: "data_studio",
+  });
+}
 ```
+
+This is the point of the extensible-events design: enterprise and feature-tier types stay in their
+own module instead of being imported down into a shared union.
 
 ### Pattern 2: Conditional Tracking
 
@@ -350,10 +316,10 @@ const handleSave = async () => {
 
 ## Common Pitfalls
 
-### Don't: Add custom fields to SimpleEvent
+### Don't: Add custom fields to a simple event
 
 ```typescript
-// WRONG - SimpleEvent doesn't support custom fields
+// WRONG - SimpleEventSchema doesn't support custom fields (this is a compile error)
 export const trackFiltersApplied = (filters: FilterState) => {
   trackSimpleEvent({
     event: "filters_applied",
@@ -379,22 +345,42 @@ export const trackFilterApplied = (filterType: string) => {
 };
 ```
 
-### Don't: Forget to add event to union type
+### Don't: Add event types to `metabase-types/analytics/event.ts`
+
+The central `SimpleEvent` union was removed — it forced feature-tier types to be imported down into
+shared code, causing module-boundary violations. `trackSimpleEvent` is generic now, so the type adds
+nothing but duplication.
 
 ```typescript
-// Define the event
+// ❌ WRONG - central declaration + re-import for a `satisfies` clause
+// frontend/src/metabase-types/analytics/event.ts
 export type NewFeatureClickedEvent = ValidateEvent<{
   event: "new_feature_clicked";
+  target_id: number;
 }>;
 
-// ❌ WRONG - Forgot to add to SimpleEvent union
-// Event won't be recognized by TypeScript
+// frontend/src/metabase/my-feature/analytics.ts
+import type { NewFeatureClickedEvent } from "metabase-types/analytics";
 
-// ✓ RIGHT - Add to appropriate union
-export type SimpleEvent =
-  | /* other events */
-  | NewFeatureClickedEvent;
+export const trackNewFeatureClicked = (id: number) => {
+  trackSimpleEvent({
+    event: "new_feature_clicked",
+    target_id: id,
+  } satisfies NewFeatureClickedEvent);
+};
+
+// ✓ RIGHT - the object literal is already checked by the generic
+// frontend/src/metabase/my-feature/analytics.ts
+export const trackNewFeatureClicked = (id: number) => {
+  trackSimpleEvent({
+    event: "new_feature_clicked",
+    target_id: id,
+  });
+};
 ```
+
+A few `...Event` types still sit in `metabase-types/analytics/event.ts`. They are leftovers from PRs
+that landed around the refactor — don't copy them, and don't add to them.
 
 ### Don't: Mix up event name formats
 
@@ -463,41 +449,44 @@ Example console output:
 ### Where to put tracking functions:
 
 ```
-Feature-specific analytics functions:
+Tracking functions AND their local field types (this is where new events live):
 frontend/src/metabase/{feature}/analytics.ts
 enterprise/frontend/src/metabase-enterprise/{feature}/analytics.ts
 
-Event type definitions (all in one place):
-frontend/src/metabase-types/analytics/event.ts
-
 Core tracking utilities:
 frontend/src/metabase/analytics/ (import from `metabase/analytics`)
+
+Shared SimpleEventSchema only — nothing new goes here:
+frontend/src/metabase-types/analytics/event.ts
 ```
+
+In embedding SDK code, use `trackSdkSimpleEvent`
+(`frontend/src/embedding-sdk-bundle/analytics/snowplow.ts`) instead — the main-app `"sp"` tracker
+isn't initialized in the customer's page, so `trackSimpleEvent`'s Snowplow leg is a no-op there.
 
 ## Real-World Examples
 
 See these files for reference:
 
-- **Simple events**: `enterprise/frontend/src/metabase-enterprise/data-studio/analytics.ts`
-- **Events with variants**: `frontend/src/metabase/dashboard/analytics.ts`
-- **Complex events**: `frontend/src/metabase/query_builder/analytics.js`
-- **Event type examples**: `frontend/src/metabase-types/analytics/event.ts`
+- **Simple events + local field union**: `frontend/src/metabase/metadata/pages/shared/analytics.ts`
+- **Reusing another feature's field type**: `frontend/src/metabase/data-studio/data-model/analytics.ts`
+- **Result + duration timing**: `frontend/src/metabase/archive/analytics.ts`
+- **Enterprise feature events**: `enterprise/frontend/src/metabase-enterprise/google_drive/analytics.ts`
 
 ## Workflow Summary
 
 1. **Identify the user interaction** to track
 2. **Decide on event name** (snake_case, descriptive)
-3. **Define event type** in `event.ts` using `ValidateEvent`
-4. **Add to union type** (create feature union if needed)
-5. **Create tracking function** in feature's `analytics.ts`
-6. **Import and call** at the interaction point
-7. **Test** that events fire correctly
+3. **Create tracking function** in feature's `analytics.ts`, calling `trackSimpleEvent()`
+4. **Add local field unions** in that same file if a field has a fixed set of values
+5. **Import and call** at the interaction point
+6. **Test** that events fire correctly
 
 ## Tips
 
 - **Be specific** - `filters_applied` is better than `action_performed`
 - **Use past tense** - `library_created` not `create_library`
-- **Group related events** - Create feature-specific event union types
+- **Group related events** - Keep a feature's tracking functions together in its `analytics.ts`
 - **Track meaningful actions** - Not every click needs tracking
 - **Consider the data** - What would you want to analyze later?
 - **Stay consistent** - Follow existing naming patterns in the codebase

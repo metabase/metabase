@@ -1,11 +1,20 @@
 (ns metabase-enterprise.metabot.usage-test
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- insert-usage!
   "Insert a test ai_usage_log row for the given user with the specified total_tokens."
@@ -24,6 +33,11 @@
 (defn- cleanup-test-usage! [user-id]
   (t2/delete! :model/AiUsageLog :user_id user-id :source "test"))
 
+(deftest ^:parallel valid-usage-profile-id-test
+  (is (= "internal" (ee.usage/valid-usage-profile-id "internal")))
+  (is (= :slackbot (ee.usage/valid-usage-profile-id :slackbot)))
+  (is (nil? (ee.usage/valid-usage-profile-id "metabot-1"))))
+
 ;;; ------------------------------------------------ log-ai-usage! ------------------------------------------------
 
 (deftest log-ai-usage!-records-usage-test
@@ -34,7 +48,9 @@
           (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")]
             (usage/log-ai-usage!
              {:source            "metabot_agent"
-              :model             "anthropic/claude-test"
+              :model             "openrouter-1/anthropic/claude-test"
+              :provider          "openrouter"
+              :model-name        "anthropic/claude-test"
               :prompt-tokens     100
               :completion-tokens 50
               :ai-proxied        true})
@@ -43,7 +59,9 @@
                      (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")))
               (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "metabot_agent"
                                        {:order-by [[:id :desc]]})]
-                (is (= "anthropic/claude-test" (:model row)))
+                (is (= "openrouter-1/anthropic/claude-test" (:model row)))
+                (is (= "openrouter" (:provider row)))
+                (is (= "anthropic/claude-test" (:model_name row)))
                 (is (= 100 (:prompt_tokens row)))
                 (is (= 50 (:completion_tokens row)))
                 (is (= 150 (:total_tokens row)))
@@ -206,6 +224,26 @@
               (is (= 0 (:cache_read_tokens row))))
             (finally
               (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
+
+(deftest conversation-title-call-logs-its-own-source-test
+  (ee.usage/clear-limit-cache!)
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (mut/mock-llm-response
+                                                                       [{:type :tool-input :id "call-1" :function "json"
+                                                                         :arguments {:title "Orders by month"}}
+                                                                        {:type :usage :id "msg-1"
+                                                                         :usage {:promptTokens     900
+                                                                                 :completionTokens 30}}]))]
+          (try
+            (is (= "Orders by month"
+                   (#'conversation-title/generate! conversation-id "internal" "Show orders by month")))
+            (is (= ["conversation_title"]
+                   (t2/select-fn-vec :source :model/AiUsageLog :conversation_id conversation-id)))
+            (finally
+              (t2/delete! :model/AiUsageLog :conversation_id conversation-id))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
@@ -442,3 +480,40 @@
                 (is (= "test limit reached" (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
+
+;;; ---------------------------------- Analytics view CASE-branch parity ----------------------------------
+
+(defn- latest-view-version-dir
+  "The highest-versioned directory (v1, v2, ...) of SQL files for an instance-analytics view family."
+  ^java.io.File [view-name]
+  (let [base (io/file (io/resource (str "migrations/instance_analytics_views/" view-name)))]
+    (->> (.listFiles base)
+         (keep (fn [^java.io.File f]
+                 (when-let [[_ n] (and (.isDirectory f) (re-matches #"v(\d+)" (.getName f)))]
+                   [(parse-long n) f])))
+         (sort-by first)
+         last
+         second)))
+
+(deftest known-sources-and-profiles-have-view-case-branches-test
+  (testing "every known source/profile id has a friendly-name CASE branch in the latest analytics view SQL,
+           so new values don't surface as raw machine names in AI usage analytics (see the comment above
+           `known-sources` in metabase-enterprise.metabot.usage)"
+    (let [;; `user-intent-classification` is short-circuited in `log-ai-usage!` and never written to
+          ;; ai_usage_log, so the views don't need a CASE branch for it.
+          sources  (disj @#'ee.usage/known-sources "user-intent-classification")
+          profiles @#'ee.usage/known-profile-ids]
+      (doseq [[view expected] {"ai_usage_log"          sources
+                               ;; v_metabot_conversations maps both the source and the profile id, and never takes
+                               ;; a conversation's source from its title call
+                               "metabot_conversations" (into (disj sources "conversation_title") profiles)}
+              :let [dir       (latest-view-version-dir view)
+                    sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")
+                                      (.listFiles dir))]]
+        (testing (format "view %s (%s)" view (.getName dir))
+          (is (= 3 (count sql-files)) "expected one SQL file per dialect (h2, mysql, postgres)")
+          (doseq [^java.io.File sql-file sql-files
+                  :let [sql (slurp sql-file)]
+                  value expected]
+            (testing (format "%s has a CASE branch in %s" (pr-str value) (.getName sql-file))
+              (is (str/includes? sql (format "WHEN '%s'" value))))))))))

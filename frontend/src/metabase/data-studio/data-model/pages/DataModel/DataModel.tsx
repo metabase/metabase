@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,10 +9,10 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
@@ -25,6 +25,7 @@ import {
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -38,30 +39,27 @@ import {
 import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import { RouterTablePicker, TableSection } from "../../components";
-import type { TreePath } from "../../components/TablePicker/types";
-import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
+import { RouterTablePicker } from "./TablePicker";
+import type { TreePath } from "./TablePicker/types";
+import { TableSection } from "./TableSection";
+import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-interface Props {
-  children?: ReactNode;
-  params: RouteParams;
-}
-
-export const DataModel = ({ children, params }: Props) => {
+export const DataModel = () => {
   return (
     <SelectionProvider>
-      <DataModelContent params={params}>{children}</DataModelContent>
+      <DataModelContent />
     </SelectionProvider>
   );
 };
 
-function DataModelContent({ params }: Props) {
+function DataModelContent() {
+  const params = useParams<RouteParams>();
   const {
     hasSelectedItems,
     hasOnlyOneTableSelected,
@@ -172,7 +170,7 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
@@ -207,7 +205,7 @@ function DataModelContent({ params }: Props) {
               h="100%"
               justify="center"
               miw={rem(400)}
-              p="xl"
+              p="xxl"
             >
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
@@ -245,29 +243,30 @@ function DataModelContent({ params }: Props) {
               justify="space-between"
               w="100%"
               data-testid="table-section-header"
-              py="lg"
-              bg="background-secondary"
+              py="xl"
+              bg="background_page-secondary"
               className={S.header}
-              px="lg"
+              px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                p="sm"
-                size="compact-sm"
+                leftSection={<Icon name="close" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
                 }}
               />
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {table && (
                   <TableSection
@@ -312,25 +311,27 @@ function DataModelContent({ params }: Props) {
               justify="space-between"
               w="100%"
               data-testid="field-section-header"
-              p="lg"
-              bg="background-secondary"
+              p="xl"
+              bg="background_page-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
+                leftSection={<Icon name="close" />}
                 onClick={closePreview}
               />
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
                   <>
@@ -365,7 +366,7 @@ function DataModelContent({ params }: Props) {
           <Box
             flex={COLUMN_CONFIG.preview.flex}
             h="100%"
-            p="lg"
+            p="xl"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
             ref={scrollToPanel}

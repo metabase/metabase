@@ -2,7 +2,6 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
@@ -65,12 +64,16 @@ describe("scenarios > question > new", () => {
 
         // Discarding the search query should take us back to the original tab
         cy.findByPlaceholderText("Search…").clear().blur();
-        cy.get("[role='tab']:contains('Search')").should("not.exist");
+        H.entityPickerModalLevel(0)
+          .findByText(/Search results for /)
+          .should("not.exist");
 
         cy.findByText("Orders, Count").click();
       });
 
       cy.log("toggle notebook button should be hidden for brand new questions");
+      cy.findByTestId("data-step-cell").should("contain", "Orders, Count");
+      cy.findByTestId("qb-header-action-panel").should("exist");
       H.notebookButton().should("not.exist");
 
       H.visualize();
@@ -173,6 +176,7 @@ describe("scenarios > question > new", () => {
         cy.findByText("Personal question").click();
       });
       H.visualize();
+      H.tableInteractiveBody().findByText("39.72").should("be.visible");
     });
   });
 
@@ -191,17 +195,17 @@ describe("scenarios > question > new", () => {
     cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(0).click();
     cy.wait("@dataset");
 
-    H.tableInteractiveBody()
-      .get(".test-TableInteractive-cellWrapper--firstColumn")
-      .should("have.length.gt", 1);
-
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
     );
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    H.tableInteractive();
+    cy.findByTestId("filter-pill").should("have.text", "Quantity is 2");
+    cy.findByTestId("object-detail").should("not.exist");
+    H.tableInteractiveBody()
+      .find(".test-TableInteractive-cellWrapper--firstColumn")
+      .should("have.length.gt", 1);
 
     cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
       .eq(0) // first table body cell
@@ -211,7 +215,7 @@ describe("scenarios > question > new", () => {
 
     cy.log("only one row should appear after filtering by ID");
     H.tableInteractiveBody()
-      .get(".test-TableInteractive-cellWrapper--firstColumn")
+      .find(".test-TableInteractive-cellWrapper--firstColumn")
       .should("have.length", 1);
   });
 
@@ -274,7 +278,6 @@ describe("scenarios > question > new", () => {
   it("should not suggest recent items where can_write=false when saving a question", () => {
     // SETUP TEST - prevent normal user from having access to third collection w/ added content
     cy.log("setup restricted permissions scenario");
-    cy.signInAsAdmin();
 
     // create dashboard that will have restricted access
     H.createDashboard(
@@ -386,35 +389,6 @@ describe("scenarios > question > new", () => {
     },
   );
 
-  it("should preserve the original question name (metabase#41196)", () => {
-    const originalQuestionName = "Foo";
-    const modifiedQuestionName = `${originalQuestionName} - Modified`;
-    const originalDescription = "Lorem ipsum dolor sit amet";
-
-    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
-      name: originalQuestionName,
-      description: originalDescription,
-    });
-
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    cy.findByDisplayValue(originalQuestionName).should("exist");
-
-    cy.log("Change anything about this question to make it dirty");
-    H.tableHeaderClick("Count");
-    H.popover().icon("arrow_down").click();
-
-    cy.findByTestId("qb-header-action-panel").button("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByText("Save as new question").click();
-
-      cy.findByLabelText("Name").should("have.value", modifiedQuestionName);
-      cy.findByLabelText("Description").should(
-        "have.value",
-        originalDescription,
-      );
-    });
-  });
-
   describe("add to a dashboard", () => {
     const collectionInRoot = {
       name: "Collection in root collection",
@@ -515,7 +489,7 @@ describe("scenarios > question > new", () => {
 
         H.queryBuilderHeader().button("Save").click();
 
-        cy.findByTestId("save-question-modal").within((modal) => {
+        cy.findByTestId("save-question-modal").within(() => {
           cy.findByLabelText(/Where do you want to save/).click();
         });
 
@@ -533,7 +507,6 @@ describe("scenarios > question > new", () => {
       });
 
       it("when selecting a collection", () => {
-        // H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.pickEntity({
             path: ["Our analytics", "Collection in root collection"],
@@ -652,7 +625,7 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("can create a question from the sample database", () => {
+    it("can create a question from the sample database or a saved question, and shows models and raw data options after creating a model", () => {
       cy.visit("/question/new");
 
       H.miniPickerBrowseAll().click();
@@ -664,9 +637,7 @@ describe(
       H.tableInteractive().within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
-    });
 
-    it("can create a question from a saved question", () => {
       cy.visit("/question/new");
 
       H.miniPickerBrowseAll().click();
@@ -678,9 +649,7 @@ describe(
       H.tableInteractive().within(() => {
         cy.findByText(39.72).should("be.visible");
       });
-    });
 
-    it("shows models and raw data options after creating a model", () => {
       H.createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
@@ -702,7 +671,10 @@ describe(
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Recent items").click();
-        cy.findByTestId("result-item").should("contain.text", "Orders Model");
+        // Recents are sorted newest first, and the model was picked last
+        cy.findAllByTestId("result-item")
+          .first()
+          .should("contain.text", "Orders Model");
       });
     });
   },

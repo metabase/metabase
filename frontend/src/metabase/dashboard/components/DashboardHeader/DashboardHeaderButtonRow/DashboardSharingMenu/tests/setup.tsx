@@ -3,14 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store/dashboard";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import type { Dashboard, User } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -62,12 +59,12 @@ const setupState = ({
   setupNotificationChannelsEndpoints({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
-  } as any);
+  });
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
     "enable-public-sharing": isPublicSharingEnabled,
-    "enable-embedding-static": isEmbeddingEnabled,
+    "enable-embedding-modular": isEmbeddingEnabled,
     "email-configured?": isEmailSetup,
     "slack-token-valid?": isSlackSetup,
   });
@@ -83,7 +80,7 @@ const setupState = ({
       permissions: {
         can_access_subscription: canManageSubscriptions,
       },
-    } as User,
+    },
     dashboard: createMockDashboardState(dashboardState),
   });
 };

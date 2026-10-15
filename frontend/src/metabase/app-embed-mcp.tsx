@@ -1,12 +1,13 @@
+// Must run before any dynamic import(): sets webpack's runtime publicPath so
+// on-demand chunks (leaflet, echarts) resolve to the Metabase instance.
+import "./app-embed-mcp-public-path";
 import { createRoot } from "react-dom/client";
 
 // Import the embedding SDK vendors side-effects (sets up global CSS vars, etc.)
 import "metabase/embedding-sdk/vendors-side-effects";
-
-import { api } from "metabase/api/client";
-import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-
+import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
+import { setBasename } from "metabase/utils/basename";
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS
 import "sdk-iframe-embedding-ee-plugins";
 
@@ -15,17 +16,9 @@ EMBEDDING_SDK_CONFIG.isMcpApp = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
-// Set session token immediately so all SDK API calls include X-Metabase-Session.
-// @ts-expect-error -- this is ONLY set in the MCP Apps route
-const { instanceUrl = "", sessionToken = "" } = window.metabaseConfig ?? {};
+const { instanceUrl } = window.metabaseConfig ?? {};
 
-if (instanceUrl) {
-  api.basename = instanceUrl;
-}
-
-if (sessionToken) {
-  api.sessionToken = sessionToken;
-}
+setBasename(instanceUrl);
 
 function init() {
   const rootElement = document.getElementById("root");

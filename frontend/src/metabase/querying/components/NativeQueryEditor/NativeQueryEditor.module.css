@@ -1,5 +1,5 @@
 .queryEditor {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   display: flex;
   flex-direction: column;
   flex: var(--native-query-editor-flex, none);

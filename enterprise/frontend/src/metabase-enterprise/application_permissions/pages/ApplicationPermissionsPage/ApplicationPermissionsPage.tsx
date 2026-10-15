@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
 
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
@@ -38,7 +37,6 @@ interface ApplicationPermissionsPageProps {
   initialize: () => void;
   savePermissions: () => void;
   updatePermission: any;
-  route: Route;
 }
 
 const ApplicationPermissionsPage = ({
@@ -47,7 +45,6 @@ const ApplicationPermissionsPage = ({
   initialize,
   savePermissions,
   updatePermission,
-  route,
 }: ApplicationPermissionsPageProps) => {
   useEffect(() => {
     initialize();
@@ -71,7 +68,6 @@ const ApplicationPermissionsPage = ({
     <PermissionsPageLayout
       tab="application"
       isDirty={isDirty}
-      route={route}
       helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
       onLoad={() => initialize()}

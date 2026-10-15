@@ -212,6 +212,52 @@
                            :rows [[7 10] [50 10] [40 9] [2 8] [5 7]]}}
                  (qp/process-query query)))))))))
 
+(deftest convert-to-native-returns-collection-test
+  ;; Regression for #80725. The frontend uses this `:collection` to pre-select the source table when
+  ;; converting a MongoDB question to native.
+  (mt/test-driver :mongo
+    (testing "POST /api/dataset/native returns the source collection name for MongoDB queries"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 3))]
+        (is (=? {:query      some?
+                 :collection "venues"}
+                (mt/user-http-request :crowberto :post 200 "dataset/native" query)))))))
+
+(deftest convert-to-native-omits-default-limit-test
+  (mt/test-driver :mongo
+    (testing "POST /api/dataset/native compiles without the default `$limit` stage"
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+        (is (not (str/includes? (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))
+                                "$limit")))
+        (testing "an explicit limit is kept"
+          (is (str/includes? (:query (mt/user-http-request :crowberto :post 200 "dataset/native" (lib/limit query 3)))
+                             "$limit")))))))
+
+(deftest convert-to-native-nested-on-converted-card-test
+  (mt/test-driver :mongo
+    (testing "A question based on a converted-to-native Mongo card can be run and converted to native again"
+      (let [mp     (mt/metadata-provider)
+            native (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                         (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (-> (lib/native-query mp (:query native))
+                                                                     (lib/with-native-extras {:collection (:collection native)}))}]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/card mp card-id))]
+            (is (=? {:status    "completed"
+                     :row_count 100}
+                    (mt/user-http-request :crowberto :post 202 "dataset" query)))
+            (let [nested (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+              (is (=? {:collection "venues"} nested))
+              (is (not (str/includes? (:query nested) "$limit")))
+              (is (not (str/includes? (:query nested) "Bson")))
+              (is (=? {:status    "completed"
+                       :row_count 100}
+                      (mt/user-http-request :crowberto :post 202 "dataset"
+                                            (-> (lib/native-query mp (:query nested))
+                                                (lib/with-native-extras {:collection (:collection nested)}))))))))))))
+
 ;; ## Tests for individual syncing functions
 
 (deftest ^:parallel describe-database-test
@@ -305,6 +351,16 @@
                                              :nfc-path ["nested_mixed_not_uuid" "nested_data_2"]}}
                            :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
+
+(deftest describe-table-respects-sync-max-fields-per-table-test
+  (mt/test-driver :mongo
+    (testing "describe-table caps the total number of fields at sync-max-fields-per-table"
+      ;; `venues` has 6 fields; with a tiny limit only that many are returned (capped during the tree build so a huge
+      ;; or deeply-nested collection can't OOM sync).
+      (mt/with-temporary-setting-values [sync-max-fields-per-table 2]
+        (is (= 2 (count (:fields (driver/describe-table
+                                  :mongo (mt/db)
+                                  (t2/select-one :model/Table :id (mt/id :venues)))))))))))
 
 ;; Index sync is turned off across the application as it is not used ATM.
 #_(deftest sync-indexes-info-test
@@ -738,7 +794,7 @@
               (qp/process-query
                {:database (mt/id)
                 :type     :native
-                :native   {:projections [:count]
+                :native   {:projections ["count"]
                            :query       [{"$project" {"price" "$price"}}
                                          {"$match" {"price" {"$eq" 1}}}
                                          {"$group" {"_id" nil, "count" {"$sum" 1}}}
@@ -1028,7 +1084,7 @@
     (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
                                           (mongo.execute/aggregate-database db session stages timeout-ms))
               mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
-      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one-fn :name :model/Table :id (mt/id :venues))))
             ftree (delay (@#'mongo/dbfields->ftree @dbfields))
             nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
         (thunk dbfields ftree nested-fields)))))
@@ -1331,3 +1387,52 @@
                (->> (qp.compile/compile-with-inline-parameters query)
                     :query
                     (driver/prettify-native-form :mongo))))))))
+
+(deftest ^:parallel connection-hosts-test
+  (testing "hosts are read out of the connection string Mongo will actually use, `conn-uri` included"
+    (are [details expected] (= expected (driver/connection-hosts :mongo details))
+      {:host "db.example.com" :port 27017}
+      ["db.example.com"]
+
+      ;; a replica-set list in the plain host field
+      {:host "a.example.com,b.example.com"}
+      ["a.example.com" "b.example.com"]
+
+      ;; `conn-uri` can smuggle in a host the `:host` field never mentions
+      {:host "db.example.com" :use-conn-uri true
+       :conn-uri "mongodb://user:pw@10.0.0.5:27017,internal.corp:27018/db"}
+      ["10.0.0.5" "internal.corp"]
+
+      {:use-conn-uri true :conn-uri "mongodb+srv://user:pw@cluster.example.com/db"}
+      ["cluster.example.com"]))
+  (testing "a details map naming no host of its own contributes no hosts, as it does for every other driver"
+    ;; `write_data_details` and `admin_details` are overlays merged on top of `:details`, so they reach us as partial
+    ;; maps; one that only carries credentials repoints nothing, and the map it overlays is validated on its own
+    (are [details] (= [] (driver/connection-hosts :mongo details))
+      {}
+      {:user "admin" :pass "x"}
+      {:host "" :user "admin"}))
+  (testing "a connection string we cannot parse throws rather than reporting a host the driver may never use"
+    (are [details] (thrown? Throwable (driver/connection-hosts :mongo details))
+      {:use-conn-uri true :conn-uri "not a connection string"}
+      ;; the dangerous shape: a benign `:host` left over from before `use-conn-uri` was turned on
+      {:host "db.example.com" :use-conn-uri true :conn-uri "not a connection string"}
+      {:use-conn-uri true :conn-uri nil})))
+
+(deftest connection-hosts-are-validated-test
+  (testing "a `conn-uri` pointing at a private address is refused"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"private or internal network address"
+                            (driver.u/validate-connection-hosts!
+                             :mongo
+                             {:host "db.example.com" :use-conn-uri true
+                              :conn-uri "mongodb://10.224.7.141:27017/db"})))))
+  (testing "a `conn-uri` we cannot parse is refused, not validated as the `:host` field instead"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"could not apply security policy"
+                            (driver.u/validate-connection-hosts!
+                             :mongo
+                             {:host "db.example.com" :use-conn-uri true
+                              :conn-uri "not a connection string"}))))))

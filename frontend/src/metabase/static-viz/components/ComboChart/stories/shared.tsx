@@ -5,8 +5,10 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  DEFAULT_VISUALIZATION_THEME,
+  type RenderingContext,
+} from "metabase/viz-core";
 
 import type { StaticChartProps } from "../../StaticVisualization";
 import { StaticVisualization } from "../../StaticVisualization";
@@ -25,5 +27,6 @@ export const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };

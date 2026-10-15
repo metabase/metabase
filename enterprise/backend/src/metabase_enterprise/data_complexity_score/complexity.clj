@@ -6,13 +6,14 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
+   [metabase.collections.curation :as curation]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -123,12 +124,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (map (juxt :table_id :field_count)
-                       (t2/query {:select   [:table_id [:%count.* :field_count]]
-                                  :from     [:metabase_field]
-                                  :where    [:and
-                                             [:= :active true]
-                                             [:in :table_id chunk]]
-                                  :group-by [:table_id]}))))
+                       (data-complexity-score.db/active-field-counts-by-table chunk))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
@@ -138,9 +134,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (u/group-by :table_id :name
-                              (t2/select [:model/Measure :table_id :name]
-                                         :archived false
-                                         :table_id [:in chunk]))))
+                              (data-complexity-score.db/unarchived-measure-names chunk))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
@@ -179,25 +173,27 @@
   [collection-id]
   (when collection-id
     (into #{collection-id}
-          (when-let [root (t2/select-one :model/Collection :id collection-id)]
+          (when-let [root (data-complexity-score.db/collection collection-id)]
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
-  "Set of Card ids whose most-recent moderation review is `verified`. Called only when
-   `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
-   universe Card select by pushing the check into a small auxiliary lookup."
+  "Set of Card ids whose most-recent moderation review is `verified`."
   []
-  (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
+  ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
+  ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
+  (data-complexity-score.db/verified-card-ids))
+
+(defn- official-collection-id-set
+  "Set of collection ids with `official` authority level."
+  []
+  (data-complexity-score.db/official-collection-ids))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
+  (data-complexity-score.db/routed-child-database-ids))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -213,38 +209,32 @@
     []))
 
 (defn- enumerate-catalogs
-  "One-pass enumeration of all three scoring catalogs. Returns
-   `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
-   across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
-   not three.
+  "One-pass enumeration of all three scoring catalogs.
+   Returns `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
+   across catalogs — a Card or Table that appears in more than one catalog is one map in memory, not three.
 
-   An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
-   per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
-   each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
-   once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
-   DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
-
-   `metabot-scope` is `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
-   internal Metabot narrows its Cards further — it only adds filters, never widens. The caller
-   owns the scope decision (premium-feature gate + Metabot row lookup); this namespace does not
-   read settings, premium-feature gates, or Metabot rows directly."
-  [{:keys [verified-only? collection-id]}]
+   `metabot-scope` is `{:curated-only? <bool> :collection-id <nil|Long>}` describing how the internal
+   Metabot narrows its retrieval further — it only adds filters, never widens.
+   `:curated-only?` mirrors Metabot search's `use_verified_content` filter (see [[curation/curated?]]).
+   The caller owns the scope decision (Metabot row lookup); this namespace does not read settings,
+   premium-feature gates, or Metabot rows directly."
+  [{:keys [curated-only? collection-id]}]
+  ;; An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3× per
+  ;; scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]], each a
+  ;; `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset once and
+  ;; derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6 DB round-trips
+  ;; + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
   (let [library-cids      (library-collection-ids)
         metabot-cids      (metabot-collection-scope-ids collection-id)
-        verified-ids      (when verified-only? (verified-card-id-set))
+        verified-ids      (when curated-only? (verified-card-id-set))
+        official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`) are
-        ;; selected purely to drive the in-memory library/metabot derivations below — they're
-        ;; ignored by `->card-entity` / `->table-entity`. `:card_schema` is required by
-        ;; `:model/Card`'s post-select hooks even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
-                                     :type        [:in ["metric" "model"]]
-                                     :archived    false
-                                     :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
-                                      :visibility_type :db_id]
-                                     :active true
-                                     :db_id  [:not= audit/audit-db-id])
+        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
+        ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
+        ;; library/metabot derivations below — they're ignored by `->card-entity` /
+        ;; `->table-entity`.
+        universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
+        universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
@@ -256,16 +246,32 @@
                             (fn [{:keys [collection_id is_published]}]
                               (and is_published
                                    (contains? library-cids collection_id))))
+        ;; Set-membership mirror of [[curation/curated?]] for Cards (same shape as
+        ;; `metabase.metabot.tools.util/metabot-metrics-and-models-query`): verified, in an
+        ;; official collection, or in the Library tree (≡ `root_collection_type` is a library
+        ;; type, since library-typed collections only exist inside the Library root's tree).
+        curated-card?     (fn [{:keys [id collection_id]}]
+                            (or (contains? verified-ids id)
+                                (contains? official-cids collection_id)
+                                (contains? library-cids collection_id)))
+        ;; A nil pred makes `pick-by-row` return [] without walking the universe; used here when the
+        ;; card filter is statically empty (curated-only, but nothing anywhere is curated).
+        ;; The `(not curated-only?)` disjunct must stay in both the guard and the pred — dropping it
+        ;; from the guard would collapse an unfiltered scope into an empty catalog.
         in-metabot-card?  (when (and (or (nil? metabot-cids) (seq metabot-cids))
-                                     (or (not verified-only?) (seq verified-ids)))
-                            (fn [{:keys [collection_id id]}]
+                                     (or (not curated-only?)
+                                         (some seq [verified-ids official-cids library-cids])))
+                            (fn [{:keys [collection_id] :as card-row}]
                               (and (or (nil? metabot-cids)
                                        (contains? metabot-cids collection_id))
-                                   (or (not verified-only?)
-                                       (contains? verified-ids id)))))
-        in-metabot-table? (fn [{:keys [visibility_type db_id]}]
+                                   (or (not curated-only?)
+                                       (curated-card? card-row)))))
+        in-metabot-table? (fn [{:keys [visibility_type db_id] :as table-row}]
                             (and (nil? visibility_type)
-                                 (not (contains? routed-db-ids db_id))))]
+                                 (not (contains? routed-db-ids db_id))
+                                 (or (not curated-only?)
+                                     (curation/curated? (assoc (select-keys table-row [:is_published :data_layer :data_authority])
+                                                               :model "table")))))]
     {:universe (into card-entities table-entities)
      :library  (into (pick-by-row in-library-card?  universe-cards  card-entities)
                      (pick-by-row in-library-table? universe-tables table-entities))
@@ -369,7 +375,7 @@
           pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
       (component-score :synonym-pair pairs))
     (catch Throwable t
-      (log/warn t "Complexity score: synonym detection failed; cascading nil through aggregates")
+      (log/warnf "Complexity score: synonym detection failed; cascading nil through aggregates: %s" (ex-message t))
       (let [msg (some-> (.getMessage t) str/trim)
             err (if (str/blank? msg)
                   (or (some-> (class t) .getName) "synonym detection failed")
@@ -505,7 +511,7 @@
              {::snowplow-published? (boolean (try
                                                (emit-snowplow! score)
                                                (catch Throwable t
-                                                 (log/warn t "Failed to re-publish cached complexity score to Snowplow"))))}))
+                                                 (log/warnf "Failed to re-publish cached complexity score to Snowplow: %s" (ex-message t)))))}))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
@@ -572,8 +578,8 @@
     `:text-variant`         — preprocessing variant published into `:meta.text-variant`. Pass nil
                               to omit (the search-index path passes nil because its preprocessing
                               isn't a single named variant).
-    `:metabot-scope`        — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how
-                              the internal Metabot filters Cards.
+    `:metabot-scope`        — `{:curated-only? <bool> :collection-id <nil|Long>}` describing how
+                              the internal Metabot filters its retrieval; see [[enumerate-catalogs]].
     `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
   [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
       :or {emit-snowplow? true}}]
@@ -612,7 +618,7 @@
                                              (try
                                                (emit-snowplow! result)
                                                (catch Throwable t
-                                                 (log/warn t "Failed to publish complexity score to Snowplow")))))))]
+                                                 (log/warnf "Failed to publish complexity score to Snowplow: %s" (ex-message t))))))))]
         (with-meta result {::snowplow-published? published?}))
       (finally
         (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms

@@ -10,6 +10,7 @@ describe("Instance Analytics Collection Header", () => {
   const defaultOptions = {
     collection: {
       name: "Usage Analytics",
+      // Unjustified type cast. FIXME
       type: "instance-analytics" as CollectionType,
       can_write: false,
     },

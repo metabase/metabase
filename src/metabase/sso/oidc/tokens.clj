@@ -47,7 +47,7 @@
     (-> (oidc.http/oidc-get jwks-uri {:accept :json})
         :body)
     (catch Exception e
-      (log/warnf e "Failed to fetch JWKS from %s" jwks-uri)
+      (log/warnf "Failed to fetch JWKS from %s: %s" jwks-uri (ex-message e))
       nil)))
 
 (defn get-jwks
@@ -116,7 +116,7 @@
                 public-key (keys/jwk->public-key key-data)]
             (jwt/unsign token public-key {:alg alg})))))
     (catch Exception e
-      (log/warn e "JWT signature verification failed")
+      (log/warnf "JWT signature verification failed: %s" (ex-message e))
       nil)))
 
 (defn- validate-expiry

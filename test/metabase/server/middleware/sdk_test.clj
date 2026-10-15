@@ -16,10 +16,11 @@
                 (f char)))))
 
 (defn- mock-request
-  [{:keys [client version]}]
+  [{:keys [client version identifier]}]
   (cond-> (ring.mock/request :get "api/health")
-    client  (ring.mock/header (keyword (wonk-case "x-metabase-client")) client)
-    version (ring.mock/header (keyword (wonk-case "x-metabase-client-version")) version)))
+    client     (ring.mock/header (keyword (wonk-case "x-metabase-client")) client)
+    version    (ring.mock/header (keyword (wonk-case "x-metabase-client-version")) version)
+    identifier (ring.mock/header (keyword (wonk-case "x-metabase-client-identifier")) identifier)))
 
 (deftest bind-client-test
   (are [client]
@@ -42,6 +43,30 @@
                 (:body response "no-body"))))
     nil
     "1.1.1"))
+
+(deftest bind-client-identifier-test
+  (are [identifier]
+       (let [request (mock-request {:client "data-app" :identifier identifier})
+             handler (analytics.core/embedding-mw
+                      (fn [_ respond _] (respond {:status 200 :body (sdk/get-client-identifier)})))
+             response (handler request identity identity)]
+         (is (= identifier (:body response))))
+    nil
+    "my-data-app")
+  (testing "oversized identifiers are truncated to fit the varchar(254) column"
+    (let [request (mock-request {:client "data-app" :identifier (apply str (repeat 300 "a"))})
+          handler (analytics.core/embedding-mw
+                   (fn [_ respond _] (respond {:status 200 :body (sdk/get-client-identifier)})))
+          response (handler request identity identity)]
+      (is (= 254 (count (:body response)))))))
+
+(deftest include-sdk-info-client-identifier-test
+  (binding [sdk/*client-identifier* "my-data-app"]
+    (is (=? {:embedding_client_identifier "my-data-app"}
+            (analytics.core/include-sdk-info {}))))
+  (testing "an existing value is kept when the var is unset"
+    (is (=? {:embedding_client_identifier "my-data-app"}
+            (analytics.core/include-sdk-info {:embedding_client_identifier "my-data-app"})))))
 
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (mt/with-prometheus-system! [_ system]
@@ -140,6 +165,22 @@
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "400"})))
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "500"}))))))
+
+(deftest embedding-mw-does-not-bump-metrics-with-data-app-client-header
+  (let [prometheus-standin (atom {})]
+    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
+      ;; data-app is a known SDK client, but a response-code counter tells us nothing
+      ;; actionable about data apps, so the middleware intentionally emits no metric.
+      (let [request (mock-request {:client "data-app"})
+            good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (good request identity identity)
+        (is (= {} @prometheus-standin))
+        (bad request identity identity)
+        (is (= {} @prometheus-standin))
+        (exception request identity identity)
+        (is (= {} @prometheus-standin))))))
 
 (deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]
@@ -281,7 +322,18 @@
     (let [request (-> (ring.mock/request :get "/api/embed/dashboard/42")
                       (assoc :uri "/api/embed/dashboard/42")
                       (ring.mock/header "x-metabase-client" "embedding-sdk-react"))]
-      (is (= "embedding-sdk-react" (client-from-mw request))))))
+      (is (= "embedding-sdk-react" (client-from-mw request)))))
+  (testing "a dev data app (preview header) is recorded as data-app-preview"
+    (let [request (-> (ring.mock/request :get "/api/card/1")
+                      (ring.mock/header "x-metabase-client" "data-app")
+                      (ring.mock/header "x-metabase-embedded-preview" "true"))]
+      (is (= "data-app-preview" (client-from-mw request))))))
+
+(deftest embedding-context?-test
+  (testing "data-app requests are an embedding context (comments gating + response tracking apply)"
+    (is (analytics.core/embedding-context? "data-app")))
+  (testing "arbitrary client values are not"
+    (is (not (analytics.core/embedding-context? "my-app")))))
 
 (deftest include-analytics-is-idempotent
   (let [m (atom {})]

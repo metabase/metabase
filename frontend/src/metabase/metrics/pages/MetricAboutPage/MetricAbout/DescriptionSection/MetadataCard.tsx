@@ -32,7 +32,7 @@ export function MetadataRow({ icon, children, muted }: MetadataRowProps) {
   return (
     <Group gap={rem(10)} wrap="nowrap" align="center">
       <Center
-        bg="background-primary"
+        bg="background_page-primary"
         w={rem(24)}
         h={rem(24)}
         className={S.iconCircle}

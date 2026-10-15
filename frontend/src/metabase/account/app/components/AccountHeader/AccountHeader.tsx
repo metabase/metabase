@@ -1,11 +1,10 @@
-import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Radio } from "metabase/common/components/Radio";
+import { hasAuthenticationSettings } from "metabase/account/utils";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
-import { Box, Flex, Title, rem } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
@@ -14,7 +13,7 @@ import S from "./AccountHeader.module.css";
 type AccountHeaderProps = {
   user: User;
   path?: string;
-  onChangeLocation?: (nextLocation: Path) => void;
+  onChangeLocation?: (nextLocation: string) => void;
 };
 
 export const AccountHeader = ({
@@ -22,21 +21,19 @@ export const AccountHeader = ({
   path,
   onChangeLocation,
 }: AccountHeaderProps) => {
-  const hasPasswordChange = useMemo(
-    () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
-    [user],
-  );
+  const mfaEnforcement = useSetting("mfa-enforcement");
+  const hasAuthenticationTab = hasAuthenticationSettings(user, mfaEnforcement);
 
   const tabs = useMemo(
     () => [
       { name: t`Profile`, value: "/account/profile" },
-      ...(hasPasswordChange
-        ? [{ name: t`Password`, value: "/account/password" }]
+      ...(hasAuthenticationTab
+        ? [{ name: t`Authentication`, value: "/account/password" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
     ],
-    [hasPasswordChange],
+    [hasAuthenticationTab],
   );
 
   const userFullName = getFullName(user);
@@ -48,15 +45,15 @@ export const AccountHeader = ({
       direction="column"
       justify="center"
       align="center"
-      bg="background-primary"
-      pt={{ base: "sm", sm: "md" }}
+      bg="background_page-primary"
+      pt={{ base: "sm", sm: "lg" }}
     >
-      <Flex direction="column" align="center" p={{ base: "md", md: rem(64) }}>
-        <Box mb={{ base: "sm", sm: "md" }}>
+      <Flex direction="column" align="center" p={{ base: "lg", md: rem(64) }}>
+        <Box mb={{ base: "sm", sm: "lg" }}>
           <UserAvatar user={user} className={S.avatar} />
         </Box>
         {userFullName && (
-          <Title order={2} fz="md" ta="center" mb="xs">
+          <Title order={2} fz="md" ta="center" mb="xxs">
             {userFullName}
           </Title>
         )}
@@ -64,12 +61,19 @@ export const AccountHeader = ({
           {user.email}
         </Title>
       </Flex>
-      <Radio
-        value={path}
-        variant="underlined"
-        options={tabs}
-        onChange={onChangeLocation}
-      />
+      <Tabs
+        listBorder={false}
+        value={path ?? null}
+        onChange={(value) => value && onChangeLocation?.(value)}
+      >
+        <Tabs.List>
+          {tabs.map((tab) => (
+            <Tabs.Tab key={tab.value} value={tab.value}>
+              {tab.name}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
     </Flex>
   );
 };

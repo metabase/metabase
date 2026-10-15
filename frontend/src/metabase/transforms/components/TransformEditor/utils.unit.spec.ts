@@ -16,6 +16,10 @@ function createTransformCapableDatabase(opts = {}) {
 }
 
 describe("getEditorOptions", () => {
+  it("disables the sample database in transforms (metabase#78037)", () => {
+    expect(getEditorOptions([]).canUseSampleDatabase).toBe(false);
+  });
+
   describe("getDataPickerItemTooltip", () => {
     it("returns a tooltip for a database item with DB routing enabled via router_user_attribute", () => {
       const database = createTransformCapableDatabase({

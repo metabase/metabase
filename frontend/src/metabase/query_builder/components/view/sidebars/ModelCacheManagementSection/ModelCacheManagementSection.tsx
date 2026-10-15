@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
@@ -6,6 +5,7 @@ import {
   useRefreshModelCacheMutation,
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -53,12 +53,7 @@ export function ModelCacheManagementSection({ model }: Props) {
   const canRefreshCache =
     persistedModel && checkCanRefreshModelCache(persistedModel);
 
-  const refreshButtonLabel =
-    persistedModel?.state === "creating" ? (
-      t`Create now`
-    ) : (
-      <Icon name="refresh" tooltip={t`Refresh now`} />
-    );
+  const isCreating = persistedModel?.state === "creating";
 
   const canManageDB = model.canManageDB();
 
@@ -79,27 +74,37 @@ export function ModelCacheManagementSection({ model }: Props) {
           justify="space-between"
           align="center"
           data-testid="model-cache-section"
-          c={canManageDB ? "text-primary" : "text-tertiary"}
+          c={canManageDB ? "text-primary" : "text-disabled"}
           fz="md"
         >
           <Box>
             <Flex align="center" fw="bold" gap="sm">
               {statusMessage}
-              {isError && <Icon name="warning" c="error" ml="sm" />}
+              {isError && <Icon name="warning" c="feedback-negative" ml="sm" />}
             </Flex>
             {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
           </Box>
-          {canRefreshCache && canManageDB && (
-            <Button
-              variant="subtle"
-              p="xs"
-              c="text-primary"
-              size="xs"
-              onClick={() => onRefresh(model.id())}
-            >
-              {refreshButtonLabel}
-            </Button>
-          )}
+          {canRefreshCache &&
+            canManageDB &&
+            (isCreating ? (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                onClick={() => onRefresh(model.id())}
+              >
+                {t`Create now`}
+              </Button>
+            ) : (
+              // TODO: replace with ActionIcon (GDGT-2457)
+              <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
+                aria-label={t`Refresh now`}
+                leftSection={<Icon name="refresh" tooltip={t`Refresh now`} />}
+                onClick={() => onRefresh(model.id())}
+              />
+            ))}
         </Flex>
       )}
     </>

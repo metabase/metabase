@@ -13,6 +13,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -27,13 +28,26 @@
 
 (set! *warn-on-reflection* true)
 
-;; drop this once h2 is mbql5-compliant by default
-(def ^:dynamic *driver* :h2)
+(deftest default-schema-test
+  (mt/test-driver :h2
+    (testing "default"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :h2 (mt/db)))))
+    (testing "schema configured in the JDBC URL"
+      (let [details (update (:details (mt/db)) :db str ";SCHEMA=INFORMATION_SCHEMA")]
+        (mt/with-temp [:model/Database database {:engine :h2, :details details}]
+          (is (= "INFORMATION_SCHEMA"
+                 (driver.sql/default-schema :h2 database))))))))
 
-(use-fixtures :each (fn [thunk]
-                      (thunk)
-                      (binding [*driver* :h2-mbql5]
-                        (thunk))))
+(deftest ^:parallel connection-hosts-test
+  (testing "local H2 databases have no network host"
+    (is (= [] (driver/connection-hosts :h2 {:db "file:./sample.db"})))
+    (is (= [] (driver/connection-hosts :h2 {:db "mem:test"}))))
+  (testing "remote H2 TCP and SSL connection strings expose their hosts"
+    (are [db expected] (= expected (driver/connection-hosts :h2 {:db db}))
+      "tcp://10.0.0.5:9092/sample"          ["10.0.0.5"]
+      "jdbc:h2:tcp://db.example.com/sample" ["db.example.com"]
+      "ssl://[::1]:9092/sample"             ["::1"])))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -114,7 +128,7 @@
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
 (deftest ^:parallel db-default-timezone-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (is (= (t/zone-id "Z")
            (-> (driver/db-default-timezone :h2 (mt/db))
                t/zone-id
@@ -158,7 +172,7 @@
            (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
 
 (deftest ^:parallel clob-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (testing "Make sure we properly handle rows that come back as `org.h2.jdbc.JdbcClob`"
       (let [results (qp/process-query (mt/native-query {:query "SELECT cast('Conchúr Tihomir' AS clob) AS name;"}))]
         (testing "rows"
@@ -174,7 +188,7 @@
                   (mt/cols results))))))))
 
 (deftest ^:parallel native-query-date-trunc-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (=? [{:display_name "D"
                 :base_type    :type/Date
@@ -213,7 +227,7 @@
       (str/replace #"PUBLIC\." "")))
 
 (deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
       (mt/dataset attempted-murders
         (let [query (mt/mbql-query attempts
@@ -226,7 +240,7 @@
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
 (deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (testing "Don't cast date binned by week"
       (mt/dataset attempted-murders
         (let [query (mt/mbql-query attempts
@@ -236,8 +250,7 @@
           (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
 
 (deftest ^:parallel check-action-commands-test
-  (mt/test-driver *driver*
-    #_{:clj-kondo/ignore [:equals-true]}
+  (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
       "update venues set name = 'bill'"
@@ -363,7 +376,7 @@
       "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))
 
 (deftest disallowed-commands-in-action-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Should not be able to execute query actions with disallowed commands"
         (let [sql "select * from categories; update categories set name = 'stomp';
@@ -379,7 +392,7 @@
                                           (format "action/%s/execute" action-id))))))))))
 
 (deftest disallowed-commands-in-action-test-2
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Should be able to execute query actions with allowed commands"
         (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
@@ -393,14 +406,14 @@
                                           (format "action/%s/execute" action-id))))))))))
 
 (deftest ^:parallel syncable-schemas-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/db))))))))
 
 (deftest syncable-audit-db-test
-  (mt/test-driver *driver*
+  (mt/test-driver :h2
     (when config/ee-available?
       (let [audit-db-expected-id 13371337
             original-audit-db    (t2/select-one :model/Database :is_audit true)]
@@ -484,3 +497,16 @@
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-check-constraint nil :model.row/create
             "Check constraint violation: \"users_email_check\"")))))
+
+;;; Metabase never reads Java objects out of H2 query results. Requiring the h2 driver registers a
+;;; JavaObjectSerializer that refuses to reconstruct them, so reading a JAVA_OBJECT value fails rather
+;;; than deserializing arbitrary classes. This verifies that refusal at the serializer itself.
+
+(deftest ^:parallel java-object-deserialization-is-refused-test
+  (testing "the registered H2 serializer refuses to reconstruct a Java object"
+    (let [^org.h2.api.JavaObjectSerializer serializer @#'h2/java-object-serializer]
+      (is (thrown-with-msg? Exception #"(?i)not supported"
+                            (.deserialize serializer (byte-array 0))))))
+  (testing "ordinary values still read normally"
+    (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
+      (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))

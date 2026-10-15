@@ -4,16 +4,20 @@
   (:require
    [clojure.set :as set]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.template-tags :as lib.template-tags]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [not-empty]]))
+   [metabase.util.performance :as perf :refer [not-empty]]))
 
 (defn- transduce-stages
   ([rf query]
@@ -50,7 +54,8 @@
   (transduce-stages
    (comp (filter (fn [stage]
                    (= (:lib/type stage) :mbql.stage/native)))
-         (mapcat :template-tags))
+         (mapcat :template-tags)
+         (map (juxt :name identity)))
    (fn rf
      ([m]
       (not-empty (persistent! m)))
@@ -83,7 +88,7 @@
 
 (mu/defn all-segment-ids :- [:maybe [:set {:min 1} ::lib.schema.id/segment]]
   "Return a set of all segment IDs anywhere in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (let [segment-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query
@@ -98,7 +103,7 @@
 
 (mu/defn all-measure-ids :- [:maybe [:set {:min 1} ::lib.schema.id/measure]]
   "Return a set of all measure IDs anywhere in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (let [measure-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query
@@ -126,6 +131,25 @@
     (stage-values-set query (keep :source-card))
     (all-metric-ids query)
     (all-template-tag-card-ids query))))
+
+(mu/defn all-source-card-ids-recursive :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Like [[all-source-card-ids]], but follows each source Card into its own query, returning every Card the query reads
+  at any depth."
+  [query :- ::lib.schema/query]
+  (loop [seen #{}, layer (set (all-source-card-ids query))]
+    (let [layer (set/difference layer seen)]
+      (if (perf/empty? layer)
+        (not-empty seen)
+        (do
+          (lib.metadata/bulk-metadata query :metadata/card layer)
+          (recur (set/union seen layer)
+                 (into #{}
+                       (mapcat (fn [card-id]
+                                 (some-> (lib.metadata/card query card-id)
+                                         :dataset-query
+                                         not-empty
+                                         all-source-card-ids)))
+                       layer)))))))
 
 (mu/defn any-native-stage?
   "Returns true if any stage of this query is native."
@@ -186,7 +210,7 @@
         implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
         walk-clause (fn [clause]
                       (match/match-one clause
-                        [:field (opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
+                        [:field (_opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
                         (vswap! joined-field-ids conj! id)
 
                         _ nil)
@@ -251,7 +275,7 @@
          (all-template-tags query))))
 
 (mr/def ::referenced-entity-ids
-  [:map
+  [:map {:closed true}
    [:table [:set ::lib.schema.id/table]]
    [:card [:set ::lib.schema.id/card]]
    [:metric [:set ::lib.schema.id/metric]]
@@ -260,7 +284,7 @@
    [:snippet [:set ::lib.schema.id/snippet]]])
 
 (mr/def ::referenced-entity-ids.options
-  [:map
+  [:map {:closed true}
    [:include-implicitly-joinable? {:optional true} :boolean]])
 
 (mu/defn- implicitly-joinable-table-ids :- [:set ::lib.schema.id/table]
@@ -321,3 +345,113 @@
       :measure measure-ids
       :segment segment-ids
       :snippet template-tag-snippet-ids})))
+
+(defn- empty-referenced-entity-ids []
+  {:table #{}, :card #{}, :metric #{}, :measure #{}, :segment #{}, :snippet #{}})
+
+(defn- merge-referenced-entity-ids [& ms]
+  (apply merge-with set/union (empty-referenced-entity-ids) ms))
+
+(defn- queries-referenced-entity-ids
+  "[[all-referenced-entity-ids]] of `queries`, each of which may still be legacy MBQL (a Card's `:dataset-query`, a
+  Segment's or Measure's `:definition`), built against `metadata-providerable`."
+  [metadata-providerable queries]
+  (if-let [queries (not-empty (into []
+                                    (comp (filter seq)
+                                          (map #(lib.query/query metadata-providerable %)))
+                                    queries))]
+    (all-referenced-entity-ids queries)
+    (empty-referenced-entity-ids)))
+
+(defn- snippet-referenced-entity-ids
+  "The Cards and snippets a snippet's stored template tags reference, the same way the QP resolves them."
+  [snippet]
+  (let [tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags (:template-tags snippet))]
+    {:card    (set (lib.template-tags/template-tags->card-ids tags))
+     :snippet (set (lib.template-tags/template-tags->snippet-ids tags))}))
+
+(def ^:private entity-kind->metadata-type
+  {:card    :metadata/card
+   :snippet :metadata/native-query-snippet
+   :segment :metadata/segment
+   :measure :metadata/measure})
+
+(defn- referenced-entity-ids-of-entities
+  "One bulk fetch of the `kind` entities with `ids`, then everything they reference directly. Ids the metadata provider
+  cannot resolve are skipped."
+  [metadata-providerable kind ids]
+  (let [entities (lib.metadata/bulk-metadata metadata-providerable (entity-kind->metadata-type kind) ids)]
+    (case kind
+      :card    (queries-referenced-entity-ids metadata-providerable (map :dataset-query entities))
+      :segment (queries-referenced-entity-ids metadata-providerable (map :definition entities))
+      :measure (queries-referenced-entity-ids metadata-providerable (map :definition entities))
+      :snippet (apply merge-referenced-entity-ids (map snippet-referenced-entity-ids entities)))))
+
+(mu/defn all-referenced-entity-ids-recursive :- ::referenced-entity-ids
+  "Like [[all-referenced-entity-ids]], but follows every Card, snippet, Segment, and Measure the query references into
+  its own definition, returning everything the query reads at any depth: Cards into their `:dataset-query`, snippets
+  into the Cards and snippets in their template tags, Segments and Measures into their `:definition`. `:table` and
+  `:metric` accumulate along the way but are not followed further. Cycles terminate; ids the metadata provider cannot
+  resolve stay in the result and are not followed."
+  [query :- ::lib.schema/query]
+  (loop [acc  (all-referenced-entity-ids [query])
+         seen {:card #{}, :snippet #{}, :segment #{}, :measure #{}}]
+    (let [layer (into {}
+                      (map (fn [[kind seen-ids]]
+                             [kind (set/difference (get acc kind) seen-ids)]))
+                      seen)]
+      (if (perf/every? perf/empty? (vals layer))
+        acc
+        (recur (reduce (fn [acc [kind ids]]
+                         (if (perf/empty? ids)
+                           acc
+                           (merge-referenced-entity-ids acc (referenced-entity-ids-of-entities query kind ids))))
+                       acc
+                       layer)
+               (merge-with set/union seen layer))))))
+
+(defn- remap-field-clause-ids
+  "Remap the Field ID and any `:source-field`/`:fk-field-id` option of a single `:field` clause via `id->new-id`
+  (a `nil` result leaves a value unchanged). Non-`:field` clauses and non-clauses are returned unchanged."
+  [id->new-id clause]
+  (if (lib.util/clause-of-type? clause :field)
+    (let [[tag opts id-or-name] clause
+          remap (fn [x] (if (pos-int? x) (or (id->new-id x) x) x))]
+      [tag
+       (cond-> opts
+         (:source-field opts) (update :source-field remap)
+         (:fk-field-id opts)  (update :fk-field-id remap))
+       (remap id-or-name)])
+    clause))
+
+(mu/defn replace-field-ids :- ::lib.schema/query
+  "Return `query` with every Field ID reference remapped by `id->new-id` (a function; a map works). Covers `:field`
+  refs everywhere they appear (filters, aggregations, breakouts, expressions, order-by, join conditions and fields,
+  nested stages), the `:source-field`/`:fk-field-id` options inside `:field` refs, and native `:template-tags`
+  `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
+  [query      :- ::lib.schema/query
+   id->new-id :- ifn?]
+  (let [remap #(remap-field-clause-ids id->new-id %)]
+    (-> query
+        (lib.walk/walk-clauses (fn [_query _path-type _path clause]
+                                 (remap clause)))
+        (lib.walk/walk-stages (fn [_query _path stage]
+                                (cond-> stage
+                                  (:template-tags stage)
+                                  (update :template-tags update-vals
+                                          (fn [tag]
+                                            (cond-> tag
+                                              (:dimension tag) (update :dimension remap))))))))))
+
+(mu/defn replace-table-ids :- ::lib.schema/query
+  "Return `query` with every source Table ID remapped by `id->new-id` (a function; a map works). Covers
+  `:source-table` in every stage and join. A table id for which `id->new-id` returns `nil` is left unchanged;
+  `:source-card` refs are untouched."
+  [query      :- ::lib.schema/query
+   id->new-id :- ifn?]
+  (lib.walk/walk-stages
+   query
+   (fn [_query _path stage]
+     (if-let [table-id (:source-table stage)]
+       (assoc stage :source-table (or (id->new-id table-id) table-id))
+       stage))))

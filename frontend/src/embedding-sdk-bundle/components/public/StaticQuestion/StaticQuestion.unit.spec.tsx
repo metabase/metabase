@@ -23,6 +23,7 @@ import {
 } from "__support__/ui";
 import { addAlertModalTests } from "embedding-sdk-bundle/components/public/question/shared-tests/alert-modal.spec";
 import { addAlertsButtonTests } from "embedding-sdk-bundle/components/public/question/shared-tests/alerts-button.spec";
+import { addCardPropTests } from "embedding-sdk-bundle/components/public/question/shared-tests/card-prop.spec";
 import type { SetupOpts } from "embedding-sdk-bundle/components/public/question/shared-tests/constants.spec";
 import {
   TEST_COLUMN,
@@ -154,6 +155,7 @@ const setup = async ({
 };
 
 addQueryPropTests({ Component: StaticQuestionInternal });
+addCardPropTests({ Component: StaticQuestion });
 
 describe("StaticQuestion", () => {
   addAlertsButtonTests(setup, { customComponent: StaticQuestion.AlertsButton });

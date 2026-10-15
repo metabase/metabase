@@ -1,0 +1,77 @@
+import type { ChangeEvent } from "react";
+
+import { useLazyGetTableQuery } from "metabase/api";
+import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
+import type { DatabaseId, TableId } from "metabase-types/api";
+
+import type { NativeQueryEditorCoreProps } from "../NativeQueryEditorRoot";
+
+type NativeQueryEditorProps = Pick<
+  NativeQueryEditorCoreProps,
+  | "canChangeDatabase"
+  | "editorContext"
+  | "isNativeEditorOpen"
+  | "query"
+  | "question"
+  | "readOnly"
+  | "setDatasetQuery"
+>;
+
+export const NATIVE_EDITOR_ICON_SIZE = 18;
+
+export const NativeQueryEditor = ({
+  canChangeDatabase = true,
+  editorContext = "question",
+  isNativeEditorOpen,
+  query,
+  question,
+  readOnly,
+  setDatasetQuery,
+}: NativeQueryEditorProps) => {
+  const [fetchTable] = useLazyGetTableQuery();
+
+  const onChange = (evt: ChangeEvent<HTMLTextAreaElement>) => {
+    setDatasetQuery(query.setQueryText(evt.target.value));
+  };
+
+  const onDatabaseIdChange = (databaseId: DatabaseId) => {
+    if (question.databaseId() !== databaseId) {
+      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+    }
+  };
+
+  const onTableIdChange = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }).unwrap();
+    if (table.name !== query.collection()) {
+      setDatasetQuery(query.setCollectionName(table.name));
+    }
+  };
+
+  return (
+    <div data-testid="mock-native-query-editor">
+      {canChangeDatabase && (
+        <DataSourceSelectors
+          isNativeEditorOpen={isNativeEditorOpen}
+          query={query}
+          question={question}
+          readOnly={readOnly}
+          setDatabaseId={onDatabaseIdChange}
+          setTableId={onTableIdChange}
+          editorContext={editorContext}
+        />
+      )}
+      {query.queryText && (
+        <textarea value={query.queryText()} onChange={onChange} />
+      )}
+    </div>
+  );
+};
+
+// The composition sub-components are rendered as children of the mocked editor,
+// which ignores its children. They only need to be valid components so consumers
+// using the composition API keep working under the mock.
+const Noop = () => null;
+NativeQueryEditor.TopBar = Noop;
+NativeQueryEditor.Sidebar = Noop;
+NativeQueryEditor.VisibilityToggler = Noop;
+NativeQueryEditor.RunButton = Noop;

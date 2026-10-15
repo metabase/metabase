@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -46,7 +46,7 @@ export const InputContainer = styled.div<InputContainerProps>`
     isEmpty &&
     css`
       border: 1px solid var(--mb-color-core-brand);
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     `}
 `;
 

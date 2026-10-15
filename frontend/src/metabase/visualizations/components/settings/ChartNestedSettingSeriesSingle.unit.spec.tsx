@@ -6,13 +6,15 @@ import {
   within,
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
+import { createMockInsight } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 function getSeries(): Series {
+  // Unjustified type cast. FIXME
   return [
     {
       card: {
@@ -76,6 +78,7 @@ function getSeries(): Series {
 }
 
 function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
+  // Unjustified type cast. FIXME
   return [
     {
       card: {
@@ -86,6 +89,7 @@ function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
         type: "question",
       },
       data: {
+        insights: [{ col: "count" }],
         rows: [
           ["2022-04-01T00:00:00+02:00", 1],
           ["2022-05-01T00:00:00+02:00", 2],
@@ -123,6 +127,7 @@ function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
         type: "question",
       },
       data: {
+        insights: [{ col: "sum" }],
         rows: [
           ["2022-04-01T00:00:00+02:00", 3],
           ["2022-05-01T00:00:00+02:00", 4],
@@ -197,8 +202,8 @@ describe("ChartNestedSettingSeriesSingle", () => {
     expect(
       within(
         screen.getByTestId("chart-settings-widget-series_settings"),
-      ).getByTestId("chart-settings-widget-show_series_values"),
-    ).toHaveAttribute("hidden");
+      ).queryByTestId("chart-settings-widget-show_series_values"),
+    ).not.toBeInTheDocument();
   });
 
   it("should render the `Show values for this series` switch when stackable.stack_type is null (metabase#58552)", async () => {
@@ -251,8 +256,43 @@ describe("ChartNestedSettingSeriesSingle", () => {
     expect(
       within(
         screen.getByTestId("chart-settings-widget-series_settings"),
-      ).getByTestId("chart-settings-widget-show_series_trendline"),
-    ).toHaveAttribute("hidden");
+      ).queryByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render the `Show trend line for this series` switch when the chart has multiple dimensions", async () => {
+    const [breakoutSeries] = getSeries();
+    setup({
+      series: [
+        {
+          ...breakoutSeries,
+          card: {
+            ...breakoutSeries.card,
+            visualization_settings: {
+              ...breakoutSeries.card.visualization_settings,
+              "graph.show_trendline": true,
+            },
+          },
+          data: {
+            ...breakoutSeries.data,
+            insights: [createMockInsight({ col: "count" })],
+          },
+        },
+      ],
+    });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
+    fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).queryByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toBeInTheDocument();
   });
 
   it("should not render the `Show trend line for this series` switch for a single series", async () => {
@@ -270,7 +310,7 @@ describe("ChartNestedSettingSeriesSingle", () => {
     expect(
       within(
         screen.getByTestId("chart-settings-widget-series_settings"),
-      ).getByTestId("chart-settings-widget-show_series_trendline"),
-    ).toHaveAttribute("hidden");
+      ).queryByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toBeInTheDocument();
   });
 });

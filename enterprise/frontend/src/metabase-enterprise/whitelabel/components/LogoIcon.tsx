@@ -113,6 +113,7 @@ export function LogoIcon({
           renderImgFallback();
         }
       } catch (error) {
+        // Unjustified type cast. FIXME
         if ((error as Error).name !== "AbortError") {
           renderImgFallback();
         }

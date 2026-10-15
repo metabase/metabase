@@ -1,43 +1,35 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
 import * as actions from "metabase/reference/reference";
+import { updateField } from "metabase/reference/update-actions";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
+  Field as ApiField,
   FieldId,
   IconName,
-  NormalizedField,
+  Segment,
+  Table,
   User,
 } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getError,
-  getFieldsBySegment,
-  getIsEditing,
-  getLoading,
-  getSegment,
-  getUser,
-} from "../selectors";
-import type {
-  FieldFormFieldsValues,
-  StubbedSegment,
-  StubbedTable,
-} from "../types";
+import type { StateWithReference } from "../selectors";
+import { getIsEditing, getUser } from "../selectors";
+import type { FieldFormFieldsValues } from "../types";
 
 type SegmentFieldListFormFields = Record<string, FieldFormFieldsValues>;
 
@@ -48,41 +40,30 @@ const emptyStateData = {
   icon: "fields" as const,
 };
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => {
-  const data = getFieldsBySegment(state, props);
-  return {
-    segment: getSegment(state, props),
-    entities: data,
-    loading: getLoading(state),
-    loadingError: getError(state),
-    user: getUser(state),
-    isEditing: getIsEditing(state),
-  };
-};
+const mapStateToProps = (state: StateWithReference) => ({
+  user: getUser(state),
+  isEditing: getIsEditing(state),
+});
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateField,
   ...actions,
   onSubmit: actions.rUpdateFields,
 };
 
 interface SegmentFieldListProps {
-  segment: StubbedSegment;
+  segment: Segment | undefined;
   style: React.CSSProperties;
-  entities: Record<string, NormalizedField>;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
   user: User | null;
-  table: StubbedTable;
+  table: Table | undefined;
   loading?: boolean;
   loadingError?: unknown;
   // The action handler in reference.ts types its own props parameter.
   onSubmit?: (
-    entities: Record<string, NormalizedField>,
+    entities: Record<string, ApiField>,
     fields: SegmentFieldListFormFields,
     props: any,
   ) => void;
@@ -92,7 +73,6 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   const {
     segment,
     style,
-    entities,
     loadingError,
     loading,
     user,
@@ -103,6 +83,17 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
+  // `rUpdateFields` looks each edited field up by id.
+  const entities = useMemo(
+    () =>
+      Object.fromEntries(
+        (table?.fields ?? []).map((field) => [String(field.id), field]),
+      ),
+    [table],
+  );
+
   const {
     isSubmitting,
     getFieldProps,
@@ -111,8 +102,17 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     handleReset,
   } = useFormik<SegmentFieldListFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit?.(entities, fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit?.(entities, fields, {
+          ...props,
+          resetForm: handleReset,
+        });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -142,17 +142,17 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
       <EditableReferenceHeader
         type="segment"
         headerIcon={modelIconMap.segment}
-        name={t`Fields in ${segment.name}`}
+        name={t`Fields in ${segment?.name}`}
         user={user}
         isEditing={isEditing}
         startEditing={startEditing}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() =>
-          Object.keys(entities).length > 0 ? (
+          table != null && Object.keys(entities).length > 0 ? (
             <div className={CS.wrapper}>
               <div
                 className={cx(
@@ -185,11 +185,13 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
                       entity.name && (
                         <li className={CS.relative} key={String(entity.id)}>
                           <Field
-                            databaseId={table.db_id!}
+                            databaseId={table.db_id}
                             field={entity}
-                            url={`/reference/segments/${segment.id}/fields/${entity.id}`}
+                            url={`/reference/segments/${segment?.id}/fields/${entity.id}`}
+                            // Unjustified type cast. FIXME
                             icon={getIconForField(entity) as IconName}
                             isEditing={isEditing}
+                            // Unjustified type cast. FIXME
                             formField={getNestedFormField(entity.id as FieldId)}
                           />
                         </li>
@@ -209,8 +211,18 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   );
 };
 
+type SegmentFieldListOwnProps = Pick<
+  SegmentFieldListProps,
+  "segment" | "table" | "loading" | "loadingError"
+>;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentFieldList as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  SegmentFieldList as unknown as React.ComponentType<SegmentFieldListOwnProps>,
+);

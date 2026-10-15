@@ -1,7 +1,8 @@
-import { Fragment, memo, useState } from "react";
+import cx from "classnames";
+import { memo, useState } from "react";
 
-import { Toggle } from "metabase/common/components/Toggle";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -11,17 +12,7 @@ import type {
   PermissionSectionConfig,
 } from "../../types";
 
-import {
-  ActionsList,
-  DisabledPermissionOption,
-  OptionsList,
-  OptionsListItem,
-  PermissionsSelectRoot,
-  SelectedOption,
-  ToggleContainer,
-  ToggleLabel,
-  WarningIcon,
-} from "./PermissionsSelect.styled";
+import S from "./PermissionsSelect.module.css";
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
 interface PermissionSelectProps extends PermissionSectionConfig {
@@ -32,9 +23,12 @@ interface PermissionSelectProps extends PermissionSectionConfig {
 // we shouldn't ever show this, but rather than throw an error, let the user pick an option to recover
 const defaultOption = {
   label: "Missing",
+  // Unjustified type cast. FIXME
   value: "missing" as DataPermissionValue,
+  // Unjustified type cast. FIXME
   icon: "empty" as IconName,
-  iconColor: "text-tertiary" as ColorName,
+  // Unjustified type cast. FIXME
+  iconColor: "text-disabled" as ColorName,
 };
 
 export const PermissionsSelect = memo(function PermissionsSelect({
@@ -71,27 +65,32 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const hasActions = actionsForCurrentValue.length > 0;
 
   const triggerContent = (
-    <PermissionsSelectRoot
-      isDisabled={isDisabled}
+    <Flex
+      className={isDisabled ? CS.cursorDefault : CS.cursorPointer}
+      align="center"
+      miw="11.25rem"
       aria-haspopup="listbox"
       data-testid="permissions-select"
       aria-disabled={isDisabled}
       onClick={isDisabled ? undefined : () => setOpened((o) => !o)}
     >
       {isDisabled ? (
-        <DisabledPermissionOption
+        <PermissionsSelectOption
           {...selectedOption}
-          isHighlighted={isHighlighted ?? false}
+          c={isHighlighted ? "text-secondary" : "text-disabled"}
           hint={disabledTooltip}
-          iconColor="text-tertiary"
+          iconColor="text-disabled"
         />
       ) : (
-        <SelectedOption {...selectedOption} />
+        <PermissionsSelectOption
+          {...selectedOption}
+          className={S.selectedOption}
+        />
       )}
 
       {warning && (
         <Tooltip label={warning}>
-          <WarningIcon />
+          <Icon name="warning" size={18} mr="xxs" c="text-disabled" />
         </Tooltip>
       )}
 
@@ -99,9 +98,9 @@ export const PermissionsSelect = memo(function PermissionsSelect({
         style={{ visibility: isDisabled ? "hidden" : "visible" }}
         name="chevrondown"
         size={16}
-        c="text-tertiary"
+        c="text-disabled"
       />
-    </PermissionsSelectRoot>
+    </Flex>
   );
 
   if (!opened) {
@@ -112,50 +111,69 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     <Popover opened onChange={setOpened}>
       <Popover.Target>{triggerContent}</Popover.Target>
       <Popover.Dropdown>
-        <Fragment>
-          <OptionsList role="listbox">
-            {selectableOptions.map((option) => (
-              <OptionsListItem
+        <Box component="ul" miw="13.125rem" py="sm" px={0} role="listbox">
+          {selectableOptions.map((option) => (
+            <Box
+              component="li"
+              className={cx(S.option, CS.cursorPointer)}
+              py="sm"
+              px="lg"
+              role="option"
+              key={option.value}
+              onClick={() => {
+                setOpened(false);
+                onChange(option.value, toggleLabel ? toggleState : null);
+              }}
+            >
+              <PermissionsSelectOption {...option} />
+            </Box>
+          ))}
+        </Box>
+        {hasActions && (
+          <Box
+            component="ul"
+            className={S.actionsList}
+            miw="13.125rem"
+            py="sm"
+            px={0}
+          >
+            {actionsForCurrentValue.map((action, index) => (
+              <Box
+                component="li"
+                className={cx(S.option, CS.cursorPointer)}
+                py="sm"
+                px="lg"
+                key={index}
                 role="option"
-                key={option.value}
                 onClick={() => {
                   setOpened(false);
-                  onChange(option.value, toggleLabel ? toggleState : null);
+                  onAction?.(action);
                 }}
               >
-                <PermissionsSelectOption {...option} />
-              </OptionsListItem>
+                <PermissionsSelectOption {...action} />
+              </Box>
             ))}
-          </OptionsList>
-          {hasActions && (
-            <ActionsList>
-              {actionsForCurrentValue.map((action, index) => (
-                <OptionsListItem
-                  key={index}
-                  role="option"
-                  onClick={() => {
-                    setOpened(false);
-                    onAction?.(action);
-                  }}
-                >
-                  <PermissionsSelectOption {...action} />
-                </OptionsListItem>
-              ))}
-            </ActionsList>
-          )}
+          </Box>
+        )}
 
-          {hasChildren && (
-            <ToggleContainer>
-              <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle
-                small
-                value={toggleState || false}
-                onChange={onToggleChange}
-                disabled={toggleDisabled ?? false}
-              />
-            </ToggleContainer>
-          )}
-        </Fragment>
+        {hasChildren && (
+          <Flex
+            align="center"
+            justify="flex-end"
+            bg="background_page-tertiary"
+            py="sm"
+            px="lg"
+          >
+            <Box component="label" fz="sm" mr="lg">
+              {toggleLabel}
+            </Box>
+            <Switch
+              checked={toggleState || false}
+              onChange={(e) => onToggleChange(e.currentTarget.checked)}
+              disabled={toggleDisabled ?? false}
+            />
+          </Flex>
+        )}
       </Popover.Dropdown>
     </Popover>
   );

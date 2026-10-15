@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   createMockDashboardState,
   createMockSettingsState,
-} from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
-import type { Parameter, VisualizationSettings } from "metabase-types/api";
+} from "__support__/state";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { Parameter } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockIFrameDashboardCard,
@@ -47,7 +47,7 @@ const setup = (
       isEditing={true}
       isPreviewing={false}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-      settings={dashcard.visualization_settings as VisualizationSettings}
+      settings={dashcard.visualization_settings}
       width={800}
       height={600}
       gridSize={{ width: 18, height: 6 }}

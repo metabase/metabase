@@ -15,12 +15,13 @@ import {
 } from "metabase/ui";
 
 import S from "./Glossary.module.css";
+import type { GlossaryField } from "./types";
 
 type GlossaryRowEditorProps = {
   item: Pick<GlossaryItem, "term" | "definition">;
   onSave: (term: string, definition: string) => void | Promise<void>;
   onCancel: () => void;
-  autoFocusField?: "term" | "definition";
+  autoFocusField?: GlossaryField;
   existingTerms?: string[];
 };
 
@@ -82,7 +83,7 @@ export function GlossaryRowEditor({
       </Box>
       <Box component="td" valign="top" pr="0">
         {isDuplicate ? (
-          <Group gap="xs" pt="sm" wrap="nowrap">
+          <Group gap="xxs" pt="sm" wrap="nowrap">
             <Icon c="text-secondary" name="info" />
             <Text
               c="text-secondary"
@@ -113,8 +114,8 @@ export function GlossaryRowEditor({
           />
         )}
       </Box>
-      <Box component="td" valign="top" align="center" px="md" pt="sm" pb={0}>
-        <Group justify="flex-end" gap="xs" wrap="nowrap">
+      <Box component="td" valign="top" align="center" px="lg" pt="sm" pb={0}>
+        <Group justify="flex-end" gap="xxs" wrap="nowrap">
           <Tooltip label={t`Cancel`}>
             <ActionIcon
               aria-label={t`Cancel`}
@@ -142,7 +143,7 @@ export function GlossaryRowEditor({
   );
 }
 
-function useFocusOnMount(autoFocusField: "term" | "definition") {
+function useFocusOnMount(autoFocusField: GlossaryField) {
   const termRef = useRef<HTMLInputElement>(null);
   const definitionRef = useRef<HTMLTextAreaElement>(null);
 

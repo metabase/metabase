@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getPreviewParamsBySlug } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
@@ -20,6 +19,7 @@ import type {
 } from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Paper, Stack, Tabs } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { EmbeddingParameters } from "metabase-types/api";
@@ -31,7 +31,8 @@ import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import { type PreviewBackgroundType, PreviewPane } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
-import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
+import { SettingsTabLayout } from "./SettingsTabLayout";
+import S from "./StaticEmbedSetupPane.module.css";
 import { getDefaultDisplayOptions } from "./config";
 import { getDefaultEmbeddingParams } from "./lib/get-default-embedding-params";
 import { getHasParamsChanged } from "./lib/get-has-params-changed";
@@ -208,7 +209,7 @@ export const StaticEmbedSetupPane = ({
   >(EMBED_MODAL_TABS.Overview);
 
   return (
-    <Stack gap={0}>
+    <Stack gap={0} flex="1 1 auto" mih={0}>
       <Paper withBorder shadow="sm" m="1.5rem 2rem" p="0.75rem 1rem">
         <EmbedModalContentStatusBar
           resourceType={resourceType}
@@ -221,6 +222,7 @@ export const StaticEmbedSetupPane = ({
       </Paper>
 
       <Tabs
+        className={S.tabs}
         defaultValue={EMBED_MODAL_TABS.Overview}
         data-testid="embedding-preview"
       >
@@ -251,7 +253,7 @@ export const StaticEmbedSetupPane = ({
          * when you change to a different tab since they're all rendered inside
          * different `Tabs.Panel` if you were to use it as Mantine suggests.
          */}
-        <Tabs.Panel value={activeTab}>
+        <Tabs.Panel className={S.tabPanel} value={activeTab}>
           {activeTab === EMBED_MODAL_TABS.Overview ? (
             <OverviewSettings
               resourceType={resourceType}

@@ -44,7 +44,7 @@
   whatever."
   [{:keys [lib/temporal-unit], :as column-metadata}]
   (if (and temporal-unit
-           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+           (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units temporal-unit))
     :type/Integer
     ((some-fn :effective-type :base-type) column-metadata)))
 
@@ -523,16 +523,17 @@
 
   Throws if narrowing the projection would strand a reference in a later stage (a column that stage no longer
   returns)."
-  ([xs]
+  ([xs :- [:maybe [:sequential ::lib.ref/referenceable]]]
    (fn [query stage-number]
      (with-fields query stage-number xs)))
 
-  ([query xs]
+  ([query :- ::lib.schema/query
+    xs :- [:maybe [:sequential ::lib.ref/referenceable]]]
    (with-fields query -1 xs))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    xs]
+    xs           :- [:maybe [:sequential ::lib.ref/referenceable]]]
    (let [xs        (not-empty (mapv lib.ref/ref xs))
          ;; If any fields are specified, include all expressions not yet included.
          expr-cols (expression-columns query stage-number)
@@ -553,7 +554,7 @@
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
   "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
   enforced by the Malli schema."
-  ([query]
+  ([query :- ::lib.schema/query]
    (fields query -1))
 
   ([query        :- ::lib.schema/query
@@ -567,7 +568,7 @@
   Includes a `:selected?` key letting you know this column is already in `:fields` or not; if `:fields` is
   unspecified, all these columns are returned by default, so `:selected?` is true for all columns (this is a little
   strange but it matches the behavior of the QB UI)."
-  ([query]
+  ([query :- ::lib.schema/query]
    (fieldable-columns query -1))
 
   ([query :- ::lib.schema/query
@@ -605,9 +606,8 @@
         matching-ref (lib.equality/find-matching-ref column field-refs)]
     (if matching-ref
       (do
-        (log/debugf "Column %s already included by ref %s, doing nothing and returning the original query"
-                    (pr-str (select-keys column [:id :lib/join-alias :lib/source-column-alias]))
-                    (pr-str matching-ref))
+        (log/debugf "Column %s already included by an existing ref, doing nothing and returning the original query"
+                    (:id column))
         query)
       (let [column-ref (lib.ref/ref column)]
         (lib.util/update-query-stage populated stage-number update :fields conj column-ref)))))
@@ -664,7 +664,7 @@
     (when (and (empty? (:fields stage))
                (not (#{:source/implicitly-joinable :source/joins} source)))
       (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
-                 (pr-str ((some-fn :display-name :name) column))))
+                 (:id column)))
     (-> (case source
           (:source/table-defaults
            :source/card
@@ -685,9 +685,9 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (or (lib.equality/find-matching-ref column refs)
-                  (log/warnf "[remove-matching-ref] Failed to find match for column\n%s\nin refs:\n%s"
-                             (u/pprint-to-str column)
-                             (u/pprint-to-str refs)))]
+                  (log/warnf "[remove-matching-ref] Failed to find match for column %s in %d refs"
+                             (:id column)
+                             (count refs)))]
     (remove #(= % match) refs)))
 
 (defn- exclude-field
@@ -703,7 +703,7 @@
                ;; If we couldn't find the field, return the original query unchanged.
                (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))
       (when (= <> query)
-        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (pr-str ((some-fn :display-name :name) column)))))))
+        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (:id column))))))
 
 (defn- remove-field-from-join [query stage-number column]
   (let [join        (lib.join/resolve-join query stage-number (:lib/join-alias column))
@@ -763,12 +763,13 @@
 (mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
   "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
   last stage is used. This is currently only meant for use with `:field` clauses."
-  ([query field-ref]
+  ([query :- ::lib.schema/query
+    field-ref :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (find-visible-column-for-ref query -1 field-ref))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    field-ref    :- some?]
+    field-ref    :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (let [;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
          ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
          columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
@@ -802,13 +803,12 @@
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
   the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
-  [{:keys [has-field-values], :as field} :- [:map
-                                             ;; this doesn't use `::lib.schema.metadata/column` because it's stricter
-                                             ;; than we need and the REST API calls this function with optimized Field
-                                             ;; maps that don't include some keys like `:name`
-                                             [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
-                                             [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
-                                             [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]
+  [{:keys [has-field-values], :as field} :- [:or
+                                             ::lib.schema.metadata/column
+                                             [:map {:closed true}
+                                              [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                              [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                              [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]]
   (cond
     ;; if `has_field_values` is set in the DB, use that value; but if it's `auto-list`, return the value as `list` to
     ;; avoid confusing FE code, which can remain blissfully unaware that `auto-list` is a thing

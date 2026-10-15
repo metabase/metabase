@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
@@ -24,9 +23,6 @@
   (defmethod driver/database-supports? [:mongo feature]
     [_driver _feature _database]
     false))
-
-;; During tests don't treat Mongo as having FK support
-(defmethod driver/database-supports? [:mongo :metadata/key-constraints] [_driver _feature _db] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -107,7 +103,7 @@
 
 (defmethod tx/count-with-template-tag-query :mongo
   [_driver table-name field-name _param-type]
-  {:projections [:count]
+  {:projections ["count"]
    :query       (json/encode
                  [{:$match {(name field-name) (json/raw-json-generator (format "{{%s}}" (name field-name)))}}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
@@ -117,7 +113,7 @@
 
 (defmethod tx/count-with-field-filter-query :mongo
   [_driver table-name field-name]
-  {:projections [:count]
+  {:projections ["count"]
    :query       (json/encode
                  [{:$match (json/raw-json-generator (format "{{%s}}" (name field-name)))}
                   {:$group {"_id" nil, "count" {:$sum 1}}}

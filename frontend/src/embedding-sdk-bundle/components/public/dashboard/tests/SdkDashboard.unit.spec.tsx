@@ -182,4 +182,55 @@ describe("SdkDashboard", () => {
     expect(dashcardMenuPopover).not.toBeInTheDocument();
     expect(onClickCustomAction).toHaveBeenCalled();
   });
+
+  it("should render a custom dashcard menu if one is provided globally via MetabaseProvider (metabase#EMB-2049)", async () => {
+    const onClickCustomAction = jest.fn();
+    await setup({
+      props: {
+        withDownloads: true,
+      },
+      providerProps: {
+        pluginsConfig: {
+          dashboard: {
+            dashboardCardMenu: {
+              withDownloads: true,
+              withEditLink: true,
+              customItems: [
+                {
+                  iconName: "chevronright",
+                  label: "Custom Action",
+                  onClick: onClickCustomAction,
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    expect(dashcard).toBeInTheDocument();
+
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const dashcardMenuPopover = await screen.findByRole("menu");
+    expect(
+      within(dashcardMenuPopover).getByText("Download results"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Edit question"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    );
+
+    expect(dashcardMenuPopover).not.toBeInTheDocument();
+    expect(onClickCustomAction).toHaveBeenCalled();
+  });
 });

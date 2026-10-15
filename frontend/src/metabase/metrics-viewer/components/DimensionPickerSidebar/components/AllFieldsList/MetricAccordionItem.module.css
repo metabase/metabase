@@ -1,11 +1,10 @@
 .metricAccordionItem {
   overflow: hidden;
-  border-radius: 0.5rem;
 }
 
 .metricAccordionControl {
   align-items: center;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary);
   display: flex;

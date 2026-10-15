@@ -18,7 +18,7 @@ const _BadgeListItem = (
 ) => (
   <Badge
     ref={ref}
-    size="lg"
+    size="sm"
     tt="capitalize"
     variant="light"
     classNames={{
@@ -27,6 +27,7 @@ const _BadgeListItem = (
     }}
     pr={0}
     pl="sm"
+    color="brand"
     rightSection={
       <ActionIcon
         radius="xl"

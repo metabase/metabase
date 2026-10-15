@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 
+import type { DatabaseId } from "metabase-types/api";
+
 import { MainPane } from "./MainPane";
+import { PLUGIN_DATA_REFERENCE } from "./plugins";
 import {
   type DataReferenceItem,
   type DataReferencePaneProps,
@@ -13,15 +16,30 @@ export const DataReference = ({
   pushDataReferenceStack,
   onClose,
   onBack,
+  databaseId,
 }: {
   dataReferenceStack: DataReferenceItem[];
   popDataReferenceStack: () => void;
   pushDataReferenceStack: (item: DataReferenceItem) => void;
   onClose?: () => void;
   onBack?: () => void;
+  databaseId?: DatabaseId;
 }) => {
   if (dataReferenceStack.length) {
     const page = dataReferenceStack[dataReferenceStack.length - 1];
+
+    if (page.type === "library") {
+      return (
+        <PLUGIN_DATA_REFERENCE.LibraryPane
+          {...page}
+          onItemClick={pushDataReferenceStack}
+          onClose={onClose}
+          onBack={popDataReferenceStack}
+          queryDatabaseId={databaseId}
+        />
+      );
+    }
+    // Unjustified type cast. FIXME
     const Pane = PANES[page.type] as ComponentType<
       DataReferencePaneProps<typeof page>
     >;
@@ -31,6 +49,7 @@ export const DataReference = ({
         onItemClick={pushDataReferenceStack}
         onClose={onClose}
         onBack={popDataReferenceStack}
+        queryDatabaseId={databaseId}
       />
     );
   } else {

@@ -3,21 +3,22 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import {
+  isAdminGroup,
+  isApiKeyGroupMember,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
-
-const isApiKeyGroupMember = (member: Member) =>
-  member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) &&
@@ -55,7 +56,7 @@ export function GroupMembersTable({
   // An empty group renders just the call to action, without the column header.
   if (!hasMembers && !showAddUser) {
     return (
-      <Text c="text-secondary" ta="center" mt="xl">
+      <Text c="text-secondary" ta="center" mt="xxl">
         {t`Add members to get started.`}
       </Text>
     );
@@ -94,7 +95,7 @@ export function GroupMembersTable({
       </AdminContentTable>
 
       {hasMembers && (
-        <Flex align="center" justify="flex-end" p="md">
+        <Flex align="center" justify="flex-end" p="lg">
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -150,7 +151,7 @@ const UserMemberRow = ({
       {canRemove ? (
         <Box component="td" ta="right">
           <UnstyledButton onClick={() => onMembershipRemove(member)}>
-            <Icon name="close" c="text-tertiary" size={16} />
+            <Icon name="close" c="text-disabled" size={16} />
           </UnstyledButton>
         </Box>
       ) : null}
@@ -170,7 +171,7 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
         <Tooltip label={t`API keys`} position="left">
-          <Icon name="link" c="text-tertiary" size={16} />
+          <Icon name="link" c="text-disabled" size={16} />
         </Tooltip>
       </Link>
     </Box>

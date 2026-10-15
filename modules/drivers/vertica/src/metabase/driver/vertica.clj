@@ -1,7 +1,8 @@
 (ns metabase.driver.vertica
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -12,6 +13,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
@@ -20,8 +22,10 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
+   (java.net URLDecoder)
    (java.sql ResultSet ResultSetMetaData Types)))
 
 (set! *warn-on-reflection* true)
@@ -30,6 +34,13 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
+(defmethod driver/host-carrying-parameters :vertica [_driver] ["backupservernode" "oauthdiscoveryurl"])
+
+(defmethod driver/non-host-parameters :vertica
+  [_driver]
+  ["failonmultinodeplans" "hostnameverifier" "kerberoshostname" "maxpooledconnectionspernode" "nodedownwaittime"
+   "preferredaddressfamily"])
+
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
                               :datetime-diff                    true
@@ -37,6 +48,7 @@
                               :describe-is-nullable             true
                               :expression-literals              true
                               :identifiers-with-spaces          true
+                              :native-pivot-tables              true
                               :now                              true
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false
@@ -71,6 +83,18 @@
     (keyword "Long Varchar")   :type/Text
     (keyword "Long Varbinary") :type/*} database-type))
 
+(defn- copy-local-parameter?
+  "Whether a connection parameter name, as a user may have written it, is the client's `disablecopylocal`. The client
+  reads names case-insensitively; decoded and trimmed too, so no spelling of it survives to compete with ours."
+  [parameter-name]
+  (let [s (str/trim (str parameter-name))]
+    (str/includes? (u/lower-case-en (try (URLDecoder/decode s "UTF-8") (catch Exception _ s))) "copylocal")))
+
+(defn- remove-copy-local-option [additional-options]
+  (when-not (str/blank? additional-options)
+    (not-empty (str/join "&" (remove #(copy-local-parameter? (first (str/split % #"=" 2)))
+                                     (str/split additional-options #"&"))))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :vertica
   [_ {:keys [host port db dbname]
       :or   {host "localhost", port 5433, db ""}
@@ -78,12 +102,23 @@
   (-> (merge {:classname   "com.vertica.jdbc.Driver"
               :subprotocol "vertica"
               :subname     (str "//" host ":" port "/" (or dbname db))}
-             (dissoc details :host :port :dbname :db :ssl))
-      (sql-jdbc.common/handle-additional-options details)))
+             ;; detail keys reach the client as connection properties
+             (into {}
+                   (remove (comp copy-local-parameter? name key))
+                   (dissoc details :host :port :dbname :db :ssl)))
+      (sql-jdbc.common/handle-additional-options (update details :additional-options remove-copy-local-option))
+      ;; `COPY ... FROM LOCAL` reads files on the Metabase host and loads them into the warehouse, where a native query
+      ;; can read them back. Metabase never uses it, so it is disabled for every connection whatever the details say.
+      (assoc :disablecopylocal "true")))
 
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_driver]
   (h2x/with-database-type-info [:current_timestamp [:inline 6]] "timestamptz"))
+
+;; Vertica's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
+(defmethod sql.pivot/pivot-grouping-hsql :vertica
+  [_driver exprs]
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_driver _seconds-or-milliseconds honeysql-expr]
@@ -141,7 +176,7 @@
   (sql.qp/adjust-day-of-week :vertica [:dayofweek_iso expr]))
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
                          (h2x/is-of-type? expr "timestamptz"))]
@@ -153,7 +188,7 @@
         (h2x/with-database-type-info "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (transduce
    (map #(sql.qp/->honeysql driver %))
    (completing (fn [x y]
@@ -215,7 +250,7 @@
   "DOUBLE PRECISION")
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- format-percentile
@@ -234,13 +269,11 @@
 (sql/register-fn! ::percentile #'format-percentile)
 
 (defmethod sql.qp/->honeysql [:vertica :percentile]
-  [driver [_ arg p]]
-  (let [arg (sql.qp/->honeysql driver arg)
-        p   (sql.qp/->honeysql driver p)]
-    [::percentile arg p]))
+  [driver [_ _opts arg p]]
+  [::percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:vertica :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approximate_median (sql.qp/->honeysql driver arg)])
 
 (defmethod sql.qp/->honeysql [:vertica java.time.LocalDate]
@@ -273,7 +306,7 @@
   (sql.qp/->honeysql driver (t/offset-date-time t)))
 
 (defmethod sql.qp/->honeysql [:vertica ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast "long varchar")))
 
@@ -297,12 +330,14 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error e "Failed to fetch materialized views for this database"))))
+         (log/errorf "Failed to fetch materialized views for this database: %s" (ex-message e)))))
 
 (defmethod driver/describe-database* :vertica
   [driver database]
+  ;; the JDBC default returns `:tables` as a reducible; fold it (and the materialized views) into a
+  ;; set rather than `set/union`, which would call `count` on the reducible
   (-> ((get-method driver/describe-database* :sql-jdbc) driver database)
-      (update :tables set/union (materialized-views database))))
+      (update :tables #(into (materialized-views database) %))))
 
 (defmethod driver/db-default-timezone :vertica
   [_driver _database]
@@ -318,7 +353,7 @@
   (fn read-time []
     (when-let [s (.getString rs i)]
       (let [t (u.date/parse s)]
-        (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+        (log/tracef "(.getString rs %d) [TIME]" i)
         t))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIME_WITH_TIMEZONE]
@@ -326,7 +361,7 @@
   (fn read-time-with-timezone []
     (when-let [s (.getString rs i)]
       (let [t (u.date/parse s)]
-        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE]" i)
         t))))
 
 ;; for some reason vertica `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
@@ -338,12 +373,12 @@
     (fn read-timestamp []
       (when-let [s (.getString rs i)]
         (let [t (u.date/parse s timezone)]
-          (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+          (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE]" i)
           t)))))
 
 (defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
   [_ e]

@@ -1,10 +1,11 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -21,21 +22,24 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { MetricTabs } from "./MetricTabs";
 
 const urls: MetricUrls = {
-  about: (id) => `/metric/${id}/about`,
+  about: (id) => `/metric/${id}`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
+  dimensions: (id) => `/metric/${id}/dimensions`,
   dependencies: (id) => `/metric/${id}/dependencies`,
   history: (id) => `/metric/${id}/history`,
 };
 
 describe("MetricTabs", () => {
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({
+      advanced_permissions: true,
+      cache_granular_controls: true,
+      dependencies: true,
+    }),
+  });
+
   beforeAll(() => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        cache_granular_controls: true,
-        dependencies: true,
-      }),
-    });
     setupEnterprisePlugins();
   });
 
@@ -44,11 +48,13 @@ describe("MetricTabs", () => {
     hasDimensions = true,
     hasDataPermissions = true,
     role = "consumer",
+    initialRoute = "/",
   }: {
     card?: Partial<Card>;
     hasDimensions?: boolean;
     hasDataPermissions?: boolean;
     role?: "admin" | "analyst" | "consumer";
+    initialRoute?: string;
   } = {}) {
     const card = createMockCard({
       type: "metric",
@@ -70,21 +76,25 @@ describe("MetricTabs", () => {
         is_superuser: role === "admin",
         is_data_analyst: role === "analyst",
       }),
+      settings,
       entities: createMockEntitiesState({
         databases: hasDataPermissions ? [createSampleDatabase()] : [],
         questions: [card],
       }),
     });
 
-    renderWithProviders(<MetricTabs card={card} urls={urls} />, {
-      storeInitialState: state,
-    });
+    renderWithProviders(
+      <Route path="*" element={<MetricTabs card={card} urls={urls} />} />,
+      {
+        withRouter: true,
+        initialRoute,
+        storeInitialState: state,
+      },
+    );
   }
 
   function getTabLabels() {
-    return Array.from(
-      document.querySelectorAll(".mb-mantine-Button-label"),
-    ).map((element) => element.textContent);
+    return screen.queryAllByRole("link").map((link) => link.textContent);
   }
 
   it("does not show the caching tab in the tabs row regardless of write access", async () => {
@@ -94,6 +104,7 @@ describe("MetricTabs", () => {
         "About",
         "Overview",
         "Definition",
+        "Dimensions",
         "History",
       ]);
     });
@@ -106,19 +117,25 @@ describe("MetricTabs", () => {
         "About",
         "Overview",
         "Definition",
+        "Dimensions",
         "History",
       ]);
     });
   });
 
-  it("should hide the overview tab when metric has no dimensions", async () => {
+  it("hides the overview tab when the metric has no dimensions", async () => {
     setup({ hasDimensions: false });
     await waitFor(() => {
-      expect(getTabLabels()).toEqual(["About", "Definition", "History"]);
+      expect(getTabLabels()).toEqual([
+        "About",
+        "Definition",
+        "Dimensions",
+        "History",
+      ]);
     });
   });
 
-  it("should hide the overview and definition tabs when the query is not editable", async () => {
+  it("should hide the overview, definition, and dimensions tabs when the query is not editable", async () => {
     setup({
       hasDataPermissions: false,
       hasDimensions: true,
@@ -128,6 +145,48 @@ describe("MetricTabs", () => {
       expect(getTabLabels()).toEqual(["About", "History"]);
     });
   });
+
+  it("shows the dimensions tab for editable metrics", async () => {
+    setup();
+    await waitFor(() => {
+      expect(getTabLabels()).toContain("Dimensions");
+    });
+  });
+
+  it.each([
+    ["About", "/metric/9-revenue"],
+    ["Overview", "/metric/9-revenue/overview"],
+    ["Definition", "/metric/9-revenue/query"],
+    ["Dimensions", "/metric/9-revenue/dimensions"],
+    ["History", "/metric/9-revenue/history"],
+    ["Dependencies", "/metric/9-revenue/dependencies"],
+  ])(
+    "marks %s as the current tab for a slugged metric URL (#83344)",
+    async (label, initialRoute) => {
+      setup({ card: { id: 9 }, initialRoute, role: "admin" });
+
+      expect(await screen.findByRole("link", { name: label })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(
+        screen
+          .getAllByRole("link")
+          .filter((link) => link.getAttribute("aria-current") === "page"),
+      ).toHaveLength(1);
+    },
+  );
+
+  it.each(["/metric/9-revenue/query", "/metric/90-revenue"])(
+    "does not mark About as current at %s (#83344)",
+    async (initialRoute) => {
+      setup({ card: { id: 9 }, initialRoute });
+
+      expect(
+        await screen.findByRole("link", { name: "About" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
 
   describe("Dependencies tab (role-gated)", () => {
     it("shows for admins", async () => {

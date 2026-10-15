@@ -10,7 +10,7 @@ function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
     id: overrides.id ?? 1,
     term: overrides.term ?? "Alpha",
     definition: overrides.definition ?? "First",
-  } as GlossaryItem;
+  };
 }
 
 describe("GlossaryTable", () => {
@@ -55,6 +55,7 @@ describe("GlossaryTable", () => {
       within(r).queryByPlaceholderText(/boat/i),
     );
     expect(createRow0).toBeTruthy();
+    // Unjustified type cast. FIXME
     const saveInCreate = within(createRow0 as HTMLElement).getByRole("button", {
       name: /save/i,
     });
@@ -197,6 +198,7 @@ describe("GlossaryTable", () => {
     const rows = within(table).getAllByRole("row");
     const row = rows.find((r) => within(r).queryByText("DeleteMe"));
     expect(row).toBeTruthy();
+    // Unjustified type cast. FIXME
     await user.hover(row as HTMLElement);
 
     await user.click(screen.getByRole("button", { name: /delete/i }));
@@ -230,6 +232,7 @@ describe("GlossaryTable", () => {
       within(r).queryByPlaceholderText(/boat/i),
     );
     expect(createRow).toBeTruthy();
+    // Unjustified type cast. FIXME
     const saveBtn = within(createRow as HTMLElement).getByRole("button", {
       name: /save/i,
     });
@@ -369,5 +372,32 @@ describe("GlossaryTable", () => {
     expect(
       screen.queryByRole("button", { name: /save/i }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("readOnly", () => {
+    it("hides create, edit, and delete controls", async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(
+        <GlossaryTable
+          glossary={[makeItem({ id: 1, term: "Alpha", definition: "First" })]}
+          readOnly
+        />,
+      );
+
+      // No "New term" button
+      expect(
+        screen.queryByRole("button", { name: /new term/i }),
+      ).not.toBeInTheDocument();
+
+      // No delete action
+      expect(
+        screen.queryByRole("button", { name: /delete/i }),
+      ).not.toBeInTheDocument();
+
+      // Clicking a term does not open the inline editor
+      await user.click(screen.getByText("Alpha"));
+      expect(screen.queryByPlaceholderText(/boat/i)).not.toBeInTheDocument();
+    });
   });
 });

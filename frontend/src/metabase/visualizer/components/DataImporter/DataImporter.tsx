@@ -82,13 +82,13 @@ export const DataImporter = ({
       style={{ height: "100%" }}
       data-testid="visualizer-data-importer"
     >
-      <Title order={4} mb="xs" className={S.Title}>
+      <Title order={4} mb="xxs" className={S.Title}>
         {showDatasets ? t`Add data` : t`Manage data`}
       </Title>
       {dataSources.length > 0 && (
         <Button
-          size="xs"
           variant="transparent"
+          size="compact-md"
           ml="auto"
           onClick={() => {
             if (showDatasets) {
@@ -114,7 +114,7 @@ export const DataImporter = ({
         display={showDatasets ? "flex" : "none"}
       >
         <TextInput
-          m="xs"
+          m="xxs"
           variant="filled"
           value={search}
           onChange={handleSearchChange}
@@ -133,7 +133,7 @@ export const DataImporter = ({
       <Flex
         direction="column"
         className={S.Content}
-        bg="background-primary"
+        bg="background_page-primary"
         h="100%"
         display={showDatasets ? "none" : "flex"}
         bd="1px solid var(--mb-color-border-neutral)"
@@ -152,7 +152,7 @@ export const DataImporter = ({
           <Flex
             direction="column"
             className={S.Content}
-            bg="background-primary"
+            bg="background_page-primary"
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",

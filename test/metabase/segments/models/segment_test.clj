@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.session :as session]
@@ -54,8 +53,7 @@
         (t2/query-one {:update :segment
                        :set {:definition (json/encode {:filter "X"})}
                        :where [:= :id segment-id]})
-        (is (= {}
-               (:definition (t2/select-one :model/Segment :id segment-id)))))))
+        (is (nil? (:definition (t2/select-one :model/Segment :id segment-id)))))))
   (testing "...but should still throw them on insert"
     (is (thrown? Exception
                  (t2/insert! :model/Segment {:table_id (mt/id :venues)
@@ -80,17 +78,6 @@
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
                (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
-
-(deftest identity-hash-test
-  (testing "Segment hashes are composed of the segment name and table identity-hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
-                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Segment segment {:name "big customers" :table_id (:id table) :created_at now
-                                             :definition {:filter 1000}}]
-        (is (= "be199b7c"
-               (serdes/raw-hash ["big customers" (serdes/identity-hash table) (:created_at segment)])
-               (serdes/identity-hash segment)))))))
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
@@ -196,7 +183,11 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? segment)))))))
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (true? (mi/can-write? segment))))
+        (testing "including without the advanced-permissions feature"
+          (mt/with-premium-features #{}
+            (is (true? (mi/can-write? segment)))))))))
 
 (deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write segments"
@@ -210,7 +201,12 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (mi/can-write? segment)))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (mi/can-write? segment))))
+          (testing "but not once the advanced-permissions feature is gone"
+            (mt/with-premium-features #{}
+              (is (not (mi/can-write? segment))))))))))
 
 (deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write segments"
@@ -247,9 +243,18 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
-                                                     :table_id (mt/id :venues)
-                                                     :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (true? (mi/can-create? :model/Segment {:name       "Test Segment"
+                                                        :table_id   (mt/id :venues)
+                                                        :definition {:filter [:> [:field (mt/id :venues :price) nil]
+                                                                              2]}})))))
+          (testing "but not once the advanced-permissions feature is gone"
+            (mt/with-premium-features #{}
+              (is (false? (mi/can-create? :model/Segment {:name       "Test Segment"
+                                                          :table_id   (mt/id :venues)
+                                                          :definition {:filter [:> [:field (mt/id :venues :price) nil]
+                                                                                2]}}))))))))))
 
 (deftest can-create?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot create segments"

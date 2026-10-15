@@ -1,3 +1,5 @@
+import type { VisualizationSettings } from "metabase-types/api";
+
 import { removeInternalClickBehaviors } from "./links";
 
 describe("removeInternalClickBehaviors", () => {
@@ -22,36 +24,35 @@ describe("removeInternalClickBehaviors", () => {
     expect(removeInternalClickBehaviors(settings)).toBe(settings);
   });
 
-  it("removes internal link click behaviors from column settings", () => {
-    const result = removeInternalClickBehaviors({
+  it.each(["dashboard", "question"] as const)(
+    "removes internal %s link click behaviors from computed settings",
+    (linkType) => {
+      const result = removeInternalClickBehaviors({
+        click_behavior: { type: "link", linkType, targetId: 1 },
+      });
+
+      expect(result.click_behavior).toBeUndefined();
+    },
+  );
+
+  it("does not crash on undefined column settings entries (EMB-1940)", () => {
+    // Unjustified type cast. FIXME
+    const settings = {
       column_settings: {
-        '["name","TOTAL"]': {
+        // columns without stored settings can end up as `undefined` entries
+        '["name","TOTAL"]': undefined,
+        '["name","SUBTOTAL"]': {
           click_behavior: {
             type: "link",
             linkType: "dashboard",
             targetId: 1,
           },
         },
-        '["name","SUBTOTAL"]': {
-          click_behavior: {
-            type: "link",
-            linkType: "url",
-            linkTemplate: "https://metabase.com",
-          },
-        },
       },
-    });
+    } as unknown as VisualizationSettings;
 
-    expect(result.column_settings?.['["name","TOTAL"]'].click_behavior).toBe(
-      undefined,
-    );
-    expect(result.column_settings?.['["name","SUBTOTAL"]'].click_behavior)
-      .toMatchInlineSnapshot(`
-      {
-        "linkTemplate": "https://metabase.com",
-        "linkType": "url",
-        "type": "link",
-      }
-    `);
+    const result = removeInternalClickBehaviors(settings);
+
+    expect(result).toBe(settings);
   });
 });

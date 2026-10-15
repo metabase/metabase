@@ -6,7 +6,6 @@
    [metabase.sql-tools.macaw.references :as sql-tools.macaw]))
 
 ;; TODO (Chris 2026-01-22) -- Refactor to use driver.u/parsed-query instead of macaw/parsed-query
-#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- ->references [query]
   (->> query macaw/parsed-query macaw/->ast (sql-tools.macaw/field-references :sql)))
 

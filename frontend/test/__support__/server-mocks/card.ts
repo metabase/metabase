@@ -5,6 +5,7 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
+  ConcreteTableId,
   DashboardId,
   Dataset,
   GetPublicCard,
@@ -28,6 +29,10 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}/series`, [], {
     name: `card-${card.id}-series`,
   });
+}
+
+export function setupUpdateCardEndpointWithError(cardId: CardId) {
+  fetchMock.put(`path:/api/card/${cardId}`, { status: 500, body: {} });
 }
 
 export function setupCardByEntityIdEndpoints(card: Card) {
@@ -71,6 +76,17 @@ export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
     url: "path:/api/card",
     query: { f: "using_model", model_id: card.id },
     response: usedBy,
+  });
+}
+
+export function setupCardsForTableEndpoint(
+  tableId: ConcreteTableId,
+  cards: Card[] = [],
+) {
+  fetchMock.get({
+    url: "path:/api/card",
+    query: { f: "table", model_id: tableId },
+    response: cards,
   });
 }
 

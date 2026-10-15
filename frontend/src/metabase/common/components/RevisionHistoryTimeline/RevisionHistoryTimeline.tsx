@@ -46,8 +46,7 @@ export function RevisionHistoryTimeline({
     } catch (error) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "error",
+          variant: "negative",
           message: getErrorMessage(
             error,
             t`Failed to revert to previous version.`,
@@ -96,15 +95,17 @@ export function RevisionHistoryTimeline({
               <Flex>
                 {revision && canWrite && isNotFirstEvent && (
                   <Tooltip label={t`Revert to this version`}>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       className={S.revertButton}
                       variant="subtle"
+                      color="neutral"
+                      size="sm"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
-                    >
-                      <Icon name="revert" />
-                    </Button>
+                      leftSection={<Icon name="revert" />}
+                    />
                   </Tooltip>
                 )}
               </Flex>
@@ -128,9 +129,9 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         h={24}
         className={S.iconCircle}
         bd="1px solid var(--mb-color-border-neutral)"
-        bg="background-primary"
+        bg="background_page-primary"
       >
-        <Icon name={icon} c="text-tertiary" size={12} />
+        <Icon name={icon} c="text-disabled" size={12} />
       </Center>
     );
   }
@@ -141,7 +142,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
 
   return (
     <Center w={24} h={24} className={S.iconCircle} bg="core-brand">
-      <Icon name={icon.name} c="white" size={12} />
+      <Icon name={icon.name} c="core-white" size={12} />
     </Center>
   );
 }

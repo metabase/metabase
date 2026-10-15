@@ -1,5 +1,5 @@
 export type * from "./action";
-export type * from "./auth-config";
+export type * from "embedding-sdk-shared/types/auth-config";
 export type * from "./collection";
 export type * from "./dashboard";
 export type * from "./entity";

@@ -9,13 +9,12 @@ import {
 
 const makeItem = (
   overrides: Partial<OmniPickerCollectionItem> = {},
-): OmniPickerCollectionItem =>
-  ({
-    id: 1,
-    name: "Test Item",
-    model: "card" as const,
-    ...overrides,
-  }) as OmniPickerCollectionItem;
+): OmniPickerCollectionItem => ({
+  id: 1,
+  name: "Test Item",
+  model: "card" as const,
+  ...overrides,
+});
 
 describe("isSameDestination", () => {
   it("should return true when moving to same dashboard", () => {
@@ -23,7 +22,7 @@ describe("isSameDestination", () => {
       dashboard_id: 10,
       collection: { id: 7, name: "Collection 1", authority_level: null },
     });
-    const movingTarget = makeItem({ model: "dashboard" as any, id: 10 });
+    const movingTarget = makeItem({ model: "dashboard", id: 10 });
     expect(isSameDestination(movingItem, movingTarget)).toBe(true);
   });
 
@@ -32,7 +31,7 @@ describe("isSameDestination", () => {
       collection: { id: 7, name: "Collection 1", authority_level: null },
     });
     const movingTarget = makeItem({
-      model: "collection" as any,
+      model: "collection",
       id: 7,
     });
     expect(isSameDestination(movingItem, movingTarget)).toBe(true);
@@ -43,7 +42,7 @@ describe("isSameDestination", () => {
       collection: { id: 7, name: "Collection 1", authority_level: null },
     });
     const movingTarget = makeItem({
-      model: "collection" as any,
+      model: "collection",
       id: 99,
     });
     expect(isSameDestination(movingItem, movingTarget)).toBe(false);
@@ -55,7 +54,7 @@ describe("isSameDestination", () => {
       collection: { id: 7, name: "Collection 1", authority_level: null },
     });
     const movingTarget = makeItem({
-      model: "collection" as any,
+      model: "collection",
       id: 7,
     });
     expect(isSameDestination(movingItem, movingTarget)).toBe(false);
@@ -66,7 +65,7 @@ describe("isSameDestination", () => {
       dashboard_id: 10,
       collection: { id: 7, name: "Collection 1", authority_level: null },
     });
-    const movingTarget = makeItem({ model: "dashboard" as any, id: 20 });
+    const movingTarget = makeItem({ model: "dashboard", id: 20 });
     expect(isSameDestination(movingItem, movingTarget)).toBe(false);
   });
 });

@@ -9,13 +9,15 @@ import {
 } from "metabase/api";
 import S from "metabase/common/components/Glossary/Glossary.module.css";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import { Card, Group, Stack, Text } from "metabase/ui";
 
 export function GlossaryContainer() {
-  const { data: glossary = [] } = useListGlossaryQuery();
+  const { data } = useListGlossaryQuery();
+  const glossary = data?.data ?? [];
+  const canWrite = data?.can_write ?? false;
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();
   const [deleteGlossary] = useDeleteGlossaryMutation();
@@ -42,10 +44,11 @@ export function GlossaryContainer() {
           m={0}
           className={cx(CS.wrapper, CS.wrapperTrim)}
         >
-          <Card px="lg" pb="sm" withBorder shadow="none" className={S.card}>
+          <Card px="xl" pb="sm" withBorder shadow="none" className={S.card}>
             <GlossaryTable
               className={S.table}
               glossary={glossary}
+              readOnly={!canWrite}
               onCreate={async (term, definition) => {
                 await createGlossary({ term, definition });
               }}

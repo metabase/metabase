@@ -18,15 +18,11 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    it('should slugify database name when opening it from /browse/databases"', () => {
-      cy.visit("/browse/databases");
-      cy.findByTextEnsureVisible("Sample Database").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sample Database");
-      cy.location("pathname").should(
-        "eq",
-        `/browse/databases/${SAMPLE_DB_ID}-sample-database`,
-      );
+    it("should still open a database from a legacy id-slug url", () => {
+      const url = `/browse/databases/${SAMPLE_DB_ID}-sample-database`;
+      cy.visit(url);
+      cy.findByTestId("browse-schemas").should("exist");
+      cy.location("pathname").should("eq", url);
     });
 
     [

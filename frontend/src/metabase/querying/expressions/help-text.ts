@@ -1,6 +1,6 @@
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 import { getClauseDefinition } from "./clause";
 
@@ -16,7 +16,7 @@ export type HelpText = {
 
 export function getHelpText(
   name: string,
-  database: Database,
+  database: Pick<Database, "engine" | "features">,
   reportTimezone?: string,
 ): HelpText | null {
   const clause = getClauseDefinition(name);
@@ -52,6 +52,7 @@ function getExample(
   args: Lib.ClauseArgDefinition[],
 ): Lib.ExpressionParts {
   return {
+    // Unjustified type cast. FIXME
     operator: name as Lib.ExpressionOperator,
     options: {},
     args: args.flatMap((arg) => arg.example).filter(isNotNull),

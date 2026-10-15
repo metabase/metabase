@@ -24,14 +24,14 @@ export function BreakoutLegend() {
     <Box
       className={S.root}
       w="16rem"
-      pt="md"
-      pr="lg"
-      pb="md"
+      pt="lg"
+      pr="xl"
+      pb="lg"
       pl="sm"
       data-testid="metrics-viewer-breakout-legend"
     >
-      <Paper withBorder radius="md" p="lg">
-        <Stack gap="lg">
+      <Paper withBorder radius="sm" p="xl">
+        <Stack gap="xl">
           {groups.map((group) => (
             <Stack key={group.key} gap="sm">
               <div>
@@ -39,7 +39,7 @@ export function BreakoutLegend() {
                   {group.header}
                 </Title>
                 {group.subtitle && (
-                  <Text size="sm" c="text-tertiary" lh={1.3}>
+                  <Text size="sm" c="text-disabled" lh={1.3}>
                     {group.subtitle}
                   </Text>
                 )}

@@ -1,13 +1,15 @@
 import { useHover } from "@mantine/hooks";
+import cx from "classnames";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { Tooltip } from "metabase/ui";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 
-import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
+import S from "./AppBar.module.css";
 
 export interface AppBarToggleProps {
   isSmallAppBar?: boolean;
@@ -51,6 +53,7 @@ export function AppBarToggle({
   if (!isNavBarEnabled) {
     return null;
   }
+  // Unjustified type cast. FIXME
   return (
     <div ref={hoverRef as React.Ref<HTMLDivElement>}>
       <Tooltip
@@ -60,16 +63,25 @@ export function AppBarToggle({
         offset={-12}
         openDelay={1000}
       >
-        <SidebarButton
-          isSmallAppBar={isSmallAppBar}
-          isNavBarEnabled={isNavBarEnabled}
-          isLogoVisible={isLogoVisible}
+        <Flex
+          component="button"
+          className={CS.cursorPointer}
+          align="center"
+          justify="center"
+          w="2.25rem"
+          px={0}
+          py={isSmallAppBar ? "sm" : "lg"}
           onClick={handleToggleClick}
           data-testid="sidebar-toggle"
           aria-label={t`Toggle sidebar`}
         >
-          <SidebarIcon isLogoVisible={isLogoVisible} size={20} name="burger" />
-        </SidebarButton>
+          <Icon
+            className={cx({ [S.toggleIconDimmed]: !isLogoVisible })}
+            c={isLogoVisible ? "core-brand" : undefined}
+            size={20}
+            name="burger"
+          />
+        </Flex>
       </Tooltip>
     </div>
   );

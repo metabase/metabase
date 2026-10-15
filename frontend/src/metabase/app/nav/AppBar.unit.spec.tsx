@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -9,12 +8,6 @@ import {
   setupDashboardEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
-import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
-import type {
-  DashboardState,
-  InteractiveEmbeddingOptions,
-} from "metabase/redux/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -22,7 +15,14 @@ import {
   createMockEmbedState,
   createMockQueryBuilderState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders } from "__support__/ui";
+import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
+import type {
+  DashboardState,
+  InteractiveEmbeddingOptions,
+} from "metabase/redux/store";
+import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
 import type { Card } from "metabase-types/api";
 import {
@@ -146,15 +146,15 @@ describe("AppBar", () => {
       });
 
       it("should take you home when clicking the logo", async () => {
-        const { history } = setup({});
+        const { router } = setup({});
 
-        if (!history) {
+        if (!router) {
           throw new Error("history should be available from test setup");
         }
 
-        expect(history.getCurrentLocation().pathname).toBe("/question/1");
+        expect(router.location.pathname).toBe("/question/1");
         await userEvent.click(screen.getByTestId("main-logo"));
-        expect(history.getCurrentLocation().pathname).toBe("/");
+        expect(router.location.pathname).toBe("/");
       });
     });
 
@@ -221,15 +221,15 @@ describe("AppBar", () => {
       });
 
       it("should take you home when clicking the logo", async () => {
-        const { history } = setup({});
+        const { router } = setup({});
 
-        if (!history) {
+        if (!router) {
           throw new Error("history should be available from test setup");
         }
 
-        expect(history.getCurrentLocation().pathname).toBe("/question/1");
+        expect(router.location.pathname).toBe("/question/1");
         await userEvent.click(screen.getByTestId("main-logo"));
-        expect(history.getCurrentLocation().pathname).toBe("/");
+        expect(router.location.pathname).toBe("/");
       });
     });
 
@@ -380,7 +380,7 @@ function setup({
   setupCardEndpoints(card);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
-  return renderWithProviders(<Route path="*" component={AppBarContainer} />, {
+  return renderWithProviders(<Route path="*" element={<AppBarContainer />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {

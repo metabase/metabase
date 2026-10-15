@@ -1,9 +1,9 @@
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import type {
+  BarData,
+  CartesianChartColumns,
   GroupedDatum,
   SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
+} from "metabase/viz-core";
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -38,6 +38,7 @@ const chartColumns: CartesianChartColumns = {
   ],
 };
 
+// Unjustified type cast. FIXME
 const settings = {
   "graph.label_value_formatting": "full",
   column: (column: DatasetColumn) => {
@@ -58,6 +59,7 @@ const settings = {
 } as VisualizationSettings;
 
 const getBar = (metricColumn: DatasetColumn) =>
+  // Unjustified type cast. FIXME
   ({
     series: {
       seriesInfo: {

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockMeasure } from "metabase-types/api/mocks";
 
 import { MeasureHeader } from "./MeasureHeader";
@@ -21,7 +21,7 @@ const setup = ({ readOnly }: SetupOpts = {}) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <MeasureHeader
           measure={measure}
           onRemove={jest.fn()}
@@ -29,7 +29,7 @@ const setup = ({ readOnly }: SetupOpts = {}) => {
           tabUrls={tabUrls}
           previewUrl="/measures/1/preview"
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

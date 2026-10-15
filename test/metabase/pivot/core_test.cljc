@@ -178,7 +178,7 @@
           result (#'pivot/get-subtotal-values pivot-data val-indexes nil)]
       (is (= {[0 1 2] {[1 "A" "Y"] [10]
                        [1 "B" "Z"] [20]}}
-             result)))))
+             (update-vals result #(update-vals % vec)))))))
 
 (deftest get-subtotal-values-primary-rows-key-test
   (testing "Excludes the primary rows if passed a primary rows key"
@@ -270,7 +270,7 @@
       (is (= [[["Y" 1 "A"] [10]]
               [["Z" 2 "B"] [20]]]
              (map
-              (fn [[k v]] [k (:values v)])
+              (fn [[k v]] [k (vec (:values v))])
               (:values-by-key result)))
           "values-by-key should identify each value by its concatenated column and row paths"))))
 
@@ -565,8 +565,14 @@
 
 (deftest create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
-    (let [values-by-key {["A" 1] {:values [10 20]
-                                  :valueColumns [{:name "count"} {:name "sum"}]
+    ;; Each body cell's `:clicked` payload must carry `:colIdx` and raw `:value`
+    ;; identifying the aggregation column the cell represents (issue #79023).
+    ;; Without them, drills like "See these X" on a pivot cell for a `CountIf` /
+    ;; `SumIf` / `Share` aggregation cannot lift the aggregation's inner filter,
+    ;; because the frontend has no way to enrich the click with the aggregation
+    ;; column, and the backend drill therefore can't find the aggregation UUID.
+    (let [values-by-key {["A" 1] {:values (object-array [10 20])
+                                  :valueColNames ["count" "sum"]
                                   :data [{:value 1 :colIdx 0}
                                          {:value "A" :colIdx 1}
                                          {:value 10 :colIdx 2}
@@ -577,11 +583,13 @@
           value-formatters [#(str "$" %) #(str % "%")]
           col-indexes [1]
           row-indexes [0]
+          val-indexes [2 3]
           col-paths [["A"]]
           row-paths [[1]]
           color-getter (constantly "blue")
           getter (#'pivot/create-row-section-getter values-by-key subtotal-values value-formatters
-                                                    col-indexes row-indexes col-paths row-paths color-getter)
+                                                    col-indexes row-indexes val-indexes
+                                                    col-paths row-paths color-getter)
           result (getter 0 0)]
       (is (= [{:value "$10"
                :backgroundColor "blue"
@@ -590,7 +598,9 @@
                                 {:value 10 :colIdx 2}
                                 {:value 20 :colIdx 3}]
                          :dimensions [{:value 1 :colIdx 0}
-                                      {:value "A" :colIdx 1}]}}
+                                      {:value "A" :colIdx 1}]
+                         :colIdx 2
+                         :value 10}}
               {:value "20%"
                :backgroundColor "blue"
                :clicked {:data [{:value 1 :colIdx 0}
@@ -598,7 +608,9 @@
                                 {:value 10 :colIdx 2}
                                 {:value 20 :colIdx 3}]
                          :dimensions [{:value 1 :colIdx 0}
-                                      {:value "A" :colIdx 1}]}}]
+                                      {:value "A" :colIdx 1}]
+                         :colIdx 3
+                         :value 20}}]
              #?(:cljs (js->clj result :keywordize-keys true)
                 :clj result))))))
 
@@ -644,9 +656,8 @@
                                 (str "formatted: " v))
                tree [{:value [1 2 3] :children []}]
                formatters [mock-formatter]
-               cols [{:name "col0"}]
                col-indexes [0]
-               result (#'pivot/format-values-in-tree tree formatters cols col-indexes)]
+               result (#'pivot/format-values-in-tree tree formatters col-indexes)]
            (is (= 1 (count @received-values))
                "Formatter should be called once")
            (is (array? (first @received-values))
@@ -662,9 +673,8 @@
                                 (str "formatted: " (pr-str v)))
                tree [{:value {:a 1 :b 2} :children []}]
                formatters [mock-formatter]
-               cols [{:name "col0"}]
                col-indexes [0]]
-           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (#'pivot/format-values-in-tree tree formatters col-indexes)
            (is (= 1 (count @received-values))
                "Formatter should be called once")
            (is (object? (first @received-values))
@@ -682,9 +692,8 @@
                      {:value 42 :children []}
                      {:value nil :children []}]
                formatters [mock-formatter mock-formatter mock-formatter]
-               cols [{:name "col0"} {:name "col1"} {:name "col2"}]
                col-indexes [0 1 2]]
-           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (#'pivot/format-values-in-tree tree formatters col-indexes)
            (is (= 3 (count @received-values))
                "Formatter should be called three times")
            (is (= "string-value" (first @received-values))
@@ -701,9 +710,8 @@
                tree [{:value [1 2]
                       :children [{:value {:x 10} :children []}]}]
                formatters [mock-formatter mock-formatter]
-               cols [{:name "col0"} {:name "col1"}]
                col-indexes [0 1]]
-           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (#'pivot/format-values-in-tree tree formatters col-indexes)
            (is (= 2 (count @received-values))
                "Formatter should be called for both parent and child")
            (is (array? (first @received-values))

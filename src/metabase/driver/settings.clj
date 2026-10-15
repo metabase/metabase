@@ -1,14 +1,52 @@
 (ns metabase.driver.settings
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting warehouse-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
+                     "Options:\n"
+                     "- external-only (only globally reachable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+                     "Also covers the SSH tunnel host and the database auth-provider URLs."))
+  :type       :keyword
+  :visibility :internal
+  :export?    false
+  ;; Environment only. This policy defends the host Metabase runs on against the people who administer Metabase --
+  ;; on Cloud, an admin loosening it would be reaching for our own infrastructure -- so it is never settable through
+  ;; the API or a config file, and a value that reached the application database some other way is ignored.
+  :setter     :none
+  :doc        (str "Set this when Metabase must reach a warehouse on a private network (allow-private) or on this "
+                   "machine (allow-all). There is no admin UI for it, and a value stored in the application "
+                   "database is ignored. Defaults to external-only on Metabase Cloud and allow-all when "
+                   "self-hosted. Metabase refuses to start if this is set to anything but one of the three "
+                   "policies, rather than run on a policy nobody chose.")
+  ;; No `:default`, because it depends on where we are running. On Cloud a warehouse is always reached across the
+  ;; public internet, so an internal address is somebody reaching for our own infrastructure rather than their
+  ;; database. Self-hosted, a warehouse on a private network is the ordinary case, and defaulting to anything
+  ;; stricter would break working instances on upgrade.
+  :getter     (fn []
+                (let [[env-var-name raw-value] (setting/env-var-source :warehouse-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      (if (premium-features/is-hosted?)
+                        :external-only
+                        :allow-all)))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first query against a warehouse.
+(defmethod startup/def-startup-validation! ::warehouse-allowed-networks [_]
+  (warehouse-allowed-networks))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
@@ -23,7 +61,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -43,6 +81,7 @@
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -59,6 +98,7 @@
 
 (defsetting report-timezone-long
   "Current report timezone string"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -127,14 +167,49 @@
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
+(defsetting jdbc-data-warehouse-connection-pool-checkout-timeout-ms
+  "Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  [[jdbc-data-warehouse-max-connection-pool-size]] before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a \"service unavailable\" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.")
+
+(defsetting jdbc-data-warehouse-connection-pool-max-pending-checkouts
+  "Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit [[jdbc-data-warehouse-max-connection-pool-size]]. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements [[jdbc-data-warehouse-connection-pool-checkout-timeout-ms]], which bounds how long each query
+  waits; this bounds how many can wait at the same time."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.")
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *network-timeout-ms*
   "Maximum amount of time to wait for a response from the database, in ms."
   (jdbc-network-timeout-ms))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
   H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
@@ -144,6 +219,38 @@
   ;; e2e tests to use SQLite ASAP.
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *impersonation-allow-write?*
+  "Whether write-back operations are permitted while connection impersonation is active. Normally `false`."
+  false)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *allow-testing-sqlite-connections*
+  "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
+  users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
+  Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
+  false)
+
+(def ^:private sqlite-sample-database-path
+  "The exact `:db` path string of the bundled Sample Database, registered by the sample-data module when it extracts
+  the file, or nil before then. On a hosted instance, SQLite may open no other file; on self-hosted, this one is exempt
+  from the `readable-paths` and `writable-paths` allowlists. Exact-string match is enough: a stored Database row
+  carries the registered string verbatim, so a match can only name the Sample Database file itself."
+  (atom nil))
+
+(defn register-sqlite-sample-database-path!
+  "Record `path` as the bundled Sample Database's file, replacing any path recorded before. Called by the sample-data
+  module each time it extracts the file."
+  [path]
+  (reset! sqlite-sample-database-path path))
+
+(defn sqlite-sample-database-path?
+  "Whether `db` (a SQLite `:db` connection detail) is exactly the path registered via
+  [[register-sqlite-sample-database-path!]]."
+  [db]
+  (boolean (and (string? db)
+                (= db @sqlite-sample-database-path))))
 
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
@@ -190,14 +297,6 @@
   :type       :integer
   :default    50000)
 
-(defsetting engines
-  "Available database engines"
-  :visibility :public
-  :setter     :none
-  :getter     (fn []
-                ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
-  :doc        false)
-
 (defsetting sync-leaf-fields-limit
   (deferred-tru
    (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
@@ -207,3 +306,12 @@
   :export? true
   :type :integer
   :default 1000)
+
+(defsetting sync-max-fields-per-table
+  "Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)

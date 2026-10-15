@@ -4,13 +4,15 @@ import * as Yup from "yup";
 
 import { FormModelPicker } from "metabase/actions/containers/ActionCreator/FormModelPicker";
 import type { CreateQueryActionParams } from "metabase/actions/types";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
-import { Button } from "metabase/ui";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 const ACTION_SCHEMA = Yup.object({
@@ -50,32 +52,40 @@ function CreateActionForm({
 
   return (
     <FormProvider
+      // Unjustified type cast. FIXME
       initialValues={initialValues as FormValues}
       validationSchema={ACTION_SCHEMA}
       onSubmit={onCreate}
     >
       {({ isValid }) => (
         <Form disabled={!isValid} data-testid="create-action-form">
-          <FormInput
-            name="name"
-            title={t`Name`}
-            placeholder={t`My new fantastic action`}
-            data-autofocus
-          />
-          <FormTextArea
-            name="description"
-            title={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-          />
-          <FormModelPicker name="model_id" title={t`Model it's saved in`} />
-          <FormFooter>
-            <FormErrorMessage inline />
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`My new fantastic action`}
+              data-autofocus
+            />
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              minRows={5}
+              nullable
+            />
+            <FormModelPicker name="model_id" title={t`Model it's saved in`} />
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} disabled={!isValid} primary />
-          </FormFooter>
+            <FormSubmitButton
+              label={t`Create`}
+              disabled={!isValid}
+              variant="filled"
+            />
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

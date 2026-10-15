@@ -253,12 +253,19 @@
         (mt/with-temp [:model/Database db {:engine ::sync-test}]
           (let [results (sync/sync-database! db)]
             (testing "Returns results from sync-database step"
-              (is (= ["metadata" "analyze" "field-values"]
+              (is (= ["metadata" "analyze"]
                      (map :name results)))))
-          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
+          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))
+                ;; a full sync runs the analyze step, which scores dimension_interestingness
+                ;; (a double in [0.0, 1.0]) for every field — including non-fingerprinted/PK
+                ;; fields, which hard-zero to 0.0
+                all-fields-scored (fn [table]
+                                    (update table :fields
+                                            (fn [fields]
+                                              (mapv #(assoc % :dimension_interestingness true) fields))))]
             (testing "Tables and Fields are synced"
-              (is (= (expected-movie-table) movie))
-              (is (= (expected-studio-table) studio)))))))))
+              (is (= (all-fields-scored (expected-movie-table)) movie))
+              (is (= (all-fields-scored (expected-studio-table)) studio)))))))))
 
 (deftest sync-table-test
   (doseq [supports-schemas? [true false]]
@@ -318,13 +325,13 @@
       (testing "New values come in after sync"
         (binding [*execute-response* (fn [_query respond] (respond {:cols [{:name "field"}]}
                                                                    (partition-all 1 ["d" "e" "f"])))]
-          (sync/sync-database! db))
+          (sync/sync-database! (t2/select-one :model/Database (u/the-id db))))
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["d" "e" "f"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After setting to search it should stay search and sync removes field-values"
         (t2/update! :model/Field (:id field) {:has_field_values "search"})
-        (sync/sync-database! db)
+        (sync/sync-database! (t2/select-one :model/Database (u/the-id db)))
         (get-or-create-vals ["x" "y" "z"])
         (is (=? {:f {:name "title" :has_field_values :search}
                  :fv nil}
@@ -343,8 +350,22 @@
       (binding [sync-util/*log-exceptions-and-continue?* true]
         (let [results (sync/sync-database! db)]
           (testing "Skips the metadata step"
-            (is (= ["analyze" "field-values"]
+            (is (= ["analyze"]
                    (map :name results)))))))))
+
+(deftest sync-database!-skips-field-values-until-initial-sync-complete-test
+  (testing (str "GHY-3274: a full sync skips the FieldValues phase while the Database's initial sync is not "
+                "complete, because FieldValues are only created on demand and a new Database has none")
+    (binding [sync-util/*log-exceptions-and-continue?* false]
+      (mt/with-temp [:model/Database db {:engine ::sync-test, :initial_sync_status "incomplete"}]
+        (testing "the initial sync skips the field-values phase"
+          (is (= ["metadata" "analyze"]
+                 (map :name (sync/sync-database! db)))))
+        (testing "a later sync of the Database, with its initial sync complete, runs it"
+          (let [synced-db (t2/select-one :model/Database (u/the-id db))]
+            (is (= "complete" (:initial_sync_status synced-db)))
+            (is (= ["metadata" "analyze" "field-values"]
+                   (map :name (sync/sync-database! synced-db))))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

@@ -9,6 +9,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.util :as u]
    [metabase.util.performance :refer [mapv]])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -26,6 +27,13 @@
                                                               (or filename-prefix "query_result")
                                                               (streaming.common/export-filename-timestamp))}
     :write-keepalive-newlines? false}))
+
+(defn- escape-cell
+  "Stringify a cell the way [[clojure.data.csv/write-cell]] would, then neutralize spreadsheet formula injection. The
+  `str` matters: a formatter may hand us a wrapper record (e.g. `TextWrapper`) whose `toString` is what actually gets
+  written, so checking the raw value would miss it."
+  [cell]
+  (streaming.common/escape-spreadsheet-formula (str cell)))
 
 (defn- write-csv
   "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and configurable
@@ -46,7 +54,11 @@
                              true
                              (recur (unchecked-inc i))))))))
         newline "\n"]
-    (#'clojure.data.csv/write-csv* writer data separator quote quote? newline)))
+    ;; Escaping here rather than at each call site covers header rows, plain rows and pivot output in one place. It
+    ;; deliberately does *not* go in the `write-cell` rebind below: that is a global root binding, and formula escaping
+    ;; must not reach the other `data.csv` writers -- the content-translation dictionary is exported, edited and
+    ;; re-uploaded, and `setting/serialize-csv` writes to the app DB.
+    (#'clojure.data.csv/write-csv* writer (map #(mapv escape-cell %) data) separator quote quote? newline)))
 
 ;; Rebind write-cell to avoid using clojure.core/escape. Instead, use String.replace with known arguments (we never
 ;; change quote symbol anyway).
@@ -67,9 +79,12 @@
         pivot-data              (volatile! nil)
         enable-pivoted-exports? (qp.settings/enable-pivoted-exports)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
-                   :or   {format-rows? true
-                          pivot?       false}} :data} viz-settings]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot? csv-include-bom?]
+                   :or   {format-rows?    true
+                          pivot?          false
+                          csv-include-bom? true}} :data} viz-settings]
+        (when csv-include-bom?
+          (.write writer u/utf8-bom))
         (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
               pivot-grouping-index (pivot.postprocess/pivot-grouping-index col-names)]
           (cond

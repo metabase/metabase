@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .header {
@@ -10,7 +10,7 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 1rem 0;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   gap: 1rem;
   max-width: 900px;
   margin: 0 auto;
@@ -47,16 +47,18 @@
     }
   }
 
+  .mainContent {
+    padding: 0;
+  }
+
   .documentContainer {
     position: absolute;
     visibility: visible;
     top: 0;
     right: 0;
     z-index: 1000;
-
-    .header {
-      padding: 0;
-    }
+    padding: 0;
+    margin-inline: 0;
 
     :global(.node-metabot),
     :global(.node-cardEmbed),
@@ -82,7 +84,7 @@
 .sidebar {
   width: 360px;
   flex-shrink: 0;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-left: 1px solid var(--mb-color-border-neutral);
   overflow-y: auto;
 }
@@ -95,7 +97,7 @@
 }
 
 .cardEmbed:hover {
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
 }
 
 .metadataItem {
@@ -111,8 +113,8 @@
 
 @keyframes highlight {
   0% {
-    background-color: var(--mb-color-background-highlight);
-    box-shadow: 0 0 0 4px var(--mb-color-background-highlight);
+    background-color: var(--mb-color-background_page-highlighted);
+    box-shadow: 0 0 0 4px var(--mb-color-background_page-highlighted);
   }
 
   100% {

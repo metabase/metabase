@@ -1,12 +1,14 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   ConcreteFieldReference,
   StructuredQuery,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_TOTAL_FIELD: ConcreteFieldReference = [
   "field",
@@ -72,16 +74,16 @@ describe("issue 11994", () => {
     cy.signIn("readonly");
   });
 
-  it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
+  it("does not show raw data toggle for pivot questions, nor offer to save combo question viewed in raw mode (metabase#11994)", () => {
     H.visitQuestion("@pivotQuestionId");
+    cy.findByTestId("pivot-table").should("be.visible");
     cy.icon("table2").should("not.exist");
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
-  });
 
-  it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
     H.visitQuestion("@comboQuestionId");
     cy.location().then((questionLocation) => {
       cy.icon("table2").click();
+      H.tableInteractive().should("be.visible");
       cy.location("href").should("eq", questionLocation.href);
     });
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
@@ -91,7 +93,6 @@ describe("issue 11994", () => {
 describe("issue 39221", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/setting").as("siteSettings");
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     H.restore();
   });
@@ -99,14 +100,69 @@ describe("issue 39221", () => {
   ["admin", "normal"].forEach((user) => {
     it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
       cy.signOut();
+      // Unjustified type cast. FIXME
       cy.signIn(user as "admin" | "normal");
       H.openReviewsTable({ mode: "notebook" });
-      // Opening a SQL preview sidebar will trigger a user-local setting update
       cy.findByLabelText("View SQL").click();
+      cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
-      cy.wait("@sessionProperties");
+      cy.intercept(
+        "PUT",
+        "/api/setting/notebook-native-preview-sidebar-width",
+      ).as("updateSidebarWidth");
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
-      cy.get("@siteSettings").should("be.null");
+      // Resizing the SQL preview sidebar triggers a user-local setting update
+      const options = { pointer: "mouse", button: "left" } as const;
+      cy.findByTestId("notebook-native-preview-resize-handle").realMouseDown(
+        options,
+      );
+      cy.findByTestId("notebook-native-preview-resize-handle").realMouseMove(
+        -200,
+        0,
+      );
+      cy.findByTestId("notebook-native-preview-resize-handle").realMouseUp(
+        options,
+      );
+
+      cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
+
+      cy.get("@siteSettings.all").should("have.length", 0);
     });
+  });
+});
+
+describe("issue 76710", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          [DataPermission.VIEW_DATA]: {
+            PUBLIC: {
+              [ORDERS_ID]: DataPermissionValue.UNRESTRICTED,
+              [PRODUCTS_ID]: DataPermissionValue.BLOCKED,
+            },
+          },
+          [DataPermission.CREATE_QUERIES]: {
+            PUBLIC: {
+              [ORDERS_ID]: DataPermissionValue.QUERY_BUILDER,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("can view a table whose foreign key targets a table the user can't access (metabase#76710)", () => {
+    cy.intercept("GET", `/api/field/${PRODUCTS.ID}`).as("fkTargetField");
+    cy.signIn("none");
+    cy.visit(`/table/${ORDERS_ID}`);
+    cy.wait("@fkTargetField").its("response.statusCode").should("eq", 403);
+    H.tableInteractive().should("be.visible");
+    H.tableHeaderColumn("Product ID").should("be.visible");
   });
 });

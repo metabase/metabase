@@ -1,6 +1,5 @@
 import { userEvent } from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -8,6 +7,7 @@ import {
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -15,13 +15,15 @@ import {
   within,
 } from "__support__/ui";
 import { delay } from "__support__/utils";
-import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
+import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
+import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import type { Database } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
 const TEST_DATABASE = createSampleDatabase();
 
 const TEST_GROUPS = [
@@ -33,36 +35,58 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
-const setup = async () => {
+const setup = async ({
+  shouldWaitForLoader = true,
+  showUpdatedPermissionModal = false,
+  deferDatabaseMetadata = false,
+} = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
 
+  const databaseMetadata = defer<Database>();
+
   fetchMock.get(
     `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
+    deferDatabaseMetadata ? () => databaseMetadata.promise : TEST_DATABASE,
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   renderWithProviders(
-    <Route path="/admin/permissions/data" component={DataPermissionsPage}>
-      <Route
-        path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
-        component={DatabasesPermissionsPage}
-      >
-        {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
-      </Route>
+    <Route path="/admin/permissions/data" element={<DataPermissionsPage />}>
+      {/*
+       * v7 cannot parse v3 optional groups, so the app spells each depth out as
+       * its own route (see DATABASES_PERMISSIONS_PATHS in permissions/routes.tsx).
+       * Mirror that here.
+       */}
+      {[
+        "database",
+        "database/:databaseId",
+        "database/:databaseId/schema/:schemaName",
+        "database/:databaseId/schema/:schemaName/table/:tableId",
+      ].map((path) => (
+        <Route key={path} path={path} element={<DatabasesPermissionsPage />}>
+          {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
+        </Route>
+      ))}
     </Route>,
     {
       withRouter: true,
       initialRoute: `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+      storeInitialState: {
+        settings: mockSettings({
+          "show-updated-permission-modal": showUpdatedPermissionModal,
+        }),
+      },
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  if (shouldWaitForLoader) {
+    await waitForLoaderToBeRemoved();
+  }
 
-  return { mockEventListener };
+  return { mockEventListener, databaseMetadata };
 };
 
 const editDatabasePermission = async () => {
@@ -82,6 +106,37 @@ describe("DatabasesPermissionsPage", () => {
   });
 
   describe("rendering", () => {
+    it("should keep the permissions tabs visible while data is loading", async () => {
+      await setup({ shouldWaitForLoader: false });
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Data" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Collections" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should open the split permissions modal only after data has loaded", async () => {
+      const { databaseMetadata } = await setup({
+        shouldWaitForLoader: false,
+        showUpdatedPermissionModal: true,
+        deferDatabaseMetadata: true,
+      });
+
+      await delay(0);
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      databaseMetadata.resolve(TEST_DATABASE);
+
+      await waitForLoaderToBeRemoved();
+      expect(
+        await screen.findByRole("dialog", {
+          name: "Your data permissions may look different, but the access hasn’t changed.",
+        }),
+      ).toBeInTheDocument();
+    });
+
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();
 
@@ -100,7 +155,7 @@ describe("DatabasesPermissionsPage", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toBe(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not have beforeunload event when permissions are unedited", async function () {

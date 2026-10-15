@@ -6,13 +6,27 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel scalar-uris-arg-test
+  (testing "a scalar `uris` is rejected with guidance on how to repair the call"
+    (is (= "Invalid tool arguments: `uris` must be an array of URI strings; received a string."
+           (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
+                                          {:uris "metabase://table/1"})))))
 
 (deftest parse-uri-test
   (testing "parses single-segment URIs (top-level lists)"
@@ -71,6 +85,15 @@
       (is (thrown-with-msg? Exception #"Too many URIs"
                             (read-resource/read-resource {:uris uris}))))))
 
+(deftest read-resource-tool-errors-test
+  (testing "too many URIs go back to the agent as output"
+    (is (re-find #"^Too many URIs provided \(10\)"
+                 (:output (read-resource/read-resource-tool {:uris (vec (repeat 10 "metabase://table/123"))})))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [read-resource/read-resource (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (read-resource/read-resource-tool {:uris ["metabase://databases"]}))))))
+
 ;; ===== Dispatch routing — every URI pattern routes to the expected handler =====
 
 (def ^:private dispatch-cases
@@ -119,6 +142,9 @@
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]
    ["metabase://metric/6/dimensions/dim-1"                 :metric-dimension           ["6" "dim-1"]]
+   ;; ----- Measure / Segment -----
+   ["metabase://measure/9"                                 :measure                    ["9"]]
+   ["metabase://segment/10"                                :segment                    ["10"]]
    ;; ----- Transform -----
    ["metabase://transform/7"                               :transform                  ["7"]]
    ["metabase://transform/7/sources"                       :transform-sources          ["7"]]
@@ -126,39 +152,46 @@
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
    ["metabase://dashboard/8/items"                         :dashboard-items            ["8" nil]]
-   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]])
+   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]
+   ;; ----- Conversation state -----
+   ["metabase://chart/7f018c82-4381-4264"                  :conversation-chart         ["7f018c82-4381-4264"]]
+   ["metabase://query/NXRVLzEMoMpfNJpqPshQR"               :conversation-query         ["NXRVLzEMoMpfNJpqPshQR"]]])
 
 (deftest dispatch-routing-test
   (testing "every supported URI pattern routes to the expected handler with the expected args"
     (let [calls (atom nil)
           spy   (fn [tag] (fn [& args] (reset! calls [tag (vec args)]) :spied))]
-      (with-redefs [read-resource/fetch-databases-list             (spy :databases-list)
-                    read-resource/fetch-collections-list           (spy :collections-list)
-                    read-resource/fetch-user-recents               (spy :user-recents)
-                    read-resource/fetch-database                   (spy :database)
-                    read-resource/fetch-database-tables            (spy :database-tables)
-                    read-resource/fetch-database-models            (spy :database-models)
-                    read-resource/fetch-database-schemas           (spy :database-schemas)
-                    read-resource/fetch-database-schema-tables     (spy :database-schema-tables)
-                    read-resource/fetch-collection                 (spy :collection)
-                    read-resource/fetch-collection-items           (spy :collection-items)
-                    read-resource/fetch-collection-subcollections  (spy :collection-subcollections)
-                    read-resource/fetch-table                      (spy :table)
-                    read-resource/fetch-table-fields               (spy :table-fields)
-                    read-resource/fetch-table-field                (spy :table-field)
-                    read-resource/fetch-table-derived              (spy :table-derived)
-                    read-resource/fetch-card                       (spy :card)
-                    read-resource/fetch-card-fields                (spy :card-fields)
-                    read-resource/fetch-card-field                 (spy :card-field)
-                    read-resource/fetch-card-sources               (spy :card-sources)
-                    read-resource/fetch-metric                     (spy :metric)
-                    read-resource/fetch-metric-dimensions          (spy :metric-dimensions)
-                    read-resource/fetch-metric-dimension           (spy :metric-dimension)
-                    read-resource/fetch-transform                  (spy :transform)
-                    read-resource/fetch-transform-sources          (spy :transform-sources)
-                    read-resource/fetch-transform-target           (spy :transform-target)
-                    read-resource/fetch-dashboard                  (spy :dashboard)
-                    read-resource/fetch-dashboard-items            (spy :dashboard-items)]
+      (mt/with-dynamic-fn-redefs [read-resource/fetch-databases-list             (spy :databases-list)
+                                  read-resource/fetch-collections-list           (spy :collections-list)
+                                  read-resource/fetch-user-recents               (spy :user-recents)
+                                  read-resource/fetch-database                   (spy :database)
+                                  read-resource/fetch-database-tables            (spy :database-tables)
+                                  read-resource/fetch-database-models            (spy :database-models)
+                                  read-resource/fetch-database-schemas           (spy :database-schemas)
+                                  read-resource/fetch-database-schema-tables     (spy :database-schema-tables)
+                                  read-resource/fetch-collection                 (spy :collection)
+                                  read-resource/fetch-collection-items           (spy :collection-items)
+                                  read-resource/fetch-collection-subcollections  (spy :collection-subcollections)
+                                  read-resource/fetch-table                      (spy :table)
+                                  read-resource/fetch-table-fields               (spy :table-fields)
+                                  read-resource/fetch-table-field                (spy :table-field)
+                                  read-resource/fetch-table-derived              (spy :table-derived)
+                                  read-resource/fetch-card                       (spy :card)
+                                  read-resource/fetch-card-fields                (spy :card-fields)
+                                  read-resource/fetch-card-field                 (spy :card-field)
+                                  read-resource/fetch-card-sources               (spy :card-sources)
+                                  read-resource/fetch-metric                     (spy :metric)
+                                  read-resource/fetch-metric-dimensions          (spy :metric-dimensions)
+                                  read-resource/fetch-metric-dimension           (spy :metric-dimension)
+                                  read-resource/fetch-measure                    (spy :measure)
+                                  read-resource/fetch-segment                    (spy :segment)
+                                  read-resource/fetch-transform                  (spy :transform)
+                                  read-resource/fetch-transform-sources          (spy :transform-sources)
+                                  read-resource/fetch-transform-target           (spy :transform-target)
+                                  read-resource/fetch-dashboard                  (spy :dashboard)
+                                  read-resource/fetch-dashboard-items            (spy :dashboard-items)
+                                  read-resource/fetch-conversation-chart         (spy :conversation-chart)
+                                  read-resource/fetch-conversation-query         (spy :conversation-query)]
         (doseq [[uri expected-handler expected-args] dispatch-cases]
           (testing uri
             (reset! calls nil)
@@ -184,6 +217,33 @@
   (testing "non-metabase scheme throws via parse-uri"
     (is (thrown? Exception
                  (#'read-resource/dispatch "https://example.com")))))
+
+(deftest dispatch-rejects-non-numeric-id-test
+  (testing "a non-numeric id segment throws a directive error stating the numeric-id contract"
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://question/VZbHZIeqQ2HhZv5r0pO6a")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://table/orders")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://collection/root"))))
+  (testing "the error carries agent-error metadata"
+    (let [e (try
+              (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")
+              (catch Exception e e))]
+      (is (= 400 (:status-code (ex-data e))))
+      (is (true? (:agent-error? (ex-data e))))))
+  (testing "the directive error text reaches read_resource output"
+    (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields"]})]
+      (is (str/includes? output "URIs use the numeric entity id"))))
+  (testing "non-id segments are unaffected — schema names and field ids may be non-numeric"
+    (is (= ["database" "1" "schemas" "PUBLIC" "tables"]
+           (:segments (#'read-resource/parse-uri "metabase://database/1/schemas/PUBLIC/tables"))))
+    (is (nil? (#'read-resource/check-numeric-id-segment!
+               "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"])))))
 
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
@@ -230,8 +290,205 @@
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
 
+(deftest read-document-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card {card-id :id} {:name "Embedded chart"}
+                   :model/Document {document-id :id}
+                   {:name     "Q3 report"
+                    :document {:type "doc"
+                               :content [{:type "heading"
+                                          :content [{:type "text" :text "Revenue"}]}
+                                         {:type "resizeNode"
+                                          :content [{:type "cardEmbed" :attrs {:id card-id}}]}
+                                         {:type "paragraph"
+                                          :content [{:type "text" :text "Detailed analysis"}]}]}}]
+      (testing "fetches an indexed outline of the document's top-level blocks"
+        (let [{:keys [output] :as result} (read-resource/read-resource
+                                           {:uris [(str "metabase://document/" document-id)]})]
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  result))
+          (is (str/includes? output "Q3 report"))
+          (is (str/includes? output "[0] heading: Revenue"))
+          (is (str/includes? output (str "[1] resizeNode (embeds card " card-id ")")))
+          (is (str/includes? output "[2] paragraph: Detailed analysis"))))
+      (testing "returns error for unknown document"
+        (is (=? {:resources [{:error string?}]}
+                (read-resource/read-resource {:uris ["metabase://document/99999"]})))))))
+
+(deftest read-conversation-chart-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [query {:database (mt/id)
+                 :type     "query"
+                 :query    {:source-table (mt/id :orders)
+                            :aggregation  [["count"]]}}]
+      (binding [tools.shared/*memory-atom*
+                (atom {:state {:queries {"q-1" query}
+                               :charts  {"chart-1" {:chart_id "chart-1"
+                                                    :query_id "q-1"
+                                                    :queries  [query]
+                                                    :visualization_settings {:chart_type "line"}}
+                                         "chart-2" {:chart_id "chart-2"
+                                                    :queries  [nil]
+                                                    :visualization_settings {:chart_type "bar"}}}}})]
+        (testing "resolves a conversation chart to its chart type and exported query"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-1"]})]
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    result))
+            (is (str/includes? (:output result) "conversation-chart"))
+            (is (str/includes? (:output result) "Chart type: line"))
+            (is (str/includes? (:output result) "ORDERS"))))
+        (testing "a chart with no query says so instead of claiming a permission denial"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-2"]})]
+            (is (str/includes? (:output result) "Chart type: bar"))
+            (is (str/includes? (:output result) "No query is attached to this chart."))
+            (is (not (str/includes? (:output result) "cannot read")))))
+        (testing "falls back to the queries state when the id is a query id"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
+            (is (str/includes? (:output result) "conversation-query"))))
+        (testing "resolves a conversation query"
+          (let [result (read-resource/read-resource {:uris ["metabase://query/q-1"]})]
+            (is (str/includes? (:output result) "conversation-query"))
+            (is (str/includes? (:output result) "ORDERS"))))
+        (testing "errors clearly for ids that are in neither charts nor queries state"
+          (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
+                  (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
+
+(defn- refusing-store
+  "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
+  current user cannot read. Swapped in for both so a test can tell which one a caller picked."
+  [tag recorded]
+  (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ _] (refuse))
+      (measure-by-entity-id [_ _] (refuse))
+      (segment-by-entity-id [_ _] (refuse))
+      (card-by-id           [_ _] (refuse))
+      (measure-by-id        [_ _] (refuse))
+      (segment-by-id        [_ _] (refuse)))))
+
+(deftest read-conversation-chart-provenance-picks-audit-test
+  (let [mp         (mt/metadata-provider)
+        definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                    :definition definition}]
+      (let [query (fn [] {:database (mt/id)
+                          :type     "query"
+                          :query    {:source-table (mt/id :venues)
+                                     :filter       [:segment segment-id]}})
+            chart (fn [chart-id query-id] {:chart_id chart-id
+                                           :query_id query-id
+                                           :queries  [(query)]
+                                           :visualization_settings {:chart_type "line"}})
+            ;; The gate never looks at segments, so the query clears it and the segment ref is
+            ;; resolved by whichever store the caller handed the export - the choice under test.
+            ;; A source-card query would be refused by the gate first, whichever store was passed.
+            store-used (fn [uri]
+                         (let [used (atom [])]
+                           (with-redefs [shared.content-store/audited-store (refusing-store :audited used)
+                                         shared.content-store/default-store (refusing-store :default used)]
+                             (let [result (read-resource/read-resource {:uris [uri]})]
+                               (is (str/includes? (:output result)
+                                                  "references content the user cannot read"))
+                               (distinct @used)))))]
+        (binding [tools.shared/*memory-atom*
+                  (atom {:state {:client-ids #{"seeded-chart" "seeded-q"}
+                                 :queries    {"seeded-q" (query)}
+                                 :charts     {"seeded-chart"  (chart "seeded-chart" "seeded-chart")
+                                              "tool-chart"    (chart "tool-chart" "tool-q")
+                                              "created-chart" (chart "created-chart" "seeded-q")}}})]
+          (mt/with-test-user :rasta
+            (testing "a client-seeded chart or query audits the refusal"
+              (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]]
+                (is (= [:audited] (store-used uri)) uri)))
+            (testing "so does a chart create_chart minted for a client-supplied query, whose own id was never seeded"
+              (is (= [:audited] (store-used "metabase://chart/created-chart"))))
+            (testing "a tool-written chart refuses without an audit trail"
+              (is (= [:default] (store-used "metabase://chart/tool-chart"))))))))))
+
+(deftest read-conversation-query-deleted-database-still-renders-test
+  (testing "a state query whose database no longer exists renders its fallback instead of claiming a permission problem"
+    (binding [tools.shared/*memory-atom*
+              (atom {:state {:queries {"q-gone" {:database 999999999
+                                                 :type     "query"
+                                                 :query    {:source-table 1}}}}})]
+      (mt/with-test-user :rasta
+        (let [result (read-resource/read-resource {:uris ["metabase://query/q-gone"]})]
+          (is (not (str/includes? (:output result) "cannot read")))
+          (is (str/includes? (:output result) "source-table")))))))
+
+(defn- conversation-query-state
+  [query]
+  (atom {:state {:queries {"q-1" query}
+                 :charts  {"chart-1" {:chart_id "chart-1"
+                                      :query_id "q-1"
+                                      :visualization_settings {:chart_type "line"}}}}}))
+
+(deftest read-conversation-query-resource-permission-test
+  (testing "a stored query the user may not run has its body withheld"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (binding [tools.shared/*memory-atom*
+                  (conversation-query-state {:database (mt/id)
+                                             :type     "query"
+                                             :query    {:source-table (mt/id :orders)}})]
+          (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+            (let [result (read-resource/read-resource {:uris [uri]})]
+              (is (str/includes? (:output result) "references content the user cannot read") uri)
+              (is (not (str/includes? (:output result) "ORDERS")) uri))))))))
+
+(deftest read-conversation-unpermissionable-native-query-resource-test
+  (testing "native SQL whose permissions cannot be calculated has its body withheld, whether a tool
+           stored the query or the client sent it"
+    (let [query (test-util/unpermissionable-native-query (mt/id))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (:unchecked? (shared.content-store/query-for-export query false)))
+        (doseq [client-ids [#{} #{"q-1"}]]
+          (binding [tools.shared/*memory-atom* (doto (conversation-query-state query)
+                                                 (swap! assoc-in [:state :client-ids] client-ids))]
+            (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+              (let [result (read-resource/read-resource {:uris [uri]})]
+                (is (str/includes? (:output result) "references content the user cannot read") uri)
+                (is (not (str/includes? (:output result) "SELECT")) uri)))))))))
+
+(deftest read-conversation-source-card-query-resource-test
+  (testing "a query sourced from a readable card exports through the card's collection access alone,
+           with no database permission of any kind"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :orders)}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (doseq [database-id [(mt/id) lib.schema.id/saved-questions-virtual-database-id]]
+            (binding [tools.shared/*memory-atom*
+                      (conversation-query-state {:database database-id
+                                                 :type     :query
+                                                 :query    {:source-table (str "card__" card-id)}})]
+              (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+                (let [result (read-resource/read-resource {:uris [uri]})]
+                  (is (=? {:resources [{:content map?}]} result))
+                  (is (str/includes? (:output result) "source-card")))))))))))
+
+(deftest read-conversation-source-card-query-unreadable-card-test
+  (testing "a query sourced from a card in a collection the user cannot read has its body withheld"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:collection_id coll-id
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [tools.shared/*memory-atom*
+                    (conversation-query-state {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (str "card__" card-id)}})]
+            (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+              (let [result (read-resource/read-resource {:uris [uri]})]
+                (is (str/includes? (:output result) "references content the user cannot read") uri)
+                (is (not (str/includes? (:output result) "ORDERS")) uri)))))))))
+
 (deftest read-transform-resource-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"
@@ -249,6 +506,90 @@
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
+
+;; EE-only: the analyst reading here only can with `advanced-permissions`, which no OSS build can have
+(mt/when-ee-evailable
+ (deftest read-transform-resource-source-permission-test
+   (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
+            with query access to another table in its database, so the resource never reaches the source"
+     (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+       (mt/with-temp [:model/Transform {transform-id :id}
+                      {:name   "Orders Rollup"
+                       :source {:type  "query"
+                                :query (lib/query (mt/metadata-provider)
+                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+         (mt/with-data-analyst-role! (mt/user->id :rasta)
+           (mt/with-no-data-perms-for-all-users!
+             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+             (mt/with-current-user (mt/user->id :rasta)
+               (is (=? {:resources [{:error "You don't have permissions to do that."}]}
+                       (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]}))))
+             (testing "and the query renders once the source table is granted"
+               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+               (mt/with-current-user (mt/user->id :rasta)
+                 (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                   (is (some? (get-in result [:resources 0 :content :structured-output :source :query])))))))))))))
+
+(defn- read-title
+  "The chain-of-thought title `read-resource` derives from what it read."
+  [& uris]
+  (-> (read-resource/read-resource {:uris (vec uris)})
+      :data-parts first :data :title))
+
+(deftest read-resource-title-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales Overview"}
+                   :model/Table     {table-id :id} {:name "orders" :display_name "Orders" :active true}]
+      (testing "a single entity becomes a markdown link"
+        (is (= (str "[Sales Overview](metabase://dashboard/" dash-id ")")
+               (read-title (str "metabase://dashboard/" dash-id)))))
+      (testing "square brackets in a name are stripped — they'd break the client's link parsing"
+        (mt/with-temp [:model/Dashboard {bracket-id :id} {:name "Sales [2024]"}]
+          (is (= (str "[Sales 2024](metabase://dashboard/" bracket-id ")")
+                 (read-title (str "metabase://dashboard/" bracket-id))))))
+      (testing "a table uses its friendly display_name"
+        (is (= (str "[Orders](metabase://table/" table-id ")")
+               (read-title (str "metabase://table/" table-id)))))
+      (testing "a sub-resource appends its aspect, so fields reads differently than the entity"
+        (is (= (str "[Orders](metabase://table/" table-id ") fields")
+               (read-title (str "metabase://table/" table-id "/fields")))))
+      (testing "a list read that carries no entity name falls back to the aspect noun"
+        (is (= "cards"
+               (read-title (str "metabase://dashboard/" dash-id "/items")))))
+      (testing "multiple URIs join as a comma-delimited list; failed reads are skipped"
+        (is (= (str "[Sales Overview](metabase://dashboard/" dash-id "), "
+                    "[Orders](metabase://table/" table-id "), databases")
+               (read-title (str "metabase://dashboard/" dash-id)
+                           (str "metabase://table/" table-id)
+                           "metabase://dashboard/99999"
+                           "metabase://databases"))))
+      (testing "no URIs -> no title data part"
+        (is (nil? (read-title))))
+      (testing "a named but non-linkable entity surfaces as plain text, not a link"
+        (mt/with-temp [:model/Card {metric-id :id} {:name          "Revenue"
+                                                    :type          :metric
+                                                    :database_id   (mt/id)
+                                                    :table_id      (mt/id :orders)
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table (mt/id :orders)
+                                                                               :aggregation  [[:count]]}}}]
+          (is (= "Revenue"
+                 (read-title (str "metabase://metric/" metric-id))))))
+      (testing "a document becomes a markdown link"
+        (mt/with-temp [:model/Document {doc-id :id} {:name "Campaign plan"}]
+          (is (= (str "[Campaign plan](metabase://document/" doc-id ")")
+                 (read-title (str "metabase://document/" doc-id))))))
+      (testing "a navigation list names what's being browsed"
+        (is (= "databases" (read-title "metabase://databases")))
+        (is (= "recent items" (read-title "metabase://user/recent-items"))))
+      (testing "a missing entity -> no title"
+        (is (nil? (read-title "metabase://dashboard/99999"))))
+      (testing "an unreadable entity never leaks its name"
+        (with-redefs [mi/can-read? (constantly false)]
+          (is (nil? (read-title (str "metabase://dashboard/" dash-id)))))))))
 
 ;; ===== Permission coverage — every branch =====
 ;;
@@ -344,6 +685,17 @@
               (is (str/includes? output "VISIBLE-DB"))
               (is (not (str/includes? output "HIDDEN-DB"))
                   "unreadable database must not appear in the list"))))))))
+
+(deftest list-filters-destination-databases-test
+  (testing "metabase://databases hides destination DBs"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id} {:name "ROUTER-DB"}
+                     :model/Database _               {:name "DESTINATION-DB" :router_database_id router-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
+            (is (str/includes? output "ROUTER-DB"))
+            (is (not (str/includes? output "DESTINATION-DB"))
+                "destination database must not appear in the list")))))))
 
 (deftest list-filters-collections-by-can-read-test
   (testing "metabase://collections hides collections the user can't read"
@@ -443,7 +795,7 @@
                               :target_db_id       db-id
                               :table              target-table}]
           (testing "when user CAN read the target, it appears in the output"
-            (with-redefs [transforms.core/get-transform (constantly stub-transform)]
+            (mt/with-dynamic-fn-redefs [transforms.core/get-transform (constantly stub-transform)]
               (let [{:keys [output]} (read-resource/read-resource
                                       {:uris ["metabase://transform/999/target"]})]
                 (is (str/includes? output "TARGET-TABLE")
@@ -485,14 +837,18 @@
 (deftest read-collections-and-collection-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Marketing" :location "/"}
-                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}]
+                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}
+                   :model/Document {doc-id :id} {:name "Campaign plan" :collection_id coll-id}]
       (testing "metabase://collections lists root collections (excluding trash)"
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://collections"]})]
           (is (str/includes? output "Marketing"))))
       (testing "metabase://collection/{id}/items lists members with drill-in URIs"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})]
           (is (str/includes? output "Sales report"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
+          (is (str/includes? output "Campaign plan"))
+          (is (str/includes? output (str "uri=\"metabase://document/" doc-id "\"")))
+          (is (str/includes? output "can_write=\"true\"")))))))
 
 (deftest read-table-derived-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -570,15 +926,209 @@
                                   {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
             (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
 
+(defn- measure-definition
+  "An MBQL5 measure definition: the sum of `field-id` over `table-id`."
+  [table-id field-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                   (lib/sum (lib.metadata/field mp field-id)))))
+
+(defn- segment-definition
+  "An MBQL5 segment definition: a filter of `field-id` > `value` on `table-id`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
+(deftest read-measure-resource-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Measure {measure-id :id}
+                       {:name       "Order Revenue"
+                        :description "sum of order totals"
+                        :table_id   orders
+                        :creator_id (mt/user->id :crowberto)
+                        :definition (measure-definition orders total)}]
+          (testing "metabase://measure/{id} returns the measure with parent-table context + portable entity id"
+            (let [result     (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]})
+                  structured (get-in result [:resources 0 :content :structured-output])
+                  output     (:output result)]
+              (is (=? {:type                   :measure
+                       :name                   "Order Revenue"
+                       :database_id            (mt/id)
+                       :base_table_id          orders
+                       :portable-entity-id     string?
+                       :base_table_portable_fk vector?}
+                      structured))
+              (testing "rendered XML carries the measure name and a portable entity id"
+                (is (str/includes? output "Order Revenue"))
+                (is (str/includes? output "portable_entity_id=")))))
+          (testing "returns an error for an unknown measure"
+            (is (=? {:resources [{:error string?}]}
+                    (read-resource/read-resource {:uris ["metabase://measure/99999"]}))))
+          (testing "errors when the user can't read the parent table"
+            (with-redefs [mi/can-read? (constantly false)]
+              (is (error? (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]}))))))))))
+
+(deftest read-segment-resource-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Segment {segment-id :id}
+                       {:name       "Big Orders"
+                        :description "totals over 100"
+                        :table_id   orders
+                        :definition (segment-definition orders total 100)}]
+          (testing "metabase://segment/{id} returns the segment with parent-table context + portable entity id"
+            (let [result     (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]})
+                  structured (get-in result [:resources 0 :content :structured-output])
+                  output     (:output result)]
+              (is (=? {:type                   :segment
+                       :name                   "Big Orders"
+                       :database_id            (mt/id)
+                       :base_table_id          orders
+                       :portable-entity-id     string?
+                       :base_table_portable_fk vector?}
+                      structured))
+              (testing "rendered XML carries the segment name and a portable entity id"
+                (is (str/includes? output "Big Orders"))
+                (is (str/includes? output "portable_entity_id=")))))
+          (testing "returns an error for an unknown segment"
+            (is (=? {:resources [{:error string?}]}
+                    (read-resource/read-resource {:uris ["metabase://segment/99999"]}))))
+          (testing "errors when the user can't read the parent table"
+            (with-redefs [mi/can-read? (constantly false)]
+              (is (error? (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]}))))))))))
+
 (deftest read-dashboard-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:name "Dash card"}
-                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (testing "metabase://dashboard/{id}/items returns cards on the dashboard"
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+      (testing "metabase://dashboard/{id}/items returns each dashcard with its dashcard_id"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (str/includes? output "Dash card"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+
+(deftest read-dashboard-items-groups-by-tab-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/DashboardTab {tab1-id :id} {:dashboard_id dash-id :name "Tab One" :position 0}
+                   :model/DashboardTab {tab2-id :id} {:dashboard_id dash-id :name "Tab Two" :position 1}
+                   :model/DashboardTab _ {:dashboard_id dash-id :name "Empty Tab" :position 2}
+                   ;; the second tab's card sits at row 0, above the first tab's card at row 1 —
+                   ;; a flat row/col sort would list it first
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab2-id
+                                           :card_id nil :row 0 :col 0 :size_x 24 :size_y 1
+                                           :visualization_settings {:virtual_card {:display "heading"}
+                                                                    :text "Second Tab Heading"}}
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab1-id
+                                           :card_id nil :row 1 :col 0 :size_x 24 :size_y 1
+                                           :visualization_settings {:virtual_card {:display "heading"}
+                                                                    :text "First Tab Heading"}}
+                   ;; predates the tabs: nil tab id, but the frontend renders it on the first tab
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id nil
+                                           :card_id nil :row 0 :col 0 :size_x 24 :size_y 1
+                                           :visualization_settings {:virtual_card {:display "heading"}
+                                                                    :text "Legacy Heading"}}]
+      (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})
+            idx              #(str/index-of output %)]
+        (testing "a <tabs> block lists every tab in display order, empty ones included"
+          (is (< (idx "Tab One") (idx "Tab Two") (idx "Empty Tab"))))
+        (testing "dashcards come grouped by tab, not interleaved by raw row/col"
+          (is (< (idx "Legacy Heading") (idx "First Tab Heading") (idx "Second Tab Heading"))))
+        (testing "items carry the tab_id that add mutations accept; nil-tab dashcards get the first tab's"
+          ;; tab1: its <tab> element + the legacy (nil-tab) heading + the first-tab heading
+          (is (= 3 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))))))
+
+(deftest read-dashboard-items-includes-virtual-dashcards-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                     :card_id nil
+                                                     :row 0 :col 0 :size_x 24 :size_y 1
+                                                     :visualization_settings
+                                                     {:virtual_card {:display "heading"}
+                                                      :text         "Revenue Section"}}]
+      (testing "virtual (heading/text) dashcards are listed with the dashcard_id that remove/move mutations take"
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_heading"))
+          (is (str/includes? output "Revenue Section"))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))))))
+  (testing "a cardless dashcard without virtual_card settings still gets a generic item"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                       :card_id nil
+                                                       :row 0 :col 0 :size_x 4 :size_y 1
+                                                       :visualization_settings {}}]
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_dashcard"))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))))))
+  (testing "an action-button dashcard is listed as an action item with its dashcard_id"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {}}]
+        ;; the frontend stores action buttons with BOTH an action_id and a virtual_card whose
+        ;; display is "action" — the type must come out as "action", not "virtual_action"
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                         :card_id nil
+                                                         :action_id action-id
+                                                         :row 0 :col 0 :size_x 4 :size_y 1
+                                                         :visualization_settings
+                                                         {:virtual_card {:display "action"}}}]
+          (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+            (is (str/includes? output "type=\"action\""))
+            (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+  (testing "an action dashcard that also references its backing model card still reads as an action"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-actions [{model-id :id} {:type :model
+                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                        {:keys [action-id]} {:type :query :visualization_settings {}}]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                         :card_id model-id
+                                                         :action_id action-id
+                                                         :row 0 :col 0 :size_x 4 :size_y 1
+                                                         :visualization_settings
+                                                         {:button.label "Create Row"}}]
+          (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+            (is (str/includes? output "type=\"action\""))
+            (is (str/includes? output "name=\"Create Row\""))
+            (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))
+            (testing "the backing model stays drillable via the item's uri"
+              (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
+  (testing "a link card renders its target URL as the item body"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id
+                                             :card_id nil
+                                             :row 0 :col 0 :size_x 4 :size_y 1
+                                             :visualization_settings
+                                             {:virtual_card {:display "link"}
+                                              :link         {:url "https://status.example.com"}}}]
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_link"))
+          (is (str/includes? output "https://status.example.com"))))))
+  (testing "an entity link card does NOT leak the stored target snapshot (it bypasses read-checks)"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id
+                                             :card_id nil
+                                             :row 0 :col 0 :size_x 4 :size_y 1
+                                             :visualization_settings
+                                             {:virtual_card {:display "link"}
+                                              :link         {:entity {:model "card" :id 12345
+                                                                      :name "Secret Question"}}}}]
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_link"))
+          (is (not (str/includes? output "Secret Question"))))))))
 
 (deftest read-user-recents-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -624,6 +1174,60 @@
           (is (str/includes? output "Detail DB"))
           (is (str/includes? output (str "uri=\"metabase://database/" db-id "\"")))
           (is (str/includes? output "engine=\"h2\"")))))))
+
+(deftest read-database-detail-rejects-destination-databases-test
+  (testing "metabase://database/{destination-id} returns an error"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id} {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (is (error? (read-resource/read-resource
+                       {:uris [(str "metabase://database/" destination-id)]}))
+              "destination database must not be readable by direct URI"))))))
+
+(deftest read-destination-backed-entities-return-errors-test
+  (testing "destination-backed entity resources cannot expose destination database metadata"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}]
+        ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
+        ;; `with-temp :model/Table` trips the destination-permission guard. Insert it directly to work
+        ;; around that guard and confirm the metabot guard rejects it anyway. (Cascades away with the db.)
+        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
+          (mt/with-temp [:model/Card    {model-id :id}    {:type :model :database_id destination-id}
+                         :model/Card    {question-id :id} {:type :question :database_id destination-id}
+                         :model/Card    {metric-id :id}   {:type :metric :database_id destination-id}
+                         :model/Measure {measure-id :id}  {:table_id table-id}
+                         :model/Segment {segment-id :id}  {:table_id table-id}]
+            (with-redefs [mi/can-read? (constantly true)]
+              (doseq [uri [(str "metabase://table/" table-id)
+                           (str "metabase://table/" table-id "/fields")
+                           (str "metabase://table/" table-id "/fields/42")
+                           (str "metabase://table/" table-id "/derived")
+                           (str "metabase://model/" model-id)
+                           (str "metabase://model/" model-id "/fields")
+                           (str "metabase://model/" model-id "/fields/42")
+                           (str "metabase://model/" model-id "/sources")
+                           (str "metabase://question/" question-id)
+                           (str "metabase://question/" question-id "/fields")
+                           (str "metabase://question/" question-id "/fields/42")
+                           (str "metabase://question/" question-id "/sources")
+                           (str "metabase://metric/" metric-id)
+                           (str "metabase://metric/" metric-id "/dimensions")
+                           (str "metabase://metric/" metric-id "/dimensions/42")
+                           (str "metabase://measure/" measure-id)
+                           (str "metabase://segment/" segment-id)]]
+                (testing uri
+                  ;; Match the guard's 404 message exactly: a plain `error?` check can't tell the
+                  ;; destination-database guard from unrelated failures like "Field 42 not found".
+                  (is (= "Not found."
+                         (-> (read-resource/read-resource {:uris [uri]}) :resources first :error))
+                      "destination-backed entity resource must 404 via the destination-database guard"))))))))))
 
 (deftest read-database-models-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -713,10 +1317,24 @@
 (deftest read-table-field-with-slash-test
   (testing "field IDs containing slashes (e.g. composite ids c75/17) are preserved through dispatch"
     (let [calls (atom nil)]
-      (with-redefs [read-resource/fetch-table-field
-                    (fn [& args] (reset! calls args) {:structured-output {:result-type :metabot-entity :type :stub}})]
+      (mt/with-dynamic-fn-redefs [read-resource/fetch-table-field
+                                  (fn [& args] (reset! calls args) {:structured-output {:result-type :metabot-entity :type :stub}})]
         (#'read-resource/dispatch "metabase://table/3/fields/c75/17")
         (is (= ["3" "c75/17"] @calls))))))
+
+(deftest read-table-field-partial-values-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [read-field (fn [table field]
+                       (:output (read-resource/read-resource
+                                 {:uris [(str "metabase://table/" (mt/id table) "/fields/" (mt/id table field))]})))]
+      (testing "a field with more values than the sample says how many it has"
+        (let [output (read-field :people :state)]
+          (is (str/includes? output "This list shows 30 of the field's 49 values."))
+          (is (str/includes? output "when the user asks for a specific value, filter on that value"))))
+      (testing "a field whose values all fit in the sample doesn't"
+        (let [output (read-field :products :category)]
+          (is (str/includes? output "| Widget |"))
+          (is (not (str/includes? output "This list shows"))))))))
 
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -836,6 +1454,19 @@
           (is (str/includes? output "truncated=\"true\""))
           (is (str/includes? output "?page=2") "truncation note should hint at next page URI"))))))
 
+(deftest pagination-next-page-uri-replaces-existing-page-param-test
+  (testing "a next-page-uri built from an already-paged request replaces, not duplicates, the page param"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (doseq [i (range 1 31)]
+          (t2/insert! :model/Table {:name   (format "TBL-%03d" i)
+                                    :db_id  db-id
+                                    :active true}))
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://database/" db-id "/tables?page=1")]})]
+          (is (str/includes? output (str "metabase://database/" db-id "/tables?page=2")))
+          (is (not (str/includes? output "page=1&page=2"))))))))
+
 ;; ===== Collection tree ordering =====
 
 (deftest collections-tree-ordering-test
@@ -865,3 +1496,18 @@
               (is (some? a-root-idx))
               (is (some? a-child-idx))
               (is (= (inc a-root-idx) a-child-idx) "child should immediately follow its parent"))))))))
+
+(deftest list-collection-items-excludes-exploration-summary-documents-test
+  (testing "metabase://collection/{id}/items hides exploration Summary documents"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection  {coll-id :id} {:name "Mixed Coll" :location "/"}
+                     :model/Document    _             {:name "VISIBLE-DOC" :collection_id coll-id}
+                     :model/Exploration {expl-id :id} {:name "An exploration"}
+                     :model/Document    _             {:name           "SUMMARY-DOC"
+                                                       :collection_id  coll-id
+                                                       :exploration_id expl-id}]
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://collection/" coll-id "/items")]})]
+          (is (str/includes? output "VISIBLE-DOC"))
+          (is (not (str/includes? output "SUMMARY-DOC"))
+              "a Summary document is reachable only through its exploration, so it must not be listed"))))))

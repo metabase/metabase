@@ -67,7 +67,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
       <Flex
         className={cx(S.leftControls, S.leftControlsFull)}
         align="center"
-        gap="md"
+        gap="lg"
       >
         <ChartTypePicker
           chartTypes={chartTypes}
@@ -96,7 +96,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown className={S.compactChartMenuDropdown} p="sm">
-            <Menu.Label c="text-secondary" pt="sm" mb="xs">
+            <Menu.Label c="text-secondary" pt="sm" mb="xxs">
               {t`Visualization`}
             </Menu.Label>
             {chartTypes.map(({ type, icon }) => (
@@ -109,7 +109,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                   <Icon
                     aria-hidden
                     name={icon}
-                    c={value === type ? "brand" : "text-primary"}
+                    c={value === type ? "core-brand" : "text-primary"}
                   />
                 }
                 onClick={() => handleDisplayTypeChange(type)}
@@ -120,7 +120,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
             {showStackSeries && (
               <>
                 <Menu.Divider mx={0} />
-                <Menu.Label c="text-secondary" pt="sm" mb="xs">
+                <Menu.Label c="text-secondary" pt="sm" mb="xxs">
                   {t`Layout`}
                 </Menu.Label>
                 <Menu.Item
@@ -131,7 +131,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                     <Icon
                       aria-hidden
                       name="chart_layout_default"
-                      c={!isStacked ? "brand" : "text-primary"}
+                      c={!isStacked ? "core-brand" : "text-primary"}
                     />
                   }
                   onClick={() => handleSplitChannelsChange(false)}
@@ -146,7 +146,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                     <Icon
                       aria-hidden
                       name="chart_layout_stack"
-                      c={isStacked ? "brand" : "text-primary"}
+                      c={isStacked ? "core-brand" : "text-primary"}
                     />
                   }
                   onClick={() => {

@@ -49,9 +49,9 @@ export const DashboardNotificationCard = ({
     <Flex
       className={S.root}
       align="center"
-      px="lg"
-      py="md"
-      bg="background-primary"
+      px="xl"
+      py="lg"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
         {dashboardEntityLink ? (
@@ -61,7 +61,7 @@ export const DashboardNotificationCard = ({
         ) : (
           formatTitle(listItem)
         )}
-        <Flex wrap="wrap" mt="xs">
+        <Flex wrap="wrap" mt="xxs">
           {item.channels.map((channel, index) => (
             <Text
               key={index}
@@ -92,7 +92,7 @@ export const DashboardNotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
@@ -102,7 +102,7 @@ export const DashboardNotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />

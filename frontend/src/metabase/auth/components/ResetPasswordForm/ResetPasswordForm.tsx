@@ -1,36 +1,35 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { Box, Stack, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { memoize } from "metabase/utils/memoize";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { ResetPasswordData } from "../../types";
 
-import {
-  PasswordFormMessage,
-  PasswordFormTitle,
-} from "./ResetPasswordForm.styled";
-
-const RESET_PASSWORD_SCHEMA = Yup.object({
-  password: Yup.string()
-    .default("")
-    .required(Errors.required)
-    .test(async (value = "", context) => {
-      const error = await context.options.context?.onValidatePassword(value);
-      return error ? context.createError({ message: error }) : true;
-    }),
-  password_confirm: Yup.string()
-    .default("")
-    .required(Errors.required)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .oneOf([Yup.ref("password")], t`passwords do not match`),
-});
+const getResetPasswordSchema = () =>
+  Yup.object({
+    password: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .test(async (value = "", context) => {
+        const error = await context.options.context?.onValidatePassword(value);
+        return error ? context.createError({ message: error }) : true;
+      }),
+    password_confirm: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .oneOf([Yup.ref("password")], t`passwords do not match`),
+  });
 
 interface ResetPasswordFormProps {
   onValidatePassword: (password: string) => Promise<string | undefined>;
@@ -42,7 +41,7 @@ export const ResetPasswordForm = ({
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return RESET_PASSWORD_SCHEMA.getDefault();
+    return getResetPasswordSchema().getDefault();
   }, []);
 
   const passwordDescription = useMemo(() => {
@@ -50,39 +49,49 @@ export const ResetPasswordForm = ({
   }, []);
 
   const validationContext = useMemo(
-    () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
+    () => ({ onValidatePassword: memoize(onValidatePassword) }),
     [onValidatePassword],
   );
 
   return (
     <div>
-      <PasswordFormTitle>{t`New password`}</PasswordFormTitle>
-      <PasswordFormMessage>
+      <Title
+        order={1}
+        size="h3"
+        c="text-primary"
+        ta="center"
+        mb="lg"
+      >{t`New password`}</Title>
+      <Box c="text-primary" ta="center" mb="xl">
         {t`To keep your data secure, passwords ${passwordDescription}`}
-      </PasswordFormMessage>
+      </Box>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={RESET_PASSWORD_SCHEMA}
+        validationSchema={getResetPasswordSchema()}
         validationContext={validationContext}
         onSubmit={onSubmit}
       >
-        <Form>
-          <FormInput
+        <Form as={Stack} gap="lg">
+          <FormTextInput
             name="password"
             type="password"
-            title={t`Create a password`}
+            label={t`Create a password`}
             placeholder={t`Shhh...`}
             autoComplete="new-password"
             autoFocus
           />
-          <FormInput
+          <FormTextInput
             name="password_confirm"
             type="password"
-            title={t`Confirm your password`}
+            label={t`Confirm your password`}
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
           />
-          <FormSubmitButton title={t`Save new password`} primary fullWidth />
+          <FormSubmitButton
+            label={t`Save new password`}
+            variant="filled"
+            fullWidth
+          />
           <FormErrorMessage />
         </Form>
       </FormProvider>

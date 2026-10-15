@@ -5,10 +5,10 @@ import {
   canonicalCollectionId,
   canonicalCollectionIdOrEntityId,
 } from "metabase/common/collections/utils";
-import { trackMetricCreated } from "metabase/data-studio/analytics";
+import { trackMetricCreated } from "metabase/common/data-studio/analytics";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CardType } from "metabase-types/api";
+import type { CardType, CollectionId, User } from "metabase-types/api";
 
 import type {
   CreateQuestionOptions,
@@ -16,6 +16,47 @@ import type {
   SubmitQuestionOptions,
   UpdateQuestionOptions,
 } from "./types";
+
+/**
+ * Resolves the `"personal"` and `"tenant"` collection sentinels — accepted by
+ * the SDK's `targetCollection` / `initialCollection` props — to the current
+ * user's real collection id.
+ *
+ * `"tenant"` throws when the user is not a tenant member, so a mis-targeted save
+ * fails loudly instead of silently landing in the root collection (EMB-2107).
+ * This mirrors the resolvers already wired into the dashboard and
+ * collection-browser paths (`embedding-sdk-bundle/store/collections.ts`).
+ *
+ * Real ids, `"root"`, and every other value pass through unchanged, as does any
+ * value while the current user is still loading.
+ */
+export const resolveCollectionReference = <
+  T extends CollectionId | null | undefined,
+>(
+  collectionId: T,
+  currentUser: User | null | undefined,
+): T | CollectionId => {
+  if (!currentUser) {
+    return collectionId;
+  }
+
+  if (collectionId === "personal") {
+    // An API-key user has no personal collection
+    return currentUser.personal_collection_id ?? collectionId;
+  }
+
+  if (collectionId === "tenant") {
+    if (!currentUser.tenant_collection_id) {
+      throw new Error(
+        "You must be a tenant member to access the tenant collection.",
+      );
+    }
+
+    return currentUser.tenant_collection_id;
+  }
+
+  return collectionId;
+};
 
 const updateQuestion = async (options: UpdateQuestionOptions) => {
   const { originalQuestion, newQuestion, onSave } = options;
@@ -33,7 +74,14 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate, targetCollection } = options;
+  const {
+    details,
+    question,
+    sourceCardId,
+    sourceQuestion,
+    onCreate,
+    targetCollection,
+  } = options;
 
   if (details.saveType !== "create") {
     return;
@@ -63,7 +111,11 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   const isMetric = question.type() === "metric";
 
   try {
-    const result = await onCreate(newQuestion, { dashboardTabId });
+    const result = await onCreate(newQuestion, {
+      dashboardTabId,
+      sourceCardId,
+      sourceQuestion,
+    });
 
     if (isMetric) {
       trackMetricCreated("success", "main_app", result.id());
@@ -95,9 +147,13 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       onSave,
     });
   } else {
+    // A question saved as a new one keeps the original's timeline selection, so the
+    // backend treats it as a copy rather than re-checking every selected timeline.
     await createQuestion({
       question,
       details,
+      sourceCardId: originalQuestion?.id(),
+      sourceQuestion: originalQuestion ?? undefined,
       onCreate,
       targetCollection,
     });

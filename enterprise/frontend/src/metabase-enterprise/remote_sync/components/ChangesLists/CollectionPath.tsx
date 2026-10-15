@@ -3,11 +3,21 @@ import { Fragment } from "react";
 import { Anchor, Group, Text } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
 
+import { getVirtualRoot } from "../../displayGroups";
 import type { CollectionPathSegment } from "../../utils";
 
 interface CollectionPathProps {
   segments: CollectionPathSegment[];
 }
+
+const segmentUrl = (segment: CollectionPathSegment): string => {
+  // Virtual roots (sentinel ids) have no real collection page, so link them to
+  // their list pages instead of building a dead /collection/-1-... URL.
+  const virtualRoot = getVirtualRoot(segment.id);
+  return virtualRoot
+    ? virtualRoot.url()
+    : collectionUrl({ id: segment.id, name: segment.name });
+};
 
 // TODO: see if we can use the CollectionBreadcrumb component here
 export const CollectionPath = ({ segments }: CollectionPathProps) => {
@@ -21,10 +31,7 @@ export const CollectionPath = ({ segments }: CollectionPathProps) => {
             </Text>
           )}
           <Anchor
-            href={collectionUrl({
-              id: segment.id,
-              name: segment.name,
-            })}
+            href={segmentUrl(segment)}
             target="_blank"
             size="sm"
             c="text-secondary"

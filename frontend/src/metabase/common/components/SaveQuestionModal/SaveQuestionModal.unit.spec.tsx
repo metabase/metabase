@@ -15,6 +15,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
+import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -23,11 +27,7 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -911,7 +911,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.PARENT,
+            // Unjustified type cast. FIXME
             id: COLLECTION.PARENT.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
@@ -924,7 +926,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.CHILD,
+            // Unjustified type cast. FIXME
             id: COLLECTION.CHILD.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,

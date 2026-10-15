@@ -48,14 +48,15 @@
         (is (= :type/Integer
                (lib/type-of query col)))))
     (testing "temporal truncation (non-extraction) preserves effective type"
-      (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)]
-        (is (= (:effective-type (meta/field-metadata :orders :created-at))
-               (lib/type-of query col)))))))
+      (doseq [unit [:month :year]]
+        (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit)]
+          (is (= (:effective-type (meta/field-metadata :orders :created-at))
+                 (lib/type-of query col))))))))
 
 (deftest ^:parallel ref-test
   (is (=? [:field
            {:base-type      :type/DateTime
-            :effective-type :type/Integer
+            :effective-type :type/DateTime
             :temporal-unit  :year
             :lib/uuid       string?}
            "CREATED_AT"]
@@ -650,6 +651,15 @@
       (is (empty? (->> (lib/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-binning-strategies query)))))))
+
+(deftest ^:parallel available-binning-strategies-entity-key-test
+  (testing "PK/FK columns offer no binning strategies or temporal buckets (metabase#16787, metabase#17768)"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          id      (meta/field-metadata :orders :id)
+          user-id (meta/field-metadata :orders :user-id)]
+      (is (empty? (lib/available-binning-strategies query id)))
+      (is (empty? (lib/available-binning-strategies query user-id)))
+      (is (empty? (lib/available-temporal-buckets query user-id))))))
 
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
@@ -1912,7 +1922,7 @@
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
-    (let [name-field (lib.metadata/field meta/metadata-provider (meta/id :venues :name))
+    (let [name-field (meta/field-metadata :venues :name)
           metadata-provider (lib.tu/merged-mock-metadata-provider
                              meta/metadata-provider
                              {:fields [{:id  (meta/id :venues :id)
@@ -2583,7 +2593,7 @@
 
 (deftest ^:parallel add-field-to-join-disambiguated-by-join-alias-test
   (testing "adding a column back to a join that matches a column from a joined native model works (#64779)"
-    (let [id-col (-> (lib.metadata/field meta/metadata-provider (meta/id :products :id))
+    (let [id-col (-> (meta/field-metadata :products :id)
                      (dissoc :table-id :id :fk-target-field-id))
           mp (lib.tu/metadata-provider-with-mock-card {:lib/type        :metadata/card
                                                        :id              1

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex, Text, rem } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
@@ -136,7 +136,7 @@ export function JoinComplete({
         </Flex>
       </NotebookCell>
       <Flex className={S.JoinConditionOn}>
-        <Text c="core-brand" fw="bold">{t`on`}</Text>
+        <Text c="text-brand-strong" fw="bold">{t`on`}</Text>
       </Flex>
       <NotebookCell
         className={S.JoinConditionCell}

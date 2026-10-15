@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockDataset } from "metabase-types/api/mocks";
 
 import { VisualizationPreview } from "./NotebookStepPreview";
 
@@ -31,7 +32,7 @@ describe("VisualizationPreview", () => {
     renderWithProviders(
       <VisualizationPreview
         rawSeries={null}
-        result={{ error: message }}
+        result={createMockDataset({ error: message })}
         error={null}
       />,
     );

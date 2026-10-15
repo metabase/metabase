@@ -47,7 +47,7 @@ export const getRawDataQuestionForTable = (table: Table): UnsavedCard => ({
 export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   option,
 }) => (
-  <Group flex="1" p="sm" gap="xs" justify="space-between">
+  <Group flex="1" p="sm" gap="xxs" justify="space-between">
     {option.label}
     {GET_USER_ATTRIBUTE_ICON_MAP()[option.value]}
   </Group>
@@ -111,9 +111,10 @@ export const getExtraAttributes = (
 
   // for newly created tenant users, we want to pre-populate their inherited attributes
   return {
+    // the slug is system defined and frozen, matching what the backend returns for existing users
     [TENANT_SLUG_ATTRIBUTE]: {
       value: tenant.slug,
-      source: "tenant",
+      source: "system",
       frozen: true,
     },
     ...Object.fromEntries(

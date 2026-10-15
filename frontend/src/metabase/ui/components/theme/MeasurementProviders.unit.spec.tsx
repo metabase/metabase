@@ -1,8 +1,20 @@
 import { render, screen } from "@testing-library/react";
 
+import { MEASUREMENT_ROOT_CLASSNAME } from "metabase/utils/measure-container";
+
 import { MeasurementProviders } from "./MeasurementProviders";
 
 const SCHEME_ATTR = "data-mantine-color-scheme";
+
+function getMantineStyleText(): string {
+  // Mantine injects its CSS-variable <style> into <head>, outside the render
+  // container, so query the document directly.
+  return Array.from(
+    document.querySelectorAll('style[data-mantine-styles="true"]'),
+  )
+    .map((tag) => tag.textContent ?? "")
+    .join("\n");
+}
 
 describe("MeasurementProviders", () => {
   afterEach(() => {
@@ -54,5 +66,21 @@ describe("MeasurementProviders", () => {
     );
 
     expect(screen.getByText("measurement content")).toBeInTheDocument();
+  });
+
+  it("scopes its CSS variables to the measurement container, not :root (UXW-4556)", () => {
+    render(
+      <MeasurementProviders>
+        <div>measurement</div>
+      </MeasurementProviders>,
+    );
+
+    const styleText = getMantineStyleText();
+
+    // Variables are still emitted so the detached node is self-sufficient even in
+    // the embedding SDK (where :root has none), but scoped to the container class
+    // so they can't override or flash the app's :root brand.
+    expect(styleText).toContain(`.${MEASUREMENT_ROOT_CLASSNAME}`);
+    expect(styleText).not.toMatch(/:root\s*\{/);
   });
 });

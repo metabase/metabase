@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -8,8 +7,9 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -19,13 +19,18 @@ import {
 
 import { Palette } from "./Palette";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 const setup = ({
-  routeProps,
   initialRoute,
   searchResults = [],
   searchResultsDelay,
 }: {
-  routeProps?: { disableCommandPalette?: boolean };
   initialRoute?: string;
   searchResults?: SearchResult[];
   searchResultsDelay?: number;
@@ -36,12 +41,8 @@ const setup = ({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
   });
-  renderWithProviders(
-    <Route
-      path={initialRoute ? "*" : "/"}
-      component={Palette}
-      props={routeProps}
-    />,
+  return renderWithProviders(
+    <Route path={initialRoute ? "*" : "/"} element={<Palette />} />,
     {
       withKBar: true,
       withRouter: true,
@@ -64,15 +65,15 @@ describe("command palette", () => {
     expect(screen.getByTestId("command-palette")).toBeInTheDocument();
   });
 
-  it("should not render if the route has disabled the command palette", async () => {
-    setup({ routeProps: { disableCommandPalette: true } });
+  it("should not render on a path that disables the command palette", async () => {
+    setup({ initialRoute: "/setup" });
 
     await userEvent.keyboard("[ControlLeft>]k");
     expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument();
   });
 
   it("should not call recents API when palette is disabled", async () => {
-    setup({ routeProps: { disableCommandPalette: true } });
+    setup({ initialRoute: "/setup" });
 
     await userEvent.keyboard("[ControlLeft>]k");
 
@@ -94,14 +95,33 @@ describe("command palette", () => {
     const calls = () =>
       fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
 
+    // wait for the call to be recorded: reading at(-1) too early re-reads the
+    // previous request, whose body is already consumed
+    await waitFor(() => expect(calls()).toHaveLength(1));
     expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
+    await waitFor(() => expect(calls()).toHaveLength(2));
     expect(await calls().at(-1)?.request?.json()).toEqual({
       value: "auto",
     });
   });
+
+  it.each(["New question", "New document"])(
+    "should collapse the navbar when running the %s action",
+    async (actionName) => {
+      const { store } = setup();
+      expect(store.getState().app.isNavbarOpen).toBe(true);
+
+      await userEvent.keyboard("[ControlLeft>]k");
+      const input = await screen.findByPlaceholderText(/search for anything/i);
+      await userEvent.type(input, actionName);
+      await userEvent.click(await screen.findByText(actionName));
+
+      expect(store.getState().app.isNavbarOpen).toBe(false);
+    },
+  );
 
   it("should match the action with alias when typing original name", async () => {
     setup();
@@ -155,13 +175,39 @@ describe("command palette", () => {
     await userEvent.type(input, "metric");
 
     await screen.findByText("Loading...");
-    expect(getSelectedOption()?.textContent).toBe("New metric");
+    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
 
     await userEvent.keyboard("{ArrowDown}");
-    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+    expect(getSelectedOption()?.textContent).toBe("New metric");
 
     await screen.findByText("Metric search result");
-    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+    expect(getSelectedOption()?.textContent).toBe("New metric");
+  });
+
+  it("should rank the most relevant action first", async () => {
+    const getSelectedOption = () =>
+      screen
+        .getAllByRole("option")
+        .find((option) => option.getAttribute("aria-selected") === "true");
+
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    // Every "New …" action matches "New" equally, so the default order wins and
+    // "New question" comes first.
+    await userEvent.type(input, "New");
+    await waitFor(() =>
+      expect(getSelectedOption()?.textContent).toBe("New question"),
+    );
+
+    // "New c" is a stronger match for "New collection", which should now win
+    // over the default order (metabase#76055).
+    await userEvent.type(input, " c");
+    await waitFor(() =>
+      expect(getSelectedOption()?.textContent).toBe("New collection"),
+    );
   });
 
   it("should initialize the search input from the search URL query (#71248)", async () => {

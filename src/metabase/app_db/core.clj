@@ -9,35 +9,45 @@
   Namespaces outside of src/metabase/app_db/ should not use any metabase.app-db.* namespace but use this api namespace."
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.core.memoize :as memoize]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
+   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
+   [metabase.app-db.value-guard]
    [metabase.config.core :as config]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
+         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
-         metabase.app-db.query-cancelation/keep-me)
+         metabase.app-db.query-cancelation/keep-me
+         metabase.app-db.value-guard/keep-me)
 
 (p/import-vars
  [mdb.connection
   application-db
   data-source
   db-type
+  do-before-commit
+  do-after-commit
   in-transaction?
+  quartz-data-source
   quoting-style
-  unique-identifier]
+  unique-identifier
+  transaction-state
+  with-unshared-connection]
  [mdb.connection-pool-setup
   recent-activity?]
  [mdb.data-source
@@ -48,7 +58,9 @@
   clob->str]
  [mdb.encryption
   decrypt-db
-  encrypt-db]
+  encrypt-db
+  encryption-check-status
+  encrypt-plaintext-columns!]
  [metabase.app-db.format
   format-sql]
  [mdb.setup
@@ -60,6 +72,7 @@
   spec]
  [metabase.app-db.query
   compile
+  current-timestamp-string
   isa
   join
   qualify
@@ -105,8 +118,8 @@
 
   Skips:
   - Liquibase migrations.
-  - [[metabase.app-db.setup/check-encryption]], whose auto-encrypt branch can silently rewrite
-    every encrypted `setting` row when an encryption key is configured."
+  - [[metabase.app-db.setup/check-encryption]], which may write the `encryption-check` sentinel or
+    refuse to start when an encryption key is configured."
   []
   (when-not (db-is-set-up?)
     (verify-application-db-connection!)
@@ -123,8 +136,12 @@
   database migrations. If DB is already set up, this function will no-op. Thread-safe.
   Callers must explicitly decide whether or not to create sample content during migrations with the
   `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
-  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts."
-  [& {:keys [create-sample-content?]}]
+  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts.
+
+  `manage-encryption-state?` (default `true`) verifies MB_ENCRYPTION_SECRET_KEY against the database before migrations
+  run and records the resulting encryption state afterwards; it is `false` for the commands that handle the
+  encryption state themselves (`enable-encryption`, [[metabase.cmd.copy/copy!]])."
+  [& {:keys [create-sample-content? manage-encryption-state?] :or {manage-encryption-state? true}}]
   {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)
     ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
@@ -136,7 +153,9 @@
         (let [db-type       (db-type)
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
+          (mdb.setup/setup-db! db-type data-source {:auto-migrate?          auto-migrate?
+                                                    :create-sample-content? create-sample-content?
+                                                    :manage-encryption-state?      manage-encryption-state?}))
         (finish-db-setup!))))
   :done)
 
@@ -153,10 +172,10 @@
   `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
   this."
   [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
+  (memoize/memo
+   (vary-meta
+    (fn [& args] (apply f args))
+    assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as

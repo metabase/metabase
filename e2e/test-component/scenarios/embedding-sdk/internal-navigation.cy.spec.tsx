@@ -28,8 +28,22 @@ const DASHBOARD_B_FILTER: Parameter = createMockActionParameter({
   sectionId: "number",
 });
 
+// Click-behavior target pointing at the GUI question's own QUANTITY column.
+// Mirrors the shape the click-behavior UI writes for a structured question.
+const GUI_QUESTION_QUANTITY_DIMENSION = [
+  "dimension",
+  ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+  { "stage-number": 0 },
+];
+const GUI_QUESTION_QUANTITY_TARGET_ID = JSON.stringify(
+  GUI_QUESTION_QUANTITY_DIMENSION,
+);
+
 describe("scenarios > embedding-sdk > internal-navigation", () => {
   describe("dashboard", () => {
+    // Assigned while the setup commands run, before the dashcard is created.
+    let guiQuestionId: number;
+
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
 
@@ -63,7 +77,19 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.wrap(drillableQuestion.id).as("drillableQuestionId");
       });
 
-      // 3. Create Dashboard B with a filter and a card
+      // 3. Create a GUI (MBQL) question used as a click behavior target. It
+      // returns a single column so the applied filter is easy to assert on.
+      H.createQuestion({
+        name: "GUI Question",
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
+        },
+      }).then(({ body: guiQuestion }) => {
+        guiQuestionId = guiQuestion.id;
+      });
+
+      // 4. Create Dashboard B with a filter and a card
       // Dashboard B will have a click behavior linking to a question
       cy.get<number>("@drillableQuestionId").then((drillableQuestionId) => {
         H.createDashboard({
@@ -114,7 +140,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         });
       });
 
-      // 4. Create Dashboard A with click behaviors
+      // 5. Create Dashboard A with click behaviors
       cy.get<number>("@dashboardBId").then((dashboardBId) => {
         cy.get<number>("@nativeQuestionId").then((nativeQuestionId) => {
           H.createDashboard({
@@ -130,65 +156,120 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                 limit: 5,
               },
             }).then(({ body: questionA }) => {
-              H.addOrUpdateDashboardCard({
-                card_id: questionA.id,
-                dashboard_id: dashboardA.id,
-                card: {
-                  row: 0,
-                  col: 0,
-                  size_x: 24,
-                  size_y: 8,
-                  visualization_settings: {
-                    column_settings: {
-                      // ID column links to Dashboard B with parameter
-                      [`["ref",["field",${ORDERS.ID},null]]`]: {
-                        click_behavior: {
-                          type: "link",
-                          linkType: "dashboard",
-                          linkTextTemplate: "Go to Dashboard B",
-                          targetId: dashboardBId,
-                          parameterMapping: {
-                            [DASHBOARD_B_FILTER.id]: {
-                              source: {
-                                type: "column",
-                                id: "ID",
-                                name: "ID",
+              // A second, single-column question whose QUANTITY cells link to
+              // the GUI question. Kept separate so the column is always on
+              // screen, and so the other tests keep using card 0 unchanged.
+              H.createQuestion({
+                name: "Quantities for Dashboard A",
+                query: {
+                  "source-table": ORDERS_ID,
+                  fields: [
+                    ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+                  ],
+                  limit: 5,
+                },
+              }).then(({ body: quantitiesQuestion }) => {
+                // Both cards must be set in a single call: addOrUpdateDashboardCard
+                // replaces the dashboard's whole dashcard list, so a second call
+                // would silently drop the first card.
+                H.updateDashboardCards({
+                  dashboard_id: dashboardA.id,
+                  cards: [
+                    {
+                      card_id: questionA.id,
+                      row: 0,
+                      col: 0,
+                      size_x: 24,
+                      size_y: 8,
+                      visualization_settings: {
+                        column_settings: {
+                          // ID column links to Dashboard B with parameter
+                          [`["ref",["field",${ORDERS.ID},null]]`]: {
+                            click_behavior: {
+                              type: "link",
+                              linkType: "dashboard",
+                              linkTextTemplate: "Go to Dashboard B",
+                              targetId: dashboardBId,
+                              parameterMapping: {
+                                [DASHBOARD_B_FILTER.id]: {
+                                  source: {
+                                    type: "column",
+                                    id: "ID",
+                                    name: "ID",
+                                  },
+                                  target: {
+                                    type: "parameter",
+                                    id: DASHBOARD_B_FILTER.id,
+                                  },
+                                  id: DASHBOARD_B_FILTER.id,
+                                },
                               },
-                              target: {
-                                type: "parameter",
-                                id: DASHBOARD_B_FILTER.id,
-                              },
-                              id: DASHBOARD_B_FILTER.id,
                             },
                           },
-                        },
-                      },
-                      // PRODUCT_ID column links to native question with parameter
-                      [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
-                        click_behavior: {
-                          type: "link",
-                          linkType: "question",
-                          linkTextTemplate: "Go to Native Question",
-                          targetId: nativeQuestionId,
-                          parameterMapping: {
-                            id: {
-                              source: {
-                                type: "column",
-                                id: "PRODUCT_ID",
-                                name: "Product ID",
+                          // PRODUCT_ID column links to native question with parameter
+                          [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
+                            click_behavior: {
+                              type: "link",
+                              linkType: "question",
+                              linkTextTemplate: "Go to Native Question",
+                              targetId: nativeQuestionId,
+                              parameterMapping: {
+                                id: {
+                                  source: {
+                                    type: "column",
+                                    id: "PRODUCT_ID",
+                                    name: "Product ID",
+                                  },
+                                  target: {
+                                    type: "variable",
+                                    id: "id",
+                                  },
+                                  id: "id",
+                                },
                               },
-                              target: {
-                                type: "variable",
-                                id: "id",
-                              },
-                              id: "id",
                             },
                           },
                         },
                       },
                     },
-                  },
-                },
+                    {
+                      card_id: quantitiesQuestion.id,
+                      row: 8,
+                      col: 0,
+                      size_x: 12,
+                      size_y: 6,
+                      visualization_settings: {
+                        column_settings: {
+                          // QUANTITY column links to a GUI (MBQL) question, mapping
+                          // the clicked quantity onto the target's own column
+                          [`["ref",["field",${ORDERS.QUANTITY},null]]`]: {
+                            click_behavior: {
+                              type: "link",
+                              linkType: "question",
+                              linkTextTemplate: "Go to GUI Question",
+                              targetId: guiQuestionId,
+                              parameterMapping: {
+                                [GUI_QUESTION_QUANTITY_TARGET_ID]: {
+                                  source: {
+                                    type: "column",
+                                    id: "QUANTITY",
+                                    name: "Quantity",
+                                  },
+                                  target: {
+                                    type: "dimension",
+                                    id: GUI_QUESTION_QUANTITY_TARGET_ID,
+                                    dimension: GUI_QUESTION_QUANTITY_DIMENSION,
+                                  },
+                                  id: GUI_QUESTION_QUANTITY_TARGET_ID,
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ],
+                });
               });
             });
           });
@@ -202,6 +283,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
         "dashcardQuery",
       );
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
     });
 
     it("should pass parameters to the linked dashboard", () => {
@@ -270,6 +352,71 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // Verify breadcrumb shows Dashboard A
         cy.findByText("Back to Dashboard A").should("be.visible");
+      });
+    });
+
+    it("should pass the click behavior filter to the linked GUI (MBQL) question", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        // Verify we're on Dashboard A
+        cy.findByText("Dashboard A").should("be.visible");
+
+        // Click on the custom link text that navigates to the GUI question
+        H.getDashboardCard(1)
+          .findAllByText("Go to GUI Question")
+          .first()
+          .click();
+      });
+
+      // A GUI target cannot consume the mapped value as a parameter, so it opens
+      // as an ad-hoc question carrying the value as a filter instead.
+      cy.wait("@datasetQuery").then(({ request }) => {
+        // Request body is a pMBQL query; a filter clause is
+        // [operator, opts, fieldRef, value].
+        const [{ filters }] = request.body.stages;
+        const [filter] = filters;
+
+        expect(filter[0]).to.equal("=");
+        expect(filter[2]).to.include(ORDERS.QUANTITY);
+
+        cy.wrap(filter[3]).as("filteredQuantity");
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("visualization-root").should("be.visible");
+
+        // The toolbar counts the mapped value as a filter on the question.
+        // Before the fix the saved question opened unfiltered, so this read
+        // "Filter" instead.
+        cy.findByTestId("filter-dropdown-button")
+          .should("be.visible")
+          .and("contain", "1 filter");
+
+        // Every returned row matches the quantity we clicked on
+        cy.get<number>("@filteredQuantity").then((filteredQuantity) => {
+          H.tableInteractiveBody()
+            .findAllByTestId("cell-data")
+            .should("have.length.at.least", 1)
+            .each((cell) => {
+              expect(cell.text()).to.equal(String(filteredQuantity));
+            });
+        });
+
+        // Verify breadcrumb shows Dashboard A, and that going back works
+        cy.findByText("Back to Dashboard A").should("be.visible").click();
+
+        cy.findByText("Dashboard A").should("be.visible");
       });
     });
 
@@ -662,6 +809,129 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
               expect(filterTop).to.be.closeTo(wrapperTop, 20);
             });
         });
+      });
+    });
+  });
+
+  describe("root dashboard controller props do not leak into drill-through target (EMB-1946)", () => {
+    const ORIGIN_DASHBOARD_FILTER: Parameter = createMockActionParameter({
+      id: "origin-dashboard-filter",
+      name: "City Filter",
+      slug: "city-filter",
+      type: "string/=",
+      sectionId: "string",
+    });
+
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      H.createDashboard({
+        name: "Target Dashboard (EMB-1946)",
+        parameters: [DASHBOARD_B_FILTER],
+      }).then(({ body: targetDashboard }) => {
+        cy.wrap(targetDashboard.id).as("targetDashboardId");
+
+        H.createQuestion({
+          name: "Orders for Target Dashboard (EMB-1946)",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: targetQuestion }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: targetQuestion.id,
+            dashboard_id: targetDashboard.id,
+            card: {
+              row: 0,
+              col: 0,
+              size_x: 24,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: DASHBOARD_B_FILTER.id,
+                  card_id: targetQuestion.id,
+                  target: ["dimension", ["field", ORDERS.ID, null]],
+                },
+              ],
+            },
+          });
+        });
+      });
+
+      cy.get<number>("@targetDashboardId").then((targetDashboardId) => {
+        H.createDashboard({
+          name: "Origin Dashboard (EMB-1946)",
+          parameters: [ORIGIN_DASHBOARD_FILTER],
+        }).then(({ body: originDashboard }) => {
+          cy.wrap(originDashboard.id).as("originDashboardId");
+
+          H.createQuestion({
+            name: "Orders for Origin Dashboard (EMB-1946)",
+            query: { "source-table": ORDERS_ID, limit: 5 },
+          }).then(({ body: originQuestion }) => {
+            H.addOrUpdateDashboardCard({
+              card_id: originQuestion.id,
+              dashboard_id: originDashboard.id,
+              card: {
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 8,
+                visualization_settings: {
+                  column_settings: {
+                    [`["ref",["field",${ORDERS.ID},null]]`]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "dashboard",
+                        linkTextTemplate: "Go to Target Dashboard",
+                        targetId: targetDashboardId,
+                        parameterMapping: {
+                          [DASHBOARD_B_FILTER.id]: {
+                            source: { type: "column", id: "ID", name: "ID" },
+                            target: {
+                              type: "parameter",
+                              id: DASHBOARD_B_FILTER.id,
+                            },
+                            id: DASHBOARD_B_FILTER.id,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          });
+        });
+      });
+
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+    });
+
+    it("should not forward root controlled parameters to the drill-through target dashboard", () => {
+      cy.get<number>("@originDashboardId").then((originDashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={originDashboardId}
+            enableEntityNavigation
+            parameters={{ "city-filter": "new-york" }}
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Origin Dashboard (EMB-1946)").should("be.visible");
+
+        H.getDashboardCard()
+          .findAllByText("Go to Target Dashboard")
+          .first()
+          .click();
+
+        cy.findByText("Target Dashboard (EMB-1946)").should("be.visible");
+
+        // The ID filter must show the click-behavior-mapped value from the clicked row,
+        // not be suppressed by the origin dashboard's controlled `parameters` prop.
+        // Before the fix, controlled `parameters` overwrites `initialParameters` entirely,
+        // leaving `id-filter` absent and the widget empty.
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "1");
       });
     });
   });

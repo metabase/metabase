@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { type ChangeEventHandler, useState } from "react";
 import { t } from "ttag";
 
-import type { InputProps } from "metabase/common/components/Input";
 import { Button, Flex, TextInput } from "metabase/ui";
 
 export interface LicenseInputProps {
@@ -23,7 +22,8 @@ export const LicenseInput = ({
 }: LicenseInputProps) => {
   const [value, setValue] = useState(token ?? "");
 
-  const handleChange: InputProps["onChange"] = (e) => setValue(e.target.value);
+  const handleChange: ChangeEventHandler<HTMLInputElement> = (e) =>
+    setValue(e.target.value);
 
   const handleActivate = () => {
     onUpdate(value);
@@ -47,6 +47,7 @@ export const LicenseInput = ({
           }
         />
         <Button
+          size="lg"
           disabled={isDisabled}
           data-testid="activate-button"
           onClick={handleActivate}

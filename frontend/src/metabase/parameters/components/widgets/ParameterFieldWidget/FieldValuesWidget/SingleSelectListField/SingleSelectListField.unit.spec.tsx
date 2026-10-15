@@ -2,13 +2,12 @@ import { waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import type { OptionsType } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { FieldValue, RowValue } from "metabase-types/api";
+import type { ColumnSettings, FieldValue, RowValue } from "metabase-types/api";
 
 import { Value as ValueComponent } from "../../Value";
 
-import SingleSelectListField from "./index";
+import { SingleSelectListField } from "./index";
 
 const value: RowValue[] = [];
 const firstOption = "AK";
@@ -23,7 +22,7 @@ function showRemapping(fields: Field[]) {
 
 function renderValue(
   fields: Field[],
-  formatOptions: Partial<OptionsType>,
+  formatOptions: Partial<ColumnSettings>,
   value: unknown,
 ) {
   return (

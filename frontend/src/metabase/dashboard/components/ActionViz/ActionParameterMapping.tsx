@@ -3,10 +3,9 @@ import { t } from "ttag";
 
 import { sortActionParams } from "metabase/actions/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-import { Select } from "metabase/common/components/Select";
 import { setParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
+import { Box, Flex, Select } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
@@ -18,11 +17,6 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-import {
-  ParameterFormBadge,
-  ParameterFormLabel,
-  ParameterFormSection,
-} from "./ActionParameterMapping.styled";
 import {
   getParameterDefaultValue,
   isParameterHidden,
@@ -106,6 +100,7 @@ interface ActionParameterMappingItemProps {
 }
 
 const DEFAULT_VALUE = "default value";
+const ASK_VALUE = "ask the user";
 
 export const ActionParameterMappingItem = ({
   action,
@@ -114,7 +109,7 @@ export const ActionParameterMappingItem = ({
   dashboardParameters,
   onChange,
 }: ActionParameterMappingItemProps) => {
-  const [value, setValue] = useState(mappedValue ?? null);
+  const [value, setValue] = useState<string>(mappedValue ?? ASK_VALUE);
 
   const isHidden = isParameterHidden(action, actionParameter);
   const isRequired = isParameterRequired(action, actionParameter);
@@ -125,33 +120,46 @@ export const ActionParameterMappingItem = ({
     isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
   const name = actionParameter.name ?? actionParameter.id;
 
-  const handleChange = (
-    e: SelectChangeEvent<string>,
-    target: ParameterTarget,
-  ) => {
-    const value = e.target.value;
+  const handleChange = (selected: string | null) => {
+    const nextValue = selected ?? ASK_VALUE;
 
-    setValue(e.target.value);
+    setValue(nextValue);
 
-    if (value !== DEFAULT_VALUE) {
-      onChange(e.target.value, actionParameter.target);
-    } else {
-      onChange(null, target);
-    }
+    const isMappedToParameter =
+      nextValue !== DEFAULT_VALUE && nextValue !== ASK_VALUE;
+
+    onChange(isMappedToParameter ? nextValue : null, actionParameter.target);
   };
 
   return (
-    <ParameterFormSection
-      data-testid={`parameter-form-section-${actionParameter.id}`}
-    >
-      <ParameterFormLabel error={showError}>
+    <Box mt="lg" data-testid={`parameter-form-section-${actionParameter.id}`}>
+      <Flex
+        component="label"
+        c={showError ? "feedback-negative" : "text-secondary"}
+        fz="sm"
+        fw="bold"
+        gap="sm"
+        align="center"
+        mb="sm"
+      >
         <span>{`${name}${showError ? t`: required` : ""}`}</span>
-        {isHidden && <ParameterFormBadge>{t`Hidden`}</ParameterFormBadge>}
-      </ParameterFormLabel>
+        {isHidden && (
+          <Box
+            component="span"
+            c="text-primary"
+            bg="background_page-tertiary"
+            px="sm"
+            py="xxs"
+            bdrs="xxs"
+          >{t`Hidden`}</Box>
+        )}
+      </Flex>
       <Select
+        data-testid="parameter-mapping-select"
         value={value}
+        comboboxProps={{ width: 300, position: "bottom-start" }}
         onChange={handleChange}
-        options={[
+        data={[
           ...getDefaultOptions({
             isRequired,
             isHidden,
@@ -159,13 +167,12 @@ export const ActionParameterMappingItem = ({
             defaultValue,
           }),
           ...dashboardParameters.map((dashboardParam) => ({
-            key: dashboardParam.id,
-            name: dashboardParam.name,
             value: dashboardParam.id,
+            label: dashboardParam.name,
           })),
         ]}
       />
-    </ParameterFormSection>
+    </Box>
   );
 };
 
@@ -180,17 +187,17 @@ function getDefaultOptions({
   hasDefaultValue: boolean;
   defaultValue?: string | number;
 }) {
-  const defaultOptions = [];
-
-  defaultOptions.push({
-    name: isHidden ? t`Select a value` : t`Ask the user`,
-    value: null,
-  });
+  const defaultOptions = [
+    {
+      value: ASK_VALUE,
+      label: isHidden ? t`Select a value` : t`Ask the user`,
+    },
+  ];
 
   if (isHidden && isRequired && hasDefaultValue) {
     defaultOptions.push({
-      name: defaultValue,
       value: DEFAULT_VALUE,
+      label: String(defaultValue),
     });
   }
 

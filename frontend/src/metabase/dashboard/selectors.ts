@@ -1,14 +1,20 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
+import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getIsWebApp } from "metabase/embedding/selectors";
+import {
+  getShallowDatabases,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -19,27 +25,26 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
+  EventsSidebarState,
+  SharingSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase/redux/store";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { getIsWebApp } from "metabase/selectors/web-app";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import Question from "metabase-lib/v1/Question";
+import { extendCardWithDashcardSettings } from "metabase/viz-core";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
   getParameterValuesBySlug,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
+  ChannelApiResponse,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -47,11 +52,19 @@ import type {
   DashboardParameterMapping,
   DashboardTabId,
   EmbeddingParameterVisibility,
+  Parameter,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
+import {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+} from "./shell-selectors";
 import {
   canResetFilter,
   findDashCardForInlineParameter,
@@ -69,17 +82,31 @@ function isClickBehaviorSidebar(
   return sidebar.name === SIDEBAR_NAME.clickBehavior;
 }
 
+function isEventsSidebar(sidebar: SidebarState): sidebar is EventsSidebarState {
+  return sidebar.name === SIDEBAR_NAME.events;
+}
+
+export const getEventsSidebarProps = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isEventsSidebar(sidebar) ? sidebar.props : null;
+};
+
+function isSharingSidebar(
+  sidebar: SidebarState,
+): sidebar is SharingSidebarState {
+  return sidebar.name === SIDEBAR_NAME.sharing;
+}
+
+export const getSharingSubscriptionId = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isSharingSidebar(sidebar) ? sidebar.props.subscriptionId : undefined;
+};
+
 function isEditParameterSidebar(
   sidebar: SidebarState,
 ): sidebar is EditParameterSidebarState {
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
-
-export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.editingDashboard;
-
-export const getIsEditing = (state: State) =>
-  Boolean(getDashboardBeforeEditing(state));
 
 export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
@@ -87,7 +114,6 @@ export const getClickBehaviorSidebarDashcard = (state: State) => {
     ? dashcards[sidebar.props?.dashcardId]
     : null;
 };
-export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
@@ -146,6 +172,32 @@ export const getIsSharing = createSelector(
   (sidebar) => sidebar.name === SIDEBAR_NAME.sharing,
 );
 
+/**
+ * Whether the current user can set up and edit this dashboard's
+ * subscriptions. It takes the Subscriptions permission and a card with data
+ * to send, and for a non-admin a configured email or Slack channel, since
+ * only an admin can set one up. `channelInfo` is `undefined` while it loads
+ * or when its request fails, which leaves only an admin able to manage them.
+ */
+export const getCanManageDashboardSubscriptions = (
+  state: State,
+  dashboard: Pick<Dashboard, "dashcards">,
+  channelInfo: ChannelApiResponse | undefined,
+): boolean => {
+  const hasDataCards = dashboard.dashcards.some(
+    (dashcard) => !["text", "heading"].includes(dashcard.card.display),
+  );
+  const hasConfiguredChannel =
+    channelInfo?.channels.email?.configured === true ||
+    channelInfo?.channels.slack?.configured === true;
+
+  return (
+    canManageSubscriptions(state) &&
+    hasDataCards &&
+    (getUserIsAdmin(state) || hasConfiguredChannel)
+  );
+};
+
 export const getShowAddQuestionSidebar = createSelector(
   [getSidebar],
   (sidebar) => sidebar.name === SIDEBAR_NAME.addQuestion,
@@ -159,14 +211,6 @@ export const getIsShowDashboardInfoSidebar = createSelector(
 export const getIsShowDashboardSettingsSidebar = createSelector(
   [getSidebar],
   (sidebar) => sidebar.name === SIDEBAR_NAME.settings,
-);
-
-export const getDashboardId = (state: State) => state.dashboard.dashboardId;
-
-export const getDashboard = createSelector(
-  [getDashboardId, getDashboards],
-  (dashboardId, dashboards) =>
-    dashboardId !== null ? dashboards[dashboardId] : undefined,
 );
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
@@ -188,6 +232,99 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+const EMPTY_DASHCARDS: StoreDashcard[] = [];
+const EMPTY_PARAMETERS: Parameter[] = [];
+
+/**
+ * The dashboard as we last saw it, looked up by id in the in-memory Redux
+ * cache. Unlike `getDashboard`, it survives the reset of the active
+ * `dashboardId` while a dashboard (re)loads, so a dashboard seen earlier in
+ * this session can draw its real layout as a skeleton. Undefined on any fresh
+ * page load.
+ */
+export const getLastSeenDashboard = (
+  state: State,
+  dashboardId: DashboardId | null,
+): StoreDashboard | undefined =>
+  dashboardId == null ? undefined : getDashboardById(state, dashboardId);
+
+/**
+ * Whether the dashboard as last seen is fixed width. Without it in the cache,
+ * assume it is, since fixed is the default width for dashboards.
+ */
+export const getIsLastSeenDashboardFixedWidth = (
+  state: State,
+  dashboardId: DashboardId | null,
+): boolean =>
+  (getLastSeenDashboard(state, dashboardId)?.width ?? "fixed") === "fixed";
+
+/**
+ * The dashcards of the tab the user is landing on, in the dashboard as last
+ * seen. The tab is chosen the way `getSelectedTabId` chooses it on load.
+ */
+export const getLastSeenTabDashcards = createSelector(
+  [
+    getLastSeenDashboard,
+    getDashcards,
+    getIsWebApp,
+    (state: State) => getSetting(state, "site-url"),
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
+  ],
+  (
+    dashboard,
+    dashcardMap,
+    isWebApp,
+    siteUrl,
+    sdkInitialDashboardTabId,
+  ): StoreDashcard[] => {
+    if (!dashboard) {
+      return EMPTY_DASHCARDS;
+    }
+
+    const dashboardWithVisibleTabs = {
+      ...dashboard,
+      tabs: dashboard.tabs?.filter((tab) => !tab.isRemoved),
+    };
+    const tabId = isEmbeddingSdk()
+      ? getSdkInitialDashboardTabId(
+          dashboardWithVisibleTabs,
+          sdkInitialDashboardTabId,
+        )
+      : getInitialSelectedTabId(dashboardWithVisibleTabs, siteUrl, isWebApp);
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter((dc): dc is StoreDashcard => isNotNull(dc) && !dc.isRemoved);
+    return tabId == null
+      ? dashcards
+      : dashcards.filter((dc) => dc.dashboard_tab_id === tabId);
+  },
+);
+
+/**
+ * The filters shown in the header of the dashboard as last seen: its
+ * parameters except those placed inline on a dashcard.
+ */
+export const getLastSeenDashboardHeaderParameters = createSelector(
+  [getLastSeenDashboard, getDashcards],
+  (dashboard, dashcardMap): Parameter[] => {
+    if (!dashboard?.parameters) {
+      return EMPTY_PARAMETERS;
+    }
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter(isNotNull);
+    return dashboard.parameters.filter(
+      (parameter) => !isDashcardInlineParameter(parameter.id, dashcards),
+    );
+  },
+);
+
+export const getLinkTargetEntities = (state: State) =>
+  state.dashboard.linkTargets;
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
@@ -226,8 +363,13 @@ export const getCurrentDashcards = createSelector(
 );
 
 export const getDashcardHref = createSelector(
-  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
-  (metadata, dashboard, parameterValues, dashcard) => {
+  [
+    selectQuestionFromCardBuilder,
+    getDashboardComplete,
+    getParameterValues,
+    getDashCardById,
+  ],
+  (buildQuestion, dashboard, parameterValues, dashcard) => {
     if (
       !dashboard ||
       !dashcard ||
@@ -243,7 +385,7 @@ export const getDashcardHref = createSelector(
     );
 
     return getNewCardUrl({
-      metadata,
+      buildQuestion,
       dashboard,
       parameterValues,
       dashcard,
@@ -412,19 +554,24 @@ export const getParameterTarget = createSelector(
 );
 
 export const getQuestions = createSelector(
-  [getDashboardComplete, getMetadata],
-  (dashboard, metadata) => {
+  [getDashboardComplete, selectQuestionFromCardBuilder],
+  (dashboard, buildQuestion) => {
     if (!dashboard) {
       return {};
     }
-    return getDashboardQuestions(dashboard.dashcards, metadata);
+    return getDashboardQuestions(dashboard.dashcards, buildQuestion);
   },
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestions, getIsEditing],
-  (dashboard, metadata, questions, isEditing) => {
-    if (!dashboard || !metadata) {
+  [
+    getDashboardComplete,
+    selectQuestionFromCardBuilder,
+    getQuestions,
+    getIsEditing,
+  ],
+  (dashboard, buildQuestion, questions, isEditing) => {
+    if (!dashboard) {
       return [];
     }
 
@@ -432,14 +579,13 @@ export const getParameters = createSelector(
       ? getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
-          metadata,
+          buildQuestion,
           questions,
         )
       : getSavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
           dashboard.param_fields,
-          metadata,
         );
   },
 );
@@ -496,22 +642,23 @@ export const getMissingRequiredParameters = createSelector(
 );
 
 /**
- * It's a memoized version, it uses LRU cache per card identified by id
+ * Holds one Question per card, so that connected components keep the same
+ * reference between renders. reselect keys weakly on the card and the metadata,
+ * so an entry is released once its card leaves the store or the metadata is
+ * replaced. Keying on the card id instead would hold every Question, and the
+ * metadata snapshot each one carries, for the life of the tab.
  */
-export const getQuestionByCard = createCachedSelector(
+export const getQuestionByCard = createSelector(
   [
     (_state: State, props: { card: Card | VirtualCard }) => props.card,
-    getMetadata,
+    selectQuestionFromCardBuilder,
   ],
-  (card, metadata) => {
-    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
+  (card, buildQuestion) => {
+    return isQuestionCard(card) ? buildQuestion(card) : undefined;
   },
-)((_state, props) => {
-  // Virtual cards don't have an ID and should not return a question so we use "virtual" as a cache key for all of them
-  return props.card.id == null ? "virtual" : props.card.id;
-});
+);
 
-export const getDashcardParameterMappingOptions = createCachedSelector(
+export const getDashcardParameterMappingOptions = createSelector(
   [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
   (question, parameter, card, dashcard, dashcards) => {
     const parameterDashcard =
@@ -526,9 +673,7 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
       parameterDashcard,
     );
   },
-)((state, props) => {
-  return props.card.id ?? props.dashcard.id;
-});
+);
 
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
@@ -547,7 +692,7 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
@@ -555,7 +700,7 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );
@@ -573,8 +718,8 @@ export const getSelectedTabId = createSelector(
     (state) => getSetting(state, "site-url"),
     getDashboard,
     (state) => state.dashboard.selectedTabId,
-    (state: State) =>
-      (state as Partial<SdkStoreState>).sdk?.initialDashboardTabId,
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
     if (dashboard && selectedTabId === null) {
@@ -604,7 +749,7 @@ function getInitialSelectedTabId(
   siteUrl: string,
   isWebApp: boolean,
 ) {
-  const pathname = window.location.pathname.replace(siteUrl, "");
+  const pathname = getPathnameWithoutSubPath(window.location.pathname, siteUrl);
   const isDashboardUrl = pathname.includes("/dashboard/");
 
   if (isDashboardUrl) {
@@ -638,21 +783,6 @@ function getSdkInitialDashboardTabId(
   return dashboard.tabs?.[0]?.id ?? null;
 }
 
-export const getCurrentTabDashcards = createSelector(
-  [getDashboardComplete, getSelectedTabId],
-  (dashboard, selectedTabId) => {
-    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
-      return [];
-    }
-    if (!selectedTabId) {
-      return dashboard.dashcards;
-    }
-    return dashboard.dashcards.filter(
-      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
-    );
-  },
-);
-
 export const getHiddenParameterSlugs = createSelector(
   [getDashboardComplete, getParameters, getIsEditing],
   (dashboard, parameters, isEditing) => {
@@ -667,23 +797,6 @@ export const getHiddenParameterSlugs = createSelector(
     );
 
     return hiddenParameters.map((parameter) => parameter.slug).join(",");
-  },
-);
-
-export const getTabHiddenParameterSlugs = createSelector(
-  [getParameters, getCurrentTabDashcards, getIsEditing],
-  (parameters, currentTabDashcards, isEditing) => {
-    if (isEditing) {
-      // All filters should be visible in edit mode
-      return undefined;
-    }
-
-    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
-    const hiddenParameters = parameters.filter(
-      (parameter) => !currentTabParameterIds.includes(parameter.id),
-    );
-
-    return hiddenParameters.map((p) => p.slug).join(",");
   },
 );
 
@@ -714,6 +827,7 @@ export const getParameterMappingsBeforeEditing = createSelector(
         }
 
         map[parameterId][dashcard.id] =
+          // Unjustified type cast. FIXME
           parameterMapping as DashboardParameterMapping;
       }
     }
@@ -723,13 +837,8 @@ export const getParameterMappingsBeforeEditing = createSelector(
 );
 
 export const getHasModelActionsEnabled = createSelector(
-  [getMetadata],
-  (metadata) => {
-    if (!metadata) {
-      return false;
-    }
-
-    const databases = metadata.databasesList();
+  [getShallowDatabases],
+  (databases) => {
     const hasModelActionsEnabled = Object.values(databases).some((database) =>
       // @ts-expect-error Schema types do not match
       hasDatabaseActionsEnabled(database),
@@ -754,3 +863,13 @@ export const getCanResetFilters = createSelector(
   [getFiltersToReset],
   (filtersToReset) => filtersToReset.length > 0,
 );
+
+// Defined in a leaf module so the app shell can read them without pulling this
+// one in. Re-exported so every existing call site is unchanged.
+export {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+};

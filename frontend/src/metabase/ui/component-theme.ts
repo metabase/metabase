@@ -65,6 +65,9 @@ export type MetabaseComponentTheme = {
     /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
     stickyBackgroundColor?: string;
 
+    /** Background color of every other row when the "Striped rows" table setting is enabled. Defaults to a subtle tint of the cell background color */
+    stripedBackgroundColor?: string;
+
     cell: {
       /** Text color of cells, defaults to `text-primary`. */
       textColor: string;
@@ -209,7 +212,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     breadcrumbs: {
       expandButton: {
         textColor: "var(--mb-color-text-secondary)",
-        backgroundColor: "var(--mb-color-background-secondary)",
+        backgroundColor: "var(--mb-color-background_page-secondary)",
         hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-core-brand)",
       },
@@ -228,9 +231,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   dashboard: {
-    backgroundColor: "var(--mb-color-background-primary)",
+    backgroundColor: "var(--mb-color-background_page-primary)",
     card: {
-      backgroundColor: "var(--mb-color-background-primary)",
+      backgroundColor: "var(--mb-color-background_page-primary)",
     },
   },
   question: {
@@ -252,7 +255,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     rowToggle: {
       textColor: "text-primary-inverse",
-      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
+      backgroundColor: "text-disabled", // TODO: should it be "background_page-tertiary-inverse" ?
     },
   },
   cartesian: {
@@ -262,7 +265,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     splitLine: {
       lineStyle: {
-        color: "var(--mb-color-cartesian-grid-line)",
+        color: "var(--mb-color-chart-axis)",
       },
     },
   },

@@ -18,6 +18,7 @@ import { CustomCodeBlock } from "../CodeBlock";
 import { CustomHeading } from "../Heading";
 import { CustomOrderedList } from "../OrderedList";
 import { CustomParagraph } from "../Paragraph";
+import type { BlockShellComponent } from "../shared/BlockShell";
 
 declare module "@tiptap/core" {
   // This adds a new configuration option to the NodeConfig
@@ -54,7 +55,23 @@ interface CustomStarterKitOptions extends StarterKitOptions {
   paragraph: StarterKitOptions["paragraph"] & {
     editorContext?: "comments" | "document";
   };
+  /**
+   * Block "shell" component injected into the top-level block node views. Lets a
+   * host (e.g. documents) attach block-level chrome such as comment and anchor
+   * menus without the editor primitive depending on the host. When omitted the
+   * blocks render with no extra chrome.
+   */
+  blockShell?: BlockShellComponent;
 }
+
+/** Merge the shared `blockShell` option into a block's own configure options. */
+const withBlockShell = (
+  blockOptions: unknown,
+  blockShell: BlockShellComponent | undefined,
+) => ({
+  ...(typeof blockOptions === "object" && blockOptions ? blockOptions : {}),
+  blockShell,
+});
 
 /**
  * Modified StarterKit so it doesn't hijack browsers' cmd/ctrl+shift+b behavior
@@ -63,12 +80,15 @@ export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
   name: "customStarterKit",
   addExtensions() {
     let extensions = this.parent?.() || [];
+    const { blockShell } = this.options;
 
     if (this.options.blockquote !== false) {
       extensions = replaceExtension(
         extensions,
         Blockquote,
-        CustomBlockquote.configure(this.options.blockquote),
+        CustomBlockquote.configure(
+          withBlockShell(this.options.blockquote, blockShell),
+        ),
       );
     }
 
@@ -76,7 +96,9 @@ export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
       extensions = replaceExtension(
         extensions,
         BulletList,
-        CustomBulletList.configure(this.options.bulletList),
+        CustomBulletList.configure(
+          withBlockShell(this.options.bulletList, blockShell),
+        ),
       );
     }
 
@@ -84,7 +106,9 @@ export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
       extensions = replaceExtension(
         extensions,
         OrderedList,
-        CustomOrderedList.configure(this.options.orderedList),
+        CustomOrderedList.configure(
+          withBlockShell(this.options.orderedList, blockShell),
+        ),
       );
     }
 
@@ -92,7 +116,9 @@ export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
       extensions = replaceExtension(
         extensions,
         Heading,
-        CustomHeading.configure(this.options.heading),
+        CustomHeading.configure(
+          withBlockShell(this.options.heading, blockShell),
+        ),
       );
     }
 
@@ -100,7 +126,9 @@ export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
       extensions = replaceExtension(
         extensions,
         Paragraph,
-        CustomParagraph.configure(this.options.paragraph),
+        CustomParagraph.configure(
+          withBlockShell(this.options.paragraph, blockShell),
+        ),
       );
     }
 
@@ -108,7 +136,9 @@ export const CustomStarterKit = StarterKit.extend<CustomStarterKitOptions>({
       extensions = replaceExtension(
         extensions,
         CodeBlock,
-        CustomCodeBlock.configure(this.options.codeBlock),
+        CustomCodeBlock.configure(
+          withBlockShell(this.options.codeBlock, blockShell),
+        ),
       );
     }
 

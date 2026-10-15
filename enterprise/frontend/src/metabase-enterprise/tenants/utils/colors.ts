@@ -2,7 +2,7 @@ import { color } from "metabase/ui/colors";
 import type { Tenant } from "metabase-types/api";
 
 const groupColorPalette = [
-  color("error"),
+  color("feedback-negative"),
   color("accent2"),
   color("core-brand"),
   color("accent4"),

@@ -5,6 +5,7 @@ import { MetabaseProvider } from "../MetabaseProvider";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 const config = getStorybookSdkAuthConfigForUser("admin");
 

@@ -54,8 +54,8 @@ export function SchemaViewerMinimap() {
       nodeColor={nodeColor}
       bgColor={
         isDark
-          ? "var(--mb-color-background-secondary)"
-          : "var(--mb-color-background)"
+          ? "var(--mb-color-background_page-secondary)"
+          : "var(--mb-color-background_surface-primary)"
       }
       maskStrokeColor="var(--mb-color-border-neutral)"
     />

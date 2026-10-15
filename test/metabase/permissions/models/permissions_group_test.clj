@@ -16,6 +16,11 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(deftest ^:parallel group-display-name-preserves-stored-name-test
+  (let [group {:magic_group_type perms-group/all-users-magic-group-type :name "Stored group name"}]
+    (is (= "Stored group name" (perms-group/group-display-name group false)))
+    (is (= "All internal users" (perms-group/group-display-name group true)))))
+
 (deftest admin-root-entry-test
   (testing "Check that the root entry for Admin was created"
     (is (t2/exists? :model/Permissions :group_id (u/the-id (perms-group/admin)), :object "/"))))
@@ -164,7 +169,10 @@
             (is
              (= {group-id
                  {db-id
-                  {:perms/view-data :unrestricted
+                  ;; When EE code is on the classpath, a new group fails CLOSED to :blocked for a DB
+                  ;; where All Users is blocked, regardless of token features (UXW-4927); only a true
+                  ;; OSS jar falls back to :unrestricted.
+                  {:perms/view-data (if config/ee-available? :blocked :unrestricted)
                    :perms/create-queries :no
                    :perms/download-results :no
                    :perms/manage-table-metadata :no

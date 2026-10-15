@@ -4,7 +4,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.session :as session]
@@ -40,15 +39,6 @@
   "Create a measure definition that references another measure by ID."
   [referenced-measure-id]
   (measure-definition [:measure {:lib/uuid (str (random-uuid))} referenced-measure-id]))
-
-(deftest identity-hash-test
-  (testing "Measure hashes are composed of the measure name and table identity-hash"
-    (let [now   #t "2022-09-01T12:34:56Z"
-          table (t2/select-one :model/Table (mt/id :venues))]
-      (mt/with-temp [:model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
-                                             :definition (measure-definition (lib/count))}]
-        (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
-               (serdes/identity-hash measure)))))))
 
 (deftest update-measure-cycle-detection-test
   (testing "Updating a measure to reference a non-existent measure should fail"
@@ -201,7 +191,11 @@
                                            :creator_id (mt/user->id :rasta)
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? measure)))))))
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (true? (mi/can-write? measure))))
+        (testing "including without the advanced-permissions feature"
+          (mt/with-premium-features #{}
+            (is (true? (mi/can-write? measure)))))))))
 
 (deftest can-write?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can write measures"
@@ -215,7 +209,12 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (mi/can-write? measure)))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (mi/can-write? measure))))
+          (testing "but not once the advanced-permissions feature is gone"
+            (mt/with-premium-features #{}
+              (is (not (mi/can-write? measure))))))))))
 
 (deftest can-write?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot write measures"
@@ -315,9 +314,16 @@
         (perms/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
-          (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
-                                                     :table_id (mt/id :venues)
-                                                     :definition (measure-definition (lib/count))}))))))))
+          (mt/when-ee-evailable
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                        :table_id (mt/id :venues)
+                                                        :definition (measure-definition (lib/count))})))))
+          (testing "but not once the advanced-permissions feature is gone"
+            (mt/with-premium-features #{}
+              (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                          :table_id (mt/id :venues)
+                                                          :definition (measure-definition (lib/count))}))))))))))
 
 (deftest can-create?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot create measures"

@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type FocusEvent,
   Fragment,
   type ReactNode,
   useEffect,
@@ -16,49 +17,47 @@ import { t } from "ttag";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Undo } from "metabase/redux/store/undo";
+import type { Undo, UndoVariant } from "metabase/redux/store/undo";
 import {
   dismissUndo,
   pauseUndo,
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Card, Ellipsified, Portal, Progress } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Ellipsified,
+  Flex,
+  Icon,
+  Portal,
+  Progress,
+  Stack,
+} from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { isFocusVisible } from "metabase/utils/dom";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
-import CS from "./UndoListing.module.css";
-import {
-  CardContent,
-  CardContentSide,
-  CardIcon,
-  ControlsCardContent,
-  DefaultText,
-  DismissIcon,
-  UndoButton,
-  UndoList,
-} from "./UndoListing.styled";
+import S from "./UndoListing.module.css";
 
 const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
+const TOAST_MESSAGE_MAX_LINES = 4;
 
-function DefaultMessage({
-  undo: { verb = t`modified`, count = 1, subject = t`item` },
-}: {
-  undo: Undo;
-}) {
-  return (
-    <DefaultText>
-      {count > 1
-        ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
-        : `${capitalize(verb)} ${subject}`}
-    </DefaultText>
-  );
+function defaultMessage({
+  verb = t`modified`,
+  count = 1,
+  subject = t`item`,
+}: Pick<Undo, "verb" | "count" | "subject">) {
+  return count > 1
+    ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
+    : `${capitalize(verb)} ${subject}`;
 }
 
 function renderMessage(undo: Undo) {
   const { message } = undo;
   if (!message) {
-    return <DefaultMessage undo={undo || {}} />;
+    return defaultMessage(undo);
   }
   return typeof message === "function" ? message(undo) : message;
 }
@@ -75,38 +74,76 @@ function UndoToast({
   style: CSSProperties;
 }) {
   const dispatch = useDispatch();
+  const interaction = useRef({ isHovered: false, isFocused: false });
+  const hasTimer = Boolean(undo.timeout);
 
-  const handleMouseEnter = () => {
-    if (undo.showProgress) {
+  const updateInteraction = (
+    change: Partial<{ isHovered: boolean; isFocused: boolean }>,
+  ) => {
+    const wasInteracting =
+      interaction.current.isHovered || interaction.current.isFocused;
+    interaction.current = { ...interaction.current, ...change };
+    const isInteracting =
+      interaction.current.isHovered || interaction.current.isFocused;
+
+    if (!hasTimer || wasInteracting === isInteracting) {
+      return;
+    }
+    dispatch(isInteracting ? pauseUndo(undo) : resumeUndo(undo.id));
+  };
+
+  // handle the case where a hovered toast with no timer changes
+  // to one with a timer - pause it.
+  useEffect(() => {
+    const { isHovered, isFocused } = interaction.current;
+    if ((isHovered || isFocused) && hasTimer && undo.pausedAt == null) {
       dispatch(pauseUndo(undo));
     }
-  };
+  }, [undo, hasTimer, dispatch]);
 
-  const handleMouseLeave = () => {
-    if (undo.showProgress) {
-      dispatch(resumeUndo(undo));
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const isFocusStillInside =
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget);
+    if (!isFocusStillInside) {
+      updateInteraction({ isFocused: false });
     }
   };
 
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (isFocusVisible(event.target)) {
+      updateInteraction({ isFocused: true });
+    }
+  };
+
+  const variant = undo.variant ?? "neutral";
+  const isColored = variant !== "neutral";
   const dark = undo.dark ?? true;
   const noBorder = undo.showProgress;
+  const pausedProgressColor =
+    dark && !isColored
+      ? "tooltip-text-secondary"
+      : "background_page-tertiary-inverse";
 
   return (
     <Card
       ref={undo.ref}
       data-testid="toast-undo"
-      color={undo.toastColor}
       role="status"
-      className={CS.toast}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      bg={dark ? "background-primary-inverse" : "background-primary"}
-      c={dark ? "text-secondary-inverse" : "text-primary"}
+      className={S.toast}
+      data-variant={variant}
+      data-paused={undo.pausedAt != null || undefined}
+      onMouseEnter={() => updateInteraction({ isHovered: true })}
+      onMouseLeave={() => updateInteraction({ isHovered: false })}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      bg={getToastBackground(variant, dark)}
+      c={dark && !isColored ? "tooltip-text" : "text-primary"}
       withBorder={!noBorder}
-      radius="md"
-      p="md"
+      radius="sm"
+      p="lg"
       mt="sm"
-      maw="calc(100vw - 2 * var(--mantine-spacing-md))"
+      maw="calc(100vw - 2 * var(--mantine-spacing-lg))"
       style={{
         overflowX: noBorder ? "hidden" : undefined,
         ...style,
@@ -116,65 +153,99 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "background-tertiary-inverse" : "core-brand"}
+          color={undo.pausedAt ? pausedProgressColor : "core-brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
           top={0}
           left={0}
           w="100%"
-          className={CS.progress}
+          className={S.progress}
           /* override animation duration based on timeout */
           style={{
             animationDuration: `${undo.initialTimeout}ms`,
           }}
         />
       )}
-      <CardContent>
-        <CardContentSide maw="75ch">
+      <Flex align="flex-start" justify="space-between" gap="sm">
+        <Flex className={S.message} align="flex-start" maw="75ch">
           {undo.icon && (
-            <CardIcon
+            <Icon
+              className={S.messageIcon}
               name={undo.icon}
-              c={undo.iconColor ?? "text-secondary-inverse"}
+              c={
+                undo.iconColor ??
+                (isColored ? `feedback-${variant}-strong` : "tooltip-text")
+              }
+              mr="sm"
+              flex="0 0 auto"
             />
           )}
           {undo.renderChildren ? (
             undo.renderChildren(undo)
           ) : (
-            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+            <Ellipsified showTooltip={false} lines={TOAST_MESSAGE_MAX_LINES}>
+              {renderMessage(undo)}
+            </Ellipsified>
           )}
-        </CardContentSide>
-        <ControlsCardContent>
-          {undo.actions && undo.actions.length > 0 && (
-            <UndoButton role="button" onClick={onUndo} to="">
-              {undo.actionLabel ?? t`Undo`}
-            </UndoButton>
-          )}
+        </Flex>
+        <Flex className={S.controls} align="center" gap="sm" flex="0 0 auto">
           {undo.extraAction && (
-            <UndoButton
-              role="button"
+            <Button
+              className={S.actionButton}
+              variant={dark && !isColored ? "on-dark-secondary" : "default"}
+              size="sm"
               onClick={() => {
                 undo.extraAction?.action();
                 if (undo.canDismiss) {
                   onDismiss();
                 }
               }}
-              to=""
             >
               {undo.extraAction.label}
-            </UndoButton>
+            </Button>
+          )}
+          {undo.actions && undo.actions.length > 0 && (
+            <Button
+              className={S.actionButton}
+              variant={getPrimaryButtonVariant(variant, dark)}
+              color={isColored ? variant : undefined}
+              size="sm"
+              onClick={onUndo}
+            >
+              {undo.actionLabel ?? t`Undo`}
+            </Button>
           )}
           {undo.canDismiss && (
-            <DismissIcon
-              color={undo.dismissIconColor || "text-secondary-inverse"}
+            <Icon
+              className={S.dismissIcon}
+              color={
+                undo.dismissIconColor ||
+                (isColored ? "text-primary" : "tooltip-text")
+              }
               name="close"
               onClick={onDismiss}
+              ml="sm"
             />
           )}
-        </ControlsCardContent>
-      </CardContent>
+        </Flex>
+      </Flex>
     </Card>
   );
+}
+
+function getToastBackground(variant: UndoVariant, dark: boolean): ColorName {
+  if (variant !== "neutral") {
+    return "background_surface-primary";
+  }
+  return dark ? "tooltip-background" : "background_page-primary";
+}
+
+function getPrimaryButtonVariant(variant: UndoVariant, dark: boolean) {
+  if (variant !== "neutral") {
+    return "filled";
+  }
+  return dark ? "on-dark-primary" : "default";
 }
 
 export function UndoListing() {
@@ -224,7 +295,6 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
-  const ref = useRef<HTMLUListElement>(null);
   const prevUndos = useRef<Undo[]>([]);
 
   const [heights, setHeights] = useState<number[]>([]);
@@ -286,11 +356,17 @@ export function UndoListOverlay({
 
   return (
     <Portal target={target}>
-      <UndoList
-        ref={ref}
+      <Stack
+        component="ul"
         data-testid="undo-list"
         aria-label="undo-list"
         className={ZIndex.Overlay}
+        pos="fixed"
+        left={0}
+        bottom={0}
+        m="lg"
+        gap={0}
+        align="flex-start"
       >
         <Group appear enter exit component={null}>
           {undos.map(
@@ -319,7 +395,7 @@ export function UndoListOverlay({
               ),
           )}
         </Group>
-      </UndoList>
+      </Stack>
     </Portal>
   );
 }

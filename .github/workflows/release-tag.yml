@@ -82,7 +82,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -238,12 +238,12 @@ jobs:
       run: | # sh
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
           echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
-          echo "DOCKERHUB_VERSION=${{ needs.check-version.outputs.ee }}" >> $GITHUB_ENV
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> "$GITHUB_ENV"
+          echo "DOCKERHUB_VERSION=${{ needs.check-version.outputs.ee }}" >> "$GITHUB_ENV"
         else
           echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
-          echo "DOCKERHUB_VERSION=${{ needs.check-version.outputs.oss }}" >> $GITHUB_ENV
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> "$GITHUB_ENV"
+          echo "DOCKERHUB_VERSION=${{ needs.check-version.outputs.oss }}" >> "$GITHUB_ENV"
         fi
 
     - name: Login to Docker Hub
@@ -255,8 +255,8 @@ jobs:
     - name: Tag the docker image
       run: | # sh
         docker buildx imagetools create --tag \
-          $DOCKERHUB_REPO\:$TAG_NAME \
-          $DOCKERHUB_REPO\:$DOCKERHUB_VERSION
+          "$DOCKERHUB_REPO:$TAG_NAME" \
+          "$DOCKERHUB_REPO:$DOCKERHUB_VERSION"
 
   push-git-tags:
     permissions:
@@ -270,7 +270,7 @@ jobs:
       matrix:
         edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         fetch-depth: 0 # we want all branches and tags
@@ -308,7 +308,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release

@@ -1,25 +1,34 @@
 import cx from "classnames";
-import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
+import { t } from "ttag";
 
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { formatDateValue } from "metabase/parameters/utils/date-formatting";
-import { getActivePulseParameters } from "metabase/pulse";
+import { getEditableSubscriptionChannel } from "metabase/notifications/pulse/subscription-editing";
+import {
+  buildFilterText,
+  buildRecipientText,
+  formatSubscriptionDelivery,
+} from "metabase/notifications/pulse/subscription-formatting";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
-import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
-import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import {
+  Button,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Channel,
   ChannelApiResponse,
   ChannelType,
   DashboardSubscription,
+  IconName,
 } from "metabase-types/api";
 
 import { getParameters } from "../../selectors";
@@ -74,22 +83,26 @@ function _PulsesListSidebar({
 
         <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              aria-label={createSubscriptionLabel}
-              leftSection={<Icon name="add" size={16} />}
               variant="subtle"
+              color="neutral"
+              size="sm"
+              aria-label={createSubscriptionLabel}
+              leftSection={<Icon name="add" />}
               mr="1rem"
               onClick={createSubscription}
             />
           </Tooltip>
 
           <Tooltip label={closeSidebarLabel}>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              aria-label={closeSidebarLabel}
-              leftSection={<Icon name="close" size={16} />}
               variant="subtle"
-              color="text-secondary"
-              mr="-1rem"
+              color="neutral"
+              size="sm"
+              aria-label={closeSidebarLabel}
+              leftSection={<Icon name="close" />}
               onClick={onCancel}
             />
           </Tooltip>
@@ -97,7 +110,11 @@ function _PulsesListSidebar({
       </div>
       <div className={cx(CS.my2, CS.mx4)}>
         {pulses.map((pulse) => {
-          const canEdit = canEditPulse(pulse, formInput);
+          const editableChannel = getEditableSubscriptionChannel(
+            pulse,
+            formInput,
+          );
+          const canEdit = editableChannel != null;
 
           return (
             <Card
@@ -105,12 +122,12 @@ function _PulsesListSidebar({
               key={pulse.id}
               className={cx(S.pulseCard, { [S.pulseCardEditable]: canEdit })}
               p={0}
-              radius="md"
+              radius="sm"
               shadow="none"
               withBorder
               onClick={() =>
-                canEdit &&
-                editPulse(pulse, pulse.channels[0].channel_type as ChannelType)
+                editableChannel != null &&
+                editPulse(pulse, editableChannel.channel_type)
               }
             >
               <div
@@ -137,7 +154,7 @@ function _PulsesListSidebar({
                     size={12}
                   />
                   <Label className={cx(CS.hoverChild, CS.hoverInherit)} mb="0">
-                    {friendlySchedule(pulse.channels[0])}
+                    {formatSubscriptionDelivery(pulse.channels[0])}
                   </Label>
                 </div>
                 <PulseDetails pulse={pulse} parameters={parameters} />
@@ -150,87 +167,12 @@ function _PulsesListSidebar({
   );
 }
 
-function canEditPulse(
-  pulse: DashboardSubscription,
-  formInput: ChannelApiResponse,
-): boolean {
-  switch (pulse.channels[0].channel_type) {
-    case "email":
-      return formInput.channels.email != null;
-    case "slack":
-      return formInput.channels.slack != null;
-    default:
-      return false;
-  }
-}
-
-function buildRecipientText(pulse: DashboardSubscription): string {
-  const {
-    channels: [firstChannel],
-  } = pulse;
-
-  const { channel_type, recipients } = firstChannel;
-
-  if (channel_type !== "email" || !recipients || recipients.length === 0) {
-    return "";
-  }
-
-  const [firstRecipient, ...otherRecipients] = recipients;
-  const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
-  return _.isEmpty(otherRecipients)
-    ? firstRecipientText
-    : `${firstRecipientText} ${ngettext(
-        msgid`and ${otherRecipients.length} other`,
-        `and ${otherRecipients.length} others`,
-        otherRecipients.length,
-      )}`;
-}
-
-function buildFilterText(
-  pulse: DashboardSubscription,
-  parameters: UiParameter[],
-): string {
-  const activeParameters = getActivePulseParameters(pulse, parameters);
-
-  if (_.isEmpty(activeParameters)) {
-    return "";
-  }
-
-  const [firstParameter, ...otherParameters] = activeParameters;
-
-  // Format the first parameter value using the same logic as DefaultParametersSection
-  let formattedValue;
-  if (firstParameter.type && firstParameter.type.startsWith("date/")) {
-    const values = Array.isArray(firstParameter.value)
-      ? firstParameter.value
-      : [firstParameter.value];
-    const formattedValues = values
-      .map((val: string) => formatDateValue(firstParameter, val))
-      .filter(Boolean);
-    if (formattedValues.length > 0) {
-      formattedValue = conjunct(formattedValues, t`and`);
-    } else {
-      formattedValue = firstParameter.value;
-    }
-  } else {
-    const values = Array.isArray(firstParameter.value)
-      ? firstParameter.value
-      : [firstParameter.value];
-    formattedValue =
-      values.length > 1
-        ? t`${values.length} selections`
-        : conjunct(values, t`and`);
-  }
-
-  const firstFilterText = `${firstParameter.name}: ${formattedValue}`;
-
-  return _.isEmpty(otherParameters)
-    ? firstFilterText
-    : `${firstFilterText} ${ngettext(
-        msgid`and ${otherParameters.length} more filter`,
-        `and ${otherParameters.length} more filters`,
-        otherParameters.length,
-      )}`;
+function getEmailSubject({
+  channels: [firstChannel],
+}: DashboardSubscription): string {
+  return firstChannel.channel_type === "email"
+    ? (firstChannel.details?.subject ?? "")
+    : "";
 }
 
 type PulseDetailsProps = {
@@ -239,136 +181,53 @@ type PulseDetailsProps = {
 };
 
 function PulseDetails({ pulse, parameters }: PulseDetailsProps) {
-  const recipientText = buildRecipientText(pulse);
-  const filterText = buildFilterText(pulse, parameters);
+  const items: PulseDetailsItemProps[] = [
+    { icon: "string", text: getEmailSubject(pulse) },
+    { icon: "group", text: buildRecipientText(pulse) },
+    { icon: "filter", text: buildFilterText(pulse, parameters) },
+  ];
 
   return (
-    <div className={cx(CS.textMedium, CS.hoverChild)}>
-      <ul
-        className={cx(
-          CS.flex,
-          CS.flexColumn,
-          CS.scrollX,
-          CS.scrollY,
-          CS.textUnspaced,
-        )}
-        style={{ maxHeight: 130 }}
-      >
-        {recipientText && (
-          <li
-            className={cx(
-              CS.flex,
-              CS.alignStart,
-              CS.mr1,
-              CS.textBold,
-              CS.textMedium,
-              CS.hoverChild,
-              CS.hoverInherit,
-            )}
-          >
-            <Icon
-              name="group"
-              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
-              size={12}
-            />
-            <span
-              className={cx(
-                CS.ml1,
-                CS.textMedium,
-                CS.hoverChild,
-                CS.hoverInherit,
-              )}
-              style={{ fontSize: "12px" }}
-            >
-              {recipientText}
-            </span>
-          </li>
-        )}
-        {filterText && (
-          <li
-            className={cx(
-              CS.flex,
-              CS.alignStart,
-              CS.mt1,
-              CS.mr1,
-              CS.textBold,
-              CS.textMedium,
-              CS.hoverChild,
-              CS.hoverInherit,
-            )}
-          >
-            <Icon
-              name="filter"
-              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
-              size={12}
-            />
-            <span
-              className={cx(
-                CS.ml1,
-                CS.textMedium,
-                CS.hoverChild,
-                CS.hoverInherit,
-              )}
-              style={{ fontSize: "12px" }}
-            >
-              {filterText}
-            </span>
-          </li>
-        )}
-      </ul>
-    </div>
+    <Stack
+      component="ul"
+      gap="sm"
+      mah={130}
+      className={cx(CS.scrollX, CS.scrollY)}
+    >
+      {items
+        .filter(({ text }) => text !== "")
+        .map(({ icon, text }) => (
+          <PulseDetailsItem key={icon} icon={icon} text={text} />
+        ))}
+    </Stack>
   );
 }
 
-function friendlySchedule(channel: Channel): string {
-  const {
-    channel_type,
-    details,
-    schedule_day,
-    schedule_frame,
-    schedule_hour,
-    schedule_type,
-  } = channel;
+type PulseDetailsItemProps = {
+  icon: IconName;
+  text: string;
+};
 
-  let scheduleString = "";
-
-  if (channel_type === "email") {
-    scheduleString += t`Emailed `;
-  } else if (channel_type === "slack") {
-    scheduleString += t`Sent to ` + details?.channel + " ";
-  } else {
-    scheduleString += t`Sent `;
-  }
-
-  switch (schedule_type) {
-    case "hourly":
-      scheduleString += t`hourly`;
-      break;
-    case "daily": {
-      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
-      scheduleString += t`daily at ${hour}`;
-      break;
-    }
-    case "weekly": {
-      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
-      const day = formatDateTimeWithUnit(schedule_day ?? "mon", "day-of-week");
-      scheduleString += t`${day} at ${hour}`;
-      break;
-    }
-    case "monthly": {
-      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
-      const day = schedule_day
-        ? formatDateTimeWithUnit(schedule_day, "day-of-week")
-        : "calendar day";
-      const frame = formatFrame(schedule_frame ?? "first");
-      scheduleString += t`monthly on the ${frame} ${day} at ${hour}`;
-      break;
-    }
-    default:
-      scheduleString += schedule_type;
-  }
-
-  return scheduleString;
+function PulseDetailsItem({ icon, text }: PulseDetailsItemProps) {
+  return (
+    <Group component="li" gap="sm" align="flex-start" wrap="nowrap" mr="sm">
+      <Icon
+        name={icon}
+        size={12}
+        c="text-secondary"
+        className={CS.hoverChild}
+      />
+      <Text
+        component="span"
+        size="sm"
+        fw="bold"
+        c="text-secondary"
+        className={CS.hoverChild}
+      >
+        {text}
+      </Text>
+    </Group>
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

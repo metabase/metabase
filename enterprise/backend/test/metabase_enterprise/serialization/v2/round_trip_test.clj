@@ -37,6 +37,7 @@
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
   (:import
@@ -54,6 +55,8 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
+    ;; instance-specific build version, no longer serialized (GHY-4013). Legacy baseline fixtures still
+    ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
     :metabase_version
     ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
     ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
@@ -72,14 +75,26 @@
        (map (partial strip-base-path dir))
        (into (sorted-set))))
 
+(def ^:private slug-id-prefix-re
+  #"#\d+([- ])")
+
+(defn- replace-entropy
+  [s]
+  ;; Template tag slugs have the form `#1-my-card-name`, and their default display names `#1 My Card Name`, where `1`
+  ;; is the record ID. Record IDs depend on import order which is non-deterministic. Replace them with a deterministic
+  ;; placeholder.
+  (str/replace s slug-id-prefix-re "#<some-id>$1"))
+
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
   (walk/postwalk
    (fn [x]
-     (if-not (map? x)
-       x
-       (reduce dissoc x ignored-fields)))
+     (cond
+       (map? x) (reduce dissoc x ignored-fields)
+       (string? x) (replace-entropy x)
+       (keyword? x) (keyword (replace-entropy (u/qualified-name x)))
+       :else x))
    (yaml/parse-string (slurp file))))
 
 (defn non-empty-diff [diff]
@@ -133,9 +148,14 @@
 
 (def ^:private covered-by-dedicated-round-trip-test?
   "Models that have full export/import coverage in their own round-trip test and so don't need a
-  fixture in this shared baseline. CuratedSearchEntry is covered (in-memory + on-disk) by
-  metabase-enterprise.serialization.v2.curated-search-entry-test."
-  #{"CuratedSearchEntry"})
+  fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
+  metabase-enterprise.serialization.v2.osi-ai-context-test. TransformTest is covered by
+  transform-test-round-trip-test and transform-test-expectations-round-trip-test in
+  metabase-enterprise.serialization.v2.e2e-test, and DataApp by
+  metabase-enterprise.data-apps.serialization-test; both stay out of the baseline until
+  @metabase/representations publishes a schema for them — the baseline is validated against that
+  package, which refuses a model it does not know."
+  #{"DataApp" "OsiAiContext" "TransformTest"})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."

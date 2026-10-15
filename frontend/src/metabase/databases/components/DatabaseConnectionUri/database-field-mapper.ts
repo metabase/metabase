@@ -25,7 +25,10 @@ function mapRedshiftValues(parsedValues: RegexFields) {
     ["details.port", port],
     ["details.user", UID],
     ["details.password", PWD],
-    ["details.additional-options", objectToString(parsedValues.params)],
+    [
+      "details.additional-options",
+      objectToString(parsedValues.params, ["UID", "PWD"]),
+    ],
   ]);
 
   if (fieldsMap.get("details.additional-options")) {
@@ -197,6 +200,7 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
   ]);
 
   if (parsedValues.password) {
+    fieldsMap.set("details.auth-mode", "password");
     fieldsMap.set("details.use-password", true);
     fieldsMap.set("details.password", parsedValues.password);
   }

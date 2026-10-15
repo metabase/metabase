@@ -1,0 +1,318 @@
+import { act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import {
+  setupCurrentUserEndpoint,
+  setupDashboardQuestionCandidatesEndpoint,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
+import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { setup as setupAccountPassword } from "metabase/account/password/containers/UserPasswordApp/tests/setup";
+import { getUser } from "metabase/current-user";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
+import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import type { User } from "metabase-types/api";
+import { createMockUser } from "metabase-types/api/mocks";
+
+import { LegacyBrowseRedirect, getRoutes } from "./routes";
+
+function setupLegacyBrowseRedirect(initialRoute: string) {
+  setupCurrentUserEndpoint(createMockUser());
+
+  const { router } = renderWithProviders(
+    <Route path="browse">
+      <Route path="databases/:slug" element={<div>browse databases</div>} />
+      <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
+    </Route>,
+    { withRouter: true, initialRoute },
+  );
+
+  return router;
+}
+
+describe("LegacyBrowseRedirect", () => {
+  it("redirects a v48-era /browse/<dbId>-<slug> url onto /browse/databases", async () => {
+    const router = setupLegacyBrowseRedirect("/browse/5-orders");
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/browse/databases/5-orders"),
+    );
+    expect(screen.getByText("browse databases")).toBeInTheDocument();
+  });
+
+  it("does not redirect a segment without the legacy hyphenated shape", async () => {
+    const router = setupLegacyBrowseRedirect("/browse/orders");
+
+    expect(router?.location.pathname).toBe("/browse/orders");
+  });
+});
+
+jest.mock("metabase/AppComponent", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    __esModule: true,
+    App: () => <Outlet />,
+  };
+});
+
+jest.mock("metabase/common/components/NotFoundFallbackPage", () => ({
+  NotFoundFallbackPage: () => null,
+}));
+
+let mockRenderMonitorOutlet = false;
+
+jest.mock("metabase/monitor/components/MonitorLayout", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    MonitorLayout: () => (mockRenderMonitorOutlet ? <Outlet /> : null),
+  };
+});
+
+jest.mock("metabase/collections/components/CollectionLanding", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return { __esModule: true, default: () => <Outlet /> };
+});
+
+function setupAppRoutes({
+  initialRoute,
+  user = createMockUser({ is_superuser: true }),
+}: {
+  initialRoute: string;
+  user?: ReturnType<typeof createMockUser>;
+}) {
+  const { router } = renderRoutes(getRoutes, {
+    initialRoute,
+    storeInitialState: { currentUser: user },
+  });
+  return { router };
+}
+
+describe("application routes", () => {
+  afterEach(() => {
+    mockRenderMonitorOutlet = false;
+    reinitialize();
+  });
+
+  describe("legacy Admin Tools redirects", () => {
+    it.each([
+      ["/admin/tools/tasks", "/monitor/tasks"],
+      ["/admin/tools/tasks/list", "/monitor/tasks/list"],
+      ["/admin/tools/tasks/list/42", "/monitor/tasks/list/42"],
+      ["/admin/tools/tasks/runs", "/monitor/tasks/runs"],
+      ["/admin/tools/tasks/runs/7", "/monitor/tasks/runs/7"],
+      ["/admin/tools/jobs", "/monitor/jobs"],
+      ["/admin/tools/jobs/sync", "/monitor/jobs/sync"],
+      ["/admin/tools/logs", "/monitor/logs"],
+      ["/admin/tools/logs/levels", "/monitor/logs/levels"],
+      ["/admin/tools/errors", "/monitor/errors"],
+      ["/admin/tools/model-caching", "/monitor/model-persistence-log"],
+      ["/admin/tools/model-caching/9", "/monitor/model-persistence-log/9"],
+      ["/admin/tools/notifications", "/monitor/notifications"],
+      ["/admin/tools/notifications/13", "/monitor/notifications/13"],
+    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
+      const { router } = setupAppRoutes({ initialRoute });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe(expectedPathname);
+      });
+    });
+
+    it("redirects the legacy Admin Tools index to the Monitor index", async () => {
+      const { router } = setupAppRoutes({ initialRoute: "/admin/tools" });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/monitor");
+      });
+    });
+  });
+
+  describe("legacy AI Auditing redirects", () => {
+    it.each([
+      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing/usage"],
+      [
+        "/admin/metabot/usage-auditing/conversations",
+        "/monitor/ai-auditing/conversations",
+      ],
+      [
+        "/admin/metabot/usage-auditing/conversations/42",
+        "/monitor/ai-auditing/conversations/42",
+      ],
+      ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
+      ["/admin/metabot/usage-auditing/cli", "/monitor/ai-auditing/cli"],
+    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
+      const { router } = setupAppRoutes({ initialRoute });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe(expectedPathname);
+      });
+    });
+
+    it("applies the AI Auditing guard after redirecting", async () => {
+      mockRenderMonitorOutlet = true;
+      PLUGIN_AUDIT.isAiAuditingEnabled = true;
+      PLUGIN_AUDIT.getAiAuditingRoutes = () => (
+        <Route path="usage" element={<div>AI Auditing</div>} />
+      );
+
+      const { router } = setupAppRoutes({
+        initialRoute: "/admin/metabot/usage-auditing",
+        user: createMockUser({ is_data_analyst: true }),
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+    });
+  });
+});
+
+describe("disconnecting Slack with application routes", () => {
+  afterEach(reinitialize);
+
+  it.each([200, 401])(
+    "should confirm Disconnect after leaving the page when the refresh returns %s",
+    async (currentUserStatus) => {
+      const user = createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      });
+      const expectedPathname =
+        currentUserStatus === 401 ? "/auth/login" : "/account/profile";
+      const expectedUser =
+        currentUserStatus === 401
+          ? null
+          : { ...user, slack_account_status: null };
+      const response = defer<{ status: number }>();
+      fetchMock.delete(
+        `path:/api/user/${user.id}/slack`,
+        () => response.promise,
+      );
+      const { router, store, disconnect } = setupAccountPassword({
+        user,
+        currentUserStatus,
+        routes: getRoutes,
+      });
+
+      await disconnect();
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "Profile" }),
+      );
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/account/profile"),
+      );
+
+      await act(async () => response.resolve({ status: 204 }));
+
+      expect(
+        await screen.findByText("Your Slack account has been disconnected."),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(expectedPathname),
+      );
+      expect(getUser(store.getState())).toEqual(expectedUser);
+    },
+  );
+
+  it("should stay on the chosen page when the refresh finishes after leaving Authentication", async () => {
+    const user = createMockUser({
+      sso_source: "google",
+      slack_account_status: "active",
+    });
+    const response = defer<User>();
+    fetchMock.get("path:/api/user/current", () => response.promise, {
+      name: "current-user-refresh",
+    });
+    fetchMock.get("path:/api/pulse", []);
+    fetchMock.get("path:/api/notification", []);
+    const { router, disconnect } = setupAccountPassword({
+      user,
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("current-user-refresh")).toBe(true),
+    );
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Notifications" }),
+    );
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/notifications"),
+    );
+
+    await act(async () =>
+      response.resolve({ ...user, slack_account_status: null }),
+    );
+
+    expect(
+      await screen.findByText("Your Slack account has been disconnected."),
+    ).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/account/notifications");
+  });
+
+  it("should clear the cached user and render sign in when the Slack session ends", async () => {
+    const { router, store, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      }),
+      currentUserStatus: 401,
+      routes: getRoutes,
+    });
+    const visited: string[] = [];
+    router?.onLocationChange((location) => visited.push(location.pathname));
+
+    await disconnect();
+
+    expect(await screen.findByText(/Sign in to/)).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/auth/login");
+    expect(getUser(store.getState())).toBeNull();
+    expect(visited).not.toContain("/");
+    expect(screen.queryByText("Slack")).not.toBeInTheDocument();
+  });
+
+  it("should replace the empty Authentication page in browser history", async () => {
+    const { router, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "google",
+        slack_account_status: "active",
+      }),
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/profile"),
+    );
+    expect(await screen.findByTestId("user-locale-select")).toBeInTheDocument();
+
+    act(() => router?.back());
+
+    expect(router?.location.pathname).toBe("/account/profile");
+    expect(screen.getByTestId("user-locale-select")).toBeInTheDocument();
+  });
+});
+
+describe("collection modal routes", () => {
+  it("renders the move-questions-into-dashboards modal with a single dialog", async () => {
+    setupUserKeyValueEndpoints({
+      namespace: "user_acknowledgement",
+      key: "dashboard_question_migration_info_modal",
+      value: false,
+    });
+    setupDashboardQuestionCandidatesEndpoint([]);
+
+    setupAppRoutes({ initialRoute: "/collection/1/move-questions-dashboard" });
+
+    expect(
+      await screen.findByText("Move questions into their dashboards?"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+});

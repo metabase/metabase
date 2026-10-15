@@ -3,8 +3,8 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { useAdminSetting } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -51,6 +51,7 @@ export function MetabotIconField() {
     }
     const reader = new FileReader();
     reader.onload = async (readerEvent) => {
+      // Unjustified type cast. FIXME
       const dataUri = readerEvent.target?.result as string;
       if (!(await isFileIntact(dataUri))) {
         setIconError(
@@ -80,24 +81,24 @@ export function MetabotIconField() {
 
   return (
     <Stack gap={0}>
-      <Text lh="lg" fz="md" mb="xs" fw="bold">
+      <Text lh="lg" fz="md" mb="xxs" fw="bold">
         {t`AI agent's icon`}
       </Text>
       <Text fz="md" c="text-secondary" lh="lg">
         {t`Upload a custom icon for the AI agent. For best results, use an SVG or PNG with a transparent background.`}
       </Text>
       {iconError && (
-        <Text fz="sm" c="error" mt="xs">
+        <Text fz="sm" c="feedback-negative" mt="xxs">
           {iconError}
         </Text>
       )}
       <Flex
         align="center"
         className={cx(CS.bordered, CS.rounded, CS.alignSelfStart)}
-        gap="md"
+        gap="lg"
         my="sm"
         py="sm"
-        px="md"
+        px="lg"
         maw="100%"
         wrap="wrap"
       >
@@ -105,8 +106,8 @@ export function MetabotIconField() {
           className={cx(CS.bgLight, CS.bordered, CS.rounded)}
           align="center"
           justify="center"
-          w="2.25rem"
-          h="2.25rem"
+          w="2rem"
+          h="2rem"
           flex="0 0 auto"
         >
           {iconPreviewSrc ? (
@@ -130,15 +131,11 @@ export function MetabotIconField() {
           multiple={false}
           onChange={handleIconUpload}
         />
-        <Button
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          flex="0 0 auto"
-        >
+        <Button onClick={() => fileInputRef.current?.click()} flex="0 0 auto">
           {t`Upload a custom icon`}
         </Button>
         {(iconFileName || !isDefaultIcon) && (
-          <Flex align="center" gap="md" flex="1 1 0" miw="2rem">
+          <Flex align="center" gap="lg" flex="1 1 0" miw="2rem">
             {iconFileName && (
               <Text
                 fz="sm"
@@ -164,41 +161,38 @@ export function MetabotIconField() {
           </Flex>
         )}
       </Flex>
-      {!isDefaultIcon && (
-        <Stack mt="lg" gap="sm">
-          <Text fz="md" fw="bold">
-            {t`Metabot illustrations`}
-          </Text>
-          <Group gap="lg" align="center" wrap="nowrap">
-            <Flex align="center" gap="sm" flex="1" miw={0}>
-              <Box
-                component="img"
-                src={EmptyDashboardBot}
-                alt={t`Metabot illustration preview`}
-                w="3rem"
-                h="3rem"
-                flex="0 0 auto"
-              />
-              <Text fz="md" c="text-secondary" flex="1">
-                {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
-              </Text>
-            </Flex>
-            <Switch
-              aria-label={t`Show Metabot illustrations`}
-              checked={!!showIllustrations}
-              onChange={(e) =>
-                updateShowIllustrations({
-                  key: "metabot-show-illustrations",
-                  value: e.currentTarget.checked,
-                  toast: false,
-                })
-              }
-              disabled={isLoadingIllustrations}
-              size="sm"
+      <Stack mt="xl" gap="sm">
+        <Text fz="md" fw="bold">
+          {t`Metabot illustrations`}
+        </Text>
+        <Group gap="xl" align="center" wrap="nowrap">
+          <Flex align="center" gap="sm" flex="1" miw={0}>
+            <Box
+              component="img"
+              src={EmptyDashboardBot}
+              alt={t`Metabot illustration preview`}
+              w="3rem"
+              h="3rem"
+              flex="0 0 auto"
             />
-          </Group>
-        </Stack>
-      )}
+            <Text fz="md" c="text-secondary" flex="1">
+              {t`Show Metabot illustrations in the chat sidebar`}
+            </Text>
+          </Flex>
+          <Switch
+            aria-label={t`Show Metabot illustrations`}
+            checked={!!showIllustrations}
+            onChange={(e) =>
+              updateShowIllustrations({
+                key: "metabot-show-illustrations",
+                value: e.currentTarget.checked,
+                toast: false,
+              })
+            }
+            disabled={isLoadingIllustrations}
+          />
+        </Group>
+      </Stack>
     </Stack>
   );
 }

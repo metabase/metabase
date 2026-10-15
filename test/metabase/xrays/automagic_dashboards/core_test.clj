@@ -324,7 +324,8 @@
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
 (mu/defn- result-metadata-for-query :- [:maybe [:sequential :map]]
-  [query :- :map]
+  [query :- :metabase.legacy-mbql.schema/Query]
+  ;; x-ray tests consume legacy-shaped result metadata (persisted card result_metadata format)
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query nil))
 
@@ -1103,7 +1104,9 @@
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 2 (call-count)))))))))
+            ;; 1. load the tables, 2. their permissions in one primed load however many there are, 3. the databases'
+            ;; own grants, which `table-permission-for-user` coalesces in and which loads once per request.
+            (is (<= (call-count) 3))))))))
 
 (deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
@@ -1122,8 +1125,27 @@
       (automagic-dashboards.test/with-rollback-only-transaction
         (is (partial= {:list-like?  true
                        :num-fields 2}
-                      (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
+                      (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
                           first)))))))
+
+(deftest enhance-table-stats-honors-user-set-semantic-type-test
+  (testing "load-tables-with-enhanced-table-stats honors a user-set semantic_type that differs from the sync value"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    {pk-id :id}    {:table_id table-id}
+                   :model/Field    _              {:table_id table-id}]
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-rollback-only-transaction
+          (testing "sanity check: neither Field is a PK by sync, so the Table isn't list-like"
+            (is (partial= {:list-like? false, :num-fields 2}
+                          (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                              first))))
+          (mt/with-temp [:model/FieldUserSettings _ {:field_id          pk-id
+                                                     :semantic_type     :type/PK
+                                                     :semantic_type_set true}]
+            (is (partial= {:list-like? true, :num-fields 2}
+                          (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                              first)))))))))
 
 (deftest enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
@@ -1135,7 +1157,7 @@
       (automagic-dashboards.test/with-rollback-only-transaction
         (testing "filters out link-tables"
           (is (empty?
-               (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]]))))))))
+               (#'magic/load-tables-with-enhanced-table-stats db-id nil))))))))
 
 ;;; ------------------- Definition overloading -------------------
 
@@ -1578,7 +1600,7 @@
                                                                                                      (meta/field-metadata :orders :id))]))))}}
                           {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :reviews))}}
                           {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :reviews))}}
-                          {:viz_settings nil}]}
+                          {}]}
              {:dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                                  (lib/join (meta/table-metadata :products)))})
             :dashcards
@@ -1598,7 +1620,7 @@
                                                       (lib/expression "Existing" (lib/- 1 1)))}}
                            {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :venues))}}
                            {:card {:dataset_query (lib/query meta/metadata-provider (meta/table-metadata :venues))}}
-                           {:viz_settings nil}]}
+                           {}]}
               {:dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                                   (lib/expression "TestColumn" (lib/+ 1 1)))})
              :dashcards
@@ -1613,7 +1635,9 @@
         [:model/Card {native-card-id :id :as native-card} (merge (mt/card-with-source-metadata-for-query native-query)
                                                                  {:table_id        nil
                                                                   :name            "15655"})
-         :model/Card card {:table_id      (mt/id :orders) ; this is wrong (!)
+         ;; a wrong table_id used to be part of this repro (set by the FE, see #15655); table_id is now always
+         ;; derived from the query, so this card gets table_id nil (its source is a native card)
+         :model/Card card {:table_id      (mt/id :orders) ; ignored: cleared since the query has no source table
                            :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}
@@ -1647,16 +1671,16 @@
                      transient_name))
               (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                      comparison-description))
-              (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
-                      {:group-name nil, :card-name "Number of 15655 per SOURCE"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY"}
-                      {:group-name nil, :card-name "Number of 15655 per NAME"}
-                      {:group-name nil, :card-name "Number of 15655 per NAME"}
-                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
-                      {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                      {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
+              (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
+                      {:group-name nil, :card-name "SOURCE by CITY"}
+                      {:group-name nil, :card-name "SOURCE by NAME"}
+                      {:group-name nil, :card-name "SOURCE by NAME"}
+                      {:group-name "### How the SOURCE fields is distributed", :card-name nil}
+                      {:group-name nil, :card-name "Distinct values"}
+                      {:group-name nil, :card-name "Distinct values"}
+                      {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
+                      {:group-name nil, :card-name "Null values"}
+                      {:group-name nil, :card-name "Null values"}]
                      (->> comparison-dashcards
                           (take 10)
                           (map (fn [dashcard]

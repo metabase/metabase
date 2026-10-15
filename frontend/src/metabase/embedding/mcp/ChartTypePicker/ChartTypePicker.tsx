@@ -23,10 +23,10 @@ export function ChartTypePicker({
     <Flex
       h={32}
       align="center"
-      gap="xs"
-      bg="background-secondary"
-      px="xs"
-      bdrs="md"
+      gap="xxs"
+      bg="background_page-secondary"
+      px="xxs"
+      bdrs="sm"
     >
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon
@@ -34,7 +34,7 @@ export function ChartTypePicker({
           key={type}
           size={24}
           variant={value === type ? "filled" : "subtle"}
-          bg={value === type ? "background-primary" : undefined}
+          bg={value === type ? "background_page-primary" : undefined}
           onClick={() => onChange(type)}
           aria-label={type}
           className={value === type ? S.selected : undefined}

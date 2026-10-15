@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -33,10 +33,10 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
     return (
       <Box w="18rem">
         <Text
-          c="text-primary-inverse"
+          c="inherit"
           fw={700}
         >{t`Editing unavailable: no PK defined`}</Text>
-        <Text c="text-primary-inverse">{jt`Add a primary key in your database or set an ${(
+        <Text c="inherit">{jt`Add a primary key in your database or set an ${(
           <Anchor
             component={Link}
             to={Urls.dataStudioData({
@@ -57,8 +57,8 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   if (showDetails) {
     return (
       <Stack gap="0.5rem" w="30rem" maw="100%">
-        <Text c="text-primary-inverse">{t`Couldn't save table changes:`}</Text>
-        <Text c="text-primary-inverse" style={{ fontFamily: "monospace" }}>
+        <Text c="inherit">{t`Couldn't save table changes:`}</Text>
+        <Text c="inherit" style={{ fontFamily: "monospace" }}>
           {errorMessage}
         </Text>
       </Stack>
@@ -68,19 +68,13 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   return (
     <Group gap="2.5rem" w="20rem">
       <Group gap="0.5rem">
-        <Icon name="warning" c="danger" size={12} />
-        <Text
-          c="text-primary-inverse"
-          fw={700}
-        >{t`Couldn't save table changes`}</Text>
+        <Icon name="warning" c="feedback-negative-strong" size={12} />
+        <Text c="inherit" fw={700}>{t`Couldn't save table changes`}</Text>
       </Group>
 
       <Button
-        size="compact-lg"
-        c="background-secondary-inverse"
-        variant="filled"
-        autoContrast
-        radius="0.5rem"
+        variant="default"
+        size="sm"
         onClick={() => setShowDetails(true)}
       >{t`More info`}</Button>
     </Group>

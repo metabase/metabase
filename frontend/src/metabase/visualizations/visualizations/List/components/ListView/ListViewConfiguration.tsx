@@ -16,7 +16,6 @@ import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { getColumnExample } from "metabase/querying/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
   Box,
@@ -32,8 +31,9 @@ import {
   Text,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
+import { getColumnExample } from "metabase-lib/v1/expressions/column-example";
 import type {
   DatasetColumn,
   DatasetData,
@@ -48,6 +48,7 @@ import {
   ENTITY_ICONS,
   ENTITY_ICON_COLORS,
   getEntityIcon,
+  getEntityIconColor,
   getIconBackground,
 } from "./styling";
 import { useExternalDragOverlay } from "./use-external-drag-overlay";
@@ -109,7 +110,7 @@ export const ListViewConfiguration = ({
     selectedEntityIcon: settings?.["list.use_image_column"]
       ? null
       : settings?.["list.entity_icon"] || getEntityIcon(entityType),
-    selectedIconColor: settings?.["list.entity_icon_color"],
+    selectedIconColor: getEntityIconColor(settings?.["list.entity_icon_color"]),
     entityIconEnabled: settings?.["list.entity_icon_enabled"] ?? false,
     useImageColumn: settings?.["list.use_image_column"] ?? false,
   }));
@@ -236,7 +237,7 @@ export const ListViewConfiguration = ({
           <Text fw="bold">{t`Customize List columns`}</Text>
           <Box className={S.listViewConfigurationInputs}>
             {/* Icon selector */}
-            <Menu shadow="md" width={200}>
+            <Menu shadow="sm" width={200}>
               <Menu.Target>
                 <Flex className={S.iconMenuButtonContainer}>
                   <ActionIcon
@@ -246,7 +247,7 @@ export const ListViewConfiguration = ({
                     style={{
                       backgroundColor: iconConfig.entityIconEnabled
                         ? getIconBackground(iconConfig.selectedIconColor)
-                        : "var(--mb-color-white)",
+                        : "var(--mb-color-core-white)",
                     }}
                   >
                     {iconConfig.useImageColumn &&
@@ -273,8 +274,9 @@ export const ListViewConfiguration = ({
                         className={S.listEntityIcon}
                         c={
                           iconConfig.entityIconEnabled
-                            ? (iconConfig.selectedIconColor as ColorName)
-                            : "text-tertiary"
+                            ? // Unjustified type cast. FIXME
+                              (iconConfig.selectedIconColor as ColorName)
+                            : "text-disabled"
                         }
                       />
                     )}
@@ -287,10 +289,9 @@ export const ListViewConfiguration = ({
                 w="16rem"
                 style={{ borderRadius: "var(--mantine-radius-lg)" }}
               >
-                <Box p="md">
+                <Box p="lg">
                   <Switch
                     label={t`Show image`}
-                    size="sm"
                     labelPosition="left"
                     w="100%"
                     styles={{
@@ -307,10 +308,10 @@ export const ListViewConfiguration = ({
                   />
                 </Box>
                 <Menu.Divider m={0} />
-                <SimpleGrid cols={5} p="md">
+                <SimpleGrid cols={5} p="lg">
                   <ActionIcon
                     radius="lg"
-                    p="md"
+                    p="lg"
                     w="2rem"
                     h="2rem"
                     disabled={!imageColumn}
@@ -375,14 +376,16 @@ export const ListViewConfiguration = ({
                   ))}
                 </SimpleGrid>
                 <Menu.Divider m={0} />
-                <SimpleGrid cols={6} p="md" data-testid="list-view-icon-colors">
+                <SimpleGrid cols={6} p="lg" data-testid="list-view-icon-colors">
                   {ENTITY_ICON_COLORS.map((color) => (
                     <Flex justify="center" align="center" key={color}>
                       <Button
                         className={cx(S.iconColorButton, {
                           [S.selected]: color === iconConfig.selectedIconColor,
                         })}
-                        variant="subtle"
+                        variant="transparent"
+                        size="compact-md"
+                        p={0}
                         bg={color}
                         onClick={() => {
                           handleConfigurationChange({
@@ -452,6 +455,7 @@ export const ListViewConfiguration = ({
             cols={cols}
             rows={rows}
             row={previewSample}
+            // Unjustified type cast. FIXME
             settings={settings as ComputedVisualizationSettings}
             entityIcon={
               iconConfig.entityIconEnabled && iconConfig.selectedEntityIcon

@@ -4,6 +4,7 @@ import { Box, Flex } from "metabase/ui";
 
 import { ChartTypeDropdown } from "./ChartTypeDropdown";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
@@ -18,7 +19,7 @@ export default {
 export const QuestionChartTypeSelectorList = {
   render() {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <Box>
             <Flex justify="space-between" w="100%">

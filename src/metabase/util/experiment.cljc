@@ -24,10 +24,19 @@
   experiments-enabled-fn
   (atom (constantly false)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *enabled-override*
+  "When non-nil, used as the enabled? value instead of consulting [[experiments-enabled-fn]]. Bind this per-thread
+  (e.g. via a test fixture) to enable or disable experiments locally without touching the global atom."
+  nil)
+
 (defn experiments-enabled?
-  "Returns true if experiments are globally enabled. Checks the setting on every call."
+  "Returns true if experiments are enabled. Checks [[*enabled-override*]] first (so per-thread `binding` wins);
+  otherwise consults the global [[experiments-enabled-fn]]."
   []
-  (@experiments-enabled-fn))
+  (if (some? *enabled-override*)
+    *enabled-override*
+    (@experiments-enabled-fn)))
 
 (defn set-experiments-enabled-fn!
   "Set the function that determines whether experiments are enabled.
@@ -39,11 +48,18 @@
                  Nil means no reporting. Can be overridden per-experiment via :report-fn in the opts map."}
   default-report-fn (atom nil))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *report-fn-override*
+  "When non-nil, used as the report-fn instead of consulting [[default-report-fn]] (the per-experiment `:report-fn`
+  option still takes precedence over both). Bind this per-thread to install a thread-local reporter."
+  nil)
+
 (defn set-default-report-fn!
   "Set the default report function for experiment results."
   [f]
   (reset! default-report-fn f))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *sync?*
   "When true, forces synchronous candidate execution on JVM. For testing only."
   false)
@@ -103,7 +119,7 @@
   (when (and (experiments-enabled?)
              (throttle-allows? name (or min-interval-ms 1000)))
     (let [comparator-fn (or comparator-fn =)
-          report-fn (or report-fn @default-report-fn)
+          report-fn (or report-fn *report-fn-override* @default-report-fn)
           run-fn
           (fn []
             (let [start             (nanotime)
@@ -116,7 +132,7 @@
                   match?            (outcomes-match? comparator-fn control-outcome candidate-outcome)]
               (when-not match?
                 (if (contains? candidate-outcome :error)
-                  (log/warnf "Experiment %s: candidate threw %s" name (str (:error candidate-outcome)))
+                  (log/warnf "Experiment %s: candidate threw %s" name (ex-message (:error candidate-outcome)))
                   (log/warnf "Experiment %s: result MISMATCH" name)))
               (when report-fn
                 (report-fn {:name                  name

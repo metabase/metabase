@@ -15,7 +15,7 @@ Admins can create and share public links (URLs) for questions, dashboards, and d
 
 ![Create a public link for a question](./images/create-a-public-link.png)
 
-To create a public link for a question, admins can click on the **Sharing** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
+To create a public link for a question, admins can click on the **Share** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
 
 ## Public link to export question results in CSV, XLSX, JSON
 
@@ -23,7 +23,7 @@ This export option is only available for questions, not dashboards.
 
 To create a public link that people can use to download the results of a question:
 
-1. Click on the **Sharing** icon for the question.
+1. Click on the **Share** icon for the question.
 2. Select **Create a public link**.
 3. Click on the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
 
@@ -33,7 +33,7 @@ Open the public link in a new tab to test the download.
 
 ## Create a public link for a dashboard
 
-To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
+To share a dashboard via a public link, admins can click on the **Share** button in the top right menu.
 
 ![Sharing a dashboard](./images/dashboard-sharing.png)
 
@@ -41,7 +41,7 @@ To embed a dashboard, see [guest embedding](./guest-embedding.md).
 
 ## Create a public link for a document
 
-To share a document via a public link, admins can click on the **Sharing** button in the top right menu and select **Create a public link**.
+To share a document via a public link, admins can click on the **Share** button in the top right menu and select **Create a public link**.
 
 Public documents are read-only: viewers cannot edit the content or add comments. For charts embedded in the document, viewers can download the results in CSV, XLSX, or JSON format using the **Download results** option in the chart menu.
 
@@ -55,11 +55,11 @@ https://www.example.com/public/question/cf347ce0-90bb-4669-b73b-56c73edd10cb.csv
 
 By default, Metabase will export the results of a question that include any formatting you added (for example, if you formatted a column with floats to display as a percentage (0.42 -> 42%)).
 
-See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api#tag/public/GET/public/card/{uuid}/query/{export-format}).
+See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api#tag/apipublic/GET/api/public/card/{uuid}/query/{export-format}).
 
 ## Simulating drill-through with public links
 
-Metabase's automatic [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
+Metabase's automatic [drill-through](../questions/visualizations/drill-through.md) won't work on public dashboards because public links don't give people access to your raw data.
 
 You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../dashboards/interactive.md) that sends people from one public link to another public link.
 
@@ -86,13 +86,30 @@ For example, if you have a primary public dashboard that displays **Invoices** d
 
 If you want to embed your question or dashboard as an iframe in a simple web page or app:
 
-1. Click on the **Sharing** icon for your question or dashboard.
+1. Click on the **Share** icon for your question or dashboard.
 2. Click **Embed**.
 3. In the bottom of the embedding popup, click on **Get embedding code**.
 4. Copy the iframe snippet Metabase generates for you.
 5. Paste the iframe snippet in your destination of choice.
 
 To customize the appearance of your question or dashboard, you can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters).
+
+Nobody signs in to view a public link or public embed, so a question that uses a [custom visualization](../questions/visualizations/custom.md) falls back to the default visualization for its results. To render custom visualizations, you'll need an authenticated [modular embed](./modular-embedding.md) with the visualization on your [allowlist](./custom-visualizations.md).
+
+## Resize a dashboard iframe to fit its content
+
+Dashboards are a fixed aspect ratio, so if you'd like the iframe to size itself vertically to fit the dashboard's contents, you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
+
+```html
+<script src="{your-metabase-url}/app/iframeResizer.js"></script>
+
+<iframe
+  src="https://metabase.example.com/public/dashboard/YOUR_PUBLIC_UUID"
+  onload="iFrameResize({}, this)"
+></iframe>
+```
+
+Due to iframe-resizer's licensing changes, we recommend that you use iframe-resizer version 4.3.2 or lower. The same script works on legacy [static embeds](./introduction.md#static-embedding-is-deprecated).
 
 ## Public embed parameters
 
@@ -104,9 +121,64 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 ## Appearance parameters
 
-To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
+To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute. For example, this link shows a dashboard in dark mode, without a border, and with its title:
 
-See [appearance parameters](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed).
+```
+your_public_link#theme=night&bordered=false&titled=true
+```
+
+Separate multiple hash parameters with an ampersand (`&`). Query parameters for [filters](#filter-parameters) go before the `#`.
+
+| Parameter name  | Possible values                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `background`    | `true` (default), `false`. Dashboards only.                                                                                                        |
+| `bordered`      | `true` (default), `false`.                                                                                                                         |
+| `locale`\*      | E.g., `ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                                     |
+| `titled`        | `true` (default), `false`.                                                                                                                         |
+| `theme`         | `null` (default), `night`. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
+| `refresh`       | integer (seconds, e.g., `refresh=60`). Dashboards only.                                                                                            |
+| `font`\*        | [font name](../configuring-metabase/fonts.md)                                                                                                      |
+| `downloads`\*\* | `true` (default), `false`, `results`, `pdf`                                                                                                        |
+
+\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
+
+\*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+The same hash parameters work on legacy [static embeds](./introduction.md#static-embedding-is-deprecated). For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
+### Set the language for a public or static embed
+
+{% include plans-blockquote.html feature="Locales for embeds" %}
+
+To change the UI language, set the `locale` hash parameter to one of the [supported locales](../configuring-metabase/localization.md#supported-languages). For example, to set a public dashboard's language to Korean, append `#locale=ko`:
+
+```
+https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
+```
+
+The `locale` parameter changes the language for Metabase UI elements, like the label of the **Export to PDF** button. To change the _content_'s language (like names of questions and dashboards), you'll need to [upload a translation dictionary](./translations.md).
+
+### Transparent backgrounds for embeds
+
+Making an embed transparent depends on what you're embedding:
+
+- Dashboards: set `background=false`. You can combine it with `theme` (e.g., `background=false&theme=night`).
+- Questions: set `theme=transparent` (deprecated, but still supported).
+
+### Disable downloads for an embedded question or dashboard
+
+{% include plans-blockquote.html feature="Disabling downloads" %}
+
+By default, Metabase includes a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. The `downloads` hash parameter controls them:
+
+- `true` (default): include both the Download and Export to PDF options.
+- `false`: hide both the Download and Export to PDF options.
+- `results`: show the Download option.
+- `pdf`: show the Export to PDF option (dashboards only).
+
+You can combine the explicit options: `downloads=results,pdf` is the same as `downloads=true`.
+
+The `downloads` parameter replaces the legacy `hide_download_button` parameter.
 
 ## Filter parameters
 
@@ -142,11 +214,27 @@ You can hide multiple filter widgets by separating the filter names with commas,
 /dashboard/42#hide_parameters=id,customer_name
 ```
 
+To pass several values to a multi-select filter, repeat it:
+
+```
+/dashboard/42?category=Gadget&category=Gizmo
+```
+
 Note that the name of the filter in the URL should be specified in lower case, and with underscores instead of spaces. If your filter is called "Filter for User ZIP Code", you'd write:
 
 ```
 /dashboard/42?filter_for_user_zip_code=02116
 ```
+
+Values are passed to your database as typed, so they're case-sensitive and have to match your data. URL-encode values that contain spaces or other special characters, like `Hash%20browns`. For the date formats a date filter accepts, check out the [Parameters reference](./parameters-reference.md#date-formats).
+
+For filter values that people can't remove from the URL, check out [locked parameters](./parameters.md#restrict-data-on-guest-embeds) on a guest or static embed.
+
+### Maximum URL length
+
+The maximum length of an embedding URL (including all parameters) is determined by your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. When it's unset, Metabase's web server defaults to 8192 bytes.
+
+If your URL exceeds the maximum header size, the request fails with an HTTP `414 URI Too Long` response before it reaches Metabase, so nothing shows up in Metabase's log. You can set the environment variable to accept larger headers. If you're using a proxy server, you may need to set a corresponding property on the server as well.
 
 ## Disable public sharing
 
@@ -170,7 +258,7 @@ If you disable public sharing, then re-enable public sharing, all your previousl
 ### Individual question or dashboard links and embeds
 
 1. Visit the question or dashboard.
-2. Click on **Sharing** icon.
+2. Click on the **Share** icon.
 3. Select **Public link** or **Embed**.
 4. Click **Remove public link**.
 
@@ -192,6 +280,6 @@ Admins can see all publicly shared questions, dashboards, documents, and actions
 
 ## Further reading
 
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Embedding introduction](../embedding/start.md).
+- [Custom visualizations in embeds](./custom-visualizations.md).

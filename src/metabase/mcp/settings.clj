@@ -56,14 +56,76 @@
   :export?    true
   :doc        false)
 
+(def ^:private ^:const default-query-handle-ttl-hours
+  "Default for [[mcp-query-handle-ttl-hours]]. One source, referenced by both the setting's `:default`
+   and its getter's fallback, so the two can't drift."
+  24)
+
+(defsetting mcp-query-handle-ttl-hours
+  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  ;; `:positive-integer` rather than `:integer`: the GC deletes handles created before `now - ttl`,
+  ;; so 0 puts the cutoff at *now* and clears the whole table on the next run, and a negative takes
+  ;; handles minted seconds ago. The type guards the read path too, which a `:setter` cannot —
+  ;; env vars are read straight through `get-raw-value` and never pass through one.
+  :type       :positive-integer
+  :default    default-query-handle-ttl-hours
+  :visibility :internal
+  :export?    false
+  :doc        false
+  ;; The read predicate yields nil for a stored non-positive rather than falling back to the
+  ;; default, and the GC would then `(long nil)`. Fall back here, as `attachment-table-row-limit`
+  ;; does for the same reason.
+  :getter     (fn []
+                ;; `get-raw-value` rethrows a parse failure (e.g. MB_MCP_QUERY_HANDLE_TTL_HOURS=forever),
+                ;; which would kill the GC task on every run — an unreadable value means the default,
+                ;; same as a non-positive one.
+                (or (try
+                      (setting/get-value-of-type :positive-integer :mcp-query-handle-ttl-hours)
+                      (catch Exception _ nil))
+                    default-query-handle-ttl-hours)))
+
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
   :type       :csv
   :default    []
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
+
+(defn- strip-scheme
+  [s]
+  (if-let [idx (str/index-of s "://")]
+    (subs s (+ idx 3))
+    s))
+
+(defn- origin-has-real-path?
+  "True if `entry` (a single CORS origin, optionally `scheme://`-prefixed) has a path component beyond
+   an optional bare trailing slash, e.g. `http://localhost:6274/sse` (but not `http://localhost:6274/`)."
+  [entry]
+  (let [without-scheme (strip-scheme entry)
+        slash-idx      (str/index-of without-scheme "/")]
+    (boolean (and slash-idx
+                  (< (inc slash-idx) (count without-scheme))))))
+
+(defn- validate-no-origin-paths!
+  "Throws if any space-separated entry in `origins-raw` has a path component. CORS origins are
+   scheme + host + port only, so a path pasted into this setting (e.g. `http://localhost:6274/sse`)
+   wouldn't do what an admin might expect (only the origin is honored, not the path) — better to
+   reject it outright than silently drop it and leave the setting looking saved."
+  [origins-raw]
+  (when-let [bad-entries (->> (str/split (or origins-raw "") #"\s+")
+                              (filter not-empty)
+                              (filter origin-has-real-path?)
+                              not-empty)]
+    (throw (ex-info (str "CORS origins must not include a path: " (str/join ", " bad-entries))
+                    {:status-code 400}))))
+
+(defn- -mcp-apps-cors-custom-origins!
+  "The setter for [[mcp-apps-cors-custom-origins]]."
+  [new-value]
+  (validate-no-origin-paths! new-value)
+  (setting/set-value-of-type! :string :mcp-apps-cors-custom-origins new-value))
 
 (defsetting mcp-apps-cors-custom-origins
   (deferred-tru "Custom CORS origins for self-hosted MCP clients, space-separated.")
@@ -71,8 +133,9 @@
   :default    ""
   :visibility :admin
   :export?    false
-  :encryption :no
-  :audit      :getter)
+  :encryption :when-encryption-key-set
+  :audit      :getter
+  :setter     #'-mcp-apps-cors-custom-origins!)
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -85,3 +148,19 @@
          (map str/trim)
          (keep not-empty)
          (str/join " "))))
+
+(def ^:private client-key->setting-key
+  "Maps a client key from [[metabase.mcp.usage/detect-client]] to the key its toggle uses in
+   [[mcp-apps-cors-enabled-clients]]. VS Code shares the Cursor toggle: both render in a vscode-webview."
+  {"claude"        "claude"
+   "chatgpt"       "chatgpt"
+   "cursor-vscode" "cursor-vscode"
+   "vscode"        "cursor-vscode"})
+
+(defn inline-ui-enabled-for-client?
+  "Whether `client-key` may render MCP Apps UI. An iframe from a client the admin switched off fails its CORS
+   preflight, so it would show a broken card. Clients without a toggle are not gated."
+  [client-key]
+  (if-let [setting-key (client-key->setting-key client-key)]
+    (boolean (some #{setting-key} (mcp-apps-cors-enabled-clients)))
+    true))

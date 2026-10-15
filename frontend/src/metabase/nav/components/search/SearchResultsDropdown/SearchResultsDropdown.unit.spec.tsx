@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -11,6 +10,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { SearchResult } from "metabase-types/api";
 import {
@@ -20,6 +20,13 @@ import {
 } from "metabase-types/api/mocks";
 
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
+
+// Every test in here otherwise waits out the real 500ms search debounce, which
+// is idle time and nothing these tests assert.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
 
 // Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test
 jest.mock(
@@ -62,17 +69,17 @@ const setup = async ({
     collections: [TEST_COLLECTION],
   });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <SearchResultsDropdown
           searchText={searchText}
           onSearchItemSelect={onSearchItemSelect}
           goToSearchApp={goToSearchApp}
           context="search-bar"
         />
-      )}
+      }
     />,
     {
       withRouter: true,
@@ -81,19 +88,19 @@ const setup = async ({
 
   await waitForLoaderToBeRemoved();
 
-  return { onSearchItemSelect, goToSearchApp, history: checkNotNull(history) };
+  return { onSearchItemSelect, goToSearchApp, router: checkNotNull(router) };
 };
 
 describe("SearchResultsDropdown", () => {
   it("should redirect to item's page when a item is selected", async () => {
-    const { history } = await setup({ searchText: "Test 1" });
+    const { router } = await setup({ searchText: "Test 1" });
     const searchItem = screen.getByTestId("search-result-item");
 
     expect(searchItem).toHaveTextContent("Test 1");
 
     await userEvent.click(searchItem);
 
-    expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-1");
+    expect(router.location.pathname).toEqual("/question/1-test-1");
   });
 
   it("should call goToSearchApp when the footer is clicked", async () => {

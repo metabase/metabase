@@ -5,6 +5,11 @@ export const getAlertChannel = (name: string) =>
     name,
   });
 
+export const selectScheduleTime = (time = "8:00") => {
+  cy.findByTestId("select-time").click();
+  cy.findByRole("option", { name: time }).click();
+};
+
 export const WEBHOOK_TEST_SESSION_ID = "00000000-0000-0000-0000-000000000000";
 export const WEBHOOK_TEST_HOST = "http://127.0.0.1:9080";
 

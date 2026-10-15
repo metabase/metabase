@@ -1,6 +1,6 @@
 import { useContext, useEffect } from "react";
 
-import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { useUserAcknowledgement } from "metabase/current-user";
 
 import { UserHasSeenAllContext } from "./UserHasSeenAllContext";
 

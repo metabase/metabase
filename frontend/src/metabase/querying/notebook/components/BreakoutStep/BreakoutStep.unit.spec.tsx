@@ -13,9 +13,13 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { TemporalUnit } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  SAMPLE_DB_ID,
   createOrdersIdField,
   createOrdersTable,
   createSampleDatabase,
@@ -37,7 +41,6 @@ function createQueryWithBreakout() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "TAX",
           },
         ],
@@ -59,9 +62,11 @@ function createQueryWithBreakoutAndBinningCount(
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "TAX",
-            bins: binningCount,
+            binning:
+              binningCount != null
+                ? { strategy: "num-bins", numBins: binningCount }
+                : undefined,
           },
         ],
       },
@@ -78,8 +83,16 @@ function createQueryWithMultipleBreakoutsAndBinningStrategy() {
           id: ORDERS_ID,
         },
         breakouts: [
-          { type: "column", sourceName: "ORDERS", name: "TAX", bins: 10 },
-          { type: "column", sourceName: "ORDERS", name: "TAX", bins: 50 },
+          {
+            type: "column",
+            name: "TAX",
+            binning: { strategy: "num-bins", numBins: 10 },
+          },
+          {
+            type: "column",
+            name: "TAX",
+            binning: { strategy: "num-bins", numBins: 50 },
+          },
         ],
       },
     ],
@@ -99,7 +112,6 @@ function createQueryWithBreakoutAndTemporalBucket(
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: temporalBucketName,
           },
@@ -120,13 +132,11 @@ function createQueryWithMultipleBreakoutsAndTemporalBucket() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "year",
           },
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "month",
           },
@@ -532,7 +542,7 @@ describe("BreakoutStep", () => {
   });
 
   describe("metrics", () => {
-    it("should allow to select date and datetime columns only", async () => {
+    it("should allow selecting breakoutable columns", async () => {
       const question = DEFAULT_QUESTION.setType("metric");
       const step = createMockNotebookStep({ question });
       const { getNextBreakouts } = setup({ step });
@@ -540,12 +550,12 @@ describe("BreakoutStep", () => {
       await userEvent.click(screen.getByText("Pick a column to group by"));
       expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(await screen.findByText("Created At")).toBeInTheDocument();
-      expect(screen.queryByText("Tax")).not.toBeInTheDocument();
+      expect(await screen.findByText("Tax")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("User"));
       expect(await screen.findByText("Created At")).toBeInTheDocument();
       expect(await screen.findByText("Birth Date")).toBeInTheDocument();
-      expect(screen.queryByText("Email")).not.toBeInTheDocument();
+      expect(await screen.findByText("Email")).toBeInTheDocument();
 
       await userEvent.click(await screen.findByText("Created At"));
       expect(getNextBreakouts()).toMatchObject([
@@ -562,11 +572,11 @@ describe("BreakoutStep", () => {
         screen.queryByText("Pick a column to group by"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText("No datetime columns available"),
+        screen.queryByText("No columns available"),
       ).not.toBeInTheDocument();
     });
 
-    it("should not allow to select when there are no date or datetime columns", () => {
+    it("should allow selecting a numeric column when there are no temporal columns", async () => {
       const metadata = createMockMetadata({
         databases: [
           createSampleDatabase({
@@ -575,21 +585,25 @@ describe("BreakoutStep", () => {
         ],
       });
       const question = new Question(
-        createMockCard({ type: "metric" }),
+        createMockCard({
+          type: "metric",
+          dataset_query: createMockStructuredDatasetQuery({
+            database: SAMPLE_DB_ID,
+            query: { "source-table": ORDERS_ID },
+          }),
+        }),
         metadata,
       );
       const step = createMockNotebookStep({
         question,
         query: question.query(),
       });
-      setup({ step });
+      const { getNextBreakouts } = setup({ step });
 
-      expect(
-        screen.getByText("No datetime columns available"),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Pick a column to group by"),
-      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      await userEvent.click(await screen.findByText("ID"));
+
+      expect(getNextBreakouts()).toMatchObject([{ displayName: "ID" }]);
     });
 
     it("should not allow to add more than 1 breakout", async () => {
@@ -600,9 +614,7 @@ describe("BreakoutStep", () => {
               type: "table",
               id: ORDERS_ID,
             },
-            breakouts: [
-              { type: "column", sourceName: "ORDERS", name: "CREATED_AT" },
-            ],
+            breakouts: [{ type: "column", name: "CREATED_AT" }],
           },
         ],
       });

@@ -19,7 +19,7 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("enable-embedding-modular", true);
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
     H.mockEmbedJsToDevServer();
   });

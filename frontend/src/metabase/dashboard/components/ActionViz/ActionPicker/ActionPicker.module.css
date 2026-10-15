@@ -1,0 +1,17 @@
+.modelCollapseSection {
+  margin-bottom: 0.5rem;
+}
+
+.itemBackground {
+  &.selected {
+    background-color: var(--mb-color-background_surface-brand-subtle);
+  }
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.emptyState {
+  margin-bottom: 1rem;
+}

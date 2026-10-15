@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Button,
   Card,
@@ -27,7 +27,7 @@ export function LibraryEmptyState() {
     try {
       setError(null);
       const collection = await createLibrary().unwrap();
-      sendSuccessToast(t`Library created`);
+      sendSuccessToast(t`Semantic layer created`);
       trackDataStudioLibraryCreated(collection.id);
     } catch (error) {
       setError(getErrorMessage(error));
@@ -39,13 +39,13 @@ export function LibraryEmptyState() {
   }
 
   return (
-    <Card bg="background-primary" p={48} maw={640} mx="auto" withBorder>
+    <Card bg="background_page-primary" p={48} maw={640} mx="auto" withBorder>
       <Stack gap="3rem">
-        <Stack gap="md">
+        <Stack gap="lg">
           <Stack gap="sm">
             <Title order={3}>{t`A source of truth for analytics`}</Title>
             <Text c="text-secondary" lh="1.25rem">
-              {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+              {t`The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
             </Text>
           </Stack>
           <Stack gap="sm">
@@ -54,9 +54,9 @@ export function LibraryEmptyState() {
                 variant="filled"
                 onClick={handleSubmit}
                 loading={isLoading}
-              >{t`Create my Library`}</Button>
+              >{t`Create my semantic layer`}</Button>
             </Group>
-            {error && <Text c="error">{error}</Text>}
+            {error && <Text c="feedback-negative">{error}</Text>}
           </Stack>
         </Stack>
         <SimpleGrid cols={2} spacing="sm">
@@ -73,7 +73,7 @@ export function LibraryEmptyState() {
           <FeatureCard
             icon="git_branch"
             title={t`Version control`}
-            description={t`Sync your Library to Git`}
+            description={t`Sync your semantic layer to git`}
           />
           <FeatureCard
             icon="verified_round"
@@ -94,10 +94,10 @@ type FeatureCardProps = {
 
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <Paper bg="background-secondary" p="md" radius="8px" shadow="none">
+    <Paper bg="background_page-secondary" p="lg" radius="8px" shadow="none">
       <Group gap="sm" align="flex-start" wrap="nowrap">
         <Icon name={icon} size={16} c="core-brand" style={{ flexShrink: 0 }} />
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text fw="bold" lh="1rem">
             {title}
           </Text>

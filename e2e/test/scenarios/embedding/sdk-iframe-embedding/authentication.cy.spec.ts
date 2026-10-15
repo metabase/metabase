@@ -217,7 +217,9 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       onVisitPage: (win) => {
+        // Unjustified type cast. FIXME
         (win as any).metabaseConfig = {
+          // Unjustified type cast. FIXME
           ...(win as any).metabaseConfig,
           fetchRequestToken: async () => {
             const jwt = await getSignedJwtForUser({ user: USERS.admin });
@@ -244,7 +246,9 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     const frame = H.loadSdkIframeEmbedTestPage({
       onVisitPage: (win) => {
+        // Unjustified type cast. FIXME
         (win as any).metabaseConfig = {
+          // Unjustified type cast. FIXME
           ...(win as any).metabaseConfig,
           fetchRequestToken: async () => {
             return { jwt: "" };

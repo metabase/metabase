@@ -15,10 +15,13 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register LDAP provider in the hierarchy
-(derive :provider/ldap :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/provider)
+
+;; LDAP Authenticated users are eligible for our MFA flow
+(auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/supports-mfa)
 
 ;; LDAP is an SSO provider that auto-creates users
-(derive :provider/ldap :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/create-user-if-not-exists)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
@@ -41,7 +44,7 @@
                :error :invalid-credentials
                :message \"...\"}"
   [_provider {:keys [username password] :as _request}]
-  (log/debugf "Authenticating with LDAP provider for username: %s" username)
+  (log/debug "Authenticating with LDAP provider")
 
   (cond
     (not username)
@@ -78,12 +81,12 @@
          :error :ldap-error
          :message "No user found with that username in LDAP."})
       (catch clojure.lang.ExceptionInfo e
-        (log/error e "LDAP authentication error")
+        (log/errorf "LDAP authentication error: %s" (ex-message e))
         {:success? false
          :error :ldap-error
          :message (or (ex-message e) "LDAP authentication failed")})
       (catch Exception e
-        (log/error e "Unexpected error during LDAP authentication")
+        (log/errorf "Unexpected error during LDAP authentication: %s" (ex-message e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during authentication"}))))
@@ -132,4 +135,4 @@
                   all-mapped-ids (ldap.impl/all-mapped-group-ids settings)]
               (sso/sync-group-memberships! (:user result) group-ids all-mapped-ids))
             (catch Exception e
-              (log/error e "Error syncing LDAP group memberships"))))))))
+              (log/errorf "Error syncing LDAP group memberships: %s" (ex-message e)))))))))

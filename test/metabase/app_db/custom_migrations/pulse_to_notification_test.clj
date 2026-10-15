@@ -7,6 +7,7 @@
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -48,8 +49,8 @@
 
 (defn- create-pulse!
   [pulse pulse-cards pcs+recipients]
-  (let [pulse-id (t2/insert-returning-pk! :pulse (add-timestamp pulse))]
-    (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id) pulse-cards))
+  (let [pulse-id (t2/insert-returning-pk! :pulse (assoc (add-timestamp pulse) :entity_id (u/generate-nano-id)))]
+    (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id :entity_id (u/generate-nano-id)) pulse-cards))
     (doseq [pcr pcs+recipients]
       (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))]
         (when (seq (:recipients pcr))
@@ -118,7 +119,8 @@
   (testing "migrate alert with multiple channels 1 slack, 1 email with 1 external recipient and one user, 1 disabled email, one http"
     (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}
-                     :model/Channel {channel-id :id} {:type "channel/http"}]
+                     :model/Channel {channel-id :id} {:type    "channel/http"
+                                                      :details {:url "https://example.com/hook", :auth-method "none"}}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                    :enabled      true
                                                    :details      (json/encode {:emails ["ngoc@metabase.com"]})

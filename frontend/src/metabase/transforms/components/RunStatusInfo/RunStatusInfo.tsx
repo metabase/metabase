@@ -23,8 +23,10 @@ export function RunStatusInfo({
   const isError = status === "failed" || status === "timeout";
 
   return (
-    <Group gap="xs" className={S.runStatusInfo} wrap="nowrap">
-      <Box c={isError ? "error" : undefined}>{formatStatus(status)}</Box>
+    <Group gap="xxs" className={S.runStatusInfo} wrap="nowrap">
+      <Box c={isError ? "feedback-negative" : undefined}>
+        {formatStatus(status)}
+      </Box>
       {isError && message != null && (
         <RunInfo status={status} message={message} endTime={endTime} />
       )}

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
@@ -25,7 +26,7 @@
   (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
 
@@ -41,10 +42,10 @@
   :can-read-from-env? true)
 
 (defsetting remote-sync-url
-  (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
+  (deferred-tru "The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
 
@@ -82,7 +83,7 @@
   :default 5)
 
 (defsetting remote-sync-task-time-limit-ms
-  (deferred-tru "The maximum amount of time a remote sync task will be given to complete")
+  (deferred-tru "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.")
   :type :integer
   :visibility :authenticated
   :export? false
@@ -102,48 +103,33 @@
    Used to represent the entire transforms feature being enabled/disabled."
   -1)
 
+(defn- replace-transforms-root-rso!
+  "Replaces the Transforms root RSO with one in `status`."
+  [status]
+  (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
+  (remote-sync.db/insert-rso! {:model_type        "Collection"
+                               :model_id          transforms-root-id
+                               :model_name        "Transforms"
+                               :status            status
+                               :status_changed_at (t/offset-date-time)}))
+
 (defn sync-transform-tracking!
-  "Called when remote-sync-transforms setting changes.
-   Creates a single 'Transforms' RSO entry with model_id=-1 as a sentinel value.
-   When enabled: status is 'create' to indicate transforms should be synced.
-   When disabled: status is 'delete' to indicate transforms should be removed.
-   When disabling and there's no existing Transforms RSO, does nothing (avoids creating
-   spurious 'delete' entries when going from default false to explicitly false)."
+  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled, 'delete'
+  when disabled after being tracked, left alone when already in that state (the settings cache also calls this on
+  every load), and absent on a read-only instance, which has nothing to publish."
   [enabled?]
-  (let [timestamp (t/offset-date-time)
-        existing-rso (t2/select-one :model/RemoteSyncObject
-                                    :model_type "Collection"
-                                    :model_id transforms-root-id)]
+  (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
     (cond
-      ;; When enabling, always create/update to 'create' status
+      (= :read-only (remote-sync-type))
+      (when status
+        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
+
       enabled?
-      (do
-        (when existing-rso
-          (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id transforms-root-id))
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "create"
-                     :status_changed_at timestamp}))
-      ;; When disabling and there's an existing RSO, update to 'delete' status
-      existing-rso
-      (do
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id transforms-root-id)
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "delete"
-                     :status_changed_at timestamp}))
-      ;; When disabling and there's no existing RSO, do nothing
-      ;; (this avoids creating spurious 'delete' entries when going from default false to explicitly false)
-      :else
-      nil)))
+      (when-not (#{"create" "synced"} status)
+        (replace-transforms-root-rso! "create"))
+
+      (and status (not= "delete" status))
+      (replace-transforms-root-rso! "delete"))))
 
 (defn- sync-transform-tracking-on-change
   "Called when remote-sync-transforms setting changes."

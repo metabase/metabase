@@ -185,6 +185,7 @@ describe("common > components > ClientSortableTable", () => {
             }
             return 1;
           }
+          // Unjustified type cast. FIXME
           return row[colName as keyof Pokemon];
         }}
       />,

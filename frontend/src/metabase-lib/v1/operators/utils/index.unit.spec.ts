@@ -9,6 +9,7 @@ import {
   FOREIGN_KEY,
   NUMBER,
   PRIMARY_KEY,
+  STRING,
 } from "metabase-lib/v1/types/constants";
 
 describe("metabase-lib/v1/operators/utils", () => {
@@ -23,14 +24,17 @@ describe("metabase-lib/v1/operators/utils", () => {
   describe("isEqualsOperator", () => {
     it("should evaluate whether it is an equals operator", () => {
       expect(isEqualsOperator()).toBe(false);
-      expect(isEqualsOperator({ name: "foo" })).toBe(false);
-      expect(isEqualsOperator({ name: "=" })).toBe(true);
+      expect(
+        isEqualsOperator(getOperatorByTypeAndName(NUMBER, "between")),
+      ).toBe(false);
+      expect(isEqualsOperator(getOperatorByTypeAndName(NUMBER, "="))).toBe(
+        true,
+      );
     });
   });
 
   describe("getOperatorByTypeAndName", () => {
     it("should return undefined if operator does not exist", () => {
-      expect(getOperatorByTypeAndName("FOO", "=")).toBe(undefined);
       expect(getOperatorByTypeAndName(NUMBER, "contains")).toBe(undefined);
     });
 
@@ -74,13 +78,21 @@ describe("metabase-lib/v1/operators/utils", () => {
 
   describe("isFuzzyOperator", () => {
     it("should return false for operators that expect an exact match", () => {
-      expect(isFuzzyOperator({ name: "=" })).toBe(false);
-      expect(isFuzzyOperator({ name: "!=" })).toBe(false);
+      expect(isFuzzyOperator(getOperatorByTypeAndName(NUMBER, "="))).toBe(
+        false,
+      );
+      expect(isFuzzyOperator(getOperatorByTypeAndName(NUMBER, "!="))).toBe(
+        false,
+      );
     });
 
     it("should return true for operators that are not exact", () => {
-      expect(isFuzzyOperator({ name: "contains" })).toBe(true);
-      expect(isFuzzyOperator({ name: "between" })).toBe(true);
+      expect(
+        isFuzzyOperator(getOperatorByTypeAndName(STRING, "contains")),
+      ).toBe(true);
+      expect(isFuzzyOperator(getOperatorByTypeAndName(NUMBER, "between"))).toBe(
+        true,
+      );
     });
   });
 });

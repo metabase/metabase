@@ -2,15 +2,9 @@
   "Shared table utilities for enterprise modules."
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as query-analyzer]
-   [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -44,21 +38,8 @@
                       priority-tables []
                       exclude-table-ids #{}}}]
    (let [priority-table-ids (set (map :id priority-tables))
-         {table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                                :id
-                                                                                {:user-id       api/*current-user-id*
-                                                                                 :is-superuser? api/*is-superuser?*}
-                                                                                {:perms/view-data      :unrestricted
-                                                                                 :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
-         fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
-                                :db_id           database-id
-                                :active          true
-                                :visibility_type nil
-                                (cond-> {:where    table-where-clause
-                                         :order-by [[:view_count :desc]]
-                                         :limit    all-tables-limit}
-                                  table-cte (assoc :with table-cte)))
+         fill-tables (metabot.db/most-viewed-tables-visible-to-current-user database-id all-tables-limit)
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          fill-tables (t2/hydrate fill-tables :fields)
@@ -73,58 +54,6 @@
                                     fields)}))
            all-tables))))
 
-(defn enhanced-database-tables
-  "Get database tables formatted with the new metabot tools schema format.
-
-  Returns tables with :type, :display_name, :database_id, :database_schema, :fields (with field-id), :metrics.
-  This format is used by metabot context and other modern tools."
-  ([database-id]
-   (enhanced-database-tables database-id nil))
-  ([database-id {:keys [all-tables-limit priority-tables exclude-table-ids]
-                 :or {all-tables-limit max-database-tables
-                      priority-tables []
-                      exclude-table-ids #{}}}]
-   (let [priority-table-ids (set (map :id priority-tables))
-         {table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                                :id
-                                                                                {:user-id       api/*current-user-id*
-                                                                                 :is-superuser? api/*is-superuser?*}
-                                                                                {:perms/view-data      :unrestricted
-                                                                                 :perms/create-queries :query-builder-and-native})
-         ;; Fetch most viewed tables, excluding priority tables and excluded tables
-         fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
-                                :db_id database-id
-                                :active true
-                                :visibility_type nil
-                                (cond-> {:where    table-where-clause
-                                         :order-by [[:view_count :desc]]
-                                         :limit    all-tables-limit}
-                                  table-cte (assoc :with table-cte)))
-         fill-tables (remove #(or (priority-table-ids (:id %))
-                                  (exclude-table-ids (:id %))) fill-tables)
-         all-tables (concat priority-tables fill-tables)
-         all-tables (take all-tables-limit all-tables)]
-     (lib-be/with-metadata-provider-cache
-       (let [mp (lib-be/application-database-metadata-provider database-id)
-             table-ids (map :id all-tables)
-             _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)
-             engine (:engine (lib.metadata/database mp))]
-         (mapv (fn [{:keys [id name schema description]}]
-                 (let [table-query (lib/query mp (lib.metadata/table mp id))
-                       cols (->> (lib/visible-columns table-query)
-                                 (map #(metabot.tools.u/add-table-reference table-query %)))]
-                   {:id id
-                    :type :table
-                    :name name
-                    :display_name (u.humanization/name->human-readable-name :simple name)
-                    :database_id database-id
-                    :database_engine engine
-                    :database_schema schema
-                    :description description
-                    :fields (mapv #(metabot.tools.u/->result-column table-query %) cols)
-                    :metrics []}))
-               all-tables))))))
-
 (defn get-tables
   "Get information about the tables in a given database.
 
@@ -132,7 +61,7 @@
   This is the handler for the /get-tables tool endpoint."
   [{:keys [database-id]}]
   {:structured-output
-   {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
+   {:database (metabot.db/database-summary database-id)
     :tables   (database-tables database-id)}})
 
 (defn similar?
@@ -167,17 +96,6 @@
            (nil? tschema)
            (similar? uschema tschema))))
 
-(defn- visible-filter-clause
-  []
-  (let [{table-where-clause :clause table-cte :with} (mi/visible-filter-clause :model/Table
-                                                                               :id
-                                                                               {:user-id       api/*current-user-id*
-                                                                                :is-superuser? api/*is-superuser?*}
-                                                                               {:perms/view-data      :unrestricted
-                                                                                :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
-
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
 
@@ -198,15 +116,7 @@
         (keep (fn [table]
                 (when (some #(matching-tables? table % {:match-schema? false}) unrecognized-tables)
                   (t2.realize/realize table))))
-        (t2/reducible-select [:model/Table :id :name :schema]
-                             :db_id database-id
-                             :active true
-                             :visibility_type nil
-                             (cond-> (assoc (visible-filter-clause)
-                                            :limit 10000)
-                               (seq used-ids) (update :where #(if %
-                                                                [:and % [:not-in :id used-ids]]
-                                                                [:not-in :id used-ids]))))))
+        (metabot.db/visible-tables-excluding database-id used-ids)))
 
 (defn used-tables-from-ids
   "Return table info for `table-ids` in the same shape as [[used-tables]].
@@ -215,12 +125,7 @@
   [database-id table-ids]
   (if-not (seq table-ids)
     []
-    (t2/select [:model/Table :id :name :schema]
-               :db_id database-id
-               :id [:in table-ids]
-               :active true
-               :visibility_type nil
-               (visible-filter-clause))))
+    (metabot.db/visible-table-summaries-for-current-user database-id table-ids)))
 
 (defn used-tables
   "Return all tables used in the query, including fuzzy-matched ones.
@@ -309,11 +214,7 @@
   ([query]
    (schema-sample query nil))
   ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
-   (let [tables (t2/select [:model/Table :id :name :schema]
-                           :db_id database
-                           :active true
-                           :visibility_type nil
-                           {:limit (inc all-tables-limit)})
+   (let [tables (metabot.db/table-names database (inc all-tables-limit))
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)

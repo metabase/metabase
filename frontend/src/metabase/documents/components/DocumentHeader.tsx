@@ -1,18 +1,18 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
-import { useSetting } from "metabase/common/hooks";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -27,15 +27,15 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
-import { getListCommentsQuery } from "../utils/api";
 
-import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },
@@ -76,11 +76,16 @@ export const DocumentHeader = ({
   onArchive,
   onShowHistory,
 }: DocumentHeaderProps) => {
-  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
-    selectFromResult: ({ data }) => ({
-      hasComments: !isNewDocument && !!data?.comments?.length,
-    }),
-  });
+  const { hasComments } = useListCommentsQuery(
+    getListCommentsQuery(
+      document ? { target_id: document.id, target_type: "document" } : null,
+    ),
+    {
+      selectFromResult: ({ data }) => ({
+        hasComments: !isNewDocument && !!data?.comments?.length,
+      }),
+    },
+  );
 
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);
@@ -118,17 +123,7 @@ export const DocumentHeader = ({
   );
 
   return (
-    <Flex
-      justify="space-between"
-      align="flex-start"
-      gap="1rem"
-      mt="xl"
-      pt="xl"
-      pb="1rem"
-      maw={900}
-      mx="auto"
-      w="100%"
-    >
+    <Flex className={S.documentHeader}>
       <Flex direction="column" className={S.titleContainer}>
         <TextInput
           aria-label={t`Document Title`}
@@ -155,7 +150,7 @@ export const DocumentHeader = ({
           }}
         />
         {document && (
-          <Flex gap="md">
+          <Flex gap="lg">
             <Flex align="center" gap="0.25rem" c="text-secondary">
               <Icon name="person" />
               <Text>{document.creator.common_name}</Text>
@@ -173,7 +168,7 @@ export const DocumentHeader = ({
           </Flex>
         )}
       </Flex>
-      <Flex gap="md" align="center" className={S.actionsContainer}>
+      <Flex gap="lg" align="center" className={S.actionsContainer}>
         <Transition
           mounted={showSaveButton}
           transition={saveButtonTransition}
@@ -266,11 +261,11 @@ export const DocumentHeader = ({
                             component={Link}
                             to="/admin/settings/public-sharing"
                             target="_blank"
-                            variant="subtle"
+                            variant="transparent"
+                            size="compact-md"
                             h="auto"
                             lh="inherit"
                             ml="sm"
-                            p={0}
                             bd={0}
                             className={CS.floatRight}
                           >

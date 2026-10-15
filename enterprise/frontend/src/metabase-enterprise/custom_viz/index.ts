@@ -1,4 +1,6 @@
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import type { DispatchFn } from "metabase/redux/hooks";
+import { addUndo } from "metabase/redux/undo";
 import {
   getPluginAssetUrl,
   resolveCustomVizAssetUrl,
@@ -12,6 +14,7 @@ import { CustomVizSettingWidget } from "./components/CustomVizSettingWidget";
 import { ManageCustomVizPage } from "./components/ManageCustomVizPage";
 import {
   loadCustomVizPlugin,
+  loadCustomVizPluginForDisplay,
   useAutoLoadCustomVizPlugin,
   useCustomVizPlugins,
   useCustomVizPluginsIcon,
@@ -27,6 +30,10 @@ export function initializePlugin() {
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,
+      loadCustomVizPluginForDisplay: (dispatch: DispatchFn, display: string) =>
+        loadCustomVizPluginForDisplay(dispatch, display, {
+          onMessage: (toast) => dispatch(addUndo(toast)),
+        }),
       getPluginAssetUrl,
       resolveCustomVizAssetUrl,
       releaseCustomVizAsset: () => {},

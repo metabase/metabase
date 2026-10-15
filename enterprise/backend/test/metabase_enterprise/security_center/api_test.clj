@@ -69,6 +69,28 @@
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :get 403 "ee/security-center"))))))
 
+(deftest list-advisories-returns-download-jar-urls-test
+  (testing "GET /api/ee/security-center returns download_jar_urls"
+    (mt/with-premium-features #{:admin-security-center}
+      (mt/with-temp [:model/SecurityAdvisory _
+                     {:advisory_id       "SC-DL-001"
+                      :severity          "high"
+                      :title             "Advisory with download link"
+                      :description       "Test"
+                      :remediation       "Upgrade"
+                      :affected_versions [{"min" "1.58.0" "fixed" "1.58.11"}]
+                      :download_jar_urls [{"version" "1.58.11"
+                                           "url" "https://downloads.example.com/metabase.jar"}]
+                      :match_status      "active"
+                      :published_at      #t "2026-03-24T00:00:00Z"
+                      :updated_at        #t "2026-03-24T00:00:00Z"}]
+        (let [response  (mt/user-http-request :crowberto :get 200 "ee/security-center")
+              advisory  (->> response :advisories (some #(when (= "SC-DL-001" (:advisory_id %)) %)))]
+          (is (= [{:min "1.58.0" :fixed "1.58.11"}]
+                 (:affected_versions advisory)))
+          (is (= [{:version "1.58.11" :url "https://downloads.example.com/metabase.jar"}]
+                 (:download_jar_urls advisory))))))))
+
 (deftest trial-subscription-gate-test
   (testing "Security Center is not available on trial subscriptions"
     (mt/with-premium-features #{:admin-security-center}
@@ -197,7 +219,7 @@
     (mt/with-premium-features #{:admin-security-center}
       (testing "body values are passed through to send-test-notification!"
         (let [captured (atom nil)]
-          (with-redefs [notification/send-test-notification! #(reset! captured %)]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification! #(reset! captured %)]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/raw-value"
                                                        :details {:value "form@example.com"}}
@@ -212,15 +234,15 @@
             (is (= "#form-channel" (:slack-channel @captured))))))
       (testing "body distinguishes explicit nil slack_channel (disable) from missing key (fall back to setting)"
         (let [captured (atom nil)]
-          (with-redefs [notification/send-test-notification! #(reset! captured %)
-                        settings/security-center-slack-channel (constantly "#saved-channel")]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification! #(reset! captured %)
+                                      settings/security-center-slack-channel (constantly "#saved-channel")]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/group"
                                                        :permissions_group_id 2}]
                                    :slack_channel    nil})
             (is (nil? (:slack-channel @captured)) "explicit nil disables Slack for the test"))
-          (with-redefs [notification/send-test-notification! #(reset! captured %)
-                        settings/security-center-slack-channel (constantly "#saved-channel")]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification! #(reset! captured %)
+                                      settings/security-center-slack-channel (constantly "#saved-channel")]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/group"
                                                        :permissions_group_id 2}]})
@@ -228,8 +250,8 @@
       (testing "missing email_recipients falls back to saved setting"
         (let [captured       (atom nil)
               saved-emails   [{:type :notification-recipient/raw-value :details {:value "saved@example.com"}}]]
-          (with-redefs [notification/send-test-notification!         #(reset! captured %)
-                        settings/security-center-email-recipients     (constantly saved-emails)
-                        settings/security-center-slack-channel        (constantly nil)]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification!         #(reset! captured %)
+                                      settings/security-center-email-recipients     (constantly saved-emails)
+                                      settings/security-center-slack-channel        (constantly nil)]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification" {})
             (is (= saved-emails (:email-recipients @captured)))))))))

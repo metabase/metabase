@@ -76,9 +76,8 @@ const InvalidateNowFormBody = ({
           return false;
         }}
         disabled={wasFormRecentlyPending}
-        variant="subtle"
-        c="error"
-        px="sm"
+        variant="light"
+        color="negative"
         leftSection={<Icon name="trash" />}
         label={buttonText}
         activeLabel={
@@ -90,15 +89,11 @@ const InvalidateNowFormBody = ({
         }
         successLabel={
           <Group gap="sm" align="center">
-            <Icon name="check" c="success" />
+            <Icon name="check" c="feedback-positive" />
             <Text>{t`Cache cleared`}</Text>
           </Group>
         }
-        failedLabel={
-          <Text fw="bold" lh="1">
-            {t`Error`}
-          </Text>
-        }
+        failedLabel={<Text lh="1">{t`Error`}</Text>}
       />
 
       {confirmationModal}

@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mysql-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mysql-test]}}}}}}
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -16,6 +17,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -31,6 +33,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.test :as qp]
@@ -43,9 +46,77 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)
+   (java.util Properties)
+   (org.mariadb.jdbc UrlParser)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ssl-cert-path-must-be-readable-test
+  ;; the "Server SSL certificate chain" field takes inline PEM, a `classpath:` resource, or a path to a file on the
+  ;; Metabase host -- and a path has to be somewhere `readable-paths` allows
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details %))]
+      (testing "a certificate path outside the allowed directories is refused"
+        (doseq [cert ["/etc/server-ca.pem" "/allowed-dir/../etc/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:ssl-cert cert}))
+              cert)))
+      (testing "inline PEM, a classpath resource, an allowed path, or a certificate SSL does not use, are accepted"
+        (doseq [extra [{:ssl-cert "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"}
+                       {:ssl-cert "classpath:server-ca.pem"}
+                       {:ssl-cert "/allowed-dir/server-ca.pem"}
+                       {:ssl false :ssl-cert "/etc/server-ca.pem"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
+(deftest ssl-cert-url-must-be-readable-test
+  ;; the client opens the value as a URL before falling back to a file path, so `file:/etc/x` reads `/etc/x` -- not a
+  ;; file named `file:/etc/x` under the working directory, which is allowed here
+  (mt/with-temp-env-var-value! [mb-readable-paths (str "/allowed-dir," (System/getProperty "user.dir"))]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details {:ssl-cert %}))]
+      (testing "a URL the client would read from somewhere other than an allowed local file is refused"
+        (doseq [cert ["file:/etc/server-ca.pem"
+                      "file:///etc/server-ca.pem"
+                      "file:/allowed-dir/%2E%2E/etc/server-ca.pem"
+                      "file://other-host/allowed-dir/server-ca.pem"
+                      "jar:file:/allowed-dir/certs.jar!/server-ca.pem"
+                      "http://example.com/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec cert))
+              cert)))
+      (testing "a file URL for an allowed path is accepted"
+        (doseq [cert ["file:/allowed-dir/server-ca.pem"
+                      "file:///allowed-dir/server-ca.pem"
+                      "file://localhost/allowed-dir/server-ca.pem"]]
+          (is (map? (spec cert)) cert)))))
+  (testing "any URL is accepted when every path is readable"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+      (is (map? (sql-jdbc.conn/connection-details->spec
+                 :mysql
+                 {:host "h" :port 3306 :dbname "db" :user "u" :ssl true :ssl-cert "http://example.com/server-ca.pem"}))))))
+
+(deftest ssl-cert-url-host-is-a-connection-parameter-host-test
+  ;; a URL in the certificate field is fetched by the client, so the host it names is one the connection reaches and
+  ;; has to pass the network policy like any other. Every path is readable here, which is the self-hosted default,
+  ;; so the readable-paths check does not refuse the URL first.
+  (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          hosts   #(set (driver/connection-parameter-hosts :mysql (merge details %)))]
+      (testing "the certificate field"
+        (is (contains? (hosts {:ssl-cert "http://10.0.0.1/server-ca.pem"}) "10.0.0.1"))
+        (is (contains? (hosts {:ssl-cert "file://10.0.0.2/server-ca.pem"}) "10.0.0.2")))
+      (testing "serverSslCert in the additional options"
+        ;; a name rather than an address: an undeclared parameter of the connection string is only read for an address
+        (is (contains? (hosts {:additional-options "serverSslCert=http://certs.example/server-ca.pem"})
+                       "certs.example"))))))
+
+(deftest default-schema-test
+  (mt/test-driver :mysql
+    (is (nil? (driver.sql/default-schema :mysql (mt/db))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -55,6 +126,34 @@
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (mt/with-test-user :rasta (thunk)))))
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined strings use a representation that is independent of the session's backslash-escaping mode"
+    (let [expected (fn [^String s]
+                     (format "_utf8mb4 X'%s'" (codecs/bytes->hex (.getBytes s "UTF-8"))))]
+      (are [s] (= (expected s) (sql.qp/inline-value :mysql s))
+        "Tito's Tacos"
+        "back\\slash"
+        "a\\' OR 1 = 1 --"
+        ""
+        "\u00e9\ud83c\udf63")))
+  (testing "compiling a query with inline parameters"
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM `venues` WHERE `venues`.`name` = _utf8mb4 X'615c27204f522031203d2031202d2d'"]
+             (sql.qp/format-honeysql :mysql {:select [:*]
+                                             :from   [[:venues]]
+                                             :where  [:= :venues/name "a\\' OR 1 = 1 --"]}))))))
+
+(deftest ^:parallel like-pattern-escape-char-not-driver-inlined-test
+  (testing "LIKE's ESCAPE character compiles to a plain `'!'` even with a driver bound — a `_utf8mb4 X'21'` hex
+            literal carries utf8mb4's default collation and makes MySQL app DBs on another collation fail with
+            `Illegal mix of collations` (#81161 follow-up)"
+    (binding [driver/*driver* :mysql]
+      (is (= ["SELECT * FROM `t` WHERE LOWER(`name`) LIKE ? ESCAPE '!'" "%a!%b%"]
+             (sql/format {:select [:*]
+                          :from   [:t]
+                          :where  [:like [:lower :name] (h2x/like-substring "a%b")]}
+                         {:dialect :mysql}))))))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -155,10 +254,7 @@
                                         "    ("
                                         "      ("
                                         "        DAYOFYEAR(weeks.d) - ("
-                                        "          8 - COALESCE("
-                                        "            NULLIF((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7, 0),"
-                                        "            7"
-                                        "          )"
+                                        "          8 - (((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 4) % 7) + 1)"
                                         "        )"
                                         "      ) / 7.0"
                                         "    )"
@@ -346,7 +442,7 @@
 
 (deftest ^:parallel connection-spec-test-3
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"}
+    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true&allowLocalInfile=false"}
             (sql-jdbc.conn/connection-details->spec :mysql
                                                     (assoc sample-connection-details
                                                            :ssl false
@@ -355,13 +451,86 @@
 (deftest ^:parallel connection-spec-test-4
   (testing "A program_name specified in additional-options is not overwritten by us"
     (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
-      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs)
+      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs "&allowLocalInfile=false")
                :useSSL false
                ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
                :connectionAttributes (symbol "nil #_\"key is not present.\"")}
               (sql-jdbc.conn/connection-details->spec
                :mysql
                (assoc sample-connection-details :additional-options conn-attrs)))))))
+
+(defn- spec->allow-local-infile?
+  "Whether the MariaDB JDBC driver would let a server ask `spec`'s connection to read a file off the Metabase host.
+  Asks the driver's own URL parser rather than eyeballing the connection string, because URL parameters and connection
+  `Properties` do not carry equal weight and the last duplicate URL parameter wins."
+  [{:keys [subprotocol subname] :as spec}]
+  (let [props (Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)]
+      (.setProperty props (name k) (str v)))
+    (.-allowLocalInfile (.getOptions (UrlParser/parse (str "jdbc:" subprotocol ":" subname) props)))))
+
+(deftest ^:parallel local-infile-always-disabled-test
+  (testing "connections never honor `LOAD DATA LOCAL INFILE`"
+    (are [additional-options] (false? (spec->allow-local-infile?
+                                       (sql-jdbc.conn/connection-details->spec
+                                        :mysql
+                                        (cond-> sample-connection-details
+                                          additional-options (assoc :additional-options additional-options)))))
+      nil
+      "allowLocalInfile=true"
+      "useSSL=true&allowLocalInfile=true"
+      ;; the driver lets a later duplicate win, so ours has to be appended after whatever the user wrote
+      "allowLocalInfile=false&allowLocalInfile=true")))
+
+(deftest ^:parallel validate-db-details-rejects-dangerous-additional-options-test
+  (testing "MySQL inherits the shared SQL-JDBC denylist: socketFactory et al. are rejected"
+    (doseq [opt ["socketFactory=evil.SocketFactory"
+                 "sslfactory=evil.Factory"
+                 "hostnameverifier=evil.Verifier"
+                 ;; the driver's own denylist still applies too
+                 "autoDeserialize=true"
+                 "allowLoadLocalInfile=true"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :mysql {:additional-options opt}))))))
+  (testing "benign additional options are still allowed"
+    (doseq [opt [nil "tinyInt1isBit=false" "useSSL=true&trustServerCertificate=true"]]
+      (is (nil? (driver/validate-db-details! :mysql {:additional-options opt}))))))
+
+(deftest ^:synchronized local-infile-blocked-for-write-queries-test
+  (mt/test-driver :mysql
+    (testing "a write query cannot make the driver read a file off the Metabase host"
+      ;; Write queries — query actions, transforms — reach the database without the `-- Metabase::` remark that native
+      ;; queries carry, and that remark was the only thing keeping the driver from treating user SQL as a local-infile
+      ;; request. The connection now refuses local infile outright, so the remark no longer matters.
+      (let [spec      (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+            temp-file (File/createTempFile "local-infile" ".txt")]
+        (try
+          (spit temp-file "secret-from-the-metabase-host\n")
+          (jdbc/execute! spec "DROP TABLE IF EXISTS local_infile_loot")
+          (jdbc/execute! spec "CREATE TABLE local_infile_loot (line TEXT)")
+          (qp.store/with-metadata-provider (mt/id)
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (driver/execute-write-query!
+                          driver/*driver*
+                          {:type   :native
+                           :native {:query (format "LOAD DATA LOCAL INFILE '%s' INTO TABLE local_infile_loot"
+                                                   (.getAbsolutePath temp-file))}}))))
+          (is (= [] (jdbc/query spec "SELECT * FROM local_infile_loot"))
+              "nothing from the Metabase host made it into the warehouse")
+          (finally
+            (jdbc/execute! spec "DROP TABLE IF EXISTS local_infile_loot")
+            (.delete temp-file)))))))
+
+(deftest ^:parallel local-infile-enabled-for-uploads-test
+  (testing "the dedicated connection uploads bulk-load through is the one exception"
+    (is (true? (spec->allow-local-infile?
+                (#'mysql/set-local-infile
+                 (sql-jdbc.conn/connection-details->spec
+                  :mysql
+                  (assoc sample-connection-details :additional-options "allowLocalInfile=false"))
+                 true))))))
 
 (deftest read-timediffs-test
   (mt/test-driver :mysql
@@ -550,7 +719,12 @@
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
         (is (= ["JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?))" "$.\"boop\".\"foobar\".\"1234\""]
-               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))
+    (testing "a database-type that isn't a plain type name is rejected instead of spliced raw into CONVERT"
+      (let [evil-field {:database-type "signed); select 1 --" :nfc-path [:bleh :meh]}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid database type for MySQL CONVERT"
+                              (sql.qp/json-query :mysql boop-identifier evil-field)))))))
 
 (tx/defdataset json-unquote-test
   [["json_test"
@@ -613,6 +787,24 @@
                         database
                         (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
 
+(deftest json-unfolding-ignores-table-differing-only-in-case-test
+  (testing "JSON unfolding lists only the synced table's columns, not a table's differing only in case (#83790)"
+    (mt/test-driver :mysql
+      (when-not (mysql/mariadb? (mt/db))
+        (tx/drop-if-exists-and-create-db! driver/*driver* "json_case_test")
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "json_case_test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (doseq [statement ["CREATE TABLE `orders` (`id` INT PRIMARY KEY, `data` JSON);"
+                             "CREATE TABLE `Orders` (`id` INT PRIMARY KEY, `payload` JSON);"
+                             "INSERT INTO `orders` VALUES (1, '{\"a\": 1}');"]]
+            (jdbc/execute! spec [statement]))
+          (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+            (sync/sync-database! database {:scan :schema})
+            (is (= #{"id" "data" "data → a"}
+                   (t2/select-fn-set :name :model/Field
+                                     :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "orders")
+                                     :active true)))))))))
+
 (deftest json-alias-test
   (mt/test-driver :mysql
     (when (not (mysql/mariadb? (mt/db)))
@@ -654,12 +846,15 @@
             (sync/sync-table! table)
             (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
-                (let [field-clause [:field (u/the-id field) {:binning
-                                                             {:strategy :num-bins,
-                                                              :num-bins 100,
-                                                              :min-value 0.75,
-                                                              :max-value 54.0,
-                                                              :bin-width 0.75}}]]
+                (let [field-clause [:field
+                                    {:lib/uuid (str (random-uuid))
+                                     :binning
+                                     {:strategy :num-bins,
+                                      :num-bins 100,
+                                      :min-value 0.75,
+                                      :max-value 54.0,
+                                      :bin-width 0.75}}
+                                    (u/the-id field)]]
                   (is (= ["((FLOOR((((JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
@@ -840,6 +1035,10 @@
     (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
+    (testing "role names keep their case (GHY-3835): MySQL 8 backticked role identifiers are case-sensitive, so lowercasing them makes the follow-up `SHOW GRANTS ... USING` fail with error 3530"
+      (is (= {:type  :roles
+              :roles #{"`AWS_FOO_ROLE`@`%`"}}
+             (#'mysql/parse-grant "GRANT `AWS_FOO_ROLE`@`%` TO `mb_case_test`@`%`"))))
     (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))
     (testing "REVOKE grants (emitted under partial_revokes) are ignored rather than throwing"
       (is (nil? (#'mysql/parse-grant "REVOKE INSERT ON `test-data`.`foo` FROM 'metabase'@'localhost'")))
@@ -1053,6 +1252,7 @@
                                                   (driver/can-connect? :mysql details))))
           "allowLoadLocalInfile=true"
           "allowLoadLocalInfileInPath=1"
+          "allowLocalInfile=true"
           "allowUrlInLocalInfile=1"
           "autoDeserialize=1"
           "serverRSAPublicKeyFile=/path/to/file"))
@@ -1098,3 +1298,91 @@
               "query should throw rather than completing normally")
           (is (< elapsed 30000)
               (format "query should be cancelled well before SLEEP(60) completes naturally — took %.0f ms" elapsed)))))))
+
+(deftest ^:parallel compile-create-index-test
+  (testing "btree renders with backticks; UNIQUE only when asked, direction only on btree"
+    (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]]
+           (driver/compile-create-index :mysql nil "t"
+                                        {:kind :btree :name "by_cat" :columns [{:name "category"}]})))
+    (is (= [["CREATE UNIQUE INDEX `by_cat` ON `s`.`t` (`category` DESC)"]]
+           (driver/compile-create-index :mysql "s" "t"
+                                        {:kind :btree :name "by_cat" :unique true
+                                         :columns [{:name "category" :direction :desc}]}))))
+  (testing "fulltext has no UNIQUE and no per-column direction"
+    (is (= [["CREATE FULLTEXT INDEX `ft_cat` ON `t` (`category`)"]]
+           (driver/compile-create-index :mysql nil "t"
+                                        {:kind :fulltext :name "ft_cat" :unique true
+                                         :columns [{:name "category" :direction :asc}]}))))
+  (testing "MySQL has no CREATE INDEX IF NOT EXISTS, so :if-not-exists guards via dynamic SQL instead"
+    (let [stmts (driver/compile-create-index :mysql nil "t"
+                                             {:kind :btree :name "by_cat" :if-not-exists true
+                                              :columns [{:name "category"}]})]
+      (is (not-any? #(str/includes? (first %) "IF NOT EXISTS") stmts)
+          "no literal IF NOT EXISTS clause")
+      (is (str/includes? (first (last stmts)) "DEALLOCATE PREPARE")
+          "ends by deallocating the prepared guard statement"))))
+
+(deftest ^:parallel compile-create-index-hex-escaping-test
+  (let [hex     (fn [^String s] (codecs/bytes->hex (.getBytes s "UTF-8")))
+        expr    (fn [s] (format "CONVERT(UNHEX('%s') USING utf8mb4)" (hex s)))
+        decode  (fn [h] (String. ^bytes (codecs/hex->bytes h) "UTF-8"))
+        compile (fn [schema table nm]
+                  (driver/compile-create-index
+                   :mysql schema table
+                   {:kind :btree :name nm :if-not-exists true :columns [{:name "category"}]}))
+        joined  (fn [stmts] (str/join "\n" (map first stmts)))]
+    (testing ":if-not-exists true guards the create with dynamic SQL, inlining every string as hex"
+      (let [stmts        (compile nil "t" "by_cat")
+            sql          (joined stmts)
+            plain-create (ffirst (driver/compile-create-index
+                                  :mysql nil "t"
+                                  {:kind :btree :name "by_cat" :columns [{:name "category"}]}))]
+        (testing "shape: existence check, IF guard, then PREPARE/EXECUTE/DEALLOCATE"
+          (is (= 5 (count stmts)))
+          (is (str/includes? (ffirst stmts)
+                             "@mb_idx_exists := (SELECT COUNT(*) FROM information_schema.statistics"))
+          (is (str/includes? (first (nth stmts 1)) "@mb_idx_sql := IF(@mb_idx_exists > 0, 'DO 0'"))
+          (is (= ["PREPARE mb_idx_stmt FROM @mb_idx_sql"] (nth stmts 2)))
+          (is (= ["EXECUTE mb_idx_stmt"] (nth stmts 3)))
+          (is (= ["DEALLOCATE PREPARE mb_idx_stmt"] (nth stmts 4))))
+        (testing "table and index name are compared as hex-encoded utf8mb4 expressions"
+          (is (str/includes? sql (str "table_name = " (expr "t"))))
+          (is (str/includes? sql (str "index_name = " (expr "by_cat")))))
+        (testing "the embedded CREATE is exactly the plain create, hex-encoded"
+          (is (str/includes? sql (expr plain-create)))
+          (is (str/starts-with? (decode (hex plain-create)) "CREATE INDEX")))
+        (testing "no schema compares against DATABASE(), not a hex literal"
+          (is (str/includes? sql "table_schema = DATABASE()")))))
+    (testing "an explicit schema is inlined as hex too"
+      (is (str/includes? (joined (compile "s" "t" "by_cat"))
+                         (str "table_schema = " (expr "s")))))
+    (testing "a backslash in the name (which defeats ansi quote-doubling) is hex-encoded, never literal"
+      (let [nm  "my\\index"
+            sql (joined (compile nil "t" nm))]
+        (is (str/includes? (hex nm) "5c")
+            "sanity: the name's hex includes the backslash byte 5c")
+        (is (str/includes? sql (hex nm))
+            "the exact bytes (backslash included) are inlined as hex")
+        (is (str/includes? sql (str "index_name = " (expr nm))))
+        (is (not (str/includes? sql "\\"))
+            "no raw backslash survives anywhere in the SQL, so it cannot escape a literal")
+        (is (= nm (decode (hex nm)))
+            "the hex round-trips back to the original name")))
+    (testing "an injection-style name is hex-encoded and cannot break out of a literal"
+      (let [nm  "a' OR 1=1 -- "
+            sql (joined (compile nil "t" nm))]
+        (is (str/includes? sql (hex nm))
+            "the payload is inlined as hex")
+        (is (str/includes? sql (str "index_name = " (expr nm))))
+        (is (not (str/includes? sql "1=1"))
+            "the injection text never appears unencoded")
+        (is (not (str/includes? sql "OR 1=1")))
+        (is (= nm (decode (hex nm)))
+            "the hex round-trips back to the original name")))
+    (testing ":if-not-exists false emits the plain single-statement CREATE, no dynamic SQL"
+      (let [stmts (driver/compile-create-index
+                   :mysql nil "t"
+                   {:kind :btree :name "by_cat" :if-not-exists false :columns [{:name "category"}]})]
+        (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
+        (is (not (str/includes? (ffirst stmts) "PREPARE")))
+        (is (not (str/includes? (ffirst stmts) "UNHEX")))))))

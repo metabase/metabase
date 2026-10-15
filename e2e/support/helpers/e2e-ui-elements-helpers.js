@@ -31,7 +31,7 @@ export function menu() {
 }
 
 export function modal(options = {}) {
-  return cy.get(".mb-mantine-Modal-content[role='dialog']", options);
+  return cy.get("[role='dialog'][aria-modal='true']", options);
 }
 
 export function tooltip() {
@@ -48,10 +48,6 @@ export function miniPicker() {
 
 export function miniPickerBrowseAll() {
   return miniPicker().findByText("Browse all");
-}
-
-export function miniPickerOurAnalytics() {
-  return miniPicker().findByText("Our analytics");
 }
 
 export function miniPickerHeader() {
@@ -155,20 +151,39 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  // The toggle flips the sidebar, so blindly clicking it closes an
-  // already-open sidebar (e.g. right after visiting a dashboard, before it
-  // settles). Only click when it isn't already open so this is idempotent.
-  navigationSidebar().then(($nav) => {
-    if (!$nav.is(":visible")) {
-      appBar().findByTestId("sidebar-toggle").click();
-    }
-  });
+  setNavigationSidebarOpen(true);
   navigationSidebar().should("be.visible");
 }
 
+/**
+ * Close the main navigation sidebar by clicking the app bar toggle, if it's open.
+ *
+ * The navbar stays open until the user closes it, but most specs were written
+ * for the full-width layout of questions, dashboards and documents, so the
+ * shared `visit*` helpers call this after loading those pages.
+ */
 export function closeNavigationSidebar() {
-  appBar().findByTestId("sidebar-toggle").click();
+  setNavigationSidebarOpen(false);
   navigationSidebar().should("not.be.visible");
+}
+
+// The toggle flips the navbar, so only click it when the navbar is in the
+// wrong state. Re-check after acting in case the state changed under us (small
+// screens collapse the navbar on navigation) and try again if it did.
+function setNavigationSidebarOpen(isOpen, attempt = 0) {
+  const MAX_ATTEMPTS = 5;
+  navigationSidebar().then(($nav) => {
+    if ($nav.is(":visible") !== isOpen) {
+      // Not `appBar()`: its "Navigation bar" label is translated, and the
+      // visit helpers call this in specs that run in other locales.
+      cy.findByTestId("app-bar").findByTestId("sidebar-toggle").click();
+    }
+  });
+  navigationSidebar().then(($nav) => {
+    if ($nav.is(":visible") !== isOpen && attempt < MAX_ATTEMPTS) {
+      setNavigationSidebarOpen(isOpen, attempt + 1);
+    }
+  });
 }
 
 export function browseDatabases() {
@@ -313,14 +328,6 @@ export const undo = () => {
 
 export const getDraggableElements = () => {
   return cy.findAllByTestId(/draggable-item/);
-};
-
-export const moveColumnDown = (column, distance) => {
-  column
-    .trigger("mousedown", 0, 0, { force: true })
-    .trigger("mousemove", 5, 5, { force: true })
-    .trigger("mousemove", 0, distance * 50, { force: true })
-    .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
 /**

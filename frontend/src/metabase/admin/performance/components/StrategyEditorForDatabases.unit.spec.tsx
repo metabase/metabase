@@ -54,9 +54,12 @@ describe("StrategyEditorForDatabases (OSS)", () => {
 
   it("does not regard form as dirty when a default value is entered into an input (metabase#42974)", async () => {
     await selectCacheStrategy(/Adaptive/i);
-    await userEvent.click(await getSaveButton());
+    await changeInput(/minimum query duration/i, 1, 1);
     await changeInput(/multiplier/i, 10, 10);
-    // The form is not considered dirty, so the save button is not present
+    await userEvent.click(await getSaveButton());
+    // Re-entering the value it was saved with does not make the form dirty,
+    // so the save button is not present
+    await changeInput(/multiplier/i, 10, 10);
     expect(
       screen.queryByTestId("strategy-form-submit-button"),
     ).not.toBeInTheDocument();

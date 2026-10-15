@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
@@ -43,7 +43,7 @@ export const LegendDescriptionIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   margin: 0 0.25rem;
 
   &:hover {

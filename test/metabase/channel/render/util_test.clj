@@ -1,7 +1,31 @@
 (ns metabase.channel.render.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.render.util :as render-util]))
+
+(deftest ^:parallel dashcard-title-test
+  (testing "dashcard-title resolves a dashboard-level title override over the card name (UXW-4705)"
+    (let [card {:name "Card Name"}]
+      (testing "a regular dashcard title override wins over the card name"
+        (is (= "Dashboard Title"
+               (render-util/dashcard-title card {:visualization_settings {:card.title "Dashboard Title"}}))))
+      (testing "a visualizer dashcard's nested title override is respected"
+        (is (= "Visualizer Title"
+               (render-util/dashcard-title card {:visualization_settings {:visualization {:settings {:card.title "Visualizer Title"}}}}))))
+      (testing "the visualizer override takes precedence over a top-level one"
+        (is (= "Visualizer Title"
+               (render-util/dashcard-title card {:visualization_settings {:card.title    "Dashboard Title"
+                                                                          :visualization {:settings {:card.title "Visualizer Title"}}}}))))
+      (testing "a blank override is ignored (falls through)"
+        (is (= "Dashboard Title"
+               (render-util/dashcard-title card {:visualization_settings {:card.title    "Dashboard Title"
+                                                                          :visualization {:settings {:card.title ""}}}})))
+        (is (= "Card Name"
+               (render-util/dashcard-title card {:visualization_settings {:card.title ""}}))))
+      (testing "with no override, falls back to the card's own name"
+        (is (= "Card Name" (render-util/dashcard-title card {:visualization_settings {}})))
+        (is (= "Card Name" (render-util/dashcard-title card {})))))))
 
 ;; Test data and expected results for scalar funnel visualization
 (def scalar-funnel-definition
@@ -147,3 +171,22 @@
       (is (= (map #(select-keys % [:name :display_name]) (:cols expected-merged-data))
              (map #(select-keys % [:name :display_name]) (:cols result))))
       (is (= (:rows expected-merged-data) (:rows result))))))
+
+(deftest ^:parallel render-parameters-escapes-html-test
+  (testing "parameter names and values are HTML-escaped"
+    ;; Callers splice this fragment into the email body as-is, so it has to arrive escaped.
+    (let [name-html  "<b>Bold</b>"
+          value-html "R&D <i>x</i>"
+          rendered   (render-util/render-parameters
+                      [{:id    "f0d3d4d3"
+                        :type  "string/="
+                        :name  name-html
+                        :value [value-html]}])]
+      (testing "no markup from the parameter survives into the rendered HTML"
+        (is (not (str/includes? rendered name-html))
+            "parameter name was not escaped")
+        (is (not (str/includes? rendered value-html))
+            "parameter value was not escaped"))
+      (testing "the text is still shown, escaped"
+        (is (str/includes? rendered "&lt;b&gt;Bold&lt;/b&gt;"))
+        (is (str/includes? rendered "R&amp;D &lt;i&gt;x&lt;/i&gt;"))))))

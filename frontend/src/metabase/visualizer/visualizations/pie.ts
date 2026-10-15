@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   copyColumn,
@@ -11,6 +10,7 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   isDimension,
   isMetric,

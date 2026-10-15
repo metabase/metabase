@@ -16,8 +16,8 @@ import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: CardType;
-  selectedId: string;
-  databaseId: DatabaseId;
+  selectedId?: string;
+  databaseId?: DatabaseId | null;
   collection?: Collection;
   onSelect: (tableOrModelId: string) => void;
 }
@@ -42,8 +42,8 @@ export const SavedEntityList = ({
       ? {
           id: collection.id,
           models: [CARD_INFO[type].model],
-          sort_column: "name",
-          sort_direction: "asc",
+          "sort-column": "name",
+          "sort-direction": "asc",
         }
       : skipToken,
   );

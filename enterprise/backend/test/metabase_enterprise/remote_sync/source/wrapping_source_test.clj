@@ -9,15 +9,14 @@
   (list-files [_]
     (keys files))
 
+  (list-dir [_ path]
+    (source/paths->children (keys files) path))
+
   (read-file [_ path]
     (get files path))
 
-  (write-files! [_ _message new-files]
-    (into {} (map (juxt :path :content) new-files))
-    "written-files-version")
-
-  (apply-changes! [_ _message _upserts _delete-paths]
-    "written-files-version")
+  (open-commit [_]
+    (throw (UnsupportedOperationException. "open-commit not implemented in this test mock")))
 
   (version [_]
     "mock-version"))
@@ -102,9 +101,6 @@
 (deftest wrapping-source-is-read-only-test
   (testing "WrappingSnapshot is a read-only ingestion view: write operations throw rather than write"
     (let [mock-source  (->MockSource {"collections/foo.yaml" "foo-content"})
-          wrapped-snap (source/->WrappingSnapshot (source.p/snapshot mock-source) [#"collections/.*"])
-          file-spec    {:path "collections/foo.yaml" :content "foo-content"}]
+          wrapped-snap (source/->WrappingSnapshot (source.p/snapshot mock-source) [#"collections/.*"])]
       (is (thrown? UnsupportedOperationException
-                   (source.p/write-files! wrapped-snap "test commit" [file-spec])))
-      (is (thrown? UnsupportedOperationException
-                   (source.p/apply-changes! wrapped-snap "test commit" [file-spec] []))))))
+                   (source.p/open-commit wrapped-snap))))))

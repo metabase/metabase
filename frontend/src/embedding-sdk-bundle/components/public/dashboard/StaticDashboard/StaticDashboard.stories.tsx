@@ -9,6 +9,7 @@ import {
 
 import type { StaticDashboardProps } from "./StaticDashboard";
 
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
