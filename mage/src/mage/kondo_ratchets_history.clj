@@ -1469,12 +1469,12 @@
                            :since [(str "since " (subs arg 0 10)) (ratchet-commits repo (str arg ".." (:head repo)))]
                            :all   ["of all time" (map :sha records)]
                            :days  [(format "in the last %d days" arg)
-                                   (ratchet-commits repo (format "--since=%d.days.ago" arg) (:head repo))])]
-        (let [in-range? (comp (set shas) :sha)]
-          ;; counted from the records before verdicts, since a commit can lose every change to them
-          (run! println (summary title
-                                 (count (filter (every-pred in-range? changed?) records))
-                                 (report (filter in-range? settled)))))))))
+                                   (ratchet-commits repo (format "--since=%d.days.ago" arg) (:head repo))])
+            in-range?    (comp (set shas) :sha)]
+        ;; counted from the records before verdicts, since a commit can lose every change to them
+        (run! println (summary title
+                               (count (filter (every-pred in-range? changed?) records))
+                               (report (filter in-range? settled))))))))
 
 (defn run
   "Do what the task's `options` and `arguments` ask for, on `repo` ([[repo]])."
