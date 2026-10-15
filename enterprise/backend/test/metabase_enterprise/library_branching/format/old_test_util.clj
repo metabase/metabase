@@ -4,7 +4,8 @@
   instance-local and derived values)."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.library-branching.format.writer :as writer]))
+   [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,7 +13,7 @@
 
 (defn- slug
   [s]
-  (str/replace (str/lower-case s) #"[^a-z0-9]+" "_"))
+  (str/replace (u/lower-case-en s) #"[^a-z0-9]+" "_"))
 
 (defn collection-doc
   "The old document of collection `id`."
@@ -41,7 +42,7 @@
           :parameters             []
           :parameter_mappings     []
           :dataset_query          (:query attrs)
-          :visualization_settings (assoc (:visualization_settings attrs) :column_settings nil)
+          :visualization_settings (merge {:column_settings nil} (:visualization_settings attrs))
           :card_schema            24
           :query_type             "query"
           :database_id            "Sample Database"

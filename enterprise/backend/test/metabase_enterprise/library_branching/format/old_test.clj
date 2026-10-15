@@ -15,7 +15,8 @@
    [metabase-enterprise.library-branching.format.old :as old]
    [metabase-enterprise.library-branching.format.old-test-util :as old.tu]
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
-   [metabase-enterprise.library-branching.format.tree :as tree])
+   [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase.util :as u])
   (:import
    (java.io File)
    (java.nio.charset StandardCharsets)
@@ -88,7 +89,7 @@
   (str "name: " coll-name "\n"
        "description: null\n"
        "entity_id: " entity-id "\n"
-       "slug: " (str/replace (str/lower-case coll-name) #"\s+" "_") "\n"
+       "slug: " (str/replace (u/lower-case-en coll-name) #"\s+" "_") "\n"
        "created_at: '2024-08-28T09:46:18.671622Z'\n"
        "archived: false\n"
        "type: " (or type "null") "\n"
@@ -292,7 +293,7 @@
 (def ^:private orders ["test-db" nil "Test Table"])
 
 (def ^:private table-settings-yaml
-  (str "collection_id: DataCollectionXXXXXXXX\ncreated_at: '2024-08-28T09:46:18.671622Z'\n"
+  (str "collection_id: DataCollectionXXXXXXX\ncreated_at: '2024-08-28T09:46:18.671622Z'\n"
        "display_name: Renamed\ndescription: Curated.\ndescription_set: true\nis_published: true\n"
        "table_id: [test-db, null, Test Table]\nserdes/meta:\n- model: TableUserSettings\n"))
 
@@ -305,7 +306,7 @@
        "field_id: [test-db, null, Test Table, F2]\nserdes/meta:\n- model: Dimension\n"))
 
 (def ^:private settings-item
-  (item :published-table "Renamed" "DataCollectionXXXXXXXX"
+  (item :published-table "Renamed" "DataCollectionXXXXXXX"
         {:description "Curated." :fields {:F1 {:description "curated"}}}
         #{[:table [:env orders]] [:field [:env (conj orders "F1")]]}))
 
@@ -336,9 +337,9 @@
 
 (deftest user-set-values-test
   (testing "a value whose flag is false or absent is the value of warehouse sync, not one that the user set"
-    (is (= {orders (item :published-table "Renamed" "DataCollectionXXXXXXXX" {:caveats "Late data."}
+    (is (= {orders (item :published-table "Renamed" "DataCollectionXXXXXXX" {:caveats "Late data."}
                          #{[:table [:env orders]]})}
-           (snapshot-of [(str "collection_id: DataCollectionXXXXXXXX\ndisplay_name: Renamed\n"
+           (snapshot-of [(str "collection_id: DataCollectionXXXXXXX\ndisplay_name: Renamed\n"
                               "description: From sync.\ndescription_set: false\npoints_of_interest: Sync too.\n"
                               "caveats: Late data.\ncaveats_set: true\nis_published: true\n"
                               "table_id: [test-db, null, Test Table]\nserdes/meta:\n- model: TableUserSettings\n")]))))

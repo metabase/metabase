@@ -10,11 +10,12 @@
   - foreign files: every other file, also a YAML file that does not parse. Sync never decodes a foreign file, and a
     push keeps it.
 
-  [[decode]] also completes the system items that a tree lacks ([[with-system-items]])."
+  [[decode]] reads a tree in either format, and completes the system items that it lacks ([[with-system-items]])."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.manifest :as manifest]
+   [metabase-enterprise.library-branching.format.old :as old]
    [metabase-enterprise.library-branching.format.tree :as tree])
   (:import
    (java.security MessageDigest)))
@@ -164,12 +165,26 @@
         s))))
 
 (defn decode
-  "The snapshot that the tree `files` (`{path bytes}`) holds, with the codecs `codecs`: `tree/decode-tree` of its
-  [[claimed-files]] in the order of their paths, then [[with-system-items]]. `{:snapshot s}`, or `{:findings [f ...]}`
-  of `tree/decode-tree`."
+  "The snapshot that the tree `files` (`{path bytes}`) holds, with the codecs `codecs`, then [[with-system-items]]:
+  `{:snapshot s}`, or `{:findings [f ...]}`. A tree in the old format ([[old-format?]]) is `old/decode-tree` of its
+  old-format item files, with the options `opts`; one that also holds item files of the new format is a
+  `:mixed-format` finding. Any other tree is `tree/decode-tree` of its [[claimed-files]]. Both decode the files in the
+  order of their paths."
   ([codecs files]
    (decode codecs files {}))
-  ([codecs files _opts]
-   (let [r (tree/decode-tree codecs (vals (into (sorted-map) (claimed-files (item-claims files)))))]
+  ([codecs files opts]
+   (let [claims (item-claims files)
+         in-order #(vals (into (sorted-map) %))
+         r      (cond
+                  (not (old-format? claims))
+                  (tree/decode-tree codecs (in-order (claimed-files claims)))
+
+                  (seq (:items claims))
+                  {:findings [{:type   :mixed-format
+                               :reason (str "The tree holds item files of the old format and of the new format, and no"
+                                            " format version file.")}]}
+
+                  :else
+                  (old/decode-tree codecs (in-order (:old-items claims)) opts))]
      (cond-> r
        (:snapshot r) (update :snapshot with-system-items)))))

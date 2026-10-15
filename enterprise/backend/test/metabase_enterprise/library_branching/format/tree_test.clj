@@ -185,7 +185,7 @@
     :edits  [[:replace '(= format-version (:format doc)) true] [:replace '(empty? docs) false]]}
    {:name   :schema-unchecked
     :doc    "decode-tree takes what a codec returns without the check against the codec's schema."
-    :target `tree/decode-file
+    :target `tree/decode-item
     :edits  [[:replace '(registry/validate (codec/schema c) item) true]]}])
 
 (deftest tree-mutations-test
