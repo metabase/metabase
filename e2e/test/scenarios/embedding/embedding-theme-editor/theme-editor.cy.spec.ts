@@ -64,6 +64,7 @@ describe(
 
     it("loads the theme editor page and shows the theme name", () => {
       H.updateSetting("enable-embedding-modular", false);
+      H.updateSetting("show-modular-embed-terms", false);
 
       createThemeViaApi("My custom theme").then((theme) => {
         visitThemeEditor(theme.id);
@@ -314,6 +315,30 @@ describe(
         // `undoToast()` (singular) yields undefined when multiple toasts match.
         H.undoToastList().contains("Theme saved").should("be.visible");
       });
+    });
+
+    it("asks to accept the usage conditions before enabling embedding for the first time", () => {
+      H.updateSetting("enable-embedding-modular", false);
+      H.updateSetting("show-modular-embed-terms", true);
+
+      createThemeViaApi("Preview test").then((theme) => {
+        visitThemeEditor(theme.id);
+      });
+
+      H.main()
+        .findByText(/enable modular embedding and agree to the/)
+        .should("be.visible");
+
+      H.main()
+        .findByRole("button", { name: /Enable modular embedding/ })
+        .click();
+
+      H.modal()
+        .findByText("Each end user needs their own Metabase account")
+        .should("be.visible");
+      cy.findByRole("button", { name: "Agree" }).click();
+
+      H.main().findByText("Theme preview").should("be.visible");
     });
 
     describe("preview picker", () => {
