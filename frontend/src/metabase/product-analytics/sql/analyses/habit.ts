@@ -1,9 +1,16 @@
 import type { AnalysisSpec } from "../../spec/types";
 import { seconds } from "../compile/actorPredicate";
+import { dateTimeLit, num } from "../compile/dialect";
 import { grainLabel } from "../compile/grain";
-import type { QueryPlan } from "../compose";
+import type { DrillPoint, QueryPlan } from "../compose";
 
-import { scopedEvents, splitCols, splitGroup, startOf } from "./base";
+import {
+  pointString,
+  scopedEvents,
+  splitCols,
+  splitGroup,
+  startOf,
+} from "./base";
 
 export const planHabit = (spec: AnalysisSpec): QueryPlan => {
   const habit = spec.habit;
@@ -65,7 +72,14 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
         "GROUP BY day",
       ].join("\n"),
     };
+    const dailyMembers = (point: DrillPoint): string | null => {
+      const day = pointString(point.day);
+      return day === null
+        ? null
+        : `SELECT DISTINCT actor FROM scoped_events\nWHERE toStartOfDay(ts) = ${dateTimeLit(day)}`;
+    };
     return {
+      members: dailyMembers,
       ctes: [...base.ctes, daily],
       select: [
         "SELECT",
@@ -83,7 +97,15 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
     };
   }
 
+  const histogramMembers = (point: DrillPoint): string | null => {
+    const periods = pointString(point.periods);
+    return periods === null
+      ? null
+      : `SELECT actor FROM active_periods\nWHERE periods = ${num(periods)}`;
+  };
+
   return {
+    members: histogramMembers,
     ctes: [...base.ctes, counts],
     select: [
       "SELECT",

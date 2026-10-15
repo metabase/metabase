@@ -1,8 +1,8 @@
 import type { AnalysisSpec } from "../../spec/types";
-import { INTERVAL } from "../compile/dialect";
-import type { QueryPlan } from "../compose";
+import { INTERVAL, dateTimeLit, lit } from "../compile/dialect";
+import type { DrillPoint, QueryPlan } from "../compose";
 
-import { scopedEvents, startOf } from "./base";
+import { pointString, scopedEvents, startOf } from "./base";
 
 export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
   const lifecycle = spec.lifecycle;
@@ -52,7 +52,8 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     deps: ["actor_periods"],
     body: [
       "SELECT",
-      `  period + INTERVAL ${step} AS period,`,
+      // Not aliased `period`: ClickHouse would read the alias in WHERE.
+      `  period + INTERVAL ${step} AS quiet_period,`,
       "  count() AS actors",
       "FROM (",
       "  SELECT",
@@ -63,7 +64,7 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
       "  FROM actor_periods",
       ")",
       `WHERE next_period <= period OR next_period > period + INTERVAL ${step}`,
-      "GROUP BY period",
+      "GROUP BY quiet_period",
     ].join("\n"),
   };
 
@@ -74,6 +75,30 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     "dormant",
   ];
   const wanted = shown.filter((state) => state !== "dormant");
+
+  const members = (point: DrillPoint): string | null => {
+    const clickedPeriod = pointString(point.period);
+    const state = pointString(point.state);
+    if (clickedPeriod === null || state === null) {
+      return null;
+    }
+    const at = dateTimeLit(clickedPeriod);
+    if (state !== "dormant") {
+      return `SELECT actor FROM classified\nWHERE period = ${at} AND state = ${lit(state)}`;
+    }
+    return [
+      "SELECT actor FROM (",
+      "  SELECT",
+      "    actor,",
+      "    period,",
+      "    leadInFrame(period) OVER (PARTITION BY actor ORDER BY period",
+      "      ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS next_period",
+      "  FROM actor_periods",
+      ")",
+      `WHERE (next_period <= period OR next_period > period + INTERVAL ${step})`,
+      `  AND period + INTERVAL ${step} = ${at}`,
+    ].join("\n");
+  };
 
   return {
     ctes: [...base.ctes, periods, classified, quiet],
@@ -86,7 +111,7 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
         : "  WHERE 0",
       "  GROUP BY period, state",
       "  UNION ALL",
-      "  SELECT period, 'dormant' AS state, -actors AS actors",
+      "  SELECT quiet_period AS period, 'dormant' AS state, -actors AS actors",
       `  FROM went_quiet${shown.includes("dormant") ? "" : "\n  WHERE 0"}`,
       ")",
       "ORDER BY period, state",
@@ -95,5 +120,6 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
       ...base.warnings,
       "“Went quiet” is derived from gaps between active periods, so an actor who never returns is counted quiet once — in the period after their last activity.",
     ],
+    members,
   };
 };

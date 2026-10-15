@@ -26,3 +26,7 @@ export const INTERVAL: Record<Granularity, string> = {
 
 export const bucket = (expr: string, granularity: Granularity): string =>
   `toStartOfInterval(${expr}, INTERVAL ${INTERVAL[granularity]})`;
+
+/** A date or datetime as the query returned it, e.g. a clicked chart period. */
+export const dateTimeLit = (value: string): string =>
+  `parseDateTimeBestEffort(${lit(value)})`;

@@ -3,7 +3,9 @@ import { t } from "ttag";
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
+import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
+import { pointString } from "../sql/analyses/base";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
@@ -155,6 +157,25 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         };
       case "threshold":
         return {};
+    }
+  },
+  describePoint: (settings, point) => {
+    switch (settings["habit.measure"]) {
+      case "histogram": {
+        const periods = pointString(point.periods);
+        if (periods === null) {
+          return null;
+        }
+        return settings["habit.sub_period"] === "day"
+          ? t`Active on ${periods} different days`
+          : t`Active in ${periods} different weeks`;
+      }
+      case "ratio": {
+        const day = formatPeriod(point.day, "day");
+        return t`Active on ${day}`;
+      }
+      case "threshold":
+        return null;
     }
   },
 };

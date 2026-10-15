@@ -1,11 +1,17 @@
 import type { AnalysisSpec } from "../../spec/types";
 import { seconds } from "../compile/actorPredicate";
-import { bucket, lit } from "../compile/dialect";
+import { bucket, dateTimeLit, lit, num } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import { grainLabel } from "../compile/grain";
-import type { Cte, QueryPlan } from "../compose";
+import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
-import { scopedEvents, splitCols, splitGroup } from "./base";
+import {
+  parseStepLabel,
+  pointString,
+  scopedEvents,
+  splitCols,
+  splitGroup,
+} from "./base";
 
 const MODE: Record<string, string> = {
   strict: ", 'strict_order'",
@@ -208,5 +214,28 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n");
   }
 
-  return { ctes, select, warnings };
+  const members = (point: DrillPoint): string | null => {
+    const from = `SELECT actor FROM ${source}`;
+    if (view === "overTime") {
+      const period = pointString(point.period);
+      return period === null
+        ? null
+        : `${from}\nWHERE t_1 > 0 AND ${bucket("t_1", spec.bucket.granularity)} = ${dateTimeLit(period)}`;
+    }
+    if (view === "timeToConvert") {
+      const hours = pointString(point.hours);
+      return hours === null
+        ? null
+        : `${from}\nWHERE level >= ${n} AND floor(dateDiff('minute', t_1, t_${n}) / 60) = ${num(hours)}`;
+    }
+    const step = parseStepLabel(point.label)?.step;
+    if (step === undefined || step < 1 || step > n) {
+      return null;
+    }
+    return funnel.ordering === "any"
+      ? `${from}\nWHERE hit_${step}`
+      : `${from}\nWHERE level >= ${step}`;
+  };
+
+  return { ctes, select, warnings, members };
 };

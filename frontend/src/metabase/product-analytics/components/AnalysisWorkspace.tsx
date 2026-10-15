@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -9,8 +10,12 @@ import type { Card, ConcreteTableId } from "metabase-types/api";
 
 import type { AnalysisSettingsByKind } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
+import { useDrillActions } from "../drills/use-drill-actions";
+import { useDrillQueries } from "../drills/use-drill-queries";
 import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
+import { grainLabel } from "../sql/compile/grain";
+import type { DrillPoint } from "../sql/compose";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
@@ -18,7 +23,10 @@ import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { FilterPills } from "./FilterPills";
 import { SettingsPanel } from "./SettingsPanel";
+import { CreateSegmentModal } from "./drills/CreateSegmentModal";
+import { MembersModal } from "./drills/MembersModal";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
@@ -42,13 +50,42 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     onSaved,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
-  const { config, table, widgets, missing, display, vizSettings, query } =
-    useAnalysis({
-      kind,
-      tableId,
-      stored,
-      onChangeSettings,
-    });
+  const {
+    config,
+    table,
+    usersTable,
+    computed,
+    spec,
+    widgets,
+    missing,
+    display,
+    vizSettings,
+    query,
+  } = useAnalysis({
+    kind,
+    tableId,
+    stored,
+    onChangeSettings,
+  });
+  const drillQueries = useDrillQueries({
+    spec,
+    compiledBase: query.compiledBase,
+    table,
+    usersTable,
+    settings: computed,
+  });
+  const describePoint = useCallback(
+    (point: DrillPoint) => config.describePoint?.(computed, point) ?? null,
+    [config, computed],
+  );
+  const drillActions = useDrillActions({
+    tableId,
+    stored,
+    settings: computed,
+    countColumn: grainLabel(computed.counting),
+    describePoint,
+    queries: drillQueries,
+  });
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? t`${config.name} analysis on ${tableName}`;
@@ -105,6 +142,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           onPanelChange={setPanel}
           onSave={handleSave}
         />
+        <FilterPills
+          value={computed.filters}
+          table={table}
+          onChange={(filters) =>
+            widgets.find((widget) => widget.id === "filters")?.onChange(filters)
+          }
+        />
       </Stack>
       <Group
         gap="lg"
@@ -132,6 +176,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           missing={missing}
           setupLabel={config.setupLabel}
           onOpenSetup={panel !== "setup" ? () => setPanel("setup") : undefined}
+          clickActionsMode={drillActions.mode}
         />
       </Group>
       {questionToCreate !== undefined && (
@@ -152,9 +197,28 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           onChangeLocation={navigate}
         />
       )}
+      {drillActions.modal?.type === "members" && (
+        <MembersModal
+          drill={drillActions.modal.drill}
+          queries={drillQueries}
+          onClose={drillActions.closeModal}
+        />
+      )}
+      {drillActions.modal?.type === "segment" && (
+        <CreateSegmentModal
+          drill={drillActions.modal.drill}
+          settings={computed}
+          table={table}
+          queries={drillQueries}
+          toCohort={drillActions.toCohort}
+          onClose={drillActions.closeModal}
+        />
+      )}
       <LeaveRouteConfirmModal
         isEnabled={hasUnsavedChanges}
-        isLocationAllowed={isLocationAllowed}
+        isLocationAllowed={() =>
+          isLocationAllowed() || drillActions.isDrilling()
+        }
       />
     </Stack>
   );

@@ -95,6 +95,7 @@ export const useAnalysis = <K extends AnalysisKind>({
     events: flags.events,
     extraColumns: config.getExtraColumns?.(computed, context) ?? [],
     usersTable: usersTable?.link,
+    filters: computed.filters,
   });
   const spec = specResult.status === "ready" ? specResult.spec : undefined;
   const missing = specResult.status === "incomplete" ? specResult.missing : [];
@@ -103,7 +104,9 @@ export const useAnalysis = <K extends AnalysisKind>({
   return {
     config,
     table,
+    usersTable,
     computed,
+    base,
     widgets,
     spec,
     missing,

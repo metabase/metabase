@@ -6,7 +6,9 @@ import type { VisualizationSettings } from "metabase-types/api";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
+import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
+import { parseStepLabel, pointString } from "../sql/analyses/base";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
@@ -209,6 +211,32 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "graph.metrics": [people],
           ...getSeriesSettings(people, peopleTitle),
         };
+    }
+  },
+  describePoint: (settings, point) => {
+    switch (settings["funnel.view"]) {
+      case "steps": {
+        const parsed = parseStepLabel(point.label);
+        if (parsed === null) {
+          return null;
+        }
+        const { step, name } = parsed;
+        return step === 1
+          ? t`Did step 1: ${name}`
+          : t`Reached step ${step}: ${name}`;
+      }
+      case "overTime": {
+        const period = formatPeriod(point.period, settings.granularity);
+        return t`Started the funnel in ${period}`;
+      }
+      case "timeToConvert": {
+        const hours = pointString(point.hours);
+        if (hours === null) {
+          return null;
+        }
+        const next = Number(hours) + 1;
+        return t`Finished the funnel in ${hours}–${next} hours`;
+      }
     }
   },
 };
