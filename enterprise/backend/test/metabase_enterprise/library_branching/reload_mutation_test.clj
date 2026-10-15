@@ -4,9 +4,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.reload-test :as reload-test]
-   [metabase-enterprise.library-branching.reload-test-util :as reload-test-util]))
+   [metabase-enterprise.library-branching.reload-test-util :as reload-test-util]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes one rule of the reload order."

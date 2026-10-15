@@ -124,6 +124,9 @@
                                        {:tests [#'clamp-test]})]
     (is (= [:invalid :invalid] (map :result results)))
     (is (re-find #"matches no form" (:reason (first results))))
+    (testing "the reason of a stale edit names the target and the file of its source"
+      (is (re-find #"Target metabase-enterprise\.library-branching\.mutation\.fixtures/clamp, source form at \S*mutation/fixtures\.clj:\d+"
+                   (:reason (first results)))))
     (is (re-find #"no-such-function" (:reason (second results))))
     (is (identical? root-before (root #'fixtures/clamp)))))
 
