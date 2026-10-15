@@ -3990,8 +3990,8 @@
 
   enterprise/library-branching
   {:team "UX West"
-   :api  #{}
-   :uses #{}}
+   :api #{metabase-enterprise.library-branching.init}
+   :uses #{settings util}}
 
   enterprise/mcp
   {:team    "Metabot"
