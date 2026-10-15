@@ -116,7 +116,13 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
   },
   {
     id: "tables",
-    models: new Set(["table", "field", "segment", "measure"]),
+    models: new Set([
+      "tableusersettings",
+      "fieldusersettings",
+      "dimension",
+      "segment",
+      "measure",
+    ]),
     icon: "synced_collection",
     priority: 50,
   },
@@ -341,7 +347,8 @@ const getSpecById = (id: string): DisplayGroupSpec | undefined => {
  * Models that are children of tables (get their collection from a parent table)
  */
 const TABLE_CHILD_MODELS: Set<RemoteSyncEntityModel> = new Set([
-  "field",
+  "fieldusersettings",
+  "dimension",
   "segment",
   "measure",
 ]);
@@ -403,7 +410,7 @@ const sortEntitiesByStatus = (
  * dirty tables and orphan children (children whose parent table is not dirty).
  */
 const buildTableGroups = (items: RemoteSyncEntity[]): TableGroup[] => {
-  const tables = items.filter((item) => item.model === "table");
+  const tables = items.filter((item) => item.model === "tableusersettings");
   const tableChildren = items.filter((item) => isTableChildModel(item.model));
   const childrenByTableId = _.groupBy(tableChildren, (e) => e.table_id || 0);
   const tableIds = new Set(tables.map((tbl) => tbl.id));
@@ -446,7 +453,7 @@ const filterOtherItems = (
       return false;
     }
     return (
-      item.model !== "table" &&
+      item.model !== "tableusersettings" &&
       !isTableChildModel(item.model) &&
       !(item.model === "collection" && item.id === Number(collectionId))
     );
