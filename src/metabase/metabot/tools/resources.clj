@@ -783,23 +783,46 @@
 ;; ----- Dispatch -----
 
 (def ^:private numeric-id-uri-types
-  "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
+  "URI entity-type segments whose next segment must be a numeric id (see `dispatch`).
+   `chart` and `query` are excluded: conversation ids are not numeric."
   #{"database" "collection" "table" "model" "question" "metric"
-    "measure" "segment" "transform" "dashboard"})
+    "measure" "segment" "transform" "dashboard" "document"})
+
+(def ^:private id-lookup-hints
+  "Per-entity-type remedy for a non-numeric id segment, keyed by type segment. Databases and
+   collections are reached by browsing, not by search, so a caller working from a name has no search
+   result to copy a `uri` from. Point it at the navigation URI that lists ids instead. Measures and
+   segments aren't searchable; they are listed on their parent table. Every `metabase://` URI named
+   here must resolve (see `id-lookup-hints-uris-resolve-test`)."
+  {"database"   "read metabase://databases and use the numeric `id` of the database"
+   "collection" (str "read metabase://collections?tree=true and use the numeric `id` of the collection "
+                     "(the root collection has no id: metabase://collections lists its children)")
+   "measure"    "read the parent table (metabase://table/{id}) and use the numeric `id` of the measure"
+   "segment"    "read the parent table (metabase://table/{id}) and use the numeric `id` of the segment"
+   "transform"  "copy the `uri` attribute from a transform search result, or use its numeric `id` attribute"})
+
+(def ^:private default-id-lookup-hint
+  "Remedy for entity types with no navigation URI: they are reachable via search."
+  "copy the `uri` attribute from a search result, or use the entity's numeric `id` attribute")
 
 (defn- check-numeric-id-segment!
-  "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
-   where the numeric id belongs; without this check that fails downstream as a bare 404 the
-   LLM misreads as a permissions problem. Throw a directive error instead so it
-   self-corrects in one step."
-  [uri [type-seg id-seg]]
+  "Entity URIs take numeric ids only. Two misses are common: pasting a 21-char entity id where the
+   numeric id belongs, and pasting a database name, since users refer to databases by name. Either
+   one otherwise fails downstream as a bare 404, which the LLM misreads as a permissions problem or
+   a missing entity. Throw a directive error naming the next call instead, so it self-corrects in
+   one step."
+  [uri [type-seg id-seg & rst]]
   (when (and (numeric-id-uri-types type-seg)
              (some? id-seg)
              (nil? (parse-long id-seg)))
     (throw (ex-info
-            (str "Invalid id `" id-seg "` in URI. read_resource URIs use the numeric entity "
-                 "id — copy the `uri` attribute from a search result, or build the URI from "
-                 "its numeric `id` attribute, e.g. metabase://" type-seg "/42.")
+            (str "Invalid id `" id-seg "` in URI: the `" type-seg "` segment takes a numeric id, "
+                 (if (re-matches #"\d+" id-seg)
+                   "and this one is out of range. "
+                   "not a name or an entity id. ")
+                 "To find it, "
+                 (get id-lookup-hints type-seg default-id-lookup-hint)
+                 ", then request e.g. metabase://" (str/join "/" (list* type-seg "42" rst)) ".")
             {:agent-error? true
              :status-code  400
              :uri          uri
