@@ -173,9 +173,9 @@
           (module-history/cli-update {:options {:dir "/tmp/out", :ref "origin/stack-tip"}})
           (module-history/cli-update {:options {:dir "/tmp/out", :ref "stack-tip"}})))
       (is (= [["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""]
-              ["git" "fetch" "--quiet" "origin" "master"]
+              ["git" "fetch" "--quiet" "origin" "+refs/heads/master:refs/remotes/origin/master"]
               ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""]
-              ["git" "fetch" "--quiet" "origin" "stack-tip"]
+              ["git" "fetch" "--quiet" "origin" "+refs/heads/stack-tip:refs/remotes/origin/stack-tip"]
               ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""
                ":ref" "\"origin/stack-tip\""]
               ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""

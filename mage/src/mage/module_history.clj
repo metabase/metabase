@@ -323,7 +323,8 @@
         (when-not no-fetch
           (when-let [branch (remote-branch (or ref "origin/master"))]
             (println (str "Fetching origin/" branch "..."))
-            (sh! {} ["git" "fetch" "--quiet" "origin" branch])))
+            ;; Name the destination: a clone that fetches only some branches would update only FETCH_HEAD.
+            (sh! {} ["git" "fetch" "--quiet" "origin" (str "+refs/heads/" branch ":refs/remotes/origin/" branch)])))
         (measure! dir ref))
       (when config
         (publish! (boolean dry-run) dir config (fs/parent (fs/absolutize config-file))))
