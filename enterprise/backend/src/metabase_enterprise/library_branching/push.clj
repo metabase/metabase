@@ -100,9 +100,11 @@
   "Writes commit `files` with `parents`, then, as task `task`: passes the commit point, moves `branch` to the commit
   (from base `b`, or from no ref when `new-branch?`), and in the record step moves the base from `b` to it with the
   digests of the pushed snapshot, calls `on-record` when the base moved, and ends the task with the [[outcome]] of
-  `shadowed`."
-  [inst store task branch message b parents new-branch? files digests on-record shadowed]
-  (let [c      (store/write-commit store parents files message)
+  `shadowed`. `(on-phase p)` is called at the start of the apply (the write of the commit) and of the commit."
+  [inst store task branch message b parents new-branch? files digests on-record shadowed on-phase]
+  (let [_      (on-phase :apply)
+        c      (store/write-commit store parents files message)
+        _      (on-phase :commit)
         marked (tasks/mark-committing! task)]
     (if (not= :ok marked)
       {:result :fenced :status (:fenced marked)}
@@ -160,11 +162,18 @@
   - `:new-branch?`: push to a new branch: `branch` must not exist, and the push creates it at a commit whose parent
     is the base, also when the snapshot equals the content of the base; the branch of the base does not move;
   - `:on-record`: a function of no argument that the record step calls when the base moved, so that its writes
-    commit with the move of the base and the end of the task (default: none)."
+    commit with the move of the base and the end of the task (default: none);
+  - `:on-phase`: a function of a key of `tasks/phase-starts`, called at the start of the read, the plan, the apply (the
+    write of the commit) and the commit (before the commit point); a throw of it stops the push before its commit
+    point (default: none)."
   ([inst store branch task]
    (push! inst store branch task {}))
-  ([inst store branch task {:keys [codecs message new-branch? on-record]
-                            :or   {codecs kinds/codecs message default-message on-record (constantly nil)}}]
+  ([inst store branch task {:keys [codecs message new-branch? on-record on-phase]
+                            :or   {codecs    kinds/codecs
+                                   message   default-message
+                                   on-record (constantly nil)
+                                   on-phase  (constantly nil)}}]
+   (on-phase :read)
    (if-not (settings/library-branching-enabled)
      {:result :disabled}
      (let [b (instance/base inst)
@@ -174,6 +183,7 @@
          (and (not new-branch?) (not= b h)) {:result :remote-moved :base b :head h}
          :else
          (let [{s :snapshot shadowed :shadowed-tables} (instance/read-snapshot inst)
+               _         (on-phase :plan)
                digests   (writer/item-digests codecs s)
                ;; A base that the store does not hold (no branch held it at the fetch) can be no parent of a push to a
                ;; new branch: the commit has no parent and no foreign files then.
@@ -187,5 +197,5 @@
                            (if-not files
                              {:result :invalid :findings (:findings t)}
                              (commit! inst store task branch message b (if @base-tree [b] []) new-branch? files digests
-                                      on-record shadowed))))))
+                                      on-record shadowed on-phase))))))
              (seq shadowed) (assoc :shadowed-tables shadowed))))))))

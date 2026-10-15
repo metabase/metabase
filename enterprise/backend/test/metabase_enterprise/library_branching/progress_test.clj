@@ -38,7 +38,7 @@
   (let [{:keys [id]} (tasks/start! kind (mt/user->id :crowberto))]
     (tasks/run-task! id work)))
 
-(defn- recording
+(defn- recording!
   "`[(f) fractions]`: `fractions` are the fractions that `tasks/report-progress!` wrote during `(f)`, in order."
   [f]
   (let [written  (atom [])
@@ -80,43 +80,43 @@
         (rtu/do-with-library-metric!
          (fn [metric]
            (let [eid                (:entity_id metric)
-                 [pushed fractions] (recording #(run-task! "push" (fn [id] (operations/push-task! id "main" "First"))))
+                 [pushed fractions] (recording! #(run-task! "push" (fn [id] (operations/push-task! id "main" "First"))))
                  c1                 (get-in pushed [:outcome :commit])]
              (testing "a push: read, plan, apply (the commit object) and commit (the commit point)"
                (is (=? {:status "successful" :outcome {:kind "pushed"} :progress 1.0} pushed))
                (is (= [0.0 0.25 0.5 0.75] fractions)))
              (testing "a pull with no remote change only reads"
-               (let [[pulled fractions] (recording #(run-task! "pull" (fn [id] (operations/pull-task! id "main"))))]
+               (let [[pulled fractions] (recording! #(run-task! "pull" (fn [id] (operations/pull-task! id "main"))))]
                  (is (=? {:status "successful" :outcome {:kind "up-to-date"} :progress 1.0} pulled))
                  (is (= [0.0] fractions))))
              (let [h1 (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed (remote-snapshot "main" c1) eid "After"))]
                (testing "a pull: read, plan and apply; the apply commits in its transaction"
-                 (let [[pulled fractions] (recording #(run-task! "pull" (fn [id] (operations/pull-task! id "main"))))]
+                 (let [[pulled fractions] (recording! #(run-task! "pull" (fn [id] (operations/pull-task! id "main"))))]
                    (is (=? {:status "successful" :outcome {:kind "pulled" :count 1} :progress 1.0} pulled))
                    (is (= [0.0 0.25 0.5] fractions))))
                (let [d1 (pltu/commit-snapshot! repo "dev" [h1] (ptu/renamed (remote-snapshot "main" h1) eid "From dev"))]
                  (testing "a merge-branch: read, plan, apply (the commit object) and commit (the move of the branch)"
-                   (let [[merged fractions] (recording #(run-task! "merge-branch"
-                                                                   (fn [id] (operations/merge-branch-task! id "main" "dev"))))]
+                   (let [[merged fractions] (recording! #(run-task! "merge-branch"
+                                                                    (fn [id] (operations/merge-branch-task! id "main" "dev"))))]
                      (is (=? {:status "successful" :outcome {:kind "merged"} :progress 1.0} merged))
                      (is (= [0.0 0.25 0.5 0.75] fractions))))
                  (testing "a switch is the pull of the other branch"
-                   (let [[switched fractions] (recording #(run-task! "branch-switch"
-                                                                     (fn [id] (operations/switch-task! id "dev"))))]
+                   (let [[switched fractions] (recording! #(run-task! "branch-switch"
+                                                                      (fn [id] (operations/switch-task! id "dev"))))]
                      (is (=? {:status "successful" :outcome {:kind "switched" :commit d1 :count 1} :progress 1.0}
                              switched))
                      (is (= [0.0 0.25 0.5] fractions))))
                  (testing "a discard: read, plan and apply"
                    (t2/update! :model/Card (:id metric) {:name "Local"})
-                   (let [[discarded fractions] (recording #(run-task! "discard-changes"
-                                                                      (fn [id] (operations/discard-task! id "dev"))))]
+                   (let [[discarded fractions] (recording! #(run-task! "discard-changes"
+                                                                       (fn [id] (operations/discard-task! id "dev"))))]
                      (is (=? {:status "successful" :outcome {:kind "discarded" :count 1} :progress 1.0} discarded))
                      (is (= [0.0 0.25 0.5] fractions))))
                  (testing "a deploy: read, plan and apply"
                    (pltu/commit-snapshot! repo "dev" [d1] (ptu/renamed (remote-snapshot "dev" d1) eid "Deployed"))
                    (mt/with-temporary-setting-values [remote-sync-type :read-only]
-                     (let [[deployed fractions] (recording #(run-task! "deploy"
-                                                                       (fn [id] (operations/deploy-task! id "dev"))))]
+                     (let [[deployed fractions] (recording! #(run-task! "deploy"
+                                                                        (fn [id] (operations/deploy-task! id "dev"))))]
                        (is (=? {:status "successful" :outcome {:kind "deployed" :count 1} :progress 1.0} deployed))
                        (is (= [0.0 0.25 0.5] fractions))))
                    (is (= "Deployed" (t2/select-one-fn :name :model/Card (:id metric))))))))))))))

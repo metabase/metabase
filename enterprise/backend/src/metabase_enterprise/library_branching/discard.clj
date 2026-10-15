@@ -24,14 +24,16 @@
 (defn- apply-base!
   "Read, plan and apply of the base snapshot `bs` of base commit `b` over the local changes, again after a stale
   precondition, at most `retries` times."
-  [inst store branch {:keys [codecs retries fence]} b bs]
+  [inst store branch {:keys [codecs retries fence on-phase]} b bs]
   (loop [attempt 0]
     (let [l   (:snapshot (instance/read-snapshot inst))
-          ids (changed-ids bs l)]
+          ids (changed-ids bs l)
+          _   (on-phase :plan)]
       (if (empty? ids)
         {:result :up-to-date :base b}
         ;; The precondition of each step is the local content: the admin chose to write over it.
         (let [steps  (plan/plan l bs l)
+              _      (on-phase :apply)
               result (instance/apply-plan! inst steps {:base     b
                                                        :new-base b
                                                        :digests  (writer/item-digests codecs bs)
@@ -78,12 +80,17 @@
 
   Every result other than `:discarded` writes nothing. The base decodes with `pull/decode-opts` of `inst`. `opts`:
   `:codecs` (default `kinds/codecs`), `:fence` (as in `apply/apply-plan`), `:retries` (default
-  `pull/default-retries`)."
+  `pull/default-retries`), `:on-phase` (a function of a key of `tasks/phase-starts`, called at the start of the read,
+  the plan and the apply; a throw of it stops the discard, and nothing is written; default: none)."
   ([inst store branch]
    (discard! inst store branch {}))
   ([inst store branch opts]
-   (let [{:keys [codecs] :as opts} (merge {:codecs kinds/codecs :retries pull/default-retries} opts)
-         b                         (when (settings/library-branching-enabled) (instance/base inst))]
+   (let [{:keys [codecs on-phase] :as opts} (merge {:codecs   kinds/codecs
+                                                    :retries  pull/default-retries
+                                                    :on-phase (constantly nil)}
+                                                   opts)
+         _                                  (on-phase :read)
+         b                                  (when (settings/library-branching-enabled) (instance/base inst))]
      (cond
        (not (settings/library-branching-enabled)) {:result :disabled}
        (nil? b)                                   {:result :no-base}
