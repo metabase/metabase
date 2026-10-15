@@ -3,7 +3,6 @@
   state that `current` gives, with and without a base; the unique keys of the written items against the rows that
   stay (the trash included); and no trash of a system item. Each apply that does not return `:ok` writes nothing."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
@@ -11,7 +10,8 @@
    [metabase-enterprise.library-branching.apply :as apply]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]))
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,7 +124,7 @@
   "Generates a permutation of [[names]], each name in one of its spellings that are one key: as it is, in lower case,
   in upper case, or with an accent on its first letter."
   (gen/let [ns        (gen/shuffle names)
-            spellings (gen/vector (gen/elements [identity str/lower-case str/upper-case
+            spellings (gen/vector (gen/elements [identity u/lower-case-en u/upper-case-en
                                                  #(str (first %) "\u0301" (subs % 1))])
                                   (count names))]
     (mapv #(%1 %2) spellings ns)))
