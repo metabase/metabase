@@ -209,7 +209,6 @@ function SmartScalarComponent(
         description={description}
         trend={trend}
         availableWidth={availableWidth}
-        isNarrow={width < tier.minWidth}
       />
     </ScalarCardShell>
   );

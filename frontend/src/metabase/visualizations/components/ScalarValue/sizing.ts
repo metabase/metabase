@@ -14,9 +14,8 @@ export interface ScalarSizeTier {
 
 const SMALL_MENU_OFFSET = { top: 12, right: 16 };
 const LARGE_MENU_OFFSET = { top: 22, right: 24 };
-const MIN_COMPACT_GRID_WIDTH = 3;
 
-// Largest tier first; short dashboard cards at least three columns wide use size-150.
+// Largest tier first; both measured dimensions must fit.
 // Values come from the "Charts visual improvements" Figma specs (nodes 314-478 and 915-2038);
 // skeleton pill sizes come from the loading states spec (node 431-1518).
 export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
@@ -116,15 +115,9 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
 export const getScalarSizeTier = (
   width: number,
   height: number,
-  gridWidth?: number,
 ): ScalarSizeTier => {
   const tier = SCALAR_SIZE_TIERS.find(
-    (tier) =>
-      (width >= tier.minWidth ||
-        (tier.size === 150 &&
-          gridWidth != null &&
-          gridWidth >= MIN_COMPACT_GRID_WIDTH)) &&
-      height >= tier.minHeight,
+    (tier) => width >= tier.minWidth && height >= tier.minHeight,
   );
   return tier ?? SCALAR_SIZE_TIERS[SCALAR_SIZE_TIERS.length - 1];
 };

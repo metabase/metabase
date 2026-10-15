@@ -13,7 +13,6 @@ interface TrendCardComparisonProps {
   description?: string | null;
   trend: Trend;
   availableWidth: number;
-  isNarrow: boolean;
 }
 
 export function TrendCardComparison({
@@ -22,7 +21,6 @@ export function TrendCardComparison({
   description,
   trend,
   availableWidth,
-  isNarrow,
 }: TrendCardComparisonProps) {
   const titleWithDescription = title ? (
     <ScalarLabel description={description}>{title}</ScalarLabel>
@@ -32,7 +30,7 @@ export function TrendCardComparison({
     return titleWithDescription;
   }
 
-  if (tier.size === 100 || (tier.size === 150 && isNarrow)) {
+  if (tier.size === 100) {
     return (
       <Stack align="center" gap="xxs" w="100%">
         {titleWithDescription}
@@ -40,7 +38,7 @@ export function TrendCardComparison({
           trend={trend}
           formatOptions={trend.formatOptions}
           percentOnly
-          showComparisonCount={tier.size === 150}
+          showComparisonCount={false}
         />
       </Stack>
     );

@@ -33,15 +33,9 @@ const setup = (series: Series, width = 800) =>
 
 interface CompactTrendSetupOpts {
   comparisonCount: number;
-  width?: number;
-  gridWidth?: number;
 }
 
-function setupCompactTrend({
-  comparisonCount,
-  width = 170,
-  gridWidth,
-}: CompactTrendSetupOpts) {
+function setupCompactTrend({ comparisonCount }: CompactTrendSetupOpts) {
   const comparisonTypes = [
     { id: "1", type: "previousPeriod" as const },
     { id: "2", type: "previousValue" as const },
@@ -59,9 +53,8 @@ function setupCompactTrend({
         comparisonTypes,
         settings: { "card.description": "Monthly revenue" },
       })}
-      width={width}
+      width={170}
       height={82}
-      gridSize={gridWidth == null ? undefined : { width: gridWidth, height: 2 }}
       showTitle
     />,
   );
@@ -493,26 +486,6 @@ describe("SmartScalar", () => {
       await waitFor(() =>
         expect(screen.getByText("Monthly revenue")).toBeVisible(),
       );
-    });
-
-    it("should keep extra comparisons accessible on a narrow three-column dashboard card", async () => {
-      setupCompactTrend({ comparisonCount: 3, width: 106, gridWidth: 3 });
-      expect(screen.getByText("Revenue")).toBeVisible();
-      expect(screen.getByText("+20%")).toBeVisible();
-      expect(screen.getByText("+2")).toBeVisible();
-      expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
-      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
-      const tooltip = await screen.findByRole("tooltip");
-      expect(within(tooltip).getByText("vs. Goal")).toBeInTheDocument();
-    });
-
-    it("should keep extra comparisons in the tooltip on the smallest cards", async () => {
-      setupCompactTrend({ comparisonCount: 3, width: 82, gridWidth: 2 });
-      expect(screen.getByText("Revenue")).toBeVisible();
-      expect(screen.queryByText("+2")).not.toBeInTheDocument();
-      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
-      const tooltip = await screen.findByRole("tooltip");
-      expect(within(tooltip).getByText("vs. Goal")).toBeInTheDocument();
     });
 
     it.each([2, 3])(

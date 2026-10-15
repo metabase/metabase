@@ -26,7 +26,6 @@ export function useScalarCardShell(
     width,
     showTitle,
     height,
-    gridSize,
     getHref,
     onChangeCardAndRun,
     isVisualizerCard,
@@ -39,7 +38,7 @@ export function useScalarCardShell(
   }: ScalarCardProps,
   { hideTitle = false, shouldHideDescription }: UseScalarCardShellOptions = {},
 ) {
-  const tier = getScalarSizeTier(width, height, gridSize?.width);
+  const tier = getScalarSizeTier(width, height);
   const rootFontScale = getRootFontScale();
   const availableWidth = Math.max(width - 2 * tier.xPadding * rootFontScale, 0);
 

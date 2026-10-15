@@ -612,11 +612,7 @@ export function DashCardVisualization({
   }, [dashcard, rawSeries]);
 
   const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
-    <DashCardLoadingView
-      {...loadingViewProps}
-      display={question?.display()}
-      gridWidth={gridSize.width}
-    />
+    <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
 
   return (

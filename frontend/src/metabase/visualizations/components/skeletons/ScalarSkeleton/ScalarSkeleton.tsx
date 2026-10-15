@@ -44,16 +44,14 @@ const ScalarSkeleton = ({
   description,
   actionMenu,
   className,
-  gridWidth,
 }: {
   name?: string | null;
   description?: string | null;
   actionMenu?: JSX.Element | null;
   className?: string;
-  gridWidth?: number;
 }): JSX.Element => {
   const { ref, width, height } = useMeasuredSize();
-  const tier = getScalarSizeTier(width, height, gridWidth);
+  const tier = getScalarSizeTier(width, height);
 
   return (
     <Flex

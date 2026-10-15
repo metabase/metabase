@@ -31,10 +31,4 @@ describe("getScalarSizeTier", () => {
     expect(getScalarSizeTier(160, 119).size).toBe(150);
     expect(getScalarSizeTier(160, 120).size).toBe(200);
   });
-
-  it("keeps three-column dashboard cards in size-150 when the sidebar reduces their width", () => {
-    expect(getScalarSizeTier(82, 82, 2).size).toBe(100);
-    expect(getScalarSizeTier(100, 82, 3).size).toBe(150);
-    expect(getScalarSizeTier(256, 126, 6).size).toBe(200);
-  });
 });

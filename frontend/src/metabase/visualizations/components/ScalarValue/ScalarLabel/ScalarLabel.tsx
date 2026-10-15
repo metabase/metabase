@@ -1,9 +1,7 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Tooltip, rem } from "metabase/ui";
 
 import S from "./ScalarLabel.module.css";
@@ -19,6 +17,7 @@ interface ScalarLabelProps {
 
 export function ScalarLabel({ children, description }: ScalarLabelProps) {
   const tc = useTranslateContent();
+  // Reserve equal icon space on both sides to keep the text centered and the icon inside the padding.
   const maxWidth = description
     ? `calc(100% - ${rem(2 * DESCRIPTION_ICON_SPACE)})`
     : "100%";
@@ -47,11 +46,7 @@ export function ScalarLabel({ children, description }: ScalarLabelProps) {
             tabIndex={0}
             pos="absolute"
             left={`calc(100% + ${rem(DESCRIPTION_ICON_GAP)})`}
-            className={cx(
-              S.descriptionIcon,
-              CS.hoverChild,
-              CS.hoverChildSmooth,
-            )}
+            className={S.descriptionIcon}
           >
             <Icon name="info" size={DESCRIPTION_ICON_SIZE} />
           </Box>
