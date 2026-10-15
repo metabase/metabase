@@ -22,6 +22,7 @@ import { registerDashboardVisualizations } from "metabase/dashboard/visualizatio
 import { setDataApp } from "metabase/embedding/config";
 import { setEmbedPreviewHeader } from "metabase/embedding/lib/auth/set-embed-preview-header";
 import { setReactSdkEmbedReferrerHeader } from "metabase/embedding/lib/auth/set-react-sdk-embed-referrer-header";
+import { setReactSdkReactVersionHeader } from "metabase/embedding/lib/auth/set-react-sdk-react-version-header";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import {
   EMBEDDING_SDK_CONFIG,
@@ -135,6 +136,8 @@ export const useInitDataInternal = ({
   if (!isEmbeddingEajs()) {
     PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer =
       setReactSdkEmbedReferrerHeader;
+    PLUGIN_API.onBeforeRequestHandlers.reactSdkReactVersion =
+      setReactSdkReactVersionHeader;
   }
 
   // Dedupe by handler identity rather than total listener count — other code
