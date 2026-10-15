@@ -131,19 +131,6 @@
     (is (re-find #"no-such-function" (:reason (second results))))
     (is (identical? root-before (root #'fixtures/clamp)))))
 
-(deftest timeout-test
-  (testing "tests that do not end within the timeout give :timeout, and the run goes on"
-    (let [results (mut/run-mutations [{:name   :blocks
-                                       :doc    "clamp blocks until its thread is interrupted."
-                                       :target `fixtures/clamp
-                                       :edits  [[:replace '(min hi x) '(deref (promise))]]}
-                                      {:name   :no-upper-bound
-                                       :doc    "clamp ignores the upper bound."
-                                       :target `fixtures/clamp
-                                       :edits  [[:replace '(min hi x) 'x]]}]
-                                     {:tests [#'clamp-test] :timeout-ms 100})]
-      (is (= [:timeout :killed] (map :result results))))))
-
 (defn- fixture-threads
   "The live threads, but this one, with a frame of a fixture function."
   []
@@ -157,13 +144,31 @@
                   thread)))
         (Thread/getAllStackTraces)))
 
+(deftest timeout-test
+  (testing "tests that do not end within the timeout give :timeout, and the run goes on"
+    (let [threads-before (fixture-threads)
+          results        (mut/run-mutations [{:name   :blocks
+                                              :doc    "clamp blocks until its thread is interrupted."
+                                              :target `fixtures/clamp
+                                              :edits  [[:replace '(min hi x) '(deref (promise))]]}
+                                             {:name   :no-upper-bound
+                                              :doc    "clamp ignores the upper bound."
+                                              :target `fixtures/clamp
+                                              :edits  [[:replace '(min hi x) 'x]]}]
+                                            {:tests [#'clamp-test] :timeout-ms 100})]
+      (is (= [:timeout :killed] (map :result results)))
+      (testing "the interrupt ends the test, not only the assertion that it interrupts"
+        (is (= threads-before (fixture-threads)))))))
+
 (def ^:private redefs-test
-  "A test that redefines a var, then counts down and clamps inside the redefinition."
+  "A test that redefines a var, then counts down and clamps inside the redefinition, two times. A stop must end the
+  test, not only the assertion that it stops."
   (anonymous-test-var! 'redefs-test
                        (fn []
                          (with-redefs [fixtures/tagged (constantly ::redefined)]
-                           (is (= :done (fixtures/count-down (fixtures/magnitude -3))))
-                           (is (= 5 (fixtures/clamp 1 5 9)))))))
+                           (dotimes [_ 2]
+                             (is (= :done (fixtures/count-down (fixtures/magnitude -3))))
+                             (is (= 5 (fixtures/clamp 1 5 9))))))))
 
 (deftest timeout-stops-test
   (testing "a mutation that makes a loop endless times out, and the run stops the loop before it returns"
