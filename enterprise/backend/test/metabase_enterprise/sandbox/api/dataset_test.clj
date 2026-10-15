@@ -1,6 +1,8 @@
 (ns metabase-enterprise.sandbox.api.dataset-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.dataset-test]}}}}}}
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query   {:namespaces [metabase-enterprise.sandbox.api.dataset-test]}
+                                                            metabase.test.data/native-query {:namespaces [metabase-enterprise.sandbox.api.dataset-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.test :as mt]))
@@ -70,3 +72,35 @@
                     (search :crowberto)))
             (is (=? {:values          []}
                     (search :rasta)))))))))
+
+(deftest sandboxed-query-native-form-test
+  (testing "POST /api/dataset doesn't return the sandboxed compiled query or its params to a sandboxed user"
+    ;; sandbox defs are thunks so `mt/id` resolves against the DB copy `with-gtaps-for-user!` creates
+    (doseq [[sandbox-type sandbox-thunk attributes secrets]
+            [[:remapping
+              (fn []
+                {:remappings {"price" ["variable" [:field (mt/id :venues :price) nil]]}})
+              {"price" "1"}
+              []]
+             [:card
+              (fn []
+                {:query      (mt/native-query
+                              {:query         (str "SELECT * FROM VENUES WHERE NAME <> {{secret_attr}} "
+                                                   "AND 'SANDBOX-SQL-MARKER' <> ''")
+                               :template-tags {"secret_attr" {:name         "secret_attr"
+                                                              :display-name "secret_attr"
+                                                              :type         "text"
+                                                              :required     true
+                                                              :id           "11111111-1111-1111-1111-111111111111"}}})
+                 :remappings {"secret_attr" ["variable" ["template-tag" "secret_attr"]]}})
+              {"secret_attr" "SECRET-ATTRIBUTE-VALUE"}
+              ["SANDBOX-SQL-MARKER" "SECRET-ATTRIBUTE-VALUE"]]]]
+      (testing sandbox-type
+        (met/with-gtaps-for-user! :rasta
+          {:gtaps      {:venues (sandbox-thunk)}
+           :attributes attributes}
+          (let [response (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues {:limit 1}))]
+            (is (= "completed" (:status response)))
+            (is (nil? (get-in response [:data :native_form])))
+            (doseq [secret secrets]
+              (is (not (str/includes? (pr-str response) secret))))))))))

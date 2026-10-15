@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { readManifest } from "../data-app-dev/config/read-manifest";
@@ -10,38 +11,49 @@ import {
 } from "./discover";
 import { getMetabaseCredentials } from "./env";
 import { isObject } from "./guards";
-import { COLLECTIONS_DIR } from "./resources";
-import type { DiscoveredQuery } from "./types";
+import { COLLECTIONS_DIR, readResources, repoRootOf } from "./resources";
+import type { DiscoveredAction, DiscoveredQuery } from "./types";
 
-type IdentifiedQuery = DiscoveredQuery & { savedQuestionEntityId: string };
-
-const isIdentified = (query: DiscoveredQuery): query is IdentifiedQuery =>
-  query.savedQuestionEntityId !== undefined;
+type SerializedFile = { file: string; yaml: string } | { error: string };
 
 interface SerializedResources {
-  queries: Record<string, unknown>[];
-  actions: Record<string, unknown>[];
-  metrics: unknown[];
+  queries: SerializedFile[];
+  actions: SerializedFile[];
+  metrics: SerializedFile[];
 }
 
-const isObjectArray = (value: unknown): value is Record<string, unknown>[] =>
-  Array.isArray(value) && value.every(isObject);
+const isSerializedFile = (value: unknown): value is SerializedFile =>
+  isObject(value) &&
+  ((typeof value.file === "string" && typeof value.yaml === "string") ||
+    typeof value.error === "string");
+
+const isSerializedFiles = (value: unknown): value is SerializedFile[] =>
+  Array.isArray(value) && value.every(isSerializedFile);
 
 function isSerializedResources(value: unknown): value is SerializedResources {
   return (
     isObject(value) &&
-    isObjectArray(value.queries) &&
-    isObjectArray(value.actions) &&
-    Array.isArray(value.metrics)
+    isSerializedFiles(value.queries) &&
+    isSerializedFiles(value.actions) &&
+    isSerializedFiles(value.metrics)
   );
+}
+
+export function exportNameToCardName(exportName: string) {
+  const words = exportName
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[\s_]+/g, " ")
+    .toLowerCase();
+
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 async function requestSerialization(
   appRoot: string,
-  body: { collection: string; queries: unknown[]; actions: number[] },
+  body: { queries: unknown[]; actions: unknown[] },
 ): Promise<SerializedResources> {
   const { metabaseUrl, apiKey } = getMetabaseCredentials(appRoot);
-  const response = await fetch(`${metabaseUrl}/api/apps/serialize-resources`, {
+  const response = await fetch(`${metabaseUrl}/api/apps/generate/resources`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
     body: JSON.stringify(body),
@@ -62,101 +74,139 @@ async function requestSerialization(
   return serialized;
 }
 
-/**
- * What the files of the app's collection are written from, as JSON, for the
- * definitions in `file` (relative to the app root, as files are printed) or
- * every definition: the saved question Metabase writes for each `defineQuery`
- * definition, in the collection `data_app.yaml` names and with the
- * definition's entity ID, each `defineAction`'s action, and the metrics the
- * queries aggregate, all as serialization writes them.
- * One request to the Metabase instance and API key in `.env.local`.
- */
-export async function serializeResources(appDirectory: string, file?: string) {
-  const appRoot = path.resolve(appDirectory);
-  const filePath = file === undefined ? undefined : path.resolve(appRoot, file);
-  const queries = await discoverQueries(appRoot, { filePath });
-  const actions = await discoverActions(appRoot, { filePath });
+function missingEntityIds(
+  appRoot: string,
+  queries: DiscoveredQuery[],
+  actions: DiscoveredAction[],
+) {
+  return [
+    ...queries
+      .filter((query) => query.savedQuestionEntityId === undefined)
+      .map(
+        (query) =>
+          `${getRelativeDefinitionLocation(appRoot, query)} has no savedQuestionEntityId. Generate one with \`npx representations generate-entity-id\` and set it first: its saved question is written with it.`,
+      ),
+    ...actions
+      .filter((action) => action.copiedActionEntityId === undefined)
+      .map(
+        (action) =>
+          `${getRelativeDefinitionLocation(appRoot, action)} has no copiedActionEntityId. Generate one with \`npx representations generate-entity-id\` and set it first: its copy is written with it.`,
+      ),
+  ];
+}
 
-  if (filePath !== undefined && queries.length + actions.length === 0) {
+function collectionDirectory(appRoot: string, collection: string) {
+  const { repoRoot, collectionPath, files } = readResources(
+    appRoot,
+    collection,
+  );
+
+  if (collectionPath === undefined) {
     throw new Error(
-      `${path.relative(appRoot, filePath)} has no defineQuery or defineAction definitions.`,
+      `No file under ${COLLECTIONS_DIR}/ holds the collection ${collection} that data_app.yaml names. Write it first: the files are written next to it.`,
     );
   }
 
+  return {
+    directory: path.join(repoRoot, collectionPath.replace(/\.yaml$/, "")),
+    existing: files.map((file) => path.join(repoRoot, file.path)),
+  };
+}
+
+function targetFile(directory: string, file: { file: string; yaml: string }) {
+  const target = path.join(directory, file.file);
+
+  if (path.dirname(target) !== directory) {
+    throw new Error(
+      `The serialization holds a file outside the collection: ${file.file}`,
+    );
+  }
+
+  return { target, yaml: file.yaml };
+}
+
+/**
+ * Regenerates the files of the app's collection: the saved question Metabase
+ * builds for each `defineQuery` definition, the copy of each `defineAction`'s
+ * action, and the copies of the metrics the queries aggregate, written next to
+ * the collection's file in place of the cards and actions it held. Writes
+ * nothing when Metabase couldn't serialize an item, and throws listing why.
+ * One request to the Metabase instance and API key in `.env.local`.
+ */
+export async function writeResources(appDirectory: string) {
+  const appRoot = path.resolve(appDirectory);
+  const queries = await discoverQueries(appRoot);
+  const actions = await discoverActions(appRoot);
   const collection = readManifest(appRoot)?.manifest.collection;
 
   if (collection === undefined) {
     throw new Error(
-      `No data_app.yaml in ${appRoot} names the app's collection. Write the collection under ${COLLECTIONS_DIR}/ and name its entity ID as \`collection\` first: the saved questions are written into it.`,
+      `No data_app.yaml in ${appRoot} names the app's collection. Write the collection under ${COLLECTIONS_DIR}/ and name its entity ID as \`collection\` first: the files are written into it.`,
     );
   }
 
-  // The saved question is printed with the definition's entity ID, so the file is complete as printed.
-  const unidentified = queries.filter((query) => !isIdentified(query));
+  const { directory, existing } = collectionDirectory(appRoot, collection);
+  const missing = missingEntityIds(appRoot, queries, actions);
 
-  if (unidentified.length > 0) {
-    throw new Error(
-      unidentified
-        .map(
-          (query) =>
-            `${getRelativeDefinitionLocation(appRoot, query)} has no savedQuestionEntityId. Generate one with \`npx representations generate-entity-id\` and set it first: its saved question is printed with it.`,
-        )
-        .join("\n"),
-    );
+  if (missing.length > 0) {
+    throw new Error(missing.join("\n"));
   }
-
-  const identified = queries.filter(isIdentified);
 
   const serialized = await requestSerialization(appRoot, {
-    collection,
-    queries: identified.map(({ exportName, query, savedQuestionEntityId }) => {
+    queries: queries.map(({ exportName, query, savedQuestionEntityId }) => {
       const { [QUERY_DEFINITIONS.idKey]: _entityId, ...definition } = query;
       return {
-        export: exportName,
-        entity_id: savedQuestionEntityId,
+        name: exportNameToCardName(exportName),
         query: { stages: [definition] },
+        entity_id: savedQuestionEntityId,
+        collection_id: collection,
       };
     }),
-    actions: actions.map(({ sourceActionId }) => sourceActionId),
+    actions: actions.map(({ sourceActionId, copiedActionEntityId }) => ({
+      action_id: sourceActionId,
+      entity_id: copiedActionEntityId,
+      collection_id: collection,
+    })),
   });
 
-  const serializedActions = new Map(
-    serialized.actions.map((action) => [action.id, action]),
-  );
-
-  if (serialized.queries.length !== identified.length) {
+  if (
+    serialized.queries.length !== queries.length ||
+    serialized.actions.length !== actions.length
+  ) {
     throw new Error(
-      `The serialization response holds ${serialized.queries.length} queries; ${identified.length} were requested.`,
+      "The serialization response doesn't answer every definition.",
     );
   }
 
-  const missingActions = actions
-    .map(({ sourceActionId }) => sourceActionId)
-    .filter((id) => !serializedActions.has(id));
+  const labelled = [
+    ...serialized.queries.map((result, index) => ({
+      label: getRelativeDefinitionLocation(appRoot, queries[index]),
+      result,
+    })),
+    ...serialized.actions.map((result, index) => ({
+      label: getRelativeDefinitionLocation(appRoot, actions[index]),
+      result,
+    })),
+    ...serialized.metrics.map((result) => ({ label: "A metric", result })),
+  ];
 
-  if (missingActions.length > 0) {
-    throw new Error(
-      `The serialization response is missing action ${missingActions.join(", ")}.`,
-    );
+  const errors = labelled.flatMap(({ label, result }) =>
+    "error" in result ? [`${label}: ${result.error}`] : [],
+  );
+
+  if (errors.length > 0) {
+    throw new Error(errors.join("\n"));
   }
 
-  return JSON.stringify(
-    {
-      queries: identified.map((query, index) => ({
-        export: query.exportName,
-        file: path.relative(appRoot, query.filePath),
-        savedQuestionEntityId: query.savedQuestionEntityId,
-        ...serialized.queries[index],
-      })),
-      actions: actions.map((action) => ({
-        export: action.exportName,
-        file: path.relative(appRoot, action.filePath),
-        copiedActionEntityId: action.copiedActionEntityId ?? null,
-        ...serializedActions.get(action.sourceActionId),
-      })),
-      metrics: serialized.metrics,
-    },
-    null,
-    2,
+  const targets = labelled.flatMap(({ result }) =>
+    "error" in result ? [] : [targetFile(directory, result)],
   );
+
+  existing.forEach((filePath) => fs.rmSync(filePath, { force: true }));
+  fs.mkdirSync(directory, { recursive: true });
+  targets.forEach(({ target, yaml }) => fs.writeFileSync(target, yaml));
+
+  return targets
+    .map(({ target }) => `Wrote ${path.relative(repoRootOf(appRoot), target)}`)
+    .join("\n");
 }

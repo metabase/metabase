@@ -56,70 +56,6 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 
-  it("should allow value field selection with multiple numeric columns", () => {
-    const questionDetails = {
-      name: "Multi-column Progress Test",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-      display: "progress",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    // Open visualization settings
-    H.openVizSettingsSidebar();
-    H.vizSettingsSidebar().within(() => {
-      cy.findByText("Display").click();
-
-      // Should show Value field selector since we have multiple numeric columns
-      cy.findByText("Value").should("be.visible");
-
-      // Default should be first column (Count)
-      cy.findByDisplayValue("Count").should("be.visible");
-
-      // Change to Sum of Total
-      cy.findByDisplayValue("Count").click();
-    });
-
-    H.popover().within(() => {
-      cy.findByText("Sum of Total").click();
-    });
-
-    // Verify the field changed
-    H.vizSettingsSidebar().within(() => {
-      cy.findByDisplayValue("Sum of Total").should("be.visible");
-    });
-  });
-
-  it("should not show value field selector with single numeric column", () => {
-    const questionDetails = {
-      name: "Single Column Progress Test",
-      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-      display: "progress",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.openVizSettingsSidebar();
-    H.vizSettingsSidebar().within(() => {
-      cy.findByText("Display").click();
-
-      // Should NOT show Value field selector since we only have one numeric column
-      cy.findByText("Value").should("not.exist");
-
-      cy.findByText("Goal").should("be.visible");
-    });
-
-    openGoalSourceMenu();
-
-    H.popover().within(() => {
-      cy.findByText("Value from this question").should("not.exist");
-      cy.findByText("Value from another question").should("be.visible");
-    });
-  });
-
   it("should exclude value column from goal column options", () => {
     const questionDetails = {
       name: "Exclusion Test Progress",
@@ -166,7 +102,7 @@ describe("scenarios > visualizations > progress chart", () => {
     H.queryBuilderMain().findByText("Goal 18,760").should("be.visible");
   });
 
-  it("should be backwards compatibile", () => {
+  it("should be backwards compatible and not show value field selector with single numeric column", () => {
     // A question with numeric `progress.goal` and no `progress.value` should render a progress bar with the goal value
     const questionDetails = {
       name: "Backwards Compat Test",
@@ -186,9 +122,26 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("18,760").should("be.visible");
       cy.contains("Goal 1,000").should("be.visible");
     });
+
+    H.openVizSettingsSidebar();
+    H.vizSettingsSidebar().within(() => {
+      cy.findByText("Display").click();
+
+      cy.findByText("Goal").should("be.visible");
+
+      // Should NOT show Value field selector since we only have one numeric column
+      cy.findByText("Value").should("not.exist");
+    });
+
+    openGoalSourceMenu();
+
+    H.popover().within(() => {
+      cy.findByText("Value from this question").should("not.exist");
+      cy.findByText("Value from another question").should("be.visible");
+    });
   });
 
-  it("should allow switching between custom value and column reference", () => {
+  it("should allow value field selection with multiple numeric columns and switching the goal between custom value and column reference", () => {
     const questionDetails = {
       name: "Custom Value Toggle Test",
       query: {
@@ -203,6 +156,12 @@ describe("scenarios > visualizations > progress chart", () => {
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
       cy.findByText("Display").click();
+
+      // Should show Value field selector since we have multiple numeric columns
+      cy.findByText("Value").should("be.visible");
+
+      // Default should be first column (Count)
+      cy.findByDisplayValue("Count").should("be.visible");
     });
 
     openGoalSourceMenu();
@@ -220,6 +179,13 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByPlaceholderText("Enter goal value").should("be.visible");
     });
     H.queryBuilderMain().findByText("Goal 0").should("be.visible");
+
+    // Change value to Sum of Total
+    H.vizSettingsSidebar().findByDisplayValue("Count").click();
+    H.popover().findByText("Sum of Total").click();
+    H.vizSettingsSidebar()
+      .findByDisplayValue("Sum of Total")
+      .should("be.visible");
   });
 
   it("should handle native query with both value and goal columns", () => {

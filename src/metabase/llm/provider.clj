@@ -73,6 +73,7 @@
                      :required?   true
                      :placeholder "sk-proj-..."
                      :prefix      "sk-"
+                     :prefix-help (deferred-tru "For another server that implements OpenAI''s API, add an OpenAI-compatible API provider instead.")
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
@@ -403,6 +404,30 @@
                      ;; not required: a self-hosted server takes none, and a base URL on its own is a complete
                      ;; configuration. Ollama Cloud refuses a generation without one, which connecting finds out.
                      :help  (deferred-tru "Required for Ollama Cloud. Leave blank if your server doesn''t require one.")}]}
+   {:type                 "openai-compatible"
+    :label                (deferred-tru "OpenAI-compatible API")
+    ;; served by vLLM's adapter, whose connect check adds :model-reasoning to the stored config
+    :stored-config-fields [:model-reasoning]
+    :default-model        nil
+    :model-fields         [:model-id]
+    :fields               [{:key         :base-url
+                            :normalize   strip-trailing-slashes
+                            :validate    llm.provider.settings/llm-url-problem
+                            :label       (deferred-tru "API base URL")
+                            :type        :text
+                            :required?   true
+                            :placeholder "https://api.example.com/v1"
+                            :help        (deferred-tru "Any server that implements OpenAI''s Chat Completions API with tool calling. Enter the URL that comes before /chat/completions.")}
+                           {:key   :api-key
+                            :label (deferred-tru "API key")
+                            :type  :password
+                            :help  (deferred-tru "Only needed if your server asks for one.")}
+                           {:key         :model-id
+                            :label       (deferred-tru "Model ID")
+                            :type        :text
+                            :required?   true
+                            :placeholder "gpt-oss-120b"
+                            :help        (deferred-tru "The model to run, exactly as your server names it.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -562,13 +587,14 @@
           (:fields (provider-type type-name))))
 
 (defn- validate-field!
-  [type-name {:keys [key label required? prefix default options] :as field} config]
+  [type-name {:keys [key label required? prefix prefix-help default options] :as field} config]
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
     (when (and value prefix (not (str/starts-with? value prefix)))
-      (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
+      (throw (ex-info (cond-> (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
+                        prefix-help (str " " prefix-help))
                       {:status-code 400 :field key})))
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
       (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
@@ -747,7 +773,11 @@
                  ;; as for vLLM, the base URL is the credential: a self-hosted server takes no key, so the URL alone
                  ;; brings a usable connection into existence. A key alone, with no address to send it to, does not.
                  :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
-                            :api-key  {:setting :llm-ollama-api-key}}}})
+                            :api-key  {:setting :llm-ollama-api-key}}}
+   "openai-compatible" {:type     "openai-compatible"
+                        ;; the base URL is the credential, as for vLLM; the model comes from MB_LLM_METABOT_PROVIDER
+                        :settings {:base-url {:setting :llm-openai-compatible-api-base-url :credential? true}
+                                   :api-key  {:setting :llm-openai-compatible-api-key}}}})
 
 (defn connection-env-vars
   "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.

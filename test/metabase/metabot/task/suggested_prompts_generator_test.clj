@@ -19,8 +19,7 @@
       ;; seeded separately (see `enabled-builtin-metabots-test`) and would otherwise add prompts.
       (mt/with-temporary-setting-values [metabot.settings/embedded-metabot-enabled? false]
         (let [original-metabot (t2/select-one :model/Metabot
-                                              :entity_id (get-in metabot.config/metabot-config
-                                                                 [metabot.config/internal-metabot-id :entity-id]))
+                                              :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         lib.convert/->legacy-MBQL)
@@ -100,8 +99,8 @@
           (let [mp (mt/metadata-provider)
                 query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                           lib.convert/->legacy-MBQL)
-                internal-id (metabot.config/normalize-metabot-id metabot.config/internal-metabot-id)
-                embedded-id (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id)]
+                internal-id (:id (metabot.config/resolve-metabot metabot.config/internal-metabot-id))
+                embedded-id (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))]
             (mt/with-model-cleanup [:model/MetabotPrompt]
               (mt/with-temp [:model/Card {card-id :id} {:type :model, :dataset_query query}]
                 (mt/with-dynamic-fn-redefs [metabot.example-question-generator/generate-example-questions
@@ -121,8 +120,7 @@
       (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                          "metabase/anthropic/claude-sonnet-4-6"]
         (let [original-metabot (t2/select-one :model/Metabot
-                                              :entity_id (get-in metabot.config/metabot-config
-                                                                 [metabot.config/internal-metabot-id :entity-id]))
+                                              :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         lib.convert/->legacy-MBQL)]

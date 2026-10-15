@@ -17,6 +17,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
@@ -247,6 +248,46 @@
                                               :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "age"))))
             (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension
                                                :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "email"))))))))))
+
+(deftest field-user-settings-survive-connecting-a-stub-database-test
+  (testing "Field settings imported onto a stub database survive connecting it and syncing, and export again"
+    (let [db-name    (mt/random-name)
+          extract    #(into [] (serdes/extract-all "FieldUserSettings" {:filter-column :field_id :filter-ids %}))
+          serialized (mt/with-temp [:model/Database {db-id :id}    {:name db-name}
+                                    :model/Table    {table-id :id} {:db_id db-id :schema "PUBLIC" :name "VENUES"}
+                                    :model/Field    {price-id :id} {:table_id table-id :name "PRICE"}
+                                    :model/Field    {name-id :id}  {:table_id table-id :name "NAME"}]
+                       (t2/insert! :model/FieldUserSettings {:field_id       price-id
+                                                             :semantic_type  :type/Currency
+                                                             :effective_type :type/Integer
+                                                             :description    "In dollars"})
+                       (t2/insert! :model/FieldUserSettings {:field_id name-id :semantic_type :type/City})
+                       (extract [price-id name-id]))]
+      (try
+        (serdes.load/load-metabase! (ingestion-in-memory serialized))
+        (let [stub      (t2/select-one :model/Database :name db-name)
+              table-id  (t2/select-one-pk :model/Table :db_id (:id stub) :schema "PUBLIC" :name "VENUES")
+              field-ids (t2/select-pks-vec :model/Field :table_id table-id {:order-by [[:name :asc]]})
+              settings  #(t2/select-fn->fn :field_id (juxt :semantic_type :semantic_type_set :effective_type)
+                                           :model/FieldUserSettings :field_id [:in field-ids])]
+          (is (true? (:is_stub stub)))
+          (is (= {:type/Currency true :type/City true}
+                 (into {} (map (juxt first second)) (vals (settings)))))
+          (t2/update! :model/Database (:id stub) {:engine :h2 :details (:details (mt/db)) :is_stub false})
+          (sync/sync-db-metadata! (t2/select-one :model/Database :id (:id stub)))
+          (testing "sync reactivates the stub Fields and gives them their real base types"
+            (is (=? [{:name "NAME" :active true :base_type :type/Text}
+                     {:name "PRICE" :active true :base_type :type/Integer}]
+                    (t2/select [:model/Field :name :active :base_type] :id [:in field-ids] {:order-by [[:name :asc]]}))))
+          (testing "the imported user settings are kept"
+            (is (= #{[:type/Currency true :type/Integer] [:type/City true nil]}
+                   (set (vals (settings))))))
+          (testing "and a later export still carries them"
+            (is (=? [{:semantic_type :type/City :semantic_type_set true}
+                     {:semantic_type :type/Currency :semantic_type_set true :description "In dollars"}]
+                    (sort-by (comp str :semantic_type) (extract field-ids))))))
+        (finally
+          (t2/delete! :model/Database :name db-name))))))
 
 (deftest stub-database-survives-a-rolled-back-referrer-test
   (testing "A stub created inside a failed entity's transaction is not reused from the cache by the next entity"
