@@ -3995,6 +3995,7 @@
            app-db
            collections
            dashboards
+           events
            models
            queries
            request

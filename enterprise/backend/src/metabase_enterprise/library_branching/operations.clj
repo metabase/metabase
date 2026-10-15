@@ -3,10 +3,11 @@
   branch) on a creation instance, and the deploy on a consumption instance, on the configured repository and the app DB
   instance, each as a task: each start function checks the preconditions of its operation, starts its task, and
   returns the task at once; a worker runs the operation. The result of the operation ends the task: an outcome for a
-  success, an error message for every other result. A branch operation writes the branch setting only when it
-  succeeds, in the transaction that ends it."
+  success, an error message for every other result. A task that succeeds gets one audit-log entry after it ends. A
+  branch operation writes the branch setting only when it succeeds, in the transaction that ends it."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.library-branching.audit :as audit]
    [metabase-enterprise.library-branching.branch :as branch]
    [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.format.manifest :as format.manifest]
@@ -221,11 +222,17 @@
 
 (defn deploy-task!
   "Runs the deploy of branch `branch` as the work of task `id`, against the environment of this instance, and returns
-  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running."
-  [id branch]
-  (repository/do-with-store
-   (fn [s]
-     (deploy-task-result branch (deploy/deploy! (instance) s branch (instance-env) {:fence (fn [] (tasks/fence id))})))))
+  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running.
+  `(:on-result opts)`, when given, is called with the result of `deploy/deploy!` before the task result is made."
+  ([id branch]
+   (deploy-task! id branch {}))
+  ([id branch {:keys [on-result]}]
+   (repository/do-with-store
+    (fn [s]
+      (let [result (deploy/deploy! (instance) s branch (instance-env) {:fence (fn [] (tasks/fence id))})]
+        (when on-result
+          (on-result result))
+        (deploy-task-result branch result))))))
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
@@ -266,10 +273,11 @@
       (refuse! (tru "Library branching has no branch."))))
 
 (defn- submit!
-  "`tasks/submit!` of a task of `kind` for `user-id` with the worker `work`; 400 while a task runs."
-  [kind user-id work]
+  "`tasks/submit!` of a task of `kind` for `user-id` with the worker `work`; 400 while a task runs. A task that
+  succeeds gets its audit-log entry (`audit/on-success`, with `audit-opts`)."
+  [kind user-id work & {:as audit-opts}]
   (try
-    (tasks/submit! kind user-id work)
+    (tasks/submit! kind user-id work :on-success (audit/on-success kind user-id audit-opts))
     (catch clojure.lang.ExceptionInfo e
       (if (= ::tasks/in-progress (:type (ex-data e)))
         (refuse! (ex-message e))
@@ -288,7 +296,7 @@
    (if new-branch
      (do (check-branch-settable!)
          (check-branch-name! new-branch)
-         (submit! "push" user-id #(push-task! % new-branch message {:new-branch? true})))
+         (submit! "push" user-id #(push-task! % new-branch message {:new-branch? true}) :new-branch? true))
      (let [branch (configured-branch)]
        (submit! "push" user-id #(push-task! % branch message))))))
 
@@ -345,13 +353,18 @@
 (defn start-deploy!
   "Starts a deploy task of the configured branch, for the user `user-id` (nil: the system), and returns the task. The
   apply of the deploy commits only while its task is running. Throws ex-info with `:status-code` 400 when library
-  branching is off or not configured, on a creation instance, with no branch, and while a task runs."
-  [user-id]
-  (check-deploy-start!)
-  (let [branch (configured-branch)]
-    (submit! "deploy" user-id #(deploy-task! % branch))))
+  branching is off or not configured, on a creation instance, with no branch, and while a task runs.
 
-(defn- deploys?
+  `opts`: `:auto?`, the audit-log entry says that the schedule started the task; `:on-result`, as in
+  [[deploy-task!]]."
+  ([user-id]
+   (start-deploy! user-id {}))
+  ([user-id {:keys [auto? on-result]}]
+   (check-deploy-start!)
+   (let [branch (configured-branch)]
+     (submit! "deploy" user-id #(deploy-task! % branch {:on-result on-result}) :auto? auto?))))
+
+(defn deploys?
   "True iff this instance deploys its branch: library branching is on and configured, the instance is a consumption
   instance, and a branch is set."
   []
