@@ -290,3 +290,61 @@
          (is (nil? (write-test/current :question (:entity_id question))))
          (is (= {(:entity_id question) [{:kind :card :id (:entity_id outside) :name "Outside user"}]}
                 (in-use/trashed-in-use [{:id (:entity_id question) :kind :question}]))))))))
+
+(defn- insert-dashboard!
+  "A dashboard named `dashboard-name` in `collection`, with one dashboard card of the visualization settings
+  `settings`."
+  [collection dashboard-name settings]
+  (let [d (t2/insert-returning-instance! :model/Dashboard {:name          dashboard-name
+                                                           :collection_id (:id collection)
+                                                           :creator_id    (mt/user->id :rasta)})]
+    (t2/insert! :model/DashboardCard {:dashboard_id (:id d) :row 0 :col 0 :size_x 4 :size_y 4
+                                      :visualization_settings settings})
+    d))
+
+(deftest trashed-card-linked-in-use-test
+  (testing "a trash of a Library question, model and metric: the in-use report names each card and dashboard outside
+           the Library that links to it by a click behavior, a column's click behavior or a link card, each once"
+    (do-with-world!
+     (fn [{:keys [app metrics]}]
+       (let [question (insert-card! {:name "Orders" :type :question :collection_id (:id app)})
+             model    (insert-card! {:name "Venues model" :type :model :collection_id (:id app)})
+             metric   (insert-card! {:name "Price" :type :metric :display :scalar :collection_id (:id metrics)})
+             outside  (t2/insert-returning-instance! :model/Collection {:name "Not the Library" :location "/"})
+             click    (fn [link-type card] {:type "link" :linkType link-type :targetId (:id card)})
+             link     (fn [model card] {:virtual_card {:display "link"}
+                                        :link         {:entity {:model model :id (:id card) :name (:name card)}}})
+             q-click  (insert-card! {:name "Question link" :type :question :collection_id (:id outside)
+                                     :visualization_settings {:click_behavior (click "question" question)}})
+             m-column (insert-card! {:name                   "Model column link"
+                                     :type                   :question
+                                     :visualization_settings {:column_settings
+                                                              {"[\"name\",\"sum\"]"
+                                                               {:click_behavior (click "dataset" model)}}}})
+             mp       (mt/metadata-provider)
+             source   (insert-card! {:name                   "Metric link and source"
+                                     :type                   :question
+                                     :collection_id          (:id outside)
+                                     :dataset_query          (lib/query mp (lib.metadata/card mp (:id metric)))
+                                     :visualization_settings {:click_behavior (click "question" metric)}})
+             q-dash   (insert-dashboard! outside "Question clicks" {:click_behavior (click "question" question)})
+             m-links  (insert-dashboard! outside "Model links" (link "dataset" model))
+             x-links  (insert-dashboard! outside "Metric links" (link "card" metric))]
+         ;; Not users: a trashed card, a card in the Library, and a dashboard whose text holds the id of the question.
+         (insert-card! {:name "Archived link" :type :question :archived true
+                        :visualization_settings {:click_behavior (click "question" question)}})
+         (insert-card! {:name "Library neighbor" :type :question :collection_id (:id app)
+                        :visualization_settings {:click_behavior (click "question" question)}})
+         (insert-dashboard! outside "Mentions the id" {:text (str "See row " (:id question))
+                                                       :virtual_card {:display "text"}})
+         (doseq [[kind card] [[:question question] [:model model] [:metric metric]]]
+           (write-test/trash! kind (:entity_id card)))
+         (is (= {(:entity_id question) [{:kind :card :id (:entity_id q-click) :name "Question link"}
+                                        {:kind :dashboard :id (:entity_id q-dash) :name "Question clicks"}]
+                 (:entity_id model)    [{:kind :card :id (:entity_id m-column) :name "Model column link"}
+                                        {:kind :dashboard :id (:entity_id m-links) :name "Model links"}]
+                 (:entity_id metric)   [{:kind :card :id (:entity_id source) :name "Metric link and source"}
+                                        {:kind :dashboard :id (:entity_id x-links) :name "Metric links"}]}
+                (in-use/trashed-in-use [{:id (:entity_id question) :kind :question}
+                                        {:id (:entity_id model) :kind :model}
+                                        {:id (:entity_id metric) :kind :metric}]))))))))
