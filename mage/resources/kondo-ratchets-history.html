@@ -64,7 +64,6 @@
   .commit { margin: 0 0 4px; }
   .commit a { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: 13px; }
   .commit a:hover { text-decoration: underline; }
-  .commit .who { font-weight: 600; }
   .commit .subject { color: var(--muted); }
   .items { margin: 0 0 12px; padding: 0; list-style: none; }
   .items li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; }
@@ -99,12 +98,15 @@
   .tip .row { display: flex; justify-content: space-between; gap: 16px; }
   .tip .row b { font-family: var(--mono); }
   .tip .step { color: var(--muted); margin-top: 6px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--pick); border-radius: 6px; padding: 8px 14px;
+             margin: 0 0 12px; font-size: 13px; }
+  .callout p { margin: 0; }
+  .callout ul { margin: 4px 0 0; padding-left: 18px; }
   .reconcile { margin: 12px 0 0; }
   .reconcile b { font-family: var(--mono); font-weight: 600; }
   details.data { margin-top: 10px; }
   details.people { margin-top: 30px; border-top: 1px solid var(--line); padding-top: 14px; }
   details.people > summary { cursor: pointer; font-weight: 600; font-size: 15px; }
-  details.people > summary .flag { color: var(--warn); font-weight: 400; font-size: 13px; }
   details.people > .hint { margin: 6px 0 0; }
   details.data summary { cursor: pointer; color: var(--muted); font-size: 12px; }
   .none { color: var(--muted); padding: 40px 0; }
@@ -131,10 +133,11 @@ const signed = n => (n > 0 ? "+" + n : String(n));
 const tone = (n, kind) => n === 0 ? (kind === "net" ? "" : "zero") : (n < 0 ? "good" : "bad");
 const num = (n, kind) => `<td class="num ${tone(n, kind)}">${signed(n)}</td>`;
 
+// A commit by its sha, PR and subject. Authors are left to the closed block at the end; see people.
 function commit(c) {
   const sha = `<a href="${esc(data.repo)}/commit/${esc(c.sha)}">${esc(c.sha.slice(0, 10))}</a>`;
   const pr = c.pr ? ` <a href="${esc(data.repo)}/pull/${c.pr}">#${c.pr}</a>` : "";
-  return `<p class="commit">${sha}${pr} <span class="who">${esc(c.author)}</span> <span class="subject">${esc(c.subject)}</span></p>`;
+  return `<p class="commit">${sha}${pr} <span class="subject">${esc(c.subject)}</span></p>`;
 }
 
 function table(head, rows, foot) {
@@ -171,13 +174,10 @@ function ranking(rows, keep, order, cols) {
     picked.map(r => `<tr><td>${esc(who(r))}</td>${cols.map(c => c[2](r[c[1]])).join("")}</tr>`));
 }
 
-// Everything that names a person sits in one block, closed until the reader opens it.
-// `flags` are notes for the closed heading, such as warnings inside; falsy ones are left out.
-function people(title, flags, body) {
+// The rankings of authors, last on the page and closed until the reader opens them.
+function people(title, body) {
   if (!body) return "";
-  const shown = flags.filter(Boolean);
-  return `<details class="people"><summary>${esc(title)}` +
-    (shown.length ? ` <span class="flag">${esc(shown.join(", "))}</span>` : "") + `</summary>` +
+  return `<details class="people"><summary>${esc(title)}</summary>` +
     `<p class="hint">Here for interest and fun. None of this says anything about anyone's actual virtue or blame.</p>` +
     `${body}</details>`;
 }
@@ -280,10 +280,11 @@ function trends(p) {
   const rows = pts.map(pt => `<tr><td>${esc(pt.date.slice(0, 10))} ${commitLink(pt)}</td>${num(pt.shrunk)}${num(pt.grown)}` +
     `<td class="num">${signed(uncredited.reduce((a, [k]) => a + pt[k], 0))}</td>` +
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
-  return section("Trends",
-    "Each step is a commit that changed a budget. The left chart counts only changes someone is credited or blamed for. " +
-    "The total budget also moves for changes that count for nobody, such as a new ratchet over existing debt, " +
-    "so the two need not move together. The line under the charts shows how they add up.",
+  return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
+    `<div class="callout"><p>The two charts measure different things, so they can move apart:</p><ul>` +
+    `<li><b>Credited change</b> counts only changes someone is credited or blamed for.</li>` +
+    `<li><b>Total budget</b> also moves for changes that count for nobody, such as a new ratchet over existing debt.</li>` +
+    `<li><b>The line under the charts</b> shows how the two add up.</li></ul></div>` +
     `<div class="grid2">` +
     chart("c-change", "Credited change", "Running totals from the start of the period. Up is worse.",
       pts, span,
@@ -317,7 +318,7 @@ function wire() {
       svg.querySelectorAll(".dot").forEach(d => {
         d.setAttribute("cx", x(at.t)); d.setAttribute("cy", y(at[d.dataset.key])); d.style.visibility = "visible";
       });
-      // commit subjects and author names are untrusted text
+      // commit subjects are untrusted text
       tip.textContent = "";
       const add = (cls, text) => { const el = document.createElement("div"); el.className = cls; el.textContent = text; tip.appendChild(el); return el; };
       add("when", at.date.slice(0, 10));
@@ -365,20 +366,8 @@ function render(p) {
       table(["", "shrunk", "grown", "net"],
         r.totals.map(x => `<tr><td class="name">${esc(x.measure)}</td>${num(x.shrunk)}${num(x.grown)}${num(x.net, "net")}</tr>`),
         `<tr><td>total</td>${num(t.shrunk)}${num(t.grown)}${num(t.net, "net")}</tr>`)) +
-    people("Commits and authors", [
-      r.suspects.length && `${r.suspects.length} with raises that have no verdict`,
-      r.unaccounted.length && `${r.unaccounted.length} with shrinks no commit accounts for`],
     section("Biggest commits", "The commits responsible for the most change, whoever lowered or raised the number.",
       (r.best || r.worst) ? `<div class="grid2">${biggest("Biggest improvement", r.best)}${biggest("Biggest regression", r.worst)}</div>` : "") +
-    section("Net by author", "From most shrunk to most grown. A shrink is credited to whoever removed the suppressions.",
-      ranking(r.board, x => x.shrunk || x.grown, x => x.net,
-        [["shrunk", "shrunk", n => num(n)], ["grown", "grown", n => num(n)], ["net", "net", n => num(n, "net")]])) +
-    `<div class="grid2">` +
-      section("Most shrunk", "", ranking(r.board, x => x.shrunk < 0, x => x.shrunk, [["shrunk", "shrunk", n => num(n)]])) +
-      section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]])) +
-    `</div>` +
-    section("Most introduced", "Ranked by the budgets the new linters and measures started with: more debt put under a ratchet is better.",
-      ranking(r.board, x => x.linters > 0, x => -x.ignores, [["budget", "ignores", good], ["new", "linters", good]])) +
     section("New linters and measures", "A linter, a newly discouraged symbol or a measure of the module ratchet that got its first budget in the commit that added it.",
       groups(r.introduced, i => `<li><span class="num good">${esc(i.budget)}</span><span class="name good">${esc(i.measure)}</span></li>`)) +
     section("New ratchets over existing debt", "First budgets for linters and measures that already existed, from a commit that added a whole ratchet. They count for nobody.",
@@ -392,7 +381,17 @@ function render(p) {
       groups(r.unaccounted, i => `<li><span class="num ${tone(i.delta)}">${signed(i.delta)}</span><span class="name">${esc(i.measure)}</span></li>`, "warn")) +
     section("Raises with no verdict", "The budget rose by more than the suppressions the commit added. Pardon or confirm each with ./bin/mage kondo-ratchets-history --pardon or --confirm.",
       groups(r.suspects.map(g => ({...g, items: capped(g.items, rest => ({measure: `${rest.length} more budgets`, delta: sumOf(rest, "delta"), added: sumOf(rest, "added"), more: true}))})),
-        i => `<li><span class="num bad">${signed(i.delta)}</span><span><span class="${i.more ? "" : "name"}">${esc(i.measure)}</span>, with ${i.added} suppressions added</span></li>`, "warn")));
+        i => `<li><span class="num bad">${signed(i.delta)}</span><span><span class="${i.more ? "" : "name"}">${esc(i.measure)}</span>, with ${i.added} suppressions added</span></li>`, "warn")) +
+    people("Authors",
+      section("Net by author", "From most shrunk to most grown. A shrink is credited to whoever removed the suppressions.",
+        ranking(r.board, x => x.shrunk || x.grown, x => x.net,
+          [["shrunk", "shrunk", n => num(n)], ["grown", "grown", n => num(n)], ["net", "net", n => num(n, "net")]])) +
+      `<div class="grid2">` +
+        section("Most shrunk", "", ranking(r.board, x => x.shrunk < 0, x => x.shrunk, [["shrunk", "shrunk", n => num(n)]])) +
+        section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]])) +
+      `</div>` +
+      section("Most introduced", "Ranked by the budgets the new linters and measures started with: more debt put under a ratchet is better.",
+        ranking(r.board, x => x.linters > 0, x => -x.ignores, [["budget", "ignores", good], ["new", "linters", good]])));
 }
 
 function nav(current) {
@@ -428,13 +427,10 @@ function verdicts() {
   return `<header><h2>Pardons and exclusions</h2><p>What the numbers on the other pages leave out, and why</p></header>` +
     section("Linters left out", "Budgets of these linters are not counted anywhere.",
       data.excluded.length ? `<div class="card">${data.excluded.map(x => `<p><span class="name">${esc(x.linter)}</span><br><span class="why">${esc(x.why)}</span></p>`).join("")}</div>` : "") +
-    people("Commits with a verdict", [
-      pardoned.length && `${pardoned.length} pardoned or recounted, ${signed(total)} in all`,
-      confirmed.length && `${confirmed.length} confirmed`],
     section("Pardoned", `These budget changes count for and against nobody, ${signed(total)} in all: each says nothing about the commit that made it. A later shrink that only takes one back is left out too.`,
       pardoned.map(card).join("")) +
     section("Confirmed raises", "These raises outran the suppressions their commit added, were looked at, and still count as growth.",
-      confirmed.map(card).join("")));
+      confirmed.map(card).join(""));
 }
 
 function show() {
