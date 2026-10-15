@@ -2,7 +2,7 @@
   "MCP (Model Context Protocol) Streamable HTTP transport.
 
   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
-  session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
+  session issuance, origin validation (DNS-rebinding protection), OAuth bearer auth resolution, per-user throttling,
   SSE responses and the GET keepalive stream, OAuth discovery hints on 401s, and
   `insufficient_scope` challenges on 403s."
   (:require
@@ -632,7 +632,7 @@
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
-;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
+;; MCP is auth-gated (OAuth bearer token), so the risk is lower than the
 ;; unauthenticated OAuth endpoints. The threshold is generous to accommodate users running
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check records every
 ;; attempt (not just failures) which is correct here — we want to cap total throughput
@@ -765,19 +765,18 @@
            (and (:authenticated-via-oauth? request) (empty? token-scopes))
            (respond @invalid-token)
 
-           ;; Dispatch with the scope set attached to an authenticated request. A cookie or API-key session carries
-           ;; none, and an `mb:full` token carries only the unrestricted sentinel; neither is an MCP scope, so such
-           ;; a session reaches no scoped tool.
-           session-auth
-           ;; An OAuth bearer request lands here too — the session middleware resolves the token and
-           ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
+           ;; MCP authenticates only with an OAuth bearer token. The session middleware already ignores sessions and
+           ;; API keys on the MCP paths; this check keeps a request with a current user but no OAuth marker from
+           ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. An `mb:full` token
+           ;; carries only the unrestricted sentinel, which is not an MCP scope, so it reaches no scoped tool.
+           (and session-auth (:authenticated-via-oauth? request))
            (dispatch session-auth (set token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
            ;; token — including checking `user.is_active` and running the granted scopes through the
            ;; `oauth-token->token-scopes` trust hinge — and sets `*current-user-id*`, so an active user's token is
-           ;; served by the `session-auth` branch above. Landing here therefore means the token is unknown, expired,
+           ;; served by the dispatch branch above. Landing here therefore means the token is unknown, expired,
            ;; revoked, or names a DEACTIVATED user. We must not re-resolve and dispatch it: doing so bypassed the
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
