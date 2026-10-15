@@ -3988,6 +3988,11 @@
                     :model/Table
                     :model/Timeline}}
 
+  enterprise/library-branching
+  {:team "UX West"
+   :api  #{}
+   :uses #{}}
+
   enterprise/mcp
   {:team    "Metabot"
    :api     #{metabase-enterprise.mcp.api.permissions metabase-enterprise.mcp.init}
