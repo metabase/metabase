@@ -26,6 +26,8 @@ import type {
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
+import { ExploreBar, isExploreModeQuestion } from "../../ExploreBar";
+import { PinTray } from "../../ExplorePins";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
@@ -129,6 +131,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       data-testid="query-builder-main"
       ref={mainRef}
     >
+      {isExploreModeQuestion(question, queryBuilderMode) && (
+        <ExploreBar question={question} />
+      )}
       {isNative ? (
         <ViewNativeQueryEditor {...props} availableHeight={availableHeight} />
       ) : (
@@ -162,6 +167,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       </DebouncedFrame>
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
+        {isExploreModeQuestion(question, queryBuilderMode) && (
+          <PinTray question={question} />
+        )}
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />
       </Box>

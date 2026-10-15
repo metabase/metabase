@@ -2,6 +2,8 @@ import { match } from "ts-pattern";
 
 import type Question from "metabase-lib/v1/Question";
 
+import { isExploreModeQuestion } from "../../ExploreBar";
+import { PivotSidebar } from "../../PivotSidebar";
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "../../sidebars/SummarizeSidebar";
@@ -39,19 +41,22 @@ export const StructuredQueryRightSidebar = ({
       {
         isShowingSummarySidebar: true,
       },
-      () => (
-        <SummarizeSidebar
-          query={question.query()}
-          onQueryChange={(nextQuery) => {
-            const nextQuestion = question.setQuery(nextQuery);
-            updateQuestion(nextQuestion.setDefaultDisplay(), {
-              run: true,
-            });
-          }}
-          onClose={onCloseSummary}
-          stageIndex={-1}
-        />
-      ),
+      () =>
+        isExploreModeQuestion(question, "view") ? (
+          <PivotSidebar question={question} onClose={onCloseSummary} />
+        ) : (
+          <SummarizeSidebar
+            query={question.query()}
+            onQueryChange={(nextQuery) => {
+              const nextQuestion = question.setQuery(nextQuery);
+              updateQuestion(nextQuestion.setDefaultDisplay(), {
+                run: true,
+              });
+            }}
+            onClose={onCloseSummary}
+            stageIndex={-1}
+          />
+        ),
     )
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
     .with(
