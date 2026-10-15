@@ -648,13 +648,21 @@
   (and (= :assistant (:role m))
        (some? (:error m))))
 
+(defn- context-full-row?
+  "Whether the errored assistant `row` is a turn the provider rejected as too long for the context window."
+  [row]
+  (= self.core/context-full-error-code (:error-code (decode-error (:error row)))))
+
 (defn- drop-errored-pairs
-  "Strip errored assistant rows and the preceding user prompt."
+  "Strip errored assistant rows and the user prompt before each, except a context-full turn.
+
+  A context-full turn stays, so a reloaded conversation still reads as full."
   [messages]
   (reduce (fn [acc msg]
             (cond
               (not (errored-agent-row? msg)) (conj acc msg)
-              (= :user (:role (peek acc)))  (pop acc)
+              (context-full-row? msg)        (conj acc msg)
+              (= :user (:role (peek acc)))   (pop acc)
               :else                          acc))
           []
           messages))
@@ -699,6 +707,17 @@
   variant it cannot model."
   #{"length" "content-filter" "tool-calls"})
 
+(defn- error->client-error
+  "The stored error as the client reads it: a stored `:error-code` is also its `:type`.
+
+    {:error-code \"ai_provider_context_full\" :message \"m\"}
+    => {:error-code \"ai_provider_context_full\" :message \"m\" :type \"ai_provider_context_full\"}
+
+  The live stream hands the client the same code as `error.type` (`finish.messageMetadata.errorCode`)."
+  [error]
+  (cond-> error
+    (and (map? error) (:error-code error)) (assoc :type (:error-code error))))
+
 (defn- row->status
   "The message's status, from its own `finished` / `error` / `finish_reason` / `context_window_full` columns.
 
@@ -714,7 +733,7 @@
       {:type "in_progress"}
 
       (some? (:error row))
-      {:type "errored" :error (decode-error (:error row))}
+      {:type "errored" :error (error->client-error (decode-error (:error row)))}
 
       (and (contains? row :finished) (not (true? (:finished row))))
       {:type "aborted"}
@@ -750,7 +769,7 @@
 
 (defn messages->client-messages
   "Convert a seq of `MetabotMessage` model instances into their client shape, one
-  per row. Errored pairs are dropped unless `:include-errored? true`."
+  per row. Errored pairs are dropped, except context-full turns, unless `:include-errored? true`."
   ([messages] (messages->client-messages messages nil))
   ([messages {:keys [include-errored?]}]
    (mapv message->client-message

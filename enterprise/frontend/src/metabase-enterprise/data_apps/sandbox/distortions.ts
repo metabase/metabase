@@ -18,8 +18,7 @@ const REALM_CREATING_CTOR_NAMES = [
 /**
  * Data-app Near-Membrane distortion callback. Reuses the shared
  * `utils/scripts-sandbox` callback (same fetch/XHR/DOM blocking as custom-viz), but
- * gives `fetch` an allowlist when the app declares `allowed_hosts` — otherwise it
- * falls through to the shared hard block (default: no network). `XMLHttpRequest` is
+ * allows `fetch` to the analytics proxy and the app's `allowed_hosts`. `XMLHttpRequest` is
  * never allowlisted (it can't opt out of following a redirect to the instance), so
  * `blockHostRealmXhr` hard-blocks it. No per-plugin DOM scoping like custom-viz: a
  * data app is a full-page route owned by one bundle, with no sibling DOM.
@@ -158,7 +157,7 @@ export function makeDistortionCallback(
       return createElementDistortion;
     }
 
-    if (sandboxFetch && value === targetWindow.fetch) {
+    if (value === targetWindow.fetch) {
       return sandboxFetch;
     }
 

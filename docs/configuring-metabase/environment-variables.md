@@ -1936,6 +1936,14 @@ The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a
 
 The display name for Metabot, shown throughout the Metabase UI.
 
+### `MB_METABOT_QUERY_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+
+Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
@@ -1961,6 +1969,13 @@ Whether to show Metabot illustrations in the UI.
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 

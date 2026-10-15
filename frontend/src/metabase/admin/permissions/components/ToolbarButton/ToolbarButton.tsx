@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -12,11 +13,16 @@ interface ToolbarButtonProps {
   onClick?: () => void;
 }
 
+/** Hovers purple in the admin and blue in the hub, like AdminTreeNode */
 export const ToolbarButton = ({ onClick, text, icon }: ToolbarButtonProps) => {
+  const hoverClassName = isEmbeddingHubPermissions()
+    ? S.hubButton
+    : S.adminButton;
+
   return (
     <Flex
       component="button"
-      className={cx(S.button, CS.cursorPointer)}
+      className={cx(S.button, hoverClassName, CS.cursorPointer)}
       align="center"
       fw={700}
       py="xxs"

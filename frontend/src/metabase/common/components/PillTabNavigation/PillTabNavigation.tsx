@@ -3,7 +3,7 @@ import cx from "classnames";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useLocation } from "metabase/router";
-import { Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
+import { Badge, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./PillTabNavigation.module.css";
@@ -13,6 +13,7 @@ export type PillTab = {
   to: string;
   icon?: IconName;
   isGated?: boolean;
+  count?: number;
   isSelected?: boolean | ((pathname: string) => boolean);
 };
 
@@ -47,6 +48,16 @@ export function PillTabNavigation({ tabs }: PillTabNavigationProps) {
           >
             {tab.icon !== undefined && <FixedSizeIcon name={tab.icon} />}
             <Ellipsified className={S.label}>{tab.label}</Ellipsified>
+            {tab.count !== undefined && (
+              <Badge
+                variant="light"
+                color="neutral"
+                c="text-secondary"
+                data-testid="pill-tab-count"
+              >
+                {tab.count}
+              </Badge>
+            )}
             {tab.isGated && <UpsellGem.New size={14} />}
           </Flex>
         );

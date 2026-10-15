@@ -5,6 +5,7 @@ import { assocIn } from "icepick";
 
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotMessage,
   createMockMetabotTextMessage,
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
@@ -746,6 +747,57 @@ describe("metabot > ui", () => {
       ).toHaveTextContent(/This chat has reached the/);
       expect(
         screen.queryByTestId("metabot-context-usage-ring"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps a loaded conversation full when its last turn did not fit the context window", async () => {
+      const FULL_CONVERSATION_ID = "44444444-4444-4444-4444-444444444444";
+      const COPY =
+        "This conversation has reached its maximum length and can't continue. Please start a new chat.";
+      setupGetMetabotConversationEndpoint(
+        createMockMetabotConversationDetail({
+          conversation_id: FULL_CONVERSATION_ID,
+          title: "Too long",
+          messages: [
+            createMockMetabotTextMessage("user", "How many orders?"),
+            createMockMetabotMessage({
+              role: "agent",
+              status: {
+                type: "errored",
+                error: { type: "ai_provider_context_full", message: COPY },
+              },
+            }),
+          ],
+        }),
+      );
+      setup({
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: FULL_CONVERSATION_ID,
+            title: "Too long",
+          }),
+        ],
+      });
+
+      await selectPastConversation("Too long");
+
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", /This conversation has reached its maximum length/],
+      ]);
+      expect(
+        screen.queryByText(/Something went wrong/),
+      ).not.toBeInTheDocument();
+      const notice = await screen.findByTestId("metabot-long-chat-notice");
+      expect(notice).toHaveTextContent(/This chat has reached the/);
+      expect(
+        within(notice).getByTestId("metabot-long-chat-new-chat"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-chat-input"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-chat-message-retry"),
       ).not.toBeInTheDocument();
     });
 

@@ -19,7 +19,7 @@ const DatabaseAuthProviderSectionField = ({
   }, [value, setValue]);
 
   return (
-    <FormField>
+    <FormField mb="lg">
       <Button
         w="fit-content"
         variant="transparent"

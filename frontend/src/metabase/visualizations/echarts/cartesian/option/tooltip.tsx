@@ -7,8 +7,8 @@ import {
   type ComputedVisualizationSettings,
   type DataKey,
   EChartsTooltip,
-  GOAL_LINE_SERIES_ID,
   getTooltipBaseOption,
+  isGoalLineSeriesId,
 } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
 
@@ -62,7 +62,7 @@ export const getTooltipOption = (
 
       const { dataIndex, seriesId } = params;
 
-      if (seriesId === GOAL_LINE_SERIES_ID) {
+      if (isGoalLineSeriesId(seriesId)) {
         return "";
       }
 

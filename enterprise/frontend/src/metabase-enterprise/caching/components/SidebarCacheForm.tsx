@@ -22,6 +22,7 @@ export const SidebarCacheForm = ({
   withOverlay = true,
   overlayProps,
   onBack,
+  withBackButton,
   ...stackProps
 }: SidebarCacheFormProps) => {
   const configurableModels = useMemo(() => [model], [model]);
@@ -67,6 +68,7 @@ export const SidebarCacheForm = ({
       onBack={() =>
         isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
       }
+      withBackButton={withBackButton}
     >
       <Stack
         align="space-between"

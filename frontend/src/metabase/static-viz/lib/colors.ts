@@ -2,10 +2,11 @@ import Color from "color";
 
 import { getColors, staticVizOverrides } from "metabase/ui/colors/colors";
 import { color } from "metabase/ui/colors/palette";
-import type { ColorGetter, ColorPalette } from "metabase/ui/colors/types";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 export const createColorGetter = (
-  instanceColors: ColorPalette = {},
+  instanceColors: ColorSettings = {},
 ): ColorGetter => {
   const palette = { ...getColors(instanceColors), ...staticVizOverrides };
 

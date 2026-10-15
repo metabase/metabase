@@ -31,7 +31,7 @@ export const DataAppSummary = ({ app }: Props) => {
             rel="noreferrer"
             fw={700}
             lh="1.4"
-            c="brand"
+            c="core-brand"
             truncate
           >
             {app.display_name}

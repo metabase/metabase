@@ -117,9 +117,6 @@ describe("SdkThemeProvider", () => {
     });
 
     expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
-      "--mb-color-background-primary: #123456",
-    );
-    expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
       "--mb-color-background_page-primary: #123456",
     );
   });
@@ -127,7 +124,7 @@ describe("SdkThemeProvider", () => {
   describe("brand ramp", () => {
     const { ocean } = getBaseColorsForThemeDefinitionOnly();
 
-    // Light defines `text-hover`/`text-brand` off brand[60]/[50], dark off brand[30]/[40]
+    // Light defines `text-brand-hover`/`text-brand` off brand[60]/[50], dark off brand[30]/[40]
     const LIGHT_OCEAN = { textHover: ocean[60], textBrand: ocean[50] };
     const DARK_OCEAN = { textHover: ocean[30], textBrand: ocean[40] };
 
@@ -157,7 +154,10 @@ describe("SdkThemeProvider", () => {
 
     it.each([
       ["a V1 theme", { colors: { brand: "#DF75E9" } }],
-      ["a V2 theme", { version: 2 as const, colors: { brand: "#DF75E9" } }],
+      [
+        "a V2 theme",
+        { version: 2 as const, colors: { "core-brand": "#DF75E9" } },
+      ],
       [
         "a dark V1 theme",
         { preset: "dark" as const, colors: { brand: "#DF75E9" } },
@@ -166,9 +166,6 @@ describe("SdkThemeProvider", () => {
       const { getCssVariable } = await setup(theme);
 
       expect(getCssVariable("--mb-color-core-brand")).toBe("#DF75E9");
-      expect(getCssVariable("--mb-color-text-hover")).toContain(
-        "var(--mb-color-core-brand)",
-      );
       expect(getCssVariable("--mb-color-text-brand-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
@@ -186,7 +183,7 @@ describe("SdkThemeProvider", () => {
     ])("tracks a whitelabel brand color given %s", async (_name, theme) => {
       const { getCssVariable } = await setup(theme, { brand: "#DF75E9" });
 
-      expect(getCssVariable("--mb-color-text-hover")).toContain(
+      expect(getCssVariable("--mb-color-text-brand-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
       expect(getCssVariable("--mb-color-text-brand")).toContain(
@@ -226,7 +223,7 @@ describe("SdkThemeProvider", () => {
       async (_name, theme, expected) => {
         const { getCssVariable } = await setup(theme);
 
-        expect(getCssVariable("--mb-color-text-hover")).toBe(
+        expect(getCssVariable("--mb-color-text-brand-hover")).toBe(
           expected.textHover,
         );
         expect(getCssVariable("--mb-color-text-brand")).toBe(
