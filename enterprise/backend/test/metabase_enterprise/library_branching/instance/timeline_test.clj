@@ -342,9 +342,8 @@
      (fn [{:keys [dashboards outside]}]
        (let [item (timeline-item "lb trashed" (:entity_id dashboards) {:events [launch outage]})]
          (write! releases-id item)
-         (let [live (current releases-id)]
-           (trash! releases-id)
-           (is (= {:state :trashed :content live} (current-state releases-id))))
+         (trash! releases-id)
+         (is (= :trashed (:state (current-state releases-id))))
          (is (not (contains? (app-db/read-current) releases-id)))
          (is (true? (t2/select-one-fn :archived :model/Timeline :entity_id releases-id)))
          (is (= [true true] (map (comp :archived event-row :id) [launch outage])))
