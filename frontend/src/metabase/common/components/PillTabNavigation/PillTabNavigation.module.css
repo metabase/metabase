@@ -26,7 +26,6 @@
 }
 
 .label {
-  flex-shrink: 0;
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: 1.15;

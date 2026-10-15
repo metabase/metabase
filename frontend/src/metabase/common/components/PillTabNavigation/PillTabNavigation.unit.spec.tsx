@@ -56,6 +56,26 @@ describe("PillTabNavigation", () => {
     ).toBeInTheDocument();
   });
 
+  it("announces a loaded count as the tab's description, keeping the label as its name", () => {
+    setup({
+      tabs: [
+        {
+          label: "Failing",
+          onClick: jest.fn<void, []>(),
+          count: { status: "loaded", value: 3 },
+        },
+        { label: "Events", to: "/monitor/example/events" },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Failing" }),
+    ).toHaveAccessibleDescription("3");
+    expect(
+      screen.getByRole("link", { name: "Events" }),
+    ).not.toHaveAccessibleDescription();
+  });
+
   it("shows a placeholder while the count loads without blocking navigation", () => {
     setup({
       tabs: [
@@ -70,6 +90,7 @@ describe("PillTabNavigation", () => {
     const tab = screen.getByRole("link", { name: "Events" });
     expect(tab).toHaveAttribute("href", "/monitor/example/events");
     expect(within(tab).getByTestId("tab-count-skeleton")).toBeInTheDocument();
+    expect(tab).not.toHaveAccessibleDescription();
   });
 
   it("omits a failed count without hiding the tab", () => {
@@ -85,6 +106,7 @@ describe("PillTabNavigation", () => {
 
     const tab = screen.getByRole("link", { name: "Events" });
     expect(within(tab).queryByText(/\d/)).not.toBeInTheDocument();
+    expect(tab).not.toHaveAccessibleDescription();
     expect(
       within(tab).queryByTestId("tab-count-skeleton"),
     ).not.toBeInTheDocument();

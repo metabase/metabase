@@ -7,18 +7,24 @@ export type TabCountState =
   | { status: "error" }
   | { status: "loaded"; value: number };
 
-export function TabCountBadge({ count }: { count: TabCountState }) {
+type TabCountBadgeProps = {
+  count: TabCountState;
+  id?: string;
+};
+
+export function TabCountBadge({ count, id }: TabCountBadgeProps) {
   return match(count)
     .with({ status: "loading" }, () => (
       <Skeleton
         h={16}
-        miw="1.5rem"
+        w="1.5rem"
         radius="xl"
+        flex="none"
         data-testid="tab-count-skeleton"
       />
     ))
     .with({ status: "loaded" }, ({ value }) => (
-      <Badge variant="light" size="xs" color="neutral">
+      <Badge id={id} variant="light" size="xs" color="neutral" flex="none">
         {value}
       </Badge>
     ))

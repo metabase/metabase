@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useId } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
@@ -38,16 +39,20 @@ export function PillTabNavigation({
   "data-testid": testId,
 }: PillTabNavigationProps) {
   const { pathname } = useLocation();
+  const countIdPrefix = useId();
 
   return (
     <Flex component="nav" gap="xxs" wrap="wrap" data-testid={testId}>
-      {tabs.map((tab) => {
+      {tabs.map((tab, index) => {
         const selected = isTabSelected(tab, pathname);
+        const countId = `${countIdPrefix}-count-${index}`;
+        const hasLoadedCount = tab.count?.status === "loaded";
         const tabProps = {
           align: "center",
           gap: "xxs",
           className: cx(S.tab, { [S.selected]: selected }),
           "aria-label": tab.label,
+          "aria-describedby": hasLoadedCount ? countId : undefined,
           "aria-current": selected ? "page" : undefined,
           "data-testid": tab["data-testid"],
           onClick: tab.onClick,
@@ -56,7 +61,9 @@ export function PillTabNavigation({
           <>
             {tab.icon !== undefined && <FixedSizeIcon name={tab.icon} />}
             <Ellipsified className={S.label}>{tab.label}</Ellipsified>
-            {tab.count !== undefined && <TabCountBadge count={tab.count} />}
+            {tab.count !== undefined && (
+              <TabCountBadge id={countId} count={tab.count} />
+            )}
             {tab.isGated && <UpsellGem.New size={14} />}
           </>
         );
