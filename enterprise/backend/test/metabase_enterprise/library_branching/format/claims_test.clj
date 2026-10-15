@@ -115,7 +115,8 @@
 
 (deftest resource-files-test
   (let [bundle (utf-8 "console.log('sales');\n")
-        app    (str "kind: data-app\nid: DaTaApPsAlEs000000001\nname: Sales\nbundle: sha256:" (sha-256-hex bundle) "\n")]
+        app    (str "kind: data-app\nid: DaTaApPsAlEs000000001\nname: Sales\n"
+                    "bundle: sha256:" (sha-256-hex bundle) "\n")]
     (testing "a file whose SHA-256 an item file names is a resource file, at any path"
       (is (= {:items     #{"apps/sales/sales.app.yaml"}
               :resources #{"apps/sales/anywhere.js"}
@@ -177,7 +178,9 @@
 
 (def ^:private foreign-tree-gen
   (gen/fmap (fn [entries]
-              (into {} (map-indexed (fn [i [dir content]] [(str dir "_f" i ".yaml") (if (string? content) (utf-8 content) content)]))
+              (into {}
+                    (map-indexed (fn [i [dir content]]
+                                   [(str dir "_f" i ".yaml") (if (string? content) (utf-8 content) content)]))
                     entries))
             (gen/vector (gen/tuple foreign-dir-gen foreign-content-gen) 0 6)))
 
@@ -186,8 +189,9 @@
   (gen/one-of [(gen/return {:app {} :bundle {}})
                (gen/fmap (fn [text]
                            (let [b (utf-8 (str "bundle " text))]
-                             {:app    {"apps/_app/app.yaml" (utf-8 (str "kind: data-app\nid: DaTaApPsAlEs000000001\n"
-                                                                        "name: A\nbundle: sha256:" (sha-256-hex b) "\n"))}
+                             {:app    {"apps/_app/app.yaml"
+                                       (utf-8 (str "kind: data-app\nid: DaTaApPsAlEs000000001\nname: A\n"
+                                                   "bundle: sha256:" (sha-256-hex b) "\n"))}
                               :bundle {"apps/_app/bundle.js" b}}))
                          gen/string-alphanumeric)]))
 
@@ -323,7 +327,7 @@
    {:name   :lints-everywhere
     :doc    "Every foreign YAML file is a lint, also one outside the area directories."
     :target `claims/foreign-lints
-    :edits  [[:replace '(contains? area-directories (first (str/split p #"/" 2))) true]]}
+    :edits  [[:replace '(contains? area-directories (top-directory p)) true]]}
    {:name   :manifest-dropped
     :doc    "A push removes the manifest of the repository."
     :target `claims/kept-files
