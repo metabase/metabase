@@ -137,6 +137,20 @@
   (testing "a tree with only the format file is the empty snapshot"
     (is (= {:snapshot {}} (tree/decode-tree toy/codecs [format-file])))))
 
+(defspec decode-files-test 100
+  (prop/for-all [s (toy/toy-snapshot-gen)]
+    (let [contents (vec (vals (writer/encode-tree toy/codecs s)))
+          r        (tree/decode-files toy/codecs contents)
+          by-name  (update-keys (codec/by-kind toy/codecs) name)]
+      (and (= (tree/decode-tree toy/codecs contents) (dissoc r :files))
+           (= (set (keys s)) (set (keys (:files r))))
+           (every? (fn [[id n]] (= id (first (:item (tree/decode-file by-name (nth contents n)))))) (:files r))))))
+
+(deftest decode-files-findings-test
+  (testing "a tree that does not decode gives the findings of decode-tree, and no files"
+    (let [contents (conj (example-files) leaf-file)]
+      (is (= (tree/decode-tree toy/codecs contents) (tree/decode-files toy/codecs contents))))))
+
 (deftest place-from-directory-fails-test
   ;; Alloy PlaceFromDirectoryFails: if a file does not hold its place, two different snapshots give the same files.
   (testing "without the place in the file, a nested folder and a root-level folder give the same file contents"

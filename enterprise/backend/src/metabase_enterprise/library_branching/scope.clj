@@ -9,25 +9,14 @@
   questions, are archived with it; an archive on the instance keeps this."
   (:require
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.roots :as library-branching.roots]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]))
 
 (set! *warn-on-reflection* true)
 
 (def roots
-  "The fixed roots of scope.
-  - `:collection-types`: each collection of one of these types is a root, with its subtree.
-  - `:namespaces`: each collection of one of these namespaces is a root.
-  - `:root-level`: `{kind namespace}`. The items of `kind` at the root level of `namespace` are in scope, when
-    `:namespaces` holds `namespace`."
-  {:collection-types #{"library"}
-   :namespaces       #{:data-actions :data-apps :snippets :transforms}
-   :root-level       {:action         :data-actions
-                      :data-app       :data-apps
-                      :python-library :transforms
-                      :snippet        :snippets
-                      :transform      :transforms
-                      :transform-job  :transforms
-                      :transform-tag  :transforms}})
+  "The fixed roots of scope: `library-branching.roots/roots`."
+  library-branching.roots/roots)
 
 (def kinds
   "The kinds of the items that scope holds."

@@ -107,6 +107,12 @@
       {:findings (vec findings)}
       {:snapshot (into {} (map :item) items)})))
 
+(defn decode-files
+  "[[decode-tree]], with the file of each item: `{:snapshot s :files {id n}}`, where `n` is the position in `files` of
+  the file of item `id`, or `{:findings [f ...]}`."
+  [codecs files]
+  (decode-tree codecs files))
+
 (defn old-format?
   "True iff the tree paths `paths` hold no [[format-path]] and some YAML file outside a directory whose name starts
   with a dot: a repository that remote sync wrote."
