@@ -24,6 +24,18 @@
    :segment         #{}
    :snippet         #{}})
 
+(def shared-tables
+  "Sets of kinds whose items the app DB keeps in one table, keyed by identity: an instance holds at most one item of
+  the kinds of a set with one identity, and a change of kind inside a set changes that item."
+  #{#{:metric :model :question}})
+
+(defn same-row?
+  "True iff an item of kind `a` and an item of kind `b` with one identity are one item of the app DB: `a` is `b`, or
+  a set of [[shared-tables]] holds both."
+  [a b]
+  (or (= a b)
+      (boolean (some #(and (contains? % a) (contains? % b)) shared-tables))))
+
 (def unique-keys
   "`{kind {:path path :name? bool}}`: the kinds whose key the app DB keeps unique over all rows of the kind, the path of
   that key in an item, and whether the key is a name. Two names are one key iff their [[fold-name]] forms are equal.

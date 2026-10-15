@@ -45,11 +45,16 @@
            (mapcat (fn [[kind ks]] (instance/read-all ks (get ids kind))))
            (sort-by key stores)))))
 
-(defn read-at-read-point
-  "[[read-current]] in a new read-only transaction at REPEATABLE READ: one read point for the whole snapshot."
+(defn- read-at-read-point
+  "`{:snapshot s :shadowed-tables ts}` in a new read-only transaction at REPEATABLE READ, one read point for both: `s`
+  is [[read-current]], and `ts` is `scope/shadowed-tables` when `stores` holds published tables, else empty."
   [stores roots]
   (library-branching.db/do-with-read-point (into #{} (mapcat instance/read-models) (vals stores))
-                                           #(read-current stores roots)))
+                                           (fn []
+                                             {:snapshot        (read-current stores roots)
+                                              :shadowed-tables (if (contains? stores :published-table)
+                                                                 (scope/shadowed-tables roots)
+                                                                 [])})))
 
 (defn- base-row
   []
@@ -127,7 +132,7 @@
 (defrecord AppDbInstance [stores roots url]
   instance/Instance
   (read-snapshot [_]
-    {:snapshot (read-at-read-point stores roots)})
+    (read-at-read-point stores roots))
   (base [_] (base url))
   (base-digests [_ commit] (base-digests url commit))
   (table-names [_ table-keys] (kinds.published-table/sync-display-names table-keys))
