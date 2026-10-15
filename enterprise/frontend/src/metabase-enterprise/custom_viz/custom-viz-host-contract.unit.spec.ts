@@ -16,7 +16,7 @@ type ColorScheme = "light" | "dark";
 type HostContract = {
   contractVersion: number;
   sandbox: Record<string, string[]>;
-  colors: Record<string, { role: string } & Record<ColorScheme, string>>;
+  colors: Record<string, string>;
   columns: Record<string, { column: object; predicates: string[] }>;
 };
 
@@ -125,16 +125,7 @@ const computeContract = (): HostContract => ({
     urlValuedAttributes: readBlocklist("URL_VALUED_ATTRS"),
     blockedApiCalls: readBlockedApiCalls(),
   },
-  colors: Object.fromEntries(
-    Object.entries(CONTRACT.colors).map(([name, { role }]) => [
-      name,
-      {
-        role,
-        light: resolveColor(name, "light"),
-        dark: resolveColor(name, "dark"),
-      },
-    ]),
-  ),
+  colors: CONTRACT.colors,
   columns: Object.fromEntries(
     Object.entries(CONTRACT.columns).map(([kind, { column }]) => [
       kind,
@@ -143,16 +134,10 @@ const computeContract = (): HostContract => ({
   ),
 });
 
-const toComparable = ({ colors, ...rest }: HostContract) =>
-  JSON.stringify({
-    ...rest,
-    colorNames: Object.keys(colors),
-  });
-
 describe("custom-viz host-contract.json", () => {
   it("matches the host", () => {
     const expected = computeContract();
-    if (toComparable(CONTRACT) !== toComparable(expected)) {
+    if (JSON.stringify(CONTRACT) !== JSON.stringify(expected)) {
       throw new Error(
         `custom-viz/src/host-contract.json is out of date. Replace it with:\n${JSON.stringify(expected, null, 2)}`,
       );
@@ -164,9 +149,9 @@ describe("custom-viz host-contract.json", () => {
   });
 
   it("gives every color a role", () => {
-    expect(
-      colorNames.filter((name) => !CONTRACT.colors[name].role.trim()),
-    ).toEqual([]);
+    expect(colorNames.filter((name) => !CONTRACT.colors[name].trim())).toEqual(
+      [],
+    );
   });
 
   it("lists only color names the host palette knows", () => {

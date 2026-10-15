@@ -168,176 +168,40 @@
     ]
   },
   "colors": {
-    "text-primary": {
-      "role": "Text: labels, values",
-      "light": "hsla(204, 66%, 8%, 0.84)",
-      "dark": "hsla(0, 0%, 100%, 0.95)"
-    },
-    "text-secondary": {
-      "role": "Text: axis labels, captions",
-      "light": "hsla(204, 66%, 8%, 0.62)",
-      "dark": "hsla(0, 0%, 100%, 0.69)"
-    },
-    "text-disabled": {
-      "role": "Text: hints",
-      "light": "hsla(204, 66%, 8%, 0.44)",
-      "dark": "hsla(0, 0%, 100%, 0.46)"
-    },
-    "background_page-primary": {
-      "role": "Surface: the viz background",
-      "light": "hsla(0, 0%, 100%, 1.00)",
-      "dark": "hsla(204, 53%, 10%, 1)"
-    },
-    "background_page-secondary": {
-      "role": "Surface: bands, alternate rows",
-      "light": "hsla(240, 11%, 98%, 1)",
-      "dark": "hsla(204, 66%, 8%, 1)"
-    },
-    "border-neutral": {
-      "role": "Lines: gridlines, axes, separators",
-      "light": "hsla(195, 6%, 87%, 1)",
-      "dark": "hsla(0, 0%, 100%, 0.21)"
-    },
-    "core-brand": {
-      "role": "Emphasis: single-series marks, selection",
-      "light": "hsla(208, 72%, 60%, 1.00)",
-      "dark": "hsla(208, 72%, 60%, 1.00)"
-    },
-    "feedback-positive": {
-      "role": "Status: positive (up, above threshold)",
-      "light": "hsla(89, 48%, 40%, 1)",
-      "dark": "hsla(89, 48%, 40%, 1)"
-    },
-    "feedback-negative": {
-      "role": "Status: negative (down, below threshold)",
-      "light": "hsla(358, 71%, 62%, 1)",
-      "dark": "hsla(358, 71%, 62%, 1)"
-    },
-    "feedback-warning": {
-      "role": "Status: warning",
-      "light": "hsla(46, 81%,  52%, 1)",
-      "dark": "hsla(46, 81%,  52%, 1)"
-    },
-    "accent0": {
-      "role": "Series 1: one accent per category, in order",
-      "light": "#509EE3",
-      "dark": "#509EE3"
-    },
-    "accent1": {
-      "role": "Series 2: one accent per category, in order",
-      "light": "#88BF4D",
-      "dark": "#88BF4D"
-    },
-    "accent2": {
-      "role": "Series 3: one accent per category, in order",
-      "light": "#A989C5",
-      "dark": "#A989C5"
-    },
-    "accent3": {
-      "role": "Series 4: one accent per category, in order",
-      "light": "#EF8C8C",
-      "dark": "#EF8C8C"
-    },
-    "accent4": {
-      "role": "Series 5: one accent per category, in order",
-      "light": "#F9D45C",
-      "dark": "#F9D45C"
-    },
-    "accent5": {
-      "role": "Series 6: one accent per category, in order",
-      "light": "#F2A86F",
-      "dark": "#F2A86F"
-    },
-    "accent6": {
-      "role": "Series 7: one accent per category, in order",
-      "light": "#98D9D9",
-      "dark": "#98D9D9"
-    },
-    "accent7": {
-      "role": "Series 8: one accent per category, in order",
-      "light": "#7172AD",
-      "dark": "#7172AD"
-    },
-    "accent0-light": {
-      "role": "Series 1: light variant",
-      "light": "#87BCEC",
-      "dark": "#87BCEC"
-    },
-    "accent1-light": {
-      "role": "Series 2: light variant",
-      "light": "#A7D07C",
-      "dark": "#A7D07C"
-    },
-    "accent2-light": {
-      "role": "Series 3: light variant",
-      "light": "#C8B4DA",
-      "dark": "#C8B4DA"
-    },
-    "accent3-light": {
-      "role": "Series 4: light variant",
-      "light": "#F7C4C4",
-      "dark": "#F7C4C4"
-    },
-    "accent4-light": {
-      "role": "Series 5: light variant",
-      "light": "#FBE499",
-      "dark": "#FBE499"
-    },
-    "accent5-light": {
-      "role": "Series 6: light variant",
-      "light": "#F7CBA9",
-      "dark": "#F7CBA9"
-    },
-    "accent6-light": {
-      "role": "Series 7: light variant",
-      "light": "#C7EAEA",
-      "dark": "#C7EAEA"
-    },
-    "accent7-light": {
-      "role": "Series 8: light variant",
-      "light": "#999AC4",
-      "dark": "#999AC4"
-    },
-    "accent0-dark": {
-      "role": "Series 1: dark variant",
-      "light": "#227FD2",
-      "dark": "#227FD2"
-    },
-    "accent1-dark": {
-      "role": "Series 2: dark variant",
-      "light": "#689636",
-      "dark": "#689636"
-    },
-    "accent2-dark": {
-      "role": "Series 3: dark variant",
-      "light": "#8A5EB0",
-      "dark": "#8A5EB0"
-    },
-    "accent3-dark": {
-      "role": "Series 4: dark variant",
-      "light": "#E75454",
-      "dark": "#E75454"
-    },
-    "accent4-dark": {
-      "role": "Series 5: dark variant",
-      "light": "#F7C41F",
-      "dark": "#F7C41F"
-    },
-    "accent5-dark": {
-      "role": "Series 6: dark variant",
-      "light": "#ED8535",
-      "dark": "#ED8535"
-    },
-    "accent6-dark": {
-      "role": "Series 7: dark variant",
-      "light": "#69C8C8",
-      "dark": "#69C8C8"
-    },
-    "accent7-dark": {
-      "role": "Series 8: dark variant",
-      "light": "#51528D",
-      "dark": "#51528D"
-    }
+    "text-primary": "Text: labels, values",
+    "text-secondary": "Text: axis labels, captions",
+    "text-disabled": "Text: hints",
+    "background_page-primary": "Surface: the viz background",
+    "background_page-secondary": "Surface: bands, alternate rows",
+    "border-neutral": "Lines: gridlines, axes, separators",
+    "core-brand": "Emphasis: single-series marks, selection",
+    "feedback-positive": "Status: positive (up, above threshold)",
+    "feedback-negative": "Status: negative (down, below threshold)",
+    "feedback-warning": "Status: warning",
+    "accent0": "Series 1: one accent per category, in order",
+    "accent1": "Series 2: one accent per category, in order",
+    "accent2": "Series 3: one accent per category, in order",
+    "accent3": "Series 4: one accent per category, in order",
+    "accent4": "Series 5: one accent per category, in order",
+    "accent5": "Series 6: one accent per category, in order",
+    "accent6": "Series 7: one accent per category, in order",
+    "accent7": "Series 8: one accent per category, in order",
+    "accent0-light": "Series 1: light variant",
+    "accent1-light": "Series 2: light variant",
+    "accent2-light": "Series 3: light variant",
+    "accent3-light": "Series 4: light variant",
+    "accent4-light": "Series 5: light variant",
+    "accent5-light": "Series 6: light variant",
+    "accent6-light": "Series 7: light variant",
+    "accent7-light": "Series 8: light variant",
+    "accent0-dark": "Series 1: dark variant",
+    "accent1-dark": "Series 2: dark variant",
+    "accent2-dark": "Series 3: dark variant",
+    "accent3-dark": "Series 4: dark variant",
+    "accent4-dark": "Series 5: dark variant",
+    "accent5-dark": "Series 6: dark variant",
+    "accent6-dark": "Series 7: dark variant",
+    "accent7-dark": "Series 8: dark variant"
   },
   "columns": {
     "text": {

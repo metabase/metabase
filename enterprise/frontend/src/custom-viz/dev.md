@@ -38,7 +38,7 @@ bun run format:check
 `src/host-contract.json` ships as `@metabase/custom-viz/host-contract.json`. It holds what tools need to know about the Metabase host:
 
 - `sandbox` — every blocklist from `frontend/src/metabase/utils/scripts-sandbox`
-- `colors` — the color names a visualization may use, each with its role (what to use it for) and its light and dark values. Renaming a color token means renaming it here and keeping its role
+- `colors` — the color names a visualization may use, each with its role (what to use it for). Values come from the host at runtime (`var(--mb-color-<name>)`, `renderingContext.getColor`). Renaming a color token means renaming it here and keeping its role
 - `columns` — a representative column for each kind, with the column type predicates it passes
 
 Bump `contractVersion` when the shape of the file changes.
