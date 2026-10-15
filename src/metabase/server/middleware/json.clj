@@ -90,9 +90,12 @@
            (some->> (get headers "content-type")
                     (re-find #"^application/(.+?\+)?json")))
     (let [encoding (or (req/character-encoding req) "UTF-8")
-          rdr      (io/reader body :encoding encoding)]
+          ;; oda parses UTF-8 bytes: only go through a Reader when the body has to be transcoded
+          source   (if (.equalsIgnoreCase "UTF-8" ^String encoding)
+                     body
+                     (io/reader body :encoding encoding))]
       (try
-        [true (assoc req :body (json/decode+kw rdr))]
+        [true (assoc req :body (json/decode+kw source))]
         (catch JsonParseException e
           [false e])))
     [true req]))

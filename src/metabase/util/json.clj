@@ -107,8 +107,26 @@
   [rdr key-fn]
   (oda/read (oda/reader rdr (parse-opts key-fn)) {:eof-value nil}))
 
+(defn- blank-bytes?
+  [^bytes bs]
+  (loop [i 0]
+    (if (= i (alength bs))
+      true
+      (case (aget bs i)
+        (32 9 10 13) (recur (inc i))
+        false))))
+
+(defn- parse-bytes
+  "Parse the UTF-8 JSON in `bs`, or nil if it is blank."
+  [^bytes bs key-fn]
+  (when-not (blank-bytes? bs)
+    (oda/parse bs (parse-opts key-fn))))
+
 (defn decode
-  "Decode a value from JSON in a string, byte array, InputStream, or Reader. A blank string decodes to nil.
+  "Decode a value from JSON in a string, byte array, InputStream (UTF-8), or Reader. Blank input decodes to nil.
+
+  Prefer an InputStream to a Reader over the same bytes: oda parses bytes, so it reads a whole InputStream at once
+  and parses it about twice as fast as it can transcode a Reader's chars back to bytes as it goes.
 
   `key-fn` transforms map keys: `true` keywordizes them, otherwise it is a fn of the key String."
   ([source] (decode source nil))
@@ -117,9 +135,9 @@
                             (oda/parse ^String source (parse-opts key-fn)))
          (instance? Reader source) (read-one source key-fn)
          (instance? InputStream source) (with-open [^InputStream is source]
-                                          (read-one is key-fn))
+                                          (parse-bytes (.readAllBytes is) key-fn))
          (nil? source) nil
-         (bytes? source) (oda/parse source (parse-opts key-fn))
+         (bytes? source) (parse-bytes source key-fn)
          :else (throw (ex-info (str "Unsupported source type: " (type source)) {})))))
 
 (defn decode+kw
