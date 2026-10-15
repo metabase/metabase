@@ -191,7 +191,7 @@
                   (let [branches (store/branches s)]
                     (when (and (= :read-only type) (present branch) (not (contains? branches branch)))
                       (refuse! (tru "The repository has no branch {0}." branch)))
-                    (let [default (when default-branch? (store/default-branch s))]
+                    (let [default (and default-branch? (store/default-branch s))]
                       (when (and drift (seq (drift s (assoc connection :branch (or default branch)))))
                         (refuse! (tru "There are unsaved changes in the synced content which will be overwritten switching to read-only mode.")))
                       (if default
