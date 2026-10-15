@@ -26,7 +26,8 @@
    [mage.util :as u])
   (:import
    (java.time Instant)
-   (java.time.temporal ChronoUnit)))
+   (java.time.temporal ChronoUnit)
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -174,10 +175,13 @@
   - `/*CUTS*/`: the cheapest ways to split the largest cycle at the latest commit, a JSON array
   - `/*COUNT*/`: how many commits there are"
   [template page-data]
-  (reduce (fn [page [placeholder k write]]
-            (str/replace page placeholder (str (write (get page-data k)))))
-          template
-          placeholders))
+  ;; One pass over the template, so a placeholder inside a value already written, say in a commit subject, stays.
+  (let [by-placeholder (into {} (map (juxt first rest)) placeholders)]
+    (str/replace template
+                 (re-pattern (str/join "|" (map (comp #(Pattern/quote %) first) placeholders)))
+                 (fn [placeholder]
+                   (let [[k write] (by-placeholder placeholder)]
+                     (str (write (get page-data k))))))))
 
 (defn- missing-page-keys
   "Keys that a placeholder in `template` shows and that `page-data` lacks."
