@@ -767,6 +767,22 @@
       (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
              (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
 
+(deftest ^:parallel tool-unparseable-arguments-warning-test
+  (testing "invalid JSON logs one warning with the tool name, the call ID and the length, but not the parse error"
+    (let [raw "{\"tz\": jane_doe_4165551234}"]
+      (doseq [[tool-name logged-name] [["get-time" "get-time"] ["analyze_chart" "unknown"]]]
+        (testing tool-name
+          (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+            (run! identity (eduction (self.core/tool-executor-xf test-util/TOOLS)
+                                     (self.core/lite-aisdk-xf)
+                                     [{:type :tool-input-start :toolName tool-name :toolCallId "call-j"}
+                                      {:type :tool-input-delta :toolCallId "call-j" :inputTextDelta raw}
+                                      {:type :tool-input-available :toolName tool-name :toolCallId "call-j"}]))
+            (is (=? [{:level   :warn
+                      :message (str "Failed to parse tool arguments as JSON {:tool-name " logged-name
+                                    ", :tool-call-id call-j, :raw-len " (count raw) "}")}]
+                    (messages)))))))))
+
 (deftest ^:parallel tool-non-object-arguments-test
   (let [received (atom ::not-called)
         tools    {"open" {:fn     (fn [args] (reset! received args) {:output "ok"})

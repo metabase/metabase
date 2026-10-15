@@ -397,10 +397,10 @@
           (nil? arguments) nil
           :else            {::non-object-arguments arguments}))
       (catch Exception e
-        (log/warn "Failed to parse tool arguments as JSON, passing raw string"
-                  {:tool-call-id (:toolCallId (first chunks))
-                   :error        (.getMessage e)
-                   :raw-len      (count raw)})
+        (log/debug "Failed to parse tool arguments as JSON, passing raw string"
+                   {:tool-call-id (:toolCallId (first chunks))
+                    :error        (.getMessage e)
+                    :raw-len      (count raw)})
         ;; Return a sentinel map so the model gets a repair message from [[reject-unparsed-arguments!]]
         ;; rather than a cryptic JSON parse stacktrace.
         {::raw-arguments raw}))))
@@ -1098,11 +1098,16 @@
                            (cond-> chunk
                              (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
               results  (try
-                         (when-not tool
-                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
-                                                (str/join ", " (sort (keys tools))) ".")
-                                           {:agent-error? true})))
                          (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                               _         (when-let [raw (::raw-arguments arguments)]
+                                           (log/warn "Failed to parse tool arguments as JSON"
+                                                     {:tool-name    safe-name
+                                                      :tool-call-id tool-call-id
+                                                      :raw-len      (count raw)}))
+                               _         (when-not tool
+                                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
+                                                                (str/join ", " (sort (keys tools))) ".")
+                                                           {:agent-error? true})))
                                ;; Before coercion: `coerce-stringified-json` would decode a double-encoded
                                ;; `{::non-object-arguments "{...}"}` into an object and garble the message.
                                _         (reject-unparsed-arguments! arguments)
