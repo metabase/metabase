@@ -17,7 +17,6 @@
    [metabase-enterprise.library-branching.instance.save-rule-test]
    [metabase-enterprise.library-branching.instance.tree :as tree]
    [metabase-enterprise.library-branching.instance.values-source :as values-source]
-   [metabase-enterprise.library-branching.instance.write-property-test]
    [metabase-enterprise.library-branching.instance.write-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.test.fixtures :as fixtures]))
@@ -42,39 +41,47 @@
     :doc    "A write of a card writes every attribute, also one whose content did not change, so a write of the
             current content changes rows (the query gets new uuids)."
     :target `kinds.card/write-card!
-    :edits  [[:replace '(content/changed-attrs spec (:attrs old) attrs) '(keys (:attrs spec))]]}
+    :edits  [[:replace '(content/changed-attrs spec (:attrs old) attrs) '(keys (:attrs spec))]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test]}
    {:name   :absent-is-nil
     :doc    "An absent attribute is written as nil, not as its default."
     :target `content/attr-value
-    :edits  [[:replace '(get-in spec [:attrs k :default]) nil]]}
+    :edits  [[:replace '(get-in spec [:attrs k :default]) nil]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test]}
    {:name   :take-over-outside
     :doc    "A write matches an identity also outside the Library tree, so a file takes over a personal item."
     :target `tree/check-in-tree!
-    :edits  [[:replace 'in-tree? true {:nth 1}]]}
+    :edits  [[:replace 'in-tree? true {:nth 1}]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/no-take-over-outside-the-library-test]}
    {:name   :kind-not-checked
     :doc    "A write of a card takes over a card of another kind with the same identity, also a metric."
     :target `kinds.card/check-kind!
-    :edits  [[:replace '(or (= kind row-kind) (and (convertible kind) (convertible row-kind))) true]]}
+    :edits  [[:replace '(or (= kind row-kind) (and (convertible kind) (convertible row-kind))) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/kind-refusals-test]}
    {:name   :kinds-not-convertible
     :doc    "A write of a question cannot take over a model with the same identity, so a model that became a question
             on the branch cannot be pulled."
     :target `kinds.card/check-kind!
-    :edits  [[:replace '(and (convertible kind) (convertible row-kind)) false]]}
+    :edits  [[:replace '(and (convertible kind) (convertible row-kind)) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/model-becomes-question-test]}
    {:name   :type-kept
     :doc    "A write of a question to a model leaves the card a model, so the cascade of the Card save path does not
             run."
     :target `kinds.card/write-card!
-    :edits  [[:replace '(not= kind (:kind old)) false]]}
+    :edits  [[:replace '(not= kind (:kind old)) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/model-becomes-question-test]}
    {:name   :edited-columns-alone
     :doc    "A write of a model stores the edited columns alone, with no type, so the model's columns lose their
             types."
     :target `kinds.card/with-model-metadata
-    :edits  [[:replace '(seq (:result_metadata changes)) false]]}
+    :edits  [[:replace '(seq (:result_metadata changes)) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test]}
    {:name   :place-not-in-scope
     :doc    "A write puts an item into any collection with the identity of its place, also one in the trash or outside
             the Library."
     :target `tree/place-collection
-    :edits  [[:replace '(scope/in-scope? :collection place) true]]}
+    :edits  [[:replace '(scope/in-scope? :collection place) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/refused-writes-write-nothing-test]}
    {:name   :area-namespace-unchecked
     :doc    "A collection of any namespace can be at an area root, so a pull puts a transforms collection into the
             snippets namespace."
@@ -94,80 +101,97 @@
    {:name   :root-level-anywhere
     :doc    "Any collection may be at the root level, not only a fixed root."
     :target `kinds.collection/write-collection!
-    :edits  [[:replace '(root? attrs) true]]}
+    :edits  [[:replace '(root? attrs) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test]}
    {:name   :subtree-stays
     :doc    "A move of a collection leaves the locations of its subtree as they were."
     :target `kinds.collection/write-collection!
-    :edits  [[:replace '(contains? changes :location) false]]}
+    :edits  [[:replace '(contains? changes :location) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test]}
    {:name   :no-restore
     :doc    "A write of a trashed card leaves it in the trash."
     :target `kinds.card/write-card!
-    :edits  [[:replace '(:archived row) false]]}
+    :edits  [[:replace '(:archived row) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test]}
    {:name   :no-trash
     :doc    "trash! of a card does nothing."
     :target `kinds.card/trash-card!
-    :edits  [[:replace '(library-branching.db/update-card! (:id row) {:archived true :archived_directly true}) nil]]}
+    :edits  [[:replace '(library-branching.db/update-card! (:id row) {:archived true :archived_directly true}) nil]]
+    :tests  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test]}
    {:name   :instance-local-reset
     :doc    "A write of a card also resets the public link and the embedding flag, as a load of a file that has no
             such attributes would."
     :target `kinds.card/write-card!
     :edits  [[:replace '(with-model-metadata kind query changes)
-              '(assoc (with-model-metadata kind query changes) :public_uuid nil :enable_embedding false)]]}
+              '(assoc (with-model-metadata kind query changes) :public_uuid nil :enable_embedding false)]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/write-keeps-instance-local-attributes-test]}
    {:name   :visibility-type-is-content
     :doc    "A read gives the visibility type of a table as content, which Metabase derives from the data layer, so a
             written data layer reads back with an attribute that the content did not have."
     :target `kinds.published-table/table-columns
     :edits  [[:replace '(set (keys (:attrs format.published-table/spec)))
-              '(conj (set (keys (:attrs format.published-table/spec))) :visibility_type)]]}
+              '(conj (set (keys (:attrs format.published-table/spec))) :visibility_type)]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-write-test]}
    {:name   :field-settings-kept
     :doc    "A field setting that the content no longer has is not cleared."
     :target `kinds.published-table/field-changes
-    :edits  [[:replace '(into (set (keys old)) (keys new)) '(keys new)]]}
+    :edits  [[:replace '(into (set (keys old)) (keys new)) '(keys new)]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-write-test]}
    {:name   :remappings-not-written
     :doc    "A write of a published table sets no remapping of its fields."
     :target `kinds.published-table/write-published-table!
-    :edits  [[:replace '(run! write-remapping! remappings) nil]]}
+    :edits  [[:replace '(run! write-remapping! remappings) nil]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test]}
    {:name   :remapping-not-removed
     :doc    "A remapping that the content no longer has stays."
     :target `kinds.published-table/write-remapping!
-    :edits  [[:replace '(library-branching.db/delete-dimension! field-id) nil]]}
+    :edits  [[:replace '(library-branching.db/delete-dimension! field-id) nil]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test]}
    {:name   :stale-labels-kept
     :doc    "An internal remapping with no labels keeps the labels of an earlier remapping."
     :target `kinds.published-table/write-labels!
     :edits  [[:replace '(library-branching.db/set-human-readable-values! fv-id target)
-              '(when target (library-branching.db/set-human-readable-values! fv-id target))]]}
+              '(when target (library-branching.db/set-human-readable-values! fv-id target))]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test]}
    {:name   :labels-not-on-their-values
     :doc    "A write sets the labels in place of the human-readable values with no regard to the values that warehouse
             sync found."
     :target `kinds.published-table/write-labels!
-    :edits  [[:replace '(mapv (fn [v] (get by-value v (unlabelled-text v))) values) '(mapv second labels)]]}
+    :edits  [[:replace '(mapv (fn [v] (get by-value v (unlabelled-text v))) values) '(mapv second labels)]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test]}
    {:name   :labels-written-again
     :doc    "A write of the labels that the row already has writes the row again."
     :target `kinds.published-table/write-labels!
-    :edits  [[:replace '(not= (labels-of values current) (labels-of values target)) true]]}
+    :edits  [[:replace '(not= (labels-of values current) (labels-of values target)) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test]}
    {:name   :outside-values-sources-cleared
     :doc    "A trash keeps no ParameterCard row of a user outside the Library tree, so the Card save path clears the
             values source of each parameter outside the Library that takes its values from a trashed card."
     :target `values-source/do-keeping-outside-values-sources
-    :edits  [[:replace '(remove (comp in-tree? :user_collection_id)) '(filter (constantly false))]]}
+    :edits  [[:replace '(remove (comp in-tree? :user_collection_id)) '(filter (constantly false))]]
+    :tests  [#'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-outside-values-sources-test]}
    {:name   :library-values-sources-kept
     :doc    "A trash also keeps the ParameterCard rows of users in the Library tree, so a parameter of Library content
             keeps the values source of a trashed card."
     :target `values-source/do-keeping-outside-values-sources
-    :edits  [[:replace '(remove (comp in-tree? :user_collection_id)) '(map identity)]]}
+    :edits  [[:replace '(remove (comp in-tree? :user_collection_id)) '(map identity)]]
+    :tests  [#'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-the-cascade-inside-the-library-test]}
    {:name   :collection-trash-clears-outside-values-sources
     :doc    "A trash of a collection does not keep the values sources outside the Library of the cards in its subtree."
     :target `kinds.collection/trash-collection!
-    :edits  [[:replace '(library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row)) []]]}
+    :edits  [[:replace '(library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row)) []]]
+    :tests  [#'metabase-enterprise.library-branching.instance.cascade-test/collection-trash-keeps-outside-values-sources-test]}
    {:name   :save-rule-sees-no-trash
     :doc    "The save rule finds no reference to an item that is not in scope."
     :target `save-rule/findings
-    :edits  [[:replace '(not (contains? in-scope target)) false]]}
+    :edits  [[:replace '(not (contains? in-scope target)) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.save-rule-test/trash-of-a-used-item-is-refused-test]}
    {:name   :save-rule-refuses-old-references
     :doc    "The save rule refuses every save while any reference out of scope exists, also one that the save did not
             add."
     :target `save-rule/do-with-save-rule
-    :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]}
+    :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]
+    :tests  [#'metabase-enterprise.library-branching.instance.save-rule-test/saves-the-rule-allows-test]}
    {:name   :content-rule-not-a-refusal
     :doc    "A write that the Library's content rule refuses throws the error of the rule, not a refusal, so a pull
             fails in the middle of its apply."
@@ -175,39 +199,5 @@
     :edits  [[:replace '(= 400 status-code) false]]
     :tests  [#'metabase-enterprise.library-branching.instance.write-test/library-content-rule-refusal-test]}])
 
-(def ^:private tests
-  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test
-   #'metabase-enterprise.library-branching.instance.card-test/model-becomes-question-test
-   #'metabase-enterprise.library-branching.instance.card-test/kind-refusals-test
-   #'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-outside-values-sources-test
-   #'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-the-cascade-inside-the-library-test
-   #'metabase-enterprise.library-branching.instance.cascade-test/collection-trash-keeps-outside-values-sources-test
-   #'metabase-enterprise.library-branching.instance.cascade-test/metric-write-keeps-outside-values-sources-test
-   #'metabase-enterprise.library-branching.instance.write-test/metric-write-test
-   #'metabase-enterprise.library-branching.instance.write-test/write-keeps-instance-local-attributes-test
-   #'metabase-enterprise.library-branching.instance.write-test/no-take-over-outside-the-library-test
-   #'metabase-enterprise.library-branching.instance.write-test/trash-keeps-outside-content-working-test
-   #'metabase-enterprise.library-branching.instance.write-test/collection-trash-and-restore-test
-   #'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test
-   #'metabase-enterprise.library-branching.instance.write-test/refused-writes-write-nothing-test
-   #'metabase-enterprise.library-branching.instance.write-test/library-content-rule-refusal-test
-   #'metabase-enterprise.library-branching.instance.write-test/published-table-write-test
-   #'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test
-   #'metabase-enterprise.library-branching.instance.write-test/published-table-legacy-visibility-type-test
-   #'metabase-enterprise.library-branching.instance.write-test/snippet-write-test
-   #'metabase-enterprise.library-branching.instance.write-test/write-of-current-content-changes-no-row-test
-   #'metabase-enterprise.library-branching.instance.write-test/take-theirs-over-a-local-change-test
-   #'metabase-enterprise.library-branching.instance.write-property-test/metric-laws-test
-   #'metabase-enterprise.library-branching.instance.write-property-test/library-collection-laws-test
-   #'metabase-enterprise.library-branching.instance.write-property-test/snippet-collection-laws-test
-   #'metabase-enterprise.library-branching.instance.write-property-test/snippet-laws-test
-   #'metabase-enterprise.library-branching.instance.write-property-test/published-table-laws-test
-   #'metabase-enterprise.library-branching.instance.write-property-test/layer-content-laws-test
-   #'metabase-enterprise.library-branching.instance.save-rule-test/trash-of-a-used-item-is-refused-test
-   #'metabase-enterprise.library-branching.instance.save-rule-test/reference-out-of-scope-is-refused-test
-   #'metabase-enterprise.library-branching.instance.save-rule-test/saves-the-rule-allows-test
-   #'metabase-enterprise.library-branching.instance.save-rule-test/trash-of-a-used-snippet-is-refused-test
-   #'metabase-enterprise.library-branching.instance.lock-test/current-locks-the-row-test])
-
 (deftest write-side-mutations-test
-  (mut/check mutations {:tests tests :timeout-ms 300000}))
+  (mut/check mutations {:timeout-ms 300000}))

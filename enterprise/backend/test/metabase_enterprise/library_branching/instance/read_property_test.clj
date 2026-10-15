@@ -1,7 +1,8 @@
 (ns metabase-enterprise.library-branching.instance.read-property-test
   "Property tests of the read side against a reference model: generated trees of collections, metrics, snippets and
   published tables, written to the app DB in a transaction that rolls back, and the snapshot that the reference model
-  computes from the same choices."
+  computes from the same choices. Each test var makes the Library collections and the metric queries once, and its
+  trials share them."
   (:require
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
@@ -22,6 +23,21 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
+
+(def ^:private ^:dynamic *library*
+  "The Library collections of the current test var, or nil."
+  nil)
+
+(def ^:private ^:dynamic *queries*
+  "`{[table field] query}`: the metric queries of the current test var, or nil."
+  nil)
+
+(defn- do-with-library
+  "Calls `f` with the Library collections of the current test var, or of this call when there are none."
+  [f]
+  (if *library*
+    (f *library*)
+    (collections.tu/with-library [library] (f library))))
 
 ;;; ------------------------------------------------ The generated world ---------------------------------------------
 
@@ -187,6 +203,13 @@
     (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id table field)))))))
 
+;; An :each fixture, so a run of the :once fixtures alone makes no rows.
+(use-fixtures :each (fn [t]
+                      (collections.tu/with-library [library]
+                        (binding [*library* library
+                                  *queries* (into {} (map (juxt identity sum-query)) metric-fields)]
+                          (t)))))
+
 (defn- insert-collections!
   "Inserts the collections of `world` as rows, in order, and returns their ids. `sections` is as for
   [[expected-snapshot]]."
@@ -226,7 +249,7 @@
                                :display                display
                                :creator_id             user
                                :visualization_settings {}
-                               :dataset_query          (sum-query field)}))
+                               :dataset_query          (or (get *queries* field) (sum-query field))}))
     (doseq [{:keys [entity-id place archived description content]} (:snippets world)]
       (t2/insert! :native_query_snippet {:name          entity-id
                                          :entity_id     entity-id
@@ -265,17 +288,18 @@
 
 (defn- check-choices!
   [choices]
-  (collections.tu/with-library [{:keys [data metrics]}]
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      ;; The published tables of the world are the only ones.
-      (t2/delete! :model/TableUserSettings :table_id [:in (map mt/id tables)])
-      (let [world    (fold choices)
-            sections {:metrics metrics :data data}]
-        (write-world! world sections)
-        (let [s (app-db/read-current)]
-          (and (= (expected-snapshot world sections) (without-queries (ours s world)))
-               (every? #(map? (get-in % [:attrs :query])) (filter (comp #{:metric} :kind) (vals (ours s world))))
-               (= (select-keys (scope/scope-count) snapshot/kinds) (engine.count/count-by-kind s))))))))
+  (do-with-library
+   (fn [{:keys [data metrics]}]
+     (t2/with-transaction [_conn nil {:rollback-only true}]
+       ;; The published tables of the world are the only ones.
+       (t2/delete! :model/TableUserSettings :table_id [:in (map mt/id tables)])
+       (let [world    (fold choices)
+             sections {:metrics metrics :data data}]
+         (write-world! world sections)
+         (let [s (app-db/read-current)]
+           (and (= (expected-snapshot world sections) (without-queries (ours s world)))
+                (every? #(map? (get-in % [:attrs :query])) (filter (comp #{:metric} :kind) (vals (ours s world))))
+                (= (select-keys (scope/scope-count) snapshot/kinds) (engine.count/count-by-kind s)))))))))
 
 (defspec read-matches-reference-model-test 100
   (prop/for-all [choices world-gen]

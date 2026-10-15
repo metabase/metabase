@@ -103,14 +103,20 @@
              (sort-by (comp pr-str key) s)
              (concat choices (repeat 0)))))
 
+(def ^:private folder-attrs-gen
+  ;; One folder in four has `:color` true, so a root-level folder that is the directory `area/` itself is frequent.
+  (gen/frequency [[3 lb.tu/attrs-gen] [1 (gen/fmap #(assoc % :color true) lb.tu/attrs-gen)]]))
+
 (defn toy-snapshot-gen
   "Generates well-formed snapshots of the toy kinds, at most `max-items` (default 30) items. Some names of siblings
-  differ only in case or in a character that the slug rule removes."
+  differ only in case or in a character that the slug rule removes, and some root-level folders are the directory
+  `area/` itself."
   ([] (toy-snapshot-gen 30))
   ([max-items]
    (gen/fmap (fn [[s choices]] (vary-names s choices))
              (gen/tuple (lb.tu/well-formed-snapshot-gen {:kinds       kinds
                                                          :may-contain may-contain
                                                          :root-kinds  kinds
+                                                         :attrs       #(if (= :folder %) folder-attrs-gen lb.tu/attrs-gen)
                                                          :max-items   max-items})
                         (gen/vector gen/nat 0 max-items)))))

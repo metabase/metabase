@@ -24,7 +24,8 @@
     :target `push/commit!
     :edits  [[:replace '(store/cas-ref! store branch (when-not new-branch? b) c)
               '(let [r (store/cas-ref! store branch (when-not new-branch? b) c)]
-                 (if (map? r) (store/cas-ref! store branch (:moved r) c) r))]]}
+                 (if (map? r) (store/cas-ref! store branch (:moved r) c) r))]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/remote-that-moves-during-the-push-refuses-test]}
    {:name   :no-head-check
     :doc    "The push does not refuse at once a branch that is not at the base. The compare-and-swap still refuses it,
             with the same result, so no test can see it: the head check only saves the read and the commit."
@@ -36,55 +37,66 @@
             cachereread): a save during the push shows as synced, and the next push has nothing to push."
     :target `push/commit!
     :edits  [[:replace '(instance/set-base! inst b c digests)
-              '(instance/set-base! inst b c (writer/item-digests kinds/codecs (:snapshot (instance/read-snapshot inst))))]]}
+              '(instance/set-base! inst b c (writer/item-digests kinds/codecs (:snapshot (instance/read-snapshot inst))))]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/save-during-push-stays-a-local-change-test]}
    {:name   :no-validate
     :doc    "The push writes a snapshot with a structural finding, for example a reference to a trashed item."
     :target `push/push!
-    :edits  [[:replace '(validate/validate s {:roots (roots/root-ids s)}) []]]}
+    :edits  [[:replace '(validate/validate s {:roots (roots/root-ids s)}) []]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/push-refuses-a-reference-to-an-item-out-of-scope-test]}
    {:name   :every-file-foreign
     :doc    "The push keeps every file of the base tree: a file of a removed item, a moved file and the files of the
             old format stay."
     :target `push/foreign-files
-    :edits  [[:replace '(claims/kept-files (claims/item-claims t)) 't]]}
+    :edits  [[:replace '(claims/kept-files (claims/item-claims t)) 't]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/push-writes-every-local-change-test]}
    {:name   :no-commit-point
     :doc    "The push does not move its task to committing before its remote compare-and-swap (the TLA+ mutation
             nocommitpoint): a push whose task an admin cancelled still lands."
     :target `push/commit!
-    :edits  [[:replace '(tasks/mark-committing! task) :ok]]}
+    :edits  [[:replace '(tasks/mark-committing! task) :ok]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/cancel-before-the-commit-point-stops-the-push-test]}
    {:name   :nocas
     :doc    "The record step moves the base from the base that it reads at that moment, not from the base that the push
             read (the TLA+ mutation nocas): a paused push that wakes up moves the base back."
     :target `push/commit!
-    :edits  [[:replace '(instance/set-base! inst b c digests) '(instance/set-base! inst (instance/base inst) c digests)]]}
+    :edits  [[:replace '(instance/set-base! inst b c digests) '(instance/set-base! inst (instance/base inst) c digests)]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/paused-push-cannot-move-the-base-back-test]}
    {:name   :remote-refusal-interrupts
     :doc    "A push whose remote compare-and-swap refused ends its task as interrupted (the push may have landed), not
             as failed: the task record is not truthful."
     :target `push/commit!
     :edits  [[:replace '(tasks/fail-committing! task (remote-moved-message branch))
-              '(tasks/fail! task (remote-moved-message branch))]]}
+              '(tasks/fail! task (remote-moved-message branch))]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/remote-refusal-after-the-commit-point-fails-the-task-test]}
    {:name   :no-record-step
     :doc    "The push moves the base outside the record step of its task, so the task stays committing after the
             push landed."
     :target `push/commit!
-    :edits  [[:replace '(tasks/record! task record) '(record)]]}
+    :edits  [[:replace '(tasks/record! task record) '(record)]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/push-ends-its-task-past-the-commit-point-test]}
    {:name   :foreign-paths-not-taken
     :doc    "The layout of a push does not know the paths of the foreign files of the base tree, so an item whose path
             a foreign file holds takes no suffix."
     :target `push/tree
-    :edits  [[:replace '(set (keys kept)) #{}]]}
+    :edits  [[:replace '(set (keys kept)) #{}]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/foreign-file-at-the-path-of-an-item-stays-test]}
    {:name   :no-foreign-guard
     :doc    "The push writes a file at the path of a foreign file that no suffix avoids: it overwrites the foreign
             file."
     :target `push/tree
-    :edits  [[:replace '(foreign-clashes kept written) []]]}
+    :edits  [[:replace '(foreign-clashes kept written) []]]
+    :tests  [#'metabase-enterprise.library-branching.push-test/push-never-overwrites-a-foreign-file-test]}
    {:name   :base-not-compared
     :doc    "set-base! moves the base row whatever its commit id is."
     :target `library-branching.db/compare-and-set-base!
     :edits  [[:replace '(if expected
                           [:and (url-is url) [:= :commit_id [:auto/param expected]]]
-                          [:or [:= :commit_id nil] (url-is-not url)]) true]]}])
+                          [:or [:= :commit_id nil] (url-is-not url)]) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.base-test/set-base-is-a-compare-and-swap-test]}])
 
 (def ^:private tests
+  ;; Every test of the push and the base, for a mutation that names no tests of its own: one that must survive them all.
   [#'metabase-enterprise.library-branching.push-test/first-push-writes-the-snapshot-test
    #'metabase-enterprise.library-branching.push-test/push-writes-every-local-change-test
    #'metabase-enterprise.library-branching.push-test/nothing-to-push-test
