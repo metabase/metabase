@@ -119,6 +119,7 @@
 (defmethod before-update* :model/Card
   [_model card]
   (when (or (changed? card #{:type :dataset_query :dimension_mappings :parameters})
+            (and (= :metric (:type card)) (changed? card #{:name}))
             (and (changed? card #{:result_metadata})
                  (deps.result-metadata/result-metadata-changed? (:result_metadata (t2/original card))
                                                                 (:result_metadata card))))

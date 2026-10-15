@@ -8,9 +8,7 @@
 
 (methodical/defmethod t2/table-name :model/ResultMetadataStatus [_model] :result_metadata_status)
 
-(doto :model/ResultMetadataStatus
-  (derive :metabase/model)
-  (derive :hook/timestamped?))
+(derive :model/ResultMetadataStatus :metabase/model)
 
 (t2/deftransforms :model/ResultMetadataStatus
   {:entity_type mi/transform-keyword})

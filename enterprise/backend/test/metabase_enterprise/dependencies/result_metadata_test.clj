@@ -58,23 +58,40 @@
 (deftest model-metadata-edit-test
   (testing "editing a model's metadata re-derives the MBQL cards depending on it transitively, but not past a native card"
     (with-clean-statuses
-      (mt/with-temp [:model/Card {model-id :id}    {:type :model :dataset_query (table-query :orders)}
-                     :model/Card {question-id :id} {:dataset_query (card-query model-id)}
-                     :model/Card {nested-id :id}   {:dataset_query (card-query question-id)}
-                     :model/Card {native-id :id}   {:dataset_query (native-card-query model-id)}]
-        (mt/with-temp [:model/Card {after-native-id :id} {:dataset_query (card-query native-id)}]
-          (run-jobs!)
-          (let [native-total (column after-native-id "TOTAL")]
+      (mt/with-temp [:model/Card {model-id :id}        {:type :model :dataset_query (table-query :orders)}
+                     :model/Card {question-id :id}     {:dataset_query (card-query model-id)}
+                     :model/Card {nested-id :id}       {:dataset_query (card-query question-id)}
+                     :model/Card {native-id :id}       {:dataset_query (native-card-query model-id)}
+                     :model/Card {after-native-id :id} {:dataset_query (card-query native-id)}]
+        (run-jobs!)
+        (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card :id model-id)
+                                                                          "TOTAL" "Grand total")})
+        (is (stale? :card model-id))
+        (run-jobs!)
+        (is (= "Grand total" (:display_name (column question-id "TOTAL"))))
+        (is (= "Grand total" (:display_name (column nested-id "TOTAL"))))
+        (testing "the native card and the card depending on it are left alone"
+          (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id [:in [native-id after-native-id]]))))
+        (is (not-any? #(stale? :card %) [model-id question-id nested-id]))))))
+
+(deftest native-parent-test
+  (testing "a card depending on a changed model directly is re-derived even when it also depends on a native card"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {model-id :id}  {:type :model :dataset_query (table-query :orders)}
+                     :model/Card {native-id :id} {:dataset_query   (native-card-query model-id)
+                                                  :result_metadata (t2/select-one-fn :result_metadata :model/Card
+                                                                                     :id model-id)}]
+        (let [mp       (mt/metadata-provider)
+              query    (card-query model-id)
+              native   (lib.metadata/card mp native-id)
+              joined   (lib/join query (lib/join-clause native [(lib/= (lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                                                       (lib/ref (lib.metadata/field mp (mt/id :orders :id))))]))]
+          (mt/with-temp [:model/Card {joined-id :id} {:dataset_query joined}]
+            (run-jobs!)
             (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card :id model-id)
                                                                               "TOTAL" "Grand total")})
-            (is (stale? :card model-id))
             (run-jobs!)
-            (is (= "Grand total" (:display_name (column question-id "TOTAL"))))
-            (is (= "Grand total" (:display_name (column nested-id "TOTAL"))))
-            (testing "the native card and the card depending on it are left alone"
-              (is (= native-total (column after-native-id "TOTAL")))
-              (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id [:in [native-id after-native-id]]))))
-            (is (not-any? #(stale? :card %) [model-id question-id nested-id]))))))))
+            (is (= "Grand total" (:display_name (column joined-id "TOTAL"))))))))))
 
 (deftest invisible-metadata-change-test
   (testing "a result metadata change the dependents don't see, like a fingerprint, doesn't mark the card"

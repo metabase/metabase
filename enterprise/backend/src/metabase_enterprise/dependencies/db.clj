@@ -927,7 +927,7 @@
    now        :- ms/TemporalInstant]
   (t2/select :model/ResultMetadataStatus
              {:where    (processable-result-metadata-status-expr :result_metadata_status now)
-              :order-by [[:id :asc]]
+              :order-by [[:updated_at :asc] [:id :asc]]
               :limit    batch-size}))
 
 (mu/defn ready-result-metadata-statuses
@@ -949,7 +949,7 @@
                                           [:= :dep.from_entity_type :result_metadata_status.entity_type]
                                           [:= :dep.from_entity_id :result_metadata_status.entity_id]
                                           (processable-result-metadata-status-expr :upstream now)]}]]]
-              :order-by [[:id :asc]]
+              :order-by [[:updated_at :asc] [:id :asc]]
               :limit    batch-size}))
 
 (mu/defn clear-result-metadata-status!
@@ -957,7 +957,7 @@
   [status-id :- ms/PositiveInt]
   (t2/update! :model/ResultMetadataStatus
               :id status-id
-              {:stale false :fail_count 0 :next_retry_at nil :terminal false}))
+              {:stale false :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
 
 (mu/defn clear-unchanged-result-metadata-status!
   "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id` unless it was updated after
@@ -966,7 +966,7 @@
    updated-at :- ms/TemporalInstant]
   (t2/update! :model/ResultMetadataStatus
               :id status-id :updated_at updated-at
-              {:stale false :fail_count 0 :next_retry_at nil :terminal false}))
+              {:stale false :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
 
 (mu/defn delete-deleted-result-metadata-statuses!
   "Delete the ResultMetadataStatuses of the deleted entities of `entity-type`, returning the number deleted."
