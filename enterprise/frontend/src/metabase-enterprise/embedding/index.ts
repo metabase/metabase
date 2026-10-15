@@ -7,16 +7,14 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { InteractiveEmbeddingAuthorizedOriginsWidget } from "./components/InteractiveEmbeddingAuthorizedOriginsWidget";
 
 /**
- * We can't gate this component behind a feature flag, because SDK users could
- * use the SDK without a valid license and doesn't contain any feature flags.
- */
-PLUGIN_EMBEDDING.SimpleDataPicker = SimpleDataPicker;
-PLUGIN_EMBEDDING.DataSourceSelector = DataSourceSelector;
-
-/**
  * Initialize embedding plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  // We can't gate this component behind a feature flag, because SDK users could
+  // use the SDK without a valid license and doesn't contain any feature flags.
+  PLUGIN_EMBEDDING.SimpleDataPicker = SimpleDataPicker;
+  PLUGIN_EMBEDDING.DataSourceSelector = DataSourceSelector;
+
   if (hasPremiumFeature("embedding")) {
     PLUGIN_EMBEDDING.isEnabled = () => true;
     PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled =
