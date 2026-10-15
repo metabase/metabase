@@ -121,6 +121,31 @@
   [s]
   (some #(< 1 %) (vals (frequencies (map (juxt :place :kind :name) (vals s))))))
 
+(deftest ^:parallel fold-name-test
+  (testing "a name in its folded form: NFKD, with no combining mark, in lower case"
+    (are [s folded] (= folded (snapshot/fold-name s))
+      "Filter"                               "filter"
+      "FILTER"                               "filter"
+      "Fïlter"                               "filter"
+      "Fi\u0308lter"                         "filter"
+      "Café"                                 "cafe"
+      "\uFB01lter"                           "filter"
+      "\uFF26\uFF49\uFF4C\uFF54\uFF45\uFF52" "filter"
+      "x\u00B2"                              "x2"
+      "\u0130stanbul"                        "istanbul"
+      "\u0131"                               "\u0131"
+      "Straße"                               "straße"
+      "Łódź"                                 "łodz"
+      " Filter "                             " filter ")))
+
+(deftest ^:parallel unique-key-test
+  (testing "a name key compares in its folded form, any other key as it is"
+    (let [table {:snippet {:path [:name] :name? true} :metric {:path [:attrs :path]}}]
+      (is (= "filter" (snapshot/unique-key table {:kind :snippet :name "Fïlter"})))
+      (is (= "A.py" (snapshot/unique-key table {:kind :metric :name "M" :attrs {:path "A.py"}})))
+      (is (nil? (snapshot/unique-key table {:kind :metric :name "M" :attrs {}})))
+      (is (nil? (snapshot/unique-key table {:kind :collection :name "C"}))))))
+
 (deftest ^:parallel arbitrary-snapshot-gen-faults-test
   (testing "the arbitrary generator gives each kind of structural fault"
     (let [ss (samples (lb.tu/arbitrary-snapshot-gen))]
