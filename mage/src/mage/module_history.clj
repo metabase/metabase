@@ -246,13 +246,14 @@
     query))
 
 (defn- refresh-card!
-  "Change the SQL of native card `id`, whose dataset query is `query`, so Metabase stops serving the results it
-  cached."
-  [dry-run? profile stamp id query]
+  "Change the SQL of native card `id` so Metabase stops serving the results it cached."
+  [dry-run? profile stamp id]
   (if dry-run?
     (println (c/yellow "Would refresh card") id)
-    (let [tmp  (fs/create-temp-dir {:prefix "module-history"})
-          body (str (fs/path tmp "card.json"))]
+    ;; Fetch the query again: an edit made while the uploads ran must not be overwritten with an older copy.
+    (let [query (native-query profile id)
+          tmp   (fs/create-temp-dir {:prefix "module-history"})
+          body  (str (fs/path tmp "card.json"))]
       (try
         (spit body (json/generate-string
                     {"dataset_query" (update-in query ["stages" 0 "native"] refreshed-sql stamp)}))
@@ -265,12 +266,12 @@
   "Replace the upload tables, then refresh the cards. Every card is fetched and checked first, a dry run's too, so a
   card that cannot be refreshed stops the run before any table changes."
   [dry-run? dir {:keys [profile uploads cards]}]
-  (let [queries (mapv #(native-query profile %) cards)
-        stamp   (str (.truncatedTo (Instant/now) ChronoUnit/SECONDS))]
+  (run! #(native-query profile %) cards)
+  (let [stamp (str (.truncatedTo (Instant/now) ChronoUnit/SECONDS))]
     (doseq [[file table-id] (sort uploads)]
       (change! dry-run? (mb profile ["upload" "replace" (str table-id) "--file" (str (fs/path dir file))])))
-    (doseq [[id query] (map vector cards queries)]
-      (refresh-card! dry-run? profile stamp id query))))
+    (doseq [id cards]
+      (refresh-card! dry-run? profile stamp id))))
 
 ;;;; Publishing
 
