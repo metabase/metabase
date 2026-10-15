@@ -29,7 +29,7 @@
    {:name   :pull-base-unnamed
     :doc    "The pull decodes the base with no names: a head that changes a table gives a conflict."
     :target `pull/pull!
-    :edits  [[:replace '(base-snapshot store codecs decoding b h) '(base-snapshot store codecs {} b h)]]
+    :edits  [[:replace '(base-snapshot store codecs decoding b branch h) '(base-snapshot store codecs {} b branch h)]]
     :tests  [#'old-format-app-db-test/pull-of-old-format-trees-names-tables-as-the-instance-does-test]}
    {:name   :deploy-head-unnamed
     :doc    "The deploy decodes the head with no names: it writes the table name as a user display name."

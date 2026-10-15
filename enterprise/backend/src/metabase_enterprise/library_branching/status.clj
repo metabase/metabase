@@ -42,21 +42,12 @@
   [opts inst]
   (merge (pull/decode-opts inst) opts))
 
-(defn- readable?
-  "True iff `commit` is in the local object store of `store`."
-  [store commit]
-  ;; `ancestor?` reads only the local object store, and throws for a commit that is not in it.
-  (try
-    (store/ancestor? store commit commit)
-    (catch clojure.lang.ExceptionInfo _
-      false)))
-
 (defn- fetched-tree
   "The tree of `commit` in `store` after a fetch of branch `branch`, or nil when `commit` is not in the local object
   store then: no branch of the remote holds it."
   [store branch commit]
   (store/head store branch)
-  (when (readable? store commit)
+  (when (pull/readable? store commit)
     (store/read-tree store commit)))
 
 ;;; -------------------------------------------------- Local changes --------------------------------------------------
@@ -118,9 +109,9 @@
       (let [base (cond
                    (nil? b)              {}
                    (:base-digests opts)  (:base-digests opts)
-                   (readable? store b)   (some->> (decode opts (store/read-tree store b))
-                                                  :snapshot
-                                                  (writer/item-digests codecs)))]
+                   (pull/readable? store b)   (some->> (decode opts (store/read-tree store b))
+                                                       :snapshot
+                                                       (writer/item-digests codecs)))]
         (if base
           {:changes (diff/diff base (writer/item-digests codecs r))}
           {:unknown :base})))))
@@ -187,24 +178,12 @@
   [store b h opts]
   (let [codecs  (codecs-of opts)
         digests (:base-digests opts)
-        fast    (when (and b digests (not= b h) (readable? store b))
+        fast    (when (and b digests (not= b h) (pull/readable? store b))
                   (fast-remote-changes store codecs b h (set (keys digests))))]
     (cond
       (= b h)                {:changes no-changes}
       (and fast (map? fast)) fast
       :else                  (full-remote-changes store b h opts))))
-
-(defn base-held?
-  "True iff a branch of the remote of `store` holds commit `b`: `b` is the head, or an ancestor of the head, of a branch.
-  `h` is the head of branch `branch` (nil: none), which is checked first; every other branch costs a fresh remote call."
-  [store b branch h]
-  (boolean
-   (and (readable? store b)
-        (or (and h (store/ancestor? store b h))
-            (some (fn [other]
-                    (when-let [x (and (not= other branch) (store/head store other))]
-                      (store/ancestor? store b x)))
-                  (store/branches store))))))
 
 ;;; ------------------------------------------------------ Status -----------------------------------------------------
 
@@ -219,9 +198,9 @@
 
     {:base b :head h :branch-missing m :base-lost l :head-findings f :local lc :remote rc}
 
-  `h` is nil and `m` true when the branch does not exist. `l` is true iff there is a base and no branch holds it
-  ([[base-held?]]); then nothing shows as synced. `f` is nil, or the findings of the head (it does not decode, or breaks
-  a structural rule). `lc` is the change set of [[local-changes]]; `rc` the remote changes, nil when the head has
+  `h` is nil and `m` true when the branch does not exist. `l` is true iff there is a base and no branch holds it; then
+  nothing shows as synced. `f` is nil, or the findings of the head (it does not decode, or breaks a structural
+  rule). `lc` is the change set of [[local-changes]]; `rc` the remote changes, nil when the head has
   findings, does not exist, or the content of the base is not known. Each commit decodes with `pull/decode-opts` of
   `inst`. `opts`: `:codecs`."
   [inst store branch opts]
@@ -236,7 +215,7 @@
     {:base           b
      :head           h
      :branch-missing (nil? h)
-     :base-lost      (boolean (and b (not (base-held? store b branch h))))
+     :base-lost      (boolean (and b (not (pull/held? store b branch h))))
      :head-findings  findings
      :local          local
      :remote         remote}))
@@ -284,7 +263,7 @@
         codecs (codecs-of opts)
         b      (instance/base inst)
         h      (store/head store branch)
-        lost?  (boolean (and b (not (base-held? store b branch h))))
+        lost?  (boolean (and b (not (pull/held? store b branch h))))
         result {:diverged       (not= b h)
                 :clean          true
                 :conflicts      []

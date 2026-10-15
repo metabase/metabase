@@ -54,8 +54,9 @@
     "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
     precondition, then write, link or trash each item, then move the base from `(:base opts)` to `(:new-base opts)`
     with `(:digests opts)` (as [[set-base!]]), then call `(:head-ok? opts)`, which is false when the planned head left
-    the branch history. Returns the result of `apply/apply-plan`: `{:ok {:trashed-in-use m}}`, or one of `{:stale
-    ids}`, `{:refused [...]}`, `{:base-moved actual}` and `{:rewritten new-base}`, and then writes nothing.")
+    the branch history, then, for a success, `(:on-commit opts)`, whose writes commit with the apply. Returns the
+    result of `apply/apply-plan`: `{:ok {:trashed-in-use m}}`, or one of `{:stale ids}`, `{:refused [...]}`,
+    `{:base-moved actual}` and `{:rewritten new-base}`, and then writes nothing.")
   (set-base! [inst expected new digests]
     "Moves the base from `expected` to `new` (`expected` nil: there is no base), and stores `digests`, the
     `{identity digest}` of the content of `new`, with it, in one compare-and-swap. Returns :ok, or {:moved actual} and
