@@ -157,7 +157,13 @@
 
       ;; a child collection in another namespace than its parent
       (golden/edit golden/revenue-path #(str % "namespace: snippets\n"))
-      [{:level :structural :rule :namespace :id golden/revenue-id :place golden/metrics-id :path golden/revenue-path}])))
+      [{:level :structural :rule :namespace :id golden/revenue-id :place golden/metrics-id :path golden/revenue-path}]
+
+      ;; a metric in the Data section of the Library
+      (golden/edit golden/total-revenue-path
+                   #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n" "collection: dAtAcOlLeCtIoNiD00000\n"))
+      [{:level :structural :rule :library-content :id golden/total-revenue-id :place "dAtAcOlLeCtIoNiD00000"
+        :path golden/total-revenue-path}])))
 
 (deftest semantic-findings-test
   (testing "a reference to a table that the manifest does not have is red; the report names the table"
@@ -255,6 +261,15 @@
       (is (str/includes? line "Revenue"))
       (is (str/includes? line "Metrics"))
       (is (str/includes? line "namespace"))
+      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
+  (testing "a Library finding names the item, the collection and what a collection of its type holds"
+    (let [[line] (check/report (checked (golden/edit golden/total-revenue-path
+                                                     #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n"
+                                                                   "collection: dAtAcOlLeCtIoNiD00000\n"))))]
+      (is (str/includes? line golden/total-revenue-path))
+      (is (str/includes? line "Total Revenue"))
+      (is (str/includes? line "\"Data\""))
+      (is (str/includes? line "published tables"))
       (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
   (testing "a decode finding names its file"
     (is (str/includes? (first (check/report (checked (golden/tree-with {"library/notes.yaml" "kind: metric\nid: 12\n"}))))

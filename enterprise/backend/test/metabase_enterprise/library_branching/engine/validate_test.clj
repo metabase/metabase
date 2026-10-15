@@ -7,6 +7,7 @@
    [metabase-enterprise.library-branching.engine.test-util :as engine.tu]
    [metabase-enterprise.library-branching.engine.validate :as validate]
    [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase-enterprise.library-branching.roots :as roots]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]))
 
@@ -265,6 +266,150 @@
     (is (= [] (validate/validate (assoc-in with-actions [action :refs] #{[:model question]})
                                  {:may-contain {:collection #{:model :question :action}} :ref-kinds {}})))))
 
+;;; The Library rules of master: what a Library collection can hold, by its type, and where a published table can be.
+
+(def ^:private data-id "librarylibrarydatadat")
+(def ^:private metrics-id "librarylibrarymetrics")
+(def ^:private dashboards-id "librarylibrarydashbrd")
+(def ^:private sales (engine.tu/eid "sales"))
+(def ^:private overview (engine.tu/eid "overview"))
+(def ^:private by-month (engine.tu/eid "bymonth"))
+(def ^:private launches (engine.tu/eid "launches"))
+(def ^:private profit (engine.tu/eid "profit"))
+(def ^:private misfit (engine.tu/eid "misfit"))
+(def ^:private outside (engine.tu/eid "outside"))
+(def ^:private people ["Sample Database" "PUBLIC" "PEOPLE"])
+
+(defn- typed
+  "A collection named `nm` at `place`, of type `t`."
+  [nm place t]
+  (assoc-in (engine.tu/item :collection nm place) [:attrs :type] t))
+
+(defn- dashboard-question
+  "A question named `nm` of dashboard `d`, at `place`."
+  [nm place d]
+  (assoc-in (engine.tu/item :question nm place #{[:dashboard d]}) [:attrs :dashboard_id] d))
+
+(def ^:private with-library
+  "The Library with its sections, a collection of each section's type in it, and an item of each kind that a section
+  holds."
+  (assoc lb.tu/library-core
+         sales    (typed "Sales" dashboards-id "library-dashboards")
+         overview (engine.tu/item :dashboard "Overview" sales)
+         by-month (dashboard-question "By month" sales overview)
+         launches (engine.tu/item :timeline "Launches" dashboards-id)
+         profit   (engine.tu/item :metric "Profit" metrics-id)
+         orders   (engine.tu/item :published-table "Orders" data-id)
+         people   (engine.tu/item :published-table "People" data-id)))
+
+(defn- library-findings
+  "The findings of [[with-library]] with `item` added as `misfit`, at `place`, with the options `opts` and the Library
+  as the root."
+  ([item place]
+   (library-findings item place {}))
+  ([item place opts]
+   (validate/validate (assoc with-library misfit (assoc item :place place)) (merge {:roots #{lb.tu/library-id}} opts))))
+
+(deftest ^:parallel library-well-formed-test
+  (testing "the Library with an item of each kind in the section that holds it has no finding"
+    (is (= [] (validate/validate with-library {:roots #{lb.tu/library-id}}))))
+  (testing "a collection of a section's type holds what the section holds"
+    (is (= [] (library-findings (typed "Archive" nil "library-data") data-id)))
+    (is (= [] (validate/validate (assoc with-library
+                                        misfit (typed "Archive" data-id "library-data")
+                                        orders (engine.tu/item :published-table "Orders" misfit)))))))
+
+(deftest ^:parallel library-root-test
+  (testing "the Library holds only collections of the three section types"
+    (doseq [item [(engine.tu/item :collection "Misc" nil)
+                  (typed "Library 2" nil "library")
+                  (engine.tu/item :metric "Revenue" nil)
+                  (engine.tu/item :dashboard "Board" nil)
+                  (engine.tu/item :snippet "Filter" nil)]]
+      (testing (pr-str item)
+        (is (= [{:rule :library-content :id misfit :place lb.tu/library-id}]
+               (library-findings item lb.tu/library-id))))))
+  (testing "a collection of a section type can be in the Library"
+    (is (= [] (library-findings (typed "Data 2" nil "library-data") lb.tu/library-id)))))
+
+(deftest ^:parallel section-collection-type-test
+  (testing "a collection in a section has the section's type"
+    (doseq [[place t] [[data-id nil] [data-id "library-metrics"] [metrics-id nil] [metrics-id "library-dashboards"]
+                       [dashboards-id nil] [dashboards-id "library-data"] [sales nil] [data-id "library"]]]
+      (testing (pr-str [place t])
+        (is (= [{:rule :library-content :id misfit :place place}]
+               (library-findings (cond-> (engine.tu/item :collection "Misc" nil) t (assoc-in [:attrs :type] t))
+                                 place)))))))
+
+(deftest ^:parallel data-section-test
+  (testing "Data holds only published tables and Data collections"
+    (doseq [item [(engine.tu/item :metric "Revenue" nil)
+                  (engine.tu/item :dashboard "Board" nil)
+                  (engine.tu/item :question "Orders" nil)
+                  (engine.tu/item :model "Orders model" nil)
+                  (engine.tu/item :timeline "Releases" nil)
+                  (engine.tu/item :snippet "Filter" nil)]]
+      (testing (pr-str item)
+        (is (= [{:rule :library-content :id misfit :place data-id}] (library-findings item data-id)))))))
+
+(deftest ^:parallel metrics-section-test
+  (testing "Metrics holds only metrics and Metrics collections"
+    (doseq [item [(engine.tu/item :dashboard "Board" nil)
+                  (engine.tu/item :question "Orders" nil)
+                  (dashboard-question "Orders" nil overview)
+                  (engine.tu/item :model "Orders model" nil)
+                  (engine.tu/item :timeline "Releases" nil)]]
+      (testing (pr-str item)
+        (is (= [{:rule :library-content :id misfit :place metrics-id}] (library-findings item metrics-id))))))
+  (testing "a published table in Metrics is one finding, of the section's rule"
+    (is (= [{:rule :library-content :id people :place metrics-id}]
+           (validate/validate (assoc-in with-library [people :place] metrics-id))))))
+
+(deftest ^:parallel dashboards-section-test
+  (testing "Dashboards holds dashboards, questions of a dashboard, timelines and Dashboards collections"
+    (is (= [] (library-findings (dashboard-question "Count" nil overview) sales)))
+    (is (= [] (library-findings (engine.tu/item :dashboard "Board" nil) dashboards-id))))
+  (testing "a question with no dashboard is refused in Dashboards"
+    (is (= [{:rule :library-content :id misfit :place sales}]
+           (library-findings (engine.tu/item :question "Orders" nil) sales))))
+  (testing "Dashboards holds no other kind"
+    (doseq [item [(engine.tu/item :metric "Revenue" nil)
+                  (engine.tu/item :model "Orders model" nil)
+                  (engine.tu/item :snippet "Filter" nil)]]
+      (testing (pr-str item)
+        (is (= [{:rule :library-content :id misfit :place dashboards-id}] (library-findings item dashboards-id)))))))
+
+(deftest ^:parallel table-collection-test
+  (testing "a published table is only in a collection of type library-data, also outside the Library"
+    (doseq [t [nil "trash" "remote-synced"]]
+      (testing (pr-str t)
+        (is (= [{:rule :table-collection :id people :place outside}]
+               (validate/validate (assoc with-library
+                                         outside (cond-> (engine.tu/item :collection "Outside" nil)
+                                                   t (assoc-in [:attrs :type] t))
+                                         people  (engine.tu/item :published-table "People" outside))))))))
+  (testing "a published table in a Data collection outside the Library is no finding"
+    (is (= [] (validate/validate (assoc with-library
+                                        outside (typed "Outside" nil "library-data")
+                                        people  (engine.tu/item :published-table "People" outside))))))
+  (testing "the rule reads the type of a collection only: a table in another kind of container is a kind finding"
+    (is (= [{:rule :kind-fits :id people :place profit}]
+           (validate/validate (assoc-in with-library [people :place] profit))))))
+
+(deftest ^:parallel library-content-option-test
+  (testing "`:library-content` replaces the table of what each Library type holds"
+    (is (= [] (library-findings (engine.tu/item :metric "Revenue" nil) data-id {:library-content {}})))
+    (is (= [{:rule :library-content :id profit :place metrics-id}]
+           (validate/validate with-library {:library-content {"library-metrics" #{}}})))))
+
+(defspec library-snapshot-no-findings-test 100
+  (prop/for-all [s (lb.tu/library-snapshot-gen)]
+    (= [] (validate/validate s {:roots (roots/root-ids s)}))))
+
+(defspec library-misfit-one-finding-test 200
+  (prop/for-all [[s finding] (lb.tu/library-misfit-gen)]
+    (= [finding] (validate/validate s))))
+
 (deftest ^:parallel several-findings-test
   (testing "the findings of every rule are all reported"
     (is (= #{{:rule :place-inside :id sub :place gone}
@@ -330,16 +475,29 @@
                          (or (lb.tu/env-target? target)
                              (and (contains? s target) (not (contains? allowed (:kind (get s target))))))))
     :root         false
-    :area-root    (and (contains? s id) (contains? snapshot/area-roots id))))
+    :area-root    (and (contains? s id) (contains? snapshot/area-roots id))
+    (:library-content :table-collection)
+    (and (= place (:place (get s id))) (= rule (lb.tu/library-fault s (get s id))))))
 
 (def ^:private namespaced-attrs-gen
-  "Generates the `:attrs` of a collection: those of `lb.tu/attrs-gen`, with no namespace or one of two."
-  (gen/fmap (fn [[attrs n]] (cond-> attrs n (assoc :namespace n)))
-            (gen/tuple lb.tu/attrs-gen (gen/elements [nil "snippets" "transforms"]))))
+  "Generates the `:attrs` of a collection: those of `lb.tu/attrs-gen`, with no namespace or one of two, and no type or
+  a Library type or another."
+  (gen/fmap (fn [[attrs n t]] (cond-> attrs n (assoc :namespace n) t (assoc :type t)))
+            (gen/tuple lb.tu/attrs-gen
+                       (gen/elements [nil "snippets" "transforms"])
+                       (gen/elements [nil nil "library" "library-data" "library-metrics" "library-dashboards" "trash"]))))
+
+(def ^:private question-attrs-gen
+  "Generates the `:attrs` of a question: those of `lb.tu/attrs-gen`, with or without a dashboard."
+  (gen/fmap (fn [[attrs d]] (cond-> attrs d (assoc :dashboard_id d)))
+            (gen/tuple lb.tu/attrs-gen (gen/one-of [(gen/return nil) lb.tu/entity-id-gen]))))
 
 (def ^:private arbitrary-gen
   (lb.tu/arbitrary-snapshot-gen {:max-items 20
-                                 :attrs     #(if (= :collection %) namespaced-attrs-gen lb.tu/attrs-gen)}))
+                                 :attrs     #(case %
+                                               :collection namespaced-attrs-gen
+                                               :question   question-attrs-gen
+                                               lb.tu/attrs-gen)}))
 
 (defspec arbitrary-snapshot-findings-test 200
   (prop/for-all [s arbitrary-gen]
@@ -365,7 +523,9 @@
     (let [rules (set (for [seed (range 200)
                            f    (validate/validate (gen/generate arbitrary-gen 20 seed) {:ref-kinds test-ref-kinds})]
                        (:rule f)))]
-      (is (= #{:place-inside :acyclic :kind-fits :refs-closed :unique-key :namespace :ref-kind} rules)))))
+      (is (= #{:place-inside :acyclic :kind-fits :refs-closed :unique-key :namespace :ref-kind :library-content
+               :table-collection}
+             rules)))))
 
 (defspec well-formed-snapshot-no-findings-test 100
   (prop/for-all [s (lb.tu/well-formed-snapshot-gen {:max-items 30})]
