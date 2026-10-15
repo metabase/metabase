@@ -98,6 +98,11 @@
   []
   (setting/get :remote-sync-task-time-limit-ms))
 
+(defn hard-time-limit-ms
+  "The time a worker may run before it is stopped and its task fails: ten times [[time-limit-ms]]."
+  []
+  (throw (ex-info "Not implemented yet: hard-time-limit-ms" {})))
+
 (defn- cutoff []
   (t/minus (now) (t/millis (time-limit-ms))))
 

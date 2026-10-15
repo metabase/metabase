@@ -105,7 +105,7 @@
           (throw e))))
     @result))
 
-(defrecord AppDbInstance [stores roots]
+(defrecord AppDbInstance [stores roots url]
   instance/Instance
   (read-snapshot [_]
     {:snapshot (read-at-read-point stores roots)})
@@ -115,7 +115,9 @@
   (set-base! [_ expected new digests] (set-base! expected new digests)))
 
 (defn app-db-instance
-  "The `Instance` of this process's app DB, for `stores` (default [[kind-stores]]) and `roots` (default
-  [[scope/roots]])."
+  "The `Instance` of this process's app DB, for `stores` (default [[kind-stores]]), `roots` (default [[scope/roots]])
+  and the repository URL `url` (default nil). Its base is the base of the repository at `url`: the base row holds the
+  URL with the commit, and an instance of another URL has no base."
   ([] (app-db-instance kind-stores scope/roots))
-  ([stores roots] (->AppDbInstance stores roots)))
+  ([stores roots] (app-db-instance stores roots nil))
+  ([stores roots url] (->AppDbInstance stores roots url)))

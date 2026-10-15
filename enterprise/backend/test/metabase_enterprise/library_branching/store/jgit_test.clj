@@ -528,16 +528,15 @@
 ;;; Connection: the URL rule, the credentials, the timeout, the failure reasons
 
 (deftest url-error-test
-  (testing "git:// and ssh:// URLs and other schemes are refused with a message"
+  (testing "git://, ssh:// and http:// URLs, other schemes and local paths are refused with a message"
     (doseq [url ["git://github.com/foo/bar.git" "ssh://git@github.com/foo/bar.git" "git@github.com:foo/bar.git"
-                 "asdf://foo/bar.git"]]
+                 "asdf://foo/bar.git" "http://git.example.com/a/b.git" "/tmp/repo"]]
       (testing url
         (is (= "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                (store.jgit/url-error url))))))
-  (testing "an HTTPS URL of any host, and the other forms that remote sync accepts, are accepted"
+  (testing "an HTTPS URL of any host, and a file:// URL for tests, are accepted"
     (doseq [url ["https://github.com/foo/bar.git" "https://gitlab.com/foo/bar.git" "https://bitbucket.org/foo/bar.git"
-                 "https://dev.azure.com/org/project/_git/repo" "https://git.example.com/a/b.git"
-                 "http://git.example.com/a/b.git" "file:///tmp/repo" "/tmp/repo"]]
+                 "https://dev.azure.com/org/project/_git/repo" "https://git.example.com/a/b.git" "file:///tmp/repo"]]
       (testing url
         (is (nil? (store.jgit/url-error url)))))))
 
@@ -548,7 +547,7 @@
   (prop/for-all [scheme gen-scheme
                  rest   (gen/fmap str/join (gen/vector (gen/elements ["a" "/" "." "-" "@"]) 0 12))]
     (let [url (str scheme "://" rest)]
-      (= (contains? #{"https" "http" "file"} scheme)
+      (= (contains? #{"https" "file"} scheme)
          (nil? (store.jgit/url-error url))))))
 
 (deftest open-store-refuses-a-bad-url-test
