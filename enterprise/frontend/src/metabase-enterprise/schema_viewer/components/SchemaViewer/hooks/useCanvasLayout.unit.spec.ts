@@ -262,3 +262,37 @@ describe("useCanvasLayout", () => {
     expect(utils.zoomToCanvas).not.toHaveBeenCalled();
   });
 });
+
+describe("useCanvasLayout action identity", () => {
+  it("keeps stable actions across node updates while laying out the latest nodes", () => {
+    const requestLayout = jest
+      .fn()
+      .mockReturnValue(new Promise<LayoutOutcome>(() => {}));
+    const graphLayout = makeGraphLayout(requestLayout);
+    const callbacks = {
+      setNodes: jest.fn(),
+      setEdges: jest.fn(),
+      zoomToNode: jest.fn(),
+      zoomToCanvas: jest.fn(),
+    };
+    const before = [makeFlowNode({ id: 1, position: { x: 0, y: 0 } })];
+    const { result, rerender } = renderHook(
+      ({ nodes }) =>
+        useCanvasLayout({ nodes, edges: [], graphLayout, ...callbacks }),
+      { initialProps: { nodes: before } },
+    );
+    const { resetLayout, focusOnNode } = result.current;
+
+    // A table drag produces a new nodes array every frame.
+    const dragged = [makeFlowNode({ id: 1, position: { x: 90, y: 40 } })];
+    rerender({ nodes: dragged });
+
+    expect(result.current.resetLayout).toBe(resetLayout);
+    expect(result.current.focusOnNode).toBe(focusOnNode);
+    act(() => result.current.resetLayout());
+    expect(requestLayout).toHaveBeenCalledWith(
+      { mode: "fresh", nodes: dragged, edges: [] },
+      "auto-layout",
+    );
+  });
+});

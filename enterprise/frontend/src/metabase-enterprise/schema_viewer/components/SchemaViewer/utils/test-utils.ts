@@ -61,6 +61,7 @@ export function makeFlowNode({
       db_id: 1,
       handles: [],
       foreignKeyCount: resolvedFields.filter((f) => f.isFK).length,
+      linkedForeignKeyRows: { start: 0, count: 0 },
       fields: resolvedFields.map((f, i) => ({
         id: i + 1,
         name: f.name,

@@ -9,7 +9,8 @@ import {
   useIsSchemaViewerNodeDetailed,
   useSchemaViewerContext,
 } from "../../SchemaViewerContext";
-import type { SchemaViewerFlowNode } from "../../types";
+import { ROW_HEIGHT_PX } from "../../constants";
+import type { SchemaViewerFlowNode, SchemaViewerNodeData } from "../../types";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
@@ -57,38 +58,18 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         <TableNodeHeader
           name={data.name}
           isHidden={hasHiddenVisibilityType}
+          fieldCount={fieldCount}
+          foreignKeyCount={foreignKeyCount}
           onClick={handleHeaderClick}
         />
-        <div className={S.summaryBody}>
-          <div className={S.summaryMetrics}>
-            <span
-              className={S.summaryMetric}
-              role="group"
-              aria-label={ngettext(
-                msgid`${fieldCount} field`,
-                `${fieldCount} fields`,
-                fieldCount,
-              )}
-            >
-              <FixedSizeIcon name="field" size={32} c="text-secondary" />
-              <span>{fieldCount}</span>
-            </span>
-            <span className={S.summaryDivider} aria-hidden>
-              /
-            </span>
-            <span
-              className={S.summaryMetric}
-              role="group"
-              aria-label={ngettext(
-                msgid`${foreignKeyCount} foreign key`,
-                `${foreignKeyCount} foreign keys`,
-                foreignKeyCount,
-              )}
-            >
-              <FixedSizeIcon name="connections" size={32} c="text-secondary" />
-              <span>{foreignKeyCount}</span>
-            </span>
-          </div>
+        {/* Skeleton rows are a CSS background, so they add no DOM per field. */}
+        <div className={S.skeletonRows}>
+          {data.linkedForeignKeyRows.count > 0 && (
+            <div
+              className={S.linkedSkeletonRows}
+              style={getLinkedSkeletonRowsStyle(data.linkedForeignKeyRows)}
+            />
+          )}
         </div>
       </div>
     );
@@ -104,6 +85,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       <TableNodeHeader
         name={data.name}
         isHidden={hasHiddenVisibilityType}
+        fieldCount={fieldCount}
+        foreignKeyCount={foreignKeyCount}
         onClick={handleHeaderClick}
       />
       <Box className={S.fields}>
@@ -119,14 +102,39 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   );
 });
 
+/**
+ * Covers the linked FK rows with brand-colored skeletons. Background offsets
+ * start at the overlay's first row so each row keeps the name-bar length it
+ * has in the base skeleton (lengths alternate between even and odd rows).
+ */
+function getLinkedSkeletonRowsStyle({
+  start,
+  count,
+}: SchemaViewerNodeData["linkedForeignKeyRows"]): React.CSSProperties {
+  const offset = start * ROW_HEIGHT_PX;
+  return {
+    top: offset,
+    height: count * ROW_HEIGHT_PX,
+    backgroundPosition: `1rem ${-offset}px, 2.5rem ${-offset}px, 2.5rem ${ROW_HEIGHT_PX - offset}px`,
+  };
+}
+
 type TableNodeHeaderProps = {
   name: string;
   isHidden: boolean;
+  fieldCount: number;
+  foreignKeyCount: number;
   onClick: (event: React.MouseEvent) => void;
 };
 
 /** Shared by both detail levels so switching between them never shifts the header. */
-function TableNodeHeader({ name, isHidden, onClick }: TableNodeHeaderProps) {
+function TableNodeHeader({
+  name,
+  isHidden,
+  fieldCount,
+  foreignKeyCount,
+  onClick,
+}: TableNodeHeaderProps) {
   return (
     <div className={S.header} onClick={onClick}>
       <FixedSizeIcon name="table" c="text-secondary" />
@@ -136,6 +144,30 @@ function TableNodeHeader({ name, isHidden, onClick }: TableNodeHeaderProps) {
           <FixedSizeIcon name="eye_crossed_out" c="text-secondary" />
         </Tooltip>
       )}
+      <span
+        className={S.count}
+        role="group"
+        aria-label={ngettext(
+          msgid`${fieldCount} field`,
+          `${fieldCount} fields`,
+          fieldCount,
+        )}
+      >
+        <FixedSizeIcon name="field" size={14} />
+        {fieldCount}
+      </span>
+      <span
+        className={S.count}
+        role="group"
+        aria-label={ngettext(
+          msgid`${foreignKeyCount} foreign key`,
+          `${foreignKeyCount} foreign keys`,
+          foreignKeyCount,
+        )}
+      >
+        <FixedSizeIcon name="connections" size={14} />
+        {foreignKeyCount}
+      </span>
     </div>
   );
 }

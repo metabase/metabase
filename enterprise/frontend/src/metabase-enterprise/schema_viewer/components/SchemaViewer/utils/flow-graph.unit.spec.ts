@@ -72,6 +72,52 @@ describe("toFlowGraph — field sort order", () => {
   });
 });
 
+describe("toFlowGraph — linked foreign key rows", () => {
+  it("groups FKs with a known target right after the PKs and records their row range", () => {
+    const response: ErdResponse = {
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [
+            createMockErdField({ id: 1, name: "extra", semantic_type: null }),
+            createMockErdField({
+              id: 2,
+              name: "fk_hidden_target",
+              semantic_type: "type/FK",
+              fk_target_table_id: null,
+            }),
+            createMockErdField({
+              id: 3,
+              name: "fk_linked_a",
+              semantic_type: "type/FK",
+              fk_target_table_id: 7,
+            }),
+            createMockErdField({ id: 4, name: "pk", semantic_type: "type/PK" }),
+            createMockErdField({
+              id: 5,
+              name: "fk_linked_b",
+              semantic_type: "type/FK",
+              fk_target_table_id: 8,
+            }),
+          ],
+        }),
+      ],
+      edges: [],
+    };
+
+    const [node] = toFlowGraph(response).nodes;
+
+    expect(node.data.fields.map((f) => f.name)).toEqual([
+      "pk",
+      "fk_linked_a",
+      "fk_linked_b",
+      "fk_hidden_target",
+      "extra",
+    ]);
+    expect(node.data.linkedForeignKeyRows).toEqual({ start: 1, count: 2 });
+  });
+});
+
 describe("toFlowGraph — fixed node and handle geometry", () => {
   it("declares dimensions and positions handles from sorted field rows", () => {
     const response: ErdResponse = {

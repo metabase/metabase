@@ -5,6 +5,7 @@ import {
   getGraphBounds,
   getNodeIdsInViewportWindow,
   getRenderedGraph,
+  isViewportInWindow,
 } from "./viewport-window";
 
 const SETTLED_ORIGIN = {
@@ -55,6 +56,51 @@ describe("getNodeIdsInViewportWindow", () => {
         2,
       ).size,
     ).toBe(0);
+  });
+});
+
+describe("isViewportInWindow", () => {
+  // SETTLED_ORIGIN with one overscan viewport spans flow x -1000..2000 and
+  // y -500..1000; a zoom-1 visible area is 1000x500.
+  it.each([
+    { viewport: { x: 0, y: 0, zoom: 1 }, expected: true },
+    { viewport: { x: -1000, y: 0, zoom: 1 }, expected: true },
+    { viewport: { x: -1001, y: 0, zoom: 1 }, expected: false },
+    { viewport: { x: 1000, y: 0, zoom: 1 }, expected: true },
+    { viewport: { x: 1001, y: 0, zoom: 1 }, expected: false },
+    { viewport: { x: 0, y: 500, zoom: 1 }, expected: true },
+    { viewport: { x: 0, y: 501, zoom: 1 }, expected: false },
+    { viewport: { x: 0, y: -501, zoom: 1 }, expected: false },
+    // Zoomed out to 0.5 the visible area is 2000x1000: x -1000..1000 fits,
+    // x -1002..998 does not.
+    { viewport: { x: 500, y: 250, zoom: 0.5 }, expected: true },
+    { viewport: { x: 501, y: 250, zoom: 0.5 }, expected: false },
+  ])(
+    "returns $expected for visible viewport $viewport",
+    ({ viewport, expected }) => {
+      expect(
+        isViewportInWindow(
+          { viewport, size: SETTLED_ORIGIN.size },
+          SETTLED_ORIGIN,
+          1,
+        ),
+      ).toBe(expected);
+    },
+  );
+
+  it("treats invalid geometry as not covered", () => {
+    const visible = {
+      viewport: { x: 0, y: 0, zoom: 1 },
+      size: { width: 0, height: 500 },
+    };
+    expect(isViewportInWindow(visible, SETTLED_ORIGIN, 1)).toBe(false);
+    expect(
+      isViewportInWindow(
+        SETTLED_ORIGIN,
+        { ...SETTLED_ORIGIN, size: { width: Number.NaN, height: 500 } },
+        1,
+      ),
+    ).toBe(false);
   });
 });
 

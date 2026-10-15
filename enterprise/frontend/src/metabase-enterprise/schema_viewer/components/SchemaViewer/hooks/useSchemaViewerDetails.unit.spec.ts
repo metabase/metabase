@@ -51,7 +51,7 @@ describe("useSchemaViewerDetails", () => {
     expect(ids(result.current.detailedNodeIds)).toEqual(["table-1", "table-2"]);
   });
 
-  it("uses summary cards only at maximum zoom-out", () => {
+  it("details visible nodes at maximum zoom-out too", () => {
     const node = makeFlowNode({ id: 1, position: { x: 0, y: 0 } });
     const { result } = renderHook(() =>
       useSchemaViewerDetails({ nodes: [node], forcedNodeIds: new Set() }),
@@ -60,14 +60,6 @@ describe("useSchemaViewerDetails", () => {
     act(() =>
       result.current.settleViewport(
         { ...ORIGIN_VIEWPORT, zoom: 0.3 },
-        VIEWPORT_SIZE,
-      ),
-    );
-    expect(ids(result.current.detailedNodeIds)).toEqual([]);
-
-    act(() =>
-      result.current.settleViewport(
-        { ...ORIGIN_VIEWPORT, zoom: 0.31 },
         VIEWPORT_SIZE,
       ),
     );
@@ -122,9 +114,10 @@ describe("useSchemaViewerDetails", () => {
   });
 
   it("keeps selected and explicitly focused nodes detailed", () => {
+    // Both nodes are outside the window, which spans x -1000..2000.
     const nodes = [
-      makeFlowNode({ id: 1, position: { x: 0, y: 0 } }),
-      makeFlowNode({ id: 2, position: { x: 3000, y: 0 } }),
+      makeFlowNode({ id: 1, position: { x: 5000, y: 0 } }),
+      makeFlowNode({ id: 2, position: { x: 6000, y: 0 } }),
     ];
     const { result } = renderHook(() =>
       useSchemaViewerDetails({
@@ -133,16 +126,52 @@ describe("useSchemaViewerDetails", () => {
       }),
     );
 
-    act(() =>
-      result.current.settleViewport(
-        { ...ORIGIN_VIEWPORT, zoom: 0.3 },
-        VIEWPORT_SIZE,
-      ),
-    );
+    act(() => result.current.settleViewport(ORIGIN_VIEWPORT, VIEWPORT_SIZE));
     expect(ids(result.current.detailedNodeIds)).toEqual(["table-1"]);
 
     act(() => result.current.focusNode("table-2"));
     expect(ids(result.current.detailedNodeIds)).toEqual(["table-1", "table-2"]);
+  });
+
+  it("reports whether a viewport is inside the detailed window", () => {
+    const { result } = renderHook(() =>
+      useSchemaViewerDetails({ nodes: [], forcedNodeIds: new Set() }),
+    );
+    expect(
+      result.current.isViewportDetailed(ORIGIN_VIEWPORT, VIEWPORT_SIZE),
+    ).toBe(false);
+
+    act(() => result.current.settleViewport(ORIGIN_VIEWPORT, VIEWPORT_SIZE));
+    // One overscan viewport (1000px) on each side.
+    expect(
+      result.current.isViewportDetailed(
+        { x: -1000, y: 0, zoom: 1 },
+        VIEWPORT_SIZE,
+      ),
+    ).toBe(true);
+    expect(
+      result.current.isViewportDetailed(
+        { x: -1001, y: 0, zoom: 1 },
+        VIEWPORT_SIZE,
+      ),
+    ).toBe(false);
+
+    // Maximum zoom-out needs details too: at zoom 0.3 the visible area is
+    // 3333px wide, so the window spans x -3333..6667.
+    const zoomedOut = { x: 0, y: 0, zoom: 0.3 };
+    act(() => result.current.settleViewport(zoomedOut, VIEWPORT_SIZE));
+    expect(
+      result.current.isViewportDetailed(
+        { ...zoomedOut, x: -1000 },
+        VIEWPORT_SIZE,
+      ),
+    ).toBe(true);
+    expect(
+      result.current.isViewportDetailed(
+        { ...zoomedOut, x: -1001 },
+        VIEWPORT_SIZE,
+      ),
+    ).toBe(false);
   });
 
   it.each([

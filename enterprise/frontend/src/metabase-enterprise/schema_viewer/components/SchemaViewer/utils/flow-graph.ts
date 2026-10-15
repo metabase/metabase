@@ -43,29 +43,39 @@ export function getNodeHeight(fieldCount: number): number {
   return HEADER_HEIGHT_PX + fieldCount * ROW_HEIGHT_PX;
 }
 
-// Sort fields so PKs come first, then FKs, then the rest
-function sortFields(fields: ErdField[]): ErdField[] {
-  return [...fields].sort((a, b) => {
-    const aPK = Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(a));
-    const bPK = Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(b));
-    const aFK = Lib.isForeignKey(Lib.legacyColumnTypeInfo(a));
-    const bFK = Lib.isForeignKey(Lib.legacyColumnTypeInfo(b));
+type FieldRank = 0 | 1 | 2 | 3;
 
-    if (aPK && !bPK) {
-      return -1;
-    }
-    if (!aPK && bPK) {
-      return 1;
-    }
-    if (aFK && !bFK) {
-      return -1;
-    }
-    if (!aFK && bFK) {
-      return 1;
-    }
+const LINKED_FOREIGN_KEY_RANK: FieldRank = 1;
 
+/** PKs, then FKs with a known target table, then other FKs, then the rest. */
+function getFieldRank(field: ErdField): FieldRank {
+  const typeInfo = Lib.legacyColumnTypeInfo(field);
+  if (Lib.isPrimaryKey(typeInfo)) {
     return 0;
-  });
+  }
+  if (Lib.isForeignKey(typeInfo)) {
+    return field.fk_target_table_id != null ? LINKED_FOREIGN_KEY_RANK : 2;
+  }
+  return 3;
+}
+
+function sortFields(fields: ErdField[]): {
+  fields: ErdField[];
+  linkedForeignKeyRows: { start: number; count: number };
+} {
+  const ranked = fields
+    .map((field) => ({ field, rank: getFieldRank(field) }))
+    .sort((a, b) => a.rank - b.rank);
+  const start = ranked.findIndex(
+    ({ rank }) => rank === LINKED_FOREIGN_KEY_RANK,
+  );
+  const count = ranked.filter(
+    ({ rank }) => rank === LINKED_FOREIGN_KEY_RANK,
+  ).length;
+  return {
+    fields: ranked.map(({ field }) => field),
+    linkedForeignKeyRows: { start: Math.max(start, 0), count },
+  };
 }
 
 type TableEdgeRoles = {
@@ -150,7 +160,7 @@ function toFlowNode(
   node: ErdNode,
   roles: TableEdgeRoles,
 ): SchemaViewerFlowNode {
-  const fields = sortFields(node.fields);
+  const { fields, linkedForeignKeyRows } = sortFields(node.fields);
   const height = getNodeHeight(fields.length);
   const handles = getFieldHandles(fields, roles);
   const foreignKeyCount = fields.filter((field) =>
@@ -172,6 +182,7 @@ function toFlowNode(
       fields,
       handles,
       foreignKeyCount,
+      linkedForeignKeyRows,
       selectedFieldIds: new Set(),
     },
     style: {

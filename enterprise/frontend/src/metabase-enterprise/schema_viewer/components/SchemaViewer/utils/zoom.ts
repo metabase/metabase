@@ -1,7 +1,7 @@
 import { type Viewport, getViewportForBounds } from "@xyflow/react";
 
 import { FIT_VIEW_OPTIONS, MAX_ZOOM, NODE_WIDTH_PX } from "../constants";
-import type { SchemaViewerFlowNode } from "../types";
+import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 
 import { getGraphBounds } from "./viewport-window";
 
@@ -15,6 +15,9 @@ const TOP_MARGIN_PX = 50;
 // Fractional horizontal padding applied to the bounding-box width when
 // computing the width-based zoom level.
 const HORIZONTAL_PADDING = 0.15;
+// Above this many tables the overview centers on the most connected table
+// instead of the middle of the graph.
+const MAX_TABLES_TO_CENTER_GRAPH = 10;
 // Animation duration for the camera pan/zoom.
 export const ZOOM_DURATION_MS = 500;
 
@@ -74,6 +77,62 @@ export function getGraphFitViewport(
     FIT_VIEW_OPTIONS.maxZoom,
     FIT_VIEW_OPTIONS.padding,
   );
+}
+
+/** The node with the most edges, first in node order on a tie. */
+function getMostConnectedNode(
+  nodes: readonly SchemaViewerFlowNode[],
+  edges: readonly SchemaViewerFlowEdge[],
+): SchemaViewerFlowNode | null {
+  const edgeCounts = new Map<string, number>();
+  for (const { source, target } of edges) {
+    edgeCounts.set(source, (edgeCounts.get(source) ?? 0) + 1);
+    if (target !== source) {
+      edgeCounts.set(target, (edgeCounts.get(target) ?? 0) + 1);
+    }
+  }
+  let mostConnected: SchemaViewerFlowNode | null = null;
+  let maxEdgeCount = 0;
+  for (const node of nodes) {
+    const edgeCount = edgeCounts.get(node.id) ?? 0;
+    if (edgeCount > maxEdgeCount) {
+      mostConnected = node;
+      maxEdgeCount = edgeCount;
+    }
+  }
+  return mostConnected;
+}
+
+/**
+ * The overview after a fresh layout: the whole-graph fit, centered on the
+ * most connected table when the graph has more than
+ * `MAX_TABLES_TO_CENTER_GRAPH` tables. A table taller than the screen is
+ * top-aligned instead, so its header stays visible.
+ */
+export function getGraphOverviewViewport(
+  nodes: readonly SchemaViewerFlowNode[],
+  edges: readonly SchemaViewerFlowEdge[],
+  size: CanvasSize,
+): Viewport | null {
+  const fit = getGraphFitViewport(nodes, size);
+  if (fit == null || nodes.length <= MAX_TABLES_TO_CENTER_GRAPH) {
+    return fit;
+  }
+  const hub = getMostConnectedNode(nodes, edges);
+  if (hub == null) {
+    return fit;
+  }
+  const { zoom } = fit;
+  const width = hub.width ?? NODE_WIDTH_PX;
+  const height = hub.height ?? 0;
+  const maxCenteredHeight = (size.height - 2 * TOP_MARGIN_PX) / zoom;
+  const centerX = hub.position.x + width / 2;
+  const centerY = hub.position.y + Math.min(height, maxCenteredHeight) / 2;
+  return {
+    x: size.width / 2 - centerX * zoom,
+    y: size.height / 2 - centerY * zoom,
+    zoom,
+  };
 }
 
 export function getCanvasSize(): CanvasSize | null {

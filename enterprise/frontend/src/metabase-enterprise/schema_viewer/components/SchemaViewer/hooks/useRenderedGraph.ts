@@ -7,6 +7,7 @@ import {
   type ViewportSize,
   getNodeIdsInViewportWindow,
   getRenderedGraph,
+  isViewportInWindow,
 } from "../utils/viewport-window";
 
 // Overscan is measured in viewports, but a viewport at low zoom covers far
@@ -105,6 +106,22 @@ export function useRenderedGraph({
     [recomputeWindow],
   );
 
+  /** Whether everything visible at `viewport` is in the settled window. */
+  const isViewportRendered = useCallback(
+    (viewport: Viewport, size: ViewportSize) => {
+      const settledViewport = settledViewportRef.current;
+      return (
+        settledViewport != null &&
+        isViewportInWindow(
+          { viewport, size },
+          settledViewport,
+          getOverscanViewports(settledViewport.viewport.zoom),
+        )
+      );
+    },
+    [],
+  );
+
   const renderedGraph = useMemo(
     () => getRenderedGraph(nodes, edges, renderedNodeIds),
     [nodes, edges, renderedNodeIds],
@@ -116,5 +133,6 @@ export function useRenderedGraph({
     settleViewport,
     recomputeWindow,
     includeViewport,
+    isViewportRendered,
   };
 }

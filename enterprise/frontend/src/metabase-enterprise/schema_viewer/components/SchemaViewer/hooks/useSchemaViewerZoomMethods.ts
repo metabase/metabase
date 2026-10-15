@@ -6,7 +6,7 @@ import {
   type CanvasSize,
   ZOOM_DURATION_MS,
   getCanvasSize,
-  getGraphFitViewport,
+  getGraphOverviewViewport,
   getNodeFocusViewport,
 } from "../utils/zoom";
 
@@ -27,10 +27,11 @@ const ZOOM_MAX_RETRIES = 8;
 function getDestination(
   request: PendingZoomRequest,
   nodes: readonly SchemaViewerFlowNode[],
+  edges: readonly SchemaViewerFlowEdge[],
   size: CanvasSize,
 ): Viewport | null {
   if (request.kind === "all") {
-    return getGraphFitViewport(nodes, size);
+    return getGraphOverviewViewport(nodes, edges, size);
   }
   return getNodeFocusViewport(nodes, request.nodeId, size);
 }
@@ -48,12 +49,15 @@ export type SchemaViewerZoomMethods = {
 export function useSchemaViewerZoomMethods(
   instance: ZoomTarget | null,
   nodes: readonly SchemaViewerFlowNode[],
+  edges: readonly SchemaViewerFlowEdge[],
   onBeforeMove: (viewport: Viewport, size: CanvasSize) => void,
 ): SchemaViewerZoomMethods {
   const instanceRef = useRef(instance);
   instanceRef.current = instance;
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+  const edgesRef = useRef(edges);
+  edgesRef.current = edges;
   const onBeforeMoveRef = useRef(onBeforeMove);
   onBeforeMoveRef.current = onBeforeMove;
   // The first move replaces React Flow's initial `fitView`, so it jumps.
@@ -78,7 +82,12 @@ export function useSchemaViewerZoomMethods(
     const viewport =
       size == null
         ? null
-        : getDestination(pendingZoomRequest, nodesRef.current, size);
+        : getDestination(
+            pendingZoomRequest,
+            nodesRef.current,
+            edgesRef.current,
+            size,
+          );
     if (size != null && viewport != null) {
       pendingZoomRequestRef.current = null;
       onBeforeMoveRef.current(viewport, size);

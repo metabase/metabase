@@ -118,6 +118,29 @@ describe("useRenderedGraph", () => {
     expect(ids(result.current.renderedNodes)).toEqual(["table-1"]);
   });
 
+  it("reports whether a viewport is inside the rendered window", () => {
+    const { result } = setup();
+    expect(
+      result.current.isViewportRendered(ORIGIN_VIEWPORT, VIEWPORT_SIZE),
+    ).toBe(false);
+
+    act(() => result.current.settleViewport(ORIGIN_VIEWPORT, VIEWPORT_SIZE));
+
+    // Zoom 1 renders 2 overscan viewports (2000px) on each side.
+    expect(
+      result.current.isViewportRendered(
+        { x: -2000, y: 0, zoom: 1 },
+        VIEWPORT_SIZE,
+      ),
+    ).toBe(true);
+    expect(
+      result.current.isViewportRendered(
+        { x: -2001, y: 0, zoom: 1 },
+        VIEWPORT_SIZE,
+      ),
+    ).toBe(false);
+  });
+
   it("returns stable arrays when a settle does not change membership", () => {
     const { result } = setup();
     act(() => result.current.settleViewport(ORIGIN_VIEWPORT, VIEWPORT_SIZE));

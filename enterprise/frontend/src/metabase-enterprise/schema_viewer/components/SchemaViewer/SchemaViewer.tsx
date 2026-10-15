@@ -17,17 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-  useColorScheme,
-} from "metabase/ui";
+import { Box, Loader, Stack, Text, useColorScheme } from "metabase/ui";
 import type {
   ConcreteTableId,
   DatabaseId,
@@ -37,9 +27,8 @@ import type {
 
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
+import { SchemaViewerCanvasControls } from "./components/CanvasControls";
 import { SchemaViewerEdgeLayer } from "./components/EdgeLayer";
-import { SchemaViewerNodeSearch } from "./components/NodeSearch";
-import { SchemaPickerInput } from "./components/SchemaPickerInput";
 import { SchemaViewerMinimap } from "./components/SchemaViewerMinimap";
 import { SelectedNodeInfoPanel } from "./components/SelectedNodeInfoPanel";
 import { SchemaViewerTableNode } from "./components/TableNode";
@@ -155,6 +144,7 @@ export function SchemaViewer({
     detailsStore,
     settleViewport,
     recomputeDetails,
+    isViewportDetailed,
     focusNode: focusNodeDetails,
   } = useSchemaViewerDetails({
     nodes,
@@ -166,6 +156,7 @@ export function SchemaViewer({
     settleViewport: settleRenderedGraph,
     recomputeWindow,
     includeViewport,
+    isViewportRendered,
   } = useRenderedGraph({
     nodes,
     edges,
@@ -176,7 +167,12 @@ export function SchemaViewer({
     zoomToNode: zoomToNodeInternal,
     zoomToCanvas,
     cancelZoom,
-  } = useSchemaViewerZoomMethods(reactFlowInstance, nodes, includeViewport);
+  } = useSchemaViewerZoomMethods(
+    reactFlowInstance,
+    nodes,
+    edges,
+    includeViewport,
+  );
 
   const zoomToNode = useCallback(
     (nodeId: string) => {
@@ -190,22 +186,27 @@ export function SchemaViewer({
 
   const isMinimapPanningRef = useRef(false);
 
+  const getCanvasSize = useCallback(() => {
+    const container = reactFlowContainerRef.current;
+    return {
+      width: container?.clientWidth ?? 0,
+      height: container?.clientHeight ?? 0,
+    };
+  }, []);
+
   const settleAt = useCallback(
     (viewport: Viewport) => {
-      const container = reactFlowContainerRef.current;
-      const size = {
-        width: container?.clientWidth ?? 0,
-        height: container?.clientHeight ?? 0,
-      };
+      const size = getCanvasSize();
       settleViewport(viewport, size);
       settleRenderedGraph(viewport, size);
     },
-    [settleViewport, settleRenderedGraph],
+    [getCanvasSize, settleViewport, settleRenderedGraph],
   );
 
   const handleMoveEnd = useCallback<OnMoveEnd>(
     (_event, viewport) => {
-      // Minimap drags move the camera many times; settle once on release.
+      // Minimap drags move the camera on every pointer move and settle
+      // themselves (see handleMinimapPanTo).
       if (!isMinimapPanningRef.current) {
         settleAt(viewport);
       }
@@ -218,13 +219,34 @@ export function SchemaViewer({
     cancelZoom();
   }, [cancelZoom]);
 
+  // A canvas drag rarely moves past the overscan before release, but a
+  // minimap drag can cross many viewports. Settle whenever the visible area
+  // leaves the rendered or detailed window, so tables appear during the drag.
   const handleMinimapPanTo = useCallback(
     (point: XYPosition) => {
-      reactFlowInstance?.setCenter(point.x, point.y, {
+      if (reactFlowInstance == null) {
+        return;
+      }
+      // Without a duration, setCenter applies the viewport synchronously.
+      reactFlowInstance.setCenter(point.x, point.y, {
         zoom: reactFlowInstance.getZoom(),
       });
+      const viewport = reactFlowInstance.getViewport();
+      const size = getCanvasSize();
+      if (
+        !isViewportRendered(viewport, size) ||
+        !isViewportDetailed(viewport, size)
+      ) {
+        settleAt(viewport);
+      }
     },
-    [reactFlowInstance],
+    [
+      reactFlowInstance,
+      getCanvasSize,
+      isViewportRendered,
+      isViewportDetailed,
+      settleAt,
+    ],
   );
 
   const handleMinimapPanEnd = useCallback(() => {
@@ -475,47 +497,17 @@ export function SchemaViewer({
           onPanEnd={handleMinimapPanEnd}
         />
 
-        <Panel className={S.entryInput} position="top-left">
-          <Group gap="sm">
-            <SchemaPickerInput
-              databaseId={databaseId}
-              schema={schema}
-              onSchemaChange={handleSchemaChange}
-            />
-            <SchemaViewerNodeSearch
-              key={contextKey ?? ""}
-              nodes={settledNodes}
-            />
-          </Group>
-        </Panel>
-
-        <Panel position="top-right">
-          <AppSwitcher className={S.appSwitcher} />
-        </Panel>
-
-        {nodes.length > 0 && (
-          <Panel position="bottom-left">
-            <Group gap="sm">
-              <Button
-                bg="background_page-primary"
-                leftSection={<Icon name="sparkles" />}
-                loading={pendingReason === "auto-layout"}
-                onClick={resetLayout}
-              >
-                {t`Auto-layout`}
-              </Button>
-              {selectedNodeId != null && (
-                <Button
-                  bg="background_page-primary"
-                  loading={pendingReason === "focus-node"}
-                  onClick={() => focusOnNode(selectedNodeId)}
-                >
-                  {t`Focus node`}
-                </Button>
-              )}
-            </Group>
-          </Panel>
-        )}
+        <SchemaViewerCanvasControls
+          databaseId={databaseId}
+          schema={schema}
+          contextKey={contextKey}
+          nodes={settledNodes}
+          selectedNodeId={selectedNodeId}
+          pendingReason={pendingReason}
+          onSchemaChange={handleSchemaChange}
+          onResetLayout={resetLayout}
+          onFocusNode={focusOnNode}
+        />
 
         <SelectedNodeInfoPanel
           nodes={settledNodes}

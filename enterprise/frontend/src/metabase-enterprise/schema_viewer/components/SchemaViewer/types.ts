@@ -14,6 +14,10 @@ export type SchemaViewerNodeData = ErdNode & {
   // the edge layer draws edges from these without mounting the node.
   handles: SchemaViewerNodeHandle[];
   foreignKeyCount: number;
+  // Rows of FK fields with a known target table, which render as links. They
+  // are contiguous after the PK rows, so summary cards can tint them as one
+  // block.
+  linkedForeignKeyRows: { start: number; count: number };
   // Fields on this table that sit at either end of the currently selected
   // edge. Pre-computed at edge-click.
   selectedFieldIds: Set<FieldId>;

@@ -16,17 +16,22 @@ function isPositiveFinite(value: number) {
   return Number.isFinite(value) && value > 0;
 }
 
+type WindowBounds = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
 /**
- * Returns IDs of nodes intersecting the settled viewport expanded by
- * `overscanViewports` viewport sizes on every side.
+ * Flow-space bounds of a viewport expanded by `overscanViewports` viewport
+ * sizes on every side, or null for invalid geometry.
  */
-export function getNodeIdsInViewportWindow(
-  nodes: readonly SchemaViewerFlowNode[],
+function getWindowBounds(
   { viewport, size }: SettledViewport,
   overscanViewports: number,
-): Set<string> {
+): WindowBounds | null {
   const { x, y, zoom } = viewport;
-  const nodeIds = new Set<string>();
   if (
     !Number.isFinite(x) ||
     !Number.isFinite(y) ||
@@ -34,17 +39,57 @@ export function getNodeIdsInViewportWindow(
     !isPositiveFinite(size.width) ||
     !isPositiveFinite(size.height)
   ) {
-    return nodeIds;
+    return null;
   }
 
-  const viewportWidth = size.width / zoom;
-  const viewportHeight = size.height / zoom;
-  const viewportLeft = -x / zoom;
-  const viewportTop = -y / zoom;
-  const windowLeft = viewportLeft - viewportWidth * overscanViewports;
-  const windowRight = viewportLeft + viewportWidth * (1 + overscanViewports);
-  const windowTop = viewportTop - viewportHeight * overscanViewports;
-  const windowBottom = viewportTop + viewportHeight * (1 + overscanViewports);
+  const width = size.width / zoom;
+  const height = size.height / zoom;
+  const left = -x / zoom;
+  const top = -y / zoom;
+  return {
+    left: left - width * overscanViewports,
+    top: top - height * overscanViewports,
+    right: left + width * (1 + overscanViewports),
+    bottom: top + height * (1 + overscanViewports),
+  };
+}
+
+/**
+ * Whether the visible area is entirely inside the window around `settled`
+ * expanded by `overscanViewports`, i.e. everything on screen is already in
+ * that window.
+ */
+export function isViewportInWindow(
+  visible: SettledViewport,
+  settled: SettledViewport,
+  overscanViewports: number,
+): boolean {
+  const visibleBounds = getWindowBounds(visible, 0);
+  const windowBounds = getWindowBounds(settled, overscanViewports);
+  return (
+    visibleBounds != null &&
+    windowBounds != null &&
+    visibleBounds.left >= windowBounds.left &&
+    visibleBounds.top >= windowBounds.top &&
+    visibleBounds.right <= windowBounds.right &&
+    visibleBounds.bottom <= windowBounds.bottom
+  );
+}
+
+/**
+ * Returns IDs of nodes intersecting the settled viewport expanded by
+ * `overscanViewports` viewport sizes on every side.
+ */
+export function getNodeIdsInViewportWindow(
+  nodes: readonly SchemaViewerFlowNode[],
+  settledViewport: SettledViewport,
+  overscanViewports: number,
+): Set<string> {
+  const nodeIds = new Set<string>();
+  const bounds = getWindowBounds(settledViewport, overscanViewports);
+  if (bounds == null) {
+    return nodeIds;
+  }
 
   for (const node of nodes) {
     const { width, height } = node;
@@ -61,10 +106,10 @@ export function getNodeIdsInViewportWindow(
     }
 
     const intersectsWindow =
-      nodeLeft + width >= windowLeft &&
-      nodeLeft <= windowRight &&
-      nodeTop + height >= windowTop &&
-      nodeTop <= windowBottom;
+      nodeLeft + width >= bounds.left &&
+      nodeLeft <= bounds.right &&
+      nodeTop + height >= bounds.top &&
+      nodeTop <= bounds.bottom;
     if (intersectsWindow) {
       nodeIds.add(node.id);
     }

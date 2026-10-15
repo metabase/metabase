@@ -1,7 +1,8 @@
 import type { NodeProps } from "@xyflow/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
-import { queryIcon, renderWithProviders, screen } from "__support__/ui";
+import { queryIcon, renderWithProviders, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { ConcreteTableId, TableVisibilityType } from "metabase-types/api";
 import {
   createMockErdEdge,
@@ -109,27 +110,37 @@ describe("SchemaViewerTableNode", () => {
     expect(queryIcon("eye_crossed_out")).not.toBeInTheDocument();
   });
 
-  it("renders a summary with an icon header and centered icon counts", () => {
+  it.each([
+    { level: "summary", isDetailed: false },
+    { level: "full", isDetailed: true },
+  ])(
+    "shows field and foreign key counts in the $level header",
+    ({ isDetailed }) => {
+      setup({ isDetailed });
+
+      const header = checkNotNull(screen.getByText("Orders").parentElement);
+      expect(
+        within(header).getByRole("group", { name: "2 fields" }),
+      ).toHaveTextContent("2");
+      expect(
+        within(header).getByRole("group", { name: "1 foreign key" }),
+      ).toHaveTextContent("1");
+      expect(within(header).getByLabelText("field icon")).toBeInTheDocument();
+      expect(
+        within(header).getByLabelText("connections icon"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("renders a summary without field rows", () => {
     const { container } = setup();
 
     const summary = container.querySelector("[data-detail-level='summary']");
-    expect(queryIcon("table")).toBeInTheDocument();
-    expect(queryIcon("field")).toBeInTheDocument();
-    expect(queryIcon("connections")).toBeInTheDocument();
-    expect(queryIcon("key")).not.toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "2 fields" })).toHaveTextContent(
-      "2",
-    );
-    expect(
-      screen.getByRole("group", { name: "1 foreign key" }),
-    ).toHaveTextContent("1");
-    expect(summary).not.toHaveTextContent("2 fields");
-    expect(summary).not.toHaveTextContent("1 foreign key");
-    expect(screen.queryByText("customer_id")).not.toBeInTheDocument();
-    expect(screen.queryByText("total")).not.toBeInTheDocument();
     expect(summary).toBe(
       screen.getByText("Orders").closest("[data-detail-level]"),
     );
+    expect(screen.queryByText("customer_id")).not.toBeInTheDocument();
+    expect(screen.queryByText("total")).not.toBeInTheDocument();
   });
 
   it("renders an identical header at both detail levels", () => {

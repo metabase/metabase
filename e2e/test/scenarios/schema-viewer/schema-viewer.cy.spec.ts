@@ -407,12 +407,14 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     searchInput().type("{esc}");
   });
 
-  it("distant tables remain searchable and upgrade after focus", () => {
-    const nearPosition = 15;
+  it("distant tables remain searchable and render after focus", () => {
+    // The tables form a chain, so every middle table has two edges; the first
+    // of them is the most connected table, which the initial view centers on.
+    const nearPosition = 2;
     const farPosition = VIRTUAL_TABLE_COUNT;
     const nearTableId = virtualTableId(nearPosition);
     const farTableId = virtualTableId(farPosition);
-    const nearName = "Virtual Table 15";
+    const nearName = "Virtual Table 02";
     const farName = "Virtual Table 30";
     const farTableName = "virtual_table_30";
 
@@ -423,20 +425,23 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
     cy.wait("@virtualizedErd");
 
-    cy.log("The low-zoom fitted viewport renders tables as summaries");
+    cy.log(
+      "The initial view centers on the most connected table, with field rows",
+    );
     assertViewportZoom((zoom) =>
-      expect(zoom, "initial fit should use summary zoom").to.be.lessThan(
+      expect(zoom, "initial fit should be zoomed out").to.be.lessThan(
         MIN_ZOOM_FOR_TARGET,
       ),
     );
     tableCard(nearTableId)
-      .should("have.attr", "data-detail-level", "summary")
-      .and("contain", "virtual_table_15");
+      .should("have.attr", "data-detail-level", "full")
+      .and("contain", "virtual_table_02");
+    assertNodeInViewport(nearTableId);
     tableCard(nearTableId).within(() => {
       cy.findByRole("group", { name: "3 fields" }).should("exist");
       cy.findByRole("group", { name: "1 foreign key" }).should("exist");
-      cy.findByText("next_id").should("not.exist");
-      cy.findByText("label").should("not.exist");
+      cy.findByText("next_id").should("exist");
+      cy.findByText("label").should("exist");
     });
 
     cy.log("Search focuses the distant table and renders its field rows");

@@ -1,12 +1,12 @@
 import type { Viewport } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 
-import { MIN_ZOOM } from "../constants";
 import type { SchemaViewerFlowNode } from "../types";
 import {
   type SettledViewport,
   type ViewportSize,
   getNodeIdsInViewportWindow,
+  isViewportInWindow,
 } from "../utils/viewport-window";
 
 const DETAIL_OVERSCAN_VIEWPORTS = 1;
@@ -92,9 +92,6 @@ function getBufferedNodeIds(
   nodes: readonly SchemaViewerFlowNode[],
   settledViewport: SettledViewport,
 ) {
-  if (settledViewport.viewport.zoom <= MIN_ZOOM) {
-    return new Set<string>();
-  }
   return getNodeIdsInViewportWindow(
     nodes,
     settledViewport,
@@ -160,6 +157,22 @@ export function useSchemaViewerDetails({
     updateStore();
   }, [updateStore]);
 
+  /** Whether every table visible at `viewport` is in the detailed window. */
+  const isViewportDetailed = useCallback(
+    (viewport: Viewport, size: ViewportSize) => {
+      const settledViewport = settledViewportRef.current;
+      return (
+        settledViewport != null &&
+        isViewportInWindow(
+          { viewport, size },
+          settledViewport,
+          DETAIL_OVERSCAN_VIEWPORTS,
+        )
+      );
+    },
+    [],
+  );
+
   const focusNode = useCallback(
     (nodeId: string) => {
       focusedNodeIdRef.current = nodeId;
@@ -175,6 +188,7 @@ export function useSchemaViewerDetails({
     detailsStore,
     settleViewport,
     recomputeDetails,
+    isViewportDetailed,
     focusNode,
   };
 }

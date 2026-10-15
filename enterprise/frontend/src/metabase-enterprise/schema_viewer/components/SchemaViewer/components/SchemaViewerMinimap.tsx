@@ -1,5 +1,5 @@
 import { Panel, type XYPosition, useStoreApi } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -36,7 +36,10 @@ type SchemaViewerMinimapProps = {
   onPanEnd: () => void;
 };
 
-export function SchemaViewerMinimap(props: SchemaViewerMinimapProps) {
+/** Memoized: its props stay stable while a table is dragged. */
+export const SchemaViewerMinimap = memo(function SchemaViewerMinimap(
+  props: SchemaViewerMinimapProps,
+) {
   const [isVisible, setIsVisible] = useState(true);
 
   if (!isVisible) {
@@ -71,7 +74,7 @@ export function SchemaViewerMinimap(props: SchemaViewerMinimapProps) {
       </div>
     </>
   );
-}
+});
 
 /**
  * Draws the full logical graph to a canvas once per graph change. The viewport
