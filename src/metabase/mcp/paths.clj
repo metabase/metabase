@@ -3,13 +3,7 @@
 
    Source of truth for the route aliases — keep in sync with the route map in
    [[metabase.api-routes.routes]] and the resource-metadata endpoints in
-   [[metabase.oauth-server.api.metadata]]. The scope sets the v2 surface accepts live in [[metabase.mcp.scope]].
-
-   A leaf namespace with no requires, so the handler and OAuth server can read it without a dependency cycle.
-   Anything `metabase.mcp.core` reaches joins the load path of every namespace that loads it.
-   Pulling `metabot.scope`, and through it `premium-features`, onto that path has deadlocked namespace loading
-   with a methodical protocol error at web-server start.
-   Keep this namespace dependency-free.")
+   [[metabase.oauth-server.api.metadata]].")
 
 (set! *warn-on-reflection* true)
 
@@ -26,9 +20,6 @@
    these paths, `metabase.oauth-server.api.metadata` publishes one RFC 9728 document per path, and
    `metabase.oauth-server.core/narrow-scope-to-resources` recognises an RFC 8707 `resource` indicator
    only if it names one. A path that still serves traffic but has dropped out of this set fails
-   OPEN — the indicator matches nothing, so the grant is never narrowed to the MCP surface.
-
-   `/api/metabase-mcp/v2` was here while v2 shipped behind a flag. It was retired at the switchover,
-   along with its route entry and its metadata document."
+   OPEN — the indicator matches nothing, so the grant is never narrowed to the MCP surface."
   #{canonical-path
     "/api/mcp"})
