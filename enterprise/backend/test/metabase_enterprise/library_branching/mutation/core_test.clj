@@ -146,6 +146,26 @@
       (is (thrown-with-msg? ExceptionInfo #"fail with no mutation"
                             (mut/run-mutations clamp-mutations {:tests [always-fails]}))))))
 
+(deftest baseline-once-per-test-test
+  (testing "a test that the lists of several mutations name runs once with no mutation"
+    (let [runs    (atom 0)
+          counted (anonymous-test-var! 'counted (fn []
+                                                  (swap! runs inc)
+                                                  (is (= 5 (fixtures/clamp 1 5 9)))))
+          results (mut/run-mutations [{:name   :alone
+                                       :doc    "clamp ignores the upper bound."
+                                       :target `fixtures/clamp
+                                       :edits  [[:replace '(min hi x) 'x]]
+                                       :tests  [counted]}
+                                      {:name   :with-area
+                                       :doc    "clamp ignores the upper bound."
+                                       :target `fixtures/clamp
+                                       :edits  [[:replace '(min hi x) 'x]]
+                                       :tests  [#'area-test counted]}])]
+      (is (= [:killed :killed] (map :result results)))
+      (testing "one run with no mutation, then one run for each mutation"
+        (is (= 3 @runs))))))
+
 (deftest declaration-test
   (testing "a declaration that does not fit the schema makes the run throw"
     (is (thrown-with-msg? ExceptionInfo #"Invalid mutation"
