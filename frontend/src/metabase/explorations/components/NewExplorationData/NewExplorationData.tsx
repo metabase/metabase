@@ -237,7 +237,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         <Button
           variant="subtle"
           color="neutral"
-          bd="1px dashed border"
+          bd="1px dashed border-neutral"
           bdrs="xl"
           leftSection={
             timelines.length ? <Icon name="add" size={12} /> : undefined
