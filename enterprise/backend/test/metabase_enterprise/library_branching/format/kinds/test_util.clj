@@ -6,8 +6,10 @@
   never gives an attribute at its default value. An optional attribute is absent or present; absent is the first
   choice, so a shrunk value has few attributes."
   (:require
+   [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
+   [metabase-enterprise.library-branching.format.kinds.dashboard :as dashboard]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
    [metabase.util.json :as json]))
@@ -410,9 +412,87 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
+;;; ---------------------------------------------------- Dashboards ---------------------------------------------------
+
+(def ^:private nested-id-prefix-gen
+  "18 characters of an entity id: the ids of the tabs and dashboard cards of one dashboard add 3 more."
+  (gen/fmap str/join (gen/vector (gen/elements "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") 18)))
+
+(defn- nested-id
+  "The id of the `i`th entry of tag `tag` (one character) of a dashboard whose nested ids start with `prefix`."
+  [prefix tag i]
+  (format "%s%s%02d" prefix tag i))
+
+(def ^:private dashboard-parameter-gen
+  "A dashboard parameter with no id: a plain filter, or a filter whose values come from a card."
+  (gen/one-of
+   [(gen/fmap (fn [t] {:name "Category" :slug "category" :type t}) (gen/elements ["string/=" "category"]))
+    (gen/fmap (fn [[card field]] {:name                 "Category"
+                                  :slug                 "category"
+                                  :type                 "string/="
+                                  :values_source_type   "card"
+                                  :values_source_config {:card_id card :value_field field}})
+              (gen/tuple lb.tu/entity-id-gen field-ref-gen))]))
+
+(def ^:private dashcard-mapping-gen
+  "A parameter mapping of a dashboard card with no parameter id: to a field of its card or of another card."
+  (gen/fmap (fn [[card field]] {:card_id card :target ["dimension" field]})
+            (gen/tuple lb.tu/entity-id-gen field-ref-gen)))
+
+(def ^:private dashcard-choice-gen
+  (attrs-of {:tab                    [true gen/nat]
+             :row                    [true (gen/choose 0 20)]
+             :col                    [true (gen/choose 0 20)]
+             :size_x                 [true (gen/choose 1 24)]
+             :size_y                 [true (gen/choose 1 12)]
+             :card_id                [false lb.tu/entity-id-gen]
+             :action_id              [false lb.tu/entity-id-gen]
+             :parameter_mappings     [false (gen/vector dashcard-mapping-gen 1 2)]
+             ;; The settings of the shapes that the serdes walk of master reads, so the reference law can compare.
+             :visualization_settings [false (gen/fmap first visualization-settings-refs-gen)]
+             :series                 [false (gen/vector lb.tu/entity-id-gen 1 2)]
+             :inline_parameters      [false (gen/return ["p00"])]}))
+
+(defn- fold-dashboard
+  "The dashboard attributes of the choices `attrs`: the nested ids from `prefix`, each dashboard card on the tab of its
+  choice (none when the dashboard has no tab), each mapping to a parameter of the dashboard, in the file's order."
+  [prefix {:keys [tabs dashcards parameters] :as attrs}]
+  (let [tabs       (vec (map-indexed (fn [i tab-name] {:id (nested-id prefix "T" i) :name tab-name}) tabs))
+        parameters (vec (map-indexed (fn [i p] (assoc p :id (format "p%02d" i))) parameters))
+        param-id   (fn [j] (if (seq parameters) (:id (nth parameters (mod j (count parameters)))) "p00"))
+        dashcards  (vec (map-indexed
+                         (fn [i {:keys [tab] :as dc}]
+                           (cond-> (-> dc (dissoc :tab) (assoc :id (nested-id prefix "C" i)))
+                             (seq tabs)                   (assoc :dashboard_tab_id (:id (nth tabs (mod tab (count tabs)))))
+                             (:parameter_mappings dc)     (update :parameter_mappings
+                                                                  (fn [ms] (vec (map-indexed #(assoc %2 :parameter_id (param-id %1)) ms))))))
+                         dashcards))]
+    (cond-> (dissoc attrs :tabs :dashcards :parameters)
+      (seq tabs)       (assoc :tabs tabs)
+      (seq parameters) (assoc :parameters parameters)
+      (seq dashcards)  (assoc :dashcards (dashboard/dashcard-order tabs (mapv dashboard/normal-dashcard dashcards))))))
+
+(def dashboard-attrs-gen
+  "Generates the `:attrs` of a dashboard: its own attributes, parameters, tabs, and dashboard cards on those tabs with
+  every entry that holds a reference."
+  (gen/fmap (fn [[prefix attrs]] (fold-dashboard prefix attrs))
+            (gen/tuple nested-id-prefix-gen
+                       (attrs-of {:description             [false text-gen]
+                                  :caveats                 [false text-gen]
+                                  :points_of_interest      [false text-gen]
+                                  :collection_position     [false gen/large-integer]
+                                  :position                [false gen/large-integer]
+                                  :width                   [false (gen/return "full")]
+                                  :auto_apply_filters      [false (gen/return false)]
+                                  :show_in_getting_started [false (gen/return true)]
+                                  :parameters              [false (gen/vector dashboard-parameter-gen 1 2)]
+                                  :tabs                    [false (gen/vector non-empty-text-gen 1 2)]
+                                  :dashcards               [false (gen/vector dashcard-choice-gen 1 3)]}))))
+
 (def attrs-gens
   "`{kind generator}` of the `:attrs` of each kind."
   {:collection      collection-attrs-gen
+   :dashboard       dashboard-attrs-gen
    :glossary-term   glossary-attrs-gen
    :measure         measure-attrs-gen
    :metric          metric-attrs-gen

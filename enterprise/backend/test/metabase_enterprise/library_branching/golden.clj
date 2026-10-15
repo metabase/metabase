@@ -81,6 +81,9 @@
 (def by-month-path
   "The file of the metric that uses Total Revenue."
   "library/metrics/revenue/total_revenue~Qx81tWm0aLpN2ZcB7yYgr.metric.yaml")
+(def overview-path
+  "The file of the dashboard that shows Total Revenue."
+  "library/dashboards/revenue_overview.dashboard.yaml")
 (def base-filter-path
   "The file of the Base filter snippet."
   "snippets/base_filter.snippet.yaml")
@@ -122,8 +125,8 @@
         v      (fn [t] {:tree t :manifest m})]
     {"green"                  (v golden)
      "green-without-manifest" {:tree golden :manifest nil}
-     "unknown-kind"           (v (tree-with {"library/overview.dashboard.yaml"
-                                             "kind: dashboard\nid: 7RZUq1g5o1C5ws_e3ppKf\nname: Overview\n"}))
+     "unknown-kind"           (v (tree-with {"library/overview.document.yaml"
+                                             "kind: document\nid: dOcUmEnTdOcUmEnTdOc01\nname: Overview\n"}))
      "invalid"                (v (tree-with {total-revenue-path "kind: metric\nid: IW8kbqZVaMxdGtCM2F4U6\nname: Total Revenue\n"}))
      "duplicate-identity"     (v (assoc golden "library/copy.metric.yaml" (get golden total-revenue-path)))
      "no-format"              (v (tree-with {".metabase/format.yaml" nil}))
