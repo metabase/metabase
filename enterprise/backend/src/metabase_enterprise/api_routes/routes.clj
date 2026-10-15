@@ -27,6 +27,7 @@
    [metabase-enterprise.email.api]
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
+   [metabase-enterprise.library-branching.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.mcp.api.permissions]
    [metabase-enterprise.metabot-analytics.api]
@@ -152,6 +153,7 @@
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
+   "/library-branching"            (premium-handler metabase-enterprise.library-branching.api/routes :remote-sync)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
