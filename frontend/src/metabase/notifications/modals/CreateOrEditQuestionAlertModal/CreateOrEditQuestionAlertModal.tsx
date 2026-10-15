@@ -10,6 +10,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import type { ScheduleValueType } from "metabase/common/components/Schedule/domain";
 import CS from "metabase/css/core/index.css";
 import {
@@ -41,7 +42,6 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
@@ -211,7 +211,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
       if (result.error) {
         const errorText =
-          getResponseErrorMessage(result.error) ?? t`An error occurred`;
+          findErrorMessage(result.error) ?? t`An error occurred`;
 
         dispatch(
           addUndo({
@@ -249,7 +249,7 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "feedback-negative",
-            message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
+            message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
       }

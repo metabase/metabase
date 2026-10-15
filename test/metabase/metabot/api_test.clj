@@ -722,7 +722,7 @@
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (swap! llm-calls inc) (mut/mock-llm-response []))
                                       conversation-title/ensure-title! (fn [& _] (swap! title-calls inc) {:status :ready :title "x"})]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-              (is (=? {:message #"Unknown profile"}
+              (is (=? #"Unknown profile.*"
                       (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
                                             {:message         "hello"
                                              :context         {}

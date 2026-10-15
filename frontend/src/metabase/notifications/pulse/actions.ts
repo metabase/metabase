@@ -2,9 +2,9 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { subscriptionApi } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
@@ -56,7 +56,7 @@ export const saveEditingPulse = createThunkAction(
         }
       } catch (error) {
         const errorMessage =
-          getResponseErrorMessage(error) ??
+          findErrorMessage(error) ??
           t`Something went wrong while saving your subscription`;
 
         dispatch(
