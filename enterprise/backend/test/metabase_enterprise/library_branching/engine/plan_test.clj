@@ -9,7 +9,8 @@
    [metabase-enterprise.library-branching.engine.test-util :as engine.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase-enterprise.library-branching.test-util :as lb.tu]))
+   [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -306,6 +307,12 @@
           steps (plan/plan l m l)]
       (is (= [[kb :write] [ka :write]] (step-forms steps)))
       (is (key-moves-apply? l m steps))))
+  (testing "a local snapshot can have two names of one key; both are free before a write takes the key"
+    (let [l     (snippets [kb "Robin"] [kc "robin"])
+          m     (snippets [kb "Wren"] [kc "Heron"] [ka "ROBIN"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :write] [kc :write] [ka :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
   (testing "a swap goes through a temporary name: the least item first takes it, then each item takes its new name"
     (let [l     (snippets [ka "Filter a"] [kb "Filter b"])
           m     (snippets [ka "Filter b"] [kb "Filter a"])
@@ -318,13 +325,20 @@
           steps (plan/plan l m l)]
       (is (= [[ka :interim] [kc :write] [kb :write] [ka :write]] (step-forms steps)))
       (is (key-moves-apply? l m steps))))
-  (testing "a temporary name is the key of no item of either snapshot"
-    (let [l     (snippets [ka "Filter a"] [kb "Filter b"])
-          m     (snippets [ka "Filter b"] [kb "Filter a"])
-          temp  (:interim (first (plan/plan l m l)))
-          keys  (set (keep #(snapshot/unique-key snapshot/unique-keys %) (concat (vals l) (vals m))))]
+  (testing "a temporary name is the key of no item of either snapshot, also when an item has the name it would have"
+    (let [temp-of (fn [l m] (:interim (first (plan/plan l m l))))
+          keys-of (fn [& snaps] (set (keep #(snapshot/unique-key snapshot/unique-keys %) (mapcat vals snaps))))
+          l       (snippets [ka "Filter a"] [kb "Filter b"])
+          m       (snippets [ka "Filter b"] [kb "Filter a"])
+          temp    (temp-of l m)
+          l2      (snippets [ka "Filter a"] [kb "Filter b"] [kc (u/upper-case-en (:name temp))])
+          m2      (snippets [ka "Filter b"] [kb "Filter a"] [kc (u/upper-case-en (:name temp))])
+          temp2   (temp-of l2 m2)]
       (is (= (dissoc (get l ka) :name) (dissoc temp :name)))
-      (is (not (contains? keys (snapshot/unique-key snapshot/unique-keys temp))))))
+      (is (not (contains? (keys-of l m) (snapshot/unique-key snapshot/unique-keys temp))))
+      (is (= (dissoc (get l ka) :name) (dissoc temp2 :name)))
+      (is (not (contains? (keys-of l2 m2) (snapshot/unique-key snapshot/unique-keys temp2))))
+      (is (key-moves-apply? l2 m2 (plan/plan l2 m2 l2)))))
   (testing "a key move against a reference: the new holder of the name is a target of the item that frees it"
     (let [l     (snippets [kb "Filter a"])
           m     (snippets [kb "Filter b" #{[:snippet ka]}] [ka "Filter a"])
@@ -406,7 +420,8 @@
    {:name   :unordered-writes
     :doc    "Writes are in the order of their identities, so content can come before its container or target."
     :target `plan/write-steps
-    :edits  [[:replace '(ordered ids after) '(map vector (sort snapshot/compare-identities ids))]]}
+    :edits  [[:replace '(ordered ids (add-edges after (remove (comp interim first) moves)))
+              '(map vector (sort snapshot/compare-identities ids))]]}
    {:name   :unordered-trashes
     :doc    "Trashes are in the order of their identities, so a container can go before its content."
     :target `plan/trash-steps
@@ -422,7 +437,23 @@
    {:name   :trash-first
     :doc    "Trashes come before writes, so a container can be trashed with content that the plan moves out of it."
     :target `plan/plan
-    :edits  [[:replace '(concat writes links trashes) '(concat trashes writes links)]]}
+    :edits  [[:replace '(concat interims writes links trashes) '(concat trashes interims writes links)]]}
+   {:name   :keys-unordered
+    :doc    "Key moves do not order the writes, so a write can take a key that another item still has."
+    :target `plan/write-steps
+    :edits  [[:replace '(add-edges after (remove (comp interim first) moves)) 'after]]}
+   {:name   :no-interim
+    :doc    "No item takes a temporary key, so a swap of two keys is a cycle that no order of the writes allows."
+    :target `plan/write-steps
+    :edits  [[:replace '(interim-ids ids after moves late?) #{}]]}
+   {:name   :late-freer-ordered
+    :doc    "An item whose write leaves it as it is frees its key by the order of the writes; it frees it at its link."
+    :target `plan/interim-ids
+    :edits  [[:replace '(comp late? first) '(constantly false)]]}
+   {:name   :temporary-key-taken
+    :doc    "A temporary key can be the key of another item."
+    :target `plan/temporary-keys
+    :edits  [[:replace '(remove (comp taken snapshot/fold-name) candidates) 'candidates]]}
    {:name   :no-defer
     :doc    "A reference cycle is written in one step per item, so a write refers to an item that does not exist yet."
     :target `plan/write-steps
@@ -442,5 +473,6 @@
 
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
-                                #'local-change-test #'unknown-base-test #'system-item-test
-                                #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-unknown-base-test]}))
+                                #'local-change-test #'unknown-base-test #'system-item-test #'key-move-test
+                                #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-laws-key-move-test
+                                #'plan-unknown-base-test]}))

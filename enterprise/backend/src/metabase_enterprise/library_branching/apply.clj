@@ -45,13 +45,14 @@
   (vec (distinct (:stale (check-steps current plan)))))
 
 (defn- run-steps!
-  "Writes, links and trashes the items of `plan`, in its order. A write with `:defer` leaves an item that exists as it
-  is, and writes a new one as the stub of its kind; its link step writes the whole content. `plan` holds no trash step
-  of an item that is already out of scope."
+  "Writes, links and trashes the items of `plan`, in its order. An interim step writes its content. A write with
+  `:defer` leaves an item that exists as it is, and writes a new one as the stub of its kind; its link step writes the
+  whole content. `plan` holds no trash step of an item that is already out of scope."
   [{:keys [write! trash! stub]} plan]
   (let [content-of (into {} (keep (fn [{:keys [id write]}] (when write [id write]))) plan)]
-    (doseq [{:keys [id write pre defer link trash]} plan]
+    (doseq [{:keys [id write pre defer link interim trash]} plan]
       (cond
+        interim                 (write! (:kind interim) id interim)
         (and write (seq defer)) (when (nil? pre)
                                   (write! (:kind write) id (stub (:kind write) id write defer)))
         write                   (write! (:kind write) id write)
