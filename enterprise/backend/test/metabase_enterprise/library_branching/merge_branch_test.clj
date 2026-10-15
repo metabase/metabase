@@ -113,6 +113,63 @@
               (merge-branch/merge-branch! s feature main)))
        (is (= f (store/head s feature)))))))
 
+(def ^:private revenue-path "library/metrics/revenue.metric.yaml")
+
+(def ^:private revenue-suffixed-path
+  (str "library/metrics/revenue~" ptu/revenue-id ".metric.yaml"))
+
+(defn- commit-around!
+  "[[pltu/commit-on!]] of the foreign files `foreign` and of the encoding of snapshot `s` whose paths avoid them, as a
+  push writes it. Returns the commit id."
+  [repo branch parents s foreign]
+  (pltu/commit-on! repo branch parents (merge foreign (writer/encode-tree kinds/codecs s (set (keys foreign))))))
+
+(defn- moved-under
+  "Tree `t` with each file under the directory `from` moved under the directory `to`."
+  [t from to]
+  (into {}
+        (map (fn [[p b]] [(if (str/starts-with? p (str from "/")) (str to (subs p (count from))) p) b]))
+        t))
+
+(deftest merge-branch-keeps-a-foreign-file-at-the-path-of-an-item-test
+  (testing "both sides hold a YAML file that does not parse at the path of a metric, and the branch changes the
+            metric: the merge keeps the foreign file with its bytes, and writes the metric at the path with its
+            identity as a suffix"
+    (enabled
+     (with-remote [repo s]
+       (let [foreign {revenue-path (ptu/utf8 "kind: [\n")}
+             ;; a change that keeps the name, so the computed path of the metric stays
+             ours    (assoc-in ptu/sample [ptu/revenue-id :attrs :description] "Ours")
+             theirs  (ptu/renamed ptu/sample ptu/orders-id "Theirs")
+             a       (commit-around! repo main [] ptu/sample foreign)
+             _       (pltu/reset-branch! repo feature a)
+             _       (commit-around! repo feature [a] ours foreign)
+             _       (commit-around! repo main [a] theirs foreign)
+             {:keys [result commit]} (merge-branch/merge-branch! s feature main)]
+         (is (= :merged result))
+         (is (= "kind: [\n" (text s commit revenue-path)))
+         (is (str/includes? (str (text s commit revenue-suffixed-path)) (str "id: " ptu/revenue-id)))
+         (is (= (assoc-in theirs [ptu/revenue-id :attrs :description] "Ours") (ptu/commit-snapshot s commit))))))))
+
+(deftest merge-branch-never-overwrites-a-foreign-file-test
+  (testing "both sides hold a foreign file at the path of the fixed directory of the snippets, which no suffix avoids:
+            the merge refuses with the two paths, and the branch stays"
+    (enabled
+     (with-remote [repo s]
+       (let [tree-of (fn [snapshot]
+                       (-> (writer/encode-tree kinds/codecs snapshot)
+                           (moved-under "snippets" "elsewhere")
+                           (assoc "snippets" (ptu/utf8 "a file"))))
+             a       (pltu/commit-on! repo main [] (tree-of ptu/sample))
+             _       (pltu/reset-branch! repo feature a)
+             f       (pltu/commit-on! repo feature [a] (tree-of (ptu/renamed ptu/sample ptu/revenue-id "Ours")))
+             _       (pltu/commit-on! repo main [a] (tree-of (ptu/renamed ptu/sample ptu/orders-id "Theirs")))]
+         (is (= {:result   :invalid
+                 :commit   nil
+                 :findings [{:rule :foreign-path :path "snippets/active.snippet.yaml" :foreign "snippets"}]}
+                (merge-branch/merge-branch! s feature main)))
+         (is (= f (store/head s feature))))))))
+
 (deftest merge-branch-moves-the-branch-only-from-its-head-test
   (enabled
    (with-remote [repo s]
