@@ -209,7 +209,7 @@
       (deref release 60000 nil)
       result)))
 
-(defn- cancel-after-the-apply
+(defn- cancel-after-the-apply!
   "Starts a task of `kind` and runs `(work id)` as its worker in a future. The worker must deliver `returned` after its
   apply committed, and then wait for `release` ([[held-after-return]]). In that window, cancels the task; then
   delivers `release`. Returns `{:cancel c :task t}`: `c` is the result of `tasks/cancel!`, `t` the task at its end."
@@ -240,8 +240,8 @@
                (let [returned (promise)
                      release  (promise)]
                  (mt/with-dynamic-fn-redefs [pull/pull! (held-after-return (mt/original-fn #'pull/pull!) returned release)]
-                   (let [{:keys [cancel task]} (cancel-after-the-apply "pull" #(operations/pull-task! % "main")
-                                                                       returned release)]
+                   (let [{:keys [cancel task]} (cancel-after-the-apply! "pull" #(operations/pull-task! % "main")
+                                                                        returned release)]
                      (is (= {:refused "successful"} cancel))
                      (is (=? {:status "successful" :outcome {:kind "pulled" :branch "main" :commit h1 :count 1}} task))
                      (is (= "Pulled" (card-name)))
@@ -251,8 +251,8 @@
                  (let [returned (promise)
                        release  (promise)]
                    (mt/with-dynamic-fn-redefs [pull/pull! (held-after-return (mt/original-fn #'pull/pull!) returned release)]
-                     (let [{:keys [cancel task]} (cancel-after-the-apply "branch-switch" #(operations/switch-task! % "other")
-                                                                         returned release)]
+                     (let [{:keys [cancel task]} (cancel-after-the-apply! "branch-switch" #(operations/switch-task! % "other")
+                                                                          returned release)]
                        (is (= {:refused "successful"} cancel))
                        (is (=? {:status "successful" :outcome {:kind "switched" :branch "other" :commit o1 :count 1}}
                                task))
@@ -266,8 +266,8 @@
                    (mt/with-temporary-setting-values [remote-sync-type :read-only]
                      (mt/with-dynamic-fn-redefs [deploy/deploy! (held-after-return (mt/original-fn #'deploy/deploy!)
                                                                                    returned release)]
-                       (let [{:keys [cancel task]} (cancel-after-the-apply "deploy" #(operations/deploy-task! % "other")
-                                                                           returned release)]
+                       (let [{:keys [cancel task]} (cancel-after-the-apply! "deploy" #(operations/deploy-task! % "other")
+                                                                            returned release)]
                          (is (= {:refused "successful"} cancel))
                          (is (=? {:status "successful" :outcome {:kind "deployed" :branch "other" :commit d1 :count 1}}
                                  task))
