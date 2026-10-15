@@ -17,6 +17,7 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -54,7 +55,8 @@
                                                                :collection_id (:id apps)
                                                                :creator_id    (mt/user->id :rasta)
                                                                :display       :table
-                                                               :dataset_query (mt/mbql-query venues)
+                                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                                (lib/query mp (lib.metadata/table mp (mt/id :venues))))
                                                                :visualization_settings {}})
           m1      (model "Orders model")
           m2      (model "Places model")
@@ -81,8 +83,9 @@
 
 ;;; --------------------------------------------------- Generators --------------------------------------------------
 
-(def ^:private optional
-  (fn [g] (gen/one-of [(gen/return nil) g])))
+(defn- optional
+  [g]
+  (gen/one-of [(gen/return nil) g]))
 
 (def ^:private item-gen
   "An action: no model (at the root or in a collection) or on a model; of type query, or implicit on a model."
