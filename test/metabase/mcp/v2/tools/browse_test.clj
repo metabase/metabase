@@ -1184,12 +1184,12 @@
                                     "Insufficient scope to call tool: \"browse_data\". Requires ")
       #{metabot.scope/agent-query-run}
       #{metabot.scope/agent-content-write}
+      #{"agent:*"}
       #{}))
-  (testing "GHY-4138: the content-read scope, its wildcard, and an internal caller all reach the handler"
+  (testing "GHY-4138: the content-read scope and an internal caller reach the handler"
     (are [scopes] (and (not (dispatch-error? (dispatch-data scopes {:action "list_databases"})))
                        (str/starts-with? (dispatch-text scopes {:action "list_databases"}) "{\"data\":"))
       content-read
-      #{"agent:*"}
       nil)))
 
 (deftest ^:parallel browse-data-tools-list-visibility-test

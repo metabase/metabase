@@ -1,9 +1,9 @@
 (ns metabase.mcp.scope
   "Scope matching for MCP tools and resources.
 
-   Wraps [[metabase.api.macros.scope/scope-satisfied?]] with the conventions used by
-   MCP entry points: nil token-scopes (internal callers) and the `::scope/unrestricted`
-   sentinel (session auth or unscoped JWT) both bypass the check."
+   Scope strings match exactly: a wildcard such as `*` or `agent:*` is not a registered scope and covers
+   nothing. nil token-scopes (internal callers) and the `::scope/unrestricted` sentinel (session auth or
+   unscoped JWT) both bypass the check."
   (:require
    [metabase.api.macros.scope :as api.scope]))
 
@@ -15,14 +15,14 @@
    - A set of required scopes matches when any member matches.
    - nil `required-scope` only matches the two cases above (callers that want
      \"public to any authenticated MCP user\" should use [[public-or-matches?]]).
-   - Otherwise delegates wildcard/exact matching to [[api.scope/scope-satisfied?]]."
+   - Otherwise `token-scopes` must hold `required-scope` exactly; wildcards cover nothing."
   [token-scopes required-scope]
   (or (nil? token-scopes)
       (contains? token-scopes ::api.scope/unrestricted)
       (if (set? required-scope)
         (boolean (some #(matches? token-scopes %) required-scope))
         (boolean (and (some? required-scope)
-                      (api.scope/scope-satisfied? token-scopes required-scope))))))
+                      (contains? token-scopes required-scope))))))
 
 (defn public-or-matches?
   "Like [[matches?]] but treats a nil `required-scope` as \"public to any caller\"

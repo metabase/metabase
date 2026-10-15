@@ -17,10 +17,13 @@
   (testing "exact scope match"
     (is (true? (mcp.scope/matches? #{"agent:read"} "agent:read")))
     (is (false? (mcp.scope/matches? #{"agent:write"} "agent:read"))))
-  (testing "wildcard scope match"
-    (is (true? (mcp.scope/matches? #{"agent:*"} "agent:read")))
-    (is (true? (mcp.scope/matches? #{"agent:*"} "agent:write")))
-    (is (false? (mcp.scope/matches? #{"other:*"} "agent:read"))))
+  (testing "GHY-4942: a wildcard string is not a registered scope, so it matches nothing, not even itself as a
+            prefix; only the scope named exactly matches"
+    (is (false? (mcp.scope/matches? #{"*"} "agent:read")))
+    (is (false? (mcp.scope/matches? #{"agent:*"} "agent:read")))
+    (is (false? (mcp.scope/matches? #{"agent:read:*"} "agent:read:x")))
+    (is (false? (mcp.scope/matches? #{"*" "agent:*"} #{"agent:read" "agent:write"})))
+    (is (true? (mcp.scope/matches? #{"*" "agent:read"} "agent:read"))))
   (testing "any required scope match"
     (is (true? (mcp.scope/matches? #{"agent:read"} #{"agent:read" "agent:write"})))
     (is (true? (mcp.scope/matches? #{"agent:write"} #{"agent:read" "agent:write"})))

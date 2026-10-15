@@ -72,4 +72,5 @@
   (when-let [entry (surface-entry method uri)]
     (boolean (or (nil? (val entry))
                  (contains? token-scopes ::scope/unrestricted)
-                 (scope/scope-satisfied? token-scopes (val entry))))))
+                 ;; Exact match: a wildcard is not a registered scope and covers no route.
+                 (contains? token-scopes (val entry))))))

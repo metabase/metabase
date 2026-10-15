@@ -577,10 +577,11 @@
                      (tool-error (call-tool! :crowberto #{"agent:content:read"} tool args)))))
       (testing "GHY-4137: the exact scope passes the gate — the identical call reaches the id lookup"
         (is (re-find #"not found" (tool-error (call-tool! :crowberto #{scope} tool args)))))
-      (testing "GHY-4137: the wildcard the metabot permission bucket grants passes too"
-        (is (re-find #"not found" (tool-error (call-tool! :crowberto
-                                                          #{(str/replace scope #"write$" "*")}
-                                                          tool args))))))))
+      (testing "GHY-4942: a wildcard covering the scope is refused like any other missing scope"
+        (is (re-find (re-pattern (str "^Insufficient scope to call tool: \"" tool "\"\\."))
+                     (tool-error (call-tool! :crowberto
+                                             #{(str/replace scope #"write$" "*")}
+                                             tool args))))))))
 
 (deftest ^:parallel write-scopes-grantable-test
   (testing "GHY-4137: a scope a tool checks must be grantable — advertised through registered-scopes"

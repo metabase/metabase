@@ -200,7 +200,7 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
+- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches only (wildcards cover nothing) and the
   `::unrestricted` sentinel for session-based auth.
 
 ### Request flow

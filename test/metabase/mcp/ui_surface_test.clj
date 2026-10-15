@@ -55,8 +55,11 @@
     (testing "a route that costs a scope needs the minting session to have held it"
       (is (false? (dataset {:token-scopes #{"agent:search"}})))
       (is (true? (dataset {:token-scopes #{"agent:query:run"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:*"}})))
       (is (true? (dataset {:token-scopes #{::scope/unrestricted}}))))
+    (testing "GHY-4942: a wildcard covers no route; only the scope named exactly does"
+      (is (false? (dataset {:token-scopes #{"agent:query:*"}})))
+      (is (false? (dataset {:token-scopes #{"agent:*"}})))
+      (is (false? (dataset {:token-scopes #{"*"}}))))
     (testing "a v2 credential minted before the scope claim existed reaches only the free routes"
       (is (true? (bootstrap {})))
       (is (false? (dataset {}))))
