@@ -24,9 +24,9 @@
 
 (def ^:private one-key
   "Pairs of names that utf8mb4_unicode_ci and the engine both take as one key."
-  [["Filter" "filter"] ["Filter" "FILTER"] ["Filter" "Fïlter"] ["Café" "Cafe"] ["Café" "Café"]
+  [["Filter" "filter"] ["Filter" "FILTER"] ["Filter" "Fïlter"] ["Café" "Cafe"] ["Cafe\u0301" "Café"]
    ["ﬁlter" "filter"] ["Ｆｉｌｔｅｒ" "Filter"] ["x²" "x2"] ["Ⅳ" "IV"]
-   ["İstanbul" "istanbul"] ["Ångström" "Angstrom"] ["ｶ" "カ"] ["が" "か"]
+   ["İstanbul" "istanbul"] ["\u212Bngström" "Angstrom"] ["ｶ" "カ"] ["が" "か"]
    ["Ǆ" "DŽ"] ["Straße" "Strasse"] ["σ" "ς"] ["Filter " "Filter"] ["Filter\u00A0" "Filter"] ["Œuvre" "Oeuvre"]
    ["a\u200Bb" "ab"] ["😀" "😃"] ["a😀" "a🦄"]])
 
