@@ -109,7 +109,7 @@
            calls     (atom 0)
            result    (status/local-changes inst (with-store-of s calls) ptu/branch {})]
        (testing "in-scope content equal to the base has no local change, and an empty change list"
-         (is (= {:base c1 :local nested :changes none} result))
+         (is (= {:base c1 :local nested :changes none :shadowed-tables []} result))
          (is (false? (status/changed? (:changes result))))
          (is (= [] (status/change-list (:changes result) (:local result) nil))))
        (testing "the digests of the base are enough: no store is opened"
@@ -157,7 +157,7 @@
      (let [inst  (pltu/memory-instance (atom {:snapshot ptu/sample}))
            calls (atom 0)]
        (testing "with no base, every item is created, and no store is opened"
-         (is (= {:base nil :local ptu/sample :changes (assoc none :created (set (keys ptu/sample)))}
+         (is (= {:base nil :local ptu/sample :changes (assoc none :created (set (keys ptu/sample))) :shadowed-tables []}
                 (status/local-changes inst (with-store-of s calls) ptu/branch {})))
          (is (= 0 @calls)))))))
 
@@ -350,13 +350,15 @@
    (with-remote [repo s]
      (let [[inst c1] (pushed-instance! s ptu/sample)]
        (testing "the head is the base, with no change"
-         (is (= {:base c1 :head c1 :branch-missing false :base-lost false :head-findings nil :local none :remote none}
+         (is (= {:base c1 :head c1 :branch-missing false :base-lost false :head-findings nil :local none :remote none
+                 :shadowed-tables []}
                 (status/status inst s ptu/branch {}))))
        (testing "a local and a remote change"
          (let [h (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/orders-id "Remote"))]
            (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Local"))
            (is (= {:base c1 :head h :branch-missing false :base-lost false :head-findings nil
-                   :local (assoc none :updated #{ptu/revenue-id}) :remote (assoc none :updated #{ptu/orders-id})}
+                   :local (assoc none :updated #{ptu/revenue-id}) :remote (assoc none :updated #{ptu/orders-id})
+                   :shadowed-tables []}
                   (status/status inst s ptu/branch {})))))
        (testing "a head that breaks a structural rule has findings and no remote changes"
          (let [stray "StrayCollection000001"

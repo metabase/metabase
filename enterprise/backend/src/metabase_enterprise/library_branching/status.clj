@@ -32,7 +32,6 @@
 (defn- codecs-of [opts]
   (:codecs opts kinds/codecs))
 
-
 (defn- fetched-tree
   "The tree of `commit` in `store` after a fetch of branch `branch`, or nil when `commit` is not in the local object
   store then: no branch of the remote holds it."
@@ -65,15 +64,16 @@
            :snapshot))
 
 (defn local-changes
-  "The local changes of instance `inst`: `{:base b :local l :changes c}`, where `b` is the base, `l` the synced snapshot,
-  and `c` the change set from the content of `b` to `l`, by digest; with no base, every item of `l` is created.
+  "The local changes of instance `inst`: `{:base b :local l :changes c :shadowed-tables ts}`, where `b` is the base, `l`
+  the synced snapshot, `c` the change set from the content of `b` to `l`, by digest (with no base, every item of `l`
+  is created), and `ts` the `:shadowed-tables` of the read of `l` (`instance/read-snapshot`), empty when it has none.
   `(with-store f)` calls `f` with a store of the repository, on branch `branch`; it is called only when the instance
   stored no digests with its base. Throws ex-info with `:status-code` 400 when the content of the base is not known.
   `opts`: `:codecs` (default `kinds/codecs`)."
   [inst with-store branch opts]
   (let [codecs  (codecs-of opts)
         b       (instance/base inst)
-        l       (:snapshot (instance/read-snapshot inst))
+        {l :snapshot shadowed :shadowed-tables} (instance/read-snapshot inst)
         digests (if b
                   (or (instance/base-digests inst b)
                       (with-store (fn [s]
@@ -82,7 +82,10 @@
     (when-not digests
       (throw (ex-info (format "The content of the base commit %s is not known: no branch of the repository holds it." b)
                       {:status-code 400 :base b})))
-    {:base b :local l :changes (diff/diff digests (writer/item-digests codecs l))}))
+    {:base            b
+     :local           l
+     :changes         (diff/diff digests (writer/item-digests codecs l))
+     :shadowed-tables (vec shadowed)}))
 
 ;;; -------------------------------------------------- Remote changes -------------------------------------------------
 
@@ -100,8 +103,8 @@
                    (nil? b)              {}
                    (:base-digests opts)  (:base-digests opts)
                    (pull/readable? store b)   (some->> (claims/decode codecs (store/read-tree store b))
-                                                  :snapshot
-                                                  (writer/item-digests codecs)))]
+                                                       :snapshot
+                                                       (writer/item-digests codecs)))]
         (if base
           {:changes (diff/diff base (writer/item-digests codecs r))}
           {:unknown :base})))))
@@ -186,16 +189,17 @@
 (defn status
   "The status of instance `inst` and branch `branch` of `store`:
 
-    {:base b :head h :branch-missing m :base-lost l :head-findings f :local lc :remote rc}
+    {:base b :head h :branch-missing m :base-lost l :head-findings f :local lc :remote rc :shadowed-tables ts}
 
   `h` is nil and `m` true when the branch does not exist. `l` is true iff there is a base and no branch holds it; then
   nothing shows as synced. `f` is nil, or the findings of the head (it does not decode, or breaks a structural
   rule). `lc` is the change set of [[local-changes]]; `rc` the remote changes, nil when the head has
-  findings, does not exist, or the content of the base is not known. `opts`: `:codecs`."
+  findings, does not exist, or the content of the base is not known. `ts` holds the published tables that scope
+  leaves out because another published table owns their key, as [[local-changes]] gives them. `opts`: `:codecs`."
   [inst store branch opts]
   (let [codecs   (codecs-of opts)
         h        (store/head store branch)
-        {b :base local :changes} (local-changes inst (fn [f] (f store)) branch opts)
+        {b :base local :changes shadowed :shadowed-tables} (local-changes inst (fn [f] (f store)) branch opts)
         checked  (when h (pull/check-commit store codecs h))
         findings (:findings checked)
         remote   (when (:snapshot checked)
@@ -205,8 +209,9 @@
      :branch-missing (nil? h)
      :base-lost      (boolean (and b (not (pull/held? store b branch h))))
      :head-findings  findings
-     :local          local
-     :remote         remote}))
+     :local           local
+     :remote          remote
+     :shadowed-tables shadowed}))
 
 ;;; --------------------------------------------------- Push preview --------------------------------------------------
 

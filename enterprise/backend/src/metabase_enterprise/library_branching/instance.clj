@@ -40,9 +40,11 @@
 (defprotocol Instance
   "One Metabase instance as library branching sees it."
   (read-snapshot [inst]
-    "`{:snapshot s}`: `s` is the synced snapshot of the instance, the content of every in-scope item of the kinds of
-    the instance, read in one read-only transaction: one read point for the whole snapshot. A save that commits
-    after the read point is not in `s`. Throws when the calling thread holds an open transaction.")
+    "`{:snapshot s :shadowed-tables ts}`: `s` is the synced snapshot of the instance, the content of every in-scope
+    item of the kinds of the instance, read in one read-only transaction: one read point for the whole snapshot. A
+    save that commits after the read point is not in `s`. `ts`, optional, holds the published tables that scope
+    leaves out because another published table owns their natural key (`scope/shadowed-tables`), at the same read
+    point. Throws when the calling thread holds an open transaction.")
   (base [inst]
     "The base commit id, or nil before the first sync with the repository of the instance.")
   (base-digests [inst commit]
