@@ -3,12 +3,17 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { screen } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 
 import { setup } from "./setup";
 
 describe("EmbeddingDataPicker", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
+  });
+
+  afterEach(() => {
+    reinitialize();
   });
 
   it("should count tables, models, and metrics to choose between the simple and full data pickers", async () => {
