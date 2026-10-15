@@ -204,9 +204,11 @@
                (scopes-of #{metabot.scope/agent-content-read metabot.scope/agent-query-run}))))
       (testing "an empty grant round-trips as an empty set, not as nil"
         (is (= #{} (scopes-of #{}))))
-      (testing "GHY-4942: the unrestricted sentinel grants nothing in MCP, so the credential does not carry it"
-        (is (= #{metabot.scope/agent-query-run}
-               (scopes-of #{::scope/unrestricted metabot.scope/agent-query-run}))))
+      (testing "GHY-4942: an unrestricted session, or one with no scope set, cannot mint a credential at all"
+        (doseq [token-scopes [nil #{::scope/unrestricted} #{::scope/unrestricted metabot.scope/agent-query-run}]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot mint an MCP UI credential"
+                                (mcp.session/issue-ui-credential session-id user-id token-scopes))
+              (pr-str token-scopes))))
       (testing "a granted scope that spells the sentinel out stays a plain string"
         (is (= #{(str ::scope/unrestricted)}
                (scopes-of #{(str ::scope/unrestricted)}))))

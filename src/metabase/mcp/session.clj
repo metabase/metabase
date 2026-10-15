@@ -12,6 +12,7 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
+   [metabase.api.macros.scope :as scope]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
@@ -117,8 +118,7 @@
 (declare valid-id?)
 
 (defn- encode-token-scopes
-  "Serialize the scope strings of `token-scopes` into the `:scp` credential claim. Keyword sentinels such as
-  `::scope/unrestricted` grant nothing in MCP, so they are dropped."
+  "Serialize the scope strings of `token-scopes` into the `:scp` credential claim."
   [token-scopes]
   {:scp (vec (sort (filter string? token-scopes)))})
 
@@ -150,8 +150,12 @@
 
   Passing the caller's real scopes is what subjects the credential to the native-SQL gate. (v1's frozen
   surface used to mint claimless, gate-exempt `:legacy` credentials through a 2-arity of this fn; that shim
-  retired with v1.)"
+  retired with v1.)
+
+  Throws a 403 when `token-scopes` is nil or holds `::scope/unrestricted`: such a session holds no MCP scope."
   [session-id user-id token-scopes]
+  (when (or (nil? token-scopes) (contains? token-scopes ::scope/unrestricted))
+    (throw (ex-info "An unrestricted session cannot mint an MCP UI credential." {:status-code 403})))
   (sign-ui-credential session-id user-id (encode-token-scopes token-scopes)))
 
 (defn resolve-ui-credential

@@ -1501,19 +1501,15 @@
                          (client/client-full-response
                           :post status "dataset"
                           {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                          query))
-          status-of    (fn [credential query]
-                         (:status (client/client-full-response
-                                   :post "dataset"
-                                   {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                                   query)))]
-      (testing "a credential minted for an unrestricted session runs no query"
-        (let [[session-id] (initialize!)
-              credential   (mcp.session/issue-ui-credential session-id (mt/user->id :crowberto)
-                                                            #{:metabase.api.macros.scope/unrestricted})]
-          (is (not= 202 (status-of credential mbql-query)))
-          (is (not= 202 (status-of credential native-query)))))
-      (testing "an mb:full session cannot mint a credential at all"
+                          query))]
+      (testing "a cookie session cannot mint a credential"
+        (let [session-id (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+                             (get-in [:headers "Mcp-Session-Id"]))
+              response   (mcp-request (jsonrpc-request "tools/call" {:name "refresh_ui_credential" :arguments {}})
+                                      {"mcp-session-id" session-id})]
+          (is (= 403 (:status response)))
+          (is (nil? (get-in response [:body :result :_meta :com.metabase/mcp-apps :credential])))))
+      (testing "an mb:full session cannot mint a credential"
         (do-with-bearer-token!
          #{"mb:full"}
          (fn [headers]
