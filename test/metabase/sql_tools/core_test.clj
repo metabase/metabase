@@ -207,14 +207,21 @@
           "WITH x AS (SELECT a FROM foo), y AS (SELECT b FROM bar), z AS (SELECT c FROM baz) SELECT x.a, y.b, z.c FROM x, y, z")))
     (testing "All other read queries are rejected"
       (are [sql single-stmt?] (=? {:verdict :disallowed :single-stmt? single-stmt?}
-                                     (sql-tools/validate-executable-stmt driver/*driver* sql "read"))
-        "SELECT (" false
+                                  (sql-tools/validate-executable-stmt driver/*driver* sql "read"))
         "SELECT 1; SELECT 2" false
         "SET ROLE NONE" true
         "DROP TABLE table" true
         "SET ROLE NONE; DROP TABLE table" false
-        "SELECT set_config('role', 'none', false); DROP TABLE table" false
-        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" (isa? driver/hierarchy driver/*driver* :postgres)))
+        "SELECT set_config('role', 'none', false); DROP TABLE table" false))
+    (testing "SQL the dialect cannot parse is :unknown, not :disallowed — nothing was read, so nothing is claimed"
+      (is (=? {:verdict :unknown :reason "unparseable"}
+              (sql-tools/validate-executable-stmt driver/*driver* "SELECT (" "read"))))
+    (testing "a DO block smuggling SET ROLE is refused: one disallowed statement to a dialect that reads PL/pgSQL, unparseable to the rest"
+      (is (=? (if (isa? driver/hierarchy driver/*driver* :postgres)
+                {:verdict :disallowed :single-stmt? true}
+                {:verdict :unknown :reason "unparseable"})
+              (sql-tools/validate-executable-stmt
+               driver/*driver* "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" "read"))))
     (testing "A single insert, update or delete statement returns true and the reconstructed SQL"
       (are [sql] (=? {:verdict :allowed :single-stmt? true :sql string?}
                      (sql-tools/validate-executable-stmt driver/*driver* sql "write"))
@@ -223,7 +230,7 @@
         "DELETE FROM table WHERE id = 1"))
     (testing "All other write queries are rejected"
       (are [sql single-stmt?] (=? {:verdict :disallowed :single-stmt? single-stmt?}
-                                     (sql-tools/validate-executable-stmt driver/*driver* sql "write"))
+                                  (sql-tools/validate-executable-stmt driver/*driver* sql "write"))
         "SELECT 1" true
         "INSERT INTO table VALUES (1); SELECT 1" false
         "UPDATE table SET column = 1; SELECT 1" false
