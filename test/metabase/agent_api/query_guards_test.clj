@@ -255,12 +255,15 @@
                        sql-allowed (ui-request #{"agent:query:run"}) legacy-native)
                       ""
                       (catch clojure.lang.ExceptionInfo e (ex-message e))))))
-  (testing "grants that cover agent:sql:run pass"
-    (are [scopes] (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                                 sql-allowed (ui-request scopes) legacy-native)))
-      #{"agent:sql:run"}
-      #{"agent:sql:execute"}                        ; v1's concrete scope keeps working
-      #{:metabase.api.macros.scope/unrestricted}))  ; browser-session MCP clients
+  (testing "a grant holding agent:sql:run passes"
+    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                       sql-allowed (ui-request #{"agent:sql:run"}) legacy-native)))))
+  (testing "GHY-4942: only agent:sql:run counts. agent:sql:execute is not an MCP scope, and the unrestricted
+            sentinel grants nothing in MCP"
+    (are [scopes] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                          sql-allowed (ui-request scopes) legacy-native)))
+      #{"agent:sql:execute"}
+      #{:metabase.api.macros.scope/unrestricted}))
   (testing "non-native queries are never gated, whatever the grant"
     (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
                                        sql-allowed (ui-request #{}) mbql-query)))))
@@ -276,7 +279,7 @@
   (testing "a user whose groups deny execute_sql is refused native queries, whatever the grant"
     (are [query] (= "execute_sql is not enabled for your groups"
                     (try (query-guards/check-mcp-ui-native-query!
-                          sql-denied (ui-request #{:metabase.api.macros.scope/unrestricted}) query)
+                          sql-denied (ui-request #{"agent:sql:run"}) query)
                          ""
                          (catch clojure.lang.ExceptionInfo e (ex-message e))))
       legacy-native

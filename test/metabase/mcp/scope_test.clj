@@ -5,12 +5,13 @@
    [metabase.mcp.scope :as mcp.scope]))
 
 (deftest matches?-test
-  (testing "nil token-scopes (internal callers) → always matches"
-    (is (true? (mcp.scope/matches? nil "agent:read")))
-    (is (true? (mcp.scope/matches? nil nil))))
-  (testing "unrestricted token-scopes → always matches"
-    (is (true? (mcp.scope/matches? #{::scope/unrestricted} "agent:read")))
-    (is (true? (mcp.scope/matches? #{::scope/unrestricted} nil))))
+  (testing "GHY-4942: nil token-scopes hold no scope, so they match nothing"
+    (is (false? (mcp.scope/matches? nil "agent:read")))
+    (is (false? (mcp.scope/matches? nil nil)))
+    (is (false? (mcp.scope/matches? nil #{"agent:read"}))))
+  (testing "GHY-4942: the unrestricted sentinel is not an MCP scope, so it matches nothing"
+    (is (false? (mcp.scope/matches? #{::scope/unrestricted} "agent:read")))
+    (is (false? (mcp.scope/matches? #{::scope/unrestricted} nil))))
   (testing "nil required-scope with scoped token → denied"
     (is (false? (mcp.scope/matches? #{"agent:read"} nil)))
     (is (false? (mcp.scope/matches? #{} nil))))

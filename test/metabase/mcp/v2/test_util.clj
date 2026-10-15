@@ -2,11 +2,17 @@
   "Test-only v2 MCP tools and registry helpers. Never loaded by the production surface."
   (:require
    [clojure.string :as str]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
+
+(def all-scopes
+  "Token scopes holding every scope the v2 MCP surface accepts. Tests that exercise a tool rather than its scope
+   gate call it with these."
+  (set mcp.paths/v2-surface-scopes))
 
 (defn data-parts
   "`[boundary json after]` of tool result `text` that opens with a data section: the section's boundary, the JSON text

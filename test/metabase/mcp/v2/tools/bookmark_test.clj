@@ -19,7 +19,7 @@
 (comment tools.bookmark/keep-me)
 
 (defn- call-tool!
-  ([user args] (call-tool! user nil args))
+  ([user args] (call-tool! user v2.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (mt/user->id user)
      (registry/call-tool scopes nil "bookmark_content" args))))

@@ -138,8 +138,7 @@
   ;; a user an admin denied it, or without its scope or its kill switch. Every source that can resolve to native
   ;; passes these, `query_handle` included: holding a handle is not proof the gates were spent
   ;; (`construct_native_query` mints under `agent:sql:construct` and never consults the kill switch, and a handle
-  ;; resolves on `core_session.user_id`, so any credential of that user can spend one minted by another). Unscoped
-  ;; callers bind the unrestricted sentinel, which matches every scope.
+  ;; resolves on `core_session.user_id`, so any credential of that user can spend one minted by another).
   (registry/check-tool-allowed! "execute_sql" (message/raw "Saving a native (SQL) query"))
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-insufficient-scope!

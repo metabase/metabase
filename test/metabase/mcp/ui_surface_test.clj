@@ -49,13 +49,14 @@
         dataset   #(mcp.ui-surface/scope-satisfied? :post "/api/dataset" %)]
     (testing "a route off the surface is never satisfied"
       (is (nil? (mcp.ui-surface/scope-satisfied?
-                 :get "/api/user/current" {:token-scopes #{::scope/unrestricted}}))))
+                 :get "/api/user/current" {:token-scopes #{"agent:query:run"}}))))
     (testing "a route that costs no scope needs only a valid credential"
       (is (true? (bootstrap {:token-scopes #{}}))))
     (testing "a route that costs a scope needs the minting session to have held it"
       (is (false? (dataset {:token-scopes #{"agent:search"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:run"}})))
-      (is (true? (dataset {:token-scopes #{::scope/unrestricted}}))))
+      (is (true? (dataset {:token-scopes #{"agent:query:run"}}))))
+    (testing "GHY-4942: the unrestricted sentinel is not an MCP scope, so it satisfies no route that costs one"
+      (is (false? (dataset {:token-scopes #{::scope/unrestricted}}))))
     (testing "GHY-4942: a wildcard covers no route; only the scope named exactly does"
       (is (false? (dataset {:token-scopes #{"agent:query:*"}})))
       (is (false? (dataset {:token-scopes #{"agent:*"}})))

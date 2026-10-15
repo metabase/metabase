@@ -330,8 +330,10 @@
 (defn- jsonrpc-notification [method]
   {:jsonrpc "2.0" :method method :params {}})
 
-(defn- ping-call []
-  (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))
+(defn- ping-call
+  "A JSON-RPC `ping`: it dispatches inside the session but needs no scope, so a cookie session can send it."
+  []
+  (jsonrpc-request "ping"))
 
 (defn- initialize!
   "Run the `initialize` handshake as `username` and return the issued `Mcp-Session-Id`."
@@ -381,7 +383,7 @@
           "the fabricated id is structurally valid — the ownership model, not format, is the boundary")
       (let [response (mcp-request (ping-call) {"mcp-session-id" fabricated})]
         (is (= 200 (:status response)))
-        (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent]))
+        (is (= {} (get-in response [:body :result]))
             "an authenticated caller dispatches inside a correlator it fabricated, because no other user owns it")))))
 
 (deftest session-belonging-to-another-user-is-refused-test
@@ -397,7 +399,7 @@
         (testing "its owner still dispatches"
           (let [response (mcp-request :rasta (ping-call) {"mcp-session-id" session-id})]
             (is (= 200 (:status response)))
-            (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent])))))
+            (is (= {} (get-in response [:body :result])))))
         (testing "another authenticated user gets the answer a nonexistent session gets, and no tool result"
           (let [response (mcp-request :crowberto (ping-call) {"mcp-session-id" session-id})]
             (is (= 404 (:status response)))

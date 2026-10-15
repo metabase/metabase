@@ -366,11 +366,11 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
-      (testing "GHY-4543: the unrestricted sentinel a cookie session binds earns the credential too"
-        (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri
-                                                #{:metabase.api.macros.scope/unrestricted})]
-          (is (str/includes? text "test-ui-credential"))
-          (is (true? minted?))))
+      (testing "GHY-4942: the unrestricted sentinel a cookie session binds, or a nil scope set, earns no credential"
+        (doseq [token-scopes [#{:metabase.api.macros.scope/unrestricted} nil]]
+          (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
+            (is (not (str/includes? text "test-ui-credential")) (pr-str token-scopes))
+            (is (false? minted?) (pr-str token-scopes)))))
       (testing "GHY-4942: a wildcard does not cover the shell's scope, so it earns no credential"
         (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
           (is (false? (:minted? (read-with v2.resources/visualize-query-uri token-scopes)))

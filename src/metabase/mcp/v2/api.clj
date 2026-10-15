@@ -51,8 +51,7 @@
   "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
    `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
   [surface-scopes token-scopes required]
-  ;; Held scopes ride along because a client may replace its grant with the challenged scope. Only scope strings
-  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope.
   (let [held (set (filter string? token-scopes))]
     (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
       (not (some #{required} surface-scopes)) (conj required))))

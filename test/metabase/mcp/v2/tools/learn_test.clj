@@ -7,6 +7,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.skills :as skills]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.learn :as learn]))
 
 (set! *warn-on-reflection* true)
@@ -15,7 +16,7 @@
 
 (defn- call
   [args]
-  (:result (registry/call-tool nil (str (random-uuid)) "learn" args)))
+  (:result (registry/call-tool v2.tu/all-scopes (str (random-uuid)) "learn" args)))
 
 (defn- text-of
   [result]

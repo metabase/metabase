@@ -27,7 +27,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- call-run-saved-question
-  ([args] (call-run-saved-question nil args))
+  ([args] (call-run-saved-question v2.tu/all-scopes args))
   ([token-scopes args]
    (registry/call-tool token-scopes (str (random-uuid)) "run_saved_question" args)))
 
