@@ -23,7 +23,7 @@
   [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
-    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :app-user  (not (search.permissions/sandboxed-impersonated-or-routed-user? search-ctx))
     :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
