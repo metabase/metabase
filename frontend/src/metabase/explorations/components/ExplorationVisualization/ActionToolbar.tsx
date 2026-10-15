@@ -324,8 +324,8 @@ export function ActionToolbar({
 
       <Group
         gap="xxs"
-        bg="background-primary"
-        bd="1px solid border"
+        bg="background_page-primary"
+        bd="1px solid border-neutral"
         bdrs="lg"
         px="sm"
         py="xxs"
@@ -337,7 +337,7 @@ export function ActionToolbar({
               {selectedTimeline ? (
                 <Group
                   aria-label={t`Change selected timeline`}
-                  bd="0.5px solid border"
+                  bd="0.5px solid border-neutral"
                   bdrs="lg"
                   py="xxs"
                   px="sm"

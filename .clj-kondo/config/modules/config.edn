@@ -603,7 +603,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
@@ -986,18 +985,21 @@
   {:team "Embedding"
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
+           metabase.embedding.sdk-react-18
            metabase.embedding.settings
            metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
+           app-db
+           batch-processing
            models
            premium-features
            server
            settings
            util}
    :model-imports #{:model/Card :model/Dashboard}
-   :model-exports #{:model/EmbeddingTheme}}
+   :model-exports #{:model/EmbeddingSdkReact18Host :model/EmbeddingTheme}}
 
   embedding-hub
   {:team "Embedding"
@@ -1043,7 +1045,11 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/EmbeddingSdkReact18Host
+                    :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1447,6 +1453,7 @@
            events
            lib.schema
            mcp
+           metabot.agent-api
            models
            request
            server
@@ -2539,14 +2546,12 @@
 
   search.embeddings
   {:team "Metabot"
-   :ns-prefix "metabase.embeddings"
-   :api  #{metabase.embeddings.provider metabase.embeddings.startup}
+   :api  #{metabase.search.embeddings.provider metabase.search.embeddings.startup}
    :uses #{plugins util}}
 
   search.entity-retrieval
   {:team "Metabot"
-   :ns-prefix "metabase.entity-retrieval"
-   :api #{metabase.entity-retrieval.core metabase.entity-retrieval.mirror}
+   :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror}
    :uses #{premium-features util}
    :model-imports #{:model/OsiAiContext}}
 
@@ -3873,6 +3878,7 @@
            lib.metadata
            lib.schema
            models
+           permissions
            premium-features
            query-processor
            settings
@@ -4314,8 +4320,7 @@
 
   enterprise/search.embeddings
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.embeddings"
-   :api #{metabase-enterprise.embeddings.client}
+   :api #{metabase-enterprise.search.embeddings.client}
    :uses #{enterprise/search.semantic}}
 
   enterprise/search.embeddings.embedder
@@ -4326,8 +4331,7 @@
 
   enterprise/search.entity-retrieval
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.entity-retrieval"
-   :api #{metabase-enterprise.entity-retrieval.init}
+   :api #{metabase-enterprise.search.entity-retrieval.init}
    :uses #{analytics.interface
            app-db
            collections
@@ -4348,14 +4352,13 @@
 
   enterprise/search.semantic
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.semantic-search"
-   :api #{metabase-enterprise.semantic-search.api
-          metabase-enterprise.semantic-search.core
-          metabase-enterprise.semantic-search.db.datasource
-          metabase-enterprise.semantic-search.embedding
-          metabase-enterprise.semantic-search.embedding-health
-          metabase-enterprise.semantic-search.init
-          metabase-enterprise.semantic-search.util}
+   :api #{metabase-enterprise.search.semantic.api
+          metabase-enterprise.search.semantic.core
+          metabase-enterprise.search.semantic.db.datasource
+          metabase-enterprise.search.semantic.embedding
+          metabase-enterprise.search.semantic.embedding-health
+          metabase-enterprise.search.semantic.init
+          metabase-enterprise.search.semantic.util}
    :uses #{activity-feed
            analytics
            analytics.interface

@@ -79,7 +79,6 @@ export function useMetabotSQLSuggestion({
         };
 
         setError(error);
-        throw new Error(error.message);
       } else {
         onGenerated?.();
       }

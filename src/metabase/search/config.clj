@@ -400,7 +400,7 @@
 (def vector-search-strategies
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
-  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  Note: the per-strategy dispatch in [[metabase-enterprise.search.semantic.index/semantic-search-query]] is a
   separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
   adding a strategy.
 
@@ -502,10 +502,13 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    [:is-data-analyst?   :boolean]
+   ;; whether a lens -- sandboxing, impersonation, routing -- narrows what this user may see; see
+   ;; [[metabase.search.permissions/sandboxed-impersonated-or-routed-user?]]
+   [:is-impersonated-user? :boolean]
+   [:is-sandboxed-user?    :boolean]
+   [:is-routed-user?       :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
-   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]

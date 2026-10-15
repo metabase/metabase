@@ -53,7 +53,7 @@ export function useEmbeddingThemeOverride(
       const { axisColor, gridlineColor } = getEmbeddingCartesianColors({
         background: derivedTheme.colors["background_page-primary"],
         foreground: derivedTheme.colors["text-primary"],
-        border: theme.colors?.border,
+        border: theme.colors?.["border-neutral"],
         axis: theme.colors?.["chart-axis"],
       });
 

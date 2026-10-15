@@ -289,7 +289,7 @@ export function seriesSetting({
           ];
         return seriesColor != null
           ? deriveChartShadeColor(seriesColor)
-          : color("brand");
+          : color("core-brand");
       },
       readDependencies: [
         "color",

@@ -31,7 +31,7 @@ export const MetabotContextUsageRing = ({
           thickness={THICKNESS}
           transitionDuration={300}
           rootColor="border-neutral-subtle"
-          sections={[{ value: percent, color: "brand" }]}
+          sections={[{ value: percent, color: "core-brand" }]}
         />
       </Center>
     </Tooltip>

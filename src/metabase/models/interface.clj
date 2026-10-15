@@ -51,6 +51,8 @@
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
+   (java.time OffsetDateTime ZoneOffset)
+   (java.time.temporal ChronoUnit)
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
@@ -620,6 +622,11 @@
   max (nanosecond) resolution)."
   []
   (h2x/current-datetime-honeysql-form (mdb/db-type)))
+
+(defn current-timestamp
+  "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
+  []
+  (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/MICROS))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj

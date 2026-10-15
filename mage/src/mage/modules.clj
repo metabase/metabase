@@ -458,6 +458,7 @@
    :sparksql
    :sqlite
    :sqlserver
+   :starburst
    :vertica])
 
 (def ^:private driver-directory->drivers
@@ -475,8 +476,7 @@
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
    "sqlserver" [:sqlserver]
-   ;; starburst tests are currently disabled in drivers.yml
-   ;; "starburst" [:starburst]
+   "starburst" [:starburst]
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes

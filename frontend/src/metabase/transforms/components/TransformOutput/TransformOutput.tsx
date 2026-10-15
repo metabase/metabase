@@ -41,7 +41,7 @@ export const TransformOutput = ({ transformId }: TransformOutputProps) => {
 
   if (error || !transform) {
     return (
-      <Box component="span" c="error">
+      <Box component="span" c="feedback-negative">
         {getErrorMessage(error)}
       </Box>
     );

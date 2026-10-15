@@ -339,7 +339,10 @@ function SidebarShowFilterMenu({
           aria-pressed={showHidden}
           data-testid="exploration-show-hidden-toggle"
         >
-          <Icon name="filter" c={showHidden ? "white" : "text-secondary"} />
+          <Icon
+            name="filter"
+            c={showHidden ? "core-white_constant" : "text-secondary"}
+          />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>

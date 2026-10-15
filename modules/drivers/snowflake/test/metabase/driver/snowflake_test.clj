@@ -33,7 +33,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.compile :as qp.compile]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]

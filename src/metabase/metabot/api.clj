@@ -230,15 +230,17 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages        messages
-                               :state           state
-                               :metabot         metabot
-                               :conversation-id conversation-id
-                               :profile-id      (keyword profile-id)
-                               :context         enriched-context
-                               :eval-session-id eval-session-id
-                               :memory-atom     memory-atom
-                               :tracking-opts   {:session-id conversation-id}}
+                      (cond-> {:messages              messages
+                               :state                 state
+                               :metabot               metabot
+                               :conversation-id       conversation-id
+                               :profile-id            (keyword profile-id)
+                               :context               enriched-context
+                               :eval-session-id       eval-session-id
+                               :memory-atom           memory-atom
+                               :tracking-opts         {:session-id conversation-id}
+                               ;; A query a tool is running stops when the client goes away.
+                               :request-canceled-chan canceled-chan}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)

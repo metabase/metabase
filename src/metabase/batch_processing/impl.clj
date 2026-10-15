@@ -112,6 +112,9 @@
    [:map {:closed true}
     [:table-id ms/PositiveInt]]
    [:map {:closed true}
+    [:host      :string]
+    [:timestamp (ms/InstanceOfClass java.time.temporal.Temporal)]]
+   [:map {:closed true}
     [:user-id      ms/PositiveInt]
     [:dashboard-id ms/PositiveInt]
     [:parameters   [:sequential :metabase.parameters.schema/parameter-with-stored-value]]]

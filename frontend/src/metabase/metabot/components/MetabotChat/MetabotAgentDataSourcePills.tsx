@@ -293,7 +293,7 @@ const SourceFeedbackRow = ({
           <EntityIcon
             {...getIcon({ model: source.iconModel })}
             size="0.75rem"
-            c="brand"
+            c="core-brand"
           />
           <Text fz="md" lh="sm" fw="bold" truncate>
             {source.name}
