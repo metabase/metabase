@@ -3,6 +3,8 @@
   fail."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance.kinds-test :as kinds-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.scope-property-test :as scope-property-test]
@@ -82,6 +84,22 @@
     :target [:method `scope/kind-query :published-table]
     :edits  [[:edit '[:= :t.is_published true] (fn [form] [:and form [:= :t.archived_at nil]])]]
     :tests  [#'scope-test/archived-published-table-test]}
+   {:name   :archived-table-new-key
+    :doc    "The key of a table that warehouse sync archived is its new name, so the archive is a delete and a create."
+    :target `library-branching.db/table-key
+    :edits  [[:replace '(str/replace table archive-suffix "") 'table]]
+    :tests  [#'kinds-test/archived-published-table-test]}
+   {:name   :archived-table-shadowed
+    :doc    "A later table with the name of an archived published table takes its key, so the item reads an unpublished
+            table."
+    :target `library-branching.db/key-row
+    :edits  [[:remove '(comp not true? :is_published)]]
+    :tests  [#'kinds-test/archived-published-table-test]}
+   {:name   :archived-table-not-found
+    :doc    "A lookup by natural key does not find a table that warehouse sync archived."
+    :target `library-branching.db/table-named
+    :edits  [[:remove '[:and [:not= archived-column nil] [:like name-column (str table "__mbarchiv__%")]]]]
+    :tests  [#'kinds-test/archived-published-table-test]}
    {:name   :model-actions-at-root
     :doc    "An action of a model at the root level is in scope."
     :target [:method `scope/kind-query :action]

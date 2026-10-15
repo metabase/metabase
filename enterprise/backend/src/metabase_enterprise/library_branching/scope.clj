@@ -5,8 +5,8 @@
   collection is in scope, or it is at the root level of a root namespace that holds its kind, or its kind is one of
   the kinds with no container that the roots hold; a segment or a measure is in scope iff it is not archived and its
   table is an in-scope published table; a transform test is in scope iff its transform is. A published table leaves
-  scope only by an unpublish or by its collection: an archive by warehouse sync is a change of the environment. Every
-  reader of scope calls [[scope-ids]] or [[scope-count]].
+  scope only by an unpublish or by its collection: an archive by warehouse sync is a change of the environment, and the
+  table keeps the natural key that it had before. Every reader of scope calls [[scope-ids]] or [[scope-count]].
 
   Precondition: archive is closed downward. An archived collection's subtree and the items in it, and a dashboard's
   questions, are archived with it; an archive on the instance keeps this."
@@ -28,8 +28,8 @@
 
 (defmulti kind-query
   "HoneySQL that selects the in-scope items of `kind` for `roots`: the column `:id`, and `:entity_id` (or `:db`,
-  `:schema` and `:table` for a published table). The query has the metadata `:allow-subquery`, so it can be a
-  subquery."
+  `:schema`, `:table` and `:archived_at` for a published table). The query has the metadata `:allow-subquery`, so it
+  can be a subquery."
   {:arglists '([roots kind])}
   (fn [_roots kind] kind))
 
@@ -137,7 +137,7 @@
 
 (defmethod kind-query :published-table
   [roots _kind]
-  (subquery {:select [:t.id [:d.name :db] :t.schema [:t.name :table]]
+  (subquery {:select [:t.id [:d.name :db] :t.schema [:t.name :table] :t.archived_at]
              :from   [(warehouse-schema-overlay/table-query {:alias :t})]
              :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
              :where  [:and
@@ -236,7 +236,7 @@
 (defn- row-identity
   [kind row]
   (if (= :published-table kind)
-    [(:db row) (:schema row) (:table row)]
+    (library-branching.db/table-key row)
     (:entity_id row)))
 
 (defn scope-ids
@@ -270,9 +270,13 @@
   ([kind id]
    (in-scope? roots kind id))
   ([roots kind id]
-   (let [match (if (= :published-table kind)
-                 (let [[db schema table] id]
-                   [:and [:= :s.db db] [:= :s.schema schema] [:= :s.table table]])
-                 [:= :s.entity_id id])]
+   (if (= :published-table kind)
+     (let [[db schema table] id]
+       (boolean (some #(= id (row-identity kind %))
+                      (library-branching.db/rows
+                       {:select [:s.db :s.schema :s.table :s.archived_at]
+                        :from   [[(kind-query roots kind) :s]]
+                        :where  [:and [:= :s.db db] [:= :s.schema schema]
+                                 (library-branching.db/table-named :s.table :s.archived_at table)]}))))
      (pos? (library-branching.db/row-count
-            (subquery {:select [:s.id] :from [[(kind-query roots kind) :s]] :where match}))))))
+            (subquery {:select [:s.id] :from [[(kind-query roots kind) :s]] :where [:= :s.entity_id id]}))))))
