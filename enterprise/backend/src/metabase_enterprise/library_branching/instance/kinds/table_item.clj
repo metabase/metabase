@@ -150,11 +150,18 @@
       (run! #(library-branching.db/archive-table-items! model (vec %)) (partition-all content/chunk-size (sort gone))))
     result))
 
+(def ^:private models-of-read
+  "The models whose tables a read of a table item kind reads: the segments and measures, the published tables of their
+  scope with their settings rows and collections, and the databases, tables, fields, segments and measures that a
+  definition refers to."
+  #{:model/Collection :model/Database :model/Field :model/Measure :model/Segment :model/Table :model/TableUserSettings})
+
 (defn kind-store
   "The `KindStore` of the table item kind `k`."
   [k]
   (reify instance/KindStore
     (read-all [_ ids] (read-items k ids))
+    (read-models [_] models-of-read)
     (current [_ id] (current-item k id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-item! k id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-item! k id)))))
