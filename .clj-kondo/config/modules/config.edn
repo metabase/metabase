@@ -3692,6 +3692,7 @@
            lib.metadata
            lib.schema
            models
+           permissions
            premium-features
            query-processor
            settings
