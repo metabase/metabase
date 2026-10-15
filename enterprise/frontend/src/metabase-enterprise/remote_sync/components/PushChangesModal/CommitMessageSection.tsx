@@ -19,11 +19,6 @@ export const CommitMessageSection = ({
       placeholder={t`What did you change and why?`}
       minRows={3}
       maxRows={5}
-      styles={{
-        input: {
-          fontSize: "0.875rem",
-        },
-      }}
     />
     <Text size="xs" c="text-secondary" mt="sm">
       {t`This message will be visible in your Git history`}
