@@ -1,0 +1,18 @@
+## Remote sync never tracks the Library's system collections (Library, Data, Metrics, and Dashboards), which every
+## instance with a Library has, so their RemoteSyncObject rows go.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-15T00:00:00
+      author: ranquild
+      comment: Delete the RemoteSyncObject rows of the Library's system collections
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM remote_sync_object
+              WHERE model_type = 'Collection'
+                AND EXISTS (SELECT 1 FROM collection c
+                            WHERE c.id = remote_sync_object.model_id
+                              AND c.entity_id IN ('librarylibrarylibrary', 'librarylibrarydatadat',
+                                                  'librarylibrarymetrics', 'librarylibrarydashbrd'))
+      rollback: []

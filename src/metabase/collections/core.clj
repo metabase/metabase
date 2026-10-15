@@ -26,7 +26,6 @@
   check-remote-synced-dependents
   create-library-collection!
   ensure-library-collection!
-  ensure-library-dashboards-collection!
   descendant-ids
   ineligible-dependencies
   instance-analytics-collection-type

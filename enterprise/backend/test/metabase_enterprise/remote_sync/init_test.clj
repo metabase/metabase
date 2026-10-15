@@ -449,8 +449,8 @@
                (is (= [["main" true {}]] @calls) "the rest of startup still runs")))))))))
 
 (deftest remote-sync-init-strict-mode-test
-  (testing "A read-write start without a strict mode value turns it on and syncs the Library and transforms, so it
-            doesn't run the initial import of an instance with nothing synced"
+  (testing "A read-write start without a strict mode value turns it on and syncs the Library and transforms, and still
+            runs the initial import of an instance with nothing synced"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-write
                                        :remote-sync-branch "main"
@@ -461,4 +461,8 @@
           (is (true? (settings/remote-sync-strict-mode)))
           (is (library-synced?))
           (is (true? (settings/remote-sync-transforms)))
-          (is (empty? @calls)))))))
+          (is (= [["main" true {}]] @calls))
+          (testing "while a later start, with the Library synced, doesn't import again"
+            (reset! calls [])
+            (#'init/remote-sync-init)
+            (is (empty? @calls))))))))

@@ -1229,3 +1229,37 @@ serdes/meta:
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "rename"))))
                 (is (str/ends-with? (test-path) "/etl/orders_report/no_nulls.yaml"))
                 (is (not (contains? (get @(:files-atom mock) "main") old-path)))))))))))
+
+(deftest first-import-into-empty-library-and-transforms-has-no-conflicts-test
+  (testing "Outside strict mode, a first pull of the Library and transforms into an empty, unsynced Library and no
+            transforms has no conflicts, while a Library with content still conflicts"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type        :read-write
+                                         remote-sync-strict-mode false]
+        (let [library (collection/ensure-library-collection!)]
+          (test-helpers/set-library-remote-synced! false)
+          (let [coll-eid     (u/generate-nano-id)
+                files        {"main" {"collections/library/library.yaml"
+                                      (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
+                                                                             :type "library" :is-remote-synced true)
+                                      "collections/transforms/remote_transforms/remote_transforms.yaml"
+                                      (generate-transforms-namespace-collection-yaml coll-eid "Remote Transforms")
+                                      "collections/transforms/remote_transforms/remote_transform.yaml"
+                                      (test-helpers/generate-transform-yaml (u/generate-nano-id) "Remote Transform"
+                                                                            :collection-id coll-eid)}}
+                import!      (fn []
+                               (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                                                      {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+                                 (u/prog1 (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+                                                        task-id)
+                                   (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now}))))]
+            (testing "with content in the Library"
+              (mt/with-temp [:model/Card _ {:name "Local metric" :collection_id (:id library)}]
+                (is (=? {:status :conflict :conflicts #{"Library"}} (import!)))))
+            (testing "with an empty Library"
+              (is (=? {:status :success} (import!)))
+              (is (not (t2/exists? :model/RemoteSyncObject
+                                   :model_type "Collection"
+                                   :model_id [:in (t2/select-pks-vec :model/Collection
+                                                                     :entity_id [:in (vec collection/library-root-entity-ids)])]))
+                  "and the Library's system collections stay untracked"))))))))

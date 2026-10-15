@@ -435,6 +435,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
+(mu/defn collection-ids-with-entity-ids :- [:set ::lib.schema.id/collection]
+  "The IDs of the Collections with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (set (t2/select-pks-set :model/Collection :entity_id [:in entity-ids])))
+
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
   [library-type :- :string]
@@ -509,6 +514,19 @@
                              [:= :namespace namespace-name]
                              [:= :location "/"]
                              [:not :archived]]}))
+
+(mu/defn collection-content-exists? :- :boolean
+  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
+  published to one."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean
+   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+       (t2/exists? :model/Document :collection_id [:in collection-ids])
+       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+       (t2/exists? :model/Action :collection_id [:in collection-ids])
+       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
 
 (mu/defn subtree-collection-ids
   "The IDs of `collections` and all of their descendants."

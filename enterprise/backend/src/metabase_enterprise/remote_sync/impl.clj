@@ -59,13 +59,6 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
-(defn- keep-library-dashboards
-  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
-  [imported-data]
-  (cond-> imported-data
-    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
-    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
-
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
@@ -185,6 +178,13 @@
       :else
       (format "Failed to reload from git repository: %s" (or (ex-message e) (.getName (class e)))))))
 
+(defn- library-has-content?
+  "Whether `library` holds anything beyond its system collections."
+  [library]
+  (let [collection-ids (vec (remote-sync.db/subtree-collection-ids [library]))]
+    (or (some (complement collection/library-root-collection?) (remote-sync.db/collections collection-ids))
+        (remote-sync.db/collection-content-exists? collection-ids))))
+
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
    - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
@@ -192,7 +192,7 @@
                                would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
-   - :library-conflict - First import only, local Library exists, import has Library
+   - :library-conflict - First import only, an unsynced local Library with content, import has Library
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
@@ -222,7 +222,8 @@
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
-                                      (not (:is_remote_synced local-library)))
+                                      (not (:is_remote_synced local-library))
+                                      (library-has-content? local-library))
                              {:type :library-conflict
                               :category "Library"
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
@@ -382,6 +383,16 @@
                   (t2/with-connection [_conn (mdb/app-db)]
                     (remote-sync.task/update-progress! task-id fraction))))}))
 
+(defn- library-root-ids
+  "The IDs of the Library's system collections, which remote sync never writes or tracks."
+  []
+  (remote-sync.db/collection-ids-with-entity-ids (vec collection/library-root-entity-ids)))
+
+(defn- library-root-row?
+  "Whether `row` (`{:model_type :model_id}`) is one of the Library's system collections, given their `root-ids`."
+  [root-ids {:keys [model_type model_id]}]
+  (and (= "Collection" model_type) (contains? root-ids model_id)))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -415,16 +426,16 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
+            _                     (remove-unsynced! synced-collection-ids imported-data)
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
         ;; insert. Chunked so insert/IN params and memory stay bounded.
         (remote-sync.db/delete-all-rsos!)
-        (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+        (insert-with-metadata! (remove (partial library-root-row? (library-root-ids))
+                                       (spec/sync-all-entities! sync-timestamp imported-data))
                                (source.ingestable/cached-file-paths base-ingestable))
         (track-user-settings! settings-table-ids sync-timestamp)
-        (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
@@ -909,12 +920,14 @@
   content but have no RemoteSyncObject row — untracked deps an incremental export must write to match a full
   export. Excludes the entity itself and non-content deps (e.g. databases)."
   [model-type model-id]
-  (into #{}
-        (filter (fn [{:keys [model_type model_id]}]
-                  (and (not (and (= model_type model-type) (= model_id model-id)))
-                       (spec/spec-for-model-type model_type)
-                       (not (remote-sync.db/rso-exists? model_type model_id)))))
-        (export-closure model-type model-id)))
+  (let [root-ids (library-root-ids)]
+    (into #{}
+          (filter (fn [{:keys [model_type model_id] :as dep}]
+                    (and (not (and (= model_type model-type) (= model_id model-id)))
+                         (spec/spec-for-model-type model_type)
+                         (not (library-root-row? root-ids dep))
+                         (not (remote-sync.db/rso-exists? model_type model_id)))))
+          (export-closure model-type model-id))))
 
 (defn- ->sized-chunks
   "Builds chunks of maximum size based on model type."
@@ -1168,10 +1181,13 @@
   "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject id (untracked deps and
   Dimensions, whose RemoteSyncObject is keyed by their Field, get :id nil)."
   []
-  (let [rso-id (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))]
+  (let [rso-id   (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))
+        root-ids (library-root-ids)]
     (for [[model ids] (spec/exportable-entities)
-          id          ids]
-      {:model_type model :model_id id :id (when-not (= "Dimension" model) (rso-id [model id]))})))
+          id          ids
+          :let        [row {:model_type model :model_id id}]
+          :when       (not (library-root-row? root-ids row))]
+      (assoc row :id (when-not (= "Dimension" model) (rso-id [model id]))))))
 
 (def ^:private user-settings-model-types
   "The model types tracked by the user-settings event handlers rather than a remote-sync spec."
