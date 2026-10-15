@@ -29,6 +29,7 @@
             :is-superuser?         api/*is-superuser?*
             :is-impersonated-user? (perms-util/impersonated-user?)
             :is-sandboxed-user?    (perms-util/sandboxed-user?)
+            :is-routed-user?       (perms-util/routed-user?)
             :archived              false
             :context               :default
             :search-string         nil
