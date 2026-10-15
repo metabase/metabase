@@ -54,6 +54,9 @@
             "The branch main was rewritten during the deploy, so nothing was deployed. Try again."]
            [{:result :refused :head "h" :refused [{:id "a" :reason :place :message "The container is not in scope."}]}
             "The instance refused 1 item (The container is not in scope.), so nothing was deployed."]
+           [{:result :key-clash :head "h" :key-clash [{:rule :unique-key :kind :snippet :key "Filter" :ids #{"a" "b"}}
+                                                      {:rule :unique-key :kind :snippet :key "Base" :ids #{"c" "d"}}]}
+            "The head of branch main gives 2 items the name of another item on this instance, also one in the trash (\"Filter\", \"Base\"), so nothing was deployed."]
            [{:result :base-moved :head "h" :base "b"}
             "Another task moved the base, so nothing was deployed."]
            [{:result :fenced :head "h" :reason {:fenced "cancelled"}}

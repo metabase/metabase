@@ -16,7 +16,6 @@
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -562,25 +561,13 @@
 
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
 
-(defn- trashed-name-clashes
-  "The pairs `#{i j}` of snippets where `i` is in `s2` and `j` is a snippet of `s1` that `s2` removes, so the pull of
-  `s2` over `s1` trashes `j`, which keeps its name, one key with the name of `i` (`snapshot/unique-key`)."
-  [s1 s2]
-  (set (for [[j item-j] s1
-             :when (and (= :snippet (:kind item-j)) (not (contains? s2 j)))
-             [i item-i] s2
-             :when (and (= :snippet (:kind item-i))
-                        (= (snapshot/unique-key snapshot/unique-keys item-i)
-                           (snapshot/unique-key snapshot/unique-keys item-j)))]
-         #{i j})))
-
 (defspec pull-lands-the-head-property-test 25
   (prop/for-all [[s1 s2] (gen/tuple ptu/pushable-snapshot-gen ptu/pushable-snapshot-gen)]
     (enabled
      (with-remote [repo s]
        (let [[inst c1] (pushed-instance! s s1)
              h         (pltu/commit-snapshot! repo ptu/branch (if c1 [c1] []) s2)
-             clashes   (trashed-name-clashes s1 s2)
+             clashes   (pltu/trashed-name-clashes s1 s2)
              {:keys [result key-clash]} (pltu/pull! inst s)]
          (if (seq clashes)
            ;; the head gives a snippet the name of a snippet that it removes: the trash keeps the removed one with its
