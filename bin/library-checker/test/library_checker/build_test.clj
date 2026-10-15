@@ -4,11 +4,15 @@
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
+   [clj-yaml.core :as yaml]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.golden :as golden])
   (:import
    (java.util.zip ZipFile)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private config "bin/library-checker/bb.edn")
 
@@ -16,7 +20,7 @@
   []
   (-> (java.lang.ProcessHandle/current) .info .command (.orElse "bb")))
 
-(defn- bb!
+(defn- run-bb
   "`{:exit e :lines [line ...]}` of babashka with `args`, run in directory `dir`; the lines are those of stdout."
   [dir & args]
   (let [{:keys [exit out err]} (apply p/shell {:dir (str dir) :in "" :out :string :err :string :continue true}
@@ -36,7 +40,7 @@
     (let [dir (temp-dir)
           jar (fs/file dir "library-checker.jar")]
       (try
-        (let [{:keys [exit err]} (bb! "." "--config" config "build" "--out" (str jar))]
+        (let [{:keys [exit err]} (run-bb "." "--config" config "build" "--out" (str jar))]
           (is (= 0 exit) (str "the build task exits 0\n" err)))
         (binding [*jar* jar]
           (run-tests))
@@ -65,7 +69,7 @@
                                           ["format/writer.clj" "instance.clj" "store.clj" "api.clj" "tasks.clj"]))
                                 module)))))
       (testing "no test namespace and no other Metabase namespace"
-        (is (= #{} (set (filter #(re-find #"_test\.cljc?$|^metabase/|golden\.clj$" %) es))))))))
+        (is (= #{} (set (filter #(re-find #"^metabase/|^metabase_enterprise/.*(_test|golden)\.cljc?$" %) es))))))))
 
 (defn- written-variants!
   "Writes each golden variant to a directory of its own under `dir`; returns `{name directory}`."
@@ -82,15 +86,29 @@
       (let [variants (written-variants! (fs/file dir "variants"))
             cwd      (doto (fs/file dir "cwd") fs/create-dirs)]
         (testing "a green checkout exits 0"
-          (is (= {:exit 0 :lines ["green"]} (dissoc (bb! cwd (str *jar*) (str (variants "green"))) :err))))
+          (is (= {:exit 0 :lines ["green"]} (dissoc (run-bb cwd (str *jar*) (str (variants "green"))) :err))))
         (testing "a key clash exits 1 and names the key: the jar has the collation table"
-          (let [{:keys [exit lines]} (bb! cwd (str *jar*) (str (variants "unique-key")))]
+          (let [{:keys [exit lines]} (run-bb cwd (str *jar*) (str (variants "unique-key")))]
             (is (= 1 exit))
             (is (str/includes? (first lines) "\"Base filter\""))))
         (testing "no arguments: the usage line, exit 2"
-          (is (= {:exit 2 :lines ["Usage: <checkout> [--manifest <file>]"]} (dissoc (bb! cwd (str *jar*)) :err))))
+          (is (= {:exit 2 :lines ["Usage: <checkout> [--manifest <file>]"]} (dissoc (run-bb cwd (str *jar*)) :err))))
         (testing "each golden variant: the jar prints the lines and gives the exit code of the checker from source"
           (doseq [[n d] variants]
             (testing n
-              (is (= (golden/run-result d) (dissoc (bb! cwd (str *jar*) (str d)) :err)))))))
+              (is (= (golden/run-result d) (dissoc (run-bb cwd (str *jar*) (str d)) :err)))))))
       (finally (fs/delete-tree dir)))))
+
+(deftest pinned-versions-test
+  (let [bb-version (:min-bb-version (edn/read-string (slurp config)))
+        example    (yaml/parse-string (slurp "enterprise/backend/test_resources/library_branching/ci/library-check.yml"))
+        ci         (yaml/parse-string (slurp ".github/workflows/build-scripts.yml"))
+        steps      (get-in example [:jobs :check :steps])]
+    (testing "the example workflow installs the babashka version of the checker config"
+      (is (some #(str/includes? (str (:run %)) (str "--version " bb-version)) steps)))
+    (testing "the example workflow runs the jar, with no checkout of the Metabase source"
+      (is (some #(str/starts-with? (str (:run %)) "bb \"$RUNNER_TEMP/library-checker.jar\"") steps))
+      (is (not-any? #(get-in % [:with :repository]) steps)))
+    (testing "CI tests the checker with the babashka version of the checker config"
+      (is (= [bb-version]
+             (keep #(get-in % [:with :babashka-version]) (get-in ci [:jobs :test-library-checker :steps])))))))

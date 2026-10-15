@@ -2,8 +2,8 @@
   "The golden repository of the checker, and a variant of it for each kind of finding and lint. It loads on the JVM and
   in babashka.
 
-  `-main <dir>` writes each variant to `<dir>/<name>` (with its manifest at `.metabase/manifest.yaml`, when it has one),
-  and prints `{name {:exit e :lines [line ...]}}`, the result of [[check/run]] on each, as EDN."
+  [[write-results!]] writes each variant to a directory, and the result of the checker on each to a file, for a
+  comparison with the checker in babashka."
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
@@ -53,19 +53,43 @@
   [path f]
   (tree-with {path (f (text (get (tree) path)))}))
 
-(def library-id "LiBrArYcOlLeCtIoN0001")
-(def metrics-id "mEtRiCsCoLlEcTiOnId00")
-(def revenue-id "cOlQuErIeS0ExAmPlE2x1")
-(def total-revenue-id "IW8kbqZVaMxdGtCM2F4U6")
-(def by-month-id "Qx81tWm0aLpN2ZcB7yYgr")
-(def base-filter-id "bAsEfIlTeRsNiPpEt0001")
-(def active-filter-id "aCtIvEpRoDuCtFiLtEr01")
+(def library-id
+  "The entity id of the Library collection."
+  "LiBrArYcOlLeCtIoN0001")
+(def metrics-id
+  "The entity id of the Metrics collection."
+  "mEtRiCsCoLlEcTiOnId00")
+(def revenue-id
+  "The entity id of the Revenue collection."
+  "cOlQuErIeS0ExAmPlE2x1")
+(def total-revenue-id
+  "The entity id of the Total Revenue metric."
+  "IW8kbqZVaMxdGtCM2F4U6")
+(def by-month-id
+  "The entity id of the metric that uses Total Revenue."
+  "Qx81tWm0aLpN2ZcB7yYgr")
+(def base-filter-id
+  "The entity id of the Base filter snippet."
+  "bAsEfIlTeRsNiPpEt0001")
+(def active-filter-id
+  "The entity id of the Active product filter snippet, which uses the Base filter."
+  "aCtIvEpRoDuCtFiLtEr01")
 
-(def total-revenue-path "library/metrics/revenue/total_revenue.metric.yaml")
-(def by-month-path "library/metrics/revenue/total_revenue~Qx81tWm0aLpN2ZcB7yYgr.metric.yaml")
-(def base-filter-path "snippets/base_filter.snippet.yaml")
-(def active-filter-path "snippets/filters/active_product_filter.snippet.yaml")
-(def revenue-path "library/metrics/revenue/_collection.yaml")
+(def total-revenue-path
+  "The file of the Total Revenue metric."
+  "library/metrics/revenue/total_revenue.metric.yaml")
+(def by-month-path
+  "The file of the metric that uses Total Revenue."
+  "library/metrics/revenue/total_revenue~Qx81tWm0aLpN2ZcB7yYgr.metric.yaml")
+(def base-filter-path
+  "The file of the Base filter snippet."
+  "snippets/base_filter.snippet.yaml")
+(def active-filter-path
+  "The file of the Active product filter snippet."
+  "snippets/filters/active_product_filter.snippet.yaml")
+(def revenue-path
+  "The file of the Revenue collection."
+  "library/metrics/revenue/_collection.yaml")
 
 (def ^:private products-table
   "The PRODUCTS table of the golden manifest, as text."
@@ -139,11 +163,14 @@
         out  (with-out-str (vreset! exit (check/run (str dir) nil)))]
     {:exit @exit :lines (str/split-lines out)}))
 
-(defn -main
-  "Writes each variant to `<out>/<name>`, and prints the result of [[check/run]] on each as EDN."
-  [out]
-  (prn (into (sorted-map)
-             (for [[n v] (variants)
-                   :let  [d (io/file out n)]]
-               (do (write-variant! d v)
-                   [n (run-result d)])))))
+(defn write-results!
+  "Writes each variant to `<out>/<name>` (with its manifest at `.metabase/manifest.yaml`, when it has one), and
+  `{name {:exit e :lines [line ...]}}`, the result of [[check/run]] on each, as EDN to the file `results`. An exec
+  function: `clojure -X:ee:ee-dev metabase-enterprise.library-branching.golden/write-results! :out <dir> :results <file>`."
+  [{:keys [out results]}]
+  (spit (str results)
+        (pr-str (into (sorted-map)
+                      (for [[n v] (variants)
+                            :let  [d (io/file (str out) n)]]
+                        (do (write-variant! d v)
+                            [n (run-result d)]))))))
