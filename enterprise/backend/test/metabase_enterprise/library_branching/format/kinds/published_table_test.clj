@@ -116,6 +116,56 @@
         (= doc (apply codec/encode published-table/codec (:item result)))
         (= :invalid (get-in result [:finding :type]))))))
 
+;;; ---------------------------------------------------- Remappings ---------------------------------------------------
+
+(def ^:private product-title [sd "PUBLIC" "PRODUCTS" "TITLE"])
+
+(def ^:private remapped-attrs
+  {:fields {:PRODUCT_ID {:remapping {:type "external" :name "Product" :field product-title}}
+            :RATING     {:remapping {:type "internal" :name "Rating" :values [[1 "Bad"] [2 "Good"]]}}
+            :STATUS     {:display_name "Status"
+                         :remapping    {:type "internal" :name "Status"}}}})
+
+(def ^:private remapped
+  (assoc item :refs (kinds/refs :published-table events remapped-attrs) :attrs remapped-attrs))
+
+(deftest remapping-refs-test
+  (testing "a foreign-key remapping refers to its target field; an internal remapping refers to nothing more"
+    (is (= #{[:table [:env events]]
+             [:field [:env [sd nil "EVENTS" "PRODUCT_ID"]]]
+             [:field [:env [sd nil "EVENTS" "RATING"]]]
+             [:field [:env [sd nil "EVENTS" "STATUS"]]]
+             [:remapping [:env product-title]]}
+           (kinds/refs :published-table events remapped-attrs)))))
+
+(deftest remapping-schema-test
+  (is (mr/validate (codec/schema published-table/codec) remapped))
+  (testing "a field entry with only a remapping is content"
+    (is (mr/validate (codec/schema published-table/codec)
+                     (let [a {:fields {:RATING {:remapping {:type "internal" :name "Rating"}}}}]
+                       (assoc item :attrs a :refs (kinds/refs :published-table events a))))))
+  (testing "a remapping of another shape is not content"
+    (doseq [r [{:type "external" :name "Product"}
+               {:type "external" :name "Product" :field product-title :values [[1 "x"]]}
+               {:type "internal" :name "Rating" :field product-title}
+               {:type "internal" :name "Rating" :values []}
+               {:type "internal" :name "Rating" :values [[1]]}
+               {:type "internal" :name "Rating" :values [[1 " "]]}
+               {:type "internal" :name "Rating" :values [[1 2]]}
+               {:type "internal" :name "Rating" :values [[{:a 1} "One"]]}
+               {:type "internal" :values [[1 "Bad"]]}
+               {:type "internal" :name "" :values [[1 "Bad"]]}
+               {:type "other" :name "Rating"}]]
+      (let [a {:fields {:RATING {:remapping r}}}]
+        (is (not (mr/validate (codec/schema published-table/codec)
+                              (assoc item :attrs a :refs (kinds/refs :published-table events a))))
+            (pr-str r))))))
+
+(deftest remapping-round-trip-test
+  (testing "both kinds of remapping survive encode, the bytes and decode"
+    (is (= {:item [events remapped]}
+           (decode-bytes (codec/encode published-table/codec events remapped))))))
+
 (def ^:private mutations
   [{:name   :no-field-refs
     :doc    "Field settings give no references, so semantic validation cannot find a removed column."
@@ -132,7 +182,11 @@
    {:name   :no-table-ref
     :doc    "A published table does not refer to its table."
     :target `published-table/refs
-    :edits  [[:replace '[:table [:env id]] nil]]}])
+    :edits  [[:replace '[:table [:env id]] nil]]}
+   {:name   :no-remapping-refs
+    :doc    "A foreign-key remapping is no reference, so semantic validation cannot find a removed target field."
+    :target `published-table/field-refs
+    :edits  [[:replace '(get-in entry [:remapping :field]) nil]]}])
 
 (deftest published-table-mutations-test
-  (mut/check mutations {:tests [#'refs-test]}))
+  (mut/check mutations {:tests [#'refs-test #'remapping-refs-test]}))

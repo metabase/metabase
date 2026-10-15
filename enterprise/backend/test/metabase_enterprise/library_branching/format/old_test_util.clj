@@ -28,12 +28,13 @@
           :serdes/meta      [{:model "Collection"}]}
          (select-keys attrs [:description :type :namespace :authority_level])))
 
-(defn metric-doc
-  "The old document of metric `id`: a card of type metric."
-  [id {:keys [name place attrs]}]
+(defn card-doc
+  "The old document of card `id`: a card of the type of its kind. The export writes a model's result metadata; a
+  question's, which the item does not hold, is nil here."
+  [id {:keys [kind name place attrs]}]
   (merge {:name                   name
           :entity_id              id
-          :type                   "metric"
+          :type                   (clojure.core/name kind)
           :created_at             created-at
           :creator_id             "rasta@metabase.com"
           :archived               false
@@ -171,18 +172,31 @@
   (merge {:field_id    field-key
           :created_at  created-at
           :serdes/meta [{:model "FieldUserSettings"}]}
-         (dissoc settings :fk_target)
+         (dissoc settings :fk_target :remapping)
          (when-let [target (:fk_target settings)]
            {:fk_target_field_id target})
          (flags field-flags settings)))
 
+(defn dimension-doc
+  "The old document of the remapping `remapping` of the field with natural key `field-key`: a Dimension file. The old
+  format has no values of an internal remapping."
+  [field-key {:keys [type name field]}]
+  {:name                    name
+   :type                    type
+   :entity_id               "DimensionXXXXXXXXXXXX"
+   :field_id                field-key
+   :human_readable_field_id field
+   :created_at              created-at
+   :serdes/meta             [{:model "Dimension"}]})
+
 (defn docs
-  "The old documents of snapshot `s`, one for each item and one for each field settings row of a published table."
+  "The old documents of snapshot `s`, one for each item, and one for each field settings row and each Dimension row of
+  a published table."
   [s]
   (vec (mapcat (fn [[id {:keys [kind attrs] :as item}]]
                  (case kind
                    :collection      [(collection-doc id item)]
-                   :metric          [(metric-doc id item)]
+                   (:metric :question :model) [(card-doc id item)]
                    :snippet         [(snippet-doc id item)]
                    :glossary-term   [(glossary-doc id item)]
                    :segment         [(segment-doc id item)]
@@ -190,8 +204,13 @@
                    :timeline        [(timeline-doc id item)]
                    :published-table (cons (table-settings-doc id item)
                                           (for [[field-key settings] (sort-by (comp pr-str key)
-                                                                              (flat-fields id (:fields attrs)))]
-                                            (field-settings-doc field-key settings)))))
+                                                                              (flat-fields id (:fields attrs)))
+                                                doc                  [(when (seq (dissoc settings :remapping))
+                                                                        (field-settings-doc field-key settings))
+                                                                      (when-let [r (:remapping settings)]
+                                                                        (dimension-doc field-key r))]
+                                                :when                doc]
+                                            doc))))
                (sort-by (comp pr-str key) s))))
 
 (defn bytes-of

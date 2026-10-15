@@ -84,7 +84,8 @@
                                                  :type     "library-dashboards"
                                                  :location (children-location library)})
              folder  (insert! :model/Collection {:name "Count snippets" :namespace "snippets" :location "/"})
-             outside (insert! :model/Collection {:name "Count outside" :location "/"})]
+             outside (insert! :model/Collection {:name "Count outside" :location "/"})
+             app     (insert! :model/Collection {:name "Count app" :namespace "data-apps" :location "/"})]
          (insert! :model/Card {:name "In" :type :metric :collection_id (:id metrics) :creator_id user
                                :display :scalar :visualization_settings {} :dataset_query (sum-query :venues :price)})
          (insert! :model/Card {:name "Trashed" :type :metric :collection_id (:id metrics) :creator_id user
@@ -92,6 +93,10 @@
                                :dataset_query (sum-query :venues :price)})
          (insert! :model/Card {:name "Outside" :type :metric :collection_id (:id outside) :creator_id user
                                :display :scalar :visualization_settings {} :dataset_query (sum-query :venues :price)})
+         (insert! :model/Card {:name "Question" :type :question :collection_id (:id app) :creator_id user
+                               :display :table :visualization_settings {} :dataset_query (sum-query :venues :price)})
+         (insert! :model/Card {:name "Model" :type :model :collection_id (:id app) :creator_id user
+                               :display :table :visualization_settings {} :dataset_query (sum-query :venues :price)})
          (insert! :model/NativeQuerySnippet {:name (str "Count root snippet " (random-uuid)) :content "1 = 1" :creator_id user})
          (insert! :model/NativeQuerySnippet {:name (str "Count folder snippet " (random-uuid)) :content "2 = 2" :creator_id user
                                              :collection_id (:id folder)})

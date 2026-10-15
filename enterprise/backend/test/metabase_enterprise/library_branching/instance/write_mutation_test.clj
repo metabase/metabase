@@ -4,10 +4,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance.card-test]
    [metabase-enterprise.library-branching.instance.cascade-test]
    [metabase-enterprise.library-branching.instance.content :as content]
+   [metabase-enterprise.library-branching.instance.kinds.card :as kinds.card]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
-   [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
    [metabase-enterprise.library-branching.instance.lock-test]
    [metabase-enterprise.library-branching.instance.save-rule :as save-rule]
@@ -36,10 +37,10 @@
     :edits  [[:remove :for {:nth 1}] [:remove '[:update] {:nth 1}]]
     :tests  [#'metabase-enterprise.library-branching.instance.lock-test/current-locks-the-row-test]}
    {:name   :every-attribute-written
-    :doc    "A write of a metric writes every attribute, also one whose content did not change, so a write of the
+    :doc    "A write of a card writes every attribute, also one whose content did not change, so a write of the
             current content changes rows (the query gets new uuids)."
-    :target `kinds.metric/write-metric!
-    :edits  [[:replace '(content/changed-attrs format.metric/spec (:attrs old) attrs) '(keys (:attrs format.metric/spec))]]}
+    :target `kinds.card/write-card!
+    :edits  [[:replace '(content/changed-attrs spec (:attrs old) attrs) '(keys (:attrs spec))]]}
    {:name   :absent-is-nil
     :doc    "An absent attribute is written as nil, not as its default."
     :target `content/attr-value
@@ -49,9 +50,24 @@
     :target `tree/check-in-tree!
     :edits  [[:replace 'in-tree? true {:nth 1}]]}
    {:name   :kind-not-checked
-    :doc    "A write of a metric takes over a card of another kind with the same identity."
-    :target `kinds.metric/write-metric!
-    :edits  [[:replace '(= "metric" (some-> (:type row) clojure.core/name)) true]]}
+    :doc    "A write of a card takes over a card of another kind with the same identity, also a metric."
+    :target `kinds.card/check-kind!
+    :edits  [[:replace '(or (= kind row-kind) (and (convertible kind) (convertible row-kind))) true]]}
+   {:name   :kinds-not-convertible
+    :doc    "A write of a question cannot take over a model with the same identity, so a model that became a question
+            on the branch cannot be pulled."
+    :target `kinds.card/check-kind!
+    :edits  [[:replace '(and (convertible kind) (convertible row-kind)) false]]}
+   {:name   :type-kept
+    :doc    "A write of a question to a model leaves the card a model, so the cascade of the Card save path does not
+            run."
+    :target `kinds.card/write-card!
+    :edits  [[:replace '(not= kind (:kind old)) false]]}
+   {:name   :edited-columns-alone
+    :doc    "A write of a model stores the edited columns alone, with no type, so the model's columns lose their
+            types."
+    :target `kinds.card/with-model-metadata
+    :edits  [[:replace '(seq (:result_metadata changes)) false]]}
    {:name   :place-not-in-scope
     :doc    "A write puts an item into any collection with the identity of its place, also one in the trash or outside
             the Library."
@@ -66,19 +82,19 @@
     :target `kinds.collection/write-collection!
     :edits  [[:replace '(contains? changes :location) false]]}
    {:name   :no-restore
-    :doc    "A write of a trashed metric leaves it in the trash."
-    :target `kinds.metric/write-metric!
+    :doc    "A write of a trashed card leaves it in the trash."
+    :target `kinds.card/write-card!
     :edits  [[:replace '(:archived row) false]]}
    {:name   :no-trash
-    :doc    "trash! of a metric does nothing."
-    :target `kinds.metric/trash-metric!
+    :doc    "trash! of a card does nothing."
+    :target `kinds.card/trash-card!
     :edits  [[:replace '(library-branching.db/update-card! (:id row) {:archived true :archived_directly true}) nil]]}
    {:name   :instance-local-reset
-    :doc    "A write of a metric also resets the public link and the embedding flag, as a load of a file that has no
+    :doc    "A write of a card also resets the public link and the embedding flag, as a load of a file that has no
             such attributes would."
-    :target `kinds.metric/write-metric!
-    :edits  [[:replace '(library-branching.db/update-card! (:id row) changes)
-              '(library-branching.db/update-card! (:id row) (assoc changes :public_uuid nil :enable_embedding false))]]}
+    :target `kinds.card/write-card!
+    :edits  [[:replace '(with-model-metadata kind query changes)
+              '(assoc (with-model-metadata kind query changes) :public_uuid nil :enable_embedding false)]]}
    {:name   :visibility-type-is-content
     :doc    "A read gives the visibility type of a table as content, which Metabase derives from the data layer, so a
             written data layer reads back with an attribute that the content did not have."
@@ -89,6 +105,18 @@
     :doc    "A field setting that the content no longer has is not cleared."
     :target `kinds.published-table/field-changes
     :edits  [[:replace '(into (set (keys old)) (keys new)) '(keys new)]]}
+   {:name   :remappings-not-written
+    :doc    "A write of a published table sets no remapping of its fields."
+    :target `kinds.published-table/write-published-table!
+    :edits  [[:replace '(run! write-remapping! remappings) nil]]}
+   {:name   :remapping-not-removed
+    :doc    "A remapping that the content no longer has stays."
+    :target `kinds.published-table/write-remapping!
+    :edits  [[:replace '(library-branching.db/delete-dimension! field-id) nil]]}
+   {:name   :stale-remapped-values-kept
+    :doc    "An internal remapping with no values keeps the human-readable values of an earlier remapping."
+    :target `kinds.published-table/write-remapping!
+    :edits  [[:replace '(library-branching.db/clear-remapped-values! field-id) nil]]}
    {:name   :outside-values-sources-cleared
     :doc    "A trash keeps no ParameterCard row of a user outside the Library tree, so the Card save path clears the
             values source of each parameter outside the Library that takes its values from a trashed card."
@@ -114,7 +142,10 @@
     :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]}])
 
 (def ^:private tests
-  [#'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-outside-values-sources-test
+  [#'metabase-enterprise.library-branching.instance.card-test/card-write-test
+   #'metabase-enterprise.library-branching.instance.card-test/model-becomes-question-test
+   #'metabase-enterprise.library-branching.instance.card-test/kind-refusals-test
+   #'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-outside-values-sources-test
    #'metabase-enterprise.library-branching.instance.cascade-test/metric-trash-keeps-the-cascade-inside-the-library-test
    #'metabase-enterprise.library-branching.instance.cascade-test/collection-trash-keeps-outside-values-sources-test
    #'metabase-enterprise.library-branching.instance.cascade-test/metric-write-keeps-outside-values-sources-test
@@ -126,6 +157,7 @@
    #'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test
    #'metabase-enterprise.library-branching.instance.write-test/refused-writes-write-nothing-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-write-test
+   #'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-legacy-visibility-type-test
    #'metabase-enterprise.library-branching.instance.write-test/snippet-write-test
    #'metabase-enterprise.library-branching.instance.write-test/write-of-current-content-changes-no-row-test

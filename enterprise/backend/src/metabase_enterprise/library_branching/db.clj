@@ -125,6 +125,59 @@
    [:= name-column table]
    [:and [:not= archived-column nil] [:like name-column (str table "__mbarchiv__%")]]])
 
+(def ^:private archive-suffix-sql
+  ;; [[archive-suffix]] as a regular expression of every app DB. `$` also matches before a final line terminator; no
+  ;; table name ends with one.
+  "__mbarchiv__[0-9]+$")
+
+(defn- table-key-name
+  "HoneySQL: the table name of the natural key ([[table-key]]) of the table row whose name is in `name-column` and
+  whose archive time is in `archived-column`."
+  [name-column archived-column]
+  [:case
+   [:= archived-column nil] name-column
+   :else                    [:regexp_replace name-column archive-suffix-sql ""]])
+
+(defn- exact=
+  "HoneySQL: the strings `a` and `b` are equal as Clojure compares strings, or both are null."
+  [a b]
+  ;; The database name has a case-insensitive collation on MySQL and MariaDB.
+  (let [exact (if (= :mysql (mdb/db-type)) (fn [x] [:cast x :binary]) identity)]
+    [:or [:= (exact a) (exact b)] [:and [:= a nil] [:= b nil]]]))
+
+(defn- column
+  [alias c]
+  (keyword (str (name alias) "." (name c))))
+
+(defn shadowed-table
+  "HoneySQL: the natural key ([[table-key]]) of the table row aliased `t`, whose database row is aliased `d`, is owned
+  by another published table row, which `t` then does not own. Of the published rows of one key, the owner is the
+  row that warehouse sync did not archive, else the newest; `t` and `d` have the columns of
+  `warehouse-schema-overlay/table-query` and of the database table. With `live-owner?`, the owner is also a row that
+  warehouse sync did not archive."
+  ([t d]
+   (shadowed-table t d false))
+  ([t d live-owner?]
+   (let [tc          (partial column t)
+         t-archived? [:<> (tc :archived_at) nil]
+         o-archived? [:<> :o.archived_at nil]]
+     [:exists (vary-meta
+               {:select [[1 :one]]
+                :from   [(warehouse-schema-overlay/table-query {:alias :o})]
+                :join   [[(t2/table-name :model/Database) :od] [:= :od.id :o.db_id]]
+                :where  [:and
+                         [:= :o.is_published true]
+                         [:<> :o.id (tc :id)]
+                         (exact= :od.name (column d :name))
+                         (exact= :o.schema (tc :schema))
+                         (exact= (table-key-name :o.name :o.archived_at) (table-key-name (tc :name) (tc :archived_at)))
+                         [:or
+                          [:and [:not o-archived?] t-archived?]
+                          [:and [:> :o.id (tc :id)] [:or [:not o-archived?] t-archived?]]]
+                         (when live-owner?
+                           [:not o-archived?])]}
+               assoc :allow-subquery true)])))
+
 (defn- with-key-name
   "`row` with `:table` set to the name of its [[table-key]], and no `:archived_at`."
   [row]
@@ -222,17 +275,23 @@
   [entity-ids :- ::entity-ids]
   (t2/select :model/NativeQuerySnippet :entity_id [:in entity-ids]))
 
+(defn- published?
+  "True iff `v`, the published flag of a table row as a query returns it, is true."
+  [v]
+  ;; MySQL and MariaDB return the flag of the user settings overlay, an expression, as 1 or 0.
+  (or (true? v) (= 1 v)))
+
 (defn- key-row
   "The row of several table rows with one natural key: the published one, then the one that warehouse sync did not
-  archive, then the newest."
+  archive, then the newest. Of the published rows, it is the owner of [[shadowed-table]]."
   [rows]
-  (first (sort-by (juxt (comp not true? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
+  (first (sort-by (juxt (comp not published? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
 
 (mu/defn tables-by-key :- [:sequential ::row]
   "`{:id :db :schema :table :display_name :collection_id}` of each table of `table-keys`, natural keys `[database
   schema table]` ([[table-key]]), at most one per key. `:display_name` and `:collection_id` are the values that users
-  see. Of a table that warehouse sync archived and a later table with its name, the row is the published one, else
-  the later one."
+  see. Of several rows of one key, the row is the published one, then the one that warehouse sync did not archive,
+  then the newest: of published rows, the one that owns the key ([[shadowed-table]])."
   [table-keys :- [:sequential {:max 100} ::table-key]]
   (if (empty? table-keys)
     []
@@ -273,6 +332,28 @@
   "The user settings rows of the fields of the tables of `ids`, as instances of `:model/FieldUserSettings`."
   [ids :- ::ids]
   (t2/select :model/FieldUserSettings {:where [:in :field_id (fields-of-tables ids)]}))
+
+(mu/defn dimensions-by-table-id :- [:sequential ::row]
+  "`{:field_id :table_id :type :name :human_readable_field_id}` of the Dimension row of each field of the tables of
+  `ids`. `:type` is \"internal\" or \"external\"."
+  [ids :- ::ids]
+  (t2/query {:select [:d.field_id :f.table_id :d.type :d.name :d.human_readable_field_id]
+             :from   [[(t2/table-name :model/Dimension) :d]]
+             :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
+             :where  [:in :f.table_id ids]}))
+
+(defn- full-field-values-condition
+  "The condition of the full field values rows, which the human-readable values of a remapping live in."
+  []
+  [:and [:= :type "full"] [:= :hash_key nil]])
+
+(mu/defn remapped-values-by-field-id :- [:sequential ::row]
+  "`{:id :field_id :values :human_readable_values}` of the full field values rows of the fields of `ids`, in the order
+  of their ids, as instances of `:model/FieldValues`."
+  [ids :- ::ids]
+  (t2/select [:model/FieldValues :id :field_id :values :human_readable_values]
+             {:where    [:and [:in :field_id ids] (full-field-values-condition)]
+              :order-by [[:id :asc]]}))
 
 ;;; ------------------------------------------------- Locks and writes -------------------------------------------------
 
@@ -365,17 +446,22 @@
   (t2/update! :model/NativeQuerySnippet id changes))
 
 (mu/defn lock-table-settings :- [:sequential ::row]
-  "`{:table_id}` of the user settings row of table `table-id` and `{:field_id}` of the user settings rows of its fields,
-  after a lock on each of these rows until the current transaction ends."
+  "`{:table_id}` of the user settings row of table `table-id`, and `{:field_id}` of the user settings rows, the
+  Dimension rows and the full field values rows of its fields, after a lock on each of these rows until the current
+  transaction ends."
   [table-id :- pos-int?]
   (into (vec (t2/query {:select [:table_id]
                         :from   [(t2/table-name :model/TableUserSettings)]
                         :where  [:= :table_id [:auto/param table-id]]
                         :for    [:update]}))
-        (t2/query {:select [:field_id]
-                   :from   [(t2/table-name :model/FieldUserSettings)]
-                   :where  [:in :field_id (fields-of-tables [table-id])]
-                   :for    [:update]})))
+        (mapcat (fn [[model condition]]
+                  (t2/query {:select [:field_id]
+                             :from   [(t2/table-name model)]
+                             :where  [:and [:in :field_id (fields-of-tables [table-id])] condition]
+                             :for    [:update]})))
+        [[:model/FieldUserSettings nil]
+         [:model/Dimension nil]
+         [:model/FieldValues (full-field-values-condition)]]))
 
 (mu/defn table-fields :- [:sequential ::row]
   "`{:id :name :parent_id :active}` of each field of table `table-id`, by the values that warehouse sync writes."
@@ -424,6 +510,41 @@
   [field-id :- pos-int?
    changes  :- ::row]
   (t2/update! :model/FieldUserSettings field-id changes))
+
+(mu/defn set-dimension! :- :any
+  "Makes the Dimension row of field `field-id` have the columns `row` (`:type`, `:name`, `:human_readable_field_id`),
+  through the Dimension model: an update of its row, or an insert."
+  [field-id :- pos-int?
+   row      :- ::row]
+  (if (t2/exists? :model/Dimension :field_id field-id)
+    (t2/update! :model/Dimension :field_id field-id row)
+    (t2/insert! :model/Dimension (assoc row :field_id field-id))))
+
+(mu/defn delete-dimension! :- :int
+  "Deletes the Dimension row of field `field-id`; returns the number of rows."
+  [field-id :- pos-int?]
+  (t2/delete! :model/Dimension :field_id field-id))
+
+(mu/defn set-remapped-values! :- :any
+  "Sets the values and the human-readable values of the newest full field values row of field `field-id` through the
+  FieldValues model; with no such row, inserts one with them."
+  [field-id              :- pos-int?
+   values                :- [:sequential [:maybe [:or :string number? :boolean]]]
+   human-readable-values :- [:maybe [:sequential [:maybe :string]]]]
+  (if-let [id (:id (last (remapped-values-by-field-id [field-id])))]
+    (t2/update! :model/FieldValues id {:values values :human_readable_values human-readable-values})
+    (t2/insert! :model/FieldValues {:field_id              field-id
+                                    :type                  :full
+                                    :values                values
+                                    :human_readable_values human-readable-values})))
+
+(mu/defn clear-remapped-values! :- :any
+  "Removes the human-readable values of the newest full field values row of field `field-id`, if it has any, through
+  the FieldValues model."
+  [field-id :- pos-int?]
+  (let [{:keys [id human_readable_values]} (last (remapped-values-by-field-id [field-id]))]
+    (when (seq human_readable_values)
+      (t2/update! :model/FieldValues id {:human_readable_values nil}))))
 
 ;;; ----------------------------------------------------- Users ------------------------------------------------------
 

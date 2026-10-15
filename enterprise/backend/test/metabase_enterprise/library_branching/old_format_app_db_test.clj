@@ -1,9 +1,10 @@
 (ns metabase-enterprise.library-branching.old-format-app-db-test
-  "The pull, the deploy and the status of the app DB instance on trees in the old format, with a published table that
-  has no user display name: remote sync writes no display name for it, so its name is the one that warehouse sync
-  gives the table on the instance. These tests commit their content and delete it afterwards, and they change the one
-  base row of the app DB; they are not parallel."
-  {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
+  "The pull, the deploy, the status, the push and merge-branch of the app DB instance on trees in the old format, with a
+  published table that has no user display name: remote sync writes no display name for it, so its name is the one
+  that warehouse sync gives the table on the instance. These tests commit their content and delete it afterwards, and
+  they change the one base row and the task rows of the app DB; they are not parallel."
+  {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote       clojure.core/fn
+                                 metabase-enterprise.library-branching.repository-test-util/with-remote clojure.core/fn}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.deploy :as deploy]
@@ -12,9 +13,15 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.manifest :as manifest]
+   [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull :as pull]
+   [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
+   [metabase-enterprise.library-branching.repository :as repository]
+   [metabase-enterprise.library-branching.repository-test-util :as rtu]
    [metabase-enterprise.library-branching.status :as status]
+   [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -150,3 +157,42 @@
                  (is (= {:result :deployed :head c1} (select-keys (deploy! s) [:result :head])))
                  (is (= remote (read-snapshot inst)))
                  (is (nil? (user-display-name))))))))))))
+
+(deftest push-of-old-format-base-names-tables-as-the-instance-does-test
+  (testing (str "with no base digests, the push decodes the base in the old format with the names of warehouse sync: "
+                "the local content of the base is nothing to push; app DB " (mdb/db-type))
+    (tasks.tu/with-no-tasks
+      (do-with-published-venues!
+       (fn [_data]
+         (let [inst (app-db/app-db-instance)]
+           (with-remote [repo s]
+             (let [c0 (ptu/remote-commit! repo [] (old-tree (read-snapshot inst)))]
+               (is (= :pulled (:result (pull/pull! inst s ptu/branch))))
+               (clear-digests!)
+               (is (= {:result :nothing-to-push :commit c0} (ptu/push! inst s)))
+               (is (= c0 (ptu/remote-head repo)))))))))))
+
+(deftest merge-branch-of-old-format-trees-names-tables-as-the-instance-does-test
+  (testing (str "merge-branch decodes the merge base and the two heads in the old format with the names of warehouse "
+                "sync on the instance, so the merge writes no table name of a key as a display name; app DB "
+                (mdb/db-type))
+    (do-with-published-venues!
+     (fn [data]
+       (let [venues (venues-key)
+             local  (read-snapshot (app-db/app-db-instance))
+             ours   (assoc-in local [venues :attrs :description] "From main")
+             theirs (assoc-in local [(:entity_id data) :attrs :description] "From dev")]
+         (rtu/with-remote [repo url]
+           (rtu/with-settings {:remote-sync-url url :remote-sync-branch "main"}
+             (let [a (pltu/commit-on! repo "main" [] (old-tree local))
+                   m (pltu/commit-on! repo "main" [a] (old-tree ours))
+                   d (pltu/commit-on! repo "dev" [a] (old-tree theirs))
+                   {:keys [outcome]} (operations/merge-branch-task! nil "main" "dev")
+                   ;; a store holds the commits of the branches that it fetched
+                   merged (repository/do-with-store (fn [s]
+                                                      (store/head s "main")
+                                                      (ptu/commit-snapshot s (:commit outcome))))]
+               (is (=? {:kind "merged" :branch "main" :from "dev" :commit string?} outcome))
+               (is (= [m d] (ptu/commit-parents repo (:commit outcome))))
+               (is (= "Venues" (get-in merged [venues :name])))
+               (is (= (assoc-in ours [(:entity_id data) :attrs :description] "From dev") merged))))))))))

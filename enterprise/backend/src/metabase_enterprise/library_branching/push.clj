@@ -12,6 +12,7 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.roots :as roots]
+   [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.settings :as settings]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]))
@@ -33,9 +34,13 @@
   (format "The repository already has a branch %s, so nothing was pushed." branch))
 
 (defn outcome
-  "The outcome of the task of a push that landed commit `commit` on branch `branch`."
-  [branch commit]
-  {:kind "pushed" :branch branch :commit commit})
+  "The outcome of the task of a push that landed commit `commit` on branch `branch`, with `:warnings`, the message of
+  each table of `shadowed` (`scope/shadowed-tables`), when there is one."
+  ([branch commit]
+   (outcome branch commit nil))
+  ([branch commit shadowed]
+   (cond-> {:kind "pushed" :branch branch :commit commit}
+     (seq shadowed) (assoc :warnings (mapv scope/shadowed-message shadowed)))))
 
 (defn foreign-files
   "The files of tree `t`, `{path bytes}`, that a push keeps at their paths: `claims/kept-files`."
@@ -43,19 +48,19 @@
   (claims/kept-files (claims/item-claims t)))
 
 (defn tree-digests
-  "The item digests of the snapshot that tree `t` holds (`claims/decode`), with the codecs `codecs`, or nil when it
-  does not decode (a tree with a file of a kind that has no codec, for example)."
-  [codecs t]
-  (some->> (claims/decode codecs t)
+  "The item digests of the snapshot that tree `t` holds (`claims/decode`, with the options `opts`), with the codecs
+  `codecs`, or nil when it does not decode (a tree with a file of a kind that has no codec, for example)."
+  [codecs t opts]
+  (some->> (claims/decode codecs t opts)
            :snapshot
            (writer/item-digests codecs)))
 
 (defn- base-digests
-  "The item digests of the content of base `b`: the digests that the instance stored with it, else those of its tree.
-  nil when neither is known; `{}` when there is no base."
+  "The item digests of the content of base `b`: the digests that the instance stored with it, else those of its tree,
+  decoded with `pull/decode-opts` of `inst`. nil when neither is known; `{}` when there is no base."
   [inst codecs base-tree b]
   (if b
-    (or (instance/base-digests inst b) (tree-digests codecs @base-tree))
+    (or (instance/base-digests inst b) (tree-digests codecs @base-tree (pull/decode-opts inst)))
     {}))
 
 (defn- dirs-of
@@ -94,8 +99,9 @@
 (defn- commit!
   "Writes commit `files` with `parents`, then, as task `task`: passes the commit point, moves `branch` to the commit
   (from base `b`, or from no ref when `new-branch?`), and in the record step moves the base from `b` to it with the
-  digests of the pushed snapshot, calls `on-record` when the base moved, and ends the task."
-  [inst store task branch message b parents new-branch? files digests on-record]
+  digests of the pushed snapshot, calls `on-record` when the base moved, and ends the task with the [[outcome]] of
+  `shadowed`."
+  [inst store task branch message b parents new-branch? files digests on-record shadowed]
   (let [c      (store/write-commit store parents files message)
         marked (tasks/mark-committing! task)]
     (if (not= :ok marked)
@@ -110,8 +116,9 @@
                          (let [set-base (instance/set-base! inst b c digests)]
                            (if (= :ok set-base)
                              (do (on-record)
-                                 {:result :pushed :commit c :outcome (outcome branch c)})
-                             {:result :base-moved :commit c :base (:moved set-base) :outcome (outcome branch c)})))]
+                                 {:result :pushed :commit c :outcome (outcome branch c shadowed)})
+                             {:result :base-moved :commit c :base (:moved set-base)
+                              :outcome (outcome branch c shadowed)})))]
             (dissoc (tasks/record! task record) :outcome))
 
           new-branch?
@@ -139,7 +146,9 @@
   - `{:result :base-moved :commit c :base actual}`: the branch is at `c`, and another task moved the base;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
-  Only `:pushed` and `:base-moved` change the branch, and only `:pushed` changes the base. A push past its commit
+  A result after the read of the snapshot also has `:shadowed-tables`, the published tables that scope leaves out
+  because another published table owns their key (`scope/shadowed-tables`), when there is one. Only `:pushed` and
+  `:base-moved` change the branch, and only `:pushed` changes the base. A push past its commit
   point ends its task: as successful with the outcome of [[outcome]] (`:pushed`, `:base-moved`), or as failed with
   [[remote-moved-message]] (a `:remote-moved` after the commit point) or [[branch-exists-message]] (a
   `:branch-exists` after the commit point). Every other result leaves the task running, for the caller to end. A
@@ -164,18 +173,19 @@
          (and new-branch? h)                {:result :branch-exists :head h}
          (and (not new-branch?) (not= b h)) {:result :remote-moved :base b :head h}
          :else
-         (let [s         (:snapshot (instance/read-snapshot inst))
+         (let [{s :snapshot shadowed :shadowed-tables} (instance/read-snapshot inst)
                digests   (writer/item-digests codecs s)
                ;; A base that the store does not hold (no branch held it at the fetch) can be no parent of a push to a
                ;; new branch: the commit has no parent and no foreign files then.
                base-tree (delay (when (and b (pull/readable? store b)) (store/read-tree store b)))]
-           (if (and (not new-branch?) (= digests (base-digests inst codecs base-tree b)))
-             {:result :nothing-to-push :commit b}
-             (let [findings (validate/validate s {:roots (roots/root-ids s)})]
-               (if (seq findings)
-                 {:result :invalid :findings findings}
-                 (let [{:keys [files] :as t} (tree codecs @base-tree s)]
-                   (if-not files
-                     {:result :invalid :findings (:findings t)}
-                     (commit! inst store task branch message b (if @base-tree [b] []) new-branch? files digests
-                              on-record))))))))))))
+           (cond-> (if (and (not new-branch?) (= digests (base-digests inst codecs base-tree b)))
+                     {:result :nothing-to-push :commit b}
+                     (let [findings (validate/validate s {:roots (roots/root-ids s)})]
+                       (if (seq findings)
+                         {:result :invalid :findings findings}
+                         (let [{:keys [files] :as t} (tree codecs @base-tree s)]
+                           (if-not files
+                             {:result :invalid :findings (:findings t)}
+                             (commit! inst store task branch message b (if @base-tree [b] []) new-branch? files digests
+                                      on-record shadowed))))))
+             (seq shadowed) (assoc :shadowed-tables shadowed))))))))
