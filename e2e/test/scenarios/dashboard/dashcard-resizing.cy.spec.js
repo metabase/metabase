@@ -820,7 +820,7 @@ describe("issue 31628", () => {
       moveMouseAway();
 
       cy.log(`${key}: should show description tooltip on hover`);
-      card(key).findByTestId("scalar-title").icon("info").realHover();
+      card(key).icon("info").realHover();
       cy.findByRole("tooltip")
         .findByText(SMART_SCALAR_QUESTION.description)
         .should("exist");
