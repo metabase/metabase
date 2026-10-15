@@ -871,9 +871,7 @@
   short, human-friendly `title` shown above the resulting chart. Also provide a concise
   one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
   any notable filter); it is used as the saved question's description. See
-  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract.
-
-  With `show_chart` false on a turn that offers run_query, it returns the query and shows the user no chart."
+  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
   [{:keys [_reasoning query visualization show_chart title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
