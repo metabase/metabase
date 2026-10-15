@@ -243,13 +243,17 @@
 (defn- with-timeout [timeout-ms f]
   (if-not timeout-ms
     (f)
-    (let [fut    (future (f))
+    (let [ended  (promise)
+          fut    (future (try (f) (finally (deliver ended true))))
           result (try
                    (deref fut timeout-ms ::timeout)
                    (catch ExecutionException e
                      (throw (or (.getCause e) e))))]
       (when (= ::timeout result)
-        (future-cancel fut))
+        (future-cancel fut)
+        ;; The cancelled tests still run their finally blocks, which clean up the app DB. The next run must not start
+        ;; before they end.
+        (deref ended timeout-ms nil))
       result)))
 
 ;;; Runs
@@ -284,7 +288,8 @@
   run is in progress, so a run among the tests of a run does not recurse.
 
   `opts`: `:tests`, the test vars or a loaded test namespace symbol for each mutation that names none; `:timeout-ms`
-  (default 30000, nil for none), the time the tests of one mutation may take.
+  (default 30000, nil for none), the time the tests of one mutation may take. After a timeout, the run waits at most as
+  long again for the cancelled tests to end.
 
   Each test var runs at most once with no mutation, however many mutations name it.
 
