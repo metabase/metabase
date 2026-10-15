@@ -1,5 +1,6 @@
 (ns metabase-enterprise.library-branching.mutation.core-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.mutation.core :as mut]
@@ -143,6 +144,66 @@
                                      {:tests [#'clamp-test] :timeout-ms 100})]
       (is (= [:timeout :killed] (map :result results))))))
 
+(defn- fixture-threads
+  "The live threads, but this one, with a frame of a fixture function."
+  []
+  (into #{}
+        (keep (fn [[^Thread thread frames]]
+                (when (and (.isAlive thread)
+                           (not= thread (Thread/currentThread))
+                           (some #(str/starts-with? (.getClassName ^StackTraceElement %)
+                                                    "metabase_enterprise.library_branching.mutation.fixtures$")
+                                 frames))
+                  thread)))
+        (Thread/getAllStackTraces)))
+
+(def ^:private redefs-test
+  "A test that redefines a var, then counts down and clamps inside the redefinition."
+  (anonymous-test-var! 'redefs-test
+                       (fn []
+                         (with-redefs [fixtures/tagged (constantly ::redefined)]
+                           (is (= :done (fixtures/count-down 3)))
+                           (is (= 5 (fixtures/clamp 1 5 9)))))))
+
+(deftest timeout-stops-test
+  (testing "a mutation that makes a loop endless times out, and the run stops the loop before it returns"
+    (let [threads-before (fixture-threads)
+          roots-before   (mapv root [#'fixtures/tagged #'fixtures/step #'fixtures/count-down #'fixtures/clamp])
+          results        (mut/run-mutations [{:name   :endless-in-target
+                                              :doc    "clamp loops forever and calls no var."
+                                              :target `fixtures/clamp
+                                              :edits  [[:replace '(min hi x) '(loop [n 0] (recur (inc n)))]]}
+                                             {:name   :endless-in-caller
+                                              :doc    "step returns its argument, so the loop of count-down never ends."
+                                              :target `fixtures/step
+                                              :edits  [[:replace '(dec n) 'n]]}]
+                                            {:tests [redefs-test] :timeout-ms 200})]
+      (is (= [:timeout :timeout] (map :result results)))
+      (is (= [nil nil] (map :leaked results)))
+      (testing "no thread of the run still runs"
+        (is (= threads-before (fixture-threads))))
+      (testing "the redefinitions of the tests and the wrappers of the stop are gone"
+        (is (every? true? (map identical?
+                               roots-before
+                               (map root [#'fixtures/tagged #'fixtures/step #'fixtures/count-down #'fixtures/clamp]))))))))
+
+(deftest leaked-thread-test
+  (testing "a loop that the run cannot stop gives :timeout with the thread that still runs, and the result fails"
+    (reset! fixtures/released false)
+    (let [threads-before (fixture-threads)
+          results        (mut/run-mutations [{:name   :spins
+                                              :doc    "clamp waits in a loop that calls no var."
+                                              :target `fixtures/clamp
+                                              :edits  [[:replace '(min hi x) '(spin)]]}]
+                                            {:tests [#'clamp-test] :timeout-ms 100})
+          leaked         (set/difference (fixture-threads) threads-before)]
+      (reset! fixtures/released true)
+      (run! #(.join ^Thread %) leaked)
+      (is (= [:timeout] (map :result results)))
+      (is (re-find #"fixtures\$spin" (str (:leaked (first results)))))
+      (is (= 1 (count leaked)))
+      (is (= threads-before (fixture-threads))))))
+
 (deftest baseline-test
   (testing "tests that fail with no mutation make the run throw, because no result would mean anything"
     (let [always-fails (anonymous-test-var! 'always-fails (fn [] (is (= 1 2))))]
@@ -199,8 +260,9 @@
                         {:name :c :doc "" :expect :killed :result :survived}
                         {:name :d :doc "" :expect :survived :result :survived}
                         {:name :e :doc "" :expect :survived :result :killed}
-                        {:name :f :doc "" :expect :killed :result :invalid :reason "stale"}]))
-    (is (= [:pass :pass :fail :pass :fail :fail] @events))))
+                        {:name :f :doc "" :expect :killed :result :invalid :reason "stale"}
+                        {:name :g :doc "" :expect :killed :result :timeout :leaked "thread at frame"}]))
+    (is (= [:pass :pass :fail :pass :fail :fail :fail] @events))))
 
 (deftest report-test
   (let [text (mut/report [{:name :a :doc "Doc a." :target `fixtures/clamp :expect :killed :result :killed
