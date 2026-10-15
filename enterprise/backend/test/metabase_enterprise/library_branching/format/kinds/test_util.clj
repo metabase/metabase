@@ -279,18 +279,48 @@
              :namespace       [false (gen/elements ["snippets" "transforms" "data-actions" "data-apps"])]
              :authority_level [false (gen/return "official")]}))
 
+(def ^:private card-attrs
+  "`{k [required? gen]}` of the attributes of every card kind."
+  {:description            [false text-gen]
+   :display                [true (gen/elements ["scalar" "line" "bar" "table"])]
+   :query                  [true query-gen]
+   :visualization_settings [false visualization-settings-gen]
+   :parameters             [false (gen/vector document-map-gen 1 2)]
+   :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
+   :collection_position    [false gen/large-integer]
+   :collection_preview     [false (gen/return false)]})
+
 (def metric-attrs-gen
   "Generates the `:attrs` of a metric."
-  (attrs-of {:description            [false text-gen]
-             :display                [true (gen/elements ["scalar" "line" "bar" "table"])]
-             :query                  [true query-gen]
-             :visualization_settings [false visualization-settings-gen]
-             :parameters             [false (gen/vector document-map-gen 1 2)]
-             :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
-             :collection_position    [false gen/large-integer]
-             :collection_preview     [false (gen/return false)]
-             :dimensions             [false (gen/vector document-map-gen 0 2)]
-             :dimension_mappings     [false (gen/vector document-map-gen 0 2)]}))
+  (attrs-of (assoc card-attrs
+                   :dimensions         [false (gen/vector document-map-gen 0 2)]
+                   :dimension_mappings [false (gen/vector document-map-gen 0 2)])))
+
+(def question-attrs-gen
+  "Generates the `:attrs` of a question: sometimes of a dashboard or of a document."
+  (attrs-of (assoc card-attrs
+                   :dashboard_id [false lb.tu/entity-id-gen]
+                   :document_id  [false lb.tu/entity-id-gen])))
+
+(def result-column-gen
+  "Generates a column of the result metadata of a model, in the form of the serdes export: a name, the values that a
+  person edits, and for a native query its field, table and types by natural key."
+  (gen/fmap (fn [[n m]] (assoc m :name n))
+            (gen/tuple (gen/elements ["TOTAL" "count" "sum" "Société"])
+                       (attrs-of {:display_name       [false non-empty-text-gen]
+                                  :description        [false text-gen]
+                                  :semantic_type      [false (gen/elements ["type/Currency" "type/FK" "type/Category"])]
+                                  :visibility_type    [false (gen/elements ["normal" "details-only"])]
+                                  :settings           [false document-map-gen]
+                                  :field_ref          [false field-ref-gen]
+                                  :fk_target_field_id [false field-key-gen]
+                                  :id                 [false field-key-gen]
+                                  :table_id           [false lb.tu/table-key-gen]
+                                  :base_type          [false (gen/elements ["type/Integer" "type/Text"])]}))))
+
+(def model-attrs-gen
+  "Generates the `:attrs` of a model."
+  (attrs-of (assoc card-attrs :result_metadata [false (gen/vector result-column-gen 1 3)])))
 
 (def ^:private field-settings-gen
   (gen/recursive-gen
@@ -374,7 +404,9 @@
    :glossary-term   glossary-attrs-gen
    :measure         measure-attrs-gen
    :metric          metric-attrs-gen
+   :model           model-attrs-gen
    :published-table published-table-attrs-gen
+   :question        question-attrs-gen
    :segment         segment-attrs-gen
    :snippet         snippet-attrs-gen})
 

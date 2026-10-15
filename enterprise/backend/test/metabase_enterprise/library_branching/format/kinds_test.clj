@@ -50,8 +50,8 @@
     (is (= snapshot/kinds (set (keys by-kind)))))
   (testing "the words and directory kinds of the layout"
     (is (= {:collection ["collection" true] :glossary-term ["term" false] :measure ["measure" false]
-            :metric ["metric" false] :published-table ["table" false] :segment ["segment" false]
-            :snippet ["snippet" false]}
+            :metric ["metric" false] :model ["model" false] :published-table ["table" false]
+            :question ["question" false] :segment ["segment" false] :snippet ["snippet" false]}
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
 ;;; ------------------------------------------------------ Laws -------------------------------------------------------
@@ -316,6 +316,7 @@
   (doseq [k [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type :entity_id
              :created_at :updated_at :creator_id :archived :result_metadata :card_schema]
           [kind item] [[:metric (get golden-snapshot total-revenue-id)]
+                       [:question (assoc (get golden-snapshot total-revenue-id) :kind :question)]
                        [:collection (get golden-snapshot revenue-id)]
                        [:snippet (get golden-snapshot base-filter-id)]
                        [:published-table (get golden-snapshot orders)]

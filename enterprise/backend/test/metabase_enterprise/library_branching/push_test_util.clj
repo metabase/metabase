@@ -242,10 +242,11 @@
   (case kind
     :collection (cond-> (update item :attrs dissoc :namespace)
                   (nil? place) (update :attrs assoc :type "library"))
-    :metric     (update item :attrs #(-> %
-                                         (assoc :query (count-query orders-table))
-                                         (dissoc :visualization_settings :parameters :parameter_mappings
-                                                 :dimensions :dimension_mappings)))
+    (:metric :question :model)
+    (update item :attrs #(-> %
+                             (assoc :query (count-query orders-table))
+                             (dissoc :visualization_settings :parameters :parameter_mappings
+                                     :dimensions :dimension_mappings :dashboard_id :document_id)))
     :snippet    (update item :attrs dissoc :template_tags)
     :segment    (assoc-in item [:attrs :definition :stages 0 :filters] [[">" {} ["field" {:base-type "type/Integer"} "ID"] 1]])
     :measure    (assoc-in item [:attrs :definition :stages 0 :aggregation] [["count" {}]])

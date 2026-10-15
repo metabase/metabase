@@ -50,8 +50,13 @@
                    :model/Card       m1       {:name "q1" :type :metric :display :scalar :collection_id (:id metrics)
                                                :dataset_query (write-test/sum-query :venues :price)}
                    :model/Card       m2       {:name "q2" :type :metric :display :scalar :collection_id (:id metrics)
-                                               :dataset_query (write-test/sum-query :checkins :user_id)}]
-      (let [query (fn [card] (get-in (write-test/current :metric (:entity_id card)) [:attrs :query]))]
+                                               :dataset_query (write-test/sum-query :checkins :user_id)}
+                   :model/Collection app      {:name "Generated app" :namespace "data-apps" :location "/"}
+                   :model/Collection app2     {:name "Generated app two" :namespace "data-apps" :location "/"}
+                   :model/Card       m3       {:name "q3" :type :model :display :table :collection_id (:id app)
+                                               :dataset_query (write-test/sum-query :venues :price)}]
+      (let [query (fn [card] (get-in (write-test/current :metric (:entity_id card)) [:attrs :query]))
+            cols  (get-in (write-test/current :model (:entity_id m3)) [:attrs :result_metadata])]
         (f {::metrics         (:entity_id metrics)
             ::sub             (:entity_id sub)
             ::data            (:entity_id data)
@@ -60,6 +65,14 @@
             ::inner           (:entity_id inner)
             ::q1              (query m1)
             ::q2              (query m2)
+            ::app             (:entity_id app)
+            ::app2            (:entity_id app2)
+            ::q3              (get-in (write-test/current :model (:entity_id m3)) [:attrs :query])
+            ::cols            cols
+            ::cols-named      (assoc-in cols [0 :display_name] "Price level total")
+            ::cols-described  (-> cols
+                                  (assoc-in [0 :description] "The sum of the price levels.")
+                                  (assoc-in [0 :semantic_type] "type/Quantity"))
             ::category-target (write-test/field-key :categories :id)
             ::venues-name     (t2/select-one-fn :display_name :model/Table (mt/id :venues))
             ::users-name      (t2/select-one-fn :display_name :model/Table (mt/id :users))})))))
@@ -93,6 +106,23 @@
     (with-attrs {:kind :metric :name item-name :place place}
       {:display display :query query :description desc :visualization_settings settings
        :collection_preview preview :collection_position position})))
+
+(defn- card-gen
+  "A generator of the content of a card of `kind`, :question or :model, in a data app's collection."
+  [kind]
+  (gen/let [item-name (gen/elements ["Orders" "Price total" "A card's name"])
+            place     (gen/elements [::app ::app2])
+            display   (gen/elements ["table" "bar"])
+            query     (gen/elements [::q1 ::q2])
+            desc      (optional (gen/elements ["All orders." "Für alle"]))
+            settings  (optional (gen/elements [{:graph.metrics ["sum"]} {:table.pivot false}]))
+            position  (optional (gen/elements [1 2]))
+            cols      (gen/elements [::cols ::cols-named ::cols-described])]
+    (with-attrs {:kind kind :name item-name :place place}
+      (cond-> {:display display :query query :description desc :visualization_settings settings
+               :collection_position position}
+        ;; A model's columns are those of its query, so they go with the query of the columns of the world.
+        (= :model kind) (assoc :query ::q3 :result_metadata cols)))))
 
 (defn- collection-gen
   "A generator of the content of a collection in the area `area`: :library or :snippets."
@@ -172,57 +202,75 @@
    (t2/select :metabase_field_user_settings {:order-by [:field_id]})])
 
 (defn- laws-hold!
-  "True iff each write of the generated `items` to identity `id` of `kind` reads back with current (PutGet), and a
-  write of the content that current then returns changes no row (GetPut). Writes in a world that rolls back."
-  [kind id items]
+  "True iff each write of the generated `items` to identity `id` reads back with current (PutGet), and a write of the
+  content that current then returns changes no row (GetPut). Each item is written with the store of its own kind, so a
+  sequence of cards can change the card's kind. Writes in a world that rolls back."
+  [id items]
   (do-with-world!
    (fn [world]
-     (when (= :published-table kind)
+     (when (vector? id)
        ;; Each trial starts from a table with no user value.
        (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema (second id) :name (peek id))]
          (t2/delete! :model/TableUserSettings :table_id table-id)
          (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-set :model/Field :table_id table-id)])))
-     (let [store   (get app-db/kind-stores kind)
+     (let [store   #(get app-db/kind-stores (:kind %))
            put-get (every? (fn [item]
                              (let [item (resolve-item world item)
-                                   item (assoc item :refs (format.kinds/refs kind id (:attrs item)))]
-                               (instance/write! store id item)
-                               (= item (instance/current store id))))
+                                   item (assoc item :refs (format.kinds/refs (:kind item) id (:attrs item)))]
+                               (instance/write! (store item) id item)
+                               (= item (instance/current (store item) id))))
                            items)
-           before  (rows id)]
-       (instance/write! store id (instance/current store id))
+           last-kind (:kind (peek (vec items)))
+           s         (get app-db/kind-stores last-kind)
+           before    (rows id)]
+       (instance/write! s id (instance/current s id))
        (and put-get (= before (rows id)))))))
 
 (def ^:private trials 30)
 
 (defspec metric-laws-test trials
   (prop/for-all [items (gen/vector metric-gen 1 3)]
-    (laws-hold! :metric "lbGenMetric0000000001" items)))
+    (laws-hold! "lbGenMetric0000000001" items)))
+
+(defspec question-laws-test trials
+  (prop/for-all [items (gen/vector (card-gen :question) 1 3)]
+    (laws-hold! "lbGenQuestion00000001" items)))
+
+(defspec model-laws-test trials
+  (prop/for-all [items (gen/vector (card-gen :model) 1 3)]
+    (laws-hold! "lbGenModel00000000001" items)))
+
+(defspec card-kind-change-laws-test trials
+  ;; A question can become a model and a model a question: the laws hold over writes of both kinds to one card.
+  (prop/for-all [items (gen/vector (gen/one-of [(card-gen :question) (card-gen :model)]) 2 4)]
+    (laws-hold! "lbGenCard000000000001" items)))
 
 (defspec library-collection-laws-test trials
   (prop/for-all [items (gen/vector (collection-gen :library) 1 3)]
-    (laws-hold! :collection "lbGenCollection000001" items)))
+    (laws-hold! "lbGenCollection000001" items)))
 
 (defspec snippet-collection-laws-test trials
   (prop/for-all [items (gen/vector (collection-gen :snippets) 1 3)]
-    (laws-hold! :collection "lbGenCollection000002" items)))
+    (laws-hold! "lbGenCollection000002" items)))
 
 (defspec snippet-laws-test trials
   (prop/for-all [items (gen/vector snippet-gen 1 3)]
-    (laws-hold! :snippet "lbGenSnippet000000001" items)))
+    (laws-hold! "lbGenSnippet000000001" items)))
 
 (defspec published-table-laws-test trials
   (prop/for-all [[table items] (gen/bind (gen/elements [:venues :users])
                                          (fn [table]
                                            (gen/tuple (gen/return table)
                                                       (gen/vector (published-table-gen table) 1 3))))]
-    (laws-hold! :published-table (write-test/table-key table) items)))
+    (laws-hold! (write-test/table-key table) items)))
 
 (deftest generators-cover-the-cases-test
   (testing "the generators give the cases that the laws must hold for"
     (let [sample (fn [g] (gen/sample g 60))
           tables (sample (published-table-gen :venues))]
       (is (some #(get-in % [:attrs :description]) (sample metric-gen)) "a metric with a description")
+      (is (some #(= ::cols-named (get-in % [:attrs :result_metadata])) (sample (card-gen :model)))
+          "a model with an edited column")
       (is (some #(nil? (:place %)) (sample (collection-gen :snippets))) "a collection at the root level")
       (is (some #(get-in % [:attrs :template_tags]) (sample snippet-gen)) "a snippet with a tag")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :fk_target]) tables) "a foreign key target")
