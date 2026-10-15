@@ -7,7 +7,7 @@ import { Box, Flex, Icon, Tooltip, rem } from "metabase/ui";
 import S from "./ScalarLabel.module.css";
 
 const DESCRIPTION_ICON_SIZE = 16;
-const DESCRIPTION_ICON_GAP = 4;
+const DESCRIPTION_ICON_GAP = 8;
 const DESCRIPTION_ICON_SPACE = DESCRIPTION_ICON_SIZE + DESCRIPTION_ICON_GAP;
 
 interface ScalarLabelProps {
