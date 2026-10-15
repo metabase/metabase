@@ -806,29 +806,34 @@
                    ([raw] (run "open" raw))
                    ([tool-name raw]
                     (reset! received ::not-called)
+                    ;; `:result`, not a chunk-level `:error`: a non-object argument list is a
+                    ;; validation failure like any other, so it comes back classed, with its text
+                    ;; where every other failure's text is.
                     (-> (into [] (self.core/tool-executor-xf tools)
                               [{:type :tool-input-start :toolName tool-name :toolCallId "call-n"}
                                {:type :tool-input-delta :toolCallId "call-n" :inputTextDelta raw}
                                {:type :tool-input-available :toolName tool-name :toolCallId "call-n"}])
-                        last :error :message)))]
+                        last :result)))
+        message  (fn [& args] (:output (apply run args)))]
     (testing "valid JSON that isn't an object is rejected before it reaches a tool whose schema accepts any map"
       (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
-             (run "[\"orders\"]")))
+             (message "[\"orders\"]")))
+      (is (= {:class :validation :code :invalid-arguments} (:error (run "[\"orders\"]"))))
       (is (= ::not-called @received)))
     (testing "a JSON string holding an object is reported as the string the model sent, not decoded into one"
       (is (= "Invalid tool arguments: expected an object of named arguments; received a string."
-             (run "\"{\\\"names\\\": [\\\"orders\\\"]}\"")))
+             (message "\"{\\\"names\\\": [\\\"orders\\\"]}\"")))
       (is (= ::not-called @received)))
     (testing "a JSON boolean is rejected, not run as an empty argument map"
       (is (= "Invalid tool arguments: expected an object of named arguments; received a boolean."
-             (run "false")))
+             (message "false")))
       (is (= ::not-called @received)))
     (testing "JSON null still runs the tool with an empty argument map"
-      (is (nil? (run "null")))
+      (is (nil? (:error (run "null"))))
       (is (= {} @received)))
     (testing "a tool with no argument schema rejects a non-object too"
       (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
-             (run "untyped" "[\"orders\"]")))
+             (message "untyped" "[\"orders\"]")))
       (is (= ::not-called @received)))))
 
 (deftest ^:parallel tool-without-schema-is-not-validated-test
