@@ -23,7 +23,7 @@ import {
   SettingsSection,
   SwitchSettingsSection,
 } from "metabase/settings-components";
-import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
+import { Box, Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
@@ -165,15 +165,16 @@ function MetabotQueryExecutionSettingsSection({ id }: { id: string }) {
   );
 
   return (
-    <SwitchSettingsSection
-      checked={checked}
-      description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
-      id={id}
-      lockedEnvName={envName}
-      onChange={onChange}
-      switchDisabled={isBusy}
-      title={t`Let Metabot read query results`}
-    />
+    <Box id={id}>
+      <SwitchSettingsSection
+        checked={checked}
+        description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+        lockedEnvName={envName}
+        onChange={onChange}
+        switchDisabled={isBusy}
+        title={t`Let Metabot read query results`}
+      />
+    </Box>
   );
 }
 
