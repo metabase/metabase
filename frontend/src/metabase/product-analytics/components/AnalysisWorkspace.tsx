@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -15,6 +16,7 @@ import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
 import { useSaveAnalysis } from "../use-save-analysis";
+import { useSuggestedSettings } from "../use-suggested-settings";
 
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisToolbar } from "./AnalysisToolbar";
@@ -41,14 +43,39 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     setPanel,
     onChangeSettings,
     onSaved,
+    isUntouched,
+    adoptSuggestions,
+    isRunHeld,
+    releaseRun,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
-  const { config, table, widgets, missing, display, vizSettings, query } =
-    useAnalysis({
-      kind,
-      tableId,
-      stored,
-      onChangeSettings,
-    });
+  const {
+    config,
+    table,
+    computed,
+    widgets,
+    missing,
+    display,
+    vizSettings,
+    query,
+  } = useAnalysis({
+    kind,
+    tableId,
+    stored,
+    isRunHeld,
+    onChangeSettings,
+  });
+
+  const suggested = useSuggestedSettings({
+    config,
+    table,
+    computed,
+    enabled: isUntouched,
+  });
+  useEffect(() => {
+    if (suggested !== undefined) {
+      adoptSuggestions(suggested);
+    }
+  }, [suggested, adoptSuggestions]);
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? t`${config.name} analysis on ${tableName}`;
@@ -130,6 +157,14 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           }
           warnings={query.warnings}
           missing={missing}
+          heldRun={
+            isRunHeld
+              ? {
+                  message: t`We picked some ${config.setupLabel.toLowerCase()} to start from, based on the events and pages in ${tableName}. Change any of them, or run the analysis as is.`,
+                  onRun: releaseRun,
+                }
+              : undefined
+          }
           setupLabel={config.setupLabel}
           onOpenSetup={panel !== "setup" ? () => setPanel("setup") : undefined}
         />

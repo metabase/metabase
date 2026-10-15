@@ -1,9 +1,12 @@
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
+import type { EventDefinition } from "../events/types";
+import { findColumn } from "../find-column";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel } from "../sql/compile/grain";
 
@@ -18,10 +21,16 @@ import {
   isPositiveDuration,
   ready,
 } from "./setting-helpers";
+import {
+  type StepCandidate,
+  type SuggestedStep,
+  suggestFunnelSteps,
+} from "./suggest-funnel-steps";
 import type {
   AnalysisConfig,
   AnalysisSettingDefinitions,
   FunnelSettings,
+  SuggestionContext,
 } from "./types";
 
 const MIN_STEPS = 2;
@@ -117,6 +126,78 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
   },
 };
 
+const STAGE_INDEX = -1;
+
+/**
+ * Turns a suggested step into an event definition: a segment becomes a
+ * segment filter, a value becomes an equality filter on its role's column.
+ * `null` when the table can't express it, e.g. the segment is gone.
+ */
+const toEventDefinition = (
+  { tableQuery, table }: SuggestionContext,
+  columnByRole: Partial<Record<"event_name" | "url_path", string | null>>,
+  step: SuggestedStep,
+): EventDefinition | null => {
+  const filter = (() => {
+    if (step.source === "segment") {
+      const segment = table.segments?.find(({ name }) => name === step.value);
+      return segment ? Lib.segmentMetadata(tableQuery, segment.id) : null;
+    }
+    const columnName = columnByRole[step.source];
+    if (!columnName) {
+      return null;
+    }
+    try {
+      return Lib.stringFilterClause({
+        operator: "=",
+        column: findColumn(tableQuery, columnName),
+        values: [step.value],
+        options: {},
+      });
+    } catch {
+      return null;
+    }
+  })();
+  return filter
+    ? {
+        name: step.name,
+        query: Lib.toJsQuery(Lib.filter(tableQuery, STAGE_INDEX, filter)),
+      }
+    : null;
+};
+
+const getSuggestedSettings = (
+  context: SuggestionContext,
+  settings: FunnelSettings,
+): Partial<FunnelSettings> | undefined => {
+  const candidates: StepCandidate[] = [
+    ...(context.table.segments ?? [])
+      .filter((segment) => !segment.archived)
+      .map(({ name }) => ({ source: "segment" as const, value: name })),
+    ...(context.valuesByRole.event_name ?? []).map((value) => ({
+      source: "event_name" as const,
+      value,
+    })),
+    ...(context.valuesByRole.url_path ?? []).map((value) => ({
+      source: "url_path" as const,
+      value,
+    })),
+  ];
+  const steps = suggestFunnelSteps(candidates)
+    .map((step) =>
+      toEventDefinition(
+        context,
+        {
+          event_name: settings["columns.event_name"],
+          url_path: settings["columns.url_path"],
+        },
+        step,
+      ),
+    )
+    .filter((step) => step !== null);
+  return steps.length >= MIN_STEPS ? { "funnel.steps": steps } : undefined;
+};
+
 export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
   kind: "funnel",
   get name() {
@@ -129,6 +210,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
     return t`Steps`;
   },
   settings: SETTINGS,
+  getSuggestedSettings,
   toSpec: (settings, events) => {
     const steps = settings["funnel.steps"];
     if (steps.length < MIN_STEPS) {

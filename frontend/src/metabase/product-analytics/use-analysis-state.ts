@@ -24,6 +24,10 @@ const NO_SAVED_SETTINGS: StoredSettings = {};
  * `hasUnsavedChanges` compares against the settings this page opened with or
  * last saved, so it's false as soon as a save finishes, before the card
  * refetches.
+ *
+ * A new analysis may adopt suggested settings as what it opened with, so they
+ * count as defaults rather than edits. The run is then held for review until
+ * the user edits something or asks for it.
  */
 export const useAnalysisState = <S>(
   savedSettings: StoredSettings | undefined,
@@ -41,6 +45,8 @@ export const useAnalysisState = <S>(
       ? "setup"
       : null,
   );
+
+  const [isRunHeld, setIsRunHeld] = useState(false);
 
   const hash = location.hash.slice(1);
   const stored = useMemo(
@@ -65,10 +71,29 @@ export const useAnalysisState = <S>(
         return;
       }
       const nextHash = _.isEqual(next, lastSaved) ? "" : encodeSettings(next);
+      setIsRunHeld(false);
       navigateToHash(nextHash, { replace: false });
     },
     [stored, lastSaved, navigateToHash],
   );
+
+  const isUntouched =
+    savedSettings === undefined &&
+    lastSaved === NO_SAVED_SETTINGS &&
+    hash === "";
+
+  const adoptSuggestions = useCallback(
+    (suggested: StoredSettings) => {
+      // Only a new analysis nobody has edited yet, and only once.
+      if (isUntouched) {
+        setLastSaved(suggested);
+        setIsRunHeld(true);
+      }
+    },
+    [isUntouched],
+  );
+
+  const releaseRun = useCallback(() => setIsRunHeld(false), []);
 
   const handleSaved = useCallback(() => {
     setLastSaved(stored);
@@ -82,5 +107,10 @@ export const useAnalysisState = <S>(
     setPanel,
     onChangeSettings: handleChangeSettings,
     onSaved: handleSaved,
+    /** True for a new analysis nothing has been adopted into or edited. */
+    isUntouched,
+    adoptSuggestions,
+    isRunHeld,
+    releaseRun,
   };
 };

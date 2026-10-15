@@ -1,3 +1,4 @@
+import type * as Lib from "metabase-lib";
 import type {
   CardDisplayType,
   Table,
@@ -24,6 +25,15 @@ import type {
 /** Facts the settings are computed from. Choices belong in settings. */
 export type AnalysisContext = {
   table: Table | undefined;
+};
+
+/** What a new analysis can look at to suggest a starting point. */
+export type SuggestionContext = {
+  table: Table;
+  /** A blank query on `table`, for building event definitions. */
+  tableQuery: Lib.Query;
+  /** The distinct values of the column in each role, once known. */
+  valuesByRole: Partial<Record<ColumnRole, string[]>>;
 };
 
 export type ColumnRoleSettings = {
@@ -121,4 +131,13 @@ export type AnalysisConfig<K extends AnalysisKind> = {
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
   ) => VisualizationSettings;
+  /**
+   * Settings to start a new analysis from, guessed from the table, or
+   * `undefined` to start blank. They're held for review: nothing runs until
+   * the user edits them or asks to.
+   */
+  getSuggestedSettings?: (
+    context: SuggestionContext,
+    settings: AnalysisSettingsByKind[K],
+  ) => Partial<AnalysisSettingsByKind[K]> | undefined;
 };

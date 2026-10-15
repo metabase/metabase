@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Group,
+  Icon,
   Loader,
   Paper,
   Stack,
@@ -27,6 +28,11 @@ import type { MissingSetting } from "../analyses/types";
 
 const SYNTHETIC_CARD_ID = -1;
 
+type HeldRun = {
+  message: string;
+  onRun: () => void;
+};
+
 type AnalysisResultProps = {
   title: string;
   display: CardDisplayType;
@@ -38,6 +44,8 @@ type AnalysisResultProps = {
   warnings: string[];
   /** Settings still to fill in. When non-empty, this replaces the result. */
   missing: MissingSetting[];
+  /** The query is waiting on the user. Replaces the result with a prompt to run. */
+  heldRun?: HeldRun;
   setupLabel: string;
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
@@ -53,6 +61,7 @@ export const AnalysisResult = ({
   error,
   warnings,
   missing,
+  heldRun,
   setupLabel,
   onOpenSetup,
 }: AnalysisResultProps) => {
@@ -74,8 +83,9 @@ export const AnalysisResult = ({
       : null;
   // Errors and loading come first: settings can't be finished without a table.
   const isIncomplete = missing.length > 0 && !error && !isLoading;
+  const isHeld = heldRun !== undefined && !isIncomplete && !error;
   const isShowingVisualization =
-    !isIncomplete && !isLoading && !error && rawSeries !== null;
+    !isIncomplete && !isHeld && !isLoading && !error && rawSeries !== null;
   const allWarnings = isShowingVisualization
     ? [...warnings, ...vizWarnings]
     : warnings;
@@ -95,15 +105,20 @@ export const AnalysisResult = ({
               onOpenSetup={onOpenSetup}
             />
           )}
+          {isHeld && <HeldRunPrompt {...heldRun} />}
           {!isIncomplete && error && <Alert color="error">{error}</Alert>}
-          {!isIncomplete && isLoading && (
+          {!isIncomplete && !isHeld && isLoading && (
             <Box ta="center" py="xl">
               <Loader />
             </Box>
           )}
-          {!isIncomplete && !isLoading && !error && rawSeries === null && (
-            <Text c="text-secondary">{t`Results will appear here.`}</Text>
-          )}
+          {!isIncomplete &&
+            !isHeld &&
+            !isLoading &&
+            !error &&
+            rawSeries === null && (
+              <Text c="text-secondary">{t`Results will appear here.`}</Text>
+            )}
           {isShowingVisualization && (
             <Box flex={1}>
               <Visualization
@@ -119,6 +134,20 @@ export const AnalysisResult = ({
     </Paper>
   );
 };
+
+const HeldRunPrompt = ({ message, onRun }: HeldRun) => (
+  <Stack align="center" justify="center" gap="sm" flex={1} ta="center">
+    <Title order={4} c="text-secondary">
+      {t`Ready when you are`}
+    </Title>
+    <Text c="text-secondary" maw="28rem">
+      {message}
+    </Text>
+    <Button variant="filled" leftSection={<Icon name="play" />} onClick={onRun}>
+      {t`Run the analysis`}
+    </Button>
+  </Stack>
+);
 
 type IncompleteSettingsProps = {
   missing: MissingSetting[];

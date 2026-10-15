@@ -18,18 +18,22 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
   kind: K;
   tableId: ConcreteTableId | undefined;
   stored: StoredSettings;
+  /** Compute everything but don't run the query. */
+  isRunHeld?: boolean;
   onChangeSettings: (changes: Partial<AnalysisSettingsByKind[K]>) => void;
 };
 
 /**
  * Runs an analysis from the settings the user changed: computes the rest of
  * the settings, their widgets, the spec, and the query results. While
- * `missing` is non-empty, `spec` is undefined and no query runs.
+ * `missing` is non-empty, `spec` is undefined and no query runs. While
+ * `isRunHeld`, the spec is still computed but nothing runs either.
  */
 export const useAnalysis = <K extends AnalysisKind>({
   kind,
   tableId,
   stored,
+  isRunHeld = false,
   onChangeSettings,
 }: UseAnalysisArgs<K>) => {
   const config = getAnalysisConfig(kind);
@@ -65,7 +69,11 @@ export const useAnalysis = <K extends AnalysisKind>({
   });
   const spec = specResult.status === "ready" ? specResult.spec : undefined;
   const missing = specResult.status === "incomplete" ? specResult.missing : [];
-  const query = useAnalysisQuery({ spec, tableId, base });
+  const query = useAnalysisQuery({
+    spec: isRunHeld ? undefined : spec,
+    tableId,
+    base,
+  });
 
   return {
     config,
