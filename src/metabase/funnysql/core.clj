@@ -1192,7 +1192,7 @@
     (simple-fn! f args context)
 
     #_else
-    (condp f =
+    (condp = f
       ;; [[honey.sql.pg-ops/atat]] is just `:@@`, but that doesn't work as a keyword literal, and [[case]] treats the
       ;; raw symbol as a compile-time constant instead of evaluating it to `:@@`, so unfortunately we just have to
       ;; have this fallback [[condp]] here 😢
