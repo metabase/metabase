@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.mcp.usage :as mcp.usage]
+   ;; Required for its side effect: loading it loads every tool namespace, which registers itself.
+   [metabase.mcp.v2.api]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
-   [metabase.mcp.v2.tools.query]
-   [metabase.mcp.v2.tools.search]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -425,6 +425,14 @@
         (doseq [tool-name (sort by-name)]
           (testing tool-name
             (is (contains? mutating tool-name))))))))
+
+(deftest delivery-tools-are-open-world-test
+  (testing "delivery tools are open-world: they send to email addresses and Slack channels outside Metabase"
+    (let [delivery (filter #(= "agent:delivery:write" (:scope %)) (@#'registry/manifest))]
+      (is (seq delivery))
+      (doseq [{tool-name :name :keys [annotations]} delivery]
+        (testing tool-name
+          (is (true? (:openWorldHint annotations))))))))
 
 (deftest mutating-tools-gate-on-a-write-scope-test
   (testing "every mutating tool gates on one of the write scopes, so a token can be granted read
