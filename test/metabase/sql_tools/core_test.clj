@@ -303,6 +303,8 @@
           "WITH x AS (SELECT a FROM t) SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM x"
           "SELECT a FROM t UNION SELECT a FROM u INTERSECT SELECT a FROM v EXCEPT SELECT a FROM w"
           "SELECT * FROM (SELECT 1) s WHERE a IN (SELECT b FROM u)"
+          "(SELECT 1)"
+          "((SELECT a FROM t))"
           "SELECT 1;"
           "-- leading\nSELECT 1 -- trailing"
           "/* leading */ SELECT 1; -- trailing"))
@@ -364,11 +366,17 @@
       :mysql    "SELECT RELEASE_ALL_LOCKS()"
       :mysql    "SELECT SLEEP(10)"
       :mysql    "SELECT BENCHMARK(1000000, MD5('x'))"))
-  (testing "reading a sequence or hinting a plain read is read-only"
+  (testing "a SELECT that assigns a user variable changes the session, so it is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :mysql "SELECT @x := 1"
+      :mysql "SELECT @total := @total + a FROM t"))
+  (testing "reading a sequence or a user variable, hinting a plain read, or naming a function argument is read-only"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
       :sqlserver "SELECT * FROM t WITH (NOLOCK)"
       :sqlserver "SELECT * FROM dbo.fn(1)"
-      :postgres  "SELECT currval('seq')")))
+      :postgres  "SELECT currval('seq')"
+      :mysql     "SELECT a FROM t WHERE b = @x"
+      :postgres  "SELECT make_interval(days := 1)")))
 
 (deftest ^:parallel read-only-select?-sql-executing-function-test
   (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
