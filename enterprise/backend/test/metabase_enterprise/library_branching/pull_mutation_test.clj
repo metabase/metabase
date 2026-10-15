@@ -44,6 +44,12 @@
     :target `apply/satisfied?
     :edits  [[:replace '(and trash (nil? content)) false]]
     :tests  [#'pull-test/trash-of-an-item-that-is-already-gone-test]}
+   {:name   :rename-of-a-gone-trash
+    :doc    "The apply keeps the rename of an item whose trash step it skips, because the item is already gone: the
+            rename makes the item again."
+    :target `apply/apply-plan
+    :edits  [[:replace '(or (:trash %) (:interim %)) '(:trash %)]]
+    :tests  [#'pull-test/rename-of-an-item-that-is-already-gone-test]}
    {:name   :pullnovalidate
     :doc    "The pull does not check the head at the structural level (the TLA+ mutation pullnovalidate): an ill-formed
             text merge is applied."

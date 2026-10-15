@@ -24,6 +24,8 @@
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -131,6 +133,76 @@
                    (is (= [venues] (map :id conflicts))))
                  (is (= c1 (instance/base inst)))
                  (is (= "My venues" (user-display-name))))))))))))
+
+(defn- with-metric-row-ids
+  "Old documents `docs`, each link card to a metric with the row id of the metric in place of its entity id, as the
+  export of master writes it. `row-ids` is `{entity-id row-id}`."
+  [docs row-ids]
+  (mapv (fn [doc]
+          (cond-> doc
+            (= "Dashboard" (-> doc :serdes/meta first :model))
+            (update :dashcards (partial mapv (fn [dc]
+                                               (cond-> dc
+                                                 (= "metric" (get-in dc [:visualization_settings :link :entity :model]))
+                                                 (update-in [:visualization_settings :link :entity :id] row-ids)))))))
+        docs))
+
+(defn- count-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
+
+(deftest pull-of-old-format-link-card-to-a-metric-test
+  (testing (str "a dashboard of the old format whose link card holds the row id of a metric: the pull links it to the "
+                "metric of that row, and a row id of no card is a finding that names the dashboard; app DB "
+                (mdb/db-type))
+    (do-with-published-venues!
+     (fn [data]
+       ;; A pull reads at a read point of its own, so the rows commit; `mt/with-temp` would hold a transaction.
+       (let [metric    (t2/insert-returning-instance! :model/Card
+                                                      {:name                   "Linked metric"
+                                                       :type                   :metric
+                                                       :collection_id          (:id data)
+                                                       :creator_id             (mt/user->id :crowberto)
+                                                       :display                :scalar
+                                                       :visualization_settings {}
+                                                       :dataset_query          (count-query)})
+             dashboard (t2/insert-returning-instance! :model/Dashboard {:name          "Metric links"
+                                                                        :collection_id (:id data)
+                                                                        :creator_id    (mt/user->id :crowberto)})]
+         (try
+           (t2/insert! :model/DashboardCard {:dashboard_id (:id dashboard) :row 0 :col 0 :size_x 4 :size_y 2
+                                             :visualization_settings
+                                             {:virtual_card {:display "link"}
+                                              :link         {:entity {:model "metric" :id (:id metric)
+                                                                      :name "Linked metric"}}}})
+           (let [inst  (app-db/app-db-instance)
+                 local (read-snapshot inst)
+                 tree  (fn [row-ids]
+                         (into {}
+                               (map-indexed (fn [i doc] [(str "collections/main/item_" i ".yaml") (old.tu/bytes-of doc)]))
+                               (with-metric-row-ids (old.tu/docs local) row-ids)))]
+             (is (= (:entity_id metric)
+                    (get-in local [(:entity_id dashboard) :attrs :dashcards 0 :visualization_settings :link :entity :id])))
+             (with-remote [repo s]
+               (testing "a row id of no card on the instance"
+                 (let [missing (inc (t2/select-one-fn :id :model/Card {:order-by [[:id :desc]]}))
+                       c0      (ptu/remote-commit! repo [] (tree {(:entity_id metric) missing}))]
+                   (is (=? {:result   :invalid
+                            :head     c0
+                            :findings [{:type :unknown-row-id :id (:entity_id dashboard) :row-ids [missing]}]}
+                           (pull/pull! inst s ptu/branch)))
+                   (is (nil? (instance/base inst)))))
+               (testing "the row id of the metric: the first pull of the local content gives no conflict and no local
+                        change"
+                 (let [c1 (ptu/remote-commit! repo [(ptu/remote-head repo)] (tree {(:entity_id metric) (:id metric)}))]
+                   (is (= :pulled (:result (pull/pull! inst s ptu/branch))))
+                   (is (= c1 (instance/base inst)))
+                   (is (= local (read-snapshot inst)))
+                   (is (= status/no-changes (ptu/local-changes inst)))))))
+           (finally
+             (t2/delete! :model/Dashboard (:id dashboard))
+             (t2/delete! :model/Card (:id metric)))))))))
 
 (deftest deploy-of-old-format-trees-names-tables-as-the-instance-does-test
   (testing (str "a deploy of a published table with no display name in its settings file writes no display name, and "

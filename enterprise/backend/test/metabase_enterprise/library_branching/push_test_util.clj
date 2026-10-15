@@ -104,6 +104,7 @@
     (let [{:keys [base digests]} @state]
       (when (and (some? commit) (= commit base)) digests)))
   (table-names [_ table-keys] (select-keys (:table-names @state) table-keys))
+  (card-entity-ids [_ row-ids] (select-keys (:card-ids @state) row-ids))
   (apply-plan! [_ _plan _opts] (instance/not-yet! `instance/apply-plan!))
   (set-base! [_ expected new digests]
     (let [[old] (swap-vals! state (fn [st] (cond-> st
@@ -111,8 +112,9 @@
       (if (= expected (:base old)) :ok {:moved (:base old)}))))
 
 (defn fake-instance
-  "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d :table-names n}`, where `n` is
-  `{table-key name}`, the display names of warehouse sync."
+  "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d :table-names n :card-ids c}`,
+  where `n` is `{table-key name}`, the display names of warehouse sync, and `c` is `{row-id entity-id}`, the entity
+  ids of the card rows."
   [state]
   (->FakeInstance state))
 
@@ -124,6 +126,7 @@
   (base [_] (instance/base inst))
   (base-digests [_ commit] (instance/base-digests inst commit))
   (table-names [_ table-keys] (instance/table-names inst table-keys))
+  (card-entity-ids [_ row-ids] (instance/card-entity-ids inst row-ids))
   (apply-plan! [_ plan opts] (instance/apply-plan! inst plan opts))
   (set-base! [_ expected new digests]
     (if-let [f (:set-base! overrides)]
@@ -200,6 +203,15 @@
     :stages   [{:lib/type "mbql.stage/mbql" :source-table table :aggregation [["count" {}]]}]})
   ([table metric-id]
    (assoc-in (count-query table) [:stages 0 :aggregation] [["metric" {} metric-id]])))
+
+(defn sum-query
+  "The portable query of a metric: the sum of field `field` (a field key) of its table, a field of type type/Float."
+  [field]
+  {:lib/type "mbql/query"
+   :database (first field)
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table (subvec field 0 3)
+               :aggregation  [["sum" {} ["field" {:base-type "type/Float"} field]]]}]})
 
 (defn item
   "The item of `kind` named `item-name` at `place` with attributes `attrs`, with the references of the attributes."

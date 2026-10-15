@@ -186,3 +186,35 @@
          (testing "a creation instance has no drift in its status"
            (is (=? {:read_only false :drift nil}
                    (mt/user-http-request :crowberto :get 200 "ee/library-branching/status")))))))))
+
+(deftest discard-frees-the-name-of-a-drift-snippet-test
+  (testing (str "the drift is a new snippet, and main has a new snippet of another identity with its name: the discard "
+                "trashes the snippet of the drift with a new name, and deploys main; app DB " (mdb/db-type))
+    (mt/with-premium-features #{:remote-sync}
+      (rtu/with-synchronous-tasks
+        (do-with-pushed-metric!
+         (fn [_metric c1 repo]
+           (let [local-id "lbToucanDriftSnippet1"
+                 head-id  "lbToucanHeadSnippet01"
+                 new-name (str "lb Toucan (trashed " local-id ")")]
+             (try
+               (mt/with-temporary-setting-values [remote-sync-type :read-only]
+                 (t2/insert! :model/NativeQuerySnippet {:name       "lb Toucan"
+                                                        :entity_id  local-id
+                                                        :content    "1 = 1"
+                                                        :creator_id (mt/user->id :crowberto)})
+                 (let [h (pltu/commit-snapshot! repo "main" [c1]
+                                                (assoc (remote-snapshot c1)
+                                                       head-id (ptu/item head-id :snippet "lb Toucan" "snippetssnippetssnipp"
+                                                                         {:content "2 = 2"})))
+                       {:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/library-branching/deploy"
+                                                               {:discard_changes true})]
+                   (is (=? {:status "successful" :outcome {:kind "deployed" :commit h :discarded 1 :renamed 1}}
+                           (tasks/task task_id)))
+                   (is (= [new-name true]
+                          (t2/select-one-fn (juxt :name :archived) :model/NativeQuerySnippet :entity_id local-id)))
+                   (is (= ["lb Toucan" false]
+                          (t2/select-one-fn (juxt :name :archived) :model/NativeQuerySnippet :entity_id head-id)))
+                   (is (= h (base)))))
+               (finally
+                 (t2/delete! :model/NativeQuerySnippet :entity_id [:in [local-id head-id]]))))))))))

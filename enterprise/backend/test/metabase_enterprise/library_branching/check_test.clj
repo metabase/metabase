@@ -135,7 +135,7 @@
    {:name   :semantic-skipped
     :doc    "The check never runs the semantic level, so a reference to a missing table passes CI."
     :target `check/check
-    :edits  [[:replace '(semantic/validate s env) []]]}
+    :edits  [[:replace '(semantic-check s env) []]]}
    {:name   :green-ignores-findings
     :doc    "A tree with findings is green."
     :target `check/check

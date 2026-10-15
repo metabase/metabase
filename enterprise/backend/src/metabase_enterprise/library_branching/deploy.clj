@@ -6,7 +6,6 @@
   nor shows a mix of two commits."
   (:require
    [metabase-enterprise.library-branching.engine.plan :as plan]
-   [metabase-enterprise.library-branching.engine.semantic :as semantic]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -14,6 +13,7 @@
    [metabase-enterprise.library-branching.settings :as settings]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.typing :as typing]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -21,12 +21,12 @@
 (defn check-head
   "The full check of commit `h` of `store` against the environment `env` (`format.manifest/env`), decoded with the
   options `opts` (`pull/decode-opts`): `{:snapshot r}`, or `{:findings [f ...]}`, the structural findings of
-  `pull/check-commit`, else the semantic findings of `semantic/validate`."
+  `pull/check-commit`, else the semantic findings of `typing/semantic`: the references and the types of the queries."
   [store codecs opts env h]
   (let [{r :snapshot :as checked} (pull/check-commit store codecs h opts)]
     (if-not r
       checked
-      (let [findings (semantic/validate r env)]
+      (let [findings (typing/semantic r env)]
         (if (seq findings)
           {:findings findings}
           {:snapshot r})))))
@@ -117,8 +117,10 @@
                                                        :fence    (or fence (constantly nil))})]
           (cond
             (:ok result)
-            (cond-> {:result :deployed :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
-              discard-drift? (assoc :discarded (vec ids)))
+            (let [{:keys [trashed-in-use renamed]} (:ok result)]
+              (cond-> {:result :deployed :head h :steps steps :trashed-in-use trashed-in-use}
+                discard-drift? (assoc :discarded (vec ids))
+                renamed        (assoc :renamed renamed)))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -133,12 +135,15 @@
   "Deploys the head of branch `branch` of `store` onto instance `inst`, a consumption instance whose environment is
   `env` (`format.manifest/env`). Returns one of:
 
-  - `{:result :deployed :head h :steps plan :trashed-in-use m}`: the synced snapshot of the instance is the snapshot
-    of `h`, and its base is `h`, with the digests of that snapshot; `m` is `{identity [user ...]}`, the items that
-    the deploy moved to the trash and that content outside the Library uses;
+  - `{:result :deployed :head h :steps plan :trashed-in-use m :renamed r}`: the synced snapshot of the instance is the
+    snapshot of `h`, and its base is `h`, with the digests of that snapshot; `m` is `{identity [user ...]}`, the items
+    that the deploy moved to the trash and that content outside the Library uses; `r` is `{identity name}`, the items
+    that the deploy moved to the trash with a new name, so that the head could take their keys, and is absent when
+    there is none;
   - `{:result :up-to-date :head h}`: the head is the base;
-  - `{:result :invalid :head h :findings [f ...]}`: the head does not decode, breaks a structural rule, or names an
-    environment object that `env` does not hold; the instance stays on its base;
+  - `{:result :invalid :head h :findings [f ...]}`: the head does not decode, breaks a structural rule, names an
+    environment object that `env` does not hold, or has a query that does not fit the types of `env`; the instance
+    stays on its base;
   - `{:result :drift :head h :ids ids}`: the items `ids` of the instance have content that its base does not hold
     ([[drift]]);
   - `{:result :stale :head h :ids ids}`, `{:result :rewritten :head h}`, `{:result :refused :head h :refused [...]}`,
