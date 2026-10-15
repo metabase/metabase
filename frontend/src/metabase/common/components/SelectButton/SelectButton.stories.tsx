@@ -195,8 +195,6 @@ const OverviewTemplate: StoryFn = () => (
 export const Overview = {
   render: OverviewTemplate,
   parameters: {
-    // The shared input styles focus with `:focus-within`, so the addon needs
-    // the matching `focusWithin` key; plain `focus` would never apply.
     pseudo: { focusWithin: ['button[data-state-row="focus"]'] },
     controls: { include: ["theme"] },
   },
