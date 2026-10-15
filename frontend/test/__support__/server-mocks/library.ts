@@ -1,11 +1,20 @@
 import fetchMock from "fetch-mock";
 
+import type { CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
+interface SetupLibraryEndpointsOpts {
+  hasLibrary?: boolean;
+  library?: Partial<CollectionItem>;
+}
+
+export const setupLibraryEndpoints = ({
+  hasLibrary = false,
+  library,
+}: SetupLibraryEndpointsOpts = {}) => {
   if (hasLibrary) {
     fetchMock.get(
       "path:/api/ee/library",
@@ -17,6 +26,7 @@ export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
         location: "/",
         here: ["collection"],
         below: ["dataset", "metric"],
+        ...library,
       }),
     );
   } else {
