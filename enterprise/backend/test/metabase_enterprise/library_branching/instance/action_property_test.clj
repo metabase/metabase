@@ -13,6 +13,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [clojure.walk :as walk]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
@@ -24,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 ;;; ---------------------------------------------------- The world ---------------------------------------------------
 
@@ -88,7 +89,8 @@
   (gen/one-of [(gen/return nil) g]))
 
 (def ^:private item-gen
-  "An action: no model (at the root or in a collection) or on a model; of type query, or implicit on a model."
+  "An action: no model (at the Data actions area root or in a collection) or on a model; of type query, or implicit on
+  a model."
   (gen/fmap
    (fn [[action-name place on-model? implicit? kind query params description confirm]]
      (let [model     (when on-model? (if (zero? (mod place 2)) ::m1 ::m2))
@@ -102,7 +104,7 @@
                        confirm                  (assoc :visualization_settings {:confirmMessage confirm}))]
        {:kind  :action
         :name  action-name
-        :place (or model (get [nil ::refunds ::returns] (mod place 3)))
+        :place (or model (get ["dataactionsdataaction" ::refunds ::returns] (mod place 3)))
         :attrs attrs}))
    (gen/tuple (gen/elements ["Refund" "Return" "Société"])
               gen/nat

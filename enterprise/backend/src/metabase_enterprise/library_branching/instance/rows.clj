@@ -32,7 +32,8 @@
 (def ^:private by-entity-id
   "`{kind [model columns]}`: the kinds whose rows have the identity of the item as their entity id, with the columns
   of the row that the details read."
-  {:collection    [:model/Collection []]
+  {:action        [:model/Action [:collection_id]]
+   :collection    [:model/Collection []]
    :dashboard     [:model/Dashboard [:collection_id]]
    :glossary-term [:model/Glossary []]
    :measure       [:model/Measure [:table_id]]

@@ -125,7 +125,7 @@
       (assoc-in s [id :kind] (nth-of kinds k))
       s)))
 
-(defn- apply-edit
+(defn- edit
   [u s [op k x]]
   (if-let [id (nth-of (sorted-ids s) k)]
     (case op
@@ -139,9 +139,16 @@
       :restore  (restore-edit u s x))
     (restore-edit u s x)))
 
+(defn- apply-edit
+  [u s e]
+  ;; The edits keep the rules that they check by construction. The rules of actions (the model of an action, and the
+  ;; place of an action with no model) they do not check, so an edit that breaks one of them changes nothing.
+  (let [s' (edit u s e)]
+    (if (or (identical? s s') (lb.tu/well-formed? s')) s' s)))
+
 (defn apply-edits
   "Snapshot `s` after each edit of `edits`, in order. `u` is the universe that a restore takes items from. Every edit
-  keeps a well-formed snapshot well formed."
+  keeps a well-formed snapshot well formed: an edit that would break a rule changes nothing."
   [u s edits]
   (reduce (partial apply-edit u) s edits))
 

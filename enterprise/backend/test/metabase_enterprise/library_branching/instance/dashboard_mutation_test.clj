@@ -130,7 +130,7 @@
    {:name   :no-dashboard-users
     :doc    "The in-use report looks for the users of a trashed dashboard as for a card, so a link to it is not reported."
     :target `in-use/users
-    :edits  [[:replace '(= :dashboard kind) false]]
+    :edits  [[:replace :dashboard :not-a-kind]]
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-users-in-scope
     :doc    "The in-use report of a trashed dashboard names a user in the Library."

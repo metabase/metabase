@@ -177,6 +177,24 @@
               :violations [{:rule :library-content :id board :place archive :ours archive :theirs board}]}
              (merge/merge b o t {}))))))
 
+(deftest ^:parallel action-area-violation-test
+  (testing (str "ours moves the action Refund from the data actions collection Refunds to the empty one Returns; "
+                "theirs gives Returns the snippets namespace. Each side is well formed; the result has an action with "
+                "no model outside the data actions area, a violation that names the pair")
+    (let [refunds (engine.tu/eid "refunds")
+          returns (engine.tu/eid "returns")
+          refund  (engine.tu/eid "refund")
+          coll    (fn [nm n] (assoc-in (engine.tu/item :collection nm nil) [:attrs :namespace] n))
+          b       {refunds (coll "Refunds" "data-actions")
+                   returns (coll "Returns" "data-actions")
+                   refund  (engine.tu/item :action "Refund" refunds)}
+          o       (assoc-in b [refund :place] returns)
+          t       (assoc b returns (coll "Returns" "snippets"))]
+      (is (and (lb.tu/well-formed? o) (lb.tu/well-formed? t)) "each side is well formed")
+      (is (= {:conflicts  []
+              :violations [{:rule :action-area :id refund :place returns :ours refund :theirs returns}]}
+             (merge/merge b o t {}))))))
+
 (deftest ^:parallel alloy-unique-keys-test
   (let [lib (engine.tu/eid "lib")
         b   {lib (engine.tu/item :collection "Library" nil) id1 (engine.tu/item :snippet "M" lib)}]
@@ -457,13 +475,20 @@
    {:name   :library-rule-not-involved
     :doc    "The merge does not know which items a Library finding is about, so a merge that breaks a Library rule throws."
     :target `merge/involved
-    :edits  [[:replace '(:place-inside :kind-fits :namespace :library-content :table-collection)
-              '(:place-inside :kind-fits :namespace)]]}])
+    :edits  [[:replace '(:place-inside :kind-fits :namespace :library-content :table-collection :action-area)
+              '(:place-inside :kind-fits :namespace :action-area)]]}
+   {:name   :action-rule-not-involved
+    :doc    "The merge does not know which items an action finding is about, so a merge that breaks the place rule of
+            actions throws."
+    :target `merge/involved
+    :edits  [[:replace '(:place-inside :kind-fits :namespace :library-content :table-collection :action-area)
+              '(:place-inside :kind-fits :namespace :library-content :table-collection)]]}])
 
 (deftest merge-mutations-test
   (mut/check mutations {:tests [#'per-item-table-test #'unknown-base-test #'keep-mine-test
                                 #'alloy-dangling-reference-test #'alloy-orphan-test #'alloy-cycle-test
                                 #'alloy-unique-keys-test #'violations-with-conflicts-test #'library-content-violation-test
+                                #'action-area-violation-test
                                 #'merge-laws-test #'merge-keeps-unique-keys-fails-test
                                 #'violation-names-two-items-with-keys-test
                                 #'unknown-base-merge-test #'one-sided-merge-is-well-formed-test]}))

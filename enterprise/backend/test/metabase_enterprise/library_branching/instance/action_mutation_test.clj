@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.action-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.action-test :as action-test]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
@@ -15,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the instance side of actions."
@@ -27,8 +28,18 @@
    {:name   :place-is-the-collection
     :doc    "A read gives the collection of an action with a model as its place, so the action is not in its model."
     :target `action/portable-content
-    :edits  [[:replace '(or model (serdes/*export-fk* collection_id :model/Collection))
-              '(serdes/*export-fk* collection_id :model/Collection)]]
+    :edits  [[:replace '(cond
+                          model         model
+                          collection_id (serdes/*export-fk* collection_id :model/Collection)
+                          :else         (snapshot/area-root :data-actions))
+              '(cond
+                 collection_id (serdes/*export-fk* collection_id :model/Collection)
+                 :else         (snapshot/area-root :data-actions))]]
+    :tests  [#'action-test/action-content-test]}
+   {:name   :area-root-read-as-nil
+    :doc    "A read gives no place to an action at the root of the data actions namespace, so it is at the root level."
+    :target `action/portable-content
+    :edits  [[:replace '(snapshot/area-root :data-actions) nil]]
     :tests  [#'action-test/action-content-test]}
    {:name   :nil-settings-kept
     :doc    "A read keeps the nil column settings that the export adds, so a write of the content reads back with
@@ -44,7 +55,13 @@
    {:name   :any-namespace
     :doc    "A write puts an action with no model in a collection of any namespace."
     :target `action/model-less-collection!
-    :edits  [[:replace '(contains? model-less-namespaces (:namespace row)) true]]
+    :edits  [[:replace '(contains? snapshot/action-namespaces (:namespace row)) true]]
+    :tests  [#'action-test/refused-writes-write-nothing-test]}
+   {:name   :every-area-root-holds-actions
+    :doc    "A write maps the root of any area to the root level, so an action can be at the root of the Data apps
+            area."
+    :target `action/model-less-collection!
+    :edits  [[:replace '(tree/place-area :action id place) '(contains? snapshot/area-roots place)]]
     :tests  [#'action-test/refused-writes-write-nothing-test]}
    {:name   :take-over-outside
     :doc    "A write or a trash matches an identity also on a model outside the Library tree, so a file takes over a

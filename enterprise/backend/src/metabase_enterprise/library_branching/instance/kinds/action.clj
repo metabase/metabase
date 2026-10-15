@@ -117,13 +117,12 @@
   Throws ::instance/refused unless `place` is that area root or an in-scope collection of the data actions or data
   apps namespace."
   [id place]
-  (when (nil? place)
-    (instance/refuse! :place id (str "An action with no model is in a data actions or data app collection, or at the"
-                                     " root of the Data actions area.")))
   (when-not (tree/place-area :action id place)
     (let [row (tree/place-collection id place)]
+      ;; No row: the place is nil, the root level.
       (when-not (contains? snapshot/action-namespaces (:namespace row))
-        (instance/refuse! :place id "An action with no model is in a data actions or data app collection."
+        (instance/refuse! :place id (str "An action with no model is in a data actions or data app collection, or at"
+                                         " the root of the Data actions area.")
                           {:place place}))
       row)))
 

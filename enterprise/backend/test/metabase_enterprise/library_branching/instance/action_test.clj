@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.engine.diff :as diff]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
@@ -23,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 ;;; ---------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -129,8 +130,9 @@
          (is (= {:kind  :action :name "Refund" :place (:entity_id model) :refs #{[:model (:entity_id model)]}
                  :attrs {:model (:entity_id model) :type "implicit" :implicit_kind "row/update"}}
                 (read-item (:entity_id implicit)))))
-       (testing "an action with no model: at the root of the data actions namespace, or in its collection"
-         (is (nil? (:place (read-item (:entity_id root)))))
+       (testing "an action with no model: at the root of the data actions namespace, whose place is the Data actions
+                area root, or in its collection"
+         (is (= "dataactionsdataaction" (:place (read-item (:entity_id root)))))
          (is (= (:entity_id refunds) (:place (read-item (:entity_id folder))))))
        (testing "every action that the instance reads fits the schema of its kind, and survives encode and decode"
          (let [c (first (filter #(= :action (codec/kind %)) format.kinds/codecs))]
@@ -255,7 +257,7 @@
                                                             :visualization_settings {:confirmMessage "Sure?"}})))
            implicit (read-item (:entity_id (insert-action! {:model_id (:id model) :type :implicit})))
            root     (-> template
-                        (assoc :place nil)
+                        (assoc :place "dataactionsdataaction")
                         (update :attrs dissoc :model)
                         with-refs)]
        (testing "a write of a new identity creates the action on its model, and current returns the content"
@@ -307,7 +309,7 @@
                                                :collection_id (:collection_id model)
                                                :dataset_query (venues-query)}]
        (let [template (read-item (:entity_id (insert-action! {:model_id (:id model)})))
-             root     (-> template (assoc :place nil) (update :attrs dissoc :model) with-refs)
+             root     (-> template (assoc :place "dataactionsdataaction") (update :attrs dissoc :model) with-refs)
              on       (fn [card] (-> template (assoc :place (:entity_id card)) (assoc-in [:attrs :model] (:entity_id card))))
              outside  (insert-action! {:model_id (:id outside-model)})
              before   (action-rows [new-id (:entity_id outside)])]
@@ -319,6 +321,9 @@
            (is (= :place (refusal #(write! new-id (on question)))))
            (is (= :place (refusal #(write! new-id (on outside-model)))))
            (is (= :place (refusal #(write! new-id (on {:entity_id "lbNoSuchModel00000001"}))))))
+         (testing "an action with no model at the root level, or at the root of another area"
+           (is (= :place (refusal #(write! new-id (assoc root :place nil)))))
+           (is (= :place (refusal #(write! new-id (assoc root :place "dataappsdataappsdatap"))))))
          (testing "a collection that is not in scope, or not of the data actions or data apps namespace"
            (is (= :place (refusal #(write! new-id (assoc root :place (:entity_id plain))))))
            (collections.tu/with-library [{:keys [data]}]
