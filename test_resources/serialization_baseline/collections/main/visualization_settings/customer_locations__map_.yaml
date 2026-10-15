@@ -442,7 +442,6 @@ result_metadata:
   lib/source-column-alias: CREATED_AT
   qp/implicit-field?: true
 visualization_settings:
-  column_settings: null
   map.center_latitude: 39.5
   map.center_longitude: -98.35
   map.latitude_column: LATITUDE
