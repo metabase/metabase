@@ -29,7 +29,12 @@
    {:name   :any-url
     :doc    "Every URL is accepted, also git:// and ssh://."
     :target `store.jgit/url-error
-    :edits  [[:replace '(not (str/includes? url ":")) true]]
+    :edits  [[:replace '["https://" "file://"] '[""]]]
+    :tests  [#'jgit-test/url-error-test #'jgit-test/url-error-law-test]}
+   {:name   :plain-http
+    :doc    "An http:// URL is accepted, so the token goes over plain HTTP."
+    :target `store.jgit/url-error
+    :edits  [[:replace '["https://" "file://"] '["https://" "http://" "file://"]]]
     :tests  [#'jgit-test/url-error-test #'jgit-test/url-error-law-test]}
    {:name   :open-store-takes-any-url
     :doc    "open-store does not check the URL rule."

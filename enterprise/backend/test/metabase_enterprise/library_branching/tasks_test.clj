@@ -11,10 +11,13 @@
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private b0 "0000000000000000000000000000000000000000")
 (def ^:private c1 "1111111111111111111111111111111111111111")
@@ -448,6 +451,26 @@
         (deliver release true)
         (is (true? (deref done 10000 false)))
         (is (= "successful" (status task)))))))
+
+(deftest submit-stops-a-worker-past-the-hard-time-limit-test
+  (testing "a worker that runs for longer than the hard time limit is stopped, and its task fails with a message"
+    (tu/with-no-tasks
+      (let [stopped (promise)
+            task    (tasks/submit! "pull" nil
+                                   (fn [_]
+                                     (try
+                                       @(promise)
+                                       (finally
+                                         (deliver stopped true))))
+                                   :timeout-ms 200)]
+        (is (true? (deref stopped 10000 false)) "the worker is interrupted")
+        (is (=? {:status "failed" :error_message "Task stopped: it ran for longer than its time limit of 200.0 ms"}
+                (tasks/task (:id task))))))))
+
+(deftest default-hard-time-limit-test
+  (testing "the hard time limit of a worker is ten times the time limit of a heartbeat"
+    (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 1000]
+      (is (= 10000 (tasks/hard-time-limit-ms))))))
 
 ;;; -------------------------------------------------- Boot and shutdown ---------------------------------------------
 
