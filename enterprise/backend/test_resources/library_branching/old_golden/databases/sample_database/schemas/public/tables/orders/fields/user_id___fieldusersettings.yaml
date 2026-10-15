@@ -1,0 +1,15 @@
+created_at: '2026-10-15T08:58:11.876231Z'
+field_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+- USER_ID
+fk_target_field_id:
+- Sample Database
+- PUBLIC
+- PEOPLE
+- ID
+fk_target_field_id_set: true
+visibility_type: hidden
+serdes/meta:
+- model: FieldUserSettings

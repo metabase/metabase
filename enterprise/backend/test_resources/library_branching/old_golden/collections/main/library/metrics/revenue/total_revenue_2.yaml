@@ -1,0 +1,74 @@
+name: Total Revenue
+entity_id: Qx81tWm0aLpN2ZcB7yYgr
+created_at: '2026-10-15T08:58:11.886791Z'
+creator_id: rasta@metabase.com
+display: line
+collection_id: cOlQuErIeS0ExAmPlE2x1
+collection_preview: false
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - metric
+      - {}
+      - IW8kbqZVaMxdGtCM2F4U6
+    breakout:
+    - - field
+      - base-type: type/DateTime
+        temporal-unit: month
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    joins:
+    - alias: Products
+      conditions:
+      - - =
+        - {}
+        - - field
+          - base-type: type/Integer
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - PRODUCT_ID
+        - - field
+          - base-type: type/BigInteger
+            join-alias: Products
+          - - Sample Database
+            - PUBLIC
+            - PRODUCTS
+            - ID
+      fields: all
+      stages:
+      - source-table:
+        - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        lib/type: mbql.stage/mbql
+      lib/type: mbql/join
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  - filters:
+    - - '>'
+      - {}
+      - - field
+        - base-type: type/Float
+        - count
+      - 10
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - CREATED_AT
+  graph.metrics:
+  - count
+card_schema: 24
+serdes/meta:
+- model: Card
+type: metric
