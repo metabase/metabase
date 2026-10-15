@@ -67,7 +67,6 @@
 (defn- fetch-head [^Repository repo url token timeout-seconds ref]
   (let [^FetchResult result (remote-op repo url token timeout-seconds "fetch"
                                        (fn [^Transport transport]
-                                         (.setRemoveDeletedRefs transport true)
                                          (.fetch transport NullProgressMonitor/INSTANCE [fetch-spec])))]
     (some-> (.getAdvertisedRef result (qualify ref)) ^Ref identity .getObjectId .name)))
 
@@ -133,7 +132,8 @@
     (let [parent-ids (mapv #(parse-commit rw %) parents)
           index      (DirCache/newInCore)
           ^DirCacheBuilder builder (.builder index)]
-      (doseq [[path content] (sort-by key tree)]
+      ;; `finish` sorts the entries in git order
+      (doseq [[path content] tree]
         (.add builder (tree-entry inserter path content)))
       (.finish builder)
       (let [ident   (PersonIdent. "Metabase Library" "library@metabase.com")
