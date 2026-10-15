@@ -49,9 +49,9 @@
   (testing "one codec for each kind of the snapshot"
     (is (= snapshot/kinds (set (keys by-kind)))))
   (testing "the words and directory kinds of the layout"
-    (is (= {:action ["action" false] :collection ["collection" true] :glossary-term ["term" false] :measure ["measure" false]
-            :metric ["metric" false] :published-table ["table" false] :segment ["segment" false]
-            :snippet ["snippet" false]}
+    (is (= {:action ["action" false] :collection ["collection" true] :glossary-term ["term" false]
+            :measure ["measure" false] :metric ["metric" false] :model ["model" false] :published-table ["table" false]
+            :question ["question" false] :segment ["segment" false] :snippet ["snippet" false]}
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
 ;;; ------------------------------------------------------ Laws -------------------------------------------------------
@@ -109,6 +109,7 @@
       (is (some #(re-find #"^actions/[^/]+\.action\.yaml$" %) paths) "an action at the root of the data actions area")
       (is (some #(re-find #"\.action\.yaml$" %) (remove #(str/starts-with? % "actions/") paths))
           "an action in a collection of another area")
+      (is (some #(re-find #"\.model/[^/]+\.action\.yaml$" %) paths) "an action in the directory of its model")
       (is (some #(some (fn [[role]] (= :segment role)) (:refs %)) items) "a reference to a segment")
       (is (some #(some (fn [[role]] (= :measure role)) (:refs %)) items) "a reference to a measure")
       (is (some #(str/includes? % "~") paths) "an identity suffix")
@@ -119,6 +120,13 @@
       (is (some #(get-in % [:attrs :fields]) items) "field settings")
       (is (some #(some (comp :fields val) (get-in % [:attrs :fields])) items) "a nested field")
       (is (some #(some (fn [[role]] (= :fk-target role)) (:refs %)) items) "a foreign-key target")
+      (is (some #(some (fn [[role]] (= :remapping role)) (:refs %)) items) "a foreign-key remapping")
+      (let [remappings (into []
+                             (comp (mapcat #(tree-seq coll? seq (get-in % [:attrs :fields])))
+                                   (keep #(when (map? %) (:remapping %))))
+                             items)]
+        (is (some #(and (= "internal" (:type %)) (:values %)) remappings) "an internal remapping with its values")
+        (is (some #(and (= "internal" (:type %)) (not (:values %))) remappings) "an internal remapping with no values"))
       (is (some #(< 3 (count (:refs %))) items) "an item with several references"))))
 
 ;;; ---------------------------------------------------- Golden files -------------------------------------------------
@@ -356,6 +364,7 @@
   (doseq [k [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type :entity_id
              :created_at :updated_at :creator_id :archived :result_metadata :card_schema]
           [kind item] [[:metric (get golden-snapshot total-revenue-id)]
+                       [:question (assoc (get golden-snapshot total-revenue-id) :kind :question)]
                        [:collection (get golden-snapshot revenue-id)]
                        [:snippet (get golden-snapshot base-filter-id)]
                        [:published-table (get golden-snapshot orders)]

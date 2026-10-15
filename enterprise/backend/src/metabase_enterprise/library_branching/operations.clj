@@ -53,12 +53,12 @@
 
 (defn push-task-result
   "The task result of `result`, a result of `push/push!` on branch `branch`: `{:outcome o}` when the push landed or had
-  nothing to push, else `{:error message}`."
-  [branch {:keys [result commit findings]}]
+  nothing to push, with the warnings of `push/outcome`, else `{:error message}`."
+  [branch {:keys [result commit findings shadowed-tables]}]
   (case result
     ;; a push whose base another task moved is on the branch all the same
-    (:pushed :base-moved) {:outcome (push/outcome branch commit)}
-    :nothing-to-push      {:outcome {:kind "nothing-to-push" :branch branch :commit commit}}
+    (:pushed :base-moved) {:outcome (push/outcome branch commit shadowed-tables)}
+    :nothing-to-push      {:outcome (assoc (push/outcome branch commit shadowed-tables) :kind "nothing-to-push")}
     :remote-moved         {:error (push/remote-moved-message branch)}
     :invalid              {:error (format "The Library breaks the rules %s, so nothing was pushed." (rules findings))}
     :branch-exists        {:error (format "The repository already has a branch %s, so nothing was pushed." branch)}

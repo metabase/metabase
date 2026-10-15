@@ -3,13 +3,17 @@
   delete it afterwards, and they change the one base row of the app DB; they are not parallel."
   {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
+   [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
@@ -135,6 +139,47 @@
                  (is (= :pushed result))
                  (is (= [false false] (in-commit s commit [kept m-kept])))
                  (is (empty? (table-item-paths s commit))))))))))))
+
+(deftest push-names-a-shadowed-table-test
+  (testing (str "of an archived published table and a live published table with its key, a push writes the live one, "
+                "and the push result, the task outcome and the status name the archived one; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! library]
+       (let [data   (insert! :model/Collection {:name     "Owner data"
+                                                :type     "library-data"
+                                                :location (children-location library)})
+             table! (fn [table-name archived? description]
+                      (let [table (insert! :model/Table {:db_id       (mt/id)
+                                                         :schema      "PUBLIC"
+                                                         :name        table-name
+                                                         :active      (not archived?)
+                                                         :archived_at (when archived? (java.time.OffsetDateTime/now))})]
+                        (insert! :model/TableUserSettings {:table_id      (:id table)
+                                                           :is_published  true
+                                                           :collection_id (:id data)
+                                                           :description   description})
+                        table))
+             old    (table! "lb_push_owner__mbarchiv__1" true "The old table.")
+             _new   (table! "lb_push_owner" false "The new table.")
+             k      [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "lb_push_owner"]
+             inst   (app-db/app-db-instance)]
+         (with-remote [_repo s]
+           (let [[task-id {:keys [result commit shadowed-tables] :as pushed}]
+                 (ptu/do-with-push-task! (fn [id] [id (push/push! inst s ptu/branch id)]))
+                 messages [(scope/shadowed-message (first shadowed-tables))]]
+             (is (= :pushed result))
+             (is (= "The new table." (get-in (ptu/commit-snapshot s commit) [k :attrs :description])))
+             (is (= [(:id old)] (map :id shadowed-tables)))
+             (is (= messages (:warnings (:outcome (tasks/task task-id)))))
+             (is (= {:outcome (push/outcome ptu/branch commit shadowed-tables)}
+                    (operations/push-task-result ptu/branch pushed)))
+             (testing "a second push has nothing to push, and names the table again"
+               (let [again (ptu/push! inst s)]
+                 (is (= {:result :nothing-to-push :commit commit :shadowed-tables shadowed-tables} again))
+                 (is (= {:kind "nothing-to-push" :branch ptu/branch :commit commit :warnings messages}
+                        (:outcome (operations/push-task-result ptu/branch again))))))
+             (testing "the status names the table"
+               (is (= shadowed-tables (:shadowed-tables (status/status inst s ptu/branch {}))))))))))))
 
 (deftest push-of-the-app-db-test
   (testing (str "a push writes the synced snapshot of the app DB, and the base row holds the commit; app DB "
@@ -305,3 +350,38 @@
                (let [next-push (ptu/push! inst s)]
                  (is (= :pushed (:result next-push)))
                  (is (not-any? #(re-find #"^glossary/" %) (paths s (:commit next-push)))))))))))))
+
+(deftest push-of-questions-and-models-test
+  (testing (str "a push writes a question and a model of a data app's collection as files in its directory, and a model "
+                "that becomes a question moves to the file of a question; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _library]
+       (let [user     (mt/user->id :crowberto)
+             app      (insert! :model/Collection {:name "Pushed app" :namespace "data-apps" :location "/"})
+             card     (fn [card-name card-type]
+                        (insert! :model/Card {:name card-name :type card-type :collection_id (:id app) :creator_id user
+                                              :display :table :visualization_settings {}
+                                              :dataset_query (let [mp (mt/metadata-provider)]
+                                                               (lib/query mp (lib.metadata/table mp (mt/id :venues))))}))
+             question (card "Pushed question" :question)
+             model    (card "Pushed model" :model)
+             inst     (app-db/app-db-instance)
+             paths    (fn [s commit] (set (keys (store/read-tree s commit))))]
+         (with-remote [_repo s]
+           (let [{:keys [result commit]} (ptu/push! inst s)
+                 pushed                  (ptu/commit-snapshot s commit)]
+             (is (= :pushed result))
+             (is (set/subset? #{"apps/pushed_app/pushed_question.question.yaml" "apps/pushed_app/pushed_model.model.yaml"}
+                              (paths s commit)))
+             (is (= [:question :model] (map #(:kind (get pushed (:entity_id %))) [question model])))
+             (is (seq (get-in pushed [(:entity_id model) :attrs :result_metadata])))
+             (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst)))
+             (testing "a model that becomes a question is a local update, and the next push moves its file"
+               (t2/update! :model/Card (:id model) {:type :question})
+               (is (= #{(:entity_id model)} (:updated (ptu/local-changes inst))))
+               (let [next-push (ptu/push! inst s)
+                     after     (paths s (:commit next-push))]
+                 (is (= :pushed (:result next-push)))
+                 (is (contains? after "apps/pushed_app/pushed_model.question.yaml"))
+                 (is (not (contains? after "apps/pushed_app/pushed_model.model.yaml")))
+                 (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst))))))))))))

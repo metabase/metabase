@@ -10,7 +10,6 @@
    [metabase-enterprise.library-branching.format.kinds.action :as action]
    [metabase-enterprise.library-branching.format.kinds.test-util :as kinds.tu]
    [metabase-enterprise.library-branching.format.layout :as layout]
-   [metabase-enterprise.library-branching.format.toy-codec :as toy]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
@@ -170,10 +169,6 @@
 
 ;;; ------------------------------------------------------ Layout -----------------------------------------------------
 
-(def ^:private toy-model-codec
-  "A codec of the kind :model for the layout: a model is the file `<name>.model.yaml`."
-  (toy/->ToyCodec :model "model" false (constantly {:dir ["library"]})))
-
 (deftest layout-test
   (let [refunds {:kind :collection :name "Refunds" :place nil :refs #{} :attrs {:namespace "data-actions"}}
         model   {:kind :model :name "Orders" :place nil :refs #{} :attrs {}}]
@@ -187,7 +182,7 @@
     (testing "an action with a model is in the directory of its model"
       (is (= {model-id        "library/orders.model.yaml"
               model-action-id "library/orders.model/refund_order.action.yaml"}
-             (layout/layout (conj kinds/codecs toy-model-codec)
+             (layout/layout kinds/codecs
                             {model-id        model
                              model-action-id (item model-action-id model-id (assoc query-attrs :model model-id))}))))))
 
@@ -196,23 +191,24 @@
 (deftest action-model-rule-test
   ;; ARCHITECTURE 9 rule 8: an action that names a model refers to an item of kind model. Validate reads only the
   ;; kind, place and references of an item, so the model and the question here are bare items.
-  (let [may-contain (merge {:model #{:action} :question #{}} snapshot/may-contain)
-        model       {:kind :model :name "Orders" :place nil :refs #{} :attrs {}}
+  (let [model       {:kind :model :name "Orders" :place nil :refs #{} :attrs {}}
         on          (fn [card-id] (item model-action-id card-id (assoc query-attrs :model card-id)))]
     (testing "an action on a model is well formed"
-      (is (= [] (validate/validate {model-id model model-action-id (on model-id)} {:may-contain may-contain}))))
+      (is (= [] (validate/validate {model-id model model-action-id (on model-id)}))))
     (testing "an action on a question is a finding: the question cannot contain it, and its model reference is not a
               model"
       (is (= [{:rule :kind-fits :id model-action-id :place question-id}
               {:rule :ref-kind :id model-action-id :ref [:model question-id]}]
              (validate/validate {question-id (assoc model :kind :question) model-action-id (on question-id)}
-                                {:may-contain may-contain}))))
+                               ))))
     (testing "an action whose model is not in the snapshot is a finding: its place and its reference do not close"
       (is (= [{:rule :place-inside :id model-action-id :place model-id}
               {:rule :refs-closed :id model-action-id :ref [:model model-id]}]
-             (validate/validate {model-action-id (on model-id)} {:may-contain may-contain}))))
-    (testing "a collection can contain an action; an action contains nothing"
+             (validate/validate {model-action-id (on model-id)}))))
+    (testing "a collection and a model can contain an action; a question and an action contain nothing"
       (is (contains? (:collection snapshot/may-contain) :action))
+      (is (contains? (:model snapshot/may-contain) :action))
+      (is (= #{} (:question snapshot/may-contain)))
       (is (= #{} (:action snapshot/may-contain))))))
 
 ;;; ----------------------------------------------------- Mutations ---------------------------------------------------

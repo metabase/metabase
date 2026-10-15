@@ -10,16 +10,18 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:action :collection :glossary-term :measure :metric :published-table :segment :snippet})
+  #{:action :collection :glossary-term :measure :metric :model :published-table :question :segment :snippet})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
   {:action          #{}
-   :collection      #{:action :collection :metric :published-table :snippet}
+   :collection      #{:action :collection :metric :model :published-table :question :snippet}
    :glossary-term   #{}
    :measure         #{}
    :metric          #{}
+   :model           #{:action}
    :published-table #{:measure :segment}
+   :question        #{}
    :segment         #{}
    :snippet         #{}})
 

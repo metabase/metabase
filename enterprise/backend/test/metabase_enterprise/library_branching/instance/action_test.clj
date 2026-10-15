@@ -230,14 +230,14 @@
              (is (= (assoc none :deleted #{(:entity_id a)}) (local)))
              (t2/update! :model/Action (:id a) {:archived false})
              (is (= none (local)))))
-         (testing "a model that moves out of the Library takes its action with it: a local delete"
+         (testing "a model that moves out of the Library takes its action with it: a local delete of both"
            (t2/with-transaction [_ nil {:rollback-only true}]
              (t2/update! :model/Card (:id model) {:collection_id nil})
-             (is (= (assoc none :deleted #{(:entity_id a)}) (local)))))
-         (testing "a deleted model, or a deleted action, is a local delete of the action"
+             (is (= (assoc none :deleted #{(:entity_id model) (:entity_id a)}) (local)))))
+         (testing "a deleted model is a local delete of the model and its action; a deleted action, of the action"
            (t2/with-transaction [_ nil {:rollback-only true}]
              (t2/delete! :model/Card (:id model))
-             (is (= (assoc none :deleted #{(:entity_id a)}) (local))))
+             (is (= (assoc none :deleted #{(:entity_id model) (:entity_id a)}) (local))))
            (t2/with-transaction [_ nil {:rollback-only true}]
              (t2/delete! :model/Action (:id a))
              (is (= (assoc none :deleted #{(:entity_id a)}) (local)))))

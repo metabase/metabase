@@ -147,23 +147,31 @@
                                            [:base_lost :boolean]
                                            [:head_findings Findings]
                                            [:local ChangeSet]
-                                           [:remote [:maybe ChangeSet]]]
+                                           [:remote [:maybe ChangeSet]]
+                                           [:shadowed_tables [:sequential [:map
+                                                                           [:id pos-int?]
+                                                                           [:name :string]
+                                                                           [:key Identity]
+                                                                           [:message :string]]]]]
   "The status of the instance and the configured branch: the base, the head, whether the branch is missing, whether no
-  branch holds the base (then nothing shows as synced), the findings of the head, and the local and remote changes as
-  identities. 400 when no repository or branch is configured, and with the message for the person when the remote
-  call fails. Superuser only."
+  branch holds the base (then nothing shows as synced), the findings of the head, the local and remote changes as
+  identities, and the published tables that do not sync because another published table has their key, each with a
+  message for the person. 400 when no repository or branch is configured, and with the message for the person when
+  the remote call fails. Superuser only."
   []
   (api/check-superuser)
   (let [branch (status-branch)
-        {:keys [base head branch-missing base-lost head-findings local remote]}
+        {:keys [base head branch-missing base-lost head-findings local remote shadowed-tables]}
         (with-store #(status/status (operations/instance) % branch {}))]
     {:base           base
      :head           head
      :branch_missing branch-missing
      :base_lost      base-lost
      :head_findings  head-findings
-     :local          (change-set-response local)
-     :remote         (change-set-response remote)}))
+     :local           (change-set-response local)
+     :remote          (change-set-response remote)
+     :shadowed_tables (mapv (fn [t] (assoc (select-keys t [:id :name :key]) :message (scope/shadowed-message t)))
+                            shadowed-tables)}))
 
 (api.macros/defendpoint :get "/is-dirty" :- [:map [:is_dirty :boolean]]
   "Whether the synced content of the instance differs from the content of its base. 400 when no repository or branch

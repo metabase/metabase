@@ -5,12 +5,16 @@
   collection is in scope, or it is at the root level of a root namespace that holds its kind, or its kind is one of
   the kinds with no container that the roots hold; a segment or a measure is in scope iff it is not archived and its
   table is an in-scope published table; a transform test is in scope iff its transform is. A published table leaves
-  scope only by an unpublish or by its collection: an archive by warehouse sync is a change of the environment, and the
-  table keeps the natural key that it had before. Every reader of scope calls [[scope-ids]] or [[scope-count]].
+  scope by an unpublish, by its collection, or when another published table owns its natural key: of the published
+  tables of one key, the one that warehouse sync did not archive, else the newest. An archive by warehouse sync is a
+  change of the environment, and the table keeps the natural key that it had before. Every reader of scope calls
+  [[scope-ids]] or [[scope-count]]; [[shadowed-tables]] names the tables that another table's key ownership leaves
+  out.
 
   Precondition: archive is closed downward. An archived collection's subtree and the items in it, and a dashboard's
   questions, are archived with it; an archive on the instance keeps this."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.roots :as library-branching.roots]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]))
@@ -142,6 +146,7 @@
              :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
              :where  [:and
                       [:= :t.is_published true]
+                      [:not (library-branching.db/shadowed-table :t :d)]
                       (in-scope roots :t.collection_id :collection)]}))
 
 (defn- table-item-query
@@ -301,3 +306,40 @@
                                  (library-branching.db/table-named :s.table :s.archived_at table)]}))))
      (pos? (library-branching.db/row-count
             (subquery {:select [:s.id] :from [[(kind-query roots kind) :s]] :where [:= :s.entity_id id]}))))))
+
+(defn shadowed-tables
+  "The published tables in an in-scope collection for `roots` (default [[roots]]) that scope leaves out because another
+  published table owns their natural key: `[{:id :name :key :archived :live-owner}]`, by id. `:name` is the name of
+  the table row, `:key` its natural key, `:archived` true iff warehouse sync archived it, and `:live-owner` true iff the
+  owner is a table that warehouse sync did not archive. Reads the app DB in the current transaction, with one query."
+  ([]
+   (shadowed-tables roots))
+  ([roots]
+   (mapv (fn [row]
+           {:id         (:id row)
+            :name       (:table row)
+            :key        (library-branching.db/table-key row)
+            :archived   (some? (:archived_at row))
+            :live-owner (= 1 (:live_owner row))})
+         (library-branching.db/rows
+          {:select   [:t.id [:d.name :db] :t.schema [:t.name :table] :t.archived_at
+                      [[:case (library-branching.db/shadowed-table :t :d true) 1 :else 0] :live_owner]]
+           :from     [(warehouse-schema-overlay/table-query {:alias :t})]
+           :join     [[:metabase_database :d] [:= :d.id :t.db_id]]
+           :where    [:and
+                      [:= :t.is_published true]
+                      (library-branching.db/shadowed-table :t :d)
+                      (in-scope roots :t.collection_id :collection)]
+           :order-by [:t.id]}))))
+
+(defn shadowed-message
+  "The message for a person about `table`, an entry of [[shadowed-tables]]."
+  [{:keys [name key archived live-owner]}]
+  (format "%s %s has the key %s of a %s published table, so library branching does not sync it. Unpublish it."
+          (if archived "The archived table" "The table")
+          name
+          (str/join "." (remove nil? key))
+          (cond
+            (and live-owner archived) "live"
+            live-owner                "newer live"
+            :else                     "newer archived")))

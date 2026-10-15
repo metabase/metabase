@@ -3,13 +3,29 @@
   `<display name>.table.yaml`. Its identity is the table's natural key `[database schema table]`, its name is its
   display name (under `display_name`), and its place is the collection, under `collection`. The attributes are the
   values a person sets on the table and its fields; `:fields` maps each field name to its settings, a nested field
-  under its parent's `:fields`."
+  under its parent's `:fields`. The setting `:remapping` of a field is its remapping: a foreign-key remapping names its
+  target field by natural key; an internal remapping holds its pairs of value and human-readable value."
   (:require
    [metabase-enterprise.library-branching.format.kinds.common :as common]
    [metabase-enterprise.library-branching.registry :as registry]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
+
+(registry/def ::remapping
+  [:or
+   [:map {:closed true}
+    [:type [:= "external"]]
+    [:name [:string {:min 1}]]
+    [:field ::snapshot/natural-key]]
+   [:map {:closed true}
+    [:type [:= "internal"]]
+    [:name [:string {:min 1}]]
+    [:values {:optional true}
+     ;; Metabase keeps a human-readable value only when it is nil or a text that is not blank.
+     [:vector {:min 1} [:tuple
+                        [:and ::common/document [:maybe [:or :string number? :boolean]]]
+                        [:maybe [:and :string [:re #"\S"]]]]]]]])
 
 (def ^:private field-setting-schemas
   {:display_name       [:string {:min 1}]
@@ -26,7 +42,8 @@
    :settings           ::common/document-map
    :data_sensitivity   :string
    :custom_position    :int
-   :fk_target          ::snapshot/natural-key})
+   :fk_target          ::snapshot/natural-key
+   :remapping          ::remapping})
 
 (registry/def ::fields
   [:schema
@@ -46,14 +63,16 @@
 
 (defn field-refs
   "The references of the field settings `fields` of the fields under natural key `path`: each field with settings,
-  and each foreign-key target."
+  each foreign-key target, and the target field of each foreign-key remapping."
   [path fields]
   (into #{}
         (mapcat (fn [[k entry]]
-                  (let [path   (conj path (subs (str k) 1))
-                        target (:fk_target entry)]
+                  (let [path     (conj path (subs (str k) 1))
+                        target   (:fk_target entry)
+                        remapped (get-in entry [:remapping :field])]
                     (concat [[:field [:env path]]]
                             (when target [[:fk-target [:env target]]])
+                            (when remapped [[:remapping [:env remapped]]])
                             (field-refs path (:fields entry))))))
         fields))
 
