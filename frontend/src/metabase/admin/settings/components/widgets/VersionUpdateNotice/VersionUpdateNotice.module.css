@@ -13,3 +13,10 @@
     background-color: var(--mb-color-core-brand-hover);
   }
 }
+
+.inlineInfoIcon {
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin-inline-start: var(--mantine-spacing-xs);
+  cursor: pointer;
+}

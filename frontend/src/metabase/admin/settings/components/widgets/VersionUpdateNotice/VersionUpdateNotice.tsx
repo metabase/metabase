@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import CS from "metabase/css/core/index.css";
 import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import { useEolDate, useGetVersionInfoQuery } from "metabase/settings";
@@ -66,20 +65,18 @@ function VersionMessage({
       bd={isEol ? "1px solid var(--mb-color-feedback-warning)" : undefined}
       bdrs="sm"
     >
-      <Flex align="center" gap="xs">
-        <Text fw="bold" c={textColor}>
-          {message}
-        </Text>
+      <Text fw="bold" c={textColor} miw={0}>
+        {message}
         {isNewVersionAvailable && eolDate && (
           <EolHoverCard
             currentVersion={currentVersion}
             eolDate={eolDate}
             isEol={isEol}
           >
-            <Icon name="info" c={textColor} className={CS.cursorPointer} />
+            <Icon name="info" c={textColor} className={S.inlineInfoIcon} />
           </EolHoverCard>
         )}
-      </Flex>
+      </Text>
       {isNewVersionAvailable && (
         <Button
           variant="on-dark-primary"
