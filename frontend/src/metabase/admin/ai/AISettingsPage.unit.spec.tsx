@@ -68,6 +68,7 @@ const setup = async ({
   collections = defaultSeedCollections,
   page = "ai-features",
   queryExecutionEnabled = false,
+  queryExecutionEnvName,
 }: {
   aiFeaturesEnabled?: boolean;
   enableEmbedding?: boolean;
@@ -80,6 +81,7 @@ const setup = async ({
   >[0]["collections"];
   page?: Page;
   queryExecutionEnabled?: boolean;
+  queryExecutionEnvName?: string;
 } = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
@@ -106,6 +108,12 @@ const setup = async ({
     createMockSettingDefinition({
       key: "llm-metabot-provider",
       value: null,
+    }),
+    createMockSettingDefinition({
+      key: "metabot-query-execution-enabled?",
+      value: queryExecutionEnvName ? null : queryExecutionEnabled,
+      is_env_setting: queryExecutionEnvName != null,
+      env_name: queryExecutionEnvName,
     }),
   ]);
   setupUpdateSettingEndpoint();
@@ -350,6 +358,26 @@ describe("AISettingsPage", () => {
       "/setting/metabot-query-execution-enabled%3F",
     );
     expect(puts[0].body).toEqual({ value: true });
+  });
+
+  it("locks query execution to the value an env var sets", async () => {
+    await setup({
+      queryExecutionEnabled: true,
+      queryExecutionEnvName: "MB_METABOT_QUERY_EXECUTION_ENABLED",
+    });
+
+    const toggle = await screen.findByRole("switch", {
+      name: "Let Metabot read query results",
+    });
+    expect(
+      await screen.findByText("Using MB_METABOT_QUERY_EXECUTION_ENABLED"),
+    ).toBeInTheDocument();
+    expect(toggle).toBeChecked();
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.click(toggle);
+
+    expect(await findRequests("PUT")).toHaveLength(0);
   });
 
   it("disables query execution until an AI provider is configured", async () => {
