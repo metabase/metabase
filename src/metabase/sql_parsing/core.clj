@@ -107,14 +107,14 @@
    low cutoff — far below the thousands of items where GraalPy actually OOMs — is the safe default."
   100)
 
-(def ^:private ^:const impersonation-literal-list-strip-threshold
-  "The threshold the `\"read\"` and `\"write\"` path of [[is-single-stmt-of-type?]] uses instead of
-   [[literal-list-strip-threshold]]. It validates one interactive query rather than sweeping stored
-   queries in the background, and refusing here breaks a documented idiom (`IN ({{number_var}})` inlines
-   its values as literals before validation), so the cutoff is set far higher — purely as an OOM ceiling. Measured
-   GraalPy cost is ~0.18 ms and ~0.08 MB of transient heap per literal item, so 2000 caps a worst-case
-   accepted query near a third of a second and ~160 MB while leaving the idiom (dozens–hundreds of
-   values) ample headroom."
+(def ^:private ^:const executable-literal-list-ceiling
+  "The literal-list ceiling for a caller that will execute what it validates (see [[executable-limits]]),
+   used instead of [[literal-list-strip-threshold]]. Such a caller checks one interactive query rather
+   than sweeping stored queries in the background, and refusing breaks a documented idiom
+   (`IN ({{number_var}})` inlines its values as literals before validation), so the cutoff is set far
+   higher — purely as an OOM ceiling. Measured GraalPy cost is ~0.18 ms and ~0.08 MB of transient heap per
+   literal item, so 2000 caps a worst-case accepted query near a third of a second and ~160 MB while
+   leaving the idiom (dozens–hundreds of values) ample headroom."
   2000)
 
 (def ^:private literal-list-keyword-pattern
@@ -304,10 +304,10 @@
    Best-effort by design: stripping feeds fail-soft *analysis* (lineage, referenced tables/fields, returned
    columns), so edge cases like keyword-shaped text inside string literals or comments are deliberately not
    guarded against. A caller that needs its answer to hold for the string it goes on to run must NOT use
-   the rewrite: the impersonation validator [[is-single-stmt-of-type?]] parses the original SQL and calls
-   this only with the much higher [[impersonation-literal-list-strip-threshold]], refusing outright when a
-   list exceeds it rather than answering about a rewrite — those same unguarded edge cases are what make a
-   rewrite unsound to reason about."
+   the rewrite: [[validate-executable-stmt]] and [[classify-stmt]] parse the original SQL and call this
+   only to find out whether a list is over their ceiling, refusing outright when it is rather than
+   answering about a rewrite — those same unguarded edge cases are what make a rewrite unsound to reason
+   about."
   (^String [^String sql] (strip-large-literal-lists sql literal-list-strip-threshold))
   (^String [^String sql ^long threshold]
    (try
@@ -592,74 +592,122 @@
   [dialect sql replacements]
   (protocol/replace-names (parser) dialect sql replacements))
 
-;; Parsing time and memory grow with the length of the SQL, whatever it holds, and the "read-only" check runs on SQL
-;; a user or a model wrote.
+;;; --------------------------------------- Single-statement classification ----------------------------------------
+
+;; Two things are being asked at once here, and they are independent:
+;;
+;;   `stmt-type` — which statement kinds count as allowed. A question about the SQL.
+;;   `limits`    — how much work to spend, and what to do when the SQL cannot be checked as it stands.
+;;                 A question about what the *caller* will do with the answer.
+;;
+;; The classifier below takes both and reads neither off the other. The two public entry points,
+;; [[validate-executable-stmt]] and [[classify-stmt]], are the two answers to the second question.
+
+;; Parsing time and memory grow with the length of the SQL, whatever it holds.
 ;; As of 2026-10-10, the densest SQL that fits, a list of about 8,000 one-character items, takes about a second to
 ;; check, and six such checks at once complete on a 1 GB heap. At 60,000 characters one check took 1 to 3 seconds.
-(def ^:private max-read-only-sql-chars
-  "The longest SQL, in characters, that the \"read-only\" check parses."
+(def ^:private ^:const max-gate-sql-chars
+  "The longest SQL, in characters, that [[classify-stmt]] parses. A cheap ceiling on work spent for a
+   caller that is only gating, and whose SQL a user or a model wrote."
   (* 16 1024))
 
-(def unverifiable-reasons
-  "The `:reason`s [[is-single-stmt-of-type?]] gives when it refused SQL *without checking* it, rather than
-  because it checked and the SQL is not a single statement of the requested type.
+(def ^:private executable-limits
+  "Limits for a caller that will execute the `:sql` the verdict carries — [[validate-executable-stmt]].
 
-  A caller must refuse either way — the verdict is `:allowed-stmt-type? false` for both — but one that
-  cares may word the refusal differently, or waive it where validation is not what keeps the query safe."
-  #{"unknown-dialect" "large-literal-list" "too-long"})
+   Such a caller needs the verdict to hold for the exact string it goes on to run, so a known `dialect` is
+   required: `nil` makes SQLGlot parse in its generic dialect and hand back a confident verdict plus a
+   generically-regenerated `:sql`, which is not the string that was checked. The literal-list ceiling is
+   purely an availability limit, set far above any real query, and there is no length cap at all — a
+   hand-written native query of any length is legitimate and must not be refused for its size."
+  {:max-sql-chars        nil
+   :literal-list-ceiling executable-literal-list-ceiling
+   :require-dialect?     true})
 
-(defn- refused
-  "A verdict refusing `sql` for `reason` without parsing it."
+(def ^:private gate-limits
+  "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]].
+
+   Nothing downstream depends on the `:sql` being the string that runs, so SQLGlot's generic dialect is an
+   acceptable best-effort read (H2 and Vertica have no dialect of their own). In exchange the ceilings are
+   stingy: such a caller is gating SQL a user or a model wrote, and spending little on it is the point."
+  {:max-sql-chars        max-gate-sql-chars
+   :literal-list-ceiling literal-list-strip-threshold
+   :require-dialect?     false})
+
+(defn- unknown
+  "A verdict that `sql` could not be checked, for `reason`."
   [sql reason]
-  {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason reason})
+  {:verdict :unknown, :reason reason, :sql sql})
 
-(defn is-single-stmt-of-type?
-  "Validates that `sql` is a single statement of `stmt-type` for `dialect`: `\"read\"` = SELECT,
-  `\"write\"` = INSERT, UPDATE, or DELETE, `\"read-only\"` = a read statement that also holds nothing
-  that writes or locks anywhere in its tree. Returns `{:is-single-stmt? bool, :allowed-stmt-type? bool,
-  :sql <reconstructed>}`, or `{:error ...}` when the SQL cannot be parsed.
-
-  The `:sql` is the query reconstructed from the parsed AST, and is only ever reconstructed from `sql`
-  itself: SQL this cannot parse as it stands is refused with `:allowed-stmt-type? false` and a `:reason`
-  from [[unverifiable-reasons]], never parsed in a collapsed form and then vouched for in its original
-  one. Refusing is the default, so a caller is safe checking only `:allowed-stmt-type?`; the `:reason` is
-  there for one that wants to tell \"not allowed\" from \"could not be checked\".
-
-  Two policies differ by `stmt-type`, because `\"read\"` and `\"write\"` back connection impersonation —
-  whose caller executes the `:sql` that comes back — while `\"read-only\"` is a best-effort guard on SQL a
-  model wrote:
-
-  - a `nil` `dialect` makes SQLGlot parse in its generic dialect, which `\"read-only\"` accepts (H2 and
-    Vertica have no dialect of their own) and the impersonation types refuse;
-  - the literal-list ceiling is [[literal-list-strip-threshold]] for `\"read-only\"` and the far higher
-    [[impersonation-literal-list-strip-threshold]] for the impersonation types, which must not reject the
-    documented `IN ({{number_var}})` idiom (#74284)."
-  [dialect sql stmt-type]
-  (let [read-only? (= stmt-type "read-only")]
+(defn- verdict
+  "Turn the parser's raw result for `sql` into a verdict map."
+  [sql raw]
+  (let [{:keys [is-single-stmt? allowed-stmt-type? error reason reason-detail] parsed-sql :sql}
+        (perf/update-keys raw (comp keyword u/->kebab-case-en))]
     (cond
-      ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
-      ;; grows with it.
-      (and read-only? (< max-read-only-sql-chars (count sql)))
-      (refused sql "too-long")
+      ;; SQL that does not parse is SQL we know nothing about. `:error` carries the parser's message, which
+      ;; a caller may want to word differently from the refusals it *can* explain.
+      error              (assoc (unknown sql "unparseable") :error error)
+      allowed-stmt-type? {:verdict :allowed, :single-stmt? true, :sql parsed-sql}
+      :else              (cond-> {:verdict :disallowed, :single-stmt? (boolean is-single-stmt?)}
+                           reason        (assoc :reason reason)
+                           reason-detail (assoc :detail reason-detail)
+                           parsed-sql    (assoc :sql parsed-sql)))))
 
-      ;; A `nil` dialect is the one value that does *not* fail downstream: SQLGlot reads it as "use the
-      ;; generic dialect" and hands back a confident verdict plus a generically-regenerated `:sql` string,
-      ;; which an impersonation caller would then execute. (An unsupported dialect *string* raises, and
-      ;; comes back as `{:error ...}`.)
-      (and (not read-only?) (nil? dialect))
-      (refused sql "unknown-dialect")
+(defn- classify-single-stmt
+  "Classify `sql` as a single statement of `stmt-type` for `dialect`, spending no more than `limits` allow.
+   Applies `limits` as given; it does not infer them from `stmt-type`."
+  [dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
+  (cond
+    ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
+    ;; grows with it.
+    (and max-sql-chars (< (long max-sql-chars) (count sql)))
+    (unknown sql "too-long")
 
-      :else
-      ;; Stripping is only ever a size guard: if it would collapse a list, parsing that list could OOM the
-      ;; shared JVM, so refuse rather than parse the collapsed form and answer about that instead.
-      ;; Stripping also does not skip comments, so a collapsed list can swallow a second statement into a
-      ;; comment. Under the ceiling nothing is stripped, so we parse exactly the string the caller holds.
-      (if (not= sql (strip-large-literal-lists sql (if read-only?
-                                                     literal-list-strip-threshold
-                                                     impersonation-literal-list-strip-threshold)))
-        (refused sql "large-literal-list")
-        (-> (protocol/single-stmt-of-type (parser) dialect sql stmt-type)
-            (perf/update-keys (comp keyword u/->kebab-case-en)))))))
+    (and require-dialect? (nil? dialect))
+    (unknown sql "unknown-dialect")
+
+    ;; Stripping is only ever a size guard: if it would collapse a list, parsing that list could OOM the
+    ;; shared JVM, so refuse rather than parse the collapsed form and answer about that instead. Stripping
+    ;; also does not skip comments, so a collapsed list can swallow a second statement into a comment.
+    ;; Under the ceiling nothing is stripped, so we parse exactly the string the caller holds.
+    (not= sql (strip-large-literal-lists sql literal-list-ceiling))
+    (unknown sql "large-literal-list")
+
+    :else
+    (verdict sql (protocol/single-stmt-of-type (parser) dialect sql stmt-type))))
+
+;;; The verdict every classification returns:
+;;;
+;;;   {:verdict :allowed,    :single-stmt? true,  :sql <reconstructed>}
+;;;   {:verdict :disallowed, :single-stmt? bool,  :reason <why>, :detail <...>, :sql <reconstructed>}
+;;;   {:verdict :unknown,    :reason <why>,       :error <parser message>, :sql <original>}
+;;;
+;;; `:unknown` is the honest third answer: the SQL was not checked, so there is nothing to report about it
+;;; beyond why. It carries no `:single-stmt?` for that reason. Only `:allowed` is permission to proceed, so
+;;; a caller that compares against `:allowed` and ignores the rest is safe by default; `:reason` is there
+;;; for one that wants to word a refusal, or to treat "could not check" differently from "checked, and no".
+
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
+  `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or DELETE,
+  `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its tree.
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched
+  for in its original one. See [[executable-limits]] for what that costs, and [[classify-stmt]] for the
+  same question asked by a caller that only needs a verdict."
+  [dialect sql stmt-type]
+  (classify-single-stmt dialect sql stmt-type executable-limits))
+
+(defn classify-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `dialect` (see [[validate-executable-stmt]] for
+  the `stmt-type` values), for a caller that only reads the verdict and never executes its `:sql`.
+
+  Cheaper and more permissive about `dialect` than [[validate-executable-stmt]] — see [[gate-limits]].
+  Do not execute the `:sql` this returns: with no `dialect` it is a generic-dialect regeneration, not the
+  string that was checked."
+  [dialect sql stmt-type]
+  (classify-single-stmt dialect sql stmt-type gate-limits))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")
