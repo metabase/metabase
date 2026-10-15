@@ -511,8 +511,8 @@ describe("release notification", () => {
     });
     expect(message).toBe(
       [
-        `:warning: *<${masterUrl}|50e4cd4250> (<https://github.com/metabase/metabase/pull/84259|#84259>) needs a backport and a release.*`,
-        "It added `v63.a`, `v62.a` to master, but no release of v63, v62 has them yet:",
+        `:warning: *<${masterUrl}|50e4cd4250> (<https://github.com/metabase/metabase/pull/84259|#84259>) breaks cross version tests!*`,
+        "It added migrations `v63.a`, `v62.a` to master, but no release of v63, v62 has them yet. Please backport and release these changes!",
         `• v63: backported in <https://github.com/metabase/metabase/commit/${backportSha}|8ae0ae3ee3> (<https://github.com/metabase/metabase/pull/84525|#84525>), but not released yet`,
         "• v62: not backported yet",
         "Cross-version downgrades from master to versions older than v63, v62 are skipped until a release has them. <https://run|Run>",
@@ -539,7 +539,7 @@ describe("release notification", () => {
     expect(sendSlackMessage).toHaveBeenCalledTimes(1);
     expect(sendSlackMessage).toHaveBeenCalledWith({
       channelName: "release",
-      message: expect.stringContaining("needs a release"),
+      message: expect.stringContaining("breaks cross version tests!"),
     });
   });
 

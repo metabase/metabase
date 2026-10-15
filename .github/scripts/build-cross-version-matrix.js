@@ -278,21 +278,12 @@ function commitLink({ owner, repo, sha, prs }) {
 }
 
 function formatReleaseNeededMessage({ owner, repo, runUrl, commit }) {
-  const needsBackport = commit.majors.some(
-    ({ status }) => status === "awaiting-backport",
-  );
-  const needsRelease = commit.majors.some(
-    ({ status }) => status === "awaiting-release",
-  );
-  const needs = [needsBackport && "a backport", needsRelease && "a release"]
-    .filter(Boolean)
-    .join(" and ");
   const ids = commit.majors.flatMap((entry) => entry.ids);
   const versions = commit.majors.map(({ major }) => `v${major}`).join(", ");
 
   return [
-    `:warning: *${commitLink({ owner, repo, ...commit })} needs ${needs}.*`,
-    `It added ${ids.map((id) => `\`${id}\``).join(", ")} to master, but no release of ${versions} has them yet:`,
+    `:warning: *${commitLink({ owner, repo, ...commit })} breaks cross version tests!*`,
+    `It added migrations ${ids.map((id) => `\`${id}\``).join(", ")} to master, but no release of ${versions} has them yet. Please backport and release these changes!`,
     ...commit.majors.map(({ major, backport }) =>
       backport
         ? `• v${major}: backported in ${commitLink({ owner, repo, ...backport })}, but not released yet`
