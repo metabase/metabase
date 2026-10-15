@@ -65,6 +65,12 @@
            :x_values (mapv first points)
            :y_values (mapv second points))))
 
+(defn analyzable-series
+  "Return the series of `chart-config` with their nil points dropped, leaving out any series with no points left."
+  [chart-config]
+  (->> (update-vals (:series chart-config) drop-nil-points)
+       (m/filter-vals (comp seq :y_values))))
+
 ;;; ----------------------------------------------- Chart Type Detection ---------------------------------------------
 
 (def ^:private explicit-display-types
@@ -157,8 +163,7 @@
                    :deep? - compute additional statistics"
   [chart-config :- ::stats.types/chart-config
    opts         :- ::stats.types/options]
-  (let [series                       (->> (update-vals (:series chart-config) drop-nil-points)
-                                          (m/filter-vals (comp seq :y_values)))
+  (let [series                       (analyzable-series chart-config)
         chart-type                   (detect-chart-type (assoc chart-config :series series))
         [limited-series limits-info] (apply-data-limits series)
         too-many-series?             (> (count limited-series) max-series-for-correlations)
