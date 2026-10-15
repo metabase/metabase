@@ -20,7 +20,7 @@
   (is (= 9 (fixtures/area {:shape :square :side 3})))
   (is (= 6 (fixtures/area {:shape :rectangle :width 2 :height 3}))))
 
-(defn- anonymous-test-var
+(defn- anonymous-test-var!
   "A test var that is in no namespace's interns, so that no test runner finds it."
   [test-name f]
   (doto (Var/create)
@@ -142,7 +142,7 @@
 
 (deftest baseline-test
   (testing "tests that fail with no mutation make the run throw, because no result would mean anything"
-    (let [always-fails (anonymous-test-var 'always-fails (fn [] (is (= 1 2))))]
+    (let [always-fails (anonymous-test-var! 'always-fails (fn [] (is (= 1 2))))]
       (is (thrown-with-msg? ExceptionInfo #"fail with no mutation"
                             (mut/run-mutations clamp-mutations {:tests [always-fails]}))))))
 
@@ -157,8 +157,12 @@
 
 (deftest nested-run-test
   (testing "a run inside a run returns nil, so a mutation test among the tests that it runs does not recurse"
-    (binding [mut/*running* true]
-      (is (nil? (mut/run-mutations clamp-mutations {:tests [#'clamp-test]}))))))
+    (let [inner      (atom ::not-run)
+          runs-inner (anonymous-test-var! 'runs-inner
+                                          (fn []
+                                            (reset! inner (mut/run-mutations clamp-mutations {:tests [#'clamp-test]}))))]
+      (mut/run-mutations (take 1 clamp-mutations) {:tests [#'clamp-test runs-inner]})
+      (is (nil? @inner)))))
 
 (deftest preview-test
   (is (= '(defn clamp "`x`, bounded below by `lo` and above by `hi`." [lo hi x] (max lo x))
