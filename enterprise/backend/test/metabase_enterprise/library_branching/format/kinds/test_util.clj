@@ -184,7 +184,7 @@
   "Generates the `:attrs` of a published table."
   (attrs-of {:description             [false text-gen]
              :entity_type             [false (gen/elements ["entity/GenericTable" "entity/TransactionTable"])]
-             :visibility_type         [false (gen/elements ["hidden" "technical"])]
+             :data_layer              [false (gen/elements ["final" "internal" "hidden"])]
              :caveats                 [false text-gen]
              :points_of_interest      [false text-gen]
              :show_in_getting_started [false (gen/return true)]

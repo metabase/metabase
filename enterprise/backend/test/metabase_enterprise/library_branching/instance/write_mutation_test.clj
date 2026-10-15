@@ -72,11 +72,12 @@
     :target `kinds.metric/write-metric!
     :edits  [[:replace '(library-branching.db/update-card! (:id row) changes)
               '(library-branching.db/update-card! (:id row) (assoc changes :public_uuid nil :enable_embedding false))]]}
-   {:name   :pair-in-one-save
-    :doc    "A change of both the visibility type and the data layer of a published table is one save, which Metabase
-            refuses."
-    :target `kinds.published-table/update-table-settings!
-    :edits  [[:replace '(every? (partial contains? changes) [:visibility_type :data_layer]) false]]}
+   {:name   :visibility-type-is-content
+    :doc    "A read gives the visibility type of a table as content, which Metabase derives from the data layer, so a
+            written data layer reads back with an attribute that the content did not have."
+    :target `kinds.published-table/table-columns
+    :edits  [[:replace '(set (keys (:attrs format.published-table/spec)))
+              '(conj (set (keys (:attrs format.published-table/spec))) :visibility_type)]]}
    {:name   :field-settings-kept
     :doc    "A field setting that the content no longer has is not cleared."
     :target `kinds.published-table/field-changes
@@ -100,6 +101,7 @@
    #'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test
    #'metabase-enterprise.library-branching.instance.write-test/refused-writes-write-nothing-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-write-test
+   #'metabase-enterprise.library-branching.instance.write-test/published-table-legacy-visibility-type-test
    #'metabase-enterprise.library-branching.instance.write-test/snippet-write-test
    #'metabase-enterprise.library-branching.instance.write-test/write-of-current-content-changes-no-row-test
    #'metabase-enterprise.library-branching.instance.write-test/take-theirs-over-a-local-change-test
@@ -108,6 +110,7 @@
    #'metabase-enterprise.library-branching.instance.write-property-test/snippet-collection-laws-test
    #'metabase-enterprise.library-branching.instance.write-property-test/snippet-laws-test
    #'metabase-enterprise.library-branching.instance.write-property-test/published-table-laws-test
+   #'metabase-enterprise.library-branching.instance.write-property-test/layer-content-laws-test
    #'metabase-enterprise.library-branching.instance.save-rule-test/trash-of-a-used-item-is-refused-test
    #'metabase-enterprise.library-branching.instance.save-rule-test/reference-out-of-scope-is-refused-test
    #'metabase-enterprise.library-branching.instance.save-rule-test/saves-the-rule-allows-test

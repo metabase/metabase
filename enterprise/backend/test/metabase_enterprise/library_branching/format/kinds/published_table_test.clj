@@ -1,10 +1,15 @@
 (ns metabase-enterprise.library-branching.format.kinds.published-table-test
   (:require
    [clojure.test :refer :all]
+   [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.published-table :as published-table]
    [metabase-enterprise.library-branching.format.layout :as layout]
+   [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.util.malli.registry :as mr]))
 
@@ -64,6 +69,52 @@
                           (update item :refs disj [:table [:env events]])))))
   (testing "a root-level published table is in library/"
     (is (= {events "library/events.table.yaml"} (layout/layout kinds/codecs {events item})))))
+
+;;; ------------------------------------------- Visibility type and data layer ------------------------------------------
+
+(defn- decode-bytes
+  "What `tree/decode-file` gives for the canonical bytes of document `doc`."
+  [doc]
+  (tree/decode-file {"published-table" published-table/codec} (writer/write-yaml doc)))
+
+(deftest data-layer-test
+  (testing "the data layer of a table is content, with the values that Metabase stores as they are"
+    (doseq [layer ["final" "internal" "hidden"]]
+      (let [layered (assoc-in item [:attrs :data_layer] layer)]
+        (is (mr/validate (codec/schema published-table/codec) layered) layer)
+        (is (= {:item [events layered]} (decode-bytes (codec/encode published-table/codec events layered))) layer))))
+  (testing "a data layer that Metabase stores as another value is not content"
+    (doseq [layer ["gold" "copper" "Hidden" "visible"]]
+      (is (not (mr/validate (codec/schema published-table/codec) (assoc-in item [:attrs :data_layer] layer))) layer)
+      (is (= :invalid (get-in (decode-bytes (assoc (codec/encode published-table/codec events item) :data_layer layer))
+                              [:finding :type]))
+          layer)))
+  (testing "the visibility type of a table is not content: Metabase derives it from the data layer"
+    (is (not (mr/validate (codec/schema published-table/codec) (assoc-in item [:attrs :visibility_type] "hidden"))))
+    (doseq [doc [{:visibility_type "hidden"} {:visibility_type "hidden" :data_layer "hidden"}]]
+      (is (= :invalid (get-in (decode-bytes (merge (codec/encode published-table/codec events item) doc))
+                              [:finding :type]))
+          (pr-str doc))))
+  (testing "a field keeps its own visibility type"
+    (is (mr/validate (codec/schema published-table/codec) item))))
+
+(def ^:private layer-document-gen
+  "Generates the document of the table with one, both or neither of the visibility type and the data layer, each with
+  a value that Metabase can store or a legacy one. The first choice of each is absent."
+  (gen/let [visibility (gen/elements [nil "hidden" "technical"])
+            layer      (gen/elements [nil "final" "internal" "hidden" "gold"])]
+    (cond-> (codec/encode published-table/codec events item)
+      visibility (assoc :visibility_type visibility)
+      layer      (assoc :data_layer layer))))
+
+(defspec layer-documents-test 100
+  ;; The format accepts a document iff it has no visibility type and a data layer that Metabase stores as it is; an
+  ;; accepted document decodes to an item that encodes to the same document.
+  (prop/for-all [doc layer-document-gen]
+    (let [result (decode-bytes doc)]
+      (if (and (nil? (:visibility_type doc)) (not= "gold" (:data_layer doc)))
+        (= doc (apply codec/encode published-table/codec (:item result)))
+        (= :invalid (get-in result [:finding :type]))))))
 
 (def ^:private mutations
   [{:name   :no-field-refs

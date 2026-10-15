@@ -330,17 +330,43 @@
             (write! :published-table id changed)
             (is (= (refs changed) (current :published-table id)))
             (is (nil? (t2/select-one-fn :display_name :model/TableUserSettings :table_id (mt/id :venues))))))
-        (testing "a consistent visibility type and data layer, written together, read back"
-          (let [changed (update item :attrs assoc :visibility_type "hidden" :data_layer "hidden")]
-            (write! :published-table id changed)
-            (is (= (refs changed) (current :published-table id)))
-            (write! :published-table id item)
-            (is (= (refs item) (current :published-table id)))))
+        (testing "a data layer reads back with no visibility type, which Metabase derives from it"
+          (doseq [layer ["hidden" "final" "internal" "hidden"]]
+            (let [changed (assoc-in item [:attrs :data_layer] layer)]
+              (write! :published-table id changed)
+              (is (= (refs changed) (current :published-table id)) layer)))
+          (is (= :hidden (t2/select-one-fn :visibility_type :model/TableUserSettings :table_id (mt/id :venues))))
+          (write! :published-table id item)
+          (is (= (refs item) (current :published-table id))))
+        (testing "content with the visibility type of the table is refused"
+          (is (= :invalid-content
+                 (refusal #(write! :published-table id (assoc-in item [:attrs :visibility_type] "hidden"))))))
         (testing "trash! unpublishes the table, and a write publishes it again"
           (trash! :published-table id)
           (is (nil? (current :published-table id)))
           (write! :published-table id item)
           (is (= (refs item) (current :published-table id))))))))
+
+(deftest published-table-legacy-visibility-type-test
+  (testing "a visibility type that a person saved reads as the data layer that Metabase gives it, and a write of that
+            content changes no row"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_ nil {:rollback-only true}]
+        (let [table-id (mt/id :venues)
+              id       (table-key :venues)
+              settings #(t2/select-one :metabase_table_user_settings :table_id table-id)]
+          (t2/delete! :model/TableUserSettings :table_id table-id)
+          (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-set :model/Field :table_id table-id)])
+          (t2/insert! :model/TableUserSettings {:table_id        table-id
+                                                :is_published    true
+                                                :collection_id   (:id data)
+                                                :visibility_type :technical})
+          (let [item   (current :published-table id)
+                before (settings)]
+            (is (= {:data_layer "hidden"} (:attrs item)))
+            (write! :published-table id item)
+            (is (= before (settings)))
+            (is (= "technical" (:visibility_type (settings))))))))))
 
 ;;; ---------------------------------------------------- Snippets ---------------------------------------------------
 
