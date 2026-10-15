@@ -235,9 +235,11 @@
   (let [contained (fn [kind] (sorted-kinds (set/intersection (set (get may-contain kind)) (set kinds))))
         roots     (sorted-kinds root-kinds)]
     (reduce (fn [[item-kinds item-places] {:keys [place kind]}]
-              (let [containers (filterv #(seq (contained (nth item-kinds %))) (range (count item-kinds)))
+              ;; The newest container first: a small choice names a recent container, also after a shrink removes
+              ;; an older one.
+              (let [containers (filterv #(seq (contained (nth item-kinds %))) (reverse (range (count item-kinds))))
                     candidates (cond->> containers (seq roots) (into [nil]))
-                    container  (nth candidates (mod place (count candidates)))
+                    container  (nth candidates (min place (dec (count candidates))))
                     allowed    (if container (contained (nth item-kinds container)) roots)]
                 [(conj item-kinds (nth allowed (mod kind (count allowed))))
                  (conj item-places (some->> container (vector :item)))]))

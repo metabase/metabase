@@ -9,8 +9,10 @@
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.glossary :as kinds.glossary]
+   [metabase-enterprise.library-branching.instance.kinds.measure :as kinds.measure]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
+   [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
@@ -21,8 +23,10 @@
   "`{kind KindStore}`: the kinds that this instance syncs, each with its store."
   {:collection      kinds.collection/kind-store
    :glossary-term   kinds.glossary/kind-store
+   :measure         kinds.measure/kind-store
    :metric          kinds.metric/kind-store
    :published-table kinds.published-table/kind-store
+   :segment         kinds.segment/kind-store
    :snippet         kinds.snippet/kind-store})
 
 (defn read-current

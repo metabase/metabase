@@ -214,12 +214,14 @@
                                          (dissoc :visualization_settings :parameters :parameter_mappings
                                                  :dimensions :dimension_mappings)))
     :snippet    (update item :attrs dissoc :template_tags)
+    :segment    (assoc-in item [:attrs :definition :stages 0 :filters] [[">" {} ["field" {:base-type "type/Integer"} "ID"] 1]])
+    :measure    (assoc-in item [:attrs :definition :stages 0 :aggregation] [["count" {}]])
     item))
 
 (def pushable-snapshot-gen
   "Generates snapshots of the kinds that a push accepts, of at most 12 items: well formed, every root-level item
   a fixed root, references only to the environment, and every item in the schema of its codec."
-  (gen/fmap (fn [s] (kinds.tu/with-refs (update-vals s acceptable)))
+  (gen/fmap (fn [s] (kinds.tu/complete (update-vals s acceptable)))
             (lb.tu/well-formed-snapshot-gen {:kinds       snapshot/kinds
                                              :may-contain snapshot/may-contain
                                              :root-kinds  #{:collection :glossary-term :snippet}

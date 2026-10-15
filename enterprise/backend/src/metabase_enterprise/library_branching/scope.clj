@@ -3,7 +3,8 @@
 
   Scope is the containment closure of [[roots]] minus the trash. An item is in scope iff it is not archived, and its
   collection is in scope, or it is at the root level of a root namespace that holds its kind, or its kind is one of
-  the kinds with no container that the roots hold. Every reader of scope calls [[scope-ids]] or [[scope-count]].
+  the kinds with no container that the roots hold; a segment or a measure is in scope iff it is not archived and its
+  table is an in-scope published table. Every reader of scope calls [[scope-ids]] or [[scope-count]].
 
   Precondition: archive is closed downward. An archived collection's subtree and the items in it, and a dashboard's
   questions, are archived with it; an archive on the instance keeps this."
@@ -20,8 +21,8 @@
 
 (def kinds
   "The kinds of the items that scope holds."
-  #{:action :collection :dashboard :data-app :document :glossary-term :metric :model :published-table :python-library
-    :question :snippet :transform :transform-job :transform-tag})
+  #{:action :collection :dashboard :data-app :document :glossary-term :measure :metric :model :published-table
+    :python-library :question :segment :snippet :transform :transform-job :transform-tag})
 
 (defmulti kind-query
   "HoneySQL that selects the in-scope items of `kind` for `roots`: the column `:id`, and `:entity_id` (or `:db`,
@@ -131,6 +132,24 @@
                       [:= :t.is_published true]
                       [:= :t.archived_at nil]
                       (in-scope roots :t.collection_id :collection)]}))
+
+(defn- table-item-query
+  "The in-scope rows of `table`, whose rows live on a warehouse table: those not archived on an in-scope published
+  table."
+  [roots table]
+  (subquery {:select [:t.id :t.entity_id]
+             :from   [[table :t]]
+             :where  [:and
+                      (unarchived :t.archived)
+                      (in-scope roots :t.table_id :published-table)]}))
+
+(defmethod kind-query :segment
+  [roots _kind]
+  (table-item-query roots :segment))
+
+(defmethod kind-query :measure
+  [roots _kind]
+  (table-item-query roots :measure))
 
 (defmethod kind-query :snippet
   [roots _kind]
