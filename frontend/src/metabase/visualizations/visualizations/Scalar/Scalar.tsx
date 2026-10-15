@@ -167,9 +167,7 @@ function ScalarComponent(
         </ScalarValueContainer>
       </Box>
       {titleElement && (
-        <ScalarLabel description={description} xPadding={tier.xPadding}>
-          {titleElement}
-        </ScalarLabel>
+        <ScalarLabel description={description}>{titleElement}</ScalarLabel>
       )}
     </ScalarCardShell>
   );

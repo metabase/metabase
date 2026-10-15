@@ -10,24 +10,18 @@ import S from "./ScalarLabel.module.css";
 
 const DESCRIPTION_ICON_SIZE = 16;
 const DESCRIPTION_ICON_GAP = 4;
+const DESCRIPTION_ICON_SPACE = DESCRIPTION_ICON_SIZE + DESCRIPTION_ICON_GAP;
 
 interface ScalarLabelProps {
   children: ReactNode;
   description?: string | null;
-  xPadding: number;
 }
 
-export function ScalarLabel({
-  children,
-  description,
-  xPadding,
-}: ScalarLabelProps) {
+export function ScalarLabel({ children, description }: ScalarLabelProps) {
   const tc = useTranslateContent();
-  // Reserve equal space on both sides where the icon exceeds the card padding.
-  const iconSpace = Math.max(
-    DESCRIPTION_ICON_SIZE + DESCRIPTION_ICON_GAP - xPadding,
-    0,
-  );
+  const maxWidth = description
+    ? `calc(100% - ${rem(2 * DESCRIPTION_ICON_SPACE)})`
+    : "100%";
 
   return (
     <Flex
@@ -36,7 +30,7 @@ export function ScalarLabel({
       justify="center"
       gap="xxs"
       miw={0}
-      maw={description ? `calc(100% - ${rem(2 * iconSpace)})` : "100%"}
+      maw={maxWidth}
     >
       {children}
       {description && (
