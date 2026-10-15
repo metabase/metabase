@@ -108,13 +108,7 @@
   100)
 
 (def ^:private ^:const executable-literal-list-ceiling
-  "The literal-list ceiling for a caller that will execute what it validates (see [[executable-limits]]),
-   used instead of [[literal-list-strip-threshold]]. Such a caller checks one interactive query rather
-   than sweeping stored queries in the background, and refusing breaks a documented idiom
-   (`IN ({{number_var}})` inlines its values as literals before validation), so the cutoff is set far
-   higher — purely as an OOM ceiling. Measured GraalPy cost is ~0.18 ms and ~0.08 MB of transient heap per
-   literal item, so 2000 caps a worst-case accepted query near a third of a second and ~160 MB while
-   leaving the idiom (dozens–hundreds of values) ample headroom."
+  "The literal-list ceiling for a caller that will execute what it validates."
   2000)
 
 (def ^:private literal-list-keyword-pattern
@@ -594,15 +588,6 @@
 
 ;;; --------------------------------------- Single-statement classification ----------------------------------------
 
-;; Two things are being asked at once here, and they are independent:
-;;
-;;   `stmt-type` — which statement kinds count as allowed. A question about the SQL.
-;;   `limits`    — how much work to spend, and what to do when the SQL cannot be checked as it stands.
-;;                 A question about what the *caller* will do with the answer.
-;;
-;; The classifier below takes both and reads neither off the other. The two public entry points,
-;; [[validate-executable-stmt]] and [[classify-stmt]], are the two answers to the second question.
-
 ;; Parsing time and memory grow with the length of the SQL, whatever it holds.
 ;; As of 2026-10-10, the densest SQL that fits, a list of about 8,000 one-character items, takes about a second to
 ;; check, and six such checks at once complete on a 1 GB heap. At 60,000 characters one check took 1 to 3 seconds.
@@ -616,19 +601,13 @@
 
    Such a caller needs the verdict to hold for the exact string it goes on to run, so a known `dialect` is
    required: `nil` makes SQLGlot parse in its generic dialect and hand back a confident verdict plus a
-   generically-regenerated `:sql`, which is not the string that was checked. The literal-list ceiling is
-   purely an availability limit, set far above any real query, and there is no length cap at all — a
-   hand-written native query of any length is legitimate and must not be refused for its size."
+   generically-regenerated `:sql`, which is not the string that was checked."
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
    :require-dialect?     true})
 
 (def ^:private gate-limits
-  "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]].
-
-   Nothing downstream depends on the `:sql` being the string that runs, so SQLGlot's generic dialect is an
-   acceptable best-effort read (H2 and Vertica have no dialect of their own). In exchange the ceilings are
-   stingy: such a caller is gating SQL a user or a model wrote, and spending little on it is the point."
+  "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]]."
   {:max-sql-chars        max-gate-sql-chars
    :literal-list-ceiling literal-list-strip-threshold
    :require-dialect?     false})
@@ -675,17 +654,6 @@
 
     :else
     (verdict sql (protocol/single-stmt-of-type (parser) dialect sql stmt-type))))
-
-;;; The verdict every classification returns:
-;;;
-;;;   {:verdict :allowed,    :single-stmt? true,  :sql <reconstructed>}
-;;;   {:verdict :disallowed, :single-stmt? bool,  :reason <why>, :detail <...>, :sql <reconstructed>}
-;;;   {:verdict :unknown,    :reason <why>,       :error <parser message>, :sql <original>}
-;;;
-;;; `:unknown` is the honest third answer: the SQL was not checked, so there is nothing to report about it
-;;; beyond why. It carries no `:single-stmt?` for that reason. Only `:allowed` is permission to proceed, so
-;;; a caller that compares against `:allowed` and ignores the rest is safe by default; `:reason` is there
-;;; for one that wants to word a refusal, or to treat "could not check" differently from "checked, and no".
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the

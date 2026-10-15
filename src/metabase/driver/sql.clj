@@ -346,8 +346,6 @@
   [driver stage admin?]
   (let [write?    driver.settings/*impersonation-allow-write?*
         stmt-type (if write? "write" "read")
-        ;; The `:sql` in an `:allowed` verdict is what we go on to execute, so this is the
-        ;; execute-what-you-validated entry point, not the cheaper gating one.
         {:keys [verdict single-stmt? sql reason error]}
         (sql-tools/validate-executable-stmt driver (:native stage) stmt-type)]
     (cond
