@@ -61,6 +61,7 @@
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/EmbeddingSdkReact18Host
     :model/Exploration
     :model/ExplorationBookmark
     :model/ExplorationQuery

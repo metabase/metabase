@@ -226,6 +226,7 @@
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    ;; Explorations are intentionally disabled on the v64 release branch. do not uncomment this
    ;; "/exploration"          (+auth metabase.explorations.api/routes)
