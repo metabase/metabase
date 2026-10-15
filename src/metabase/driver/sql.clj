@@ -346,8 +346,10 @@
   [driver stage admin?]
   (let [write?    driver.settings/*impersonation-allow-write?*
         stmt-type (if write? "write" "read")
-        {:keys [is-single-stmt? allowed-stmt-type? sql error reason]}
-        (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
+        ;; The `:sql` in an `:allowed` verdict is what we go on to execute, so this is the
+        ;; execute-what-you-validated entry point, not the cheaper gating one.
+        {:keys [verdict single-stmt? sql reason error]}
+        (sql-tools/validate-executable-stmt driver (:native stage) stmt-type)]
     (cond
       error
       (do
@@ -356,12 +358,11 @@
                         {:type qp.error-type/invalid-query
                          :sql  (:native stage)})))
 
-      ;; The validator refused without checking the SQL — it could not vouch that the string that would
-      ;; execute is the string it would have parsed (e.g. a large VALUES/IN list it would have to collapse
-      ;; first). Admins run as the full connection user and are never actually impersonated, so validating
-      ;; their native SQL changes nothing: leave such a query untouched for them rather than refuse it.
-      ;; Everyone else is refused, with the `:reason` logged so an operator has a thread to pull.
-      (contains? sql-tools/unverifiable-reasons reason)
+      ;; The SQL was not checked at all, as opposed to checked and found to be two statements. Admins run as
+      ;; the full connection user and are never actually impersonated, so validating their native SQL
+      ;; changes nothing: leave such a query untouched for them rather than refuse it. Everyone else is
+      ;; refused, with the `:reason` logged so an operator has a thread to pull.
+      (= verdict :unknown)
       (if admin?
         stage
         (do
@@ -371,8 +372,9 @@
                            :reason reason
                            :sql    (:native stage)}))))
 
-      (and is-single-stmt?
-           (or allowed-stmt-type? admin?))
+      ;; Admins may also run a single statement that is not of the required type (e.g. `SHOW TIMEZONE`),
+      ;; but never more than one statement.
+      (or (= verdict :allowed) (and single-stmt? admin?))
       (assoc stage :native sql)
 
       :else
