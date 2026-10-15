@@ -1464,8 +1464,9 @@
                                    (source.p/snapshot-at source last-task-version)))]
     (when (and has-dirty? (not force?) (not merge?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true})))
+                      {:status-code   400
+                       :conflicts     true
+                       :response/keys #{:conflicts}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

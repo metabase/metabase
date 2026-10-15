@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { Stack, Text, TextInput } from "metabase/ui";
-import type { GenericErrorResponse } from "metabase/utils/errors";
 
 import { getRelativeLandingPageUrl } from "./utils";
 
@@ -33,10 +33,7 @@ export function LandingPageUrlField() {
     });
 
     if (result.error) {
-      const message =
-        (result.error as { data: GenericErrorResponse })?.data?.message ||
-        t`Something went wrong`;
-      setError(message);
+      setError(getErrorMessage(result.error));
     }
   };
 

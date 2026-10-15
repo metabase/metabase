@@ -2,11 +2,11 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Stack, Text } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import { useUnsubscribeUserFromSubscriptionsMutation } from "metabase-enterprise/api";
 import type { User } from "metabase-types/api";
 
@@ -42,7 +42,7 @@ export const UnsubscribeUserModal = ({
       sendToast({ message: t`Unsubscribe successful` });
       onClose();
     } catch (error) {
-      const msg = getResponseErrorMessage(error);
+      const msg = findErrorMessage(error);
       setErrorMessage(msg ?? t`Unknown error encountered`);
     }
   };
