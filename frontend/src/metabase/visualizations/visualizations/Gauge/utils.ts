@@ -1,36 +1,26 @@
-import type {
-  GoalRefError,
-  GoalValueResult,
-  ResolvedGoalSegment,
-} from "metabase/viz-core";
+import _ from "underscore";
+
+import type { GoalValueResult, ResolvedGoalSegment } from "metabase/viz-core";
 
 import type { GaugeRange } from "./types";
 
-export type GaugeWarning = {
-  value: number;
-  errors: GoalRefError[];
-};
-
 /**
  * Places a warning halfway between the known bounds around each run of
- * consecutive bounds that failed to resolve, merging warnings that land on the
- * same spot of the arc. `boundResults` follow the order of `getGoalSegmentBounds`.
+ * consecutive bounds that failed to resolve, once per spot on the arc.
+ * `boundResults` follow the order of `getGoalSegmentBounds`.
  */
-export function getGaugeWarnings(
+export function getGaugeWarningValues(
   boundResults: GoalValueResult[],
   [rangeMin, rangeMax]: GaugeRange,
-): GaugeWarning[] {
-  const toWarning = (from: number, to: number, errors: GoalRefError[]) =>
-    errors.length > 0 ? [{ value: (from + to) / 2, errors }] : [];
-
-  const { warnings, previousValue, pendingErrors } = boundResults.reduce<{
-    warnings: GaugeWarning[];
+): number[] {
+  const { values, previousValue, hasPendingError } = boundResults.reduce<{
+    values: number[];
     previousValue: number;
-    pendingErrors: GoalRefError[];
+    hasPendingError: boolean;
   }>(
     (acc, { value, error }) => {
       if (error != null) {
-        return { ...acc, pendingErrors: [...acc.pendingErrors, error] };
+        return { ...acc, hasPendingError: true };
       }
 
       if (value == null) {
@@ -38,35 +28,24 @@ export function getGaugeWarnings(
       }
 
       return {
-        warnings: [
-          ...acc.warnings,
-          ...toWarning(acc.previousValue, value, acc.pendingErrors),
-        ],
+        values: acc.hasPendingError
+          ? [...acc.values, (acc.previousValue + value) / 2]
+          : acc.values,
         previousValue: value,
-        pendingErrors: [],
+        hasPendingError: false,
       };
     },
-    { warnings: [], previousValue: rangeMin, pendingErrors: [] },
+    { values: [], previousValue: rangeMin, hasPendingError: false },
   );
+  const lastValues = hasPendingError
+    ? [...values, (previousValue + rangeMax) / 2]
+    : values;
 
-  const clampToRange = (value: number) =>
-    Math.min(Math.max(value, rangeMin), rangeMax);
+  return _.uniq(lastValues.map(clampToRange));
 
-  return mergeWarningsWithSameValue(
-    [...warnings, ...toWarning(previousValue, rangeMax, pendingErrors)].map(
-      (warning) => ({ ...warning, value: clampToRange(warning.value) }),
-    ),
-  );
-}
-
-function mergeWarningsWithSameValue(warnings: GaugeWarning[]): GaugeWarning[] {
-  const errorsByValue = new Map<number, GoalRefError[]>();
-
-  warnings.forEach(({ value, errors }) => {
-    errorsByValue.set(value, [...(errorsByValue.get(value) ?? []), ...errors]);
-  });
-
-  return Array.from(errorsByValue, ([value, errors]) => ({ value, errors }));
+  function clampToRange(value: number) {
+    return Math.min(Math.max(value, rangeMin), rangeMax);
+  }
 }
 
 export function getSegmentsRange(

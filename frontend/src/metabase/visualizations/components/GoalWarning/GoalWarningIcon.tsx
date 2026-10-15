@@ -1,52 +1,42 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Icon, List, Stack, Text, Tooltip } from "metabase/ui";
-import { type GoalRefError, getGoalErrorMessage } from "metabase/viz-core";
+import { Icon, Tooltip, UnstyledButton } from "metabase/ui";
 
 export const GOAL_WARNING_ICON_SIZE = 16;
-const TOOLTIP_MAX_WIDTH = 300;
 
 type GoalWarningSource = "goal" | "color-ranges";
 
 type GoalWarningIconProps = {
-  errors: GoalRefError[];
   source: GoalWarningSource;
+  onClick: () => void;
 };
 
-export function GoalWarningIcon({ errors, source }: GoalWarningIconProps) {
+export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
   return (
-    <Tooltip
-      label={
-        <Stack gap={0}>
-          <Text c="inherit" fz="inherit">
-            {getGoalWarningTitle(source)}
-          </Text>
-          <List fz="inherit">
-            {errors.map((error, index) => (
-              <List.Item c="inherit" key={index}>
-                {getGoalErrorMessage(error)}
-              </List.Item>
-            ))}
-          </List>
-        </Stack>
-      }
-      maw={TOOLTIP_MAX_WIDTH}
-      multiline
-    >
-      <Icon
+    <Tooltip label={getGoalWarningMessage(source)}>
+      <UnstyledButton
         aria-label={t`Goal warning`}
-        c="error"
         display="block"
-        name="warning"
-        size={GOAL_WARNING_ICON_SIZE}
-      />
+        onClick={onClick}
+      >
+        <Icon
+          c="error"
+          display="block"
+          name="warning"
+          size={GOAL_WARNING_ICON_SIZE}
+        />
+      </UnstyledButton>
     </Tooltip>
   );
 }
 
-const getGoalWarningTitle = (source: GoalWarningSource) =>
-  match(source)
-    .with("goal", () => t`Couldn't get the goal value`)
-    .with("color-ranges", () => t`Couldn't get some color range values`)
+function getGoalWarningMessage(source: GoalWarningSource) {
+  return match(source)
+    .with("goal", () => t`Couldn't get the goal value. Click to open settings.`)
+    .with(
+      "color-ranges",
+      () => t`Couldn't get some color range values. Click to open settings.`,
+    )
     .exhaustive();
+}

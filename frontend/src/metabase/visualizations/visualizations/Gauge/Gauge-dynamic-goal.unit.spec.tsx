@@ -54,9 +54,17 @@ function setup(segments: GoalSegment[], { isQueryBuilder = false } = {}) {
     ),
   ];
 
+  const onOpenChartSettings = jest.fn();
+
   renderWithProviders(
-    <Visualization rawSeries={series} isQueryBuilder={isQueryBuilder} />,
+    <Visualization
+      isQueryBuilder={isQueryBuilder}
+      rawSeries={series}
+      onOpenChartSettings={onOpenChartSettings}
+    />,
   );
+
+  return { onOpenChartSettings };
 }
 
 const SEGMENTS: GoalSegment[] = [
@@ -67,7 +75,7 @@ const SEGMENTS: GoalSegment[] = [
 
 describe("gauge dynamic goal", () => {
   it("renders the ranges that resolve with one warning for consecutive failed bounds in the query builder", async () => {
-    setup(SEGMENTS, { isQueryBuilder: true });
+    const { onOpenChartSettings } = setup(SEGMENTS, { isQueryBuilder: true });
 
     expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
     expect(screen.queryByTestId("gauge-arc-1")).not.toBeInTheDocument();
@@ -77,12 +85,18 @@ describe("gauge dynamic goal", () => {
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
     expect(
-      await screen.findByText("Couldn't get some color range values"),
+      await screen.findByText(
+        "Couldn't get some color range values. Click to open settings.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("boom")).toHaveLength(2);
+
+    await userEvent.click(screen.getByLabelText("Goal warning"));
+    expect(onOpenChartSettings).toHaveBeenCalledWith({
+      initialChartSettings: { section: "Ranges" },
+    });
   });
 
-  it("lists only its own range's errors in each warning", async () => {
+  it("renders a warning for each separate run of failed bounds", async () => {
     setup(
       [
         { min: 0, max: 10, color: "red" },
@@ -93,11 +107,7 @@ describe("gauge dynamic goal", () => {
       { isQueryBuilder: true },
     );
 
-    const [warning] = await screen.findAllByLabelText("Goal warning");
-    expect(screen.getAllByLabelText("Goal warning")).toHaveLength(2);
-
-    await userEvent.hover(warning);
-    expect(await screen.findAllByRole("listitem")).toHaveLength(1);
+    expect(await screen.findAllByLabelText("Goal warning")).toHaveLength(2);
   });
 
   it("renders the ranges that resolve without a warning outside the query builder", async () => {

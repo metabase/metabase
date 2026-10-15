@@ -36,6 +36,7 @@ function ProgressComponent(props: VisualizationProps) {
     isQueryBuilder,
     series: [{ card, data }],
     settings,
+    onOpenChartSettings,
     onVisualizationClick,
     visualizationIsClickable,
   } = props;
@@ -61,8 +62,9 @@ function ProgressComponent(props: VisualizationProps) {
     : -1;
 
   const value = extractProgressValue(rows, columnIndex);
-  const goalErrors =
-    goalData.status === "resolved" ? getGoalErrors(goalData.results) : [];
+  const hasGoalErrors =
+    goalData.status === "resolved" &&
+    getGoalErrors(goalData.results).length > 0;
   const goal =
     goalData.status === "resolved"
       ? getGoalValue(goalSetting, goalData.data)
@@ -226,8 +228,15 @@ function ProgressComponent(props: VisualizationProps) {
         <div className={CS.mt1}>
           <span className={CS.floatLeft}>0</span>
           <Flex className={CS.floatRight} align="center" gap="xs">
-            {isQueryBuilder && goalErrors.length > 0 && (
-              <GoalWarningIcon errors={goalErrors} source="goal" />
+            {isQueryBuilder && hasGoalErrors && onOpenChartSettings && (
+              <GoalWarningIcon
+                source="goal"
+                onClick={() =>
+                  onOpenChartSettings({
+                    initialChartSettings: { section: t`Display` },
+                  })
+                }
+              />
             )}
             {hasValidGoal
               ? t`Goal ${formatValue(goal, columnSettings)}`

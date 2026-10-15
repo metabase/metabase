@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -59,6 +60,7 @@ function ScalarComponent(
     rawSeries,
     actionButtons,
     isQueryBuilder,
+    onOpenChartSettings,
   } = props;
   const { cols, rows } = data;
 
@@ -125,7 +127,7 @@ function ScalarComponent(
   };
 
   const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
-  const goalErrors = getGoalErrors(goalData.results);
+  const hasGoalErrors = getGoalErrors(goalData.results).length > 0;
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments, formatOptions);
 
@@ -207,9 +209,16 @@ function ScalarComponent(
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
-        {isQueryBuilder && goalErrors.length > 0 && (
+        {isQueryBuilder && hasGoalErrors && onOpenChartSettings && (
           <Box pos="absolute" top={0} left="100%" ml="xs">
-            <GoalWarningIcon errors={goalErrors} source="color-ranges" />
+            <GoalWarningIcon
+              source="color-ranges"
+              onClick={() =>
+                onOpenChartSettings({
+                  initialChartSettings: { section: t`Conditional colors` },
+                })
+              }
+            />
           </Box>
         )}
       </Box>

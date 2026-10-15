@@ -347,6 +347,8 @@ describe("Scalar conditional colors", () => {
     segments: ScalarSegment[],
     { isQueryBuilder = false } = {},
   ) {
+    const onOpenChartSettings = jest.fn();
+
     renderWithProviders(
       <Scalar
         {...mockedProps}
@@ -359,8 +361,11 @@ describe("Scalar conditional colors", () => {
         showTitle
         visualizationIsClickable={() => false}
         width={230}
+        onOpenChartSettings={onOpenChartSettings}
       />,
     );
+
+    return { onOpenChartSettings };
   }
 
   it("colors the value by the open-ended static range containing it", async () => {
@@ -421,7 +426,7 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
   });
 
-  it("renders the value with a warning in the query builder when a self-column range's cell is null", async () => {
+  it("renders the value with a warning in the query builder when a self-column range's cell is null", () => {
     setup(
       createScalarSeries({ rows: [[null]] }),
       [{ min: "count", max: null, color: "green", label: "above goal" }],
@@ -429,14 +434,10 @@ describe("Scalar conditional colors", () => {
     );
 
     expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
-
-    await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(
-      await screen.findByText("This value isn't a number"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Goal warning")).toBeInTheDocument();
   });
 
-  it("renders the value with a warning in the query builder when a self-column range's question returned no rows", async () => {
+  it("renders the value with a warning in the query builder when a self-column range's question returned no rows", () => {
     setup(
       createScalarSeries({ rows: [] }),
       [{ min: "count", max: null, color: "green", label: "above goal" }],
@@ -444,17 +445,15 @@ describe("Scalar conditional colors", () => {
     );
 
     expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
-
-    await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(
-      await screen.findByText("This value isn't a number"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Goal warning")).toBeInTheDocument();
   });
 
   it("colors the value as if a bound that failed to load were unset, with a warning in the query builder", async () => {
-    setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS, {
-      isQueryBuilder: true,
-    });
+    const { onOpenChartSettings } = setup(
+      createPartlyFailedScalarSeries(),
+      PARTLY_FAILED_SEGMENTS,
+      { isQueryBuilder: true },
+    );
 
     expect(screen.getByText("12,345")).toBeInTheDocument();
     expect(getValueColor()).toBe("green");
@@ -464,9 +463,15 @@ describe("Scalar conditional colors", () => {
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
     expect(
-      await screen.findByText("Couldn't get some color range values"),
+      await screen.findByText(
+        "Couldn't get some color range values. Click to open settings.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("boom")).toHaveLength(2);
+
+    await userEvent.click(screen.getByLabelText("Goal warning"));
+    expect(onOpenChartSettings).toHaveBeenCalledWith({
+      initialChartSettings: { section: "Conditional colors" },
+    });
   });
 
   it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {

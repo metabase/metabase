@@ -1,6 +1,6 @@
 import type { GoalRefError } from "metabase/viz-core";
 
-import { getGaugeWarnings, getSegmentsRange, getValue } from "./utils";
+import { getGaugeWarningValues, getSegmentsRange, getValue } from "./utils";
 
 const ERROR: GoalRefError = {
   type: "card",
@@ -11,17 +11,20 @@ const ERROR: GoalRefError = {
 const OTHER_ERROR: GoalRefError = { ...ERROR, reason: "not-a-number" };
 const FAILED = { value: null, error: ERROR };
 
-describe("getGaugeWarnings", () => {
+describe("getGaugeWarningValues", () => {
   it("has no warnings when every bound resolves", () => {
     expect(
-      getGaugeWarnings([{ value: 0 }, { value: 50 }, { value: null }], [0, 50]),
+      getGaugeWarningValues(
+        [{ value: 0 }, { value: 50 }, { value: null }],
+        [0, 50],
+      ),
     ).toEqual([]);
   });
 
   it("places a warning halfway between the known bounds around a failed one", () => {
     // [0, 50] [50, failed] [failed, 100]
     expect(
-      getGaugeWarnings(
+      getGaugeWarningValues(
         [
           { value: 0 },
           { value: 50 },
@@ -32,26 +35,23 @@ describe("getGaugeWarnings", () => {
         ],
         [0, 100],
       ),
-    ).toEqual([{ value: 75, errors: [ERROR, OTHER_ERROR] }]);
+    ).toEqual([75]);
   });
 
   it("falls back to the range ends when no bound is known on a side", () => {
     expect(
-      getGaugeWarnings(
+      getGaugeWarningValues(
         [FAILED, { value: 40 }, { value: 60 }, FAILED],
         [40, 60],
       ),
-    ).toEqual([
-      { value: 40, errors: [ERROR] },
-      { value: 60, errors: [ERROR] },
-    ]);
+    ).toEqual([40, 60]);
   });
 
   it("merges warnings that land on the same spot of the arc", () => {
     // [failed, 100] [0, 50] [60, failed]: only [0, 50] is drawn, so both
     // warnings are clamped to its end
     expect(
-      getGaugeWarnings(
+      getGaugeWarningValues(
         [
           FAILED,
           { value: 100 },
@@ -62,16 +62,16 @@ describe("getGaugeWarnings", () => {
         ],
         [0, 50],
       ),
-    ).toEqual([{ value: 50, errors: [ERROR, OTHER_ERROR] }]);
+    ).toEqual([50]);
   });
 
   it("ignores bounds left empty", () => {
     expect(
-      getGaugeWarnings(
+      getGaugeWarningValues(
         [{ value: 0 }, { value: null }, FAILED, { value: 100 }],
         [0, 100],
       ),
-    ).toEqual([{ value: 50, errors: [ERROR] }]);
+    ).toEqual([50]);
   });
 });
 

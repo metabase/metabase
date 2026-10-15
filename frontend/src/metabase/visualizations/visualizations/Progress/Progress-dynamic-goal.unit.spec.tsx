@@ -56,11 +56,17 @@ function setup({
     ),
   ];
 
+  const onOpenChartSettings = jest.fn();
+
   renderWithProviders(
-    <Visualization rawSeries={series} isQueryBuilder={isQueryBuilder} />,
+    <Visualization
+      isQueryBuilder={isQueryBuilder}
+      rawSeries={series}
+      onOpenChartSettings={onOpenChartSettings}
+    />,
   );
 
-  return { series };
+  return { series, onOpenChartSettings };
 }
 
 describe("progress chart dynamic goal", () => {
@@ -122,8 +128,8 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
   });
 
-  it("explains the failure in the warning", async () => {
-    setup({
+  it("opens the goal settings from the warning", async () => {
+    const { onOpenChartSettings } = setup({
       referencedEntities: createMockFailedReferencedEntitiesResults({
         error: "boom",
       }),
@@ -132,10 +138,16 @@ describe("progress chart dynamic goal", () => {
 
     await userEvent.hover(await screen.findByLabelText("Goal warning"));
     expect(
-      await screen.findByText("Couldn't get the goal value"),
+      await screen.findByText(
+        "Couldn't get the goal value. Click to open settings.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText("boom")).toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+
+    await userEvent.click(screen.getByLabelText("Goal warning"));
+    expect(onOpenChartSettings).toHaveBeenCalledWith({
+      initialChartSettings: { section: "Display" },
+    });
   });
 
   it("measures against a goal of 0 without a warning outside the query builder", async () => {

@@ -2,6 +2,7 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Box } from "metabase/ui";
@@ -35,7 +36,12 @@ import {
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
-import { getGaugeWarnings, getSegmentsRange, getValue, radians } from "./utils";
+import {
+  getGaugeWarningValues,
+  getSegmentsRange,
+  getValue,
+  radians,
+} from "./utils";
 
 function GaugeComponent({
   className,
@@ -46,8 +52,9 @@ function GaugeComponent({
   settings,
   visualizationIsClickable,
   width,
-  onVisualizationClick,
   onHoverChange,
+  onOpenChartSettings,
+  onVisualizationClick,
 }: VisualizationProps) {
   const { rows, cols } = data;
   const labelRef = useRef<SVGTextElement>(null);
@@ -84,9 +91,9 @@ function GaugeComponent({
   const gaugeRange = settings["gauge.range"];
   const range: number[] =
     getSegmentsRange(segments) ?? (isGaugeRange(gaugeRange) ? gaugeRange : []);
-  const warnings =
+  const warningValues =
     isQueryBuilder && goalData.status === "resolved" && isGaugeRange(range)
-      ? getGaugeWarnings(goalData.results, range)
+      ? getGaugeWarningValues(goalData.results, range)
       : [];
 
   // value to angle in radians, clamped
@@ -261,26 +268,34 @@ function GaugeComponent({
           </g>
         </svg>
       </div>
-      {warnings.map(({ value, errors }, index) => {
-        // labels grow outward from the label radius, so the icon's inner edge sits there too
-        const [x, y] = valuePosition(
-          value,
-          OUTER_RADIUS * LABEL_OFFSET_PERCENT +
-            GOAL_WARNING_ICON_SIZE / 2 / svgScale,
-        );
+      {onOpenChartSettings &&
+        warningValues.map((value) => {
+          // labels grow outward from the label radius, so the icon's inner edge sits there too
+          const [x, y] = valuePosition(
+            value,
+            OUTER_RADIUS * LABEL_OFFSET_PERCENT +
+              GOAL_WARNING_ICON_SIZE / 2 / svgScale,
+          );
 
-        return (
-          <Box
-            key={index}
-            pos="absolute"
-            left={svgLeft + (arcCenterX + x) * svgScale}
-            top={svgTop + (arcCenterY + y) * svgScale}
-            style={{ transform: "translate(-50%, -50%)" }}
-          >
-            <GoalWarningIcon errors={errors} source="color-ranges" />
-          </Box>
-        );
-      })}
+          return (
+            <Box
+              key={value}
+              pos="absolute"
+              left={svgLeft + (arcCenterX + x) * svgScale}
+              top={svgTop + (arcCenterY + y) * svgScale}
+              style={{ transform: "translate(-50%, -50%)" }}
+            >
+              <GoalWarningIcon
+                source="color-ranges"
+                onClick={() =>
+                  onOpenChartSettings({
+                    initialChartSettings: { section: t`Ranges` },
+                  })
+                }
+              />
+            </Box>
+          );
+        })}
     </div>
   );
 }
