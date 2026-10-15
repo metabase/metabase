@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
@@ -2659,28 +2660,28 @@
 (deftest custom-viz-plugin-test
   (mt/with-empty-h2-app-db!
     (t2/delete! :model/CustomVizPlugin)
-    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
-                                                               :identifier   "test-plugin"
-                                                               :status       :active
-                                                               :manifest     "{}"
-                                                               :bundle       (.getBytes "pretend tgz bytes" "UTF-8")
-                                                               :bundle_hash  "deadbeef"}]
-      ;; Uncomment to regenerate baseline:
-      ;; (round-trip-test/add-to-baseline!)
-      (testing "custom viz plugin extraction"
-        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
-          (is (=? {:serdes/meta [{:model "CustomVizPlugin"
-                                  :id    "test-plugin"}]
-                   :display_name "Test Plugin"
-                   :identifier   "test-plugin"
-                   :manifest     {}
-                   :bundle_hash  "deadbeef"
-                   :bundle       string?}
-                  ser))
-          (is (not (contains? ser :id)))
-          (is (not (contains? ser :status)))
-          (testing "has no dependencies"
-            (is (empty? (serdes/deserialization-dependencies ser)))))))))
+    (let [bundle (cv.tu/valid-bundle-bytes "test-plugin" {:icon "icon.svg" :metabase-version ">=1.60"})]
+      (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
+                                                                 :identifier   "test-plugin"
+                                                                 :status       :active
+                                                                 :manifest     {:name "test-plugin" :icon "icon.svg"}
+                                                                 :icon         "icon.svg"
+                                                                 :bundle       bundle
+                                                                 :bundle_hash  (cv.tu/bundle-hash bundle)}]
+        ;; Uncomment to regenerate baseline:
+        ;; (round-trip-test/add-to-baseline!)
+        (testing "custom viz plugin extraction"
+          (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+            (is (=? {:serdes/meta [{:model "CustomVizPlugin"
+                                    :id    "test-plugin"}]
+                     :identifier  "test-plugin"
+                     :enabled     true
+                     :bundle      string?}
+                    ser))
+            (testing "the file holds nothing the bundle derives"
+              (is (= #{:serdes/meta :identifier :enabled :bundle} (set (keys ser)))))
+            (testing "has no dependencies"
+              (is (empty? (serdes/deserialization-dependencies ser))))))))))
 
 (deftest ^:parallel export-parameters-sorts-by-id-test
   (let [params [{:id "zebra" :name "Z param" :type :category}

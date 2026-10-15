@@ -67,11 +67,14 @@
 (defn- b64->bundle ^bytes [^String s]
   (some-> s codecs/b64->bytes))
 
+;; A plugin serializes as `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml`, holding its identifier, whether it
+;; is enabled, and the uploaded bundle as base64. Everything else is derived from the bundle on import, as on upload.
+
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
+  {:copy      [:identifier :enabled]
    :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
-               :status :error_message
+               :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
                ;; dev-only plugins are never served from another instance
                :dev_bundle_url]
    :defaults  {:enabled true}
@@ -81,23 +84,27 @@
 (defn- bundle-columns
   "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
   plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
-  reason when it is not. The same checks guard a bundle upload."
-  [{:keys [identifier bundle]}]
+  reason when it is not. The hash is stored either way, so an error row is consistent, and an error row is named by
+  its identifier. The same checks guard a bundle upload."
+  [{:keys [identifier ^bytes bundle]}]
   (try
     (->> (cache/validate-bundle! bundle)
          (cache/check-bundle-identifier! identifier)
          cache/derived-columns)
     (catch Exception e
       {:status        :error
-       :error_message (ex-message e)})))
+       :error_message (ex-message e)
+       :display_name  identifier
+       :bundle_hash   (some-> bundle cache/bytes-hash)})))
 
 (defmethod serdes/load-insert! "CustomVizPlugin"
   [_model-name ingested]
-  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
+  ;; `enabled` absent from the file means disabled, whatever the column's default
+  (custom-viz-plugin.db/insert-plugin! (merge {:enabled false} ingested (bundle-columns ingested))))
 
 (defmethod serdes/load-update! "CustomVizPlugin"
   [_model-name ingested {:keys [id]}]
-  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
+  (custom-viz-plugin.db/update-plugin! id (merge {:enabled false} ingested (bundle-columns ingested)))
   (cache/purge-plugin-cache! {:id id})
   (custom-viz-plugin.db/non-blob-plugin id))
 
@@ -113,5 +120,8 @@
   (let [{:keys [id]} (last path)]
     (custom-viz-plugin.db/plugin-by-identifier id)))
 
-(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+(defmethod serdes/storage-path "CustomVizPlugin" [{:keys [identifier]} _ctx]
+  ;; the directory is the identifier verbatim, as the representation format names it
+  [{:label "custom_viz_plugins"}
+   {:label identifier :key identifier :style :slug}
+   {:label "custom_viz_plugin"}])

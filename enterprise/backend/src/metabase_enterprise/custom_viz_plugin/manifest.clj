@@ -45,12 +45,22 @@
   [manifest]
   (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
+(def ^:private identifier-pattern
+  "The identifiers the representation format accepts: an identifier names the plugin's directory in a repository, so
+   no path separators, whitespace, or leading `.`."
+  #"[^:/\\\s.][^:/\\\s]*")
+
 (defn identifier-error
   "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
    viz-settings keys, so an identifier containing it could read another plugin's settings."
   [identifier]
-  (when (and (string? identifier) (str/includes? identifier ":"))
-    (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
+  (when (string? identifier)
+    (cond
+      (str/includes? identifier ":")
+      (format "Plugin identifier \"%s\" must not contain \":\"" identifier)
+
+      (not (re-matches identifier-pattern identifier))
+      (format "Plugin identifier \"%s\" must not contain \"/\", \"\\\" or whitespace, or start with \".\"" identifier))))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 

@@ -128,6 +128,16 @@
         (is (= "in.yaml" (.getName ^java.io.File (val (first entities)))))
         (is (empty? errors))))))
 
+(deftest shared-top-level-paths-test
+  (testing "a directory remote sync does not own outright is never replaced wholesale"
+    (is (= {"data_apps" "data_app.yaml" "custom_viz_plugins" "custom_viz_plugin.yaml"}
+           ingest/shared-top-level-paths))
+    (is (not (contains? ingest/replaced-top-level-paths "custom_viz_plugins"))))
+  (testing "only the entity file counts in such a directory"
+    (is (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml"))
+    (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml")))
+    (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/package.yaml")))))
+
 (deftest keyword-reconstruction-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (io/make-parents dump-dir "collections" "cards" "fake")

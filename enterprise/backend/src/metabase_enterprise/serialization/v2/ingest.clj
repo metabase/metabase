@@ -109,7 +109,10 @@
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
   source code, to the name of the entity files in them."
-  {"data_apps" "data_app.yaml"})
+  {"data_apps"          "data_app.yaml"
+   ;; remote sync does not export plugins, so a full remote-sync export would otherwise delete every plugin from the
+   ;; repository; the representation format also keeps other YAML under a plugin's directory out of the import
+   "custom_viz_plugins" "custom_viz_plugin.yaml"})
 
 (def replaced-top-level-paths
   "The [[legal-top-level-paths]] a full export may replace wholesale."

@@ -1,0 +1,5 @@
+identifier: test-plugin
+enabled: true
+bundle: H4sIAHWV0GoC/+3TQQrCMBCF4RylZKOC1kRLBUHvUjXUSJuKiSKIdzdVceHGjQri/20mPAKzmVebUCwKbwbbal9al25848SbqSjPsuuMnqfSOn+8r7nWEz0WiRJfsPeh2MX14j+dpCtqI6eJDMaH+xXIfiLtsnFt3M7UH8o2q+/HEvOTPJidt7c/85lOcyXPZ4Efs7I+DK1bmWOs/od2vOq/Gumn/qtxltP/b4jt9k1l0qopu5217fSoBAAAAAAAAAAAAAAAwE+5ALuNgTwAKAAA
+serdes/meta:
+- model: CustomVizPlugin

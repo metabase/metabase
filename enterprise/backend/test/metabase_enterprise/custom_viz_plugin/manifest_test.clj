@@ -208,4 +208,12 @@
   (testing "`:` is the viz-settings key separator"
     (is (nil? (manifest/identifier-error "demo-viz")))
     (is (= "Plugin identifier \"demo:viz\" must not contain \":\""
-           (manifest/identifier-error "demo:viz")))))
+           (manifest/identifier-error "demo:viz"))))
+  (testing "the identifier names the plugin's directory in a repository"
+    (is (nil? (manifest/identifier-error "Demo_Viz.2")))
+    (doseq [identifier ["demo viz" "demo/viz" "demo\\viz" ".demo" "" "demo\tviz"]]
+      (is (= (format "Plugin identifier \"%s\" must not contain \"/\", \"\\\" or whitespace, or start with \".\"" identifier)
+             (manifest/identifier-error identifier))
+          identifier)))
+  (testing "a non-string is someone else's problem"
+    (is (nil? (manifest/identifier-error nil)))))
