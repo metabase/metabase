@@ -439,7 +439,6 @@
 ;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
 (deftest ^:synchronized with-redefs-of-reexport-survives-first-redef-of-source-test
   ;; The global root swap is the case under test.
-  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
   (with-redefs [reexport-6 (constantly :stub)]
     (testing "a `with-redefs` stub on a re-export that was never proxied outlasts the first dynamic redef of its source"
       (mt/with-dynamic-fn-redefs [source-6 (constantly :source)]
@@ -456,7 +455,6 @@
 ;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
 (deftest ^:synchronized reexport-first-redefined-inside-with-redefs-test
   ;; The global root swap is the case under test.
-  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
   (with-redefs [reexport-7 (constantly :stub)]
     (testing "the first dynamic redef of a re-export, inside a `with-redefs` of it"
       (mt/with-dynamic-fn-redefs [reexport-7 (constantly :reexport)]
