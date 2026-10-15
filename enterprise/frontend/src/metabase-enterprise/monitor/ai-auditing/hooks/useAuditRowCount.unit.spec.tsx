@@ -167,7 +167,6 @@ interface SetupOpts {
   metadataError?: boolean;
   initialRoute?: string;
   tableTotal?: number;
-  /** Answers the table's row-page requests; totals still use `tableTotal` */
   getEventsResponse?: () => Dataset | Promise<Dataset>;
 }
 

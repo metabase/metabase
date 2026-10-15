@@ -5,10 +5,6 @@ import type {
   ModelCacheRefreshStatus,
 } from "metabase-types/api";
 
-/**
- * Mocks model persistence endpoints. `GET /api/persist` pages `persistedModels`
- * by the requested `limit` and `offset`, like the real endpoint.
- */
 export function setupModelPersistenceEndpoints(
   persistedModels: ModelCacheRefreshStatus[],
 ) {

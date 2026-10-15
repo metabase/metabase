@@ -146,7 +146,6 @@ type SetupOpts = {
   countsError?: boolean;
   countsDelay?: number;
   refetchDelay?: number;
-  /** Answers each list request in place of `notifications` and `total` */
   getListResponse?: (
     call: CallLog,
   ) => AdminNotificationListResponse | Promise<AdminNotificationListResponse>;
