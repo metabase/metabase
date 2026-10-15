@@ -251,9 +251,40 @@ migrate_down_step() {
   fi
 
   if grep -q "not rolled back" <<<"$output"; then
+    if only_unreleased_changesets "$output"; then
+      return 2
+    fi
     error "migrate down had changesets that were not rolled back (check logs above)"
     return 1
   fi
+}
+
+only_unreleased_changesets() {
+  local ids id major status
+  ids=$(grep -o "not in the changelog file: .*" <<<"$1" | sed 's/.*: //' | tr ', ' '\n\n' | sed '/^$/d' | sort -u)
+  [[ -z "$ids" ]] && return 1
+
+  for id in $ids; do
+    major=$(sed -nE 's/^v([0-9]+)\..*/\1/p' <<<"$id")
+    [[ -z "$major" ]] && return 1
+    status=$("$SCRIPT_DIR/pending-changesets.sh" "$major" | awk -v id="$id" '$1 == id {print $2}')
+    case "$status" in
+      awaiting-release|awaiting-backport)
+        warn "$id is on master, but the latest v${major} release does not have it yet ($status)" ;;
+      *)
+        return 1 ;;
+    esac
+  done
+}
+
+skip_for_unreleased_changesets() {
+  local message="Skipped $SOURCE_VERSION → $TARGET_VERSION: master has migrations that the released images do not have yet. The test runs in full again after the release."
+  warn "$message"
+  echo "::warning title=Cross-version test skipped::$message"
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    echo "⚠️ $message" >> "$GITHUB_STEP_SUMMARY"
+  fi
+  exit 0
 }
 
 # Cascading migrate down: rolls back multiple major versions one at a time
@@ -285,7 +316,11 @@ cascading_migrate_down() {
     log "--------------------------------------------"
     log "Cascade step $step/$steps: $version"
     log "--------------------------------------------"
-    if ! migrate_down_step "$version"; then
+    local step_rc=0
+    migrate_down_step "$version" || step_rc=$?
+    if (( step_rc == 2 )); then
+      return 2
+    elif (( step_rc != 0 )); then
       error "Migrate down failed at step $step ($version)"
       return 1
     fi
@@ -439,7 +474,11 @@ main() {
 
     log ""
     log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
-    if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
+    local cascade_rc=0
+    cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION" || cascade_rc=$?
+    if (( cascade_rc == 2 )); then
+      skip_for_unreleased_changesets
+    elif (( cascade_rc != 0 )); then
       error "❌ migrate down failed"
       exit 1
     fi
