@@ -7,8 +7,11 @@
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
+   [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
@@ -19,11 +22,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- trigger-jobs-now!
-  "Trigger the backfill and entity-check jobs, logging rather than throwing a failure."
+  "Trigger the backfill, entity-check and result metadata jobs, logging rather than throwing a failure."
   []
   (try
     (task.backfill/trigger-backfill-job!)
     (task.entity-check/trigger-entity-check-job!)
+    (task.result-metadata/trigger-result-metadata-job!)
     (catch Throwable e
       (log/warnf "Failed to trigger the dependency jobs: %s" (ex-message e)))))
 
@@ -50,13 +54,14 @@
     (submit-after-commit! :ok)))
 
 (defn- mark-changed!
-  "Mark the entity `entity-type` `entity-id` for recalculation and, when analyzable, for re-analysis; the backfill job
-  marks its dependents for re-analysis."
+  "Mark the entity `entity-type` `entity-id` for recalculation, for re-analysis when analyzable, and for the result
+  metadata of the cards depending on it to be re-derived; the backfill job marks its dependents for re-analysis."
   [entity-type entity-id]
   (when entity-id
     (deps.dependency-status/mark-stale! {entity-type #{entity-id}})
     (when (contains? deps.findings/analyzable-entities entity-type)
       (deps.analysis-finding/mark-stale! {entity-type #{entity-id}}))
+    (deps.result-metadata-status/mark-stale! entity-type entity-id)
     (trigger-jobs!)))
 
 (defn- changed?
@@ -100,7 +105,6 @@
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
 (doseq [[model columns] {:model/Action             #{:model_id :type}
-                         :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
                          :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}
@@ -111,6 +115,14 @@
   (defmethod before-update* model
     [model instance]
     (mark-entity-changed! model instance columns)))
+
+(defmethod before-update* :model/Card
+  [_model card]
+  (when (or (changed? card #{:type :dataset_query :dimension_mappings :parameters})
+            (and (changed? card #{:result_metadata})
+                 (deps.result-metadata/result-metadata-changed? (:result_metadata (t2/original card))
+                                                                (:result_metadata card))))
+    (mark-changed! :card (:id card))))
 
 (defmethod before-insert* :model/QueryAction
   [_model query-action]
@@ -154,9 +166,11 @@
   (mark-changed! :dashboard (:dashboard_id tab)))
 
 (defn- mark-table-changed!
-  "Mark the dependents of the Table with `table-id` for re-analysis once the current transaction commits."
+  "Mark the Table with `table-id` for the result metadata of the cards depending on it to be re-derived, and its
+  dependents for re-analysis once the current transaction commits."
   [table-id]
   (when table-id
+    (deps.result-metadata-status/mark-stale! :table table-id)
     (submit-after-commit! {:table-id table-id})))
 
 (defmethod before-insert* :model/TableUserSettings
@@ -219,35 +233,41 @@
   (before-delete* model instance))
 
 (defenterprise after-database-sync
-  "Mark the dependents of the Tables of the Database with `database-id` that changed since they were analyzed, and the
-  entities reading from it that name tables that matched nothing, which sync may have found now."
+  "Mark the Tables of the Database with `database-id` that changed since their dependents were analyzed for the
+  result metadata of the cards depending on them to be re-derived, their dependents for re-analysis, and the entities
+  reading from it that name tables that matched nothing, which sync may have found now."
   :feature :dependencies
   [database-id]
   (doseq [[entity-type entity-ids] (dependencies.db/unresolved-table-entity-ids database-id)
           entity-id                entity-ids]
     (mark-changed! entity-type entity-id))
-  (when (deps.findings/mark-transitive-dependents-stale!
-         {:table (dependencies.db/table-ids-with-outdated-findings database-id)})
-    (trigger-jobs!)))
+  (let [table-ids (dependencies.db/table-ids-with-outdated-findings database-id)]
+    (doseq [table-id table-ids]
+      (deps.result-metadata-status/mark-stale! :table table-id))
+    (when (or (deps.findings/mark-transitive-dependents-stale! {:table table-ids})
+              (seq table-ids))
+      (trigger-jobs!))))
 
 (defenterprise after-transform-run
-  "Make the output Table with `table-id` depend on the transform with `transform-id`, and mark the transform's
-  dependents for re-analysis."
+  "Make the output Table with `table-id` depend on the transform with `transform-id`, mark it for the result metadata
+  of the cards depending on it to be re-derived, and mark the transform's dependents for re-analysis."
   :feature :dependencies
   [transform-id table-id]
   (when table-id
-    (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
-  (when (deps.findings/mark-transitive-dependents-stale! {:transform #{transform-id}})
+    (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}})
+    (deps.result-metadata-status/mark-stale! :table table-id))
+  (when (or (deps.findings/mark-transitive-dependents-stale! {:transform #{transform-id}})
+            table-id)
     (trigger-jobs!)))
 
 (defenterprise after-serdes-load
-  "Trigger the backfill and entity-check jobs for what a serdes load marked."
+  "Trigger the backfill, entity-check and result metadata jobs for what a serdes load marked."
   :feature :dependencies
   []
   (trigger-jobs-now!))
 
 (defenterprise after-premium-token-update
-  "Restart the backfill and entity-check jobs, which stop while the dependencies feature is disabled."
+  "Restart the backfill, entity-check and result metadata jobs, which stop while the dependencies feature is disabled."
   :feature :dependencies
   []
   (trigger-jobs-now!))

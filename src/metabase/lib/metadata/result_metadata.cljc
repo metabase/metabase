@@ -557,3 +557,41 @@
              (->> col
                   (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column)))
      :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))
+
+(mu/defn comparable-metadata
+  "Smooth out any unimportant differences in result metadata `cols` so an equality check tells whether it changed."
+  [cols :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
+  (letfn [(remove-underscore-nil-keys
+            [m]
+            (reduce-kv
+             (fn [acc k v]
+               (let [kebab-cased-key (when (str/includes? (name k) "_")
+                                       (keyword (str/replace (name k) "_" "-")))]
+                 (if (and kebab-cased-key
+                          (nil? v)
+                          (contains? m kebab-cased-key))
+                   acc
+                   (assoc acc k v))))
+             {} m))
+          (standardize-metadata [m]
+            (cond
+              (keyword? m) (u/qualified-name m)
+              (map? m) (-> (update-vals m standardize-metadata)
+                           (dissoc :ident)
+                           (remove-underscore-nil-keys))
+              (sequential? m) (mapv standardize-metadata m)
+              (set? m) (into #{} (map standardize-metadata) m)
+              :else m))]
+    (mapv standardize-metadata cols)))
+
+(def ^:private dependent-visible-keys
+  "The keys of a result metadata column that the queries using its card as a source see."
+  [:name :display_name :description :base_type :effective_type :semantic_type :fk_target_field_id :id :field_ref
+   :settings :visibility_type :unit :lib/source-column-alias :lib/desired-column-alias :lib/deduplicated-name
+   :lib/original-name :lib/source-display-name])
+
+(mu/defn dependent-visible-metadata
+  "The part of result metadata `cols` that the queries using its card as a source see, made comparable with
+  [[comparable-metadata]] so that a change invisible to them, like a fingerprint, compares equal."
+  [cols :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
+  (comparable-metadata (mapv #(select-keys % dependent-visible-keys) cols)))

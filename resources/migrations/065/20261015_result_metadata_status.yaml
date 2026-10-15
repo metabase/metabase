@@ -1,0 +1,104 @@
+## Tracks the entities whose result columns changed, so the dependencies module re-derives the result metadata of the
+## MBQL cards that depend on them, analogous to dependency_status.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-15T00:00:00
+      author: ranquild
+      comment: Create result_metadata_status for re-deriving the result metadata of dependent cards
+      changes:
+        - createTable:
+            tableName: result_metadata_status
+            remarks: Tracks entities whose dependent cards need their result metadata re-derived, analogous to dependency_status
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(254)
+                  remarks: The type of the entity (card, measure, table)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: The ID of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity changed and its dependent cards need their result metadata re-derived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Number of consecutive failed attempts
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_retry_at
+                  type: ${timestamp_type}
+                  remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
+              - column:
+                  name: terminal
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity has exceeded max retries and should not be retried until it changes again
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row was last marked or cleared, which guards clearing a row marked again meanwhile
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: result_metadata_status
+
+  - changeSet:
+      id: v65.2026-10-15T00:00:01
+      author: ranquild
+      comment: Unique constraint to prevent duplicate result_metadata_status entries
+      changes:
+        - addUniqueConstraint:
+            tableName: result_metadata_status
+            columnNames: entity_type, entity_id
+            constraintName: idx_unique_result_metadata_status
+      rollback:
+        - dropUniqueConstraint:
+            tableName: result_metadata_status
+            constraintName: idx_unique_result_metadata_status
+
+  - changeSet:
+      id: v65.2026-10-15T00:00:02
+      author: ranquild
+      comment: Add partial index on result_metadata_status.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_result_metadata_status_stale ON result_metadata_status(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_result_metadata_status_stale ON result_metadata_status(stale)
+      rollback:
+        - dropIndex:
+            tableName: result_metadata_status
+            indexName: idx_result_metadata_status_stale

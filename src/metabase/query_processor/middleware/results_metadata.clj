@@ -4,11 +4,11 @@
    as a checksum in the API response."
   (:refer-clojure :exclude [mapv select-keys get-in])
   (:require
-   [clojure.string :as str]
    [malli.error :as me]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -18,7 +18,6 @@
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -27,34 +26,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(mu/defn- comparable-metadata
-  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
-  [metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
-  (letfn [(remove-underscore-nil-keys
-            ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
-            ;; dash. Remove the nil value
-            [m]
-            (reduce-kv
-             (fn [acc k v]
-               (let [kebab-cased-key (when (str/includes? (name k) "_")
-                                       (keyword (str/replace (name k) "_" "-")))]
-                 (if (and kebab-cased-key
-                          (nil? v)
-                          (contains? m kebab-cased-key))
-                   acc
-                   (assoc acc k v))))
-             {} m))
-          (standardize-metadata [m]
-            (cond
-              (keyword? m) (u/qualified-name m)
-              (map? m) (-> (update-vals m standardize-metadata)
-                           (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
-                           (remove-underscore-nil-keys))
-              (sequential? m) (mapv standardize-metadata m)
-              (set? m) (into #{} (map standardize-metadata) m)
-              :else m))]
-    (mapv standardize-metadata metadata)))
 
 (mu/defn- record-metadata!
   [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
@@ -80,8 +51,8 @@
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
                  ;; Only update changed metadata
-                 (not= (comparable-metadata actual-metadata)
-                       (comparable-metadata
+                 (not= (lib/comparable-metadata actual-metadata)
+                       (lib/comparable-metadata
                         ;; existing usage -- don't use going forward
                         #_{:clj-kondo/ignore [:deprecated-var]}
                         (qp.store/miscellaneous-value [::card-stored-metadata]))))

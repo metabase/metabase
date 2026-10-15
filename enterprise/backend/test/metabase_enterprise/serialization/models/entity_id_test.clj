@@ -125,6 +125,7 @@
     :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata

@@ -158,6 +158,7 @@
    "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
+   "ResultMetadataStatus"
    "Revision"
    "Sandbox"
    "SearchIndexMetadata"

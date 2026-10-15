@@ -167,6 +167,7 @@
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/ReplacementRun
+    :model/ResultMetadataStatus
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking

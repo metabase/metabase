@@ -53,3 +53,29 @@
   :default    30
   :setter     :none
   :export?    false)
+
+(defsetting dependency-result-metadata-batch-size
+  "The number of entities that the result metadata job will process per run."
+  :visibility :internal
+  :type       :integer
+  :default    500
+  :setter     :none
+  :export?    false)
+
+(defsetting dependency-result-metadata-delay-minutes
+  "The average delay between when the result metadata job will run."
+  :visibility :internal
+  :type       :integer
+  :default    60
+  :setter     :none
+  :export?    false)
+
+(defsetting dependency-result-metadata-variance-minutes
+  "The variation in when the result metadata job will run.  The actual delay between runs will be a random value
+  between `dependency-result-metadata-delay-minutes - dependency-result-metadata-variance-minutes` and
+  `dependency-result-metadata-delay-minutes + dependency-result-metadata-variance-minutes`."
+  :visibility :internal
+  :type       :integer
+  :default    30
+  :setter     :none
+  :export?    false)
