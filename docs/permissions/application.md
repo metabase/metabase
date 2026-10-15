@@ -29,6 +29,8 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Embedding in other applications](../embedding/start.md)
 - [Caching](../configuring-metabase/caching.md)
 
+Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
+
 ## Monitoring access
 
 People in groups with Monitoring access can view:
