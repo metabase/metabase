@@ -16,6 +16,7 @@ export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
   "model",
   "table",
   "metric",
+  "library",
 ];
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
@@ -66,6 +67,7 @@ export function normalizeEntityTypes(
     "table",
     "question",
     "metric",
+    "library",
   ];
 
   const filteredEntityTypes = entityTypes.filter((type) =>
