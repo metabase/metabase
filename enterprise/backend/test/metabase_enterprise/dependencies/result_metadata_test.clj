@@ -55,8 +55,11 @@
                              :model/ResultMetadataStatus]
        (deps.test/do-with-immediate-hook-writes (fn [] ~@body)))))
 
-(deftest model-metadata-edit-test
-  (testing "editing a model's metadata re-derives the MBQL cards depending on it transitively, but not past a native card"
+(defn- with-grand-total [query]
+  (lib/expression query "Grand total" (lib/* (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)) 2)))
+
+(deftest model-query-edit-test
+  (testing "editing a model's query re-derives the MBQL cards depending on it transitively, but not past a native card"
     (with-clean-statuses
       (mt/with-temp [:model/Card {model-id :id}        {:type :model :dataset_query (table-query :orders)}
                      :model/Card {question-id :id}     {:dataset_query (card-query model-id)}
@@ -64,12 +67,12 @@
                      :model/Card {native-id :id}       {:dataset_query (native-card-query model-id)}
                      :model/Card {after-native-id :id} {:dataset_query (card-query native-id)}]
         (run-jobs!)
-        (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card :id model-id)
-                                                                          "TOTAL" "Grand total")})
+        (is (nil? (column question-id "Grand total")))
+        (t2/update! :model/Card model-id {:dataset_query (with-grand-total (table-query :orders))})
         (is (stale? :card model-id))
         (run-jobs!)
-        (is (= "Grand total" (:display_name (column question-id "TOTAL"))))
-        (is (= "Grand total" (:display_name (column nested-id "TOTAL"))))
+        (is (some? (column question-id "Grand total")))
+        (is (some? (column nested-id "Grand total")))
         (testing "the native card and the card depending on it are left alone"
           (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id [:in [native-id after-native-id]]))))
         (is (not-any? #(stale? :card %) [model-id question-id nested-id]))))))
@@ -88,20 +91,32 @@
                                                                        (lib/ref (lib.metadata/field mp (mt/id :orders :id))))]))]
           (mt/with-temp [:model/Card {joined-id :id} {:dataset_query joined}]
             (run-jobs!)
-            (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card :id model-id)
-                                                                              "TOTAL" "Grand total")})
+            (t2/update! :model/Card model-id {:dataset_query (with-grand-total (table-query :orders))})
             (run-jobs!)
-            (is (= "Grand total" (:display_name (column joined-id "TOTAL"))))))))))
+            (is (some? (column joined-id "Grand total")))))))))
 
-(deftest invisible-metadata-change-test
-  (testing "a result metadata change the dependents don't see, like a fingerprint, doesn't mark the card"
+(deftest metadata-edit-test
+  (testing "editing only a card's result metadata, like a model's column overrides, doesn't mark the card"
     (with-clean-statuses
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
-        (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-          (t2/update! :model/Card card-id {:result_metadata (mapv #(dissoc % :fingerprint) metadata)})
-          (is (not (stale? :card card-id)))
-          (t2/update! :model/Card card-id {:result_metadata (rename-column metadata "TOTAL" "Grand total")})
-          (is (stale? :card card-id)))))))
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}]
+        (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
+                                                                                            :id model-id)
+                                                                          "TOTAL" "Grand total")})
+        (is (not (stale? :card model-id)))))))
+
+(deftest model-overrides-test
+  (testing "re-deriving a model after its table changed keeps the model's column overrides"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}]
+        (run-jobs!)
+        (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
+                                                                                            :id model-id)
+                                                                          "TOTAL" "Grand total")})
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
+          (is (stale? :table (mt/id :orders)))
+          (run-jobs!)
+          (is (not (stale? :table (mt/id :orders))))
+          (is (= "Grand total" (:display_name (column model-id "TOTAL")))))))))
 
 (deftest field-user-settings-test
   (testing "renaming a field re-derives the MBQL cards reading its table"

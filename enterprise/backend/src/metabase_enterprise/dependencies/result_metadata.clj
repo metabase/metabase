@@ -39,7 +39,7 @@
                 compared-column-keys))
         cols))
 
-(defn result-metadata-changed?
+(defn- result-metadata-changed?
   "Whether the result metadata `before` and `after` differ in what the queries using the card as a source see."
   [before after]
   (not= (comparable-metadata before)

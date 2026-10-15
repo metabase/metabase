@@ -8,7 +8,6 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
-   [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -105,6 +104,7 @@
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
 (doseq [[model columns] {:model/Action             #{:model_id :type}
+                         :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
                          :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}
@@ -115,15 +115,6 @@
   (defmethod before-update* model
     [model instance]
     (mark-entity-changed! model instance columns)))
-
-(defmethod before-update* :model/Card
-  [_model card]
-  (when (or (changed? card #{:type :dataset_query :dimension_mappings :parameters})
-            (and (= :metric (:type card)) (changed? card #{:name}))
-            (and (changed? card #{:result_metadata})
-                 (deps.result-metadata/result-metadata-changed? (:result_metadata (t2/original card))
-                                                                (:result_metadata card))))
-    (mark-changed! :card (:id card))))
 
 (defmethod before-insert* :model/QueryAction
   [_model query-action]
