@@ -28,12 +28,13 @@
           :serdes/meta      [{:model "Collection"}]}
          (select-keys attrs [:description :type :namespace :authority_level])))
 
-(defn metric-doc
-  "The old document of metric `id`: a card of type metric."
-  [id {:keys [name place attrs]}]
+(defn card-doc
+  "The old document of card `id`: a card of the type of its kind. The export writes a model's result metadata; a
+  question's, which the item does not hold, is nil here."
+  [id {:keys [kind name place attrs]}]
   (merge {:name                   name
           :entity_id              id
-          :type                   "metric"
+          :type                   (clojure.core/name kind)
           :created_at             created-at
           :creator_id             "rasta@metabase.com"
           :archived               false
@@ -168,7 +169,7 @@
   (vec (mapcat (fn [[id {:keys [kind attrs] :as item}]]
                  (case kind
                    :collection      [(collection-doc id item)]
-                   :metric          [(metric-doc id item)]
+                   (:metric :question :model) [(card-doc id item)]
                    :snippet         [(snippet-doc id item)]
                    :glossary-term   [(glossary-doc id item)]
                    :segment         [(segment-doc id item)]

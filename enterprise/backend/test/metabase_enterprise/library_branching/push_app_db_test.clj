@@ -3,6 +3,7 @@
   delete it afterwards, and they change the one base row of the app DB; they are not parallel."
   {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
@@ -349,3 +350,38 @@
                (let [next-push (ptu/push! inst s)]
                  (is (= :pushed (:result next-push)))
                  (is (not-any? #(re-find #"^glossary/" %) (paths s (:commit next-push)))))))))))))
+
+(deftest push-of-questions-and-models-test
+  (testing (str "a push writes a question and a model of a data app's collection as files in its directory, and a model "
+                "that becomes a question moves to the file of a question; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _library]
+       (let [user     (mt/user->id :crowberto)
+             app      (insert! :model/Collection {:name "Pushed app" :namespace "data-apps" :location "/"})
+             card     (fn [card-name card-type]
+                        (insert! :model/Card {:name card-name :type card-type :collection_id (:id app) :creator_id user
+                                              :display :table :visualization_settings {}
+                                              :dataset_query (let [mp (mt/metadata-provider)]
+                                                               (lib/query mp (lib.metadata/table mp (mt/id :venues))))}))
+             question (card "Pushed question" :question)
+             model    (card "Pushed model" :model)
+             inst     (app-db/app-db-instance)
+             paths    (fn [s commit] (set (keys (store/read-tree s commit))))]
+         (with-remote [_repo s]
+           (let [{:keys [result commit]} (ptu/push! inst s)
+                 pushed                  (ptu/commit-snapshot s commit)]
+             (is (= :pushed result))
+             (is (set/subset? #{"apps/pushed_app/pushed_question.question.yaml" "apps/pushed_app/pushed_model.model.yaml"}
+                              (paths s commit)))
+             (is (= [:question :model] (map #(:kind (get pushed (:entity_id %))) [question model])))
+             (is (seq (get-in pushed [(:entity_id model) :attrs :result_metadata])))
+             (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst)))
+             (testing "a model that becomes a question is a local update, and the next push moves its file"
+               (t2/update! :model/Card (:id model) {:type :question})
+               (is (= #{(:entity_id model)} (:updated (ptu/local-changes inst))))
+               (let [next-push (ptu/push! inst s)
+                     after     (paths s (:commit next-push))]
+                 (is (= :pushed (:result next-push)))
+                 (is (contains? after "apps/pushed_app/pushed_model.question.yaml"))
+                 (is (not (contains? after "apps/pushed_app/pushed_model.model.yaml")))
+                 (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst))))))))))))

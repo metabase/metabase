@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
+   [metabase-enterprise.library-branching.format.kinds.card :as card]
    [metabase-enterprise.library-branching.format.kinds.metric :as metric]
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.mutation.core :as mut]
@@ -85,20 +86,21 @@
 
 (def ^:private mutations
   [{:name   :query-implied-not-restored
-    :doc    "The metric codec does not restore the implied keys of its query."
-    :target `metric/decode-attrs
+    :doc    "The card codecs do not restore the implied keys of its query."
+    :target `card/decode-attrs
     :edits  [[:replace '(update :query portable/restore-implied) '(identity)]]}
    {:name   :query-implied-written
-    :doc    "The metric codec writes the implied keys of its query."
-    :target `metric/encode-attrs
+    :doc    "The card codecs write the implied keys of its query."
+    :target `card/encode-attrs
     :edits  [[:replace '(update :query portable/omit-implied) '(identity)]]}
    {:name   :only-query-refs
     :doc    "Only the query gives references, so a parameter's values source card is not checked."
-    :target `metric/refs
-    :edits  [[:replace '(portable/refs (dissoc attrs :query :visualization_settings)) #{}]]}
+    :target `card/refs
+    :edits  [[:replace '(portable/refs (apply dissoc attrs :query :visualization_settings :result_metadata (keys item-attrs)))
+              #{}]]}
    {:name   :no-visualization-refs
     :doc    "The visualization settings give no references of their own, so a click-behavior link is not checked."
-    :target `metric/refs
+    :target `card/refs
     :edits  [[:replace '(visualization/refs (:visualization_settings attrs)) #{}]]}])
 
 (deftest metric-mutations-test
