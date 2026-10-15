@@ -250,6 +250,13 @@
          vals
          (mapv (comp #(dissoc % :is_published) with-key-name key-row)))))
 
+(mu/defn sync-display-names-by-id :- [:sequential ::row]
+  "`{:id :display_name}` of each table of `ids`: the display name that warehouse sync writes, with no user value."
+  [ids :- ::ids]
+  (t2/query {:select [:id :display_name]
+             :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]
+             :where  [:in :id ids]}))
+
 (mu/defn table-user-settings-by-table-id :- [:sequential ::row]
   "The user settings rows of the tables of `ids`, as instances of `:model/TableUserSettings`."
   [ids :- ::ids]

@@ -56,7 +56,7 @@
    (fn [golden]
      (let [files   (remote-sync-export!)
            python? #(= "PythonLibrary" (model-of (val %)))
-           opts    {:table-names (sync-display-names (filter vector? (keys golden)))}]
+           opts    {:table-names sync-display-names}]
        (testing "the files of remote sync decode to the items that a read of the same content gives"
          (is (= {:snapshot golden}
                 (claims/decode kinds/codecs (into {} (remove python?) files) opts)))

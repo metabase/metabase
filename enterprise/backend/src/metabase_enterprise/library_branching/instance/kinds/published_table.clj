@@ -122,6 +122,18 @@
                tables
                contents))))
 
+(defn sync-display-names
+  "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys`, with no user
+  value. A key of no table has no entry."
+  [table-keys]
+  ;; One row per key, the row that the read of published tables takes: a table that warehouse sync archived can
+  ;; share its key with a later table.
+  (let [tables (content/in-chunks library-branching.db/tables-by-key (vec (set table-keys)) 100)
+        names  (into {}
+                     (map (juxt :id :display_name))
+                     (content/in-chunks library-branching.db/sync-display-names-by-id (mapv :id tables)))]
+    (into {} (map (fn [t] [(table-key t) (get names (:id t))])) tables)))
+
 (defn- table-of-key
   "The table row (`{:id :db :schema :table :display_name :collection_id}`) of natural key `k`, or nil."
   [k]

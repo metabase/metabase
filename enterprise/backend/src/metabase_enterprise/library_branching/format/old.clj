@@ -70,7 +70,8 @@
 (defn- assemble
   "The results of the [[assemblers]] for the parts of `results`, one per item, in the order of the items."
   [opts results]
-  (let [parts (mapcat (fn [{:keys [parts file]}] (map #(assoc % :file file) parts)) results)]
+  (let [parts (mapcat (fn [{:keys [parts file]}] (map #(assoc % :file file) parts)) results)
+        opts  (old.published-table/resolve-names opts parts)]
     (for [[[kind id] ps] (sort-by (comp pr-str key) (group-by :of parts))]
       ((get assemblers kind) id ps opts))))
 
@@ -87,8 +88,9 @@
   "The snapshot that the old-format files `files` (a collection of byte arrays, with no paths) hold, with the codecs
   `codecs`: `{:snapshot s}`, or `{:findings [f ...]}` when a file does not decode. The findings are those of
   `tree/decode-tree`, and `:unknown-kind` with `:model` for a file of a serdes model with no decoder. The order of
-  `files` changes no snapshot. `opts`: `:table-names`, `{table-key name}`, the display name that warehouse sync gives
-  each table, for the name of a published table whose settings have none."
+  `files` changes no snapshot. `opts`: `:table-names`, a function of a vector of table keys that returns `{table-key
+  name}`, the display name that warehouse sync gives each table, for the name of a published table whose settings
+  have none; the decode calls it at most once, with the keys of those tables."
   ([codecs files]
    (decode-tree codecs files {}))
   ([codecs files opts]
