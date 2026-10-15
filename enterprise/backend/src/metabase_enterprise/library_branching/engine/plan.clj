@@ -104,12 +104,36 @@
     [(mapv #(write-step m b % (deferred %)) order)
      (into [] (keep #(when-let [refs (not-empty (deferred %))] {:id % :link refs})) order)]))
 
+(defn- cycle-start
+  "The item of cycle `ids` (a sorted vector) that goes to the trash first: the least one that is the place of no other
+  item of `ids`."
+  [l ids]
+  (let [places (set (keep #(:place (get l %)) ids))]
+    ;; A containment cycle has no such item; a well-formed `l` has none.
+    (or (first (remove places ids)) (first ids))))
+
+(defn- split-cycle
+  "`[group]` for a group of one item; else `[[start] rest]`, the first trash of the cycle `ids` and the rest of it."
+  [l ids]
+  (if (next ids)
+    (let [start (cycle-start l ids)]
+      [[start] (vec (remove #{start} ids))])
+    [ids]))
+
 (defn- trash-steps
-  "The trash steps for the items of `ids`, which the target snapshot lacks: the content and the users of an item first. In a
-  reference cycle, the references give no order."
+  "The trash steps for the items of `ids`, which the target snapshot lacks: the content and the users of an item first.
+  A cycle of places and references starts at [[cycle-start]]; then the rest of the cycle follows the same rule."
   [l b ids]
-  (let [after (dependencies l ids (cyclic-refs l ids))]
-    (into [] (comp cat (map (fn [id] {:id id :trash true :pre (get b id)}))) (ordered ids after))))
+  ;; `todo` is a stack of groups of ids. A group of one item is the next trash. A larger group is split into its
+  ;; cycles in order, and each cycle into its start and its rest.
+  (loop [todo [(vec ids)], out []]
+    (if-let [group (peek todo)]
+      (let [todo (pop todo)]
+        (if (next group)
+          (recur (into todo (rseq (into [] (mapcat #(split-cycle l %)) (ordered group (dependencies l group)))))
+                 out)
+          (recur todo (into out (map (fn [id] {:id id :trash true :pre (get b id)})) group))))
+      out)))
 
 (defn- check-base-equal!
   [l b changed]
@@ -136,8 +160,10 @@
   - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them. In a
     reference cycle, a write has `:defer #{ref}`, the references that it leaves out;
   - links `{:id i :link #{ref}}`: each sets the deferred references of `i`;
-  - trashes `{:id i :trash true :pre b(i)}`: an item before its container, and before the items that it refers to
-    unless they are on a reference cycle with it.
+  - trashes `{:id i :trash true :pre b(i)}`: an item before its container, and before the items that it refers to.
+    A cycle of places and references starts with its least item that contains no other item of the cycle; the rest
+    of the cycle follows these rules again. So only the references to the first item of a cycle go to the trash
+    before their users.
 
   Of the steps that may come next, the step of the least identity comes first. Each `:pre` is the content that the
   item must have when the step runs (nil: no item)."
