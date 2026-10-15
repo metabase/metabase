@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
+   [metabase-enterprise.library-branching.store :as store]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -129,3 +130,40 @@
              (let [next-push (push/push! inst s ptu/branch)]
                (is (= :pushed (:result next-push)))
                (is (= "After" (get-in (ptu/commit-snapshot s (:commit next-push)) [(:entity_id metric) :name])))))))))))
+
+(deftest push-of-glossary-terms-test
+  (testing (str "a push writes each glossary term to glossary/<term>.term.yaml, and a rename moves the file; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _library]
+       (let [term  (insert! :model/Glossary {:term       "Churn for library branching"
+                                             :definition "The share of customers who cancel."
+                                             :creator_id (mt/user->id :crowberto)})
+             inst  (app-db/app-db-instance)
+             paths (fn [s commit] (set (keys (store/read-tree s commit))))]
+         (with-remote [_repo s]
+           (let [{:keys [result commit]} (push/push! inst s ptu/branch)]
+             (is (= :pushed result))
+             (is (contains? (paths s commit) "glossary/churn_for_library_branching.term.yaml"))
+             (is (= {:kind  :glossary-term
+                     :name  "Churn for library branching"
+                     :place nil
+                     :refs  #{}
+                     :attrs {:definition "The share of customers who cancel."}}
+                    (get (ptu/commit-snapshot s commit) (:entity_id term))))
+             (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst)))
+             (testing "a rename is a local update, and the next push moves the file"
+               (t2/update! :model/Glossary (:id term) {:term "Customer churn for library branching"})
+               (is (= #{(:entity_id term)} (:updated (ptu/local-changes inst))))
+               (let [next-push (push/push! inst s ptu/branch)
+                     after     (paths s (:commit next-push))]
+                 (is (= :pushed (:result next-push)))
+                 (is (contains? after "glossary/customer_churn_for_library_branching.term.yaml"))
+                 (is (not (contains? after "glossary/churn_for_library_branching.term.yaml")))
+                 (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst)))))
+             (testing "a deleted term leaves the next commit"
+               (t2/delete! :model/Glossary :id (:id term))
+               (is (= #{(:entity_id term)} (:deleted (ptu/local-changes inst))))
+               (let [next-push (push/push! inst s ptu/branch)]
+                 (is (= :pushed (:result next-push)))
+                 (is (not-any? #(re-find #"^glossary/" %) (paths s (:commit next-push)))))))))))))

@@ -160,10 +160,13 @@
                      :model/Collection        f {:name "Filters" :namespace "snippets" :location "/"}
                      :model/NativeQuerySnippet _ {:name "A filter" :collection_id (:id f) :content "{{x}} > 1"}
                      :model/TableUserSettings _ {:table_id (mt/id :venues) :is_published true :collection_id (:id data)}
-                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :semantic_type :type/Currency}]
+                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :semantic_type :type/Currency}
+                     :model/Glossary          _ {:term       "lb format churn"
+                                                 :definition "Who leaves: 10% of: them."
+                                                 :creator_id (mt/user->id :crowberto)}]
         (let [by-kind (codec/by-kind kinds/codecs)
               s       (app-db/read-current)]
-          (is (= #{:collection :metric :published-table :snippet} (set (map :kind (vals s)))))
+          (is (= #{:collection :glossary-term :metric :published-table :snippet} (set (map :kind (vals s)))))
           (doseq [[id item] s
                   :let [c (get by-kind (:kind item))]]
             (testing (pr-str id)
@@ -248,7 +251,8 @@
                      :model/Collection        f {:name "Filters" :namespace "snippets" :location "/"}
                      :model/NativeQuerySnippet _ {:name "One" :collection_id (:id f) :content "1 = 1"}
                      :model/TableUserSettings _ {:table_id (mt/id :venues) :is_published true :collection_id (:id data)}
-                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}]
+                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}
+                     :model/Glossary          _ {:term "lb batch one" :definition "1" :creator_id (mt/user->id :rasta)}]
         (let [few (statements-of-read)]
           (mt/with-temp [:model/Card              _ {:name          "Latitude"
                                                      :type          :metric
@@ -273,7 +277,11 @@
                                                      :fk_target_field_id (mt/id :users :id)}
                          :model/TableUserSettings _ {:table_id      (mt/id :checkins)
                                                      :is_published  true
-                                                     :collection_id (:id data)}]
+                                                     :collection_id (:id data)}
+                         :model/Glossary          _ {:term "lb batch two" :definition "2" :creator_id (mt/user->id :rasta)}
+                         :model/Glossary          _ {:term       "lb batch three"
+                                                     :definition "3"
+                                                     :creator_id (mt/user->id :crowberto)}]
             (is (= few (statements-of-read)))))))))
 
 (deftest repeated-read-test

@@ -111,6 +111,9 @@
                                                         :is_published  true
                                                         :collection_id (:id data)})
              _       (insert! :model/FieldUserSettings {:field_id (mt/id :venues :price) :display_name "Locked price"})
+             term    (insert! :model/Glossary {:term       (str "Locked term " (random-uuid))
+                                               :definition "Held."
+                                               :creator_id user})
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -126,7 +129,9 @@
                                    :where  [:= :table_id (mt/id :venues)]})]
                   ["the settings row of a field of a published table" :published-table table
                    #(t2/query-one {:update :metabase_field_user_settings :set {:description "Saved"}
-                                   :where  [:= :field_id (mt/id :venues :price)]})]]]
+                                   :where  [:= :field_id (mt/id :venues :price)]})]
+                  ["a glossary term" :glossary-term (:entity_id term)
+                   #(t2/query-one {:update :glossary :set {:definition "Saved"} :where [:= :id (:id term)]})]]]
            (testing label
              (let [[content during after] (while-current-holds! (get stores kind) id save!)]
                (is (map? content))
