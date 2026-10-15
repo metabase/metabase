@@ -345,8 +345,10 @@ Render numbers, dates, and currencies the way the rest of Metabase does with `fo
 import { formatValue } from "@metabase/custom-viz";
 
 formatValue(row[1], { column: cols[1] });
-formatValue(0.084, { number_style: "percent", decimals: 1 }); // "8.4%"
+formatValue(0.084, { column: cols[1], number_style: "percent", decimals: 1 }); // "8.4%"
 ```
+
+Number options like `number_style` and `decimals` only take effect together with a numeric `column`. Without one, `formatValue` returns the number as is (`"0.084"`), so format numbers that don't come from a column, like a computed share, yourself with `Intl.NumberFormat`.
 
 To honor the formatting people pick in the column formatting popover (the one `showColumnSetting: true` enables on `"field"` and `"fields"` widgets - see [built-in widgets](#built-in-widgets)), format with `settings.column(col)`. It resolves a column's effective settings (instance-wide defaults, the column's metadata settings, and the card-level popover settings, merged in that order) into ready-to-use `formatValue` options:
 
