@@ -74,12 +74,17 @@
   "The display name that warehouse sync gives each published table of the golden content."
   {["Sample Database" "PUBLIC" "ORDERS"] "Orders"})
 
+(defn names-of
+  "The option `:table-names` of the decoder for the display names `names`, `{table-key name}`."
+  [names]
+  (fn [table-keys] (select-keys names table-keys)))
+
 (deftest remote-sync-files-decode-to-the-golden-items-test
   (testing "the files that remote sync writes for the golden content decode to the items of the golden tree"
     (let [files (dir-files old-golden-dir)]
       (is (claims/old-format? (claims/item-claims files)))
       (is (= {:snapshot (golden-snapshot)}
-             (old/decode-tree kinds/codecs (vals files) {:table-names golden-table-names}))))))
+             (old/decode-tree kinds/codecs (vals files) {:table-names (names-of golden-table-names)}))))))
 
 ;;; ------------------------------------------------- Collections ------------------------------------------------------
 
@@ -420,12 +425,25 @@
 (deftest display-names-test
   (let [no-name (str/replace table-settings-yaml "display_name: Renamed\n" "")]
     (testing "with no display name in the settings file, the name is the one that warehouse sync gives the table"
-      (is (= "Test table" (get-in (snapshot-of [no-name] {:table-names {orders "Test table"}}) [orders :name]))))
+      (is (= "Test table" (get-in (snapshot-of [no-name] {:table-names (names-of {orders "Test table"})}) [orders :name]))))
     (testing "with no name from warehouse sync either, it is the table name"
       (is (= "Test Table" (get-in (snapshot-of [no-name]) [orders :name]))))
     (testing "a display name that the user set wins"
-      (is (= "Renamed" (get-in (snapshot-of [table-settings-yaml] {:table-names {orders "Test table"}})
-                               [orders :name]))))))
+      (is (= "Renamed" (get-in (snapshot-of [table-settings-yaml] {:table-names (names-of {orders "Test table"})})
+                               [orders :name]))))
+    (testing "the decode asks for names once, for the published tables with no display name only"
+      (let [calls  (atom [])
+            names  (fn [ks] (swap! calls conj ks) {})
+            other  (str/replace no-name "Test Table" "Other Table")
+            named  (str/replace table-settings-yaml "Test Table" "Named Table")
+            hidden (-> no-name
+                       (str/replace "Test Table" "Hidden Table")
+                       (str/replace "is_published: true" "is_published: false"))]
+        (snapshot-of [no-name other named hidden] {:table-names names})
+        (is (= [[(assoc orders 2 "Other Table") orders]] @calls))
+        (reset! calls [])
+        (snapshot-of [table-settings-yaml] {:table-names names})
+        (is (= [] @calls))))))
 
 (deftest field-settings-sources-test
   (testing "a field settings file wins over the entry of the field in a v64 settings file"
@@ -486,7 +504,7 @@
   (testing "the options reach the decoder"
     (is (= "Test table"
            (get-in (claims/decode kinds/codecs {"t.yaml" (utf8 (str/replace table-settings-yaml "display_name: Renamed\n" ""))}
-                                  {:table-names {orders "Test table"}})
+                                  {:table-names (names-of {orders "Test table"})})
                    [:snapshot orders :name]))))
   (testing "a tree with item files of both formats and no format version file is refused"
     (is (= {:findings [{:type :mixed-format

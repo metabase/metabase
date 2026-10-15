@@ -126,6 +126,7 @@
     {:snapshot (read-at-read-point stores roots)})
   (base [_] (base url))
   (base-digests [_ commit] (base-digests url commit))
+  (table-names [_ table-keys] (kinds.published-table/sync-display-names table-keys))
   (apply-plan! [_ plan opts] (apply-plan! stores roots url plan opts))
   (set-base! [_ expected new digests] (set-base! url expected new digests)))
 

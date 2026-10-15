@@ -186,11 +186,25 @@
   [id-of parts]
   (tree/duplicate-findings (map (fn [p] {:item [(id-of p)] :file (:file p)}) parts)))
 
+(defn- unnamed?
+  "True iff part `p` is the settings of a published table with no display name."
+  [{:keys [type doc]}]
+  (and (= :table type) (true? (:is_published doc)) (nil? (:display_name doc))))
+
+(defn resolve-names
+  "`opts` with `:table-names` as `{table-key name}`: `((:table-names opts) ks)`, where `ks` is the sorted vector of
+  the keys of the published tables of the parts `parts` whose settings have no display name. `{}` when there is no
+  such table or no `:table-names`; then `(:table-names opts)` is not called."
+  [opts parts]
+  (let [ks (vec (sort (distinct (keep (fn [p] (when (unnamed? p) (second (:of p)))) parts))))
+        f  (:table-names opts)]
+    (assoc opts :table-names (if (and f (seq ks)) (f ks) {}))))
+
 (defn assemble
   "The published table with key `table-key` from its parts `parts`: `{:doc d :file n}`, where `n` is the file of its
   settings; `{:skip reason}` when the table is not published; or `{:findings [f ...]}`. A table with no settings file
-  is not published. With no display name in its settings, the name is `(get (:table-names opts) table-key)`, else
-  the table name of the key."
+  is not published. With no display name in its settings, the name is `(get (:table-names opts) table-key)` (opts
+  of [[resolve-names]]), else the table name of the key."
   [table-key parts {:keys [table-names]}]
   (let [{settings :table fields :field remappings :remapping} (group-by :type parts)
         findings (concat (duplicates (constantly table-key) settings)
