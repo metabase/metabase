@@ -5,8 +5,10 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.events.core :as events]
    [metabase.mcp.core :as mcp]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.settings :as oauth-settings]
+   [metabase.request.core :as request]
    [oidc-provider.store :as oidc.store]
    [oidc-provider.token :as oidc.token])
   (:import
@@ -88,6 +90,15 @@
       user
       (throw (ex-info (str message) {:error "invalid_grant", :error-description (refusal-description result)})))))
 
+(defn- check-mcp-access!
+  "Throws `ex-info` carrying `unsupported_grant_type` unless the groups of the User with `user-id` allow MCP."
+  [user-id]
+  (when-not (request/with-current-user user-id
+              (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
+    (throw (ex-info (str "MCP access is not enabled for the groups of user " user-id)
+                    {:error             "unsupported_grant_type"
+                     :error-description "MCP access is not enabled for this user's groups."}))))
+
 (defn exchange-jwt-for-token!
   "Issues an MCP access token to the user that the JWT `assertion` names, and returns the RFC 6749 token response.
 
@@ -97,6 +108,7 @@
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)
         user-id (:id (log-in! assertion request))
+        _       (check-mcp-access! user-id)
         token   (oidc.token/generate-access-token)
         ttl     (oauth-settings/oauth-server-access-token-ttl)
         granted (str/join " " scopes)

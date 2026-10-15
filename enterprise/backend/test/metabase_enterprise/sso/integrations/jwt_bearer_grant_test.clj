@@ -4,6 +4,7 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.mcp.test-util :as mcp.tu]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
@@ -241,6 +242,27 @@
       (testing "with the MCP server off"
         (mt/with-temporary-setting-values [mcp-enabled? false]
           (refused))))))
+
+(deftest exchange-mcp-group-access-test
+  (with-jwt-bearer-setup!
+    (mcp.tu/with-group-level-mode
+      (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "jwt-bearer-mcp-group"}
+                     :model/McpGroupPermission _              {:group_id group-id, :mcp_enabled true, :tool_access {}}]
+        (mt/with-temporary-setting-values [jwt-group-sync     true
+                                           jwt-group-mappings {"agents" [group-id]}]
+          (let [email "jwt-bearer-mcp-groups@metabase.com"]
+            (testing "a user whose groups don't allow MCP is refused, and gets an account but no token or audit row"
+              (is (= {:error             "unsupported_grant_type"
+                      :error_description "MCP access is not enabled for this user's groups."}
+                     (:body (token-response 400 {:assertion (assertion {:email email})}))))
+              (let [user-id (t2/select-one-pk :model/User :email email)]
+                (is (some? user-id))
+                (is (not (t2/exists? :model/OAuthAccessToken :user_id user-id)))
+                (is (not (t2/exists? :model/AuditLog :topic "mcp-jwt-token-issued" :user_id user-id)))))
+            (testing "once the JWT syncs the user into a group that allows MCP, they get a token that MCP accepts"
+              (let [{:keys [access_token]} (:body (token-response 200 {:assertion (assertion {:email  email
+                                                                                              :groups ["agents"]})}))]
+                (is (some? (mcp-session access_token)))))))))))
 
 (deftest token-drives-mcp-test
   (testing "the token drives MCP as the user the JWT names, and the usage and audit rows land on that user"
