@@ -49,8 +49,8 @@
    {:name   :names-with-user-values
     :doc    "The instance gives the display names with the user values: a local rename of a table changes its base too,
             so it is no local change."
-    :target `library-branching.db/sync-names-by-key
-    :edits  [[:replace '{:alias :t :user-settings? false} '{:alias :t}]]
+    :target `library-branching.db/sync-display-names-by-id
+    :edits  [[:replace '{:user-settings? false} {}]]
     :tests  [#'old-format-app-db-test/pull-of-old-format-trees-names-tables-as-the-instance-does-test]}
    {:name   :decoder-ignores-names
     :doc    "The decoder does not ask for the names: a table with no display name has the table name of its key."

@@ -174,6 +174,7 @@
          "hooks." ; clj-kondo hook tests, outside the module system
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
+         "library-checker." ; bin/library-checker
          "load-namespaces." ; bin/load-namespaces
          "mage."
          "main-test" ; bin/release-list

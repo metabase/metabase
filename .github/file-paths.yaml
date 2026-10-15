@@ -352,6 +352,17 @@ build_scripts:
   - "bin/**"
   - "deps.edn"
 
+library_checker:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/build-scripts.yml"
+  - "bin/library-checker/**"
+  - "deps.edn"
+  - "enterprise/backend/src/metabase_enterprise/library_branching/**"
+  - "enterprise/backend/test/metabase_enterprise/library_branching/**"
+  - "enterprise/backend/test_resources/library_branching/**"
+  - "src/metabase/util/malli/**"
+
 embedder_plugin:
   - ".github/actions/prepare-backend/**"
   - ".github/file-paths.yaml"

@@ -3,6 +3,8 @@
   fail."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance.kinds-test :as kinds-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.scope-property-test :as scope-property-test]
@@ -62,10 +64,42 @@
     :edits  [[:remove '(in-scope roots :t.collection_id :collection)]]
     :tests  [#'scope-test/outside-library-test]}
    {:name   :dashboard-anywhere
-    :doc    "A dashboard is in scope in any collection."
-    :target [:method `scope/kind-query :dashboard]
+    :doc    "A dashboard or a timeline is in scope in any collection."
+    :target `scope/collection-item-query
     :edits  [[:replace '(in-scope roots :t.collection_id :collection) true]]
-    :tests  [#'scope-test/outside-library-test]}
+    :tests  [#'scope-test/outside-library-test
+             #'scope-test/timeline-test]}
+   {:name   :collection-item-trash
+    :doc    "A trashed dashboard or timeline stays in scope."
+    :target `scope/collection-item-query
+    :edits  [[:remove '(unarchived :t.archived)]]
+    :tests  [#'scope-test/timeline-test]}
+   {:name   :transform-test-anywhere
+    :doc    "A transform test is in scope also when its transform is not."
+    :target [:method `scope/kind-query :transform-test]
+    :edits  [[:replace '(in-scope roots :t.transform_id :transform) true]]
+    :tests  [#'scope-test/transform-test-test]}
+   {:name   :archived-tables-leave
+    :doc    "A published table that warehouse sync archives leaves scope, so a push deletes its publication."
+    :target [:method `scope/kind-query :published-table]
+    :edits  [[:edit '[:= :t.is_published true] (fn [form] [:and form [:= :t.archived_at nil]])]]
+    :tests  [#'scope-test/archived-published-table-test]}
+   {:name   :archived-table-new-key
+    :doc    "The key of a table that warehouse sync archived is its new name, so the archive is a delete and a create."
+    :target `library-branching.db/table-key
+    :edits  [[:replace '(str/replace table archive-suffix "") 'table]]
+    :tests  [#'kinds-test/archived-published-table-test]}
+   {:name   :archived-table-shadowed
+    :doc    "A later table with the name of an archived published table takes its key, so the item reads an unpublished
+            table."
+    :target `library-branching.db/key-row
+    :edits  [[:remove '(comp not true? :is_published)]]
+    :tests  [#'kinds-test/archived-published-table-test]}
+   {:name   :archived-table-not-found
+    :doc    "A lookup by natural key does not find a table that warehouse sync archived."
+    :target `library-branching.db/table-named
+    :edits  [[:remove '[:and [:not= archived-column nil] [:like name-column (str table "__mbarchiv__%")]]]]
+    :tests  [#'kinds-test/archived-published-table-test]}
    {:name   :model-actions-at-root
     :doc    "An action of a model at the root level is in scope."
     :target [:method `scope/kind-query :action]

@@ -102,10 +102,7 @@
 (defn read-published-tables
   "`{table-key item}` of the published tables of `table-keys`."
   [table-keys]
-  (let [wanted     (set table-keys)
-        ;; A case-insensitive collation can match a table whose key differs in case.
-        tables     (filterv #(contains? wanted (table-key %))
-                            (content/in-chunks library-branching.db/tables-by-key (vec wanted) 100))
+  (let [tables     (content/in-chunks library-branching.db/tables-by-key (vec (set table-keys)) 100)
         ids        (mapv :id tables)
         settings   (into {} (map (juxt :table_id identity))
                          (content/in-chunks library-branching.db/table-user-settings-by-table-id ids))
@@ -129,19 +126,17 @@
   "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys`, with no user
   value. A key of no table has no entry."
   [table-keys]
-  (let [wanted (set table-keys)]
-    (into {}
-          (keep (fn [t]
-                  (let [k (table-key t)]
-                    ;; A case-insensitive collation can match a table whose key differs in case.
-                    (when (contains? wanted k)
-                      [k (:display_name t)]))))
-          (content/in-chunks library-branching.db/sync-names-by-key (vec wanted) 100))))
+  ;; The table of a key is the row that the read takes.
+  (let [tables (content/in-chunks library-branching.db/tables-by-key (vec (set table-keys)) 100)
+        names  (into {}
+                     (map (juxt :id :display_name))
+                     (content/in-chunks library-branching.db/sync-display-names-by-id (mapv :id tables)))]
+    (into {} (map (fn [t] [(table-key t) (get names (:id t))])) tables)))
 
 (defn- table-of-key
   "The table row (`{:id :db :schema :table :display_name :collection_id}`) of natural key `k`, or nil."
   [k]
-  (some #(when (= k (table-key %)) %) (library-branching.db/tables-by-key [k])))
+  (first (library-branching.db/tables-by-key [k])))
 
 (defn- the-table
   "[[table-of-key]] of `id`; throws ::instance/refused when this instance has no such table."
