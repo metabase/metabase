@@ -15,8 +15,9 @@ import type {
 } from "metabase-types/api";
 
 import { type BaseQueryInput, buildBaseQuery } from "./base-query";
-import { buildSql } from "./build-sql";
+import { type BaseColumns, buildSql } from "./build-sql";
 import { nativeCompileRequest } from "./compile-base";
+import { COLUMN_ROLE_FOR_GRAIN } from "./filters";
 import type { AnalysisSpec } from "./spec/types";
 
 export type AnalysisQueryArgs = {
@@ -27,8 +28,16 @@ export type AnalysisQueryArgs = {
   base: BaseQueryInput;
 };
 
+/** The compiled event stream an analysis reads, for building related queries. */
+export type CompiledBase = {
+  sql: string;
+  databaseId: number;
+  columns: BaseColumns;
+};
+
 export type AnalysisQueryResult = {
   sql: string | null;
+  compiledBase: CompiledBase | undefined;
   dataset: Dataset | undefined;
   datasetQuery: DatasetQuery | undefined;
   warnings: string[];
@@ -84,13 +93,31 @@ export const useAnalysisQuery = ({
 
   const baseSql = native.currentData?.query;
 
+  const compiled = useMemo<CompiledBase | undefined>(
+    () =>
+      baseSql !== undefined &&
+      compiledBase?.extraColumns !== undefined &&
+      compiledDatabaseId !== undefined
+        ? {
+            sql: baseSql,
+            databaseId: compiledDatabaseId,
+            columns: {
+              columns: base.columns,
+              flags: base.events.map(({ flag }) => flag),
+              extraColumns: compiledBase.extraColumns,
+              cohorts: base.filters.cohorts.flatMap(({ grain, ids }) => {
+                const column = base.columns[COLUMN_ROLE_FOR_GRAIN[grain]];
+                return column !== null ? [{ column, ids }] : [];
+              }),
+            },
+          }
+        : undefined,
+    [baseSql, compiledBase, compiledDatabaseId, base],
+  );
+
   const built =
-    spec && baseSql && compiledBase?.extraColumns !== undefined
-      ? buildSql(spec, baseSql, {
-          columns: base.columns,
-          flags: base.events.map(({ flag }) => flag),
-          extraColumns: compiledBase.extraColumns,
-        })
+    spec && compiled
+      ? buildSql(spec, compiled.sql, compiled.columns)
       : undefined;
 
   const datasetQuery: DatasetQuery | undefined =
@@ -122,6 +149,7 @@ export const useAnalysisQuery = ({
 
   return {
     sql: built?.sql ?? baseSql ?? null,
+    compiledBase: compiled,
     dataset: adhoc.currentData,
     datasetQuery,
     warnings: built?.warnings ?? [],

@@ -12,6 +12,7 @@ import {
   totalAbove,
 } from "./events/mocks";
 import type { EventDefinition } from "./events/types";
+import { NO_FILTERS } from "./filters";
 
 const STAGE = -1;
 
@@ -36,6 +37,7 @@ const getFlagParts = (event: EventDefinition) => {
     events: flags.events,
     extraColumns: [],
     usersTable: undefined,
+    filters: NO_FILTERS,
   });
   const [flag] = Lib.expressions(query, STAGE);
   return {
@@ -80,6 +82,7 @@ describe("buildBaseQuery", () => {
         { as: "cohort_start", column: "CREATED_AT", from: "events" },
       ],
       usersTable: undefined,
+      filters: NO_FILTERS,
     });
 
     expect(extraColumns).toEqual([{ as: "cohort_start", alias: "CREATED_AT" }]);
@@ -103,6 +106,7 @@ describe("buildBaseQuery", () => {
         foreignKey: "USER_ID",
         primaryKey: "ID",
       },
+      filters: NO_FILTERS,
     });
 
     const [join] = Lib.joins(query, STAGE);
@@ -130,6 +134,7 @@ describe("buildBaseQuery", () => {
           { as: "cohort_attribute", column: "SOURCE", from: "users" },
         ],
         usersTable: undefined,
+        filters: NO_FILTERS,
       }),
     ).toThrow("The person column doesn't link to a users table.");
   });

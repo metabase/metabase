@@ -7,6 +7,7 @@ import { EventDefinitionWidget } from "../components/settings/EventDefinitionWid
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Grain } from "../spec/types";
+import { parseStepLabel } from "../sql/analyses/base";
 
 import { commonSettings } from "./common-settings";
 import {
@@ -212,4 +213,13 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
     "sankey.target": "target",
     "sankey.value": "weight",
   }),
+  describePoint: (_settings, point) => {
+    const source = parseStepLabel(point.source);
+    const target = parseStepLabel(point.target);
+    if (source !== null && target !== null) {
+      return t`Went from ${source.name} to ${target.name} at step ${source.step}`;
+    }
+    const node = source ?? target;
+    return node === null ? null : t`Did ${node.name} at step ${node.step}`;
+  },
 };

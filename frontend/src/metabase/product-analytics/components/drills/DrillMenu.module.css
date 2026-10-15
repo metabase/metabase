@@ -1,0 +1,17 @@
+.item {
+  display: flex;
+  justify-content: flex-start;
+
+  [data-position] {
+    color: var(--mb-color-core-brand);
+  }
+
+  &[data-variant][data-size]:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
+
+    [data-position] {
+      color: var(--mb-color-text-primary-inverse);
+    }
+  }
+}

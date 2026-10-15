@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
 import { ActionIcon, Button, Group, Icon } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
@@ -41,7 +40,6 @@ export const AnalysisToolbar = ({
   onPanelChange,
   onSave,
 }: AnalysisToolbarProps) => {
-  const [sendToast] = useToast();
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
 
   const togglePanel = (target: AnalysisPanel) =>
@@ -78,15 +76,7 @@ export const AnalysisToolbar = ({
           </Button.Group>
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            <Button
-              variant="default"
-              leftSection={<Icon name="filter" />}
-              onClick={() =>
-                sendToast({ message: t`Coming soon`, timeout: 3000 })
-              }
-            >
-              {t`Filter`}
-            </Button>
+            <ToolbarSetting setting={findSetting(widgets, "filters")} />
           </Button.Group>
         </Group>
 

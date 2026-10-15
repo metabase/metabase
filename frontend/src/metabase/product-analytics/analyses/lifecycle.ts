@@ -2,8 +2,10 @@ import { t } from "ttag";
 
 import { CheckboxCardsWidget } from "../components/settings/CheckboxCardsWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
+import { pointString } from "../sql/analyses/base";
 
 import { commonSettings } from "./common-settings";
 import {
@@ -29,7 +31,7 @@ const STATES: readonly LifecycleStateName[] = [
   "dormant",
 ];
 
-const getStateName = (state: LifecycleStateName): string => {
+export const getStateName = (state: LifecycleStateName): string => {
   switch (state) {
     case "new":
       return t`New`;
@@ -153,4 +155,13 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       STATES.map((state) => [state, { title: getStateName(state) }]),
     ),
   }),
+  describePoint: (settings, point) => {
+    const state = STATES.find((item) => item === pointString(point.state));
+    if (state === undefined) {
+      return null;
+    }
+    const name = getStateName(state);
+    const period = formatPeriod(point.period, settings.granularity);
+    return t`${name} in ${period}`;
+  },
 };

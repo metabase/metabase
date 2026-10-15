@@ -6,6 +6,7 @@ import type {
 
 import type { ColumnRole, ExtraColumn, UsersTableLink } from "../columns";
 import type { EventDefinition, EventFlags } from "../events/types";
+import type { AnalysisFilters } from "../filters";
 import type { SettingDefinitions } from "../settings/types";
 import type {
   AnalysisKind,
@@ -20,6 +21,7 @@ import type {
   OutputSpec,
   PathsSpec,
 } from "../spec/types";
+import type { DrillPoint } from "../sql/compose";
 
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
@@ -43,6 +45,7 @@ export type CommonSettings = ColumnRoleSettings & {
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;
   granularity: Granularity;
+  filters: AnalysisFilters;
 };
 
 export type FunnelSettings = CommonSettings & {
@@ -137,4 +140,12 @@ export type AnalysisConfig<K extends AnalysisKind> = {
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
   ) => VisualizationSettings;
+  /**
+   * Names the actors in a clicked point, e.g. "Reached step 2: Signed up".
+   * `null`, or omitted, when the chart's clicks can't be traced to actors.
+   */
+  describePoint?: (
+    settings: AnalysisSettingsByKind[K],
+    point: DrillPoint,
+  ) => string | null;
 };
