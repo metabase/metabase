@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -15,6 +15,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -83,6 +84,27 @@
 (defn- bearer [token]
   {"authorization" (str "Bearer " token)})
 
+(def ^:private all-scopes
+  "Every MCP v2 scope."
+  (set mcp.paths/v2-surface-scopes))
+
+(defn- do-with-site-url!
+  "Call `thunk` with a Site URL set, which the OAuth provider needs."
+  [thunk]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (thunk)))
+
+(defn- insert-access-token!
+  "Insert a live OAuth access token row for `user-id` on `client-id` holding `scopes`, and return the raw token."
+  [user-id client-id scopes]
+  (let [token (str (random-uuid))]
+    (t2/insert! :model/OAuthAccessToken {:token     (oidc.util/hash-token token)
+                                         :user_id   user-id
+                                         :client_id client-id
+                                         :scope     (vec scopes)
+                                         :expiry    (+ (System/currentTimeMillis) 3600000)})
+    token))
+
 (defn- create-api-key!
   "Create an API key in `group`. Returns `[key-id user-id unmasked-key]`."
   [group]
@@ -93,7 +115,7 @@
 (deftest only-the-ui-credential-reaches-the-iframe-routes-test
   (testing "Every credential except the UI credential gets 401 on every iframe route, even with a valid MCP session id
             and a handle its user owns, and the route has no effect"
-    (mcp.tu/do-with-site-url!
+    (do-with-site-url!
      (fn []
        (mt/test-helpers-set-global-values!
          (mt/with-full-data-perms-for-all-users!
@@ -111,12 +133,10 @@
                              ["an admin's cookie session"    (mt/user->id :crowberto) (session-cookie :crowberto)]
                              ["an X-Metabase-Session header" rasta
                               {"x-metabase-session" (test.users/username->token :rasta)}]
-                             ["an MCP-bound OAuth bearer"    rasta
-                              (bearer (oauth-server.tu/insert-access-token! rasta client-id mcp.tu/all-scopes
-                                                                            :resource (oauth-server.tu/mcp-resource)))]
+                             ["an OAuth bearer with every MCP scope" rasta
+                              (bearer (insert-access-token! rasta client-id all-scopes))]
                              ["a REST OAuth bearer with mb:full" rasta
-                              (bearer (oauth-server.tu/insert-access-token! rasta client-id
-                                                                            [oauth-server/full-access-scope]))]]
+                              (bearer (insert-access-token! rasta client-id [oauth-server/full-access-scope]))]]
                             (for [[label [_ user-id api-key]] api-keys]
                               [label user-id {"x-api-key" api-key}]))
                            :let  [fixture (fixture! user-id)
@@ -134,11 +154,11 @@
   (testing "A UI credential for rasta sent with crowberto's session cookie runs as rasta, never as crowberto"
     (mt/with-full-data-perms-for-all-users!
       (mt/with-model-cleanup [:model/McpQueryHandle :model/McpFeedback]
-        (let [{:keys [session-id user-id] :as auth} (ui.tu/ui-auth! :rasta mcp.tu/all-scopes)
+        (let [{:keys [session-id user-id] :as auth} (ui.tu/ui-auth! :rasta all-scopes)
               fixture (assoc (fixture! user-id) :session-id session-id)
               mbql    (ui.tu/store-query-handle! session-id user-id (mbql-query))
               headers (merge (ui.tu/headers auth) (session-cookie :crowberto))
-              send    (fn [status method url body] (mcp.tu/do-with-site-url! #(send! status method url headers body)))]
+              send    (fn [status method url body] (do-with-site-url! #(send! status method url headers body)))]
           (testing "bootstrap describes rasta"
             (is (= user-id (get-in (send 200 :get "embed-mcp/bootstrap" nil) [:body :user :id]))))
           (testing "a drill stores a handle owned by rasta"

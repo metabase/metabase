@@ -11,6 +11,8 @@
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
                       (thunk)
