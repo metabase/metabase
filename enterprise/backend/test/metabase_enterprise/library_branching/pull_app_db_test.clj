@@ -340,6 +340,84 @@
                   (map (fn [{:keys [id link]}] [id (if link :link :write)]) steps)))
            (is (= remote (read-snapshot inst)))))))))
 
+(deftest pull-refuses-the-name-of-a-trashed-snippet-test
+  (testing (str "Alloy ApplyKeepsUniqueKeysFails on the app DB: the head adds a snippet with the name of a snippet in "
+                "the trash, which the app DB keeps unique over all rows. The apply refuses with the pair before it "
+                "writes, and the base stays; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _metrics]
+       (let [trashed (insert! :model/NativeQuerySnippet {:name       "lb pull clash"
+                                                         :content    "1 = 1"
+                                                         :archived   true
+                                                         :creator_id (mt/user->id :crowberto)})
+             new-id  (second created-ids)]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 item           {:kind  :snippet :name "lb pull clash" :place "snippetssnippetssnipp" :refs #{}
+                                 :attrs {:content "2 = 2"}}
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
+             (is (= {:result    :key-clash
+                     :head      h
+                     :key-clash [{:rule :unique-key :kind :snippet :key "lb pull clash"
+                                  :ids  #{new-id (:entity_id trashed)}}]}
+                    (dissoc (pull! inst s) :semantic)))
+             (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
+             (is (= c1 (instance/base inst))))))))))
+
+(deftest pull-refuses-a-name-that-differs-only-in-case-or-accents-test
+  (testing (str "The apply compares snippet names in the form of validate: a name that differs from the name of a "
+                "snippet in the trash only in case or accents is one key on every app DB. The apply refuses with the "
+                "pair before it writes; app DB " (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! _metrics]
+       (let [trashed (insert! :model/NativeQuerySnippet {:name       "lb pull Clash"
+                                                         :content    "1 = 1"
+                                                         :archived   true
+                                                         :creator_id (mt/user->id :crowberto)})
+             new-id  (second created-ids)]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 item           {:kind  :snippet :name "lb pull cläsh" :place "snippetssnippetssnipp" :refs #{}
+                                 :attrs {:content "2 = 2"}}
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
+             (is (= {:result    :key-clash
+                     :head      h
+                     :key-clash [{:rule :unique-key :kind :snippet :key "lb pull cläsh"
+                                  :ids  #{new-id (:entity_id trashed)}}]}
+                    (dissoc (pull! inst s) :semantic)))
+             (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
+             (is (= c1 (instance/base inst))))))))))
+
+(deftest pull-refuses-a-name-that-the-collation-takes-as-one-test
+  (testing (str "MySQL and MariaDB keep snippet names unique under utf8mb4_unicode_ci, which takes some names as one "
+                "that differ in more than case or accents. A new snippet with such a name of a snippet in the trash: "
+                "the apply refuses with the pair before it writes, and the app DB gives no constraint error; app DB "
+                (mdb/db-type))
+    (doseq [[trashed-name new-name] [["lb pull Straße" "lb pull Strasse"]
+                                     ["lb pull clash" "lb pull clash  "]
+                                     ["lb pull clash" "lb pull cl\u200Bash"]
+                                     ["lb pull \uD83D\uDE00" "lb pull \uD83C\uDF89"]]]
+      (testing (pr-str trashed-name new-name)
+        (do-with-committed-content!
+         (fn [insert! _metrics]
+           (let [trashed (insert! :model/NativeQuerySnippet {:name       trashed-name
+                                                             :content    "1 = 1"
+                                                             :archived   true
+                                                             :creator_id (mt/user->id :crowberto)})
+                 new-id  (second created-ids)]
+             (with-remote [repo s]
+               (let [[inst c1 base] (pushed! s)
+                     item           {:kind  :snippet :name new-name :place "snippetssnippetssnipp" :refs #{}
+                                     :attrs {:content "2 = 2"}}
+                     h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
+                 (is (= {:result    :key-clash
+                         :head      h
+                         :key-clash [{:rule :unique-key :kind :snippet :key new-name
+                                      :ids  #{new-id (:entity_id trashed)}}]}
+                        (dissoc (pull! inst s) :semantic)))
+                 (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
+                 (is (= c1 (instance/base inst))))))))))))
+
 (deftest link-card-to-a-metric-test
   (testing (str "a dashboard with a link card to a metric, pushed from an instance and pulled into an instance where the "
                 "metric has another row id: the link card links to the metric's row on that instance; app DB "

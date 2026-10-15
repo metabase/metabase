@@ -262,12 +262,12 @@
                              (let [item (resolve-item world item)
                                    item (assoc item :refs (format.kinds/refs (:kind item) id (:attrs item)))]
                                (instance/write! (store item) id item)
-                               (= item (instance/current (store item) id))))
+                               (= {:state :live :content item} (instance/current (store item) id))))
                            items)
            last-kind (:kind (peek (vec items)))
            s         (get app-db/kind-stores last-kind)
            before    (rows id)]
-       (instance/write! s id (instance/current s id))
+       (instance/write! s id (:content (instance/current s id)))
        (and put-get (= before (rows id)))))))
 
 (def ^:private trials 30)
@@ -361,7 +361,7 @@
        (let [before  (rows id)
              refused (write-test/refusal #(instance/write! store id item))]
          (if accepted
-           (and (nil? refused) (= item (instance/current store id)))
+           (and (nil? refused) (= {:state :live :content item} (instance/current store id)))
            (and (= :invalid-content refused) (= before (rows id)))))))))
 
 (defspec layer-content-laws-test trials

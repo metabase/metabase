@@ -69,12 +69,14 @@
                places))))
 
 (defn current-timeline
-  "The content of the in-scope timeline `id`, after a lock on its row and on the rows of its events, or nil."
+  "The state of timeline `id` (`instance/current`), after a lock on its row and on the rows of its events."
   [id]
-  (when-let [row (library-branching.db/lock-timeline id)]
-    (library-branching.db/lock-timeline-events (:id row))
-    (when (scope/in-scope? :timeline id)
-      (get (read-timelines [id]) id))))
+  (let [row (library-branching.db/lock-timeline id)]
+    (when row
+      (library-branching.db/lock-timeline-events (:id row)))
+    (content/current-state (boolean (and row (tree/collection-id-in-tree? (:collection_id row))))
+                           #(scope/in-scope? :timeline id)
+                           #(get (read-timelines [id]) id))))
 
 ;;; ----------------------------------------------------- Writes ----------------------------------------------------
 

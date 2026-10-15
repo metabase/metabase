@@ -229,7 +229,7 @@
              as-q  (assoc as-q :refs (format.kinds/refs :question id (:attrs as-q)))
              plan  [{:id id :write as-q :pre (write-test/current :model id)}]]
          (is (= {:stale [] :gone []}
-                (apply/check-steps (fn [kind i] (instance/current (store kind) i)) plan))
+                (apply/check-steps (fn [kind i] (instance/current (store kind) i)) plan true))
              "the current of the new kind gives the card with its own kind, so the step's precondition holds")
          (instance/write! (store :question) id as-q)
          (is (= as-q (write-test/current :question id)))

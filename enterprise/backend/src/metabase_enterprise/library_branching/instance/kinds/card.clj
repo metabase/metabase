@@ -18,6 +18,7 @@
    [metabase-enterprise.library-branching.instance.tree :as tree]
    [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
@@ -117,11 +118,16 @@
           (into #{} (mapcat (comp keys :attrs)) (vals specs)))))
 
 (defn current-card
-  "The content of the in-scope card `id`, after a lock on its row, or nil. The item has the kind of the card's type."
-  [id]
-  (when-let [kind (kind-of (library-branching.db/lock-card id))]
-    (when (scope/in-scope? kind id)
-      (get (read-cards [id]) id))))
+  "The state of card `id` (`instance/current`) for the card kind `kind`, after a lock on its row. A card of a kind of
+  one row with `kind` (`snapshot/same-row?`) is the item; its content has the kind of the card's type."
+  [kind id]
+  (let [row      (library-branching.db/lock-card id)
+        row-kind (kind-of row)]
+    (content/current-state (boolean (and row-kind
+                                         (snapshot/same-row? kind row-kind)
+                                         (tree/collection-id-in-tree? (:collection_id row))))
+                           #(scope/in-scope? row-kind id)
+                           #(get (read-cards [id]) id))))
 
 (defn- columns
   "The card columns of the attributes `ks` of `attrs` of the kind `kind`, an absent one at its default, through the
@@ -209,6 +215,6 @@
   (reify instance/KindStore
     (read-all [_ ids] (read-cards ids))
     (read-models [_] models-of-read)
-    (current [_ id] (current-card id))
+    (current [_ id] (current-card kind id))
     (write! [_ id item] (content/do-in-write-transaction id #(write-card! kind id item)))
     (trash! [_ id] (content/do-in-write-transaction id #(trash-card! id)))))

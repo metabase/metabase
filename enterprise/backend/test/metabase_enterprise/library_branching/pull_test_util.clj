@@ -29,13 +29,26 @@
               j))
           (concat (:snapshot st) (:trash st)))))
 
-(defn- memory-ops!
-  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`. A write refuses a unique key
-  that another item has, also an item in the trash, as the app DB does."
+(defn memory-ops!
+  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`, a state of
+  [[memory-instance]]. A write refuses a unique key that another item has, also an item in the trash, as the app DB
+  does."
   [st]
-  {:current   (fn [kind id]
-                (let [item (get-in @st [:snapshot id])]
-                  (when (and item (snapshot/same-row? kind (:kind item))) item)))
+  {:current     (fn [kind id]
+                  (let [{:keys [snapshot trash]} @st
+                        of-kind (fn [item] (when (and item (snapshot/same-row? kind (:kind item))) item))]
+                    (if-let [item (of-kind (get snapshot id))]
+                      {:state :live :content item}
+                      (if-let [item (of-kind (get trash id))]
+                        {:state :trashed :content item}
+                        {:state :absent}))))
+   :key-holders (fn [kind k]
+                  (let [{:keys [snapshot trash]} @st]
+                    (into #{}
+                          (keep (fn [[id item]]
+                                  (when (and (= kind (:kind item)) (= k (snapshot/unique-key snapshot/unique-keys item)))
+                                    id)))
+                          (concat snapshot trash))))
    :write!    (fn [_kind id {:keys [place] :as content}]
                 (when (contains? (:outside @st) id)
                   (instance/refuse! :outside-library id "An item outside the Library has this identity."))

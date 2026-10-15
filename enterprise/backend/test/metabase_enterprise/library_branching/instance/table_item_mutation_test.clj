@@ -73,6 +73,12 @@
     :target `library-branching.db/lock-table-item
     :edits  [[:remove :for] [:remove '[:update]]]
     :tests  [#'lock-test/current-locks-the-row-test]}
+   {:name   :outside-tree-trashed
+    :doc    "current gives a row of a table outside the Library tree as trashed, so an apply takes it as an item of the
+            Library."
+    :target `table-item/current-item
+    :edits  [[:replace '(and row (table-in-tree? (:table_id row))) '(some? row)]]
+    :tests  [#'table-item-test/trash-of-the-table-test]}
    {:name   :segment-not-in-use
     :doc    "The in-use report knows no segment, so a pull that trashes a segment that a question outside the Library
             uses does not name the question."

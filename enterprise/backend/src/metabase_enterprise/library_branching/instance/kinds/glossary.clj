@@ -26,11 +26,13 @@
         (content/in-chunks library-branching.db/glossary-terms-by-entity-id (vec entity-ids))))
 
 (defn current-glossary-term
-  "The content of the in-scope glossary term `id`, after a lock on its row, or nil."
+  "The state of glossary term `id` (`instance/current`), after a lock on its row. A term has no trash: a deleted term is
+  absent."
   [id]
-  (when-let [row (library-branching.db/lock-glossary-term id)]
-    (when (scope/in-scope? :glossary-term id)
-      (term-item row))))
+  (let [row (library-branching.db/lock-glossary-term id)]
+    (if (and row (scope/in-scope? :glossary-term id))
+      {:state :live :content (term-item row)}
+      {:state :absent})))
 
 (defn- check-term-free!
   "Throws ::instance/refused when a glossary term with an identity other than `id` has the term `term`: Metabase keeps

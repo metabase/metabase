@@ -48,11 +48,23 @@
                contents))))
 
 (defn current-snippet
-  "The content of the in-scope snippet `id`, after a lock on its row, or nil."
+  "The state of snippet `id` (`instance/current`), after a lock on its row."
   [id]
-  (library-branching.db/lock-snippet id)
-  (when (scope/in-scope? :snippet id)
-    (get (read-snippets [id]) id)))
+  ;; Every snippet is in the snippets namespace, a root namespace: a snippet row is always in the Library tree.
+  (content/current-state (some? (library-branching.db/lock-snippet id))
+                         #(scope/in-scope? :snippet id)
+                         #(get (read-snippets [id]) id)))
+
+(defn snippet-key-holders
+  "`{k #{entity-id}}`: the entity ids of the snippets, in the trash or not, by the compared form `k` of their names
+  (`snapshot/unique-key`)."
+  []
+  ;; The app DB compares names exactly on Postgres and H2, so a query cannot select the names of one compared form;
+  ;; the fold runs here, over every snippet name.
+  (reduce (fn [acc {:keys [entity_id name]}]
+            (update acc (snapshot/unique-key snapshot/unique-keys {:kind :snippet :name name}) (fnil conj #{}) entity_id))
+          {}
+          (library-branching.db/snippet-names)))
 
 (defn- columns
   "The snippet columns of the attributes `ks` of `attrs`, an absent one at its default, through the imports of the
@@ -131,6 +143,9 @@
   (reify
     instance/Stub
     (stub [_ id content refs] (stub-snippet id content refs))
+
+    instance/UniqueKey
+    (key-holders [_] (snippet-key-holders))
 
     instance/KindStore
     (read-all [_ ids] (read-snippets ids))

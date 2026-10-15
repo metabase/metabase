@@ -92,8 +92,8 @@
 
 (defn- while-current-holds!
   "Calls `(current ks id)` in a transaction of another thread, and while that transaction is open, `(save-result!
-  save!)`. Returns `[the content that current returned, the save result while it held, the save result after]`. The
-  transaction of the other thread has ended when this returns or throws, also when this thread is interrupted."
+  save!)`. Returns `[the result of current, the save result while it held, the save result after]`. The transaction of
+  the other thread has ended when this returns or throws, also when this thread is interrupted."
   [ks id save!]
   (let [held    (promise)
         release (promise)
@@ -197,7 +197,8 @@
                   ["a card of a dashboard" :dashboard (:entity_id dash)
                    #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]]]
            (testing label
-             (let [[content during after] (while-current-holds! (get stores kind) id save!)]
-               (is (map? content))
+             (let [[current during after] (while-current-holds! (get stores kind) id save!)]
+               (is (= :live (:state current)))
+               (is (map? (:content current)))
                (is (= :lock-wait during))
                (is (= :saved after))))))))))

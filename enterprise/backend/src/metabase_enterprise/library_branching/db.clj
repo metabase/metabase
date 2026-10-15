@@ -434,6 +434,12 @@
                  :where  [:= :entity_id [:auto/param entity-id]]
                  :for    [:update]}))
 
+(mu/defn snippet-names :- [:sequential ::row]
+  "`{:entity_id :name}` of every snippet, archived or not."
+  []
+  (t2/query {:select [:entity_id :name]
+             :from   [(t2/table-name :model/NativeQuerySnippet)]}))
+
 (mu/defn insert-snippet! :- ::row
   "Inserts a snippet with the columns `row` through the NativeQuerySnippet model, and returns it."
   [row :- ::row]
