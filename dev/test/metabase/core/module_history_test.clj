@@ -73,14 +73,14 @@
                                                    ;; Not a module, since it has no :api-namespaces entry.
                                                    metabase.unlisted       :any}}}}))))))
 
-(deftest backend-pathspecs-test
+(deftest source-pathspecs-test
   (testing "each pathspec used to find backend-touching commits matches files in this tree"
     (is (= []
            (remove (fn [pathspec] (seq (#'module-history/git! ["ls-files" "--" pathspec])))
-                   @#'module-history/backend-pathspecs))))
+                   @#'module-history/source-pathspecs))))
   (testing "a driver's sources are covered"
     (is (some #(re-find #"^modules/drivers/[^/]+/src/.+\.clj$" %)
-              (str/split-lines (#'module-history/git! (into ["ls-files" "--"] @#'module-history/backend-pathspecs)))))))
+              (str/split-lines (#'module-history/git! (into ["ls-files" "--"] @#'module-history/source-pathspecs)))))))
 
 (deftest ^:parallel midnight-utc-test
   (testing "a sampling date is pinned to the start of its day, so git does not read it at the current time of day"
