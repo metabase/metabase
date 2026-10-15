@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Box, Flex, Stack, rem } from "metabase/ui";
+import { Box, Stack, rem } from "metabase/ui";
+import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import type { ScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 
 import { TrendComparisonRow } from "./TrendComparisonRow";
@@ -9,6 +10,7 @@ import type { Trend } from "./compute";
 interface TrendCardComparisonProps {
   tier: ScalarSizeTier;
   title: ReactNode;
+  description?: string | null;
   trend: Trend;
   availableWidth: number;
   isNarrow: boolean;
@@ -17,18 +19,25 @@ interface TrendCardComparisonProps {
 export function TrendCardComparison({
   tier,
   title,
+  description,
   trend,
   availableWidth,
   isNarrow,
 }: TrendCardComparisonProps) {
+  const titleWithDescription = title ? (
+    <ScalarLabel description={description} xPadding={tier.xPadding}>
+      {title}
+    </ScalarLabel>
+  ) : null;
+
   if (trend.comparisons.length === 0) {
-    return title;
+    return titleWithDescription;
   }
 
   if (tier.size === 100 || (tier.size === 150 && isNarrow)) {
     return (
-      <Stack align="center" gap="xxs" maw="100%">
-        {title}
+      <Stack align="center" gap="xxs" w="100%">
+        {titleWithDescription}
         <TrendComparisonRow
           trend={trend}
           formatOptions={trend.formatOptions}
@@ -41,7 +50,7 @@ export function TrendCardComparison({
 
   if (tier.size === 150) {
     return (
-      <Flex align="center" justify="center" gap="xxs" maw="100%">
+      <ScalarLabel description={description} xPadding={tier.xPadding}>
         {title}
         <Box flex="0 0 auto">
           <TrendComparisonRow
@@ -50,13 +59,13 @@ export function TrendCardComparison({
             percentOnly
           />
         </Box>
-      </Flex>
+      </ScalarLabel>
     );
   }
 
   return (
     <>
-      {title}
+      {titleWithDescription}
       <Box
         pos="absolute"
         top={`calc(100% + ${rem(tier.comparisonGap)})`}

@@ -61,7 +61,6 @@ export function useScalarCardShell(
   const titleElement = title ? (
     <ScalarTitle
       size={tier.size < 200 ? "sm" : "md"}
-      description={description}
       icon={headerIcon}
       getHref={canSelectTitle ? getHref : undefined}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
@@ -75,6 +74,7 @@ export function useScalarCardShell(
     rootFontScale,
     availableWidth,
     titleElement,
+    description: title ? description : null,
   };
 }
 
@@ -96,7 +96,7 @@ export function ScalarCardShell({
         pos="relative"
         align="center"
         gap={tier.valueTitleGap}
-        maw="100%"
+        w="100%"
         data-testid="scalar-content"
       >
         {children}

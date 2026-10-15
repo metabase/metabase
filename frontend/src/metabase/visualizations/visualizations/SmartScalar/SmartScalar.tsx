@@ -59,7 +59,7 @@ function SmartScalarComponent(
     }
   }, [error, onRenderError]);
 
-  const { tier, rootFontScale, availableWidth, titleElement } =
+  const { tier, rootFontScale, availableWidth, titleElement, description } =
     useScalarCardShell(props, {
       shouldHideDescription: (tier) =>
         tier.size === 150 && (trend?.comparisons.length ?? 0) > 1,
@@ -206,6 +206,7 @@ function SmartScalarComponent(
       <TrendCardComparison
         tier={tier}
         title={titleElement}
+        description={description}
         trend={trend}
         availableWidth={availableWidth}
         isNarrow={width < tier.minWidth}

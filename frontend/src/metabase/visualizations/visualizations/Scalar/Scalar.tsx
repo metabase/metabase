@@ -7,6 +7,7 @@ import {
   ScalarCardShell,
   useScalarCardShell,
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
+import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import {
@@ -63,9 +64,10 @@ function ScalarComponent(
   const sublabel = settings["scalar.sublabel"];
   const isMetricsViewer = label !== undefined;
 
-  const { tier, availableWidth, titleElement } = useScalarCardShell(props, {
-    hideTitle: isMetricsViewer,
-  });
+  const { tier, availableWidth, titleElement, description } =
+    useScalarCardShell(props, {
+      hideTitle: isMetricsViewer,
+    });
 
   if (rawSeries.length > 1) {
     return (
@@ -164,7 +166,11 @@ function ScalarComponent(
           </Tooltip>
         </ScalarValueContainer>
       </Box>
-      {titleElement}
+      {titleElement && (
+        <ScalarLabel description={description} xPadding={tier.xPadding}>
+          {titleElement}
+        </ScalarLabel>
+      )}
     </ScalarCardShell>
   );
 }
