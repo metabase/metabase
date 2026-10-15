@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
+  isDataAppCollection,
   isDedicatedTenantCollectionRoot,
   isInstanceAnalyticsCustomCollection,
   isPersonalCollection,
@@ -85,7 +86,9 @@ export const CollectionMenu = ({
     isAdmin &&
     !isPersonal &&
     !isDedicatedTenantCollectionRoot(collection) &&
-    !isSharedTenantCollection
+    !isSharedTenantCollection &&
+    // a data app's collection takes its permissions from the groups assigned to the app
+    !isDataAppCollection(collection)
   ) {
     editItems.push(
       <Menu.Item

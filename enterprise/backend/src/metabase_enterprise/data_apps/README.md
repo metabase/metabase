@@ -71,7 +71,8 @@ An author deletes an app by deleting its directory and its collection's files un
 `collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
 hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
 collection's files still deletes the app and its collection; the next export removes the files,
-and until then a full pull loads them back as a collection no app owns.
+and until then a full pull loads them back as a collection no app owns. That collection is read-only
+like an app's, so only deleting its files from the repository removes it.
 
 ## Serving
 
@@ -123,6 +124,10 @@ unassigned apps from other users, and metadata, bundle, and HTML entry-point req
 Collection access alone does not grant app access.
 
 Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
+
+Nobody can write a collection of the `data-apps` namespace, or what it holds, administrators included, with or
+without remote sync: the collection's `can-write?` refuses it, the write permissions of everything that takes them
+from its collection are a path no user holds, and a pull is what changes them.
 
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
