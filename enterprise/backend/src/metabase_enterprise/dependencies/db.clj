@@ -100,7 +100,14 @@
                                    {:perms/create-queries :query-builder})]}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
-                    (let [archived-column (keyword (name table-name) "archived")]
+                    (let [archived-column (keyword (name table-name) "archived")
+                          visible-in-root (fn [root-namespace]
+                                            (collection/visible-collection-filter-clause
+                                             (keyword (name table-name) "collection_id")
+                                             {:include-archived-items include-archived-items
+                                              :root-namespace         root-namespace}
+                                             {:current-user-id user-id
+                                              :is-superuser?   is-superuser?}))]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
                                          (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
@@ -111,13 +118,16 @@
                           {:select [:id]
                            :from   [table-name]
                            :where  [:and
-                                    (collection/visible-collection-filter-clause
-                                     (keyword (name table-name) "collection_id")
-                                     {:include-archived-items include-archived-items
-                                      :root-namespace         (when (= model :model/NativeQuerySnippet)
-                                                                collection/snippets-ns)}
-                                     {:current-user-id user-id
-                                      :is-superuser?   is-superuser?})
+                                    (case model
+                                      :model/NativeQuerySnippet (visible-in-root collection/snippets-ns)
+                                      :model/Action             [:or
+                                                                 [:and
+                                                                  [:not= :action.model_id nil]
+                                                                  (visible-in-root nil)]
+                                                                 [:and
+                                                                  [:= :action.model_id nil]
+                                                                  (visible-in-root collection/data-actions-ns)]]
+                                      (visible-in-root nil))
                                     (case include-archived-items
                                       :exclude [:= archived-column false]
                                       :only    [:= archived-column true]
@@ -270,6 +280,13 @@
   []
   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
 
+(defn action-root-namespace
+  "The namespace of the root collection an action without a collection sits in: the data actions root for a
+  `model-less?` action, and the default root for an action of a model."
+  [model-less?]
+  (when model-less?
+    :data-actions))
+
 (defn- entity-type-config
   "The table name and name/location column expressions to select an item list row for `entity-type`."
   [entity-type]
@@ -299,7 +316,14 @@
                                [:not= :entity.document_id nil] :document.name
                                :else [:coalesce :collection.name (:name root-collection)]]
                         :table :database.name
-                        (:transform :snippet :dashboard :document :action) [:coalesce :collection.name (:name root-collection)]
+                        (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
+                        :action [:coalesce
+                                 :collection.name
+                                 [:case
+                                  [:= :entity.model_id nil]
+                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace true)))
+                                  :else
+                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                         (:segment :measure) :table.display_name)}))
 

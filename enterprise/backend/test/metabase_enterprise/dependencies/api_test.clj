@@ -2853,3 +2853,60 @@
             (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
               (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
                 (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))
+
+(defn- delete-venue-query []
+  (lib/native-query (mt/metadata-provider) "DELETE FROM venues WHERE id = {{id}}"))
+
+(deftest graph-root-data-action-permissions-test
+  (testing "the graph shows a data action at the data-actions root only to users who can read that root"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+        (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Root data action permtest"}
+                       :model/QueryAction _ {:action_id     action-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (delete-venue-query)}]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (deps.test/synchronously-run-backfill!)
+            (let [dependent-ids    (fn []
+                                     (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                                :id (mt/id :venues)
+                                                                :type "table"
+                                                                :dependent-types "action")
+                                          (into #{} (map :id))))
+                  unreferenced-ids (fn []
+                                     (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/unreferenced"
+                                                                :types "action"
+                                                                :query "permtest")
+                                          :data
+                                          (into #{} (map :id))))]
+              (testing "a user who can read the default root but not the data-actions root"
+                (is (not (contains? (dependent-ids) action-id)))
+                (is (not (contains? (unreferenced-ids) action-id))))
+              (testing "a user who can read the data-actions root"
+                (perms/grant-collection-read-permissions! (perms/all-users-group)
+                                                          (assoc collection/root-collection :namespace "data-actions"))
+                (is (contains? (dependent-ids) action-id))
+                (is (contains? (unreferenced-ids) action-id))))))))))
+
+(deftest ^:synchronized unreferenced-root-data-action-location-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced locates a data action at the data-actions root in that root"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Root data action locationtest"}
+                     :model/QueryAction _ {:action_id     action-id
+                                           :database_id   (mt/id)
+                                           :dataset_query (delete-venue-query)}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (deps.test/synchronously-run-backfill!)
+          (let [unreferenced (fn [query]
+                               (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
+                                                     :types "action"
+                                                     :query query))
+                matches?     (fn [query]
+                               (contains? (into #{} (map :id) (:data (unreferenced query))) action-id))]
+            (testing "the response names the data-actions root"
+              (is (=? {:data [{:id   action-id
+                               :data {:collection {:name "Data actions" :namespace "data-actions"}}}]}
+                      (unreferenced "locationtest"))))
+            (testing "a search for the data-actions root name finds the action"
+              (is (matches? "Data actions"))
+              (is (not (matches? "Our analytics"))))))))))

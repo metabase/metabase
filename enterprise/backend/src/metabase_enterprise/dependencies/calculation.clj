@@ -24,7 +24,8 @@
 
 (def ^:private Entity
   "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
-  each of those in turn hydrated with `:series`; every other entity is a plain row of its model."
+  each of those in turn hydrated with `:series`; a query `:action` arrives with the `:dataset_query` of its
+  QueryAction; every other entity is a plain row of its model."
   [:or
    ::queries.schema/card
    :metabase.warehouse-schema.schema/table
