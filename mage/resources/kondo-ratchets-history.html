@@ -78,7 +78,7 @@
                 position: relative; }
   .chart-card h4 { margin: 0; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
   .chart-card h4 .now { font-family: var(--mono); }
-  .chart-card .sub { color: var(--muted); font-size: 12px; margin: 0 0 6px; text-wrap: balance; }
+  .chart-card .sub { color: var(--muted); font-size: 12px; margin: 0 0 6px; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; margin: 0 0 4px; }
   .legend span.key { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle;
                      margin-right: 6px; }
@@ -310,7 +310,7 @@ function trends(p) {
        {key: "cumNet", name: "Net", color: "--net"},
        {key: "cumShrunk", name: "Shrunk", color: "--shrunk", area: true}],
       {cumGrown: 0, cumNet: 0, cumShrunk: 0}, true) +
-    chart("c-level", "Total budget", "All budgets summed, including changes that count for nobody. Hover a step to see its parts.",
+    chart("c-level", "Total budget", "All budgets summed. Hover a step to see its parts.",
       pts, span, [{key: "level", name: "Total budget", color: "--level"}],
       {level: before ? before.level : null}, false, stepParts) +
     `</div>${reconcile(pts, before)}<details class="data"><summary>Data table</summary>` +
