@@ -49,7 +49,20 @@
                         :query              query
                         :parameters         [{:id "p" :values_source_config {:card_id dashboard-id}}]
                         :dimension_mappings [{:table-id [sd "PUBLIC" "ORDERS"]
-                                              :target   ["field" {} [sd "PUBLIC" "ORDERS" "TOTAL"]]}]})))))
+                                              :target   ["field" {} [sd "PUBLIC" "ORDERS" "TOTAL"]]}]}))))
+  (testing "the references of the visualization settings: a click-behavior link and a column settings key"
+    (is (= #{[:database [:env [sd]]]
+             [:source-card card-id]
+             [:dashboard dashboard-id]
+             [:field [:env [sd "PUBLIC" "ORDERS" "TOTAL"]]]}
+           (kinds/refs :metric metric-id
+                       {:display                "scalar"
+                        :query                  query
+                        :visualization_settings {:column_settings
+                                                 {(keyword "[\"ref\",[\"field\",[\"Sample Database\",\"PUBLIC\",\"ORDERS\",\"TOTAL\"],null]]")
+                                                  {:click_behavior {:type     "link"
+                                                                    :linkType "dashboard"
+                                                                    :targetId dashboard-id}}}}})))))
 
 (deftest attributes-test
   (testing "the content attributes of a metric"
@@ -82,7 +95,11 @@
    {:name   :only-query-refs
     :doc    "Only the query gives references, so a parameter's values source card is not checked."
     :target `metric/refs
-    :edits  [[:replace '(portable/refs (dissoc attrs :query)) #{}]]}])
+    :edits  [[:replace '(portable/refs (dissoc attrs :query :visualization_settings)) #{}]]}
+   {:name   :no-visualization-refs
+    :doc    "The visualization settings give no references of their own, so a click-behavior link is not checked."
+    :target `metric/refs
+    :edits  [[:replace '(visualization/refs (:visualization_settings attrs)) #{}]]}])
 
 (deftest metric-mutations-test
   (mut/check mutations {:tests [#'encode-test #'refs-test]}))
