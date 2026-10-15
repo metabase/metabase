@@ -57,7 +57,8 @@
 
 (defrecord MemoryInstance [state]
   instance/Instance
-  (read-snapshot [_] (locking state {:snapshot (:snapshot @state)}))
+  (read-snapshot [_] (locking state (let [{:keys [snapshot env]} @state]
+                                      (cond-> {:snapshot snapshot} env (assoc :env env)))))
   (base [_] (:base @state))
   (base-digests [_ commit]
     (let [{:keys [base digests]} @state]
@@ -80,8 +81,9 @@
 
 (defn memory-instance
   "An instance in memory over the atom `state`: `{:snapshot s :trash {id item} :outside #{id} :uses {user #{id}} :base b
-  :digests d :table-names n}`. `:outside` holds the identities of items outside the Library; `:uses` the items that
-  each user outside the Library uses; `:table-names` the display names of warehouse sync, `{table-key name}`."
+  :digests d :table-names n :env e}`. `:outside` holds the identities of items outside the Library; `:uses` the items
+  that each user outside the Library uses; `:table-names` the display names of warehouse sync, `{table-key name}`;
+  `:env`, optional, the environment that its read gives."
   [state]
   (->MemoryInstance state))
 

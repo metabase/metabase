@@ -461,6 +461,25 @@
        (is (= :pulled result))
        (is (seq semantic))))))
 
+(deftest semantic-findings-use-the-environment-of-the-instance-test
+  (enabled
+   (with-remote [repo s]
+     (let [total     (conj ptu/orders-table "TOTAL")
+           sum-id    "SumOfTotalMetric00001"
+           env       {["Sample Database"] {:object :database}
+                      ptu/orders-table   {:object :table}
+                      total              {:object :field :base-type "type/Text" :effective-type "type/Text"}}
+           [inst c1] (pushed-instance! s ptu/sample :env env)
+           _         (pltu/commit-snapshot! repo ptu/branch [c1]
+                                            (assoc ptu/sample sum-id (ptu/item sum-id :metric "Sum" ptu/metrics-id
+                                                                               {:display "scalar"
+                                                                                :query   (ptu/sum-query total)})))
+           {:keys [result semantic]} (pltu/pull! inst s)]
+       (testing "with no :env option, the pull checks the head against the environment of the read of the instance: a
+                sum of a field that the instance has as text is a finding"
+         (is (= :pulled result))
+         (is (= [{:rule :query-typed :id sum-id}] (mapv #(select-keys % [:rule :id]) semantic))))))))
+
 ;;; ------------------------------------------------------ The trash ---------------------------------------------------
 
 (deftest removed-item-in-use-goes-to-the-trash-and-comes-back-test

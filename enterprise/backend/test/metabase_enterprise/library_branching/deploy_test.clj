@@ -181,6 +181,31 @@
          (is (= :deployed (:result (deploy! inst s {:env (env-of remote)}))))
          (is (= remote (pltu/snapshot-of inst))))))))
 
+(deftest deploy-types-the-queries-of-the-head-test
+  (enabled
+   (with-remote [repo s]
+     (let [c1       (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
+           [inst _] (deployed-instance! s)
+           total    (conj ptu/orders-table "TOTAL")
+           sum-id   "SumOfTotalMetric00001"
+           remote   (assoc ptu/sample sum-id (ptu/item sum-id :metric "Sum" ptu/metrics-id
+                                                       {:display "scalar" :query (ptu/sum-query total)}))
+           h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           env-with (fn [t] (assoc (env-of remote)
+                                   ["Sample Database"] {:object :database}
+                                   total               {:object :field :base-type t :effective-type t}))]
+       (testing "the environment of the instance has TOTAL as text: the deploy refuses the head that sums it, whatever
+                CI said, and writes nothing"
+         (let [{:keys [result head findings]} (deploy! inst s {:env (env-with "type/Text")})]
+           (is (= :invalid result))
+           (is (= h head))
+           (is (= [{:rule :query-typed :id sum-id}] (mapv #(select-keys % [:rule :id]) findings)))
+           (is (= ptu/sample (pltu/snapshot-of inst)))
+           (is (= c1 (instance/base inst)))))
+       (testing "with TOTAL a number, the instance deploys the head"
+         (is (= :deployed (:result (deploy! inst s {:env (env-with "type/Float")}))))
+         (is (= remote (pltu/snapshot-of inst))))))))
+
 ;;; ------------------------------------------------------ The trash ---------------------------------------------------
 
 (deftest removed-item-in-use-goes-to-the-trash-and-deploys-go-on-test
