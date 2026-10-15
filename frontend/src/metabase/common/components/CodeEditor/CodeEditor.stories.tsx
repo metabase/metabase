@@ -1,3 +1,7 @@
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
+import { expect, waitFor, within } from "@storybook/test";
+
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Box } from "metabase/ui";
 
@@ -41,4 +45,19 @@ export const Markdown = {
       />
     </Box>
   ),
+
+  // The editor loads lazily and CodeMirror paints its content in an effect, so
+  // loki would otherwise capture the empty editor. Hold the snapshot until the
+  // content is on screen.
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const asyncCallback = createAsyncCallback();
+    try {
+      const canvas = within(canvasElement);
+      await waitFor(() =>
+        expect(canvas.getByText(/SQL analyst/)).toBeInTheDocument(),
+      );
+    } finally {
+      asyncCallback();
+    }
+  },
 };
