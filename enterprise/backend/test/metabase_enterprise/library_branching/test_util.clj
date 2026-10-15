@@ -348,6 +348,11 @@
   (gen/one-of [(gen/tuple (gen/return :item) gen/nat)
                (gen/tuple (gen/return :env) env-key-gen)]))
 
+(def ^:private place-choice-gen
+  ;; Mostly a small choice: the root level or one of the newest containers, so chains of containment are long also
+  ;; when a container can hold many kinds. A larger choice saturates at the oldest container.
+  (gen/frequency [[2 (gen/choose 0 3)] [1 gen/nat]]))
+
 ;;; -------------------------------------------------- Generators ----------------------------------------------------
 
 (defn well-formed-snapshot-gen
@@ -373,7 +378,7 @@
      (gen/fmap (fn [choices]
                  (let [[item-kinds item-places] (well-formed-structure opts choices)]
                    (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
-               (choices-gen opts gen/nat item-target-gen)))))
+               (choices-gen opts place-choice-gen item-target-gen)))))
 
 (defn arbitrary-snapshot-gen
   "Generates snapshots with no structural guarantee: a place or a reference can name an identity that is not in the
