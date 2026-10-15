@@ -4007,11 +4007,13 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Segment
+                    :model/Table
                     :model/TableUserSettings
                     :model/User}}
 
