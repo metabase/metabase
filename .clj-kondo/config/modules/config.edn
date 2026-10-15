@@ -980,18 +980,21 @@
   {:team "Embedding"
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
+           metabase.embedding.sdk-react-18
            metabase.embedding.settings
            metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
+           app-db
+           batch-processing
            models
            premium-features
            server
            settings
            util}
    :model-imports #{:model/Card :model/Dashboard}
-   :model-exports #{:model/EmbeddingTheme}}
+   :model-exports #{:model/EmbeddingSdkReact18Host :model/EmbeddingTheme}}
 
   embedding-hub
   {:team "Embedding"
@@ -1037,7 +1040,11 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/EmbeddingSdkReact18Host
+                    :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"

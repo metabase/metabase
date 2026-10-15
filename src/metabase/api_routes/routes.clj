@@ -229,6 +229,7 @@
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/embedding-hub"        metabase.embedding-hub.api/routes
+   "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
