@@ -41,7 +41,7 @@ export const JoinHeaderCell = ({
         .otherwise(() => undefined)}
       size="sm"
       aria-pressed={isExpanded}
-      mod={{ pressed: isExpanded }}
+      mod={{ hovered: isExpanded }}
       onClick={(e) => {
         e.stopPropagation();
         trackTransformInspectAlertClicked({ transformId, cardId: card.id });

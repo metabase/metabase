@@ -53,7 +53,8 @@
 .root[data-variant^="on-dark-"] {
   border-width: 0.5px;
 
-  &:hover:not([data-loading]) {
+  &:hover:not([data-loading]),
+  &[data-hovered]:not([data-loading]) {
     color: var(--ai-hover-color, var(--ai-color));
     background-color: var(--ai-hover);
   }
