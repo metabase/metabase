@@ -202,17 +202,19 @@
     (:entity_id row)))
 
 (defn scope-ids
-  "`{kind #{identity}}`: the identities of the in-scope items of each kind of [[kinds]], for `roots` (default
-  [[roots]]). Reads the app DB in the current transaction, with one query per kind."
+  "`{kind #{identity}}`: the identities of the in-scope items of each kind of `ks` (default [[kinds]]), for `roots`
+  (default [[roots]]). Reads the app DB in the current transaction, with one query per kind."
   ([]
    (scope-ids roots))
   ([roots]
+   (scope-ids roots kinds))
+  ([roots ks]
    (into {}
          (map (fn [kind]
                 [kind (into #{}
                             (map (partial row-identity kind))
                             (library-branching.db/rows (kind-query roots kind)))]))
-         kinds)))
+         ks)))
 
 (defn scope-count
   "`{kind n}`: the number of in-scope items of each kind of [[kinds]], for `roots` (default [[roots]]). Equals the
