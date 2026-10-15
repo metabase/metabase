@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.push-test
   "The push, against a remote on disk and an instance in memory. The scenarios of the formal model are here: a save
   during the push, a crash between the move of the branch and the move of the base, and a remote that moves."
+  {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

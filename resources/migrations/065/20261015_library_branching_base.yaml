@@ -1,0 +1,55 @@
+## Library branching: the base of the instance, one row. The base is the commit that the instance and its branch last
+## agreed on. The row also holds the digests of the base content, a cache that moves with the base in one update.
+## The second changeset writes the row, so that a move of the base is always an update with a compare-and-swap.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.d8e2im
+      author: Timothy Dean
+      comment: Library branching base
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: library_branching_base
+      changes:
+        - createTable:
+            tableName: library_branching_base
+            remarks: The library branching base of this instance, in the one row with id 1.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Always 1.
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: commit_id
+                  type: varchar(40)
+                  remarks: The base commit id, or null before the first sync.
+              - column:
+                  name: digests
+                  type: ${text.type}
+                  remarks: The digest of each item of the base content, as EDN, or null.
+
+  - changeSet:
+      id: v65.q7lb2n
+      author: Timothy Dean
+      comment: Library branching base row
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM library_branching_base WHERE id = 1;
+      changes:
+        - insert:
+            tableName: library_branching_base
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 1
+      rollback:
+        - delete:
+            tableName: library_branching_base
+            where: id = 1

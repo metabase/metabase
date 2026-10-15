@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.push-app-db-test
   "The push of the app DB instance. A push reads at a read point of its own, so these tests commit their content and
   delete it afterwards, and they change the one base row of the app DB; they are not parallel."
+  {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -22,7 +23,7 @@
   [{:keys [id location]}]
   (str location id "/"))
 
-(defn- do-with-committed-content
+(defn- do-with-committed-content!
   "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and the Library
   collection. Deletes every inserted row afterwards, the last first, and clears the base row before and after."
   [f]
@@ -68,7 +69,7 @@
 (deftest push-of-the-app-db-test
   (testing (str "a push writes the synced snapshot of the app DB, and the base row holds the commit; app DB "
                 (mdb/db-type))
-    (do-with-committed-content
+    (do-with-committed-content!
      (fn [insert! library]
        (let [metrics (insert! :model/Collection {:name     "Push metrics"
                                                  :type     "library-metrics"
@@ -90,7 +91,7 @@
 (deftest push-refuses-a-library-metric-that-uses-a-trashed-metric-test
   (testing (str "a Library metric uses a metric in the trash: the push refuses, names the pair, and writes nothing; "
                 "app DB " (mdb/db-type))
-    (do-with-committed-content
+    (do-with-committed-content!
      (fn [insert! library]
        (let [metrics (insert! :model/Collection {:name     "Trash metrics"
                                                  :type     "library-metrics"
@@ -109,7 +110,7 @@
 (deftest save-during-push-of-the-app-db-test
   (testing (str "a save that commits after the read point of the push is a local change, and the next push carries "
                 "it; app DB " (mdb/db-type))
-    (do-with-committed-content
+    (do-with-committed-content!
      (fn [insert! library]
        (let [metrics (insert! :model/Collection {:name     "Save metrics"
                                                  :type     "library-metrics"

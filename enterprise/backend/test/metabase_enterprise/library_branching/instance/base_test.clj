@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.instance.base-test
   "The base of the app DB instance: one row, moved by a compare-and-swap, with the digests of the base content. The
   tests change the one base row of the app DB, so they are not parallel, and each puts the row back."
+  {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.instance.base-test/with-no-base clojure.core/fn}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -15,14 +16,14 @@
 (def ^:private c3 "3333333333333333333333333333333333333333")
 
 (def ^:private digests
-  {"LibraryCollection0001"                 "aa"
-   ["Sample Database" nil "ORDERS"]        "bb"
-   ["Sample Database" "PUBLIC" "ORDERS"]   "cc"})
+  {"LibraryCollection0001"               "aa"
+   ["Sample Database" nil "ORDERS"]      "bb"
+   ["Sample Database" "PUBLIC" "ORDERS"] "cc"})
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
 
-(defn- do-with-no-base
+(defn- do-with-no-base!
   [f]
   (reset-base!)
   (try
@@ -31,8 +32,9 @@
       (reset-base!))))
 
 (defmacro ^:private with-no-base
+  "Binds `inst` to the app DB instance, with no base, for `body`; then clears the base again."
   [[inst] & body]
-  `(do-with-no-base (fn [~inst] ~@body)))
+  `(do-with-no-base! (fn [~inst] ~@body)))
 
 (deftest base-row-test
   (testing (str "the app DB has one base row, with no base before the first sync; app DB " (mdb/db-type))
@@ -82,15 +84,14 @@
     (with-no-base [inst]
       (instance/set-base! inst nil c1 digests)
       (dotimes [_ 5]
-        (let [start   (promise)
-              from    (instance/base inst)
-              targets [c2 c3]
-              futures (mapv (fn [target]
-                              (future @start [target (instance/set-base! inst from target {target "x"})]))
-                            targets)
-              _       (deliver start true)
-              results (mapv deref futures)
-              winners (filter (comp #{:ok} second) results)
+        (let [start    (promise)
+              from     (instance/base inst)
+              futures  (mapv (fn [target]
+                               (future @start [target (instance/set-base! inst from target {target "x"})]))
+                             [c2 c3])
+              _        (deliver start true)
+              results  (mapv deref futures)
+              winners  (filter (comp #{:ok} second) results)
               [winner] (first winners)]
           (is (= 1 (count winners)))
           (is (= [{:moved winner}] (remove #{:ok} (map second results))))

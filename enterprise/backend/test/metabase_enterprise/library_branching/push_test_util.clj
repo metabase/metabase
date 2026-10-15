@@ -102,49 +102,58 @@
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
+(defrecord FakeInstance [state]
+  instance/Instance
+  (read-snapshot [_] {:snapshot (:snapshot @state)})
+  (base [_] (:base @state))
+  (base-digests [_ commit]
+    (let [{:keys [base digests]} @state]
+      (when (and (some? commit) (= commit base)) digests)))
+  (apply-plan! [_ _plan _new-base] (instance/not-yet! `instance/apply-plan!))
+  (set-base! [_ expected new digests]
+    (let [[old] (swap-vals! state (fn [st] (cond-> st
+                                             (= expected (:base st)) (assoc :base new :digests digests))))]
+      (if (= expected (:base old)) :ok {:moved (:base old)}))))
+
 (defn fake-instance
   "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d}`."
   [state]
-  (reify instance/Instance
-    (read-snapshot [_] {:snapshot (:snapshot @state)})
-    (base [_] (:base @state))
-    (base-digests [_ commit]
-      (let [{:keys [base digests]} @state]
-        (when (and (some? commit) (= commit base)) digests)))
-    (apply-plan! [_ _plan _new-base] (instance/not-yet! `instance/apply-plan!))
-    (set-base! [_ expected new digests]
-      (let [[old] (swap-vals! state (fn [st] (cond-> st
-                                               (= expected (:base st)) (assoc :base new :digests digests))))]
-        (if (= expected (:base old)) :ok {:moved (:base old)})))))
+  (->FakeInstance state))
+
+(defrecord WrappedInstance [inst overrides]
+  instance/Instance
+  (read-snapshot [_] (if-let [f (:read-snapshot overrides)]
+                       (f #(instance/read-snapshot inst))
+                       (instance/read-snapshot inst)))
+  (base [_] (instance/base inst))
+  (base-digests [_ commit] (instance/base-digests inst commit))
+  (apply-plan! [_ plan new-base] (instance/apply-plan! inst plan new-base))
+  (set-base! [_ expected new digests]
+    (if-let [f (:set-base! overrides)]
+      (f #(instance/set-base! inst expected new digests) expected new digests)
+      (instance/set-base! inst expected new digests))))
 
 (defn wrap-instance
   "`inst` with the methods of `overrides`, `{:read-snapshot f :set-base! g}`: each override gets the method of `inst`
   as its first argument, then the method's other arguments."
-  [inst {:keys [read-snapshot set-base!]}]
-  (reify instance/Instance
-    (read-snapshot [_] (if read-snapshot
-                         (read-snapshot #(instance/read-snapshot inst))
-                         (instance/read-snapshot inst)))
-    (base [_] (instance/base inst))
-    (base-digests [_ commit] (instance/base-digests inst commit))
-    (apply-plan! [_ plan new-base] (instance/apply-plan! inst plan new-base))
-    (set-base! [_ expected new digests]
-      (if set-base!
-        (set-base! #(instance/set-base! inst expected new digests) expected new digests)
-        (instance/set-base! inst expected new digests)))))
+  [inst overrides]
+  (->WrappedInstance inst overrides))
+
+(defrecord RacingStore [s before-cas]
+  store/Store
+  (head [_ r] (store/head s r))
+  (read-tree [_ c] (store/read-tree s c))
+  (changed-paths [_ a b] (store/changed-paths s a b))
+  (write-commit [_ ps t m] (store/write-commit s ps t m))
+  (cas-ref! [_ r e n] (before-cas) (store/cas-ref! s r e n))
+  (ancestor? [_ a b] (store/ancestor? s a b))
+  (merge-base [_ a b] (store/merge-base s a b))
+  (close [_] (store/close s)))
 
 (defn wrap-store
   "`s` with `before-cas`, a function of no argument that runs before each `cas-ref!`."
   [s before-cas]
-  (reify store/Store
-    (head [_ r] (store/head s r))
-    (read-tree [_ c] (store/read-tree s c))
-    (changed-paths [_ a b] (store/changed-paths s a b))
-    (write-commit [_ ps t m] (store/write-commit s ps t m))
-    (cas-ref! [_ r e n] (before-cas) (store/cas-ref! s r e n))
-    (ancestor? [_ a b] (store/ancestor? s a b))
-    (merge-base [_ a b] (store/merge-base s a b))
-    (close [_] (store/close s))))
+  (->RacingStore s before-cas))
 
 (defn local-changes
   "The local changes of `inst`: `{:created :deleted :updated}`, the difference by digest of its synced snapshot from
