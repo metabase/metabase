@@ -3,6 +3,7 @@
   the repository settings of a test, a record of the stores that the code opens, a synchronous task start, and a
   committed metric of the Library."
   (:require
+   [metabase-enterprise.library-branching.remote-test-util :as remote.tu]
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
@@ -13,12 +14,7 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
    (java.nio.charset StandardCharsets)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
-   (org.apache.commons.io FileUtils)
-   (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectInserter PersonIdent Repository)))
 
@@ -29,12 +25,7 @@
 (defn do-with-remote
   "Calls `(f repo url)`: `repo` is a new empty bare repository, and `url` its file:// URL. Removes it after."
   [f]
-  (let [dir (.toFile (Files/createTempDirectory "library-branching-repository-" (make-array FileAttribute 0)))]
-    (try
-      (with-open [git (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))]
-        (f (.getRepository git) (str "file://" (.getAbsolutePath ^File dir))))
-      (finally
-        (FileUtils/deleteDirectory dir)))))
+  (remote.tu/do-with-bare-remote f))
 
 (defmacro with-remote
   "Binds `repo` to a new empty bare repository and `url` to its file:// URL, for `body`."
