@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
   setupLibraryEndpoints,
+  setupLibrarySearchEndpoint,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -81,6 +82,7 @@ export function setup({
   setupCollectionsEndpoints({
     collections: hasLibrary ? [createLibraryCollection()] : [],
   });
+  setupLibrarySearchEndpoint(createLibrarySearchResults());
 
   setupEmbeddingDataPickerDecisionEndpoints(dataPicker);
 
@@ -188,6 +190,21 @@ function createLibraryCollection() {
       }),
     ],
   });
+}
+
+function createLibrarySearchResults() {
+  return [
+    createMockSearchResult({
+      id: 4,
+      name: "Published Orders",
+      model: "table",
+    }),
+    createMockSearchResult({
+      id: 5,
+      name: "Published Revenue",
+      model: "metric",
+    }),
+  ];
 }
 
 function createMetricSearchResults() {

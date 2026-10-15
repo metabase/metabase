@@ -18,6 +18,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
 
 const { H } = cy;
 
@@ -232,6 +233,34 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.findByRole("link", { name: "Orders" }).should("be.visible");
       cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
+  });
+
+  it('should list only what is published in the Library when `entityTypes` = ["library"]', () => {
+    // Publishes only Orders
+    createLibraryWithTable();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion questionId="new" entityTypes={["library"]} />
+      </div>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    cy.log("list the table published in the Library, not the raw tables");
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Reviews" }).should("not.exist");
+    });
+
+    cy.log("select the published table");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+    getSdkRoot().within(() => {
+      H.getNotebookStep("data").findByText("Orders").should("be.visible");
     });
   });
 

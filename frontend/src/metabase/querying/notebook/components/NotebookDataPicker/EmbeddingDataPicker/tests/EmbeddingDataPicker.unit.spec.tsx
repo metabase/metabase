@@ -285,5 +285,36 @@ describe("EmbeddingDataPicker", () => {
         screen.queryByRole("link", { name: "Revenue" }),
       ).not.toBeInTheDocument();
     });
+
+    it("should show the Library's tables and metrics without configuring `entity_types`", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Published Revenue" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show the Library's metrics at the join step", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+        isJoinStep: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Published Revenue" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
