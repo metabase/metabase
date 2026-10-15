@@ -26,7 +26,7 @@
    (java.nio.charset StandardCharsets)
    (java.nio.file CopyOption Files StandardCopyOption)
    (java.security MessageDigest)
-   (java.time LocalDate)
+   (java.time LocalDate ZoneOffset)
    (java.util BitSet)))
 
 (set! *warn-on-reflection* true)
@@ -569,9 +569,10 @@
         dates))
 
 (defn- dates-from
-  "Every date from `start` up to today, `step` apart."
+  "Every date from `start` up to today in UTC, `step` apart."
   [^LocalDate start step]
-  (take-while #(not (.isAfter ^LocalDate % (LocalDate/now))) (iterate step start)))
+  (let [today (LocalDate/now ZoneOffset/UTC)]
+    (take-while #(not (.isAfter ^LocalDate % today)) (iterate step start))))
 
 (defn sample-commits
   "Commits to measure on the first-parent history of `ref` (default `origin/master`), oldest first:
