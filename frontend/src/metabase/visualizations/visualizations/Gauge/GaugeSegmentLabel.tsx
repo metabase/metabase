@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { FONT_SIZE_SEGMENT_LABEL } from "./constants";
-import { getLabelBaselineShift, getLabelTextAnchor } from "./utils";
 
 interface Props {
   children: ReactNode;
@@ -18,11 +17,12 @@ export const GaugeSegmentLabel = ({
     // fill + textAnchor are set as attributes (not inline style) so they survive
     // the html2canvas cssText copy on export; var() fill is resolved by resolveSvgVarPaint.
     fill="var(--mb-color-text-secondary)"
-    textAnchor={getLabelTextAnchor(x)}
+    textAnchor={Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end"}
     style={{
       fontSize: `${FONT_SIZE_SEGMENT_LABEL}px`,
+      // shift text in the lower half down a bit
       transform:
-        y > 0 ? `translate(0,${getLabelBaselineShift(y)}px)` : undefined,
+        y > 0 ? `translate(0,${FONT_SIZE_SEGMENT_LABEL / 2}px)` : undefined,
       ...style,
     }}
     x={x}
