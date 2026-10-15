@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.db :as xrays.db]
    [metabase.xrays.transforms.materialize :as tf.materialize]
@@ -15,9 +16,23 @@
 (def ^:private ^:const ^Long total-width 18)
 (def ^:private ^:const ^Long height 4)
 
+(def ^:private SourceTableCard
+  "The shape [[card-for-source-table]] builds for a source-table pseudo-card."
+  [:map {:closed true}
+   [:creator_id             [:maybe ::lib.schema.id/user]]
+   [:dataset_query          [:map {:closed true}
+                             [:type     [:= :query]]
+                             [:query    [:map {:closed true} [:source-table ::lib.schema.id/table]]]
+                             [:database ::lib.schema.id/database]]]
+   [:name                   [:maybe :string]]
+   [:collection_id          :nil]
+   [:visualization_settings ms/VisualizationSettings]
+   [:display                :keyword]])
+
 (mu/defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
-  [group :- :string cards]
+  [group :- :string
+   cards :- [:maybe [:sequential [:or :metabase.queries.schema/card SourceTableCard]]]]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group
@@ -36,8 +51,7 @@
           cards))
 
 (mu/defn- card-for-source-table
-  [table :- [:map
-             [:db_id ::lib.schema.id/database]]]
+  [table :- :metabase.warehouse-schema.schema/table]
   {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query

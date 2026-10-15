@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [dev.module-explorer :as module-explorer]
    [hooks.common.modules :as modules]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
@@ -11,6 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *github-output-only?* false)
 
 (def default-modules-which-trigger-drivers
@@ -128,6 +130,7 @@
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
   '#{metabot.agent-api
+     metabot.agent-api.usage
      analytics
      analytics.interface
      api
@@ -147,6 +150,7 @@
      explorations.contextual-interestingness
      custom-viz-plugin
      dashboards
+     data-apps
      documents
      api.eid-translation
      embedding
@@ -161,6 +165,7 @@
      explorations
      formatter
      geojson
+     glossary
      indexed-entities
      core.initialization-status
      interestingness
@@ -180,6 +185,7 @@
      pulse
      remote-sync
      request
+     request.schema
      sample-data
      search
      warehouses.secrets
@@ -195,15 +201,18 @@
      system
      task
      task.history
+     task.secure-delegate
      tiles
      timeline
      tracing
+     transforms.feature-gating
      lib.types
      users
      util
      core.version
      audit-app.view-log
      warehouses.schema
+     warehouse-schema-overlay
      xrays})
 
 (defn- affected-modules
@@ -263,27 +272,6 @@
 ;;;; Module tree
 ;;;; =============================================================================
 
-(defn- module->tree-path
-  "The path segments used to display `module` in the tree.
-
-  An enterprise module appears under its OSS counterpart when one exists.
-  Otherwise its full `enterprise/` name appears at the root."
-  [modules-config module]
-  (let [segments (str/split (name module) #"\.")]
-    (if (= (namespace module) "enterprise")
-      (if (contains? modules-config (symbol (first segments)))
-        ;; Keep an enterprise subtree together under its OSS module.
-        (into [(first segments) "enterprise"] (rest segments))
-        (into [(str "enterprise/" (first segments))] (rest segments)))
-      segments)))
-
-(defn- explicit-ns-prefix
-  "Return a module's custom `:ns-prefix`, or `nil` when it uses the default."
-  [modules-config module]
-  (let [prefix (get-in modules-config [module :ns-prefix])]
-    (when (and prefix (not= prefix (modules/default-ns-prefix module)))
-      prefix)))
-
 (defn- module-display-tree
   "Build the nested map consumed by [[tree-node-lines]].
 
@@ -291,7 +279,9 @@
   [modules-config]
   (reduce (fn [tree module]
             (update-in tree
-                       (into [] (mapcat (fn [segment] [:children segment])) (module->tree-path modules-config module))
+                       (into []
+                             (mapcat (fn [segment] [:children segment]))
+                             (module-explorer/module->tree-path modules-config module))
                        assoc :module module))
           {}
           (keys modules-config)))
@@ -318,7 +308,7 @@
         line    (str (when (pos? depth)
                        (str (apply str (repeat depth "-")) " "))
                      (if module display (c/dark display))
-                     (when-let [prefix (and module (explicit-ns-prefix modules-config module))]
+                     (when-let [prefix (and module (module-explorer/explicit-ns-prefix modules-config module))]
                        (if show-prefixes?
                          (str " " (c/yellow (str "(" prefix ")")))
                          (str " " (c/yellow "*")))))]
@@ -327,16 +317,32 @@
                     (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
           (sorted-children node))))
 
+(defn- write-explorer!
+  "Write the HTML explorer to `output`, or to stdout, and exit."
+  [modules-config {:keys [output no-stats]}]
+  (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
+        html (module-explorer/page data)]
+    (if output
+      (do (spit output html)
+          (println (c/green (str "Wrote " output))))
+      (do (print html)
+          ;; u/exit throws for bb to catch, which skips the flush at shutdown
+          (flush)))
+    (u/exit 0)))
+
 (defn cli-print-module-tree
   "Print the module tree, nesting enterprise extensions under their OSS module.
 
-  Marks modules whose namespace prefix differs from their name."
+  Marks modules whose namespace prefix differs from their name.
+  With `--html`, writes the interactive explorer instead."
   [{:keys [options] :as _parsed}]
+  (when (:html options)
+    (write-explorer! (read-modules-config) options))
   (let [modules-config (read-modules-config)
         tree           (module-display-tree modules-config)
         roots          (cond->> (sorted-children tree)
                          (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
-        starred        (count (keep #(explicit-ns-prefix modules-config %) (keys modules-config)))]
+        starred        (count (keep #(module-explorer/explicit-ns-prefix modules-config %) (keys modules-config)))]
     (doseq [[segment node] roots
             line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
       (println line))
@@ -451,6 +457,7 @@
    :sparksql
    :sqlite
    :sqlserver
+   :starburst
    :vertica])
 
 (def ^:private driver-directory->drivers
@@ -468,8 +475,7 @@
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
    "sqlserver" [:sqlserver]
-   ;; starburst tests are currently disabled in drivers.yml
-   ;; "starburst" [:starburst]
+   "starburst" [:starburst]
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes

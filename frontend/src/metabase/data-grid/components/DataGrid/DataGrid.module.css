@@ -14,6 +14,7 @@
   flex-flow: column nowrap;
   outline: none;
   overflow: auto;
+  overscroll-behavior-x: contain;
   flex-grow: 1;
   width: 100%;
   height: 100%;
@@ -84,6 +85,13 @@
   display: flex;
   width: 100%;
   position: relative;
+
+  &.striped {
+    background-color: var(
+      --data-grid-striped-bg-color,
+      var(--mb-color-background_surface-hover)
+    );
+  }
 
   &.active {
     background-color: color-mix(

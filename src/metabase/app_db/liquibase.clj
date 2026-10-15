@@ -306,6 +306,7 @@
             (log/warn "Releasing liquibase lock before migrations finished")
             (release-lock-if-needed! liquibase)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *lock-depth* 0)
 
 (defn- assert-locked [liquibase]

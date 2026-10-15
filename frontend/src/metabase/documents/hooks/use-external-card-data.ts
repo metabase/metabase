@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { skipToken, useGetPublicDocumentCardQueryQuery } from "metabase/api";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -22,7 +20,6 @@ export function useExternalCardDataLoader(
   { skip = false }: { skip?: boolean } = {},
 ): UseCardDataResult {
   const context = useExternalCardData();
-  const buildQuestion = useQuestionFromCard();
 
   const card = context?.cards?.[cardId];
   const documentUuid = context?.documentUuid;
@@ -37,10 +34,7 @@ export function useExternalCardDataLoader(
     shouldSkip ? skipToken : { uuid: documentUuid, cardId },
   );
 
-  const question = useMemo(
-    () => (card ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const question = useQuestionFromCard(card);
 
   if (!context) {
     return {

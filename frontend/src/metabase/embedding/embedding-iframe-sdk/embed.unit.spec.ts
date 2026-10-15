@@ -27,10 +27,14 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    jest.resetModules();
     delete window.metabaseConfig;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require after jest.resetModules
-    require("./embed"); // we do things when the script is loaded
+    // The script does things when it is loaded, so load a fresh copy per test.
+    // Isolating it keeps the shared modules, such as fetch-mock, on the same
+    // instance the setup files hold.
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- a fresh copy per test
+      require("./embed");
+    });
 
     document.body.innerHTML = "";
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});

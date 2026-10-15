@@ -132,8 +132,9 @@
 
 (mr/def ::data-permissions-graph
   "Used to transform, and verify data permissions graph"
-  [:map
-   [:groups [:map-of [:ref ::group-id] [:maybe [:ref ::strict-db-graph]]]]])
+  [:map {:closed true}
+   [:groups   [:map-of [:ref ::group-id] [:maybe [:ref ::strict-db-graph]]]]
+   [:revision {:optional true} [:maybe ms/Int]]])
 
 (mr/def ::attribute-name
   "a user attribute name"

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.time.impl :as internal]
    [metabase.util.time.impl-common :as common]))
@@ -45,9 +46,15 @@
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
 
+(def ^:private CoercibleValue
+  [:schema {::mr/deliberately-open true, :description "any value passed to timestamp/time coercion"} :any])
+
+(def ^:private CoerceOptions
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "timestamp coercion options"}]])
+
 (mu/defn ^:export timestamp-coercible? :- :boolean
   "Check whether value is coercible to timestamp. Condition resembles [[coerce-to-timestamp]]."
-  [value]
+  [value :- CoercibleValue]
   (or (internal/datetime? value)
       (string? value)
       (number? value)))
@@ -57,8 +64,9 @@
   But the `:unit` field can be used to alter the parsing to, for example, treat the input number as a day-of-week or
   day-of-month number.
   Returns Moments in JS and OffsetDateTimes in Java for coercible values, otherwise nil."
-  ([value] (coerce-to-timestamp value {}))
-  ([value options :- :map]
+  ([value :- CoercibleValue] (coerce-to-timestamp value {}))
+  ([value   :- CoercibleValue
+    options :- CoerceOptions]
    (when (timestamp-coercible? value)
      (let [options (prep-options options)
            base (cond
@@ -77,7 +85,7 @@
 (mu/defn ^:export coerce-to-time :- :any
   "Parses a standalone time, or the time portion of a timestamp.
   Accepts a platform time value (eg. Moment, OffsetTime, LocalTime) or a string."
-  [value]
+  [value :- CoercibleValue]
   (cond
     (internal/time? value) value
     (string? value) (-> value common/drop-trailing-time-zone internal/parse-time-string)
@@ -88,12 +96,11 @@
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
   If unit is nil, formats the full date/time.
 
-  If `locale` is provided, that locale will be used for localizing the formatter. In CLJ this should be a `Locale`. Not
-  supported in CLJS since we have to rely on the browser's locale."
-  ([temporal-value unit]
-   (internal/format-unit temporal-value unit))
-  ([temporal-value unit locale]
-   (internal/format-unit temporal-value unit locale)))
+  `time-config` must include `:start-of-week`. `format-options` may include `:locale` to localize the formatter."
+  ([time-config temporal-value unit]
+   (format-unit time-config temporal-value unit {}))
+  ([time-config temporal-value unit format-options]
+   (internal/format-unit (common/require-time-config time-config) temporal-value unit format-options)))
 
 (defn parse-unit
   "Parses a string given the unit of time to parse by."
@@ -110,16 +117,21 @@
 
 (defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   `time-config` must contain `:start-of-week` as a weekday keyword.
+   When `n` is zero, return the current unit whether or not `:include-current` is true.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  ([n unit]
-   (format-relative-date-range n unit nil nil nil))
-  ([n unit offset-n offset-unit]
-   (format-relative-date-range n unit offset-n offset-unit nil))
-  ([n unit offset-n offset-unit options]
-   (internal/format-relative-date-range n unit offset-n offset-unit options))
-  ([t n unit offset-n offset-unit options]
-   (internal/format-relative-date-range (coerce-to-timestamp t) n unit offset-n offset-unit options)))
+  ([time-config n unit]
+   (format-relative-date-range time-config n unit nil nil nil))
+  ([time-config n unit offset-n offset-unit]
+   (format-relative-date-range time-config n unit offset-n offset-unit nil))
+  ([time-config n unit offset-n offset-unit options]
+   (internal/format-relative-date-range (common/require-time-config time-config) n unit offset-n offset-unit options))
+  ([time-config t n unit offset-n offset-unit options]
+   (let [time-config (common/require-time-config time-config)]
+     (internal/format-relative-date-range time-config
+                                          (coerce-to-timestamp t)
+                                          n unit offset-n offset-unit options))))
 
 (defn yyyyMMddhhmmss->parts
   "Generate parts vector for `yyyy-MM-ddThh:mm:ss` format `date-str`. Trailing parts, if not present in the string,

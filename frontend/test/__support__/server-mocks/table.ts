@@ -19,6 +19,11 @@ export function setupTableEndpoints(
     {},
     { name: `table-${table.id}-put` },
   );
+  fetchMock.put(
+    `path:/api/table/${table.id}/fields/order`,
+    {},
+    { name: `table-${table.id}-fields-order` },
+  );
   fetchMock.post(
     `path:/api/table/${table.id}/rescan_values`,
     {},

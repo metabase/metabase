@@ -1,7 +1,7 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
 import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import { getSupportedClauses } from "../clause";
 import { tokenAtPos } from "../position";
@@ -12,7 +12,6 @@ import {
   LOGICAL_OR,
   type Token,
 } from "../pratt";
-import { getDatabase } from "../utils";
 
 import {
   expressionClauseCompletion,
@@ -23,16 +22,14 @@ import {
 
 export type Options = {
   expressionMode: Lib.ExpressionMode;
-  query: Lib.Query;
-  metadata: Metadata;
+  database: Pick<Database, "features"> | undefined;
 };
 
-export function suggestFunctions({ expressionMode, query, metadata }: Options) {
+export function suggestFunctions({ expressionMode, database }: Options) {
   if (expressionMode !== "expression" && expressionMode !== "filter") {
     return null;
   }
 
-  const database = getDatabase(query, metadata);
   const functions = getSupportedClauses({ expressionMode, database }).map(
     (func) => expressionClauseCompletion(func, { type: "function" }),
   );

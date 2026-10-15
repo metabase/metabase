@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import {
+  createMockBookmark,
   createMockCard,
   createMockDashboard,
   createMockModelResult,
@@ -187,6 +188,61 @@ describe("nav > containers > MainNavbar", () => {
         name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("bookmarks", () => {
+    it.each([
+      { route: "/metric/:cardId", pathname: "/metric/9-revenue" },
+      {
+        route: "/metric/:cardId/query",
+        pathname: "/metric/9-revenue/query",
+      },
+    ])(
+      "highlights a metric bookmark on $pathname",
+      async ({ route, pathname }) => {
+        const card = createMockCard({ id: 9, name: "Revenue", type: "metric" });
+        const bookmark = createMockBookmark({
+          id: "card-9",
+          item_id: card.id,
+          type: "card",
+          card_type: "metric",
+          name: card.name,
+        });
+
+        await setup({
+          bookmarks: [bookmark],
+          openQuestionCard: card,
+          route,
+          pathname,
+        });
+
+        expect(
+          screen.getByRole("listitem", { name: "Revenue" }),
+        ).toHaveAttribute("aria-selected", "true");
+      },
+    );
+
+    it("highlights a question bookmark on the question page", async () => {
+      const card = createMockCard({ id: 37, name: "Question" });
+      const bookmark = createMockBookmark({
+        id: "card-37",
+        item_id: card.id,
+        type: "card",
+        card_type: "question",
+        name: card.name,
+      });
+
+      await setup({
+        bookmarks: [bookmark],
+        openQuestionCard: card,
+        route: "/question/:slug",
+        pathname: "/question/37-question",
+      });
+
+      expect(
+        screen.getByRole("listitem", { name: "Question" }),
+      ).toHaveAttribute("aria-selected", "true");
     });
   });
 
@@ -381,6 +437,24 @@ describe("nav > containers > MainNavbar", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should move focus through the new collection modal with Tab (#83338)", async () => {
+      await setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      );
+
+      const modal = await screen.findByRole("dialog", {
+        name: "New collection",
+      });
+      await waitFor(() => {
+        expect(within(modal).getByLabelText("Name")).toHaveFocus();
+      });
+
+      await userEvent.tab();
+      expect(within(modal).getByLabelText("Description")).toHaveFocus();
+    });
+
     it("should toggle active collection on click", async () => {
       const { regularCollectionElements } = await setupCollectionPage({
         pathname: Urls.collection(TEST_COLLECTION),
@@ -466,6 +540,32 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         await screen.findByText(/Other users' personal collections/i),
       ).toBeInTheDocument();
+    });
+
+    it("should select other users' personal collections when viewing them (#79967)", async () => {
+      await setup({
+        pathname: Urls.otherUsersPersonalCollections(),
+        route: "/collection/:slug",
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const listItem = screen.getByRole("listitem", {
+        name: /Other users' personal collections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("should not select other users' personal collections when viewing another collection (#79967)", async () => {
+      await setup({
+        pathname: Urls.collection(TEST_COLLECTION),
+        route: "/collection/:slug",
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const listItem = screen.getByRole("listitem", {
+        name: /Other users' personal collections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "false");
     });
 
     it("admin not should see other users personal collections if there no other users", async () => {

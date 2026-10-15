@@ -415,7 +415,7 @@
                     [a b c] (when (> a 1)
                               (+ a b c)))))))
 
-(t/deftest ^:parallel parents-tests
+(t/deftest ^:parallel parents-test
   (t/is (= [:foo :bar :baz :qux]
            (match/match-one [:foo [:bar [:baz {:qux 42}]]]
              42 &parents)))
@@ -423,3 +423,16 @@
             [:foo :bar :baz :corge]]
            (match/match-many [:foo [:bar [:baz {:qux 42 :corge 42}]]]
              42 &parents))))
+
+(t/deftest ^:parallel replace-all-test
+  (t/is (= [:field {:updated true} [:field {:updated true} [:field {:updated true} 1]]]
+           (match/replace-all [:field {} [:field {} [:field {} 1]]]
+             [:field opts arg] [:field (assoc opts :updated true) arg])))
+  (t/testing "applies outward to already updated values"
+    (t/is (= :needle
+             (match/replace-all [[[[[[[[[[:needle]]]]]]]]]]
+               [needle] needle))))
+  (t/testing "careful - applies to keys too"
+    (t/is (= [:field {"key1_updated" 1} [:field {"key2_updated" 2} nil]]
+             (match/replace-all [:field {"key1" 1} [:field {"key2" 2} nil]]
+               (_ :guard string?) (str &match "_updated"))))))

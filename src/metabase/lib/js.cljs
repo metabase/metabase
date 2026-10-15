@@ -1047,6 +1047,14 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
+(mu/defn ^:export aggregation-column :- ::lib.schema.metadata/column
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named as its result column is
+  before the stage deduplicates its column names.
+
+  > **Code health:** Healthy"
+  [a-query stage-number aggregation-clause]
+  (lib.core/aggregation-column a-query stage-number aggregation-clause))
+
 (mu/defn ^:export aggregation-clause :- ::lib.schema.aggregation/aggregation
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -2028,7 +2036,7 @@
   ([a-query stage-number joinable position]
    (to-array (lib.core/suggested-join-conditions a-query stage-number joinable position))))
 
-(mu/defn ^:export join-fields :- [:or [:enum "all" "none"] [:sequential ::lib.schema.ref/ref]]
+(mu/defn ^:export join-fields :- [:or [:enum "all" "none"] [:sequential ::lib.schema.metadata/column]]
   "Get the fields list associated with `a-join`. That is, the set of fields from the *joinable* which are being joined
   into the query.
 
@@ -2044,8 +2052,8 @@
 (mu/defn ^:export with-join-fields
   :- [:schema
       {:ts/overloads
-       [[:=> [:cat ::lib.schema.join/join :any] ::lib.schema.join/join]
-        [:=> [:cat ::lib.join.util/partial-join :any] ::lib.join.util/partial-join]]}
+       [[:=> [:cat ::lib.schema.join/join [:or [:enum "all" "none"] [:sequential ::lib.schema.metadata/column]]] ::lib.schema.join/join]
+        [:=> [:cat ::lib.join.util/partial-join [:or [:enum "all" "none"] [:sequential ::lib.schema.metadata/column]]] ::lib.join.util/partial-join]]}
       ::lib.join.util/partial-join]
   "Set the `:fields` for `a-join`, returning a new join clause.
 
@@ -2053,7 +2061,7 @@
 
   > **Code health:** Healthy. This consumes field refs, but they're treated as opaque."
   [a-join :- ::lib.join.util/partial-join
-   new-fields]
+   new-fields :- [:or [:enum "all" "none"] [:sequential ::lib.schema.metadata/column]]]
   (lib.core/with-join-fields a-join (cond-> new-fields
                                       (string? new-fields) keyword)))
 
@@ -2234,7 +2242,7 @@
   [a-query]
   (lib.core/raw-native-query a-query))
 
-(mu/defn ^:export template-tags :- [:maybe [:map-of :string :map]]
+(mu/defn ^:export template-tags :- [:map-of :string :map]
   "Returns the template tags for the native first stage of `a-query`, as a JS object mapping tag names to tag info.
 
   > **Code health:** Healthy"
@@ -2632,12 +2640,14 @@
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
   [n unit offset-n offset-unit options]
-  (u.time/format-relative-date-range
-   n
-   (keyword unit)
-   offset-n
-   (some-> offset-unit keyword)
-   (js->clj options :keywordize-keys true)))
+  (let [{:keys [start-of-week] :as options} (js->clj options :keywordize-keys true)]
+    (u.time/format-relative-date-range
+     {:start-of-week (keyword (or start-of-week :sunday))}
+     n
+     (keyword unit)
+     offset-n
+     (some-> offset-unit keyword)
+     (dissoc options :start-of-week))))
 
 (mu/defn ^:export find-matching-column :- [:maybe ::lib.schema.metadata/column]
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.

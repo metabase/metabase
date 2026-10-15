@@ -186,6 +186,116 @@
       (is (true? (:agent-error? (ex-data ex)))))))
 
 ;;; ============================================================
+;;; bare temporal literals: validation follows the compared column's type
+;;; ============================================================
+
+(def ^:private created-at ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"])
+(def ^:private total      ["Sample" "PUBLIC" "ORDERS" "TOTAL"])
+(def ^:private category   ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"])
+
+(def ^:private coerced-mp
+  "[[mock-metadata]] plus `TS_TEXT`, an ISO-8601 text column an admin coerced to a datetime — the
+  shape in which `:base-type` and `:effective-type` legitimately disagree."
+  (lib.tu/mock-metadata-provider
+   (update mock-metadata :fields conj
+           {:id 112 :name "TS_TEXT" :table-id 10 :base-type :type/Text
+            :effective-type :type/DateTime :coercion-strategy :Coercion/ISO8601->DateTime})))
+
+(defn- resolve-stage
+  "Resolve a single-stage query over `table` carrying `stage-keys`, returning the resolved stage."
+  [table stage-keys]
+  (-> (repr.resolve/resolve-query mp {"lib/type" "mbql/query"
+                                      "database" "Sample"
+                                      "stages"   [(assoc stage-keys
+                                                         "lib/type"     "mbql.stage/mbql"
+                                                         "source-table" ["Sample" "PUBLIC" table])]})
+      (get-in [:stages 0])))
+
+(defn- resolve-error
+  "The `:error` [[resolve-stage]] throws for `stage-keys`, or `nil` when the stage resolves cleanly."
+  [table stage-keys]
+  (try (resolve-stage table stage-keys) nil
+       (catch clojure.lang.ExceptionInfo e (:error (ex-data e)))))
+
+(deftest validate-temporal-literals-leaves-a-text-between-alone-test
+  (testing "date-shaped bounds on a text column are a legal range, not malformed dates"
+    (let [clause (-> (resolve-stage "PRODUCTS"
+                                    {"filters" [["between" {} ["field" {} category]
+                                                 "2024-01-01 batch A" "2024-06-01 batch Z"]]})
+                     (get-in [:filters 0]))]
+      (is (= :between (nth clause 0)))
+      (is (= ["2024-01-01 batch A" "2024-06-01 batch Z"] (subvec clause 3))))))
+
+(deftest validate-temporal-literals-rejects-a-bad-between-bound-test
+  (testing "a bound compared to a temporal column is still checked"
+    (is (= :invalid-temporal-literal
+           (resolve-error "ORDERS" {"filters" [["between" {} ["field" {} created-at]
+                                                "2024-13-45" "2024-12-31"]]})))))
+
+(deftest validate-temporal-literals-checks-a-between-on-an-untyped-ref-test
+  (testing "an `expression` ref carries no type here, which is no reason to stop checking its bounds"
+    (is (= :invalid-temporal-literal
+           (resolve-error "ORDERS"
+                          {"expressions" [["datetime-add" {"lib/expression-name" "Shifted"}
+                                           ["field" {} created-at] 3 "day"]]
+                           "filters"     [["between" {} ["expression" {} "Shifted"]
+                                           "2024-13-45" "2024-12-31"]]})))))
+
+(deftest validate-temporal-literals-ignores-a-model-authored-base-type-test
+  (testing "the metadata provider is authoritative — a wrong stamp does not excuse a bad literal"
+    ;; CREATED_AT is :type/DateTime in the provider, and the QP resolves it from there too;
+    ;; `annotate-field-types` leaves a ref that already carries `:base-type` alone.
+    (is (= :invalid-temporal-literal
+           (resolve-error "ORDERS" {"filters" [["between" {} ["field" {"base-type" "type/Text"} created-at]
+                                                "2024-13-45" "2024-12-31"]]})))))
+
+(deftest validate-temporal-literals-rejects-a-bad-literal-on-a-temporal-comparison-test
+  (testing "a bare literal compared to a temporal ref is checked, whatever the comparison head"
+    (doseq [clause [["="  {} ["field" {"temporal-unit" "month"} created-at] "2024-13-45"]
+                    [">=" {} ["field" {} created-at] "2024-13-45"]
+                    ["in" {} ["field" {} created-at] "2024-13-45" "2024-02-01"]]]
+      (testing (pr-str clause)
+        (is (= :invalid-temporal-literal (resolve-error "ORDERS" {"filters" [clause]})))))))
+
+(deftest validate-temporal-literals-skips-a-known-non-temporal-comparison-test
+  (testing "a date-shaped string compared to a text column is a text comparison"
+    (is (nil? (resolve-error "PRODUCTS" {"filters" [["=" {} ["field" {} category]
+                                                     "2024-01-01 batch A"]]}))))
+  (testing "a temporal operand elsewhere in the clause does not make this literal a date"
+    ;; `=` takes any number of operands with no pairwise type check, so a temporal one can sit
+    ;; beside a text one. Rejecting here would be the very defect this pass was fixed for.
+    (is (nil? (resolve-error "PRODUCTS" {"filters" [["=" {} ["field" {} category]
+                                                     ["field" {} created-at]
+                                                     "2024-01-01 batch A"]]})))))
+
+(deftest validate-temporal-literals-descends-past-an-inert-comparison-test
+  (testing "a comparison that is not itself checkable must not swallow a nested one that is"
+    ;; the operand test has to live in the *pattern*: with a head-only pattern this outer `=` matches,
+    ;; `match-many` stops descending, and the nested comparison's literal is never seen.
+    (is (= :invalid-temporal-literal
+           (resolve-error "ORDERS"
+                          {"filters" [["=" {} ["field" {} total]
+                                       ["case" {} [[[">=" {} ["field" {} created-at] "2024-13-45"] 1]]
+                                        0]]]})))))
+
+(deftest operand-temporality-types-a-coerced-column-test
+  (testing "a `year` bucket does not make a coerced column look like text — the provider is read"
+    (is (= :temporal
+           (#'repr.resolve/operand-temporality
+            coerced-mp
+            [:field {:temporal-unit :year :base-type :type/Text :effective-type :type/DateTime} 112]))))
+  (testing "a cross-stage ref carries the storage type and the coercion result, and is temporal"
+    ;; the pair a coerced column resolves to is not a contradiction: the coercion result is the
+    ;; type the QP compares a literal against, so one temporal member is enough.
+    (is (= :temporal
+           (#'repr.resolve/operand-temporality
+            coerced-mp
+            [:field {:base-type :type/Text :effective-type :type/DateTime} "TS_TEXT"]))))
+  (testing "an operand nothing here can type stays distinguishable from one typed as not temporal"
+    (is (= :unknown     (#'repr.resolve/operand-temporality coerced-mp [:expression {} "Shifted"])))
+    (is (= :non-temporal (#'repr.resolve/operand-temporality coerced-mp [:field {} 111])))))
+
+;;; ============================================================
 ;;; fields (projection)
 ;;; ============================================================
 

@@ -1,1 +1,1 @@
-export { DataAppLink } from "./DataAppLink";
+export { DataAppLink, type DataAppLinkProps } from "./DataAppLink";

@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
@@ -30,8 +30,7 @@ export const ExternalDocumentCardMenu = ({
     },
   });
 
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(() => buildQuestion(card), [card, buildQuestion]);
+  const question = useQuestionFromCard(card);
 
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question: question,

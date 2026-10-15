@@ -96,16 +96,10 @@ const UNIMPORTABLE = new Set<string>([
   // Build tooling: node scripts and bundler configs, not app code.
   "enterprise/frontend/src/custom-viz/scripts/check-package-versions.ts",
   "enterprise/frontend/src/custom-viz/src/cli.ts",
-  "enterprise/frontend/src/custom-viz/src/pack.ts",
   "enterprise/frontend/src/custom-viz/src/templates.ts",
   "enterprise/frontend/src/custom-viz/src/templates/vite.config.ts",
   "enterprise/frontend/src/custom-viz/vite.config.ts",
   "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
-  "enterprise/frontend/src/embedding-sdk-package/data-app-dev.config.ts",
-  "enterprise/frontend/src/embedding-sdk-package/data-app-dev/config/build-config.ts",
-  "enterprise/frontend/src/embedding-sdk-package/data-app-dev/dev-plugin/app-bundle.ts",
-  "enterprise/frontend/src/embedding-sdk-package/data-app-dev/dev-plugin/plugin.ts",
-  "enterprise/frontend/src/embedding-sdk-package/data-app-dev/index.ts",
 
   // Storybook data that reads a geojson asset webpack resolves.
   "frontend/src/metabase/static-viz/components/StaticChoropleth/stories-data.ts",

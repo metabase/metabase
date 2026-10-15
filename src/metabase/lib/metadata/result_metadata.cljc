@@ -48,9 +48,7 @@
   ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
   ;; there. (See QUE2-361)
   [:and
-   [:map
-    [::source    {:optional true} ::lib.schema.metadata/column.legacy-source]
-    [::field-ref {:optional true} ::mbql.s/Reference]]
+   ::lib.schema.metadata/column.map
    (lib.schema.common/disallowed-keys
     {:source       "Use ::source instead of :source"
      :field-ref    "Use ::field-ref instead of :field-ref"
@@ -70,10 +68,25 @@
 (mr/def ::cols
   [:maybe [:sequential ::col]])
 
+(mr/def ::driver-col
+  "A [[mbql.s/driver-column]] with its keys kebab-cased."
+  [:map {:closed true}
+   [:name           {:optional true} :string]
+   [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:database-type  {:optional true} [:maybe :string]]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:field-ref      {:optional true} [:maybe [:ref ::mbql.s/Reference]]]])
+
+(mr/def ::initial-cols
+  "The columns a driver reported, as the QP passes them in: legacy result metadata or bare driver columns."
+  [:maybe [:sequential [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column ::driver-col]]])
+
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from Lib. We'll generally prefer the values
   from the driver to values calculated by Lib."
-  [driver-col :- [:maybe ::col]
+  [driver-col :- [:maybe [:or ::col ::driver-col]]
    lib-col    :- [:maybe ::col]]
   (let [driver-col (update-keys driver-col u/->kebab-case-en)
         driver-base-type (:base-type driver-col)
@@ -106,7 +119,7 @@
 
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order (matching
   the order supposed by Lib)."
-  [initial-cols :- [:maybe [:sequential ::kebab-cased-map]]
+  [initial-cols :- [:maybe [:sequential [:or ::kebab-cased-map ::driver-col]]]
    lib-cols     :- [:maybe [:sequential ::kebab-cased-map]]]
   (cond
     (= (count initial-cols) (count lib-cols))
@@ -154,14 +167,15 @@
 (mu/defn- basic-native-col :- ::kebab-cased-map
   "Generate basic column metadata for a column coming back from a native query for which we have only barebones metadata
   coming back from the driver like name and base type."
-  [col :- ::col]
+  [col :- [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column ::driver-col]]
   (let [base-type (or ((some-fn :base-type :base_type) col)
                       :type/*)]
-    {:lib/type       :metadata/column
-     :lib/source     :source/native
-     :display-name   (:name col)
-     :base-type      base-type
-     :effective-type base-type}))
+    (cond-> {:lib/type       :metadata/column
+             :lib/source     :source/native
+             :display-name   (:name col)
+             :base-type      base-type
+             :effective-type base-type}
+      (:name col) (assoc :name (:name col)))))
 
 ;;; TODO (Cam 6/17/25) -- move this into [[metabase.lib.expression]] or something and have it be part of the mainline
 ;;; methods for metadata calculation
@@ -292,10 +306,15 @@
 ;;; TODO (Cam 6/12/25) -- all this stuff should be moved into the main [[metabase.lib.field]] namespace as and done
 ;;; automatically when [[lib.ref/*ref-style*]] is `:ref.style/broken-legacy-qp-results`
 (mu/defn- super-broken-legacy-field-ref :- [:maybe ::mbql.s/Reference]
-  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
+  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage.
+
+  The synthetic pivot-grouping column is skipped — the multi-query pivot path splices it in fresh (no
+  `:field_ref`) via `metabase.query-processor.pivot.middleware/add-pivot-grouping`, so the SQL native path
+  emits nothing here for parity with what the FE contract already sees for that column."
   [query :- ::lib.schema/query
    col   :- ::kebab-cased-map]
-  (when (= (:lib/type col) :metadata/column)
+  (when (and (= (:lib/type col) :metadata/column)
+             (not= (:lib/source col) :source/pivot-grouping))
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
       (-> (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
             (let [col (cond-> col
@@ -435,7 +454,7 @@
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
-   initial-cols :- ::cols]
+   initial-cols :- ::initial-cols]
   (binding [lib.metadata.calculation/*display-name-style* :long]
     (let [lib-cols (doall (lib.metadata.calculation/returned-columns
                            query
@@ -463,22 +482,15 @@
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
-  (merge
-   ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
-   ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
-   (when-let [temporal-unit ((some-fn :lib/temporal-unit :inherited-temporal-unit) col)]
-     {:unit temporal-unit})
-   col))
+  ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct formatting to
+  ;; display values of the column" according to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
+  (u/assoc-default col :unit (or (:lib/temporal-unit col)
+                                 (:inherited-temporal-unit col))))
 
 (defn- add-binning-info [col]
-  (merge
-   (when-let [binning-info ((some-fn :lib/binning :lib/original-binning) col)]
-     {:binning-info (merge
-                     (when-let [strategy (:strategy binning-info)]
-                       {:binning-strategy strategy})
-                     binning-info)})
-   col))
+  (if-let [binning-info (or (:lib/binning col) (:lib/original-binning col))]
+    (u/assoc-default col :binning-info (u/assoc-default binning-info :binning-strategy (:strategy binning-info)))
+    col))
 
 ;;; TODO (Cam 6/12/25) -- remove `:lib/uuid` because it causes way to many test failures. Probably would be better to
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
@@ -525,11 +537,11 @@
   name and base type). If provided these are merged with the columns the query is expected to return.
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-  ([query]
+  ([query :- ::lib.schema/query]
    (returned-columns query []))
 
   ([query         :- ::lib.schema/query
-    initial-cols  :- ::cols]
+    initial-cols  :- ::initial-cols]
    (->> initial-cols
         (add-extra-metadata query)
         cols->legacy-metadata)))

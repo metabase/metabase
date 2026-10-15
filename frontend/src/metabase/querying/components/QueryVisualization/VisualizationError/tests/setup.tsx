@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -31,6 +32,7 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   errorType?: DatasetErrorType;
+  errorAction?: ReactNode;
   duration?: number;
 }
 
@@ -42,6 +44,7 @@ export const setup = ({
   tokenFeatures = {},
   enterprisePlugins = [],
   errorType,
+  errorAction,
   duration = 0,
 }: SetupOpts) => {
   const state = createMockState({
@@ -54,8 +57,6 @@ export const setup = ({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
-
-  setupUserMetabotPermissionsEndpoint();
 
   enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
@@ -74,6 +75,7 @@ export const setup = ({
       // Unjustified type cast. FIXME
       error={error as DatasetError}
       errorType={errorType}
+      errorAction={errorAction}
       via={[]}
     />,
     { storeInitialState: state },

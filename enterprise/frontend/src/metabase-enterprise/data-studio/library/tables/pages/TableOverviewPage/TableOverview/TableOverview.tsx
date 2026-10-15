@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { OverviewVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
 import {
   useMetadataProvider,
-  useQuestionFromOpts,
+  useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -18,7 +18,7 @@ type TableOverviewProps = {
 
 export function TableOverview({ table }: TableOverviewProps) {
   const metadataProvider = useMetadataProvider(table.db_id);
-  const buildQuestion = useQuestionFromOpts();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const card = useMemo(
     () => getCard(table, metadataProvider, buildQuestion),
     [table, metadataProvider, buildQuestion],
@@ -38,7 +38,7 @@ export function TableOverview({ table }: TableOverviewProps) {
 function getCard(
   table: Table,
   metadataProvider: Lib.MetadataProvider,
-  buildQuestion: ReturnType<typeof useQuestionFromOpts>,
+  buildQuestion: ReturnType<typeof useQuestionFromOptsBuilder>,
 ) {
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
   if (tableMetadata == null) {

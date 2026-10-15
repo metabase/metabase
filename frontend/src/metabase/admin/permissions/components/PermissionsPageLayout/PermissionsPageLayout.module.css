@@ -1,0 +1,8 @@
+.closeButton {
+  color: var(--mb-color-text-disabled);
+  transition: color 200ms;
+
+  &:hover {
+    color: var(--mb-color-text-secondary);
+  }
+}

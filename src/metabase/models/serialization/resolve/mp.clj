@@ -16,9 +16,9 @@
   MBQL suitable for `lib.query/query` / the QP.
 
   Implemented scope for the representations pipeline:
-    * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
+    * `import-database-fk`, `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
       warehouse metadata.
-    * `import-fk-keyed` / `export-fk-keyed` for `:model/Database` by `:name`.
+    * `export-fk-keyed` for `:model/Database` by `:name`.
     * `import-fk` / `export-fk` for `Card`, `Measure`, and `Segment` references by `entity_id`.
 
   Everything else throws `:not-implemented-yet` for now.
@@ -277,6 +277,7 @@
 ;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *audit-refusals?*
   "Whether a permission-aware [[ContentStore]] audits a refusal, i.e. leaves the ERROR log line
   and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare
@@ -344,8 +345,6 @@
       (when (int? card-id)
         ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
         ;; transforming the entire dataset_query just to export one stable identifier.
-        ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
-        ;; treat this as a full card row and demand it.
         (models.db/card-serdes-columns card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
@@ -733,9 +732,7 @@
   with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
-    * `import-table-fk`, `import-field-fk`.
-    * `import-fk-keyed` for `:model/Database` by `:name` (needed because
-      `resolve/import-mbql` dispatches on `:database` keys).
+    * `import-database-fk`, `import-table-fk`, `import-field-fk`.
     * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
@@ -761,15 +758,11 @@
          (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
          (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
          :else                  (not-implemented! :import-fk)))
-     (import-fk-keyed [_ portable model field]
-       (cond
-         (and (or (= model :model/Database) (= model 'Database))
-              (= field :name))
-         (import-database-by-name metadata-provider portable)
-
-         :else
-         (not-implemented! :import-fk-keyed)))
+     (import-fk-keyed [_ _portable _model _field] (not-implemented! :import-fk-keyed))
      (import-user     [_ _email]                  (not-implemented! :import-user))
+     (import-database-fk [_ db-name]
+       (when db-name
+         (import-database-by-name metadata-provider db-name)))
      (import-table-fk [_ path]
        (when path
          (:id (find-table metadata-provider path))))

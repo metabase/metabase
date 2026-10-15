@@ -1,24 +1,23 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "metabase/browse/components/DatabaseQuickLinksMenu";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
-import { getShallowDatabases as getDatabases } from "metabase/metadata-store";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type {
-  ConcreteTableId,
-  Database,
-  DatabaseId,
-  Table,
-} from "metabase-types/api";
+import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  isVirtualCardId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { ConcreteTableId, DatabaseId, Table } from "metabase-types/api";
 
 import {
   trackBrowseXRayClicked,
@@ -45,19 +44,19 @@ export const TableBrowserInner = ({
   xraysEnabled,
   showSchemaInHeader = true,
 }: TableBrowserProps) => {
-  const databases = useSelector(getDatabases);
-  const database = databases[dbId];
+  const { data: database } = useGetDatabaseQuery(
+    dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID ? skipToken : { id: dbId },
+  );
   const isAdmin = useSelector(getUserIsAdmin);
   const databaseCrumb = useDatabaseCrumb(dbId);
   const canEditTables =
     !!database &&
     isAdmin &&
-    // Unjustified type cast. FIXME
-    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database as Database);
+    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database);
 
   return (
     <>
-      <Flex align="center" pt="lg" pr="sm" pb="sm">
+      <Flex align="center" justify="space-between" pt="lg" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -65,6 +64,7 @@ export const TableBrowserInner = ({
             ...(showSchemaInHeader ? [{ title: schemaName }] : []),
           ]}
         />
+        <DatabaseQuickLinksMenu databaseId={dbId} schemaName={schemaName} />
       </Flex>
       <BrowseGrid pt="xl">
         {tables.map((table) => (

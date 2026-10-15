@@ -21,6 +21,24 @@
    last-viewed-at  :- ms/TemporalInstant]
   (t2/update! :model/Dashboard :id dashboard-id {:last_viewed_at last-viewed-at}))
 
+(mu/defn set-document-last-viewed-at!
+  "Set `last_viewed_at` of the Document with `document-id`."
+  [document-id    :- ms/PositiveInt
+   last-viewed-at :- ms/TemporalInstant]
+  (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
+
+(mu/defn set-transform-created-at!
+  "Set `created_at` of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform
+   created-at   :- ms/TemporalInstant]
+  (t2/update! :model/Transform :id transform-id {:created_at created-at}))
+
+(mu/defn set-transform-run-times!
+  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform
+   run-time     :- ms/TemporalInstant]
+  (t2/update! :model/TransformRun :transform_id transform-id {:start_time run-time :end_time run-time}))
+
 (mu/defn delete-all-security-advisories!
   "Delete every SecurityAdvisory."
   []

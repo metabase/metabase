@@ -1,6 +1,7 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -43,8 +44,8 @@
   on dynamic variables."
   {:style/indent 0}
   [current-user-id current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
-                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  `(binding [api/*current-user-id*              ~current-user-id
+             api/*current-user-permissions-set* (atom ~current-user-perms)]
      ~@body))
 
 (defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
@@ -276,8 +277,9 @@
    [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
-   [:is-impersonated-user?               {:optional true} :boolean]
-   [:is-sandboxed-user?                  {:optional true} :boolean]
+   [:is-impersonated-user?                                :boolean]
+   [:is-sandboxed-user?                                   :boolean]
+   [:is-routed-user?                                      :boolean]
    [:is-superuser?                                        :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
@@ -306,7 +308,7 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
-   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
+   [:weights                             {:optional true} [:maybe ::search.config/weights]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -323,6 +325,7 @@
            ids
            is-impersonated-user?
            is-sandboxed-user?
+           is-routed-user?
            include-dashboard-questions?
            include-metadata?
            is-superuser?
@@ -365,6 +368,7 @@
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-routed-user?                     is-routed-user?
                         :is-superuser?                       is-superuser?
                         :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
@@ -459,9 +463,7 @@
                         (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
-        card-metadata (if (empty? card-ids)
-                        {}
-                        (search.db/card-result-metadata card-ids))]
+        card-metadata (search.db/card-result-metadata card-ids)]
     (map (fn [{:keys [model id] :as item}]
            (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))

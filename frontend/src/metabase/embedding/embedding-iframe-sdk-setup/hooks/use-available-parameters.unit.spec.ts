@@ -25,7 +25,7 @@ jest.mock("metabase/parameters/utils/dashboards", () => ({
 const mockCardParameters = jest.fn();
 
 jest.mock("metabase/metadata-store", () => ({
-  useQuestionFromCard: () => () => ({ parameters: mockCardParameters }),
+  useQuestionFromCardBuilder: () => () => ({ parameters: mockCardParameters }),
   paramFieldsFetched: jest.fn((paramFields) => ({
     type: "metabase/entities/UPDATE",
     payload: paramFields,

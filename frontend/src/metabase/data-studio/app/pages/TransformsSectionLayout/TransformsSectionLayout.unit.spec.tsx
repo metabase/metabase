@@ -6,7 +6,6 @@ import {
   setupPropertiesEndpoints,
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
-  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -54,7 +53,6 @@ const setup = ({
   databases?: Database[];
   databasesError?: boolean;
 } = {}) => {
-  setupUserMetabotPermissionsEndpoint();
   if (databasesError) {
     fetchMock.get("path:/api/database", 500);
   } else {

@@ -28,7 +28,7 @@
   (testing "CSV email attachments start with a UTF-8 BOM so they open correctly in Excel (#75875)"
     (let [results {:database_id (mt/id)
                    :row_count   1
-                   :data        {:cols         [{:name "n" :base_type :type/Integer}]
+                   :data        {:cols         [{:name "n" :display_name "n" :base_type :type/Integer}]
                                  :rows         [[1]]
                                  :viz-settings {}}}
           stream! (fn [opts]

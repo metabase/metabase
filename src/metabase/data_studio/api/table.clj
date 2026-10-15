@@ -18,7 +18,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema.models.table :as table]))
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -165,7 +166,7 @@
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [selectors       (select-keys body [:database_ids :schema_ids :table_ids])
         set-ks          [:data_authority
                          :data_source
@@ -177,7 +178,7 @@
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
-      (data-studio.db/update-tables! table-ids set-map)
+      (schema.table-user-settings/upsert-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids)]
@@ -191,7 +192,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [selectors         (select-keys body [:database_ids :schema_ids :table_ids])
         selected-tables   (data-studio.db/selection-columns-for-selectors selectors 2)
         selected-table    (when-not (next selected-tables)
@@ -218,7 +219,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (data-studio.db/databases db-ids)]
@@ -238,7 +239,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
@@ -251,7 +252,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     (data-studio.db/delete-field-values-for-tables! (map :id tables))
     nil))

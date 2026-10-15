@@ -121,7 +121,7 @@
       (let [mp       (lib.tu/mock-metadata-provider
                       card-viz-settings-test-mock-metadata-provider
                       {:cards [{:id                     1
-                                :datset-query           {:database 1, :type :native, :native {:query "X"}}
+                                :dataset-query          {:database 1, :type :native, :native {:query "X"}}
                                 :database-id            1
                                 :visualization-settings (db-viz-settings 1 2)}]})
             query    (lib/query mp (test-query [1 2 3] 1 nil))

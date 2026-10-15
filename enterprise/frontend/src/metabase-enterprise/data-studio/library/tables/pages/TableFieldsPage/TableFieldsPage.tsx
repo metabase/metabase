@@ -109,14 +109,15 @@ export function TableFieldsPage() {
               bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
-                p="sm"
+                leftSection={<Icon name="close" />}
               />
             </Group>
             <FieldSection

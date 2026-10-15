@@ -3,13 +3,7 @@ import { t } from "ttag";
 import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { getUserIsAdmin } from "metabase/current-user";
-import {
-  PLUGIN_DATA_APPS,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_SECURITY_CENTER,
-} from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
@@ -30,7 +24,6 @@ export function SettingsNav() {
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
   const isHosted = useSetting("is-hosted?");
   const tokenFeatures = useSetting("token-features");
-  const isAdmin = useSelector(getUserIsAdmin);
   const isPro = isProPlan(getPlan(tokenFeatures));
   const { isEnabled: isSecurityCenterEnabled, SecurityCenterPromoCard } =
     PLUGIN_SECURITY_CENTER;
@@ -83,11 +76,8 @@ export function SettingsNav() {
         label={t`Localization`}
         icon="pinmap"
       />
-      {/* do not allow users with "Settings access" permissions to access custom viz pages */}
-      {isAdmin && <CustomVisualizationsNav />}
-      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so
-          the nav item (and its upsell gem) shows without the token feature */}
-      {isAdmin && PLUGIN_DATA_APPS.isEnabled && <DataAppsNav />}
+      <CustomVisualizationsNav />
+      <DataAppsNav />
       <SettingsNavItem path="maps" label={t`Maps`} icon="map" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}

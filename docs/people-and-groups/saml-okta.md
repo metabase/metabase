@@ -16,11 +16,7 @@ See [authenticating with SAML](./authenticating-with-saml.md) for general SAML i
 
 ## Turn on SAML-based SSO in Metabase
 
-In the **Admin**>**Settings** section of the Admin area, go to the **Authentication** tab and click on **Set up** under **SAML**.
-
-You'll see a SAML configuration form like this:
-
-![SAML form](images/saml-form.png)
+Go to **Admin** > **Settings** > **Authentication**. In the **SAML** section, click **Set up**.
 
 You'll need to use the information in this form to set up SAML in Okta.
 
@@ -34,7 +30,7 @@ From the Okta **Admin** console, [create a new SAML app integration][okta-saml-d
 
 ### Configure Okta SAML settings
 
-To configure Okta app integration with Metabase, you'll need to use the information found in Metabase in the **Admin panel** > **Authentication** > **SAML** section.
+To configure Okta app integration with Metabase, you'll need to use the information found in Metabase in the **Admin** > **Settings** > **Authentication** > **SAML** section.
 
 #### General settings
 
@@ -59,7 +55,7 @@ Even though Okta says these are optional, Metabase requires them. Okta will pass
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`    | user.firstName |
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`      | user.lastName  |
 
-The names of attribute statements in Okta should match the attribute names in Metabase (names are case sensitive). If you want to use non-default attribute names in your Okta app configuration, you will also need to change the names for the attribute fields in Metabase in **Admin panel** > **Authentication** > **SAML**.
+The names of attribute statements in Okta should match the attribute names in Metabase (names are case sensitive). If you want to use non-default attribute names in your Okta app configuration, you will also need to change the names for the attribute fields in Metabase in **Admin** > **Settings** > **Authentication** > **SAML**.
 
 > **Make sure that people [cannot edit their email address attribute](https://help.okta.com/oie/en-us/content/topics/users-groups-profiles/usgp-user-edit-attributes.htm)**. To log people in to your Metabase (or to create a Metabase account on first login), your IdP will pass the email address attribute to Metabase. If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
 
@@ -115,7 +111,7 @@ Once you set up your SAML app in Okta, you'll need to configure SAML in Metabase
 2. Go to the **Sign On** tab.
 3. Click on **View SAML setup instructions**.
 
-Use the information from Okta SAML instructions to fill the Metabase SAML form in **Admin panel** > **Authentication** > **SAML**:
+Use the information from Okta SAML instructions to fill the Metabase SAML form in **Admin** > **Settings** > **Authentication** > **SAML**:
 
 | Metabase SAML                      | Okta SAML                            |
 | ---------------------------------- | ------------------------------------ |
@@ -156,11 +152,15 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
 4. In **Metabase SAML settings**:
 
-- Turn on **Synchronize Group Memberships**.
-- For each of the groups you added to Okta users, set up a new mapping to a Metabase group.
-- In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
+    1. Enable the **Synchronize Group Memberships** toggle.
+    2. Click **New mapping**.
+    3. Enter the name of a group you added to Okta users, then click **Add**.
+    4. Select the Metabase groups to map the group name to.
+    5. Repeat steps 2 to 4 for each group.
+    6. In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
+    7. Click **Save and enable**.
 
-  ![Metabase group mapping](images/saml-okta-groups.png)
+    ![Metabase group mapping](images/saml-okta-groups.png)
 
 ### Map Okta User Groups to Metabase groups
 
@@ -183,11 +183,15 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
 3. In **Metabase SAML settings**:
 
-- Turn on **Synchronize Group Memberships**.
-- For each of the groups you added to Okta users, set up a new mapping to a Metabase group.
-- In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
+    1. Enable the **Synchronize Group Memberships** toggle.
+    2. Click **New mapping**.
+    3. Enter the name of an Okta group, then click **Add**.
+    4. Select the Metabase groups to map the group name to.
+    5. Repeat steps 2 to 4 for each group.
+    6. In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
+    7. Click **Save and enable**.
 
-  ![Metabase group mapping](images/saml-okta-groups.png)
+    ![Metabase group mapping](images/saml-okta-groups.png)
 
 ## Troubleshooting SAML issues
 

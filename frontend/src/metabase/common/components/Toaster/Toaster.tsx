@@ -3,14 +3,8 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Group,
-  Icon,
-  Notification,
-  Portal,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import type { UndoVariant } from "metabase/redux/store/undo";
+import { Button, Group, Icon, Notification, Portal, Text } from "metabase/ui";
 
 import S from "./Toaster.module.css";
 
@@ -31,6 +25,7 @@ export interface ToastProps extends Omit<
   secondaryAriaLabel?: string;
   leftSection?: ReactNode;
   rightSection?: ReactNode;
+  variant?: UndoVariant;
   onConfirm?: () => void;
   onDismiss?: () => void;
   onSecondary?: () => void;
@@ -49,6 +44,7 @@ export const Toast = ({
   secondaryAriaLabel = t`Cancel`,
   leftSection,
   rightSection,
+  variant = "neutral",
   onConfirm,
   onDismiss,
   onSecondary,
@@ -59,6 +55,7 @@ export const Toast = ({
   const hasActions = Boolean(
     onConfirm || (secondaryText && onSecondary) || rightSection,
   );
+  const isColored = variant !== "neutral";
 
   return (
     <Notification
@@ -69,6 +66,7 @@ export const Toast = ({
         closeButton: S.dismiss,
       }}
       data-testid={dataTestId}
+      data-variant={variant}
       data-show={show ? true : undefined}
       data-fixed={fixed ? true : undefined}
       data-has-actions={hasActions ? true : undefined}
@@ -83,28 +81,36 @@ export const Toast = ({
       {...divProps}
     >
       <Group gap="xl" align="center" wrap="nowrap">
-        <Text className={S.message} flex={1} c="tooltip-text" fz="md">
+        <Text
+          className={S.message}
+          flex={1}
+          c={isColored ? "text-primary" : "tooltip-text"}
+          fz="md"
+        >
           {message}
         </Text>
         {hasActions && (
           <Group gap="sm" align="center" wrap="nowrap">
-            {onConfirm && (
-              <UnstyledButton
-                className={cx(S.button, S.primary)}
-                onClick={onConfirm}
-                aria-label={confirmAriaLabel}
-              >
-                {confirmText}
-              </UnstyledButton>
-            )}
             {secondaryText && onSecondary && (
-              <UnstyledButton
-                className={cx(S.button, S.secondary)}
+              <Button
+                variant={isColored ? "default" : "on-dark-secondary"}
+                size="sm"
                 onClick={onSecondary}
                 aria-label={secondaryAriaLabel}
               >
                 {secondaryText}
-              </UnstyledButton>
+              </Button>
+            )}
+            {onConfirm && (
+              <Button
+                variant={isColored ? "filled" : "on-dark-primary"}
+                color={isColored ? variant : undefined}
+                size="sm"
+                onClick={onConfirm}
+                aria-label={confirmAriaLabel}
+              >
+                {confirmText}
+              </Button>
             )}
             {rightSection}
           </Group>
@@ -121,6 +127,7 @@ export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   fixed?: boolean;
   leftSection?: ReactNode;
   rightSection?: ReactNode;
+  variant?: UndoVariant;
   onConfirm: () => void;
   onDismiss: () => void;
 }
@@ -132,6 +139,7 @@ export const Toaster = ({
   fixed,
   leftSection,
   rightSection,
+  variant,
   onConfirm,
   onDismiss,
   className,
@@ -163,6 +171,7 @@ export const Toaster = ({
         fixed={fixed}
         leftSection={leftSection}
         rightSection={rightSection}
+        variant={variant}
         onConfirm={onConfirm}
         onDismiss={onDismiss}
         className={className}

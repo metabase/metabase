@@ -8,7 +8,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- negate-boolean-expression [expr]
-  (lib.filter.negate/negate-boolean-expression (lib/normalize expr)))
+  (lib.filter.negate/negate-boolean-expression {:start-of-week :sunday} (lib/normalize expr)))
 
 (deftest ^:parallel negate-simple-filter-clause-test-1
   (testing :=

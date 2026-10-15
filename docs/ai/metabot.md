@@ -23,7 +23,6 @@ Here's a non-exhaustive list of things Metabot can help with:
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- [Generate transforms](../data-modeling/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
 - [Generate charts in documents](../documents/introduction.md)
 - [Answer questions from Slack](./metabot-slack.md).
 
@@ -48,7 +47,7 @@ Some tips:
 - Whenever you want Metabot to do something completely different, you should reset the conversation, as Metabot might find that irrelevant historical context to be confusing.
 - Once Metabot creates a question for you, you can follow up with more questions or take over yourself. You can drill through the chart or step into the editor to tweak the query (both in the query builder and the SQL editor).
 - Metabot works best with English prompts. While it might understand other languages, you'll get the most reliable results by asking your questions in English.
-- Define domain-specific terms in the [glossary](../exploration-and-organization/data-model-reference.md#glossary) to help Metabot understand your organization's terminology.
+- Define domain-specific terms in the [glossary](../data-modeling/semantic-layer/glossary.md) to help Metabot understand your organization's terminology.
 
 ### Metabot response menu
 

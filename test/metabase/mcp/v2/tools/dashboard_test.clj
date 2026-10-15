@@ -5,10 +5,13 @@
    free. The op grammar itself is covered by `metabase.mcp.v2.dashboard-ops-test`; this suite
    pins the tool's contract, permission inheritance, and dry-run behavior on top of it."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
    [metabase.permissions.core :as perms]
@@ -29,16 +32,16 @@
 (defn- tool-result
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+    (throw (ex-info (str "tool call rejected: " (message/render (:message error))) {:error error})))
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)
     :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
@@ -79,12 +82,12 @@
 
 (deftest create-requires-name-test
   (testing "GHY-4147: create without a name is a teaching error, not a schema dump"
-    (is (re-find #"`name` is required"
+    (is (re-find #"\"name\" is required"
                  (tool-error (call-tool! :crowberto nil "dashboard_write" (wire {:method "create"})))))))
 
 (deftest update-requires-id-test
   (testing "GHY-4147: update without an id is a teaching error"
-    (is (re-find #"`id` is required"
+    (is (re-find #"\"id\" is required"
                  (tool-error (call-tool! :crowberto nil "dashboard_write" (wire {:method "update"})))))))
 
 (deftest create-with-ops-in-one-call-test
@@ -99,6 +102,43 @@
           (is (= (:id card) (get-in result [:dashcards 0 :card :id])))
           (testing "the dashcard got a real id, not the temp one"
             (is (pos-int? (get-in result [:dashcards 0 :id])))))))))
+
+(deftest add-card-with-restricted-timeline-to-shared-dashboard-test
+  (testing "adding a card to a shared dashboard needs read access to the timelines it shows, as in the REST writer"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card card {:display                :line
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (re-find #"You don't have permissions to do that"
+                     (tool-error (call-tool! :rasta nil "dashboard_write"
+                                             (wire {:method "update" :id (:id dashboard)
+                                                    :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))
+
+(deftest move-card-between-tabs-on-shared-dashboard-test
+  (testing "deleting a tab and re-adding its card on another tab in one update exposes nothing new, as in REST"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card card {:display                :line
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {:public_uuid (str (random-uuid))}
+                     :model/DashboardTab tab-a {:dashboard_id (:id dashboard) :name "A" :position 0}
+                     :model/DashboardTab tab-b {:dashboard_id (:id dashboard) :name "B" :position 1}
+                     :model/DashboardCard _ {:dashboard_id (:id dashboard) :dashboard_tab_id (:id tab-a)
+                                             :card_id (:id card) :row 0 :col 0 :size_x 4 :size_y 4}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (mt/with-current-user (mt/user->id :rasta)
+          (dashboards.write/update-dashboard!
+           (:id dashboard)
+           {:tabs      [tab-b]
+            :dashcards [{:id -1 :card_id (:id card) :dashboard_tab_id (:id tab-b)
+                         :row 0 :col 0 :size_x 4 :size_y 4}]}))
+        (is (= [(:id tab-b)]
+               (map :dashboard_tab_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard)))))))))
 
 (deftest create-with-a-bad-op-writes-nothing-test
   (testing "GHY-4147: a create whose ops fail leaves no dashboard behind — otherwise the agent sees
@@ -191,7 +231,8 @@
                                              :patch {:parameter_mappings
                                                      [{:parameter_id "p1"
                                                        :card_id (:id card)
-                                                       :target ["dimension" ["field" (mt/id :venues :price) nil]]}]}}]}))]
+                                                       :target ["dimension"
+                                                                ["field" (mt/id :venues :price) nil]]}]}}]}))]
         (is (not (:isError result)) (-> result :content first :text))
         (is (=? [{:parameter_id "p1" :target [:dimension [:field (mt/id :venues :price) nil]]}]
                 (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dc))))))))
@@ -315,6 +356,29 @@
                    (tool-error (call-tool! :crowberto nil "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest unknown-card-error-text-test
+  (testing "GHY-4544: the unknown-card refusal names the op as the caller sent it, quoted, and the card id as sent"
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (is (= "op 0 (\"add_card\"): no card with id 9999999 that you can read."
+             (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                     (wire {:method "update" :id (:id dash)
+                                            :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest archived-on-create-error-text-test
+  (testing "GHY-4544: `archived` on a create is a teaching error"
+    (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."
+           (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                   (wire {:method "create" :name "Sales" :archived true})))))))
+
+;; not ^:parallel: the `!` in validate-payload! trips the kondo deftest lint
+(deftest invalid-payload-error-text-test
+  (testing "GHY-4544: an invalid compiled payload is explained as humanized, quoted schema detail"
+    (let [text (try (#'tools.dashboard/validate-payload! {:parameters "nope"})
+                    nil
+                    (catch clojure.lang.ExceptionInfo e (ex-message e)))]
+      (is (str/starts-with? text "The requested ops produce an invalid dashboard: \"parameters\": "))
+      (is (not (str/includes? text "\n"))))))
 
 (deftest unreadable-card-is-refused-for-a-non-admin-test
   (testing "a card that EXISTS but the caller cannot read is refused the same way a nonexistent one is, before

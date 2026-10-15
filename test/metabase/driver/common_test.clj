@@ -76,7 +76,8 @@
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default
                                 {:lib/type :metadata/database
-                                 :details details}))
+                                 :id       1
+                                 :details  details}))
       {}                      true
       {:json-unfolding nil}   true
       {:json-unfolding true}  true

@@ -22,18 +22,15 @@ require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+import { Global, css, useTheme } from "@emotion/react";
+import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-
-import { Global, css, useTheme } from "@emotion/react";
-
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
 } from "metabase/viz-core";
-
-import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Inject @font-face declarations synchronously at preview load so that bundled
 // fonts are registered with `document.fonts` before any story's loaders run.
@@ -49,16 +46,17 @@ if (
   document.head.appendChild(fontFaceStyle);
 }
 
-// Force every registered font to load before the story renders. This ensures we
-// use same fonts for tests every time, instead of using generic fallback
-// family like `sans-serif` which might resolve to different specific fonts (depending
-// on what available on current machine) which might have different metrics, in turn
-// producing inconsistent behavior in code relying on measuring text (e.g., column
-// autosize in table visualization). Awaiting all loads here makes measurements
-// deterministic across platforms.
+const PRELOADED_FONT_FAMILIES = ["Lato", "JetBrains Mono"];
+
+// Load the app's text and monospace fonts before the story renders,
+// so code that measures text, like the table's column autosize, gets the same metrics on every machine.
 const fontsReady = async () => {
   const loads: Promise<unknown>[] = [];
-  document.fonts.forEach((face) => loads.push(face.load()));
+  document.fonts.forEach((face) => {
+    if (PRELOADED_FONT_FAMILIES.includes(face.family)) {
+      loads.push(face.load());
+    }
+  });
   await Promise.all(loads);
 };
 
@@ -177,13 +175,6 @@ function CssVariables() {
 
       :root {
         --mb-default-font-family: "Lato";
-
-        /*
-      Theming-specific CSS variables.
-      These CSS variables are not part of the core design system colors.
-    **/
-        --mb-color-bg-dashboard: var(--mb-color-background-primary);
-        --mb-color-bg-dashboard-card: var(--mb-color-background-primary);
       }
 
       /* For Embed frame questions to render properly */

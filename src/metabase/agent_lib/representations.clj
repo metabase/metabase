@@ -31,7 +31,9 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,20 +59,7 @@
   so the post-decode shape matches the all-strings invariant the repair pipeline relies on. FK
   path segments and option values that already arrive as strings pass through unchanged."
   [x]
-  (cond
-    (map? x)
-    (reduce-kv
-     (fn [m k v]
-       (assoc m
-              (cond-> k (keyword? k) keyword->repr-string)
-              (external-query->portable v)))
-     {}
-     x)
-
-    (vector? x)     (mapv external-query->portable x)
-    (sequential? x) (mapv external-query->portable x)
-    (keyword? x)    (keyword->repr-string x)
-    :else           x))
+  (perf/postwalk #(if (keyword? %) (keyword->repr-string %) %) x))
 
 ;;; ============================================================
 ;;; Up-front validation against ::lib.schema/external-query
@@ -94,11 +83,12 @@
         decoded (mc/decode schema external-query mtx/string-transformer)]
     (when-let [error (mr/explain ::lib.schema/external-query decoded)]
       (throw (ex-info (tru "External query has an invalid structure.")
-                      {:status-code 400
-                       :error       :invalid-external-query
-                       :humanized   (mu.humanize/humanize error)
-                       :details     (pr-str (mu.humanize/humanize error))
-                       :schema      ::lib.schema/external-query})))
+                      {:status-code   400
+                       :error         :invalid-external-query
+                       :humanized     (mu.humanize/humanize error)
+                       :details       (pr-str (mu.humanize/humanize error))
+                       :schema        ::lib.schema/external-query
+                       :response/keys #{:humanized :details}})))
     decoded))
 
 (def ^:private known-stage-keys
@@ -129,11 +119,12 @@
                            stage-idx
                            (pr-str (vec unknown))
                            (pr-str (vec (sort known-stage-keys))))
-                      {:status-code  400
-                       :error        :unknown-stage-key
-                       :agent-error? true
-                       :stage-index  stage-idx
-                       :unknown-keys (vec unknown)})))))
+                      {:status-code   400
+                       :error         :unknown-stage-key
+                       :agent-error?  true
+                       :stage-index   stage-idx
+                       :unknown-keys  (vec unknown)
+                       :response/keys #{:unknown-keys}})))))
 
 ;;; ============================================================
 ;;; Repair-pipeline schema (string-keyed portable form)
@@ -149,36 +140,25 @@
   [x]
   (and (string? x) (not= "" x)))
 
-(defn- options-map?
-  [x]
-  (map? x))
-
 (defn- table-fk?
   "Portable table FK: [db-name, schema-or-null, table-name]."
   [x]
-  (and (vector? x)
-       (= 3 (count x))
-       (non-blank-string? (nth x 0))
-       (or (nil? (nth x 1)) (string? (nth x 1)))
-       (non-blank-string? (nth x 2))))
+  (match/matches? x
+                  [(_ :guard non-blank-string?) (s :guard (or (nil? s) (string? s))) (_ :guard non-blank-string?)]))
 
 (defn- field-fk?
   "Portable field FK: [db-name, schema-or-null, table-name, field-name, ...json-path-segments]."
   [x]
-  (and (vector? x)
-       (>= (count x) 4)
-       (non-blank-string? (nth x 0))
-       (or (nil? (nth x 1)) (string? (nth x 1)))
-       (non-blank-string? (nth x 2))
-       (every? non-blank-string? (drop 3 x))))
+  (match/matches? x
+                  [(_ :guard non-blank-string?)
+                   (s :guard (or (nil? s) (string? s)))
+                   (_ :guard non-blank-string?)
+                   & (args :guard (every? non-blank-string? args))]))
 
 (defn- clause-shape?
   [x]
-  (and (vector? x)
-       (>= (count x) 2)
-       (string? (nth x 0))
-       (non-blank-string? (nth x 0))
-       (options-map? (nth x 1))))
+  (match/matches? x
+                  [(_ :guard non-blank-string?) (_ :guard map?) & _]))
 
 (defn- numeric-id-when-allowed?
   "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at
@@ -196,7 +176,7 @@
                 field-fk?]]
    ::options  [:and map?
                [:fn {:error/message "options must always be a map (use `{}` if empty)"}
-                options-map?]]
+                map?]]
    ::clause   [:and vector?
                [:fn {:error/message "clause must be [operator-string, options-map, …args]"}
                 clause-shape?]]
@@ -253,9 +233,10 @@
   [parsed]
   (when-let [error (mr/explain query-schema parsed)]
     (throw (ex-info (tru "Representations query has an invalid structure.")
-                    {:status-code 400
-                     :error       :invalid-representations-query
-                     :humanized   (mu.humanize/humanize error)
-                     :details     (pr-str (mu.humanize/humanize error))
-                     :schema      ::query})))
+                    {:status-code   400
+                     :error         :invalid-representations-query
+                     :humanized     (mu.humanize/humanize error)
+                     :details       (pr-str (mu.humanize/humanize error))
+                     :schema        ::query
+                     :response/keys #{:humanized :details}})))
   parsed)

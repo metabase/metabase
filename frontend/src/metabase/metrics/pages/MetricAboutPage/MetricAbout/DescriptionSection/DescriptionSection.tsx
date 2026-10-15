@@ -10,7 +10,10 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
+import {
+  getUserIsAdmin,
+  getUserIsEntitledAnalyst,
+} from "metabase/current-user";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
@@ -30,8 +33,9 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const canSeeRelationships =
-    useSelector((state) => getUserIsAdmin(state) || getUserIsAnalyst(state)) &&
-    PLUGIN_DEPENDENCIES.isEnabled;
+    useSelector(
+      (state) => getUserIsAdmin(state) || getUserIsEntitledAnalyst(state),
+    ) && PLUGIN_DEPENDENCIES.isEnabled;
 
   const { data: database } = useGetDatabaseQuery(
     { id: card.database_id! },

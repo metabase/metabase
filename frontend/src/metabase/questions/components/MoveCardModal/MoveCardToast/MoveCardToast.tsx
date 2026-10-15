@@ -24,12 +24,7 @@ function MoveCardToast({ card, destination }: MoveCardToastProps) {
   const type = card.type;
 
   if (!destination) {
-    return (
-      <Flex align="center">
-        <Icon name="warning" color="text-primary-inverse" mr="sm" />
-        {t`Something went wrong`}
-      </Flex>
-    );
+    return <Flex align="center">{t`Something went wrong`}</Flex>;
   }
 
   const link =
@@ -44,7 +39,7 @@ function MoveCardToast({ card, destination }: MoveCardToastProps) {
 
   return (
     <Flex align="center" data-testid="move-card-toast">
-      <Icon name="collection" color="text-primary-inverse" mr="sm" />
+      <Icon name="collection" mr="sm" />
       {match(type)
         .with("question", () => jt`Question moved to ${link}`)
         .with("model", () => jt`Model moved to ${link}`)

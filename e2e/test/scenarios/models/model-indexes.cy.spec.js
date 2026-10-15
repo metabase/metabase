@@ -2,7 +2,7 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
-const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > model indexes", () => {
   let modelId;
@@ -10,7 +10,6 @@ describe("scenarios > model indexes", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/search?q=*").as("searchQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/model-index").as("modelIndexCreate");
     cy.intercept("DELETE", "/api/model-index/*").as("modelIndexDelete");
@@ -36,58 +35,26 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     editTitleMetadata();
-
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true }); // needs to be forced because Mantine
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@modelIndexCreate").then(({ request, response }) => {
-      expect(request.body.model_id).to.equal(modelId);
-
-      // this will likely change when this becomes an async process
-      expect(response.body.state).to.equal("indexed");
-      expect(response.body.id).to.equal(1);
-    });
+    toggleSurfaceIndividualRecords();
+    saveModelIndexChanges();
+    cy.wait("@modelIndexCreate");
+    assertIndexedValueSearchable();
 
     editTitleMetadata();
-
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true });
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@modelIndexDelete").then(({ request, response }) => {
-      expect(request.url).to.include("/api/model-index/1");
-      expect(response.statusCode).to.equal(200);
-    });
-
+    getSurfaceIndividualRecordsToggle().should("be.checked");
+    toggleSurfaceIndividualRecords();
+    saveModelIndexChanges();
+    cy.wait("@modelIndexDelete");
     cy.wait("@dataset");
 
     editTitleMetadata();
+    getSurfaceIndividualRecordsToggle().should("not.be.checked");
+    toggleSurfaceIndividualRecords();
+    saveModelIndexChanges();
 
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true });
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    // this tests redux cache invalidation (#31407)
-    cy.wait("@modelIndexCreate").then(({ request, response }) => {
-      expect(request.body.model_id).to.equal(modelId);
-
-      // this will likely change when this becomes an async process
-      expect(response.body.state).to.equal("indexed");
-      expect(response.body.id).to.equal(2);
-    });
+    // the deleted index must not linger in the cached model index list (metabase#31094)
+    cy.wait("@modelIndexCreate");
+    assertIndexedValueSearchable();
   });
 
   it("should not allow indexing when a primary key has been unassigned", () => {
@@ -95,10 +62,7 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     editTitleMetadata();
-
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true });
+    toggleSurfaceIndividualRecords();
 
     H.openColumnOptions("ID");
 
@@ -111,9 +75,12 @@ describe("scenarios > model indexes", () => {
       .findByText(/foreign key/i)
       .click();
 
-    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    saveModelIndexChanges();
 
     cy.wait("@cardUpdate");
+    // The editor closes once the model indexes have been updated
+    cy.findByTestId("dataset-edit-bar").should("not.exist");
+    H.tableInteractive().findByText("Rustic Paper Wallet").should("be.visible");
 
     // search should fail
     H.commandPaletteSearch("marble shoes", false);
@@ -121,63 +88,6 @@ describe("scenarios > model indexes", () => {
     H.commandPalette()
       .findByRole("option", { name: /No results for/ })
       .should("exist");
-  });
-
-  it("should be able to search model index values and visit detail records", () => {
-    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
-
-    cy.visit("/");
-
-    H.commandPaletteSearch("marble shoes", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Small Marble Shoes" })
-      .click();
-
-    cy.wait("@dataset");
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
-        "be.visible",
-      );
-      cy.findAllByText("Small Marble Shoes").should("have.length", 2);
-      cy.findByText("Doohickey").should("be.visible");
-    });
-  });
-
-  it.skip("should be able to see details of a record outside the first 2000", () => {
-    H.createQuestion(
-      {
-        name: "People Model",
-        query: { "source-table": PEOPLE_ID },
-        type: "model",
-      },
-      {
-        wrapId: true,
-        idAlias: "people_model_id",
-      },
-    );
-
-    cy.get("@people_model_id").then((peopleModelId) => {
-      createModelIndex({
-        modelId: peopleModelId,
-        pkName: "ID",
-        valueName: "NAME",
-      });
-    });
-
-    cy.visit("/");
-
-    H.commandPaletteSearch("anais", false);
-    H.commandPalette().findByRole("option", { name: "Anais Zieme" }).click();
-
-    cy.wait("@dataset");
-    cy.wait("@dataset"); // second query gets the additional record
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText(/We're a little lost/i).should("not.exist");
-      cy.findByRole("heading", { name: "Anais Zieme" }).should("be.visible");
-      cy.findAllByText("Anais Zieme").should("have.length", 2);
-    });
   });
 
   it("should not reload the model for record in the same model", () => {
@@ -210,6 +120,9 @@ describe("scenarios > model indexes", () => {
       .click();
 
     cy.findByTestId("object-detail").within(() => {
+      cy.findByRole("heading", { name: "Ergonomic Silk Coat" }).should(
+        "be.visible",
+      );
       cy.findByText("Upton, Kovacek and Halvorson");
     });
 
@@ -224,6 +137,30 @@ function editTitleMetadata() {
   H.tableInteractive().findByTextEnsureVisible("Title");
 
   H.openColumnOptions("Title");
+}
+
+function getSurfaceIndividualRecordsToggle() {
+  return H.sidebar().findByLabelText(/surface individual records/i);
+}
+
+function toggleSurfaceIndividualRecords() {
+  // needs to be forced because Mantine
+  getSurfaceIndividualRecordsToggle().click({ force: true });
+}
+
+function saveModelIndexChanges() {
+  cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+}
+
+function assertIndexedValueSearchable() {
+  // The editor closes once the model indexes have been updated
+  cy.findByTestId("dataset-edit-bar").should("not.exist");
+  H.commandPaletteSearch("marble shoes", false);
+  H.commandPalette()
+    .findByRole("option", { name: "Small Marble Shoes" })
+    .should("exist");
+  cy.get("body").type("{esc}");
+  H.commandPalette().should("not.exist");
 }
 
 const expectCardQueries = (num) =>

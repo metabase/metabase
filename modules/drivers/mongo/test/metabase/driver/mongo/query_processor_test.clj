@@ -47,7 +47,7 @@
       (is (= nil
              (query->collection-name {:query {:source-query
                                               {:native []}
-                                              :joins [{:source-query {:source-table 1, :collection "wow"}
+                                              :joins [{:source-query {:native [], :collection "wow"}
                                                        :condition    [:= 1 2]}]}}))))))
 
 (deftest ^:parallel order-postprocessing-test

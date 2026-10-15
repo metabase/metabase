@@ -40,8 +40,9 @@ You'll note several styling patterns in the codebase. Currently you should prefe
 
 1. [Mantine Style Props](https://mantine.dev/styles/style-props/) for most simple styling
 2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
+3. Global utility classes (in `/css/core`) should only be used where Mantine style props cannot be used.
 
-Other patterns, such as emotion styled components and global utility CSS classes are deprecated and should not be used for new code. Where convenient, please update deprecated styling patterns to the updated ones.
+Don't use Emotion styled components in new, moved, or otherwise edited code. Untouched legacy usage may remain; editing a neighboring line doesn't require a whole-file migration. When moving or editing the usage itself, use Mantine style props or CSS Modules instead.
 
 Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
 
@@ -142,7 +143,7 @@ describe("Component", () => {
 Key points:
 
 - `setup` function
-- Call helpers from `__support__/server-mocks` to setup endpoints for your data
+- Call helpers from `__support__/server-mocks` to setup endpoints for your data instead of registering raw `fetchMock` routes in component tests. For a new endpoint, add a helper in the appropriate shared server-mock owner and preserve existing callers.
 
 ## Localization
 
@@ -152,7 +153,7 @@ The frontend uses [ttag](https://www.npmjs.com/package/ttag) to localize strings
 <div>{t`This is a user-facing string`}</div>
 
 <div>
-	{c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
+ {c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
 </div>
 ```
 
@@ -174,11 +175,11 @@ const output = c("{0} and {2} are people's names, and {1} is a place")
 
 The first rule of frontend style, is we want to avoid talking about frontend style. Wherever possible, style-level considerations should be encapsulated in lint rules.
 
-### oxfmt + ESlint
+### oxfmt + oxlint
 
-We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`.
+We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`. Oxfmt also sorts imports, so `bun run format` fixes import order too.
 
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
+We use [oxlint](https://oxc.rs/) to enforce JavaScript and TypeScript lint rules, including module boundaries. Run `bun run lint-oxlint` to lint, or `bun run lint-oxlint-fix` to apply lint fixes. For how the lint configuration works, see `frontend/lint/OXLINT.md`.
 
 ### Miscellaneous notes on coding style
 

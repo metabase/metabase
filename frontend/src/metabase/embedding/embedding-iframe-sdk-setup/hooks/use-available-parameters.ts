@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import {
   paramFieldsFetched,
-  useQuestionFromCard,
+  useQuestionFromCardBuilder,
 } from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { useDispatch } from "metabase/redux";
@@ -20,7 +20,7 @@ export const useAvailableParameters = ({
   resource,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   // We need initial available parameters to display the `discard changes` button
   // and reset user selected parameters back to initial parameters

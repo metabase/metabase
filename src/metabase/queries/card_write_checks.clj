@@ -9,6 +9,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
@@ -68,30 +69,33 @@
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
-  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
+  (when (api/column-will-change? (:dataset_query card-before-updates) (get card-updates :dataset_query ::api/not-provided))
     (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [card-before-updates card-updates]
-  (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
-            (api/column-will-change? :embedding_type card-before-updates card-updates)
-            (api/column-will-change? :embedding_params card-before-updates card-updates))
+  (when (or (api/column-will-change? (:enable_embedding card-before-updates) (get card-updates :enable_embedding ::api/not-provided))
+            (api/column-will-change? (:embedding_type card-before-updates) (get card-updates :embedding_type ::api/not-provided))
+            (api/column-will-change? (:embedding_params card-before-updates) (get card-updates :embedding_params ::api/not-provided)))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (mu/defn- check-allowed-to-move
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
-  (when (api/column-will-change? :dashboard_id card-before-update card-updates)
-    (check-allowed-to-remove-from-existing-dashboards card-before-update))
+  (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
+    (check-allowed-to-remove-from-existing-dashboards card-before-update)
+    (when-let [dashboard-id (:dashboard_id card-updates)]
+      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
+                                                         [(merge card-before-update card-updates)])))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
-  (when (api/column-will-change? :result_metadata card-before-updates card-updates)
+  (when (api/column-will-change? (:result_metadata card-before-updates) (get card-updates :result_metadata ::api/not-provided))
     (let [database-id (some :database_id [card-before-updates card-updates])
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
@@ -115,6 +119,14 @@
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (check-no-save-cycle! ::no-id query)))
+
+(defn check-allowed-to-delete-card!
+  "Throw a 400 when `card` is in a data app's collection and another card there reads it. For `DELETE /api/card/:id`
+   rather than the delete hook: deleting the collection deletes its cards together, readers and read."
+  [{:keys [id collection_id]}]
+  (when-let [reader (card/data-app-card-reader collection_id id)]
+    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t be deleted." reader)
+                    {:status-code 400}))))
 
 (mu/defn check-allowed-to-update-card!
   "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.

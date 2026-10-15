@@ -75,7 +75,7 @@ export function SchemaPickerInput({
       }}
     >
       <Button
-        variant="default"
+        size="lg"
         className={S.triggerButton}
         leftSection={
           <FixedSizeIcon

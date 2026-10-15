@@ -6,15 +6,10 @@
 
 (mr/def ::search-index-metadata
   "A SearchIndexMetadata as selected from the app DB: every column of `:search_index_metadata`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:engine     [:or :keyword :string]]
-   [:version    :string]
-   [:index_name :string]
-   [:status     [:maybe [:or :keyword :string]]]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:lang_code  :string]])
+  [:merge
+   ::search-index-metadata.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::search-index-metadata.update
   "What an update (or insert) of a SearchIndexMetadata accepts: every column of `:search_index_metadata` except `id`, all optional."

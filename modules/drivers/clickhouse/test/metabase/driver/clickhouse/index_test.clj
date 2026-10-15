@@ -6,7 +6,7 @@
   The rendering/capability checks are pure and need no connection. `order-by-inlined-live-test` and
   `skip-index-live-test` run the seams against a real ClickHouse and read the result back out of `system.tables`
   (the sorting key) and `system.data_skipping_indices` (the skip index), so the indexes are verified to actually take
-  effect on the physical table, not just to render."
+  effect on the physical table, not just to render, and then again through `fetch-table-indexes`."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -122,13 +122,25 @@
     {:name name :type type :expr expr :granularity (long granularity)}))
 
 (def ^:private live-order-by-cases
-  "Each case drives one ORDER BY index through both live seams and asserts the sorting key the physical table reports."
+  "Each case drives one ORDER BY index through both live seams and checks the sorting key from the catalog and through
+  `fetch-table-indexes`. An unsorted table (`ORDER BY tuple()`) reads back as no index. `:definition` is the server's
+  own formatting, which changes between versions, so it isn't pinned."
   [{:label "order-by index sets the MergeTree sorting key" :slug "idx"
     :indexes  [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]
-    :expected "a, b"}
+    :expected "a, b"
+    :fetched  [{:name              nil
+                :kind              :order-by
+                :access-method     nil
+                :is-unique         false
+                :is-primary        false
+                :is-valid          true
+                :key-columns       ["a" "b"]
+                :include-columns   []
+                :partial-predicate nil}]}
    {:label "no order-by index -> empty ORDER BY () (unsorted table)" :slug "noidx"
     :indexes  []
-    :expected ""}])
+    :expected ""
+    :fetched  []}])
 
 (deftest ^:synchronized order-by-inlined-live-test
   (testing "an inlined ORDER BY actually sets the sorting key at both creation seams"
@@ -136,7 +148,7 @@
       (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
             conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
         (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
-          (doseq [{:keys [label slug indexes expected]} live-order-by-cases]
+          (doseq [{:keys [label slug indexes expected fetched]} live-order-by-cases]
             (testing label
               (let [ctas-table (str (gensym (str "mb_ob_ctas_" slug "_")))
                     crt-table  (str (gensym (str "mb_ob_crt_" slug "_")))
@@ -150,7 +162,9 @@
                                          :query        {:query "SELECT 1 AS a, 2 AS b"}
                                          :indexes      indexes})]
                       (jdbc/execute! conn-spec (into [sql] params))
-                      (is (= expected (sorting-key conn-spec "default" ctas-table))))
+                      (is (= expected (sorting-key conn-spec "default" ctas-table)))
+                      (testing "and fetch-table-indexes reports it, with the schema named"
+                        (is (=? fetched (driver/fetch-table-indexes :clickhouse db "default" ctas-table)))))
                     (finally (drop! ctas-table))))
                 (testing "CREATE TABLE seam (create-table!): create the table, read the sorting key back"
                   (drop! crt-table)
@@ -158,6 +172,8 @@
                     (driver/create-table! :clickhouse (:id db) (keyword crt-table)
                                           order-by-columns {:indexes indexes})
                     (is (= expected (sorting-key conn-spec "default" crt-table)))
+                    (testing "and fetch-table-indexes reports it, with a blank schema (the session database)"
+                      (is (=? fetched (driver/fetch-table-indexes :clickhouse db nil crt-table))))
                     (finally (drop! crt-table))))))))))))
 
 (deftest ^:synchronized skip-index-live-test
@@ -182,4 +198,67 @@
               (is (= {:type "minmax" :expr "(a)" :granularity 4}
                      (-> (only-skip-index conn-spec "default" table)
                          (select-keys [:type :expr :granularity])))))
+            (testing "and fetch-table-indexes reports it (no sorting key on this table)"
+              (is (=? [{:name              "evt_minmax"
+                        :kind              :skip-index
+                        :access-method     "minmax"
+                        :is-unique         false
+                        :is-primary        false
+                        :is-valid          true
+                        :key-columns       ["a"]
+                        :include-columns   []
+                        :partial-predicate nil}]
+                      (driver/fetch-table-indexes :clickhouse db "default" table))))
             (finally (drop!))))))))
+
+(deftest ^:synchronized escaped-names-live-test
+  (testing "a backtick in an index or column name survives the round trip through SHOW CREATE TABLE"
+    (mt/test-driver :clickhouse
+      (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)
+            table     (str (gensym "mb_esc_"))
+            column    "col`tick"
+            index     {:name "ix`tick" :columns [{:name column}] :type :minmax :granularity 1}
+            drop!     (fn [] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" table)]))]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
+          (drop!)
+          (try
+            (driver/create-table! :clickhouse (:id db) (keyword table) [[column "Int64"]]
+                                  {:indexes [{:kind :order-by :columns [{:name column}]}]})
+            (driver/execute-raw-queries! :clickhouse conn-spec
+                                         (driver/compile-create-index :clickhouse nil table index))
+            (is (=? [{:name "ix`tick" :kind :skip-index :key-columns [column]}
+                     {:name nil :kind :order-by :key-columns [column]}]
+                    (driver/fetch-table-indexes :clickhouse db "default" table)))
+            (finally (drop!))))))))
+
+(deftest ^:synchronized restricted-user-live-test
+  (testing "reading indexes needs only SELECT on the table; the system database stays off-limits"
+    (mt/test-driver :clickhouse
+      (let [admin-details  (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            admin-spec     (sql-jdbc.conn/connection-details->spec :clickhouse admin-details)
+            user           "mb_index_reader"
+            reader-details (assoc admin-details :user user :password "")
+            reader-spec    (sql-jdbc.conn/connection-details->spec :clickhouse reader-details)
+            table          (str (gensym "mb_reader_"))
+            index          {:name "evt_minmax" :columns [{:name "a"}] :type :minmax :granularity 4}
+            exec!          (fn [sql] (jdbc/execute! admin-spec [sql]))]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details reader-details}]
+          (exec! (format "DROP TABLE IF EXISTS `%s`" table))
+          (exec! (format "DROP USER IF EXISTS `%s`" user))
+          (try
+            (exec! (format "CREATE USER `%s` NOT IDENTIFIED" user))
+            (exec! (format "GRANT SELECT ON default.* TO `%s`" user))
+            (exec! (format "CREATE TABLE `%s` (`a` Int64, `b` Int64) ENGINE = MergeTree ORDER BY (`a`, `b`)" table))
+            (driver/execute-raw-queries! :clickhouse admin-spec
+                                         (driver/compile-create-index :clickhouse nil table index))
+            (testing "the catalog table the old read used is denied to this user"
+              (is (thrown-with-msg? Exception #"ACCESS_DENIED"
+                                    (jdbc/query reader-spec ["SELECT count() FROM system.data_skipping_indices"]))))
+            (testing "fetch-table-indexes still reads both index kinds"
+              (is (=? [{:name "evt_minmax" :kind :skip-index :access-method "minmax" :key-columns ["a"]}
+                       {:name nil :kind :order-by :key-columns ["a" "b"]}]
+                      (driver/fetch-table-indexes :clickhouse db "default" table))))
+            (finally
+              (exec! (format "DROP TABLE IF EXISTS `%s`" table))
+              (exec! (format "DROP USER IF EXISTS `%s`" user)))))))))

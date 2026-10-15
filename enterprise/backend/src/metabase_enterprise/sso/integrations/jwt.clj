@@ -45,15 +45,17 @@
   []
   (throw
    (ex-info (tru "Embedding SDK for React is disabled. Enable it in the embedding settings.")
-            {:status      "error-embedding-sdk-disabled"
-             :status-code 402})))
+            {:status        "error-embedding-sdk-disabled"
+             :status-code   402
+             :response/keys #{:status}})))
 
 (defn- throw-simple-embedding-disabled
   []
   (throw
    (ex-info (tru "You need to turn on modular embedding in the embedding settings.")
-            {:status      "error-embedding-simple-disabled"
-             :status-code 402})))
+            {:status        "error-embedding-simple-disabled"
+             :status-code   402
+             :response/keys #{:status}})))
 
 (defn ^:private generate-response-token
   [session jwt-data]
@@ -85,7 +87,7 @@
       (and is-react-sdk? (not (embed.settings/enable-embedding-sdk)))
       (throw-react-sdk-embedding-disabled)
 
-      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple)))
+      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-modular)))
       (throw-simple-embedding-disabled)
 
       (and is-modular-embedding? jwt)

@@ -20,7 +20,11 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(mu/defn- column-info [query :- ::lib.schema/query {initial-columns :cols}]
+(mu/defn- column-info
+  [query :- ::lib.schema/query
+   {initial-columns :cols} :- [:maybe [:map {:closed true}
+                                       [:cols    {:optional true} ::result-metadata/initial-cols]
+                                       [:columns {:optional true} [:sequential :keyword]]]]]
   (result-metadata/returned-columns query initial-columns))
 
 (deftest ^:parallel col-info-field-ids-test
@@ -196,7 +200,7 @@
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
                :base-type         :type/Text}
-              (first (column-info query {:cols [{:lib/transformation-added-base-type true}]})))))))
+              (first (column-info query {:cols [{}]})))))))
 
 (deftest ^:parallel col-info-combine-grandparent-field-names-test
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -211,7 +215,7 @@
                :visibility-type   :normal
                :display-name      "Grandparent: Parent: Child"
                :base-type         :type/Text}
-              (first (column-info query {:cols [{:lib/transformation-added-base-type false}]})))))))
+              (first (column-info query {:cols [{}]})))))))
 
 (deftest ^:parallel col-info-field-literals-test
   (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
@@ -914,7 +918,7 @@
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (=? [{:base-type                                  :type/DateTimeWithLocalTZ
                   :display-name                               "Created At: Year"
-                  :effective-type                             :type/Integer
+                  :effective-type                             :type/DateTimeWithLocalTZ
                   ;; additional keys in field ref are WRONG
                   ::result-metadata/field-ref                 [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
                                                                                                :temporal-unit :year})]

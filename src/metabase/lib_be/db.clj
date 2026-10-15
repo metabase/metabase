@@ -9,9 +9,9 @@
    [toucan2.core :as t2]))
 
 (mu/defn card-database-ids
-  "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
+  "The `:id` and `:database_id` of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
 
 (mu/defn database
   "The `:metadata/database` with `database-id`, or nil."

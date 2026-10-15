@@ -7,7 +7,8 @@
    [metabase.plugins.init-steps :as init-steps]
    [metabase.plugins.initialize :as initialize]
    [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,6 +91,44 @@
     (is (= [:classpath [:init (:init plugin)]] @calls)
         "the driver placeholder uses the shared idempotent plugin loader")))
 
+(deftest docs-shaped-driver-manifest-registers-test
+  (testing "a manifest with `contact-info:`, a `select` property's `options:`, and keys we don't know registers its driver"
+    (let [driver-name (str "test-docs-driver-" (random-uuid))
+          manifest    (initialize/normalize-manifest
+                       (yaml/parse-string
+                        (str "info:\n"
+                             "  name: Test Docs Driver " driver-name "\n"
+                             "  version: 1.0.0\n"
+                             "  author-url: https://example.com\n"
+                             "contact-info:\n"
+                             "  name: Toucan McBird\n"
+                             "  address: toucan.mcbird@example.com\n"
+                             "driver:\n"
+                             "  name: " driver-name "\n"
+                             "  display-name: Test Docs\n"
+                             "  lazy-load: true\n"
+                             "  abstract: true\n"
+                             "  connection-properties:\n"
+                             "    - host\n"
+                             "    - name: mode\n"
+                             "      display-name: Mode\n"
+                             "      type: select\n"
+                             "      options:\n"
+                             "        - name: Fast\n"
+                             "          value: fast\n"
+                             "        - name: Safe\n"
+                             "          value: safe\n"
+                             "init:\n"
+                             "  - step: load-namespace\n"
+                             "    namespace: example.driver\n")))]
+      (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
+                                  deps/update-unsatisfied-deps!    (constantly [])]
+        (is (= :ok (initialize/register-plugin-with-info! (assoc manifest :add-to-classpath! (constantly nil)))))
+        (is (= {:name "Toucan McBird", :address "toucan.mcbird@example.com"}
+               (driver/contact-info (keyword driver-name))))
+        (is (=? [{:name "mode", :options [{:name "Fast", :value "fast"} {:name "Safe", :value "safe"}]}]
+                (filter #(= "mode" (:name %)) (driver/connection-properties (keyword driver-name)))))))))
+
 (deftest driver-plugin-can-opt-out-of-lazy-loading-test
   (let [calls  (atom [])
         plugin {:info              {:name (str "test eager driver plugin " (random-uuid)) :version "1.0.0"}
@@ -135,11 +174,11 @@
         plugin         (fn [plugin-name marker]
                          {:metabase-plugin-api-version initialize/plugin-api-version
                           :info                       {:name plugin-name :version "1.0.0"}
-                          :init                       [{:step "test" :marker marker}]})]
+                          :init                       [{:step "load-namespace" :namespace (name marker)}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])
-                                init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
-                                                                   (when (= marker :plugin-a)
+                                init-steps/do-init-steps!        (fn [[{:keys [namespace]}]]
+                                                                   (when (= namespace (name :plugin-a))
                                                                      (deliver plugin-a-start true)
                                                                      @finish-plugin-a))]
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
@@ -164,13 +203,14 @@
         plugin        (fn [plugin-name marker]
                         {:metabase-plugin-api-version initialize/plugin-api-version
                          :info                        {:name plugin-name :version "1.0.0"}
-                         :init                        [{:step "test" :marker marker}]})]
+                         :init                        [{:step "load-namespace" :namespace (name marker)}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])
-                                init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
-                                                                   (swap! calls conj marker)
-                                                                   (when (= marker :plugin-a)
-                                                                     (plugins/load-plugin! plugin-b-name)))]
+                                init-steps/do-init-steps!        (fn [[{:keys [namespace]}]]
+                                                                   (let [marker (keyword namespace)]
+                                                                     (swap! calls conj marker)
+                                                                     (when (= marker :plugin-a)
+                                                                       (plugins/load-plugin! plugin-b-name))))]
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-b-name :plugin-b))))
       (is (= :ok (plugins/load-plugin! plugin-a-name))))
@@ -184,7 +224,7 @@
         plugin        (fn [plugin-name marker]
                         {:metabase-plugin-api-version initialize/plugin-api-version
                          :info                        {:name plugin-name :version "1.0.0"}
-                         :init                        [{:step "test" :marker marker}]})]
+                         :init                        [{:step "load-namespace" :namespace (name marker)}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])]
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
@@ -195,8 +235,8 @@
                               #"while it is already loading"
                               (plugins/load-plugin! plugin-a-name)))))
     (testing "a cycle through a second plugin"
-      (mt/with-dynamic-fn-redefs [init-steps/do-init-steps! (fn [[{:keys [marker]}]]
-                                                              (plugins/load-plugin! (if (= marker :plugin-b)
+      (mt/with-dynamic-fn-redefs [init-steps/do-init-steps! (fn [[{:keys [namespace]}]]
+                                                              (plugins/load-plugin! (if (= (keyword namespace) :plugin-b)
                                                                                       plugin-a-name
                                                                                       plugin-b-name)))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo

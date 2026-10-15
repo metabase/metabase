@@ -502,6 +502,19 @@
   (is (= (mt/id :people :name)
          (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
 
+(deftest fk-field-to-pk-field-to-name-field-remapped-field-id-user-override-test
+  (testing "Implicit FK->PK->Name remapping honors a user-set FK target that differs from the sync value"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:semantic_type nil, :fk_target_field_id nil}
+      (testing "sanity check: with the sync FK cleared, there's no remapping"
+        (is (nil? (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
+      (mt/with-temp [:model/FieldUserSettings _ {:field_id               (mt/id :orders :user_id)
+                                                 :semantic_type          :type/FK
+                                                 :semantic_type_set      true
+                                                 :fk_target_field_id     (mt/id :people :id)
+                                                 :fk_target_field_id_set true}]
+        (is (= (mt/id :people :name)
+               (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))))))
+
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"

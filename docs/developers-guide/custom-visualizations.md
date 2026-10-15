@@ -358,15 +358,15 @@ formatValue(row[1], settings.column?.(cols[1]));
 
 For layout math (like fitting labels or sizing axes), use the `renderingContext` prop: `renderingContext.measureText(text, style)` returns `{ width, height }` in pixels, where `style` is `{ size, weight, family }`. The optional `style.family` defaults to the font your Metabase is rendering with, so measurements match what people see; pass it explicitly only when you render text in a different font. That font is also available as `renderingContext.fontFamily` for styling your own markup.
 
-To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
+To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-core-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
+Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("core-brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 
 The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, so bundling images into your plugin is the most reliable approach. The [sandbox](#sandbox-restrictions) blocks scripted network access like `fetch` and `XMLHttpRequest`, but it doesn't stop the browser from loading an `<img>` or CSS `url()`: an external image still loads as long as its domain is allowed by the image-domains Content Security Policy (see below).
 
-Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
+Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/domains.md#restrict-where-images-can-load-from). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
 
 Your `npm` dependencies are bundled in too. You can pull in a charting library (the calendar-heatmap example bundles [ECharts](https://echarts.apache.org/)), but everything ships in that single `dist/index.js`, so your code and its dependencies all count toward the packaged plugin's [size limits](#build-and-package-the-plugin).
 
@@ -395,7 +395,7 @@ The icon shows up in the chart type picker and elsewhere in the Metabase UI.
 </svg>
 ```
 
-- For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-brand)"`.
+- For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-core-brand)"`.
 - Keep the icon simple and monochromatic. Skip gradients and multiple colors.
 
 ## Build and package the plugin

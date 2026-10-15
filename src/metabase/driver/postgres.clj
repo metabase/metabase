@@ -99,6 +99,7 @@
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/testing             true
                               :uploads                        true
                               :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -492,6 +493,10 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
+(defmethod sql.qp/use-ctes-for-stages? :postgres
+  [_driver]
+  true)
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
@@ -537,7 +542,7 @@
 
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
-   expr]
+   expr :- ::h2x/expr]
   ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
   ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
   ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
@@ -609,7 +614,7 @@
 
 (mu/defn- enum-cast
   [database-type :- driver-api/schema.common.non-blank-string
-   raw-value]
+   raw-value      :- ::h2x/expr]
   (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
       (h2x/with-database-type-info database-type)))
 

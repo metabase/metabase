@@ -11,6 +11,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private no-active-run-clause
@@ -127,17 +128,30 @@
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(mu/defn active-job-schedules-for-transforms
-  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
-  [transform-ids :- [:set ::lib.schema.id/transform]]
+(defn- job-schedule-rows
+  "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed
+  by `where`."
+  [where]
   (t2/select :model/TransformTransformTag
              {:select [:ttt.transform_id [:job.schedule :schedule]]
               :from   [[:transform_transform_tag :ttt]]
               :join   [[:transform_job_transform_tag :jtt] [:= :ttt.tag_id :jtt.tag_id]
                        [:transform_job :job] [:= :jtt.job_id :job.id]]
-              :where  [:and
-                       [:in :ttt.transform_id transform-ids]
-                       [:= :job.active true]]}))
+              :where  where}))
+
+(mu/defn active-job-schedules
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for every Transform such a job runs."
+  []
+  (job-schedule-rows [:= :job.active true]))
+
+(mu/defn active-job-schedules-for-transforms
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for `transform-ids`."
+  [transform-ids :- [:set ::lib.schema.id/transform]]
+  (job-schedule-rows [:and
+                      [:in :ttt.transform_id transform-ids]
+                      [:= :job.active true]]))
 
 (mu/defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
@@ -401,9 +415,11 @@
                         :where  [:= :rn [:inline 1]]}))
 
 (mu/defn active-run-for-transform
-  "The active TransformRun of the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/TransformRun :transform_id transform-id :is_active true))
+  "The active TransformRun of the Transform with `transform-id`, or nil. `transform-id` is nil for a
+  transform that hasn't been saved yet, in which case there is no run either."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (when transform-id
+    (t2/select-one :model/TransformRun :transform_id transform-id :is_active true)))
 
 (mu/defn active-run-ids-of-parent
   "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."
@@ -426,6 +442,31 @@
                          [:in :transform_id transform-ids]
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
+
+(mu/defn latest-run-start-times-query
+  "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
+  `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
+  definition of the \"most recent run\" anchor - embedded as the staleness method's join subquery
+  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  [[last-start-times]] for the schedule-freshness check, so the two can't drift apart."
+  ([]
+   (latest-run-start-times-query nil))
+  ([transform-ids :- [:maybe [:or
+                              [:set ::lib.schema.id/transform]
+                              [:sequential ::lib.schema.id/transform]]]]
+   (cond-> ^:allow-subquery {:select   [:transform_id [[:max :start_time] :last_start]]
+                             :from     [:transform_run]
+                             :group-by [:transform_id]}
+     (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
+
+(mu/defn last-start-times
+  "Rows of Transform ID and the latest `start_time` of its runs, any status, restricted to
+  `transform-ids` when non-empty - an empty collection means every Transform (see
+  [[latest-run-start-times-query]])."
+  [transform-ids :- [:maybe [:or
+                             [:set ::lib.schema.id/transform]
+                             [:sequential ::lib.schema.id/transform]]]]
+  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -776,8 +817,8 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table table-id))
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -792,7 +833,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-indexes-for-transforms
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
@@ -802,17 +843,17 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field field-id))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-exists?
   "Whether a Field with `field-id` exists."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id))
+  (t2/exists? :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-field-ids-by-name
   "A map of name to ID for the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true))
+  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-users
   "The active Users with `user-ids`."

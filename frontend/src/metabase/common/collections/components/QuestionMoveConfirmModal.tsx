@@ -4,7 +4,16 @@ import { jt, msgid, ngettext, t } from "ttag";
 import { first } from "underscore";
 
 import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
-import { Button, Flex, List, Loader, Modal, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  List,
+  Loader,
+  Modal,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import type {
   CardId,
   Collection,
@@ -125,54 +134,58 @@ export const QuestionMoveConfirmModal = ({
         return (
           <>
             <Text>{t`This question currently appears in a dashboard that you don't have permission to edit.`}</Text>
-            <Flex justify="end" gap="1rem" mt="1rem">
+            <Modal.Footer>
               <Button onClick={onClose}>{t`Okay`}</Button>
-            </Flex>
+            </Modal.Footer>
           </>
         );
       } else {
         return (
           <>
-            <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
-            <List>
-              {cardsThatAppearInOtherDashboards.map((cd) => {
-                const card = selectedItems.find(
-                  (item) => item.id === cd.card_id && item.model === "card",
-                );
+            <Stack gap="sm">
+              <Text>{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
+              <List>
+                {cardsThatAppearInOtherDashboards.map((cd) => {
+                  const card = selectedItems.find(
+                    (item) => item.id === cd.card_id && item.model === "card",
+                  );
 
-                const dashboardNames = cd.dashboards
-                  .filter((d) => d.id !== destination.id)
-                  .map((d) => d.name);
+                  const dashboardNames = cd.dashboards
+                    .filter((d) => d.id !== destination.id)
+                    .map((d) => d.name);
 
-                return (
-                  <List.Item key={`card-${cd.card_id}`}>
-                    <Text>{jt`${(
-                      <Text key="name" component="span" fw={700}>
-                        {card?.name}
-                      </Text>
-                    )} will be removed from ${(
-                      <DashboardNames key="names" names={dashboardNames} />
-                    )}`}</Text>
-                  </List.Item>
-                );
-              })}
-            </List>
+                  return (
+                    <List.Item key={`card-${cd.card_id}`}>
+                      <Text>{jt`${(
+                        <Text key="name" component="span" fw={700}>
+                          {card?.name}
+                        </Text>
+                      )} will be removed from ${(
+                        <DashboardNames key="names" names={dashboardNames} />
+                      )}`}</Text>
+                    </List.Item>
+                  );
+                })}
+              </List>
+            </Stack>
 
-            <Flex justify="space-between" mt="1rem">
-              <Text c="feedback-negative">{errorMessage}</Text>
-              <Flex justify="end" gap="1rem">
-                <Button variant="subtle" onClick={onClose}>
-                  {t`Cancel`}
-                </Button>
-                <Button variant="filled" onClick={onConfirm}>
-                  {ngettext(
-                    msgid`Move it`,
-                    `Move them`,
-                    cardsThatAppearInOtherDashboards.length,
-                  )}
-                </Button>
-              </Flex>
-            </Flex>
+            <Modal.Footer>
+              {errorMessage && (
+                <Text c="feedback-negative" flex={1}>
+                  {errorMessage}
+                </Text>
+              )}
+              <Button variant="subtle" color="neutral" onClick={onClose}>
+                {t`Cancel`}
+              </Button>
+              <Button variant="filled" onClick={onConfirm}>
+                {ngettext(
+                  msgid`Move it`,
+                  `Move them`,
+                  cardsThatAppearInOtherDashboards.length,
+                )}
+              </Button>
+            </Modal.Footer>
           </>
         );
       }

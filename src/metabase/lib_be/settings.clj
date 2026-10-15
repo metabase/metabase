@@ -56,3 +56,8 @@
                    (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
+
+(defn time-config
+  "The `time-config` map that date and time functions take, built from this instance's settings."
+  []
+  {:start-of-week (start-of-week)})

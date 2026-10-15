@@ -7,11 +7,13 @@
   HoneySQL."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn select-one-by-id
@@ -39,12 +41,12 @@
   "The Table with `table-id`, or nil. Unlike [[select-one-by-id]], a nil `table-id` is answered with nil
   rather than refused — callers reach here with a column value, not with an id an agent supplied."
   [table-id]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn field-types
   "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
   [field-id]
-  (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
+  (t2/select-one [:model/Field :base_type :effective_type] :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn nullable-fields-with-fingerprints
   "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
@@ -53,7 +55,8 @@
   [field-ids]
   (t2/select [:model/Field :id :database_is_nullable :fingerprint]
              :id [:in field-ids]
-             :database_is_nullable true))
+             :database_is_nullable true
+             {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn active-user-exists?
   "Whether an active User with `user-id` exists."
@@ -97,7 +100,7 @@
   "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
   rather than an empty result, so callers guard it."
   [table-ids]
-  (t2/select :model/Table :id [:in table-ids] :active true))
+  (t2/select :model/Table :id [:in table-ids] :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn active-visible-fields-for-tables
   "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
@@ -108,7 +111,8 @@
              :table_id [:in table-ids]
              :active true
              :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
-             {:order-by [[:position :asc] [:id :asc]]}))
+             {:from [(warehouse-schema-overlay/field-query)]
+              :order-by [[:position :asc] [:id :asc]]}))
 
 (defn collections-for-read-check
   "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
@@ -132,6 +136,10 @@
              :archived (boolean archived?)
              {:order-by [[:%lower.name :asc]]}))
 
+;; MCP is a session provider like any other as far as `auth_identity` is concerned; declaring it here is what lets
+;; the AuthIdentity model's before-insert validation accept the rows [[mcp-auth-identity-id!]] creates.
+(auth-identity/derive! :provider/mcp :metabase.auth-identity.provider/provider)
+
 (mu/defn insert-feedback!
   "Insert the McpFeedback `row`, returning the number inserted."
   [row :- ::mcp.schema/mcp-feedback.update]
@@ -146,6 +154,18 @@
   [key-hashed]
   (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
 
+;; An AuthIdentity row rather than a new `core_session` column: `auth_identity.provider` is already the provider of
+;; record for a session, and the `(user_id, provider)` unique constraint makes one row per user the natural key —
+;; `select-or-insert!` leans on that constraint to settle a race between two concurrent MCP handshakes.
+(mu/defn- mcp-auth-identity-id! :- ms/PositiveInt
+  "The id of `user-id`'s `mcp` AuthIdentity, creating it if there isn't one. There is at most one per user."
+  [user-id :- ::lib.schema.id/user]
+  (:id (app-db/select-or-insert!
+        :model/AuthIdentity
+        {:user_id  user-id
+         :provider session/mcp-provider}
+        (constantly {}))))
+
 (mu/defn get-or-create-core-session!
   "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
   exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
@@ -157,9 +177,12 @@
    {:key_hashed key-hashed
     :user_id    user-id}
    (fn []
-     {:id              (session/generate-session-id)
-      :anti_csrf_token nil
-      :created_at      :%now})))
+     {:id               (session/generate-session-id)
+      :anti_csrf_token  nil
+      ;; the `mcp` provider keeps these rows out of the `/api/sessions` list and revoke endpoints, and stops the
+      ;; key from authenticating a request through the session middleware
+      :auth_identity_id (mcp-auth-identity-id! user-id)
+      :created_at       :%now})))
 
 (mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
@@ -238,6 +261,11 @@
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
 
+(defn group-permission-exists?
+  "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
+  [where]
+  (t2/exists? :model/McpGroupPermission {:where where}))
+
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
   database and answers `{}` — `[:in ()]` is not valid SQL.
@@ -261,12 +289,3 @@
   (if (seq user-ids)
     (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
     {}))
-
-(defn existing-transform-tag-ids
-  "The subset of `tag-ids` that name a real TransformTag, as a set. `ids` is expected non-empty — an
-  empty `:in` is a SQL error rather than an empty result, so callers guard it.
-
-  A set rather than the select's own return: `t2/select-fn-set` answers nil when nothing matches,
-  which is exactly the all-unknown case the caller is checking for."
-  [tag-ids]
-  (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids])))

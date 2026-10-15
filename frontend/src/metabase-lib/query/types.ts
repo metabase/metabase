@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type * as ML from "cljs/metabase.lib.js";
 import type {
   Metabase_Lib_Schema_Aggregation_Aggregation,
@@ -46,15 +45,12 @@ import type {
   FilterOperator,
   NumberFilterOperator,
   NumberFilterValue,
-  RelativeDateFilterOptions,
-  RelativeDateFilterUnit,
   SpecificDateFilterOperator,
   StringFilterOperator,
   StringFilterOptions,
   TimeFilterOperator,
 } from "../common";
 
-import type { DefinedClauseName } from "./clauses";
 import type { ColumnExtractionTag } from "./extractions";
 
 export type Query = Metabase_Lib_Schema_Query;

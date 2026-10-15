@@ -2,8 +2,10 @@
   "Application database queries for the revisions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -20,13 +22,38 @@
    id    :- ms/PositiveInt]
   (t2/select-one (t2/table-name model) :id id))
 
+(def revisioned-model-row-schema
+  "The literal registry keyword of the row/update schema of each model revisions are tracked for (a literal
+  keyword, not a `require`, to avoid a dependency cycle with the module that owns each model)."
+  {:model/Card        :metabase.queries.schema/card.update
+   :model/Dashboard   :metabase.dashboards.schema/dashboard.update
+   :model/Document    :metabase.documents.schema/document.update
+   :model/Exploration :metabase.explorations.schema/exploration.update
+   :model/Measure     :metabase.measures.schema/measure.update
+   :model/Segment     :metabase.segments.schema/segment.update
+   :model/Transform   :metabase.transforms.schema/transform.update})
+
+(defn- revision-schema-key [prefix model]
+  (keyword "metabase.revisions.db" (str prefix "." (name model))))
+
+(doseq [[model schema] revisioned-model-row-schema]
+  (mr/register! (revision-schema-key "revisioned-row" model)
+                [:map {:closed true}
+                 [:model [:= model]]
+                 [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]))
+
+(def ^:private RevisionedRow
+  "A `{:model ..., :row ...}` pair naming one of the models revisions are tracked for, the row typed by that
+  model's own row schema plus `:id` (a revisioned row is always a real, previously-selected row)."
+  (into [:multi {:dispatch :model, :lazy-refs true}]
+        (for [model (keys revisioned-model-row-schema)]
+          [model (revision-schema-key "revisioned-row" model)])))
+
 (mu/defn update-entity!
-  "Apply `changes` to the `model` row with `id`, returning the number updated. `changes` is a column map whose shape
-  can't be pinned to one model because `model` varies (see [[entity]])."
-  [model   :- :keyword
-   id      :- ms/PositiveInt
-   changes :- [:map-of :keyword [:maybe :some]]]
-  (t2/update! model id changes))
+  "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
+  [id     :- ms/PositiveInt
+   entity :- RevisionedRow]
+  (t2/update! (:model entity) id (:row entity)))
 
 (mu/defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
@@ -156,12 +183,70 @@
    revision-id :- ms/PositiveInt]
   (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
 
+(def ^:private revision-object-extra-keys
+  "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
+  `:object` beyond their own row schema."
+  {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.update
+                                                            [:map {:closed true}
+                                                             [:id     {:optional true} ::lib.schema.id/dashcard]
+                                                             [:series {:optional true} [:sequential ::lib.schema.id/card]]]]]]
+                     [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.update
+                                                            [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]]})
+
+(def revisioned-model-select-schema
+  "The literal registry keyword of the row schema (as selected, hydrated keys included) of each model revisions are
+  tracked for."
+  {:model/Card        :metabase.queries.schema/card
+   :model/Dashboard   :metabase.dashboards.schema/dashboard
+   :model/Document    :metabase.documents.schema/document
+   :model/Exploration :metabase.explorations.schema/exploration
+   :model/Measure     :metabase.measures.schema/measure
+   :model/Segment     :metabase.segments.schema/segment
+   :model/Transform   :metabase.transforms.schema/transform})
+
+(mr/def ::unregistered-model-object
+  "The revision `:object` of a model outside [[revisioned-model-row-schema]] (a test double), whose keys that model's own `serialize-instance` owns."
+  [:map {:closed false, ::mr/deliberately-open true}])
+
+(mr/def ::stored-revision-object
+  "A revision `:object` as stored, whose keys the Metabase version that recorded it owns (fields may since have been dropped)."
+  [:map {:closed false, ::mr/deliberately-open true}])
+
+(doseq [[model schema] revisioned-model-select-schema]
+  (mr/register! (revision-schema-key "revision-row" model)
+                [:map {:closed true}
+                 [:model        [:= (name model)]]
+                 [:model_id     ms/PositiveInt]
+                 [:user_id      ::lib.schema.id/user]
+                 [:object       [:merge schema
+                                 (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
+                                       (get revision-object-extra-keys model))]]
+                 [:is_creation  :boolean]
+                 [:is_reversion :boolean]
+                 [:message      {:optional true} [:maybe :string]]]))
+
 (def ^:private RevisionRow
+  "A Revision row, `:object` typed by the row schema of the model named `:model` (a string, e.g. \"Card\"), plus
+  `:id` (a revisioned object is always a real, previously-selected row)."
+  (conj (into [:multi {:dispatch :model, :lazy-refs true}]
+              (map (fn [model] [(name model) (revision-schema-key "revision-row" model)]))
+              (keys revisioned-model-row-schema))
+        [::mc/default [:map {:closed true}
+                       [:model        :string]
+                       [:model_id     ms/PositiveInt]
+                       [:user_id      ::lib.schema.id/user]
+                       [:object       ::unregistered-model-object]
+                       [:is_creation  :boolean]
+                       [:is_reversion :boolean]
+                       [:message      {:optional true} [:maybe :string]]]]))
+
+(def ^:private RevertedRevisionRow
+  "A Revision row recording a revert to the stored `:object` of an earlier Revision."
   [:map {:closed true}
-   [:model        [:or :keyword :string]]
+   [:model        :string]
    [:model_id     ms/PositiveInt]
    [:user_id      ::lib.schema.id/user]
-   [:object       :map]
+   [:object       ::stored-revision-object]
    [:is_creation  :boolean]
    [:is_reversion :boolean]
    [:message      {:optional true} [:maybe :string]]])
@@ -173,7 +258,7 @@
 
 (mu/defn insert-revision-returning!
   "Insert the Revision `row` and return the inserted instance."
-  [row :- RevisionRow]
+  [row :- RevertedRevisionRow]
   (t2/insert-returning-instance! :model/Revision row))
 
 (mu/defn latest-editors-reducible

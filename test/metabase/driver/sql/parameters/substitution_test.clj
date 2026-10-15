@@ -44,9 +44,10 @@
               :prepared-statement-args ["Doohickey"]}
              (#'sql.params.substitution/field-filter->replacement-snippet-info
               :h2
-              {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
-               :value {:type  :string/=
-                       :value ["Doohickey"]}}))))))
+              (lib/parsed-field-filter-param
+               (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
+               {:type  :string/=
+                :value ["Doohickey"]})))))))
 
 (deftest ^:parallel field-filter-nil-schema-snippet-test
   (testing "field-filter snippet omits schema when the field's table has no schema (#29786)"
@@ -58,9 +59,10 @@
                 :prepared-statement-args ["Doohickey"]}
                (#'sql.params.substitution/field-filter->replacement-snippet-info
                 :h2
-                {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
-                 :value {:type  :string/=
-                         :value ["Doohickey"]}})))))))
+                (lib/parsed-field-filter-param
+                 (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
+                 {:type  :string/=
+                  :value ["Doohickey"]}))))))))
 
 (deftest ^:parallel field-filter->replacement-snippet-info-test-2
   (testing "Compound filters should be wrapped in parens"

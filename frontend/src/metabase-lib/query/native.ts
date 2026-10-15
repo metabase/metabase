@@ -40,9 +40,9 @@ export function withTemplateTags(query: Query, tags: TemplateTags): Query {
   return ML.with_template_tags(query, tags);
 }
 
-export function templateTags(query: Query): TemplateTags | null {
+export function templateTags(query: Query): TemplateTags {
   const tags: unknown = ML.template_tags(query);
-  return isTemplateTags(tags) ? tags : null;
+  return isTemplateTags(tags) ? tags : {};
 }
 
 function isTemplateTags(tags: unknown): tags is TemplateTags {

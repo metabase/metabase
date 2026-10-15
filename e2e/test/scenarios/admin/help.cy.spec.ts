@@ -24,27 +24,6 @@ describe("scenarios > admin > help", { tags: "@OSS" }, () => {
   });
 });
 
-describe("scenarios > admin > help (EE)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  it("should link `Get Help` to help-premium", () => {
-    cy.visit("/admin/help");
-
-    cy.findByTestId("admin-layout-content")
-      .findByText("Get help")
-      .parents("a")
-      .should("have.prop", "href")
-      .and(
-        "match",
-        /^https:\/\/www\.metabase\.com\/help-premium\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v.+&diag=%7B.+%7D$/,
-      );
-  });
-});
-
 describe("scenarios > admin > help > helping hand", () => {
   const executeCreateGrantAccessFlow = (
     durationOption?: "96 hours" | "48 hours" | "24 hours",
@@ -89,13 +68,23 @@ describe("scenarios > admin > help > helping hand", () => {
     H.mockSessionPropertiesTokenFeatures({ "support-users": true });
   });
 
-  it("should only display the `Helping hand` section for cloud customers", () => {
+  it("should only display the `Helping hand` section for cloud customers, and link `Get help` to help-premium on paid plans", () => {
     cy.visit("/admin/help");
     cy.findByRole("heading", { name: "Helping hand" }).should("not.exist");
 
     H.activateToken("pro-self-hosted");
     cy.reload();
     cy.findByRole("heading", { name: "Helping hand" }).should("not.exist");
+
+    cy.log("should link `Get help` to help-premium");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Get help")
+      .parents("a")
+      .should("have.prop", "href")
+      .and(
+        "match",
+        /^https:\/\/www\.metabase\.com\/help-premium\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v.+&diag=%7B.+%7D$/,
+      );
 
     H.activateToken("starter");
     cy.reload();
@@ -104,20 +93,6 @@ describe("scenarios > admin > help > helping hand", () => {
     H.activateToken("pro-cloud");
     cy.reload();
     cy.findByRole("heading", { name: "Helping hand" }).should("be.visible");
-  });
-
-  it("should allow creating a new access grant", () => {
-    H.activateToken("pro-cloud");
-    cy.visit("/admin/help");
-
-    cy.findByTestId("access-grant-list-table").should("not.exist");
-
-    executeCreateGrantAccessFlow();
-
-    cy.findByTestId("access-grant-list-table").should("be.visible");
-    cy.findByTestId("access-grant-list-table").within(() => {
-      cy.get("tbody").findAllByRole("row").should("have.length", 1);
-    });
   });
 
   it("allow creating an access grant with a ticket number and custom notes", () => {
@@ -136,26 +111,28 @@ describe("scenarios > admin > help > helping hand", () => {
     });
   });
 
-  it("should disallow more than one active access grant", () => {
+  it("should allow creating a new access grant, disallow more than one active access grant, and revoke it", () => {
     H.activateToken("pro-cloud");
     cy.visit("/admin/help");
 
+    cy.findByTestId("access-grant-list-table").should("not.exist");
+
     executeCreateGrantAccessFlow();
 
+    cy.log("should allow creating a new access grant");
+    cy.findByTestId("access-grant-list-table").should("be.visible");
+    cy.findByTestId("access-grant-list-table").within(() => {
+      cy.get("tbody").findAllByRole("row").should("have.length", 1);
+    });
+
+    cy.log("should disallow more than one active access grant");
     cy.button("Request a helping hand").should("be.disabled");
     cy.button("Request a helping hand")
       .siblings()
       .findByText("You can only have one active request at a time")
       .should("be.visible");
-  });
 
-  it("can revoke an access grant", () => {
-    H.activateToken("pro-cloud");
-    cy.visit("/admin/help");
-
-    executeCreateGrantAccessFlow();
-    cy.button("Request a helping hand").should("be.disabled");
-
+    cy.log("can revoke an access grant");
     H.undoToast().icon("close").click();
 
     cy.findByTestId("access-grant-list-table")

@@ -226,6 +226,9 @@
   (testing "Scheduling new runs while the backfill job is executing keeps the trigger count ≤ 1"
     (let [job-started (promise)
           can-finish  (promise)]
+      ;; the job body runs on a Quartz worker thread, which does not inherit *local-redefs* —
+      ;; only a root swap is visible there
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [dependencies.backfill/backfill-dependencies!
                     (fn []
                       (deliver job-started true)
@@ -482,7 +485,7 @@
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
             (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))
@@ -502,18 +505,18 @@
            which is what exhausted the heap on instances with large warehouses."
     (backfill-all-existing-entities!)
     (let [providers (atom [])
-          calculate-deps deps.calculation/calculate-deps
+          calculate-deps (mt/original-fn #'deps.calculation/calculate-deps)
           native-card (fn [sql] {:database (mt/id) :type :native :native {:query sql}})]
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
           (mark-stale! :card card1-id)
           (mark-stale! :card card2-id)
-          (with-redefs [deps.calculation/calculate-deps
-                        (fn [entity-type entity]
-                          (when-let [mp (:lib/metadata (:dataset_query entity))]
-                            (swap! providers conj mp))
-                          (calculate-deps entity-type entity))]
+          (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps
+                                      (fn [entity-type entity]
+                                        (when-let [mp (:lib/metadata (:dataset_query entity))]
+                                          (swap! providers conj mp))
+                                        (calculate-deps entity-type entity))]
             (backfill-dependencies-single-trigger!))
           (testing "both cards were analyzed, so the assertion below is meaningful"
             (is (<= 2 (count @providers))))
@@ -531,7 +534,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (mark-stale! :card card-id)
-        (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (Error. "simulated fatal error")))]
+        (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (Error. "simulated fatal error")))]
           (testing "the Error propagates instead of being swallowed, failing the job"
             (is (thrown-with-msg? Error #"simulated fatal error"
                                   (backfill-dependencies-single-trigger!)))))
@@ -562,7 +565,7 @@
                       :terminal false :next_retry_at [:not= nil])
           "test setup: the card must be in retry backoff")
       (let [actionable? (fn [licence]
-                          (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
+                          (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
                             (#'dependencies.backfill/has-pending-retries?)))]
         (testing "licensed: the pending retry keeps the job scheduled"
           (is (true? (actionable? true))))
@@ -582,7 +585,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
             "test setup: the card must have no status row, which is what makes it eligible")
-        (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
+        (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
           (backfill-dependencies-single-trigger!))
         (testing "the failure is recorded, so the entity backs off instead of being reselected unchanged"
           (let [{:keys [fail_count next_retry_at]}
@@ -597,9 +600,9 @@
            task/init! recovers on boot, but survivable Errors -- StackOverflowError from deeply nested SQL, an
            AssertionError, a LinkageError -- leave a live process with a dead job."
     (let [scheduled (atom [])]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
-                    dependencies.backfill/backfill-dependencies!
-                    (fn [& _] (throw (Error. "simulated fatal error")))]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
+                                  dependencies.backfill/backfill-dependencies!
+                                  (fn [& _] (throw (Error. "simulated fatal error")))]
         (testing "the Error still propagates"
           (is (thrown-with-msg? Error #"simulated fatal error"
                                 (#'dependencies.backfill/run-and-reschedule! nil))))

@@ -7,6 +7,7 @@
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -209,6 +210,7 @@
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with version mismatches are included, with soft `warnings` attached.
    Dev-only plugins are excluded when dev mode is disabled."
+  {:scope api-scope/data-app}
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
         plugins   (custom-viz-plugin.db/active-enabled-non-blob-plugins)]
@@ -263,17 +265,14 @@
         tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
-            validated    (cache/validate-bundle! bundle-bytes)
-            new-name     (get-in validated [:manifest :name])]
-        (api/check-400 (= new-name (:identifier existing))
-                       (format "Bundle manifest \"name\" (%s) does not match the plugin's identifier (%s)."
-                               new-name (:identifier existing)))
-        (let [result (cache/save-bundle! existing validated)]
-          (events/publish-event! :event/custom-viz-plugin-update
-                                 {:object          result
-                                  :previous-object existing
-                                  :user-id         api/*current-user-id*})
-          (plugin->response (dissoc result :bundle))))
+            validated    (->> (cache/validate-bundle! bundle-bytes)
+                              (cache/check-bundle-identifier! (:identifier existing)))
+            result       (cache/save-bundle! existing validated)]
+        (events/publish-event! :event/custom-viz-plugin-update
+                               {:object          result
+                                :previous-object existing
+                                :user-id         api/*current-user-id*})
+        (plugin->response (dissoc result :bundle)))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
 
@@ -281,6 +280,7 @@
   "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from `dev_bundle_url` if set."
+  {:scope api-scope/data-app}
   [{:keys [id], :as _route-params} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body
@@ -313,6 +313,7 @@
    and must match the manifest `icon`. Only the icon is served — plugins do not
    ship arbitrary assets.
    In dev mode, proxies from the dev base URL if set."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
    _body

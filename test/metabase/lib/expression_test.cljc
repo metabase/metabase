@@ -119,7 +119,7 @@
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
-                {}
+                {:lib/uuid (str (random-uuid))}
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
@@ -130,7 +130,7 @@
 
 (deftest ^:parallel datetime-subtract-names-test
   (let [clause [:datetime-subtract
-                {}
+                {:lib/uuid (str (random-uuid))}
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 1
                 :day]]
@@ -154,7 +154,7 @@
            (lib/column-name query -1 expr)))))
 
 (deftest ^:parallel coalesce-names-test
-  (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
+  (let [clause [:coalesce {:lib/uuid (str (random-uuid))} (lib.tu/field-clause :venues :name) "<Venue>"]]
     (is (= "NAME"
            (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Name"
@@ -541,13 +541,13 @@
         (is (= (count exprs) (count expressions)))
         (is (some? c-pos))
         (testing "no circularity problem"
-          (are [mode expr]
-               (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
-            :expression  (get exprs "non-circular-c")
+          (are [mode expr position]
+               (nil? (lib.expression/diagnose-expression query 0 mode expr position))
+            :expression  (get exprs "non-circular-c")                c-pos
             :aggregation (-> (get exprs "circular-c")
                              (update 2 lib/sum)
-                             (assoc 4 (lib/count)))
-            :filter      (assoc (get exprs "circular-c") 0 :=)))
+                             (assoc 4 (lib/count)))                  nil
+            :filter      (assoc (get exprs "circular-c") 0 :=)      c-pos))
         (testing "circular definition"
           (is (=? {:message "Cycle detected: c → x → b → c"}
                   (lib.expression/diagnose-expression query 0 :expression

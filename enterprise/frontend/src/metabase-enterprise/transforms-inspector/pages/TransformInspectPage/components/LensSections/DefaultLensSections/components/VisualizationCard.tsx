@@ -61,7 +61,9 @@ export const VisualizationCard = memo(
     const isLoading = isMetadataLoading || isDataLoading;
 
     const questionUrl = rawSeries?.[0]?.card
-      ? Urls.serializedQuestion(rawSeries[0].card)
+      ? Urls.serializedQuestion(rawSeries[0].card, {
+          includeDisplayIsLocked: true,
+        })
       : undefined;
 
     const getHref = questionUrl ? () => questionUrl : undefined;

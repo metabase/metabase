@@ -213,7 +213,7 @@ function CancelationSection({ run }: CancelationSectionProps) {
       <Group justify="flex-end">
         <Button
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           disabled={isCanceling}
           onClick={openModal}
         >

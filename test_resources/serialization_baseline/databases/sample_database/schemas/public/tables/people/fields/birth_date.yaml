@@ -9,17 +9,8 @@ table_id:
 database_type: DATE
 base_type: type/Date
 effective_type: type/Date
-dimensions: []
 position: 9
-custom_position: 0
 database_position: 9
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: BIRTH_DATE
-  model: Field
+- model: Field
 database_indexed: false

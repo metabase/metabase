@@ -21,7 +21,7 @@ export const DatabaseConnectionSectionField = ({
   }, [value, setValue]);
 
   return (
-    <FormField>
+    <FormField mb="lg">
       <Box
         bg="background_page-tertiary"
         p="xl"

@@ -55,6 +55,7 @@
   (let [defaults {:timestamp (t/zoned-date-time)}]
     (merge defaults log-entry)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *recent-views-stored-per-user-per-model*
   "The number of recently viewed items to keep per user per model. This is used to keep the most recent views of each
   model type in [[rv-models]]."
@@ -508,12 +509,14 @@
 
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
   sequence, so there's no need to do it twice."
-  ([user-id] (get-recents user-id [:views :selections]))
-  ([user-id context :- [:sequential [:enum :views :selections]]]
+  ([user-id :- [:maybe ms/PositiveInt]]
+   (get-recents user-id [:views :selections]))
+  ([user-id :- [:maybe ms/PositiveInt]
+    context :- [:sequential [:enum :views :selections]]]
    (get-recents user-id context {}))
-  ([user-id
+  ([user-id :- [:maybe ms/PositiveInt]
     context :- [:sequential [:enum :views :selections]]
-    options :- [:map
+    options :- [:map {:closed true}
                 [:include-metadata? {:optional true} [:maybe :boolean]]
                 [:models {:optional true} [:maybe [:sequential (into [:enum] rv-models)]]]]]
    (let [models (:models options)

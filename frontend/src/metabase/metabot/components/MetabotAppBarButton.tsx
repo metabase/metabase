@@ -49,8 +49,8 @@ export function MetabotAppBarButton({
         opacity={isFullPageMetabot ? 0.5 : undefined}
         bd="1px solid var(--mb-color-border-neutral)"
         p="sm"
-        h="2.25rem"
-        w="2.25rem"
+        h="2rem"
+        w="2rem"
         aria-label={label}
         onClick={handleClick}
         {...rest}

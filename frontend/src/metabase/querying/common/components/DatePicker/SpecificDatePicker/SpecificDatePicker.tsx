@@ -80,7 +80,7 @@ export function SpecificDatePicker({
 
   return (
     <Tabs value={value.operator} onChange={handleTabChange}>
-      <Flex>
+      <Flex align="center">
         <PopoverBackButton
           px="sm"
           h="var(--tab-height)"

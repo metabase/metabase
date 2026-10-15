@@ -10,6 +10,7 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -41,17 +42,19 @@
     :create (doseq [k [:id :archived]]
               (when (contains? args k)
                 (common/throw-teaching-error
-                 (format "`%s` applies to method \"update\" only — remove it from this create call." (name k)))))
+                 (message/msg ["%s applies to method \"update\" only — remove it from this create call."]
+                              (name k)))))
     :update (do
               (when (contains? args :namespace)
                 (common/throw-teaching-error
-                 (str "`namespace` applies to method \"create\" only — a collection cannot move between "
-                      "namespaces, which are independent hierarchies.")))
+                 (message/msg [(str "\"namespace\" applies to method \"create\" only — a collection "
+                                    "cannot move between namespaces, which are independent hierarchies.")])))
               (when (and (true? (:archived args)) (contains? args :parent_id))
                 (common/throw-teaching-error
-                 (str "`archived: true` and `parent_id` can't be combined — archiving moves the collection "
-                      "to the trash, so the parent_id move never happens. Move first, then archive; or "
-                      "archive now and pass `parent_id` on a later `archived: false` restore call."))))))
+                 (message/msg [(str "`archived: true` and \"parent_id\" can't be combined — archiving "
+                                    "moves the collection to the trash, so the parent_id move never "
+                                    "happens. Move first, then archive; or archive now and pass "
+                                    "\"parent_id\" on a later `archived: false` restore call.")]))))))
 
 (defn- check-move-out-of-trash!
   "Reject a `parent_id` move of a trashed `collection` that doesn't say what to do about the trash.
@@ -62,9 +65,9 @@
              (contains? args :parent_id)
              (not (contains? args :archived)))
     (common/throw-teaching-error
-     (str "This collection is in the trash, and `parent_id` on its own would move it without taking it "
-          "out — nothing would appear under the new parent. Pass `archived: false` alongside `parent_id` "
-          "to restore it into the new parent."))))
+     (message/msg [(str "This collection is in the trash, and \"parent_id\" on its own would move it "
+                        "without taking it out — nothing would appear under the new parent. Pass "
+                        "`archived: false` alongside \"parent_id\" to restore it into the new parent.")]))))
 
 (defn- resolve-existing
   "Resolve an update's `id` (numeric or entity_id) to the collection behind its read check.
@@ -77,9 +80,8 @@
 (defn- create!
   [{:keys [description parent_id authority_level], coll-name :name, coll-namespace :namespace, :as args}]
   (check-method-args! :create args)
-  ;; A namespaced collection ("snippets", "transforms") is its own hierarchy, and personal
-  ;; collections only exist in the default one — so only a normal collection can default into the
-  ;; caller's.
+  ;; A namespaced collection ("snippets") is its own hierarchy, and personal collections only exist in the default
+  ;; one — so only a normal collection can default into the caller's.
   (let [parent-id (if coll-namespace
                     (v2.resolve/resolve-collection-id parent_id)
                     (v2.resolve/resolve-collection-id-or-personal parent_id))]
@@ -135,10 +137,9 @@
                                          "delete. Omit to leave the collection's trashed state alone.")}]]]
    [:namespace {:optional true}
     [:maybe [:enum {:description (str "Create only: puts the collection in a separate hierarchy instead of the "
-                                      "normal one. \"snippets\" holds SQL snippet folders; \"transforms\" holds "
-                                      "transform folders, the ones transform_write's `collection_id` names. Omit "
-                                      "for a normal collection.")}
-             "snippets" "transforms"]]]
+                                      "normal one. \"snippets\" holds SQL snippet folders. Omit for a normal "
+                                      "collection.")}
+             "snippets"]]]
    [:authority_level {:optional true}
     [:maybe [:enum {:description (str "Marks the collection Official. Requires an admin on an instance with the "
                                       "Official Collections feature. To make a collection unofficial again, name "
@@ -160,19 +161,19 @@
   restores it — there is no hard delete, and omitting archived leaves the trashed state alone. To move something out of
   the trash, pass archived: false together with parent_id; parent_id on its own would leave it trashed. namespace is
   create-only
-  (\"snippets\" for SQL snippet folders, \"transforms\" for the transform folders transform_write files transforms
-  into); collections cannot move between namespaces. authority_level \"official\"
+  (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
   marks the collection Official and needs an admin on an instance with that feature. description and authority_level
   can be set, rewritten, and cleared — to erase one, name it in clear (clear: [\"description\"]); sending null does
   not work, because unset properties are stripped before the tool sees them. Personal collections
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
   Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
-  {:name        "collection_write"
-   :scope       metabot.scope/agent-content-write
+  {:name           "collection_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the collection and everything under it, so this is not the
    ;; additive-only update `destructiveHint false` would assert.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        collection-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           collection-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write collection-write-entry args)
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]

@@ -6,6 +6,7 @@ import type {
   OnChangeCardAndRun,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { getGoalLineHoverData } from "metabase/visualizations/visualizations/CartesianChart/events";
 import {
   type BoxPlotChartModel,
   type ComputedVisualizationSettings,
@@ -15,6 +16,7 @@ import {
   extractSeriesDataKeyFromName,
   getBoxPlotClickData,
   isBoxPlotSeriesEvent,
+  isGoalLineSeriesId,
 } from "metabase/viz-core";
 import type { CardId, RawSeries } from "metabase-types/api";
 
@@ -156,6 +158,19 @@ export function useBoxPlotEvents({
         eventName: "mousemove",
         query: "series",
         handler: (event: EChartsSeriesMouseEvent) => {
+          if (isGoalLineSeriesId(event.seriesId)) {
+            chartRef.current?.getZr().setCursorStyle("default");
+
+            const eventData = getGoalLineHoverData(
+              settings,
+              event.event.event.target,
+              chartModel.leftAxisModel?.formatGoal,
+            );
+
+            onHoverChange?.(eventData);
+            return;
+          }
+
           if (!isBoxPlotSeriesEvent(event)) {
             return;
           }
@@ -173,7 +188,7 @@ export function useBoxPlotEvents({
         handler: handleClick,
       },
     ],
-    [handleClick, chartModel, hovered, onHoverChange],
+    [chartRef, handleClick, chartModel, hovered, onHoverChange, settings],
   );
 
   return { eventHandlers };

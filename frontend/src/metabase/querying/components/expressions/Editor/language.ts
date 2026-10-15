@@ -8,7 +8,7 @@ import {
 } from "metabase/querying/expressions";
 import { parser } from "metabase/querying/expressions/tokenizer/parser";
 import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { hasActiveSnippet } from "./utils";
@@ -24,7 +24,7 @@ type LintOptions = {
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
-  metadata: Metadata;
+  database: Pick<Database, "features"> | undefined;
 };
 
 const lint = (options: LintOptions) =>

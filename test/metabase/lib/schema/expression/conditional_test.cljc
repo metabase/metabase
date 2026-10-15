@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.conditional :as expression.conditional]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.test-metadata :as meta]
    [metabase.test-runner.assert-exprs.malli-equals]
    [metabase.util :as u]
@@ -17,7 +19,7 @@
          (#'expression.conditional/best-return-type :type/Integer ::expression/type.unknown))))
 
 (mu/defn- case-expr :- :mbql.clause/case
-  [& args]
+  [& args :- [:* ::expression/expression]]
   [:case
    {:lib/uuid (str (random-uuid))}
    (mapv (fn [arg]
@@ -26,7 +28,8 @@
          args)])
 
 (mu/defn- value-expr :- :mbql.clause/value
-  [effective-type x]
+  [effective-type :- ::lib.schema.common/base-type
+   x               :- ::lib.schema.literal/literal]
   [:value {:lib/uuid       (str (random-uuid))
            :effective-type effective-type
            :base-type      effective-type}
@@ -125,7 +128,8 @@
                                         "bar"]]}]})))
 
 (mu/defn- coalesce-expr :- :mbql.clause/coalesce
-  [not-nil-expr nil-expr]
+  [not-nil-expr :- ::expression/expression
+   nil-expr     :- ::expression/expression]
   [:coalesce
    {:lib/uuid (str (random-uuid))}
    not-nil-expr

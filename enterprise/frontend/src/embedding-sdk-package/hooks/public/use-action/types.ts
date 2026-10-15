@@ -287,8 +287,20 @@ export type UseActionResult<
   reset: () => void;
 };
 
+/**
+ * Marks an action as declared through `defineAction`. A data app's `useAction`
+ * accepts only marked definitions, so an inline definition object is a
+ * compile-time error.
+ *
+ * @category useAction
+ */
+export declare class DefinedAction {
+  private readonly definedWithDefineAction: true;
+}
+
+/** The SDK's `useAction`: a definition object, or an id. */
 export interface UseAction {
-  /** A `defineAction(...)` export, which types `execute` and `result` itself. */
+  /** A definition, which types `execute` and `result` itself. */
   <TDefinition extends { action: ActionSchema }>(
     action: TDefinition | null,
   ): UseActionResult<
@@ -303,4 +315,16 @@ export interface UseAction {
   >(
     actionId: SdkActionId | null,
   ): UseActionResult<TParameters, TKind>;
+}
+
+/**
+ * A data app's `useAction`: only a `defineAction(...)` export from `actions/`.
+ */
+export interface UseDataAppAction {
+  <TDefinition extends DefinedAction & { action: ActionSchema }>(
+    action: TDefinition | null,
+  ): UseActionResult<
+    ActionParametersFromDataAppSchema<TDefinition["action"]>,
+    ActionKindFromDataAppSchema<TDefinition["action"]>
+  >;
 }

@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupParameterValuesEndpoints,
@@ -8,7 +9,6 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -56,7 +56,7 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
       databases: [sampleDatabase, writableDatabase],
     }),
   });
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const question = new Question(card, metadata);
 
   setupDatabasesEndpoints([sampleDatabase, writableDatabase]);

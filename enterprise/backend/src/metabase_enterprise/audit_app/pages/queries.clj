@@ -5,7 +5,8 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.core :as audit]))
+   [metabase.audit-app.core :as audit]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]))
 
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
@@ -75,7 +76,7 @@
                     :from      [[:report_card :card]]
                     :left-join [[:collection :coll]                [:= :card.collection_id :coll.id]
                                 [:metabase_database :db]           [:= :card.database_id :db.id]
-                                [:metabase_table :t]               [:= :card.table_id :t.id]
+                                (warehouse-schema-overlay/table-query {:alias :t}) [:= :card.table_id :t.id]
                                 [:core_user :u]                    [:= :card.creator_id :u.id]
                                 :latest_qe                         [:= :card.id :latest_qe.card_id]
                                 :query_runs                        [:= :card.id :query_runs.card_id]

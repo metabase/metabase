@@ -22,9 +22,14 @@ export function FilterPickerFooter({
   children,
 }: FilterPickerFooterProps) {
   return (
-    <Flex className={S.FilterFooterRoot} p="lg" justify="space-between">
+    <Flex
+      className={S.FilterFooterRoot}
+      p="lg"
+      justify="space-between"
+      align="center"
+    >
       {onClear ? (
-        <Button variant="subtle" c="text-secondary" onClick={onClear}>
+        <Button variant="transparent" size="compact-md" onClick={onClear}>
           {t`Clear`}
         </Button>
       ) : isValidElement(children) ? (

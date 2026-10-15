@@ -1,8 +1,10 @@
 import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 import {
+  type DefinedQuery,
   type MetabaseQueryOptions,
   aggregations,
   breakout,
+  defineQuery,
   filter,
   orderBy,
   useMetabaseQuery,
@@ -55,6 +57,18 @@ const describeResult = (
   data &&
   `[${data.columns.map((column) => column.name).join(",")}] ${JSON.stringify(data.rawRows)}`;
 
+type SourceQuery = MetabaseQueryOptions<undefined> & DefinedQuery;
+
+const asCardQuery = (query: {
+  source: { type: "card"; id: number };
+  [clause: string]: unknown;
+}) =>
+  // The public query type admits only a table source until saved-question
+  // sources ship, while the runtime this test exercises also accepts a card.
+  // The cast keeps the card variant on the package API instead of reaching
+  // the hook underneath.
+  query as unknown as SourceQuery;
+
 /**
  * Runs the same clauses against a table source and against a card of that table,
  * and reports whether they agree — so an assertion never has to encode
@@ -64,8 +78,8 @@ function QueryComparison({
   tableQuery,
   cardQuery,
 }: {
-  tableQuery: MetabaseQueryOptions<undefined>;
-  cardQuery: MetabaseQueryOptions<undefined>;
+  tableQuery: SourceQuery;
+  cardQuery: SourceQuery;
 }) {
   const fromTable = useMetabaseQuery(tableQuery);
   const fromCard = useMetabaseQuery(cardQuery);
@@ -115,8 +129,8 @@ describe("scenarios > embedding-sdk > query sources", () => {
 
   const compare = (
     build: (source: { type: "card"; id: number }) => {
-      tableQuery: MetabaseQueryOptions<undefined>;
-      cardQuery: MetabaseQueryOptions<undefined>;
+      tableQuery: SourceQuery;
+      cardQuery: SourceQuery;
     },
   ) =>
     cy.get<{ type: "card"; id: number }>("@cardSource").then((cardSource) => {
@@ -142,56 +156,59 @@ describe("scenarios > embedding-sdk > query sources", () => {
 
   it("returns the same rows from a table and from a card of that table", () => {
     compare((source) => ({
-      tableQuery: { source: tableSource, aggregations: [aggregations.count()] },
-      cardQuery: { source, aggregations: [aggregations.count()] },
+      tableQuery: defineQuery({
+        source: tableSource,
+        aggregations: [aggregations.count()],
+      }),
+      cardQuery: asCardQuery({ source, aggregations: [aggregations.count()] }),
     }));
   });
 
   it("applies filters the same way on either source", () => {
     compare((source) => ({
-      tableQuery: {
+      tableQuery: defineQuery({
         source: tableSource,
         filters: [filter(totalField, ">", 50)],
         aggregations: [aggregations.count()],
-      },
-      cardQuery: {
+      }),
+      cardQuery: asCardQuery({
         source,
         filters: [filter(totalColumn, ">", 50)],
         aggregations: [aggregations.count()],
-      },
+      }),
     }));
   });
 
   it("applies aggregations the same way on either source", () => {
     compare((source) => ({
-      tableQuery: {
+      tableQuery: defineQuery({
         source: tableSource,
         aggregations: [aggregations.count(), aggregations.sum(totalField)],
-      },
-      cardQuery: {
+      }),
+      cardQuery: asCardQuery({
         source,
         aggregations: [aggregations.count(), aggregations.sum(totalColumn)],
-      },
+      }),
     }));
   });
 
   // The combinators the query builder exposes, on both source kinds at once.
   it("applies breakouts and orderBys the same way on either source", () => {
     compare((source) => ({
-      tableQuery: {
+      tableQuery: defineQuery({
         source: tableSource,
         filters: [filter(totalField, ">", 50)],
         aggregations: [aggregations.count()],
         breakouts: [breakout(productField)],
         orderBys: [orderBy(productField, "asc")],
-      },
-      cardQuery: {
+      }),
+      cardQuery: asCardQuery({
         source,
         filters: [filter(totalColumn, ">", 50)],
         aggregations: [aggregations.count()],
         breakouts: [breakout(productColumn)],
         orderBys: [orderBy(productColumn, "asc")],
-      },
+      }),
     }));
   });
 });

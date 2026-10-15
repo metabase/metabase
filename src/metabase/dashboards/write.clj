@@ -16,9 +16,11 @@
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
@@ -71,7 +73,7 @@
   Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
   [{:keys [name description parameters cache_ttl collection_id collection_position
            width auto_apply_filters]}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
@@ -96,7 +98,7 @@
         dash           (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (dashboards.db/insert-dashboard! dashboard-data))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
@@ -109,14 +111,15 @@
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [dash-before-update dash-updates]
-  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
-            (api/column-will-change? :embedding_type dash-before-update dash-updates)
-            (api/column-will-change? :embedding_params dash-before-update dash-updates))
+  (when (or (api/column-will-change? (:enable_embedding dash-before-update) (get dash-updates :enable_embedding ::api/not-provided))
+            (api/column-will-change? (:embedding_type dash-before-update) (get dash-updates :embedding_type ::api/not-provided))
+            (api/column-will-change? (:embedding_params dash-before-update) (get dash-updates :embedding_params ::api/not-provided)))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
-  [target query]
+  [target :- ::lib.schema.common/possibly-unnormalized-clause
+   query  :- [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
   (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -165,7 +168,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping (lib/normalize ::parameters.schema/parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
@@ -217,6 +220,10 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    ;; Grandfather against the dashboard as it was before this update, as REST does: a card that already showed
+    ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
@@ -316,7 +323,7 @@
          (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
-           (api/maybe-reconcile-collection-position! current-dash dash-updates)
+           (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
@@ -415,7 +422,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential :any]]
+   dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
         card->decision (fn [parent-card card]
@@ -449,6 +456,14 @@
              :discard []}
             (filter :card_id dashcards))))
 
+(defn- reference-metrics
+  "Moves the metrics in `cards`' `:copy` to `:reference`, since a dashboards-only collection can't hold copies of them."
+  [{:keys [copy] :as cards}]
+  (let [metric? (fn [[_ card]] (= :metric (keyword (:type card))))]
+    (-> cards
+        (assoc :copy (into {} (remove metric?) copy))
+        (update :reference merge (into {} (filter metric?) copy)))))
+
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -458,18 +473,23 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
+        {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
+                                           dashboards-only? reference-metrics)]
     {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/create-card!
-                                 (cond-> to-copy
-                                   true                    (assoc :collection_id dest-coll-id)
-                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                 @api/*current-user*
-                                 ;; creating cards from a transaction. wait until tx complete to signal event
-                                 true
-                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                 false)]))
+                            [id (queries/with-copy-source-card to-copy
+                                  (queries/create-card!
+                                   (cond-> to-copy
+                                     true                    (assoc :collection_id dest-coll-id)
+                                     same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                     (or (:dashboard_id to-copy)
+                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                                 (dissoc :collection_position)))
+                                   @api/*current-user*
+                                   ;; creating cards from a transaction. wait until tx complete to signal event
+                                   true
+                                   ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                   false))]))
      :discarded  discard
      :referenced reference}))
 
@@ -588,7 +608,7 @@
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (let [dash (dashboards.db/insert-dashboard! dashboard-data)
                                {id->new-card :copied
@@ -617,5 +637,5 @@
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
         (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))

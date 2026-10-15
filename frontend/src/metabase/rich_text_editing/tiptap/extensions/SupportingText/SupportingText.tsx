@@ -230,9 +230,8 @@ const SupportingTextComponent = ({
           })}
         >
           <CommentsButton
-            className={S.commentsButton}
             disabled={!commentsPath}
-            variant={isOpen ? "filled" : "default"}
+            active={isOpen}
             unresolvedCommentsCount={unresolvedCommentsCount}
             onClick={(e) => {
               e.preventDefault();

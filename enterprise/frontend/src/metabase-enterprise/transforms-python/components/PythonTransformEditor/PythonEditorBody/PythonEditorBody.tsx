@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { useNavigate } from "metabase/router";
-import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
@@ -29,8 +29,6 @@ export type PythonEditorBodyProps = {
   isDirty?: boolean;
   tables?: Record<string, number>;
   withDebugger?: boolean;
-  onAcceptProposed?: () => void;
-  onRejectProposed?: () => void;
 };
 
 const EDITOR_HEIGHT = 400;
@@ -50,8 +48,6 @@ export function PythonEditorBody({
   isRunning,
   isDirty,
   withDebugger,
-  onAcceptProposed,
-  onRejectProposed,
 }: PythonEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const showResizeHandle = isEditMode && withDebugger;
@@ -98,34 +94,6 @@ export function PythonEditorBody({
 
       {isEditMode && (
         <Stack m="1rem" gap="lg" mt="auto">
-          {proposedSource && onRejectProposed && onAcceptProposed && (
-            <>
-              <Tooltip label={t`Accept proposed changes`} position="left">
-                <Button
-                  data-testid="accept-proposed-changes-button"
-                  variant="filled"
-                  bg="feedback-positive"
-                  px="0"
-                  w="2.5rem"
-                  onClick={onAcceptProposed}
-                >
-                  <Icon name="check" />
-                </Button>
-              </Tooltip>
-              <Tooltip label={t`Reject proposed changes`} position="left">
-                <Button
-                  data-testid="reject-proposed-changes-button"
-                  w="2.5rem"
-                  px="0"
-                  variant="filled"
-                  bg="feedback-negative"
-                  onClick={onRejectProposed}
-                >
-                  <Icon name="close" />
-                </Button>
-              </Tooltip>
-            </>
-          )}
           {!hideRunButton && (
             <RunButtonWithTooltip
               disabled={!isRunnable}

@@ -5,40 +5,32 @@
 
   https://platform.kimi.ai/docs"
   (:require
+   [clojure.set :as set]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private default-model "kimi-k3")
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for Moonshot")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
-(defn- moonshot-error-msg
-  "Canonical, status-specific Moonshot error message.
-
-  Mapping 400 only improves the message text: `metabase.metabot.api`'s `provider-client-error?` renders any 4xx
-  `:api-error` under the admin API-key field, so a generic message sends admins hunting a key problem that does not
-  exist. 429 covers rate limiting *and* an exhausted account balance, which Moonshot reports with the same status."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "Moonshot rejected the request — check the model and request parameters")
-      401 (tru "Moonshot API key expired or invalid")
-      403 (tru "Moonshot denied access — check the API key''s permissions")
-      404 (tru "Moonshot API endpoint or model was not found — check the base URL and model")
-      429 (tru "Moonshot has rate limited us, or the account balance is exhausted")
-      500 (tru "Moonshot returned an internal server error")
-      (tru "Moonshot API error (HTTP {0})" status))))
+(def ^:private provider
+  "Mapping 400 only improves the message text: `metabase.llm.api.provider`'s `provider-client-error?` surfaces any
+  4xx `:api-error` verbatim on the connection form, so a generic message sends admins hunting a key problem that
+  does not exist. 429 covers rate limiting *and* an exhausted account balance, which Moonshot reports with the
+  same status."
+  (adapter/provider
+   {:slug              "moonshot"
+    :display-name      "Moonshot"
+    :error-fallback    #(tru "Moonshot API error (HTTP {0})" %)
+    :errors            {400 #(tru "Moonshot rejected the request — check the model and request parameters")
+                        401 #(tru "Moonshot API key expired or invalid")
+                        403 #(tru "Moonshot denied access — check the API key''s permissions")
+                        404 #(tru "Moonshot API endpoint or model was not found — check the base URL and model")
+                        429 #(tru "Moonshot has rate limited us, or the account balance is exhausted")
+                        500 #(tru "Moonshot returned an internal server error")}}))
 
 (def supported-models
   "Moonshot models offered in the Metabot model picker, keyed by model id.
@@ -48,9 +40,9 @@
   {"kimi-k2.6" {:display-name "Kimi K2.6" :context-window 262144}
    "kimi-k3"   {:display-name "Kimi K3"   :context-window 1048576}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (def ^:private thinking-only-models
@@ -75,61 +67,36 @@
   [model]
   (contains? reasoning-models (str model)))
 
-(defn- supported-model?
-  "Whether a `/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. Moonshot answers from the model name."
+  [{:keys [model]} :- adapter/ResolvedRef]
+  (reasoning-model? model))
 
-(defn- list-all-models
-  "Fetch the full Moonshot model catalog (`GET /models`).
-
-  The endpoint doubles as the credential round-trip behind the admin Connect button — it 401s on a bad key.
-  A 2xx whose body isn't a recognizable catalog throws rather than yielding an empty picker — see
-  [[chat-completions/models-catalog]].
-  `:ai-proxy?` is not supported for Moonshot and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "moonshot" "Moonshot"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"}})]
-      (chat-completions/models-catalog "Moonshot" res))
-    (catch Exception e
-      (core/rethrow-api-error! "moonshot" moonshot-error-msg e))))
-
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the Moonshot models supported by this adapter (see [[supported-models]]).
 
-  Display names come from [[supported-models]] rather than the catalog: Moonshot catalog entries carry no `:name`
-  (and no `:aliases`, so there is no Mistral-style alias resolution to do either).
+  The `/models` catalog it intersects doubles as the credential round-trip behind the admin Connect button —
+  it 401s on a bad key. Display names come from [[supported-models]] rather than the catalog: Moonshot catalog
+  entries carry no `:name` (and no `:aliases`, so there is no Mistral-style alias resolution to do either).
   `:ai-proxy?` is not supported for Moonshot and throws when true."
   ([] (list-models {}))
-  ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
+  ([opts :- adapter/ListOpts]
+   (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 (def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a forced tool call on a thinking-only model may be capped at.
+  "Smallest `max_completion_tokens` a forced tool call on a thinking-only model may be capped at.
 
-  kimi-k3 cannot stop thinking and Chat Completions bills thinking and the tool call against one budget, so a small
-  caller cap (the conversation-title path sends 512) risks a `length` finish before the tool call is emitted.
+  kimi-k3 cannot stop thinking. The Kimi docs say that thinking and the tool call share one `max_tokens` budget
+  (https://platform.kimi.ai/docs/guide/use-thinking-models). They do not say if `max_completion_tokens` also counts
+  reasoning (https://platform.kimi.ai/docs/api/chat). If it does, a small caller cap (the conversation-title path
+  sends 512) risks a `length` finish before the tool call is emitted. The floor is correct in both cases.
   Matches vLLM's probe-proven floor."
   2048)
 
-(defn- floor-max-tokens
-  "Raises an existing `max_tokens` cap to [[forced-tool-call-token-floor]]; an uncapped body stays uncapped."
+(defn- floor-max-completion-tokens
+  "Raises the `max_completion_tokens` cap to [[forced-tool-call-token-floor]]."
   [body]
-  (cond-> body (:max_tokens body) (update :max_tokens max forced-tool-call-token-floor)))
+  (update body :max_completion_tokens max forced-tool-call-token-floor))
 
 (defn- reasoning-message
   "The replayed assistant message for a coalesced in-turn :reasoning part.
@@ -159,10 +126,14 @@
   - **`reasoning_effort`** for [[thinking-only-models]] (kimi-k3, which explicitly does not support `thinking`
     and is the only model accepting `reasoning_effort`): \"max\" when the chat path renders reasoning, \"low\"
     otherwise; their in-turn reasoning is replayed (see [[reasoning-message]]) and forced tool calls get a
-    `max_tokens` floor (see [[forced-tool-call-token-floor]]).
+    `max_completion_tokens` floor (see [[forced-tool-call-token-floor]]).
   - **`prompt_cache_key`.** Moonshot caching is automatic and hits without it, but a `:prompt-cache-key` — the
-    conversation id — is forwarded when present."
-  [{:keys [model prompt-cache-key reasoning? schema tool_choice] :as opts
+    conversation id — is forwarded when present.
+  - **`max_completion_tokens`** carries the output cap instead of `max_tokens`, which Moonshot deprecates
+    (https://platform.kimi.ai/docs/api/chat).
+
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
+  [{:keys [model prompt-cache-key reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; kimi-k3 always thinks — there is no off switch, so `reasoning_effort` ("low" | "high" | "max", server default
   ;; "max") is the only knob (https://platform.kimi.ai/docs/guide/kimi-k3-quickstart). "max" on the chat path pins
@@ -184,7 +155,7 @@
         thinking?      (and whitelisted? reasoning?
                             (if thinking-only? (not schema) (not forced?)))]
     (-> (chat-completions/request-body
-         (assoc opts :model model)
+         (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens))
          ;; Replay only where the dialect mandates it: k3's Preserved Thinking. k2.6 cannot use
          ;; `thinking.keep "all"` — that mode obliges the caller to send back EVERY historical assistant
          ;; message's reasoning_content, but reasoning parts are never persisted across turns, so we could
@@ -193,15 +164,16 @@
          ;; reasoning_content — a replay hook there would only burn prompt tokens.
          ;; https://platform.kimi.ai/docs/guide/use-kimi-k2-thinking-model
          (when (and thinking? thinking-only?) {:reasoning-part->message reasoning-message}))
+        (set/rename-keys {:max_tokens :max_completion_tokens})
         (dissoc :temperature)
         (cond-> thinking-only?               (assoc :reasoning_effort (if thinking? "max" "low"))
                 ;; Every forced tool call — schema or tool_choice "required" — must survive the
-                ;; thinking spend: reasoning and the tool call share one max_tokens budget ("the
-                ;; sum of tokens in reasoning_content and content must be <= max_tokens", and the
-                ;; guide recommends >= 16000 for tool calls —
-                ;; https://platform.kimi.ai/docs/guide/use-thinking-models). A tool call cut off
-                ;; at `length` fails the whole turn.
-                (and thinking-only? forced?) floor-max-tokens
+                ;; thinking spend. A tool call cut off at `length` fails the whole turn. See
+                ;; [[forced-tool-call-token-floor]] for the budget scope. The guide recommends
+                ;; >= 16000 for multi-step tool calls on kimi-k2.6 and kimi-k2.7-code
+                ;; (https://platform.kimi.ai/docs/guide/use-thinking-models). This is one forced
+                ;; call on kimi-k3, so the floor stays at 2048.
+                (and thinking-only? forced?) floor-max-completion-tokens
                 (not thinking-only?)         (assoc :thinking {:type (if thinking? "enabled" "disabled")})
                 prompt-cache-key             (assoc :prompt_cache_key prompt-cache-key)))))
 
@@ -210,36 +182,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for Moonshot and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (moonshot-request-body (assoc opts :model model))]
-    (log/debug "Moonshot request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.moonshot/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [api-key  (not-empty (:api-key credentials))
-              auth     (core/resolve-auth "moonshot" "Moonshot"
-                                          (when api-key
-                                            {:url     (:base-url credentials)
-                                             :headers {"Authorization" (str "Bearer " api-key)}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     "/chat/completions"
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"}
-                                      :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "moonshot"
-                                     :model    model
-                                     :url      "/chat/completions"
-                                     :request  req})))
-        (catch Exception e
-          (core/rethrow-api-error! "moonshot" moonshot-error-msg e))))))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/chat/completions"
+                      :body (moonshot-request-body opts)})))
 
 (defn moonshot->aisdk-chunks-xf
   "Translates Moonshot Chat Completions streaming chunks into AI SDK v5 protocol chunks.
@@ -256,4 +204,4 @@
   "Call the Moonshot Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply moonshot-raw args)]
-    (eduction (moonshot->aisdk-chunks-xf) raw)))
+    (eduction (moonshot->aisdk-chunks-xf) (chat-completions/usage-once raw))))

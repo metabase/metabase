@@ -92,6 +92,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     messages,
     conversationId,
     retryMessage,
+    continueResponse,
     isDoingScience,
     submitInput,
     cancelRequest,
@@ -138,8 +139,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to add research groups`,
         });
       }
@@ -181,8 +181,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update research plan`,
         });
       }
@@ -226,8 +225,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to add timelines`,
         });
       }
@@ -276,7 +274,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="lg" bg="background-secondary">
+      <Stack flex={1} mih={0} gap="lg" bg="background_page-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
@@ -288,14 +286,17 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           >
             <Messages
               messages={messages}
+              size="md"
               onRetryMessage={(id) =>
                 retryMessage(id, { profile: "explorations" })
               }
-              onContinueMessage={(prompt) =>
-                submitInput(prompt, {
-                  preventOpenSidebar: true,
-                  profile: "explorations",
-                })
+              onContinueMessage={
+                continueResponse &&
+                (() =>
+                  continueResponse({
+                    preventOpenSidebar: true,
+                    profile: "explorations",
+                  }))
               }
               isDoingScience={isDoingScience}
               debug={false}
@@ -306,8 +307,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           <Box flex={1} mih={0} />
         )}
         <Flex
-          bg="background-primary"
-          bd="1px solid border"
+          bg="background_page-primary"
+          bd="1px solid border-neutral"
           bdrs="sm"
           mx="xl"
           pr="0.75rem"

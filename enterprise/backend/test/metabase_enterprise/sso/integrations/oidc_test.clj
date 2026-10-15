@@ -1,11 +1,16 @@
 (ns metabase-enterprise.sso.integrations.oidc-test
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
+   [metabase-enterprise.sso.providers.oidc :as oidc.provider]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.state :as oidc.state]
+   [metabase.sso.oidc.tokens :as oidc.tokens]
    [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -304,6 +309,24 @@
              ;; All Users group (id=1) is the only group
              (is (= #{1} (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user)))))))))))
 
+(deftest oidc-group-sync-empty-mappings-keep-memberships-test
+  (testing "Empty mappings leave a returning user's memberships alone, since only mapped groups are synced"
+    (let [email (str "oidc-keep-" (random-uuid) "@example.com")]
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name (str "OIDC Unmapped Group " (random-uuid))}
+                     :model/User                       {user-id :id}  {:email email}
+                     :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
+        (let [provider-config (assoc test-provider
+                                     :group-sync {:enabled         true
+                                                  :group-attribute "groups"
+                                                  :group-mappings  {}})]
+          (do-with-group-sync-login!
+           provider-config {:groups ["test-group"]} email
+           (fn [result]
+             (is (true? (:success? result)) (str "login result: " (pr-str result)))
+             (testing "the unmapped group membership survives the login and nothing else is added"
+               (is (= #{1 group-id}
+                      (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))))))))))
+
 (deftest oidc-group-sync-single-string-value-test
   (testing "Single group value (string instead of array) should still work"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC String Group " (random-uuid))}]
@@ -353,6 +376,52 @@
                    group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
                (is (contains? group-ids group-a-id))
                (is (not (contains? group-ids group-b-id)))))))))))
+
+(deftest authenticate-ignores-custom-email-claim-test
+  (testing "login takes the email from the standard claim that email_verified covers, whatever the provider maps"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
+                                                              "first_name" "gn"})]]
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer]
+                                      {:authorization_endpoint "https://test.idp.example.com/authorize"
+                                       :token_endpoint         "https://test.idp.example.com/token"
+                                       :jwks_uri               "https://test.idp.example.com/jwks"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body   {:id_token     "valid-token"
+                                                :access_token "access-token"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub            "sam-rivera"
+                                                :email          "sam.rivera@example.com"
+                                                :email_verified true
+                                                :mail           "admin@example.com"
+                                                :gn             "Sam"}})]
+          (let [result (auth-identity/authenticate :provider/custom-oidc
+                                                   {:oidc-provider-key "test-idp"
+                                                    :code              "auth-code"
+                                                    :state             "state-token"
+                                                    :redirect-uri      "http://localhost/auth/sso/test-idp/callback"})]
+            (is (true? (:success? result)) (str "authenticate result: " (pr-str (dissoc result :claims))))
+            (is (= "sam.rivera@example.com" (get-in result [:user-data :email])))
+            (testing "the name claims still follow the mapping"
+              (is (= "Sam" (get-in result [:user-data :first_name]))))))))))
+
+(deftest build-oidc-config-attribute-map-test
+  (testing "a blank claim name counts as unset, and the email claim is never remapped"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
+                                                              "first_name" "  "
+                                                              "last_name"  "sn"})]]
+        (let [stored (sso-settings/get-oidc-provider "test-idp")
+              config (#'oidc.provider/build-oidc-config stored {:redirect-uri "http://localhost/callback"})]
+          (is (= {:attribute-lastname "sn"}
+                 (select-keys config [:attribute-email :attribute-firstname :attribute-lastname]))))))))
 
 (deftest oidc-group-sync-custom-attribute-test
   (testing "Non-default group attribute — using a custom claim name"

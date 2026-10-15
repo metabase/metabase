@@ -5,7 +5,9 @@
   they log in."
   (:require
    [java-time.api :as t]
+   [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
+   [metabase.request.schema :as request.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -30,7 +32,10 @@
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(mu/defn- add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
+(mu/defn- add-browser-id-cookie
+  [request      :- ::request.schema/request
+   response     :- ::api.macros/response
+   browser-id   :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie

@@ -29,14 +29,15 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
-   [metabase.revisions.core :as revisions]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -97,9 +98,7 @@
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
                [:or [:= nil :type]
-                [:not-in :type [collection/library-collection-type
-                                collection/library-data-collection-type
-                                collection/library-metrics-collection-type]]])
+                [:not-in :type (vec collection/library-collection-types)]])
              [:or
               (when (contains? namespaces nil)
                 [:= :namespace nil])
@@ -159,6 +158,7 @@
   #{"card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
+    "exploration"
     "metric"
     "collection"
     "dashboard"
@@ -198,7 +198,7 @@
 
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
-  [:map
+  [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
    [:collection-type {:optional true} [:maybe CollectionType]]
@@ -211,7 +211,7 @@
    ;; column (see [[creator-filterable-models]]) return nothing.
    [:created-by-id {:optional true} [:maybe pos-int?]]
    [:search-text  {:optional true} [:maybe :string]]
-   [:sort-info    {:optional true} [:maybe [:map
+   [:sort-info    {:optional true} [:maybe [:map {:closed true}
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
                                                                 valid-sort-columns)]
@@ -472,7 +472,7 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
@@ -590,7 +590,13 @@
               ;; internal-only: stamped in `post-process-card-row` for the permission check
               :document_id)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
-      (assoc :fully_parameterized (queries/fully-parameterized? row))))
+      (assoc :fully_parameterized (queries/fully-parameterized? (select-keys row [:dataset_query])))))
+
+(defn- assoc-based-on-upload
+  "Assoc `:based_on_upload` onto each of the model `rows` that is based on an upload."
+  [rows]
+  (let [id->table-id (upload/models-based-on-upload (map #(select-keys % upload/based-on-upload-input-keys) rows))]
+    (map #(m/assoc-some % :based_on_upload (id->table-id (:id %))) rows)))
 
 (defn- post-process-card-like
   [{:keys [hydrate-based-on-upload]} rows]
@@ -604,7 +610,7 @@
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        hydrate-based-on-upload assoc-based-on-upload)
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -698,9 +704,7 @@
              [:= :type collection-type]))
          (when-not include-library?
            [:or [:= nil :type]
-            [:not [:in :type [collection/library-collection-type
-                              collection/library-metrics-collection-type
-                              collection/library-data-collection-type]]]])
+            [:not [:in :type (vec collection/library-collection-types)]]])
          (if archived?
            [:or
             [:= :archived true]
@@ -740,39 +744,33 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [user-info {:user-id       api/*current-user-id*
-                   :is-superuser? api/*is-superuser?*}
-        published-clause (perms/published-table-visible-clause :t.id user-info)
-        queryable-clause (cond-> [:or
-                                  [:in :t.id (perms/visible-table-filter-select
-                                              :id
-                                              user-info
-                                              {:perms/view-data      :unrestricted
-                                               :perms/create-queries :query-builder})]]
-                           published-clause (conj [:and
-                                                   [:in :t.id (perms/visible-table-filter-select
-                                                               :id
-                                                               user-info
-                                                               {:perms/view-data :unrestricted})]
-                                                   published-clause]))]
-    {:select [:t.id
-              [:t.id :table_id]
-              [:t.display_name :name]
-              :t.description
-              :t.collection_id
-              [:t.db_id :database_id]
-              [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
-     :from   [[:metabase_table :t]]
-     :where  [:and
-              [:= :t.is_published true]
-              (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-              queryable-clause
-              [:= :t.collection_id (:id collection)]
-              (if archived?
-                [:!= :t.archived_at nil]
-                [:= :t.archived_at nil])]}))
+  {:select [:t.id
+            [:t.id :table_id]
+            [:t.display_name :name]
+            :t.description
+            :t.collection_id
+            [:t.db_id :database_id]
+            [[:!= :t.archived_at nil] :archived]
+            [(h2x/literal "table") :model]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+   :where  [:and
+            [:= :t.is_published true]
+            (poison-when-pinned-clause pinned-state)
+            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
+            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
+            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
+            (perms/visible-table-filter-subquery-clause
+             :t.id
+             {:user-id       api/*current-user-id*
+              :is-superuser? api/*is-superuser?*}
+             {:perms/view-data      :unrestricted
+              :perms/create-queries :query-builder}
+             {:include-published-via-collection? true})
+            [:= :t.collection_id (:id collection)]
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -820,6 +818,12 @@
              (map :collection_id)
              (into #{}))
 
+        collections-containing-actions
+        (->> (when (seq descendant-collection-ids)
+               (collections.db/unarchived-action-collection-ids-in descendant-collection-ids))
+             (map :collection_id)
+             (into #{}))
+
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
         (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
@@ -833,7 +837,8 @@
                {:table collections-containing-tables
                 :collection collections-containing-collections
                 :dashboard collections-containing-dashboards
-                :transform collections-containing-transforms})
+                :transform collections-containing-transforms
+                :action collections-containing-actions})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
@@ -873,23 +878,30 @@
       (t2/hydrate tables :measures)
       tables)))
 
+(def ^:private last-edit-key-mapping
+  {:last_edit_user       :id
+   :last_edit_last_name  :last_name
+   :last_edit_first_name :first_name
+   :last_edit_email      :email
+   :last_edit_timestamp  :timestamp})
+
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
-(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- ::revisions.schema/maybe-annotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
-  [row]
+  [row :- [:map {:closed true}
+           [:last_edit_user       {:optional true} [:maybe :int]]
+           [:last_edit_last_name  {:optional true} [:maybe :string]]
+           [:last_edit_first_name {:optional true} [:maybe :string]]
+           [:last_edit_email      {:optional true} [:maybe :string]]
+           [:last_edit_timestamp  {:optional true} [:maybe ms/TemporalInstant]]]]
   (letfn [(select-as [original k->k']
             (reduce (fn [m [k k']] (assoc m k' (get original k)))
                     {}
                     k->k'))]
-    (let [mapping {:last_edit_user       :id
-                   :last_edit_last_name  :last_name
-                   :last_edit_first_name :first_name
-                   :last_edit_email      :email
-                   :last_edit_timestamp  :timestamp}]
-      (cond-> (apply dissoc row (keys mapping))
-        ;; don't use contains as they all have the key, we care about a value present
-        (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
+    (cond-> {}
+      ;; don't use contains as they all have the key, we care about a value present
+      (:last_edit_user row) (assoc :last-edit-info (select-as row last-edit-key-mapping)))))
 
 (defn- remove-unwanted-keys [{:keys [model] :as row}]
   (cond-> (dissoc row :model_ranking :archived_directly :total_count :collection_type)
@@ -920,7 +932,9 @@
              (comp (map (fn [[model rows]]
                           (post-process-collection-children (keyword model) options collection rows)))
                    cat
-                   (map coalesce-edit-info)))
+                   (map (fn [row]
+                          (merge (apply dissoc row (keys last-edit-key-mapping))
+                                 (coalesce-edit-info (select-keys row (keys last-edit-key-mapping))))))))
        (map remove-unwanted-keys)
        ;; the collection these are presented "in" is the ID of the collection we're getting `/items` on.
        (map #(assoc % :collection_id (:id collection)))
@@ -1114,7 +1128,7 @@
 (defn- valid-collection-models
   "Return every item model that can appear in `collection-namespace`."
   [collection-namespace]
-  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
                    (premium-features/has-feature? :library) (conj :table))
         :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1127,7 +1141,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                                       ;; Tables in collections are an EE feature (library)
                                       (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty

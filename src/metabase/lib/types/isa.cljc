@@ -5,21 +5,30 @@
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.types.core]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some]]))
 
 (comment metabase.types.core/keep-me)
 
+(def ^:private ColumnLike
+  [:schema {::mr/deliberately-open true, :description "a column or field map (or nil)"} :any])
+
+(def ^:private TypeIdentifier
+  [:schema {::mr/deliberately-open true, :description "a type or category keyword"} :any])
+
 (mu/defn ^:export isa? :- :boolean
   "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.
   Both effective and semantic types are taken into account."
-  [{:keys [effective-type base-type semantic-type] :as _column} type-kw]
+  [{:keys [effective-type base-type semantic-type] :as _column} :- ColumnLike
+   type-kw :- TypeIdentifier]
   (or (clojure.core/isa? (or effective-type base-type) type-kw)
       (clojure.core/isa? semantic-type type-kw)))
 
 (mu/defn ^:export field-type? :- :boolean
   "Returns if `column` is of category `category`.
   The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
-  [category column]
+  [category :- TypeIdentifier
+   column   :- ColumnLike]
   (let [type-definition (lib.types.constants/type-hierarchies category)
         column          (cond-> column
                           (and (map? column)
@@ -52,213 +61,213 @@
 
 (mu/defn ^:export temporal? :- :boolean
   "Is `column` of a temporal type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/temporal column))
 
 (mu/defn ^:export numeric? :- :boolean
   "Is `column` of a numeric type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/number column))
 
 (mu/defn ^:export boolean? :- :boolean
   "Is `column` of a boolean type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/boolean column))
 
 (mu/defn ^:export string? :- :boolean
   "Is `column` of a string type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/string column))
 
 (mu/defn ^:export string-like? :- :boolean
   "Is `column` of a string-like type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/string_like column))
 
 (mu/defn ^:export string-or-string-like? :- :boolean
   "Is `column` of a string or string-like type?"
-  [column]
+  [column :- ColumnLike]
   (or (string? column) (string-like? column)))
 
 (mu/defn ^:export summable? :- :boolean
   "Is `column` of a summable type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/summable column))
 
 (mu/defn ^:export scope? :- :boolean
   "Is `column` of a scope type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/scope column))
 
 (mu/defn ^:export category? :- :boolean
   "Is `column` of a categorical type?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/category column))
 
 (mu/defn ^:export location? :- :boolean
   "Is `column` a location?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Location))
 
 (mu/defn ^:export description? :- :boolean
   "Is `column` a description?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Description))
 
 (mu/defn ^:export foreign-key? :- :boolean
   "Is `column` a foreign-key?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/FK))
 
 (mu/defn ^:export primary-key? :- :boolean
   "Is `column` a primary-key?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/PK))
 
 (mu/defn ^:export entity-name? :- :boolean
   "Is `column` an entity name?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Name))
 
 (mu/defn ^:export title? :- :boolean
   "Is `column` a title column?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Title))
 
 (mu/defn ^:export json? :- :boolean
   "Is `column` a serialized JSON column?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/SerializedJSON))
 
 (mu/defn ^:export xml? :- :boolean
   "Is `column` a serialized XML column?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/XML))
 
 (mu/defn ^:export structured? :- :boolean
   "Is `column` serialized structured data? (eg. JSON, XML)"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Structured))
 
 (mu/defn ^:export any? :- :boolean
   "Is this `_column` whatever (including nil)?"
-  [_column]
+  [_column :- ColumnLike]
   true)
 
 (mu/defn ^:export date-or-datetime? :- :boolean
   "Is `column` a date or datetime?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (column-type column) :type/HasDate))
 
 (mu/defn ^:export date-without-time? :- :boolean
   "Is `column` a date without time?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (column-type column) :type/Date))
 
 (mu/defn ^:export date-with-time? :- :boolean
   "Is `column` a datetime (date with time)?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (column-type column) :type/DateTime))
 
 (mu/defn ^:export creation-timestamp? :- :boolean
   "Is `column` a creation timestamp column?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/CreationTimestamp))
 
 (mu/defn ^:export creation-date? :- :boolean
   "Is `column` a creation date column?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/CreationDate))
 
 (mu/defn ^:export creation-time? :- :boolean
   "Is `column` a creation time column?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/CreationTime))
 
 (mu/defn ^:export integer? :- :boolean
   "Is `column` a integer column?"
-  [column]
+  [column :- ColumnLike]
   (field-type? ::lib.types.constants/integer column))
 
 (mu/defn ^:export time? :- :boolean
   "Is `column` a time?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (column-type column) :type/Time))
 
 (mu/defn ^:export address? :- :boolean
   "Is `column` an address?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Address))
 
 (mu/defn ^:export city? :- :boolean
   "Is `column` a city?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/City))
 
 (mu/defn ^:export state? :- :boolean
   "Is `column` a state?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/State))
 
 (mu/defn ^:export zip-code? :- :boolean
   "Is `column` a zip-code?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/ZipCode))
 
 (mu/defn ^:export country? :- :boolean
   "Is `column` a country?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Country))
 
 (mu/defn ^:export coordinate? :- :boolean
   "Is `column` a coordinate?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Coordinate))
 
 (mu/defn ^:export latitude? :- :boolean
   "Is `column` a latitude?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Latitude))
 
 (mu/defn ^:export longitude? :- :boolean
   "Is `column` a longitude?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Longitude))
 
 (mu/defn ^:export currency? :- :boolean
   "Is `column` a currency?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Currency))
 
 (mu/defn ^:export comment? :- :boolean
   "Is `column` a comment?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Comment))
 
 (mu/defn ^:export id? :- :boolean
   "Is `column` an ID?"
-  [column]
+  [column :- ColumnLike]
   (or (clojure.core/isa? (:semantic-type column) :type/FK)
       (clojure.core/isa? (:semantic-type column) :type/PK)))
 
 (mu/defn ^:export URL? :- :boolean
   "Is `column` a URL?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/URL))
 
 (mu/defn ^:export email? :- :boolean
   "Is `column` an email?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/Email))
 
 (mu/defn ^:export avatar-URL? :- :boolean
   "Is `column` an avatar URL?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/AvatarURL))
 
 (mu/defn ^:export image-URL? :- :boolean
   "Is `column` an image URL?"
-  [column]
+  [column :- ColumnLike]
   (clojure.core/isa? (:semantic-type column) :type/ImageURL))
 
 ;;; TODO -- This stuff should probably use the constants in [[metabase.lib.types.constants]], however this logic isn't

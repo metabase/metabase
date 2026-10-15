@@ -69,11 +69,22 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Started from").should("not.exist");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100").should("not.exist");
+
+    H.summarize();
+    H.rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    H.appBar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
   });
 
-  it("should duplicate a saved question into a collection", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
+  it("should duplicate a saved question into a collection, into a dashboard, and to a collection created on the go", () => {
+    cy.log("into a collection");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -90,11 +101,8 @@ describe("scenarios > question > saved", () => {
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
     });
-  });
 
-  it("should duplicate a saved question into a dashboard", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
+    cy.log("into a dashboard");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -122,11 +130,8 @@ describe("scenarios > question > saved", () => {
     cy.url().should("include", "/dashboard/");
     cy.location("hash").should("not.include", "scrollTo");
     H.dashboardCards().findByText("Orders - Duplicate").should("be.visible");
-  });
 
-  it("should duplicate a saved question to a collection created on the go", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
+    cy.log("to a collection created on the go");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -139,7 +144,7 @@ describe("scenarios > question > saved", () => {
       cy.findByTestId("dashboard-and-collection-picker-button").click();
     });
 
-    H.entityPickerModal().findByText("New collection").click();
+    H.entityPickerModal().button("New collection").should("be.enabled").click();
 
     const NEW_COLLECTION = "My New collection";
     H.collectionOnTheGoModal().then(() => {
@@ -181,6 +186,11 @@ describe("scenarios > question > saved", () => {
     H.openQuestionActions();
     H.popover().findByText("Duplicate").click();
 
+    H.modal()
+      .findByLabelText("Name")
+      .should(($input) => {
+        expect($input.val()).to.match(/ - Duplicate$/);
+      });
     H.modal().should(($el) => {
       const $modal = $el[0];
       expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
@@ -200,6 +210,7 @@ describe("scenarios > question > saved", () => {
         .blur();
 
       cy.wait("@updateQuestion");
+      cy.findByText("This is a question").should("be.visible");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
@@ -215,7 +226,11 @@ describe("scenarios > question > saved", () => {
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
-      cy.findByText(/This is a question/i).should("not.exist");
+
+      cy.findByRole("tab", { name: "Overview" }).click();
+      cy.findByPlaceholderText("Add description").should("have.value", "");
+
+      cy.findByRole("tab", { name: "History" }).click();
 
       // Simulate a backend failure on revert and confirm we surface
       // the error message as a toast (UXW-310).
@@ -231,16 +246,15 @@ describe("scenarios > question > saved", () => {
     H.undoToast().should("contain.text", "Cannot revert: missing card");
   });
 
-  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+  it("should show collection breadcrumbs for a saved question in the root and a non-root collection", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Our analytics").click());
 
+    cy.location("pathname").should("eq", "/collection/root");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
-  });
 
-  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       collection_id: SECOND_COLLECTION_ID,
     });
@@ -249,6 +263,10 @@ describe("scenarios > question > saved", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Second collection").click());
 
+    cy.location("pathname").should(
+      "match",
+      new RegExp(`^/collection/${SECOND_COLLECTION_ID}(-|$)`),
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
@@ -273,24 +291,12 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
+    cy.location("pathname").should(
+      "match",
+      new RegExp(`^/dashboard/${ORDERS_DASHBOARD_ID}(-|$)`),
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
-  });
-
-  it("should show the question lineage when a saved question is changed", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.summarize();
-    H.rightSidebar().within(() => {
-      cy.findByText("Quantity").click();
-      cy.button("Done").click();
-    });
-
-    H.appBar().within(() => {
-      cy.findByText("Started from").should("be.visible");
-      cy.findByText("Orders").click();
-      cy.findByText("Started from").should("not.exist");
-    });
   });
 
   it("'read-only' user should be able to resize column width (metabase#9772)", () => {
@@ -376,13 +382,32 @@ describe("scenarios > question > saved", () => {
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();
 
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.button("Save").click();
-      cy.wait("@cardCreate");
-      // It is important to have extremely short timeout in order to catch the issue
-      cy.findByDisplayValue("Products - Modified", { timeout: 10 }).should(
-        "not.exist",
-      );
+    cy.findByTestId("save-question-modal")
+      .findByLabelText("Name")
+      .should("have.value", "Products");
+
+    // The suffix flashes for a frame between the save response and the modal
+    // closing, so record the name on every frame until the modal is gone.
+    const names = [];
+    cy.window().then((win) => {
+      const sample = () => {
+        const input = win.document.querySelector(
+          "[data-testid='save-question-modal'] input[name='name']",
+        );
+        if (input) {
+          names.push(input.value);
+          win.requestAnimationFrame(sample);
+        }
+      };
+      sample();
+    });
+
+    cy.findByTestId("save-question-modal").button("Save").click();
+    cy.wait("@cardCreate");
+    cy.findByTestId("save-question-modal").should("not.exist");
+    cy.wrap(names).should((values) => {
+      expect(values).to.include("Products");
+      expect(values.filter((name) => /- Modified$/.test(name))).to.be.empty;
     });
   });
 
@@ -410,24 +435,7 @@ describe("scenarios > question > saved", () => {
     }
 
     HIDDEN_TYPES.forEach((visibilityType) => {
-      it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
-        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
-
-        H.visitQuestion(ORDERS_QUESTION_ID);
-
-        H.queryBuilderHeader()
-          .findByText("View-only")
-          .should("be.visible")
-          .realHover();
-        H.popover()
-          .findByText(
-            "One of the administrators hid the source table “Orders”, making this question view-only.",
-          )
-          .should("be.visible");
-      });
-
-      it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
-        cy.signInAsAdmin();
+      it(`should show a View-only tag when a joined or the source table is marked as ${visibilityType}`, () => {
         hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
         H.createQuestion(
           {
@@ -437,7 +445,7 @@ describe("scenarios > question > saved", () => {
               joins: [
                 {
                   "source-table": PRODUCTS_ID,
-                  alias: "Orders",
+                  alias: "Products",
                   condition: [
                     "=",
                     ["field", ORDERS.PRODUCT_ID, null],
@@ -461,6 +469,20 @@ describe("scenarios > question > saved", () => {
             "One of the administrators hid the source table “Products”, making this question view-only.",
           )
           .should("be.visible");
+
+        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
+
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        H.queryBuilderHeader()
+          .findByText("View-only")
+          .should("be.visible")
+          .realHover();
+        H.popover()
+          .findByText(
+            "One of the administrators hid the source table “Orders”, making this question view-only.",
+          )
+          .should("be.visible");
       });
     });
 
@@ -482,12 +504,12 @@ describe("scenarios > question > saved", () => {
             joins: [
               {
                 "source-table": PRODUCTS_ID,
-                alias: "Orders Question",
+                alias: "Products",
                 fields: "all",
                 condition: [
                   "=",
-                  ["field", PRODUCTS.PRODUCT_ID, null],
-                  ["field", ORDERS.ID, { "join-alias": "Orders" }],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
               },
             ],
@@ -499,6 +521,14 @@ describe("scenarios > question > saved", () => {
         },
       );
 
+      cy.signInAsNormalUser();
+      cy.get("@questionId").then(H.visitQuestion);
+      H.queryBuilderHeader()
+        .findByDisplayValue("Products Question + Orders")
+        .should("be.visible");
+      H.queryBuilderHeader().findByText("View-only").should("not.exist");
+
+      cy.signInAsAdmin();
       H.visitQuestion(ORDERS_QUESTION_ID);
       moveQuestionTo(/Personal Collection/);
 
@@ -511,7 +541,6 @@ describe("scenarios > question > saved", () => {
 
   describe("with watermark", () => {
     beforeEach(() => {
-      H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
@@ -592,7 +621,7 @@ describe("scenarios > question > saved", () => {
 //http://127.0.0.1:9080/api/session/00000000-0000-0000-0000-000000000000/requests
 
 // Ensure the webhook tester docker container is running
-// docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
+// docker run -p 127.0.0.1:9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 describe(
   "scenarios > question > saved > alerts",
   { tags: ["@external"] },

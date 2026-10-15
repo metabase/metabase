@@ -60,9 +60,6 @@ export const nonAsciiFieldNames: DictionaryArray = [
 
 export const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
 
-export const invalidLocaleXX = clone(germanFieldNames);
-invalidLocaleXX[0].locale = "xx";
-
 export const multipleInvalidLocales = clone(germanFieldNames);
 multipleInvalidLocales[0].locale = "ze";
 multipleInvalidLocales[3].locale = "qe";

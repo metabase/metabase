@@ -1,21 +1,30 @@
 import { deriveChartShadeColor, deriveChartTintColor } from "./accents";
+import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
-import { METABASE_LIGHT_THEME } from "./constants/themes/light";
+import { getDarkTheme } from "./constants/themes/dark";
+import { getLightTheme } from "./constants/themes/light";
 import { deriveFullMetabaseTheme } from "./derive-theme";
+
+const baseColors = getBaseColorsForThemeDefinitionOnly();
+
+const lightTheme = getLightTheme();
 
 describe("deriveFullMetabaseTheme", () => {
   it("applies whitelabel colors over the base theme", () => {
     const derived = deriveFullMetabaseTheme({
       colorScheme: "light",
-      whitelabelColors: { brand: "#ff0000" },
+      // The setting stores brand/filter/summarize under their own names
+      whitelabelColors: { brand: "#ff0000", filter: "#00ff00" },
     });
 
-    // The whitelabel color should override the base theme color
-    expect(derived.colors["brand"]).toBe("#ff0000");
+    // The whitelabel color should override the base theme color, under the
+    // token name it is translated to
+    expect(derived.colors["core-brand"]).toBe("#ff0000");
+    expect(derived.colors["core-filter"]).toBe("#00ff00");
 
     // Other colors should remain from base theme
     expect(derived.colors["text-primary"]).toBe(
-      METABASE_LIGHT_THEME.colors["text-primary"],
+      lightTheme.colors["text-primary"],
     );
   });
 
@@ -23,11 +32,14 @@ describe("deriveFullMetabaseTheme", () => {
     const derived = deriveFullMetabaseTheme({
       colorScheme: "light",
       whitelabelColors: { brand: "#ff0000" },
-      embeddingThemeOverride: { version: 2, colors: { brand: "#00ff00" } },
+      embeddingThemeOverride: {
+        version: 2,
+        colors: { "core-brand": "#00ff00" },
+      },
     });
 
     // User overrides takes precedence over instance whitelabel colors
-    expect(derived.colors["brand"]).toBe("#00ff00");
+    expect(derived.colors["core-brand"]).toBe("#00ff00");
   });
 
   it("filters out all internal colors from embedding overrides", () => {
@@ -104,14 +116,14 @@ describe("deriveFullMetabaseTheme", () => {
     expect(derived.colors["accent0-dark"]).toBe("#0000ff");
 
     //accent 1 should be default
-    expect(derived.colors["accent1"]).toBe(METABASE_LIGHT_THEME.chartColors[1]);
+    expect(derived.colors["accent1"]).toBe(lightTheme.chartColors[1]);
     expect(derived.colors["accent1-light"]).toBe(
       // Unjustified type cast. FIXME
-      deriveChartTintColor(METABASE_LIGHT_THEME.chartColors[1] as string),
+      deriveChartTintColor(lightTheme.chartColors[1] as string),
     );
     expect(derived.colors["accent1-dark"]).toBe(
       // Unjustified type cast. FIXME
-      deriveChartShadeColor(METABASE_LIGHT_THEME.chartColors[1] as string),
+      deriveChartShadeColor(lightTheme.chartColors[1] as string),
     );
 
     //accent 2 should calculate light and dark from provided color
@@ -128,5 +140,58 @@ describe("deriveFullMetabaseTheme", () => {
     expect(derived.colors["accent3"]).toBe(base);
     expect(derived.colors["accent3-light"]).toBe("#4B9CD3");
     expect(derived.colors["accent3-dark"]).toBe(deriveChartShadeColor(base));
+  });
+
+  describe("brand ramp", () => {
+    it.each([
+      ["light" as const, getLightTheme],
+      ["dark" as const, getDarkTheme],
+    ])(
+      "replaces the %s brand ramp with Ocean when the brand color is not customized",
+      (colorScheme, getTheme) => {
+        const derived = deriveFullMetabaseTheme({ colorScheme });
+
+        expect(derived.colors).toMatchObject(getTheme(baseColors.ocean).colors);
+        expect(derived.colors).not.toMatchObject(
+          getTheme(baseColors.brand).colors,
+        );
+      },
+    );
+
+    it("keeps the dynamic brand ramp when whitelabel sets a brand color", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        whitelabelColors: { brand: "#ff0000" },
+      });
+
+      expect(derived.colors["text-brand"]).toBe(
+        lightTheme.colors["text-brand"],
+      );
+    });
+
+    it("keeps the dynamic brand ramp when an embedding theme sets a brand color", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { "core-brand": "#00ff00" },
+        },
+      });
+
+      expect(derived.colors["text-brand"]).toBe(
+        lightTheme.colors["text-brand"],
+      );
+    });
+
+    it("keeps the dynamic brand ramp when the caller asks for it", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        forceDynamicBrandRamp: true,
+      });
+
+      expect(derived.colors["text-brand"]).toBe(
+        lightTheme.colors["text-brand"],
+      );
+    });
   });
 });

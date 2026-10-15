@@ -1,17 +1,20 @@
 import type { TableSchema } from "../data-schema";
 
 import type {
+  DefinedQuery,
   MetabaseQueryOptions,
   RequireAggregationsForBreakouts,
+  RequireGroupedOrderByNames,
 } from "./types";
 
 type SavedQuestionBinding = {
-  savedQuestionSourceId?: number;
+  savedQuestionEntityId?: string;
 };
 
 /**
- * Defines a source-controlled data app query that can be synchronized to a
- * saved question.
+ * Defines a source-controlled data app query. `savedQuestionEntityId` is the
+ * entity ID of its saved question in the app's collection under `collections/data_apps/`, which a
+ * production build runs.
  */
 export function defineQuery<
   TEntity extends TableSchema | undefined = undefined,
@@ -22,9 +25,12 @@ export function defineQuery<
     (TQuery extends SavedQuestionBinding ? unknown : SavedQuestionBinding) &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
-        ? RequireAggregationsForBreakouts<TQuery>
+        ? RequireAggregationsForBreakouts<TQuery> &
+            RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-): TQuery {
-  return query;
+): TQuery & DefinedQuery {
+  // `DefinedQuery` has no runtime member, so the object is returned as is; the
+  // cast only adds the mark that the query hooks require.
+  return query as TQuery & DefinedQuery;
 }

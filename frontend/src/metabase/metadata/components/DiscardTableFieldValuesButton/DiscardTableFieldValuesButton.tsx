@@ -25,7 +25,7 @@ export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
   };
 
   return (
-    <Button c="feedback-negative" variant="subtle" onClick={handleClick}>
+    <Button color="negative" variant="subtle" onClick={handleClick}>
       {started ? t`Discard triggered!` : t`Discard cached field values`}
     </Button>
   );

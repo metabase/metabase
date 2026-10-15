@@ -7,19 +7,14 @@
 
 (mr/def ::audit-log.details
   "The `:details` column of a AuditLog, decoded."
-  :map)
+  ms/OpaqueJSONObject)
 
 (mr/def ::audit-log
   "A AuditLog as selected from the app DB: every column of `:audit_log`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:topic         [:or :keyword :string]]
-   [:timestamp     ms/TemporalInstant]
-   [:end_timestamp [:maybe ms/TemporalInstant]]
-   [:user_id       [:maybe ::lib.schema.id/user]]
-   [:model         [:maybe [:or :keyword :string]]]
-   [:model_id      [:maybe :int]]
-   [:details       ::audit-log.details]])
+  [:merge
+   ::audit-log.update
+   [:map {:closed true}
+    [:id            ms/PositiveInt]]])
 
 (mr/def ::audit-log.update
   "What an update (or insert) of a AuditLog accepts: every column of `:audit_log` except `id`, all optional."

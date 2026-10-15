@@ -153,6 +153,7 @@
   [driver mp table-spec]
   (:table (sql-tools/find-table-or-transform
            driver
+           (lib.metadata/database mp)
            (lib.metadata/tables mp)
            (lib.metadata/transforms mp)
            table-spec)))

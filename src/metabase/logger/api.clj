@@ -124,7 +124,7 @@
   [:sequential ::log-adjustment])
 
 (mu/defn- set-log-levels! :- ::plan
-  [log-levels]
+  [log-levels :- (ms/string-keyed-map ::log-level)]
   (let [plan (create-plan log-levels)]
     (run! execute-plan! plan)
     plan))

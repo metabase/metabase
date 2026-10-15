@@ -12,6 +12,7 @@ export const TAG_TYPES = [
   "cloud-migration",
   "collection",
   "collection-tree",
+  "content-diagnostics-finding",
   "content-translation",
   "dashboard",
   "dashboard-question-candidates",
@@ -24,7 +25,7 @@ export const TAG_TYPES = [
   "external-transform",
   "public-document",
   "comment",
-  "embedding-hub-checklist",
+  "setup-guide-checklist",
   "exploration",
   "field",
   "field-values",
@@ -81,7 +82,6 @@ export const TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "metabot-permissions",
-  "security-advisory",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

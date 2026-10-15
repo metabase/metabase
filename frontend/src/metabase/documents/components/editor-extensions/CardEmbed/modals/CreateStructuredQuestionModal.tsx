@@ -7,7 +7,7 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getSetting } from "metabase/settings";
-import { Box, Button, Flex, Modal } from "metabase/ui";
+import { Box, Button, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
@@ -107,11 +107,12 @@ export const CreateStructuredQuestionModal = ({
 
   return (
     <Modal
+      density="relaxed"
       opened
       onClose={onClose}
       size="80%"
       title={t`Create new question`}
-      padding="xl"
+      classNames={{ content: S.modalContent, body: S.modalBody }}
     >
       <Box h="70vh" className={S.notebookContainer}>
         <Notebook
@@ -124,8 +125,8 @@ export const CreateStructuredQuestionModal = ({
           updateQuestion={handleUpdateQuestion}
         />
       </Box>
-      <Flex mt="xl" justify="flex-end" gap="0.5rem">
-        <Button variant="subtle" onClick={onClose}>
+      <Modal.Footer>
+        <Button variant="subtle" color="neutral" onClick={onClose}>
           {t`Cancel`}
         </Button>
         <Button
@@ -135,7 +136,7 @@ export const CreateStructuredQuestionModal = ({
         >
           {t`Save and use`}
         </Button>
-      </Flex>
+      </Modal.Footer>
     </Modal>
   );
 };

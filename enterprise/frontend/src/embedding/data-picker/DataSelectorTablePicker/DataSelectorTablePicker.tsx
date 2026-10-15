@@ -14,12 +14,14 @@ import {
 import { useDocsUrl } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
+import type {
+  DataSelectorDatabase,
+  DataSelectorSchema,
+  DataSelectorTable,
+} from "metabase/querying/common/components/DataSelector";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorSectionHeader } from "../DataSelectorSectionHeader";
@@ -31,19 +33,19 @@ type DataSelectorTablePickerProps = {
   hasNextStep?: boolean;
   isLoading?: boolean;
   minTablesToShowSearch?: number;
-  schemas: Schema[];
-  selectedDatabase?: Database | null;
-  selectedSchema?: Schema | null;
-  selectedTable?: Table | null;
-  tables: Table[];
+  schemas: DataSelectorSchema[];
+  selectedDatabase?: DataSelectorDatabase | null;
+  selectedSchema?: DataSelectorSchema | null;
+  selectedTable?: DataSelectorTable | null;
+  tables: DataSelectorTable[];
   onBack?: (() => void) | null;
-  onChangeTable: (table: Table) => void;
+  onChangeTable: (table: DataSelectorTable) => void;
 };
 
 type Item = {
   name: string;
-  table: Table;
-  database: Database;
+  table: DataSelectorTable;
+  database: DataSelectorDatabase;
 };
 
 type HeaderProps = Pick<
@@ -51,7 +53,7 @@ type HeaderProps = Pick<
   "schemas" | "selectedSchema" | "onBack"
 > & {
   // narrowed by the caller's early return; the header always has a database
-  selectedDatabase: Database;
+  selectedDatabase: DataSelectorDatabase;
 };
 
 export const DataSelectorTablePicker = ({
@@ -94,7 +96,7 @@ export const DataSelectorTablePicker = ({
       {
         name: header,
         items: tables.filter(isNotNull).map((table) => ({
-          name: tc(table.displayName()),
+          name: tc(table.display_name),
           table: table,
           database: selectedDatabase,
         })),
@@ -103,13 +105,13 @@ export const DataSelectorTablePicker = ({
       },
     ];
 
-    const checkIfItemIsClickable = ({ table }: { table: Table }) =>
+    const checkIfItemIsClickable = ({ table }: { table: DataSelectorTable }) =>
       table && isSyncCompleted(table);
 
-    const checkIfItemIsSelected = ({ table }: { table: Table }) =>
+    const checkIfItemIsSelected = ({ table }: { table: DataSelectorTable }) =>
       table && selectedTable ? table.id === selectedTable.id : false;
 
-    const renderItemIcon = ({ table }: { table: Table }) =>
+    const renderItemIcon = ({ table }: { table: DataSelectorTable }) =>
       table ? <TableInfoIcon table={table} position="top-start" /> : null;
 
     const renderItemWrapper = (content: ReactNode) => (
@@ -119,7 +121,8 @@ export const DataSelectorTablePicker = ({
     const showSpinner = (itemOrSection: Item | Section<Item>) =>
       "table" in itemOrSection && !isSyncCompleted(itemOrSection.table);
 
-    const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
+    const handleChange = ({ table }: { table: DataSelectorTable }) =>
+      onChangeTable(table);
 
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
 

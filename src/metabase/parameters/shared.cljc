@@ -17,6 +17,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.time :as time])
   (:import
    #?@(:clj
@@ -119,19 +120,22 @@
     #"^(past|next)([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$" :>> (fn [matches] (apply format-relative-date-with-offset matches))))
 
 (defn- format-day [value locale]
-  (-> value
-      (time/parse-unit  :day-of-week-abbrev "en") ;; always read in en locale
-      (time/format-unit :day-of-week        locale)))
+  (time/format-unit {:start-of-week :sunday}
+                    (time/parse-unit value :day-of-week-abbrev "en") ; always read in en locale
+                    :day-of-week
+                    {:locale locale}))
 
 (defn- format-hour [value locale]
-  (-> value
-      (time/parse-unit  :hour-of-day-24     "en") ;; always read in en locale
-      (time/format-unit :hour-of-day        locale)))
+  (time/format-unit {:start-of-week :sunday}
+                    (time/parse-unit value :hour-of-day-24 "en") ; always read in en locale
+                    :hour-of-day
+                    {:locale locale}))
 
 (defn- format-month [value locale]
-  (-> value
-      (time/parse-unit  :month-of-year      "en") ;; always read in en locale
-      (time/format-unit :month-of-year-full locale)))
+  (time/format-unit {:start-of-week :sunday}
+                    (time/parse-unit value :month-of-year "en") ; always read in en locale
+                    :month-of-year-full
+                    {:locale locale}))
 
 (defn- format-exclude-unit [value unit locale]
   (case unit
@@ -313,18 +317,25 @@
     #?(:clj  tag-names
        :cljs (clj->js tag-names))))
 
+(def ^:private TagParams
+  [:schema {::mr/deliberately-open true, :description "map or JS object of tag name to parameter"} :any])
+
 (mu/defn ^:export substitute-tags :- [:maybe :string]
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately if escape-markdown is true. Specifically escape-markdown should be false when the
   output isn't being rendered directly as markdown, such as in header cards."
-  ([text tag->param]
+  ([text       :- [:maybe :string]
+    tag->param :- TagParams]
    (substitute-tags text tag->param "en" true))
-  ([text :- [:maybe :string] tag->param locale escape-markdown]
+  ([text            :- [:maybe :string]
+    tag->param      :- TagParams
+    locale          :- [:maybe :string]
+    escape-markdown :- [:maybe :boolean]]
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
            tag->normalized-param (try
-                                   (update-vals tag->param parameters.schema/normalize-parameter)
+                                   (update-vals tag->param #(lib/normalize ::parameters.schema/parameter %))
                                    (catch #?(:clj Throwable :cljs :default) e
                                      (log/warnf "Unable to substitute tags: invalid parameters: %s" (ex-message e))))]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use

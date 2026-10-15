@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -9,6 +8,7 @@ import { getUserIsAdmin } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Alert,
   Anchor,

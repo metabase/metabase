@@ -6,10 +6,9 @@
 
 (mr/def ::premium-features-cache
   "A PremiumFeaturesCache as selected from the app DB: every column of `:premium_features_token_cache`."
-  [:map {:closed true}
-   [:token_hash        :string]
-   [:token_status_hash :string]
-   [:updated_at        ms/TemporalInstant]])
+  [:merge
+   ::premium-features-cache.update
+   [:map {:closed true}]])
 
 (mr/def ::premium-features-cache.update
   "What an update (or insert) of a PremiumFeaturesCache accepts: every column of `:premium_features_token_cache` except `id`, all optional."

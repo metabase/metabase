@@ -6,11 +6,21 @@
    [metabase.util.formatting.internal.date-formatters :as formatters]
    [metabase.util.formatting.internal.date-options :as options]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
 (def range-separator
   "The range separator is a Unicode en-dash, not an ASCII hyphen."
   " \u2013 ")
+
+(def ^:private TimeConfig
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "time formatting config"}]])
+
+(def ^:private FormattableDate
+  [:schema {::mr/deliberately-open true, :description "a value coercible to a date or datetime"} :any])
+
+(def ^:private FormatOptions
+  [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "date formatting options"}]])
 
 ;;; -------------------------------------------- Parameter Formatting ---------------------------------------------
 (def ^:private parameter-formatters
@@ -20,10 +30,12 @@
 
 (mu/defn ^:export format-for-parameter :- :string
   "Returns a formatting date string for a datetime used as a parameter to a Card."
-  [value
-   options :- [:maybe :map]]
-  (let [options (options/prepare-options options)
-        t       (u.time/coerce-to-timestamp value options)]
+  [time-config :- TimeConfig
+   value       :- FormattableDate
+   options     :- FormatOptions]
+  (let [options      (options/prepare-options options)
+        time-options (merge options time-config)
+        t            (u.time/coerce-to-timestamp value time-options)]
     (if (not (u.time/valid? t))
       ;; Fall back to a basic string rendering if we couldn't parse it.
       (str value)
@@ -31,7 +43,7 @@
         ;; A few units have special formats.
         (fmt t)
         ;; Otherwise, render as a day or day range.
-        (let [[start end] (u.time/to-range t options)]
+        (let [[start end] (u.time/to-range t time-options)]
           (if (u.time/same-day? start end)
             (formatters/big-endian-day start)
             (str (formatters/big-endian-day start) "~" (formatters/big-endian-day end))))))))
@@ -58,23 +70,27 @@
 
 (mu/defn ^:export format-range-with-unit :- :string
   "Returns a string with this datetime formatted as a range, rounded to the given `:unit`."
-  [value
-   options :- [:maybe :map]]
-  (let [options (options/prepare-options options)
-        t       (u.time/coerce-to-timestamp value options)]
+  [time-config :- TimeConfig
+   value       :- FormattableDate
+   options     :- FormatOptions]
+  (let [options      (options/prepare-options options)
+        time-options (merge options time-config)
+        t            (u.time/coerce-to-timestamp value time-options)]
     (if (u.time/valid? t)
-      (format-range-with-unit-inner (u.time/to-range t options) options)
+      (format-range-with-unit-inner (u.time/to-range t time-options) options)
       ;; Best-effort fallback if we failed to parse - .toString the input.
       (str value))))
 
 ;;; ---------------------------------------------- Format Single Date -----------------------------------------------
 (mu/defn ^:export format-datetime-with-unit :- :string
   "Returns a string with this datetime formatted as a single value, rounded to the given `:unit`."
-  [value
-   options :- [:maybe :map]]
+  [time-config :- TimeConfig
+   value       :- FormattableDate
+   options     :- FormatOptions]
   (let [{:keys [is-exclude no-range type unit]
          :as options}                          (options/prepare-options options)
-        t                                      (u.time/coerce-to-timestamp value options)]
+        time-options                           (merge options time-config)
+        t                                      (u.time/coerce-to-timestamp value time-options)]
     (cond
       is-exclude (case unit
                    :hour-of-day (formatters/hour-only t)
@@ -84,16 +100,16 @@
 
       ;; Weeks in tooltips and cells get formatted specially.
       (and (= unit :week) (#{"tooltip" "cell"} type) (not no-range))
-      (format-range-with-unit value options)
+      (format-range-with-unit time-config value options)
 
       :else ((formatters/options->formatter options) t))))
 
 (mu/defn ^:export date->iso-string :- :string
   "Coerce date and format as big-endian-day string."
-  [d]
+  [d :- FormattableDate]
   (formatters/big-endian-day (u.time/coerce-to-timestamp d)))
 
 (mu/defn ^:export datetime->iso-string :- :string
   "Coerce datetime and format as iso string."
-  [dt]
+  [dt :- FormattableDate]
   (formatters/->iso (u.time/coerce-to-timestamp dt)))

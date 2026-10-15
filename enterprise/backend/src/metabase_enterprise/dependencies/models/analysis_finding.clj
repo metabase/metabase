@@ -25,6 +25,7 @@
       (and (contains? changes :result) (not (contains? changes :analyzed_at)))
       (assoc :analyzed_at (mi/now)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-analysis-finding-version*
   "Current version of the query validation logic.
   This should be incremented when the analysis logic changes.

@@ -2,10 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
+import { useListEnginesQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
-import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -14,7 +14,6 @@ import {
   ActionIcon,
   Box,
   Button,
-  Divider,
   Flex,
   Icon,
   ScrollArea,
@@ -22,6 +21,7 @@ import {
 } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 
+import S from "./DatabaseHelpSidePanel.module.css";
 import {
   ENGINE_DOC_MAP,
   EmbeddedEngineDocContent,
@@ -33,7 +33,7 @@ interface Props {
 }
 
 export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
   const { url: fullDocsUrl, showMetabaseLinks } = useDocsUrl(
     `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
   );
@@ -68,50 +68,44 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
           </ActionIcon>
         </Flex>
         {showMetabaseLinks && (
-          <>
+          <Box className={S.row} px="lg" py="md">
             <Button
-              className={CS.link}
               component={Link}
               leftSection={<Icon name="reference" />}
-              p={0}
               target="_blank"
               to={fullDocsUrl}
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
             >
               {t`Read the full docs`}
             </Button>
-            <Divider variant="dashed" />
-          </>
+          </Box>
         )}
         {isAdmin && (
-          <>
+          <Box className={S.row} px="lg" py="md">
             <Button
-              className={CS.link}
               leftSection={<Icon name="mail" />}
               onClick={toggleUserModal}
-              p={0}
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
             >
               {t`Invite a teammate to help you`}
             </Button>
-            <Divider variant="dashed" />
-          </>
+          </Box>
         )}
         {showMetabaseLinks && isPaidPlan && (
-          <>
+          <Box className={S.row} px="lg" py="md">
             <Button
-              className={CS.link}
               component={Link}
               leftSection={<Icon name="person" />}
-              p={0}
               target="_blank"
               to={talkToExpertUrl}
-              variant="subtle"
+              variant="transparent"
+              size="compact-md"
             >
               {t`Talk to an expert`}
             </Button>
-            <Divider variant="dashed" />
-          </>
+          </Box>
         )}
         <EmbeddedEngineDocContent engineKey={engineKey} />
       </Box>

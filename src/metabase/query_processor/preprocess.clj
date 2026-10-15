@@ -30,7 +30,7 @@
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.middleware.parameters :as parameters]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.permissions.preprocess :as qp.perms.preprocess]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
    [metabase.query-processor.middleware.prefetch-metadata :as prefetch-metadata]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
@@ -60,8 +60,8 @@
   All of these middlewares assume MBQL 5."
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'normalize/normalize-preprocessing-middleware
-   #'qp.perms/remove-internal-keys
-   #'qp.perms/record-referenced-card-ids
+   #'qp.perms.preprocess/remove-internal-keys
+   #'qp.perms.preprocess/record-referenced-card-ids
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'prefetch-metadata/prefetch-metadata
@@ -119,7 +119,7 @@
 
 (mu/defn preprocess :- ::lib.schema/query
   "Fully preprocess a query, but do not compile it to a native query or execute it."
-  [query :- :map]
+  [query :- ::qp.schema/any-query]
   (when config/is-test?
     ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "do not preprocess queries in top-level forms"))
   (qp.setup/with-qp-setup [query query]
@@ -159,7 +159,7 @@
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
-  [query :- :map]
+  [query :- ::qp.schema/any-query]
   (qp.setup/with-qp-setup [query query]
     (let [preprocessed (-> query preprocess)]
       ;; TODO - we should throw an Exception if the query has a native source query with no attached metadata or at

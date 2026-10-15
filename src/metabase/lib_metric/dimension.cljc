@@ -22,12 +22,13 @@
    foreign table, so the same field id is reachable via different `:source-field` paths. Keying maps
    by field id alone therefore collides — always key by this instead.
 
-   It drops only per-instance/derived opts (`:lib/uuid`, `:effective-type`, `:base-type`) and KEEPS
+   It drops only per-instance/derived opts (`:lib/uuid`, `:effective-type`, `:base-type`, and the
+   `:lib/transformation-added-base-type` bookkeeping flag that legacy-MBQL conversion stamps on a ref) and KEEPS
    everything identity-relevant: the id, the `:source-field`/`:join-alias` that identifies the FK or
    join, and any `:binning`/`:temporal-unit`."
   [[clause-type opts id-or-name]]
   [clause-type
-   (dissoc opts :lib/uuid :effective-type :base-type)
+   (dissoc opts :lib/uuid :effective-type :base-type :lib/transformation-added-base-type)
    id-or-name])
 
 (defn targets-equal?
@@ -159,7 +160,10 @@
                  (let [persisted-dim (find-persisted-by-target (:target mapping)
                                                                persisted-mappings
                                                                persisted-dims-by-id)
-                       dim-id        (or (:id persisted-dim) (random-uuid-str))
+                       ;; A computed dimension arrives with an id already derived from its entity and target, and
+                       ;; so is stable across recomputation; the random fallback only covers callers that build
+                       ;; pairs by hand without one.
+                       dim-id        (or (:id persisted-dim) (:id dimension) (random-uuid-str))
                        merged-dim    (-> dimension
                                          (assoc :id dim-id)
                                          (assoc :status :status/active)
@@ -437,7 +441,7 @@
 (mu/defn get-dimension-or-throw :- :map
   "Find a dimension by its UUID from a list of dimensions.
    Throws 400 if not found."
-  [dimensions   :- [:maybe [:sequential :map]]
+  [dimensions   :- [:maybe [:sequential ::lib-metric.schema/dimension]]
    dimension-id :- :string]
   (or (m/find-first #(= (:id %) dimension-id) dimensions)
       (throw (ex-info (i18n/tru "Dimension not found: {0}" dimension-id)
@@ -447,7 +451,7 @@
 (mu/defn get-dimension-mapping-or-throw :- :map
   "Find a dimension mapping by dimension UUID from a list of mappings.
    Throws 400 if not found."
-  [dimension-mappings :- [:maybe [:sequential :map]]
+  [dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]
    dimension-id       :- :string]
   (or (m/find-first #(= (:dimension-id %) dimension-id) dimension-mappings)
       (throw (ex-info (i18n/tru "Dimension mapping not found for dimension: {0}" dimension-id)
@@ -471,8 +475,8 @@
    Validates that the dimension is active (not orphaned) and has a valid mapping.
 
    Returns the field ID or throws an exception with appropriate error message."
-  [dimensions         :- [:maybe [:sequential :map]]
-   dimension-mappings :- [:maybe [:sequential :map]]
+  [dimensions         :- [:maybe [:sequential ::lib-metric.schema/dimension]]
+   dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]
    dimension-id       :- :string]
   (let [dimension (get-dimension-or-throw dimensions dimension-id)]
     ;; Check for orphaned dimensions

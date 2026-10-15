@@ -1,1 +1,1 @@
-export * from "./SetupCardContainer.styled";
+export * from "./SetupCardContainer";

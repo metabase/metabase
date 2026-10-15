@@ -21,6 +21,4 @@ definition:
 entity_id: 8kxQ2Wr7PmN5dLf3hYz9v
 name: Product Count
 serdes/meta:
-- id: 8kxQ2Wr7PmN5dLf3hYz9v
-  label: product_count
-  model: Measure
+- model: Measure

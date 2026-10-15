@@ -232,7 +232,7 @@
     (is (not (str/ends-with? relative "\n\t[key: string]: unknown;\n}")))
     (is (str/includes? relative "offsetUnit?:"))
     (is (str/includes? relative "offsetValue: number | null;"))
-    (is (str/includes? relative "options: {\n\tincludeCurrent?: boolean;\n\t[key: string]: unknown;\n} | null;"))
+    (is (str/includes? relative "options: {\n\tincludeCurrent?: boolean;\n} | null;"))
     (is (str/includes? relative "dimension: metabase.lib-metric.schema/metadata-dimension"))
     (is (not (str/includes? relative "displayName")))
     (is (str/includes? exclude "unit?:"))

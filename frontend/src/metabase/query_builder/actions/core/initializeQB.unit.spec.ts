@@ -1,11 +1,11 @@
 import fetchMock from "fetch-mock";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
@@ -82,7 +82,7 @@ async function baseSetup({
         : user,
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const getState = () => state;
 
   // Pass actions through verbatim so callers that capture the result of
@@ -90,7 +90,7 @@ async function baseSetup({
   // call methods on it in tests where the snippet endpoint is mocked.
   const dispatch = jest.fn((action) => action);
   await initializeQB(location, params)(dispatch, getState);
-  jest.runAllTimers();
+  jest.runOnlyPendingTimers();
 
   const actions = dispatch.mock.calls.find(
     (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
@@ -733,13 +733,13 @@ describe("QB Actions > initializeQB", () => {
 
       // Second init runs to completion, superseding the first
       await startInitializeDB(secondCard, dispatch, getState);
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       // Unblock the first init; it should bail out once it sees the version
       // has been superseded.
       resolveFirstLoad(firstCard);
       await firstInit;
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       const initActions = dispatch.mock.calls.filter(
         (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
@@ -784,11 +784,11 @@ describe("QB Actions > initializeQB", () => {
       await Promise.resolve();
 
       await startInitializeDB(secondCard, dispatch, getState);
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       resolveFirstLoad(firstCard);
       await firstInit;
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       const archiveError = setErrorPage(
         expect.objectContaining({ data: { error_code: "archived" } }),

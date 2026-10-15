@@ -45,6 +45,7 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.models.interface :as mi]
@@ -157,12 +158,13 @@
 
 (mu/defn transform-metric-aggregate :- ::ads/external-op
   "Map a metric aggregate definition from nominal types to semantic types."
-  [[ag-type & args] dimension-name->field]
+  [[ag-type & args] :- ::lib.schema.common/possibly-unnormalized-clause
+   dimension-name->field :- [:map-of :string ::ads/item]]
   {:lib/type :lib/external-op
    :operator (keyword ag-type)
    :args     (mapv (fn [arg]
                      (if (and (vector? arg)
-                              (= (first arg) "dimension"))
+                              (contains? #{:dimension "dimension"} (first arg)))
                        (when-let [field (dimension-name->field (second arg))]
                          (field->metadata field))
                        arg))
@@ -284,7 +286,7 @@
   "For every field in a given context determine all potential dimensions each field may map to.
   This will return a map of field id (or name) to collection of potential matching dimensions."
   [context :- ::ads/context
-   dimension-specs]
+   dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
   ;; TODO - Fix this so that the intermediate representations aren't so crazy.
   ;; all-bindings a map of binding dim identifier to binding def which contains
   ;; field matches which are all the same field except they are merged with the binding.
@@ -355,7 +357,8 @@
    (see `most-specific-definition` for details).
 
   The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
-  [context dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
+  [context :- ::ads/context
+   dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
   (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
@@ -399,7 +402,8 @@
 (mu/defn grounded-filters :- [:sequential ::ads/grounded-filter]
   "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
   filter name to grounded versions of the filter."
-  [filter-templates ground-dimensions]
+  [filter-templates :- [:maybe [:sequential ::ads/filter-template]]
+   ground-dimensions :- ::ads/dim-name->matching-fields]
   (->> filter-templates
        (keep (fn [fltr]
                (let [[fname {:keys [filter] :as v}] (first fltr)
@@ -416,7 +420,7 @@
                                    :operator (keyword op)
                                    :args     (mapv (fn [arg]
                                                      (if (and (vector? arg)
-                                                              (= (first arg) "dimension"))
+                                                              (contains? #{:dimension "dimension"} (first arg)))
                                                        (when-let [field (opt (second arg))]
                                                          (field->metadata field))
                                                        arg))
@@ -431,7 +435,7 @@
   [context :- ::ads/context
    {:keys [dimension-specs
            metric-specs
-           filter-specs]} :- [:map
+           filter-specs]} :- [:map {:closed true}
                               [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]

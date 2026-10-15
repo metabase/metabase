@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
 
@@ -28,6 +32,8 @@ function setup({
     const [recentQuery] = updateQuery.mock.lastCall;
     return recentQuery;
   }
+
+  setupDatabaseEndpoints(createSampleDatabase());
 
   renderWithProviders(
     <ExpressionStep

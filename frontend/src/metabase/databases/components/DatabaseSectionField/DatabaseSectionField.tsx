@@ -23,8 +23,8 @@ const DatabaseSectionField = ({
       <Button
         w="fit-content"
         type="button"
-        variant="subtle"
-        size="compact-sm"
+        variant="transparent"
+        size="compact-md"
         rightSection={<Icon name={value ? "chevronup" : "chevrondown"} />}
         onClick={handleClick}
       >

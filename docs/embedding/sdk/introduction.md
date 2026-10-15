@@ -26,7 +26,7 @@ Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground
 
 ## Modular embedding SDK prerequisites
 
-- React application using React 18 or React 19.
+- React application using React 18 or React 19. Metabase 66 will drop support for React 18. If you need to stay on React 18 for longer, use [Metabase 64 LTS](https://www.metabase.com/version-support).
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
@@ -112,7 +112,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Embed a collection browser](../browser.md)
 - [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
-- [Config](./config.md)
+- [Configure your embeds](../config.md)
 - [Customize loading, error, and empty states](./loading-and-errors.md)
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)

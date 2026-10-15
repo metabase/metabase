@@ -8,6 +8,7 @@
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli :as mu]
@@ -248,7 +249,8 @@
 (mu/defn default-filter-parts :- [:maybe ::schema/default-filter-parts]
   "Extract default filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension} or nil if not a default filter."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3))
     (let [operator (first filter-clause)]
@@ -272,7 +274,8 @@
 (mu/defn boolean-filter-parts :- [:maybe ::schema/boolean-filter-parts]
   "Extract boolean filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [boolean]} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3))
     (let [operator (first filter-clause)]
@@ -307,7 +310,8 @@
 (mu/defn number-filter-parts :- [:maybe ::schema/number-filter-parts]
   "Extract number filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [number]} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3)
              (or (not= :between (first filter-clause)) (>= (count filter-clause) 5))
@@ -352,7 +356,8 @@
 (mu/defn string-filter-parts :- [:maybe ::schema/string-filter-parts]
   "Extract string filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [string], :options map} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3)
              (or (#{:is-empty :not-empty := :!=} (first filter-clause)) (>= (count filter-clause) 4))
@@ -401,7 +406,8 @@
 (mu/defn coordinate-filter-parts :- [:maybe ::schema/coordinate-filter-parts]
   "Extract coordinate filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :longitude-dimension dimension, :values [number]} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3)
              (case (first filter-clause)
@@ -497,7 +503,8 @@
 (mu/defn specific-date-filter-parts :- [:maybe ::schema/specific-date-filter-parts]
   "Extract specific date filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [date], :has-time boolean} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) (if (= :between (first filter-clause)) 5 4))
              (perf/every? (mr/validator ::lib.schema.literal/literal) (perf/dropv 3 filter-clause)))
@@ -536,7 +543,8 @@
 (mu/defn relative-date-filter-parts :- [:maybe ::schema/relative-date-filter-parts]
   "Extract relative date filter parts from an MBQL clause.
    Returns {:dimension dim, :unit unit, :value int, :offset-unit unit, :offset-value int, :options map} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (= :time-interval (first filter-clause))
              (>= (count filter-clause) 5))
@@ -582,7 +590,8 @@
 (mu/defn exclude-date-filter-parts :- [:maybe ::schema/exclude-date-filter-parts]
   "Extract exclude date filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :unit unit, :values [int]} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3)
              (perf/every? int? (perf/dropv 3 filter-clause)))
@@ -636,7 +645,8 @@
 (mu/defn time-filter-parts :- [:maybe ::schema/time-filter-parts]
   "Extract time filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [time]} or nil."
-  [definition filter-clause]
+  [definition    :- ::schema/metric-definition
+   filter-clause :- ::lib.schema.common/clause-tag-candidate]
   (when (and (vector? filter-clause)
              (>= (count filter-clause) 3))
     (let [operator (first filter-clause)

@@ -22,6 +22,9 @@ import {
   publishRelease,
   versionRequirements,
 } from "./src";
+import {
+  publishVersionInfoFiles,
+} from "./version-info-s3";
 
 const {
   GITHUB_TOKEN,
@@ -304,13 +307,11 @@ async function versionInfo() {
 
   fs.writeFileSync(versionInfoName, JSON.stringify(newVersionInfo, null, 2));
 
-  await $`aws s3 cp ${versionInfoName} s3://${AWS_S3_STATIC_BUCKET}/${versionInfoName}`.pipe(
-    process.stdout,
-  );
-
-  await $`aws cloudfront create-invalidation \
-    --distribution-id ${AWS_CLOUDFRONT_STATIC_ID} \
-    --paths /${versionInfoName}`.pipe(process.stdout);
+  await publishVersionInfoFiles({
+    files: [versionInfoName],
+    bucket: AWS_S3_STATIC_BUCKET,
+    distributionId: AWS_CLOUDFRONT_STATIC_ID,
+  });
 
   log(`✅ Published ${versionInfoName} to s3`);
 }

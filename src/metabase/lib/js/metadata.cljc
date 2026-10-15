@@ -16,7 +16,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
@@ -632,7 +631,7 @@
               form))
           metadata))))))
 
-(mu/defn metadata-provider :- ::lib.schema.metadata/metadata-providerable
+(defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id unparsed-metadata]
   #?(:cljs (lib.cache/side-channel-cache (str database-id) unparsed-metadata

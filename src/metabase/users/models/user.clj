@@ -19,7 +19,6 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
@@ -367,12 +366,6 @@
 
 (declare form-password-reset-url)
 
-(def ^:private Invitor
-  "Map with info about the admin creating the user, used in the new user notification code"
-  [:map
-   [:email      ms/Email]
-   [:first_name [:maybe ms/NonBlankString]]])
-
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
   match any existing user."
@@ -383,10 +376,12 @@
   "Convenience function for inviting a new `User` and sending them a welcome email.
   This function will create the user, which will trigger the built-in system event
   notification to send an invite via email."
-  ([new-user invitor setup?]
+  ([new-user :- users.schema/NewUser
+    invitor  :- ::users.schema/user
+    setup?   :- :boolean]
    (create-and-invite-user! new-user invitor setup? nil))
   ([new-user      :- users.schema/NewUser
-    invitor       :- Invitor
+    invitor       :- ::users.schema/user
     setup?        :- :boolean
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
@@ -435,7 +430,10 @@
   "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
   this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
   reading attributes stored on the user row."
-  [{:keys [login_attributes jwt_attributes] :as user} :- [:map [:type (into [:enum] allowed-user-types)]]]
+  [{:keys [login_attributes jwt_attributes] :as user} :- [:merge
+                                                          ::users.schema/user
+                                                          [:map {:closed true}
+                                                           [:type (into [:enum] allowed-user-types)]]]]
   (assoc user :attributes (if (= (:type user) :personal)
                             (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
                             {})))

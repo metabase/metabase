@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   findRequests,
@@ -22,9 +23,11 @@ import { GdriveConnectionModal } from "./GdriveConnectionModal";
 const setup = ({
   status,
   isAdmin = true,
+  folderResponse,
 }: {
   status: GdrivePayload["status"];
   isAdmin?: boolean;
+  folderResponse?: Promise<Partial<GdrivePayload>>;
 }) => {
   const settings = createMockSettings({
     "show-google-sheets-integration": true,
@@ -39,6 +42,9 @@ const setup = ({
   setupGdriveGetFolderEndpoint({
     status,
   });
+  if (folderResponse) {
+    fetchMock.modifyRoute("gdrive-get-folder", { response: folderResponse });
+  }
   setupGdriveServiceAccountEndpoint(
     "super-service-account@testing.metabase.com",
   );
@@ -59,6 +65,20 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     setup({
       status: "active",
     });
+    expect(await screen.findByText("Disconnect")).toBeInTheDocument();
+  });
+
+  it("should not show connection modal while the connection status is loading", async () => {
+    const { promise: folderResponse, resolve } =
+      Promise.withResolvers<Partial<GdrivePayload>>();
+    setup({ status: "active", folderResponse });
+
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("gdrive-get-folder")).toBe(true),
+    );
+    expect(screen.queryByText("Import Google Sheets")).not.toBeInTheDocument();
+
+    resolve({ status: "active" });
     expect(await screen.findByText("Disconnect")).toBeInTheDocument();
   });
 

@@ -13,35 +13,49 @@ const questionDetails = {
   },
 };
 
-/**
- * The list of issues this spec covers:
- *  - metabase#11183
- *  -
- */
 describe("scenarios > binning > correctness > time series", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.summarize();
-
-    openPopoverFromDefaultBucketSize("Created At", "by month");
   });
 
-  Object.entries(TIME_OPTIONS).forEach(
-    ([bucketSize, { selected, isHiddenByDefault, representativeValues }]) => {
-      it(`should return correct values for ${bucketSize}`, () => {
+  it("should return correct values for every bucket size", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.summarize();
+
+    cy.log("the first bucket is picked from the unselected column");
+    H.getBinningButtonForDimension({ name: "Created At" })
+      .should("have.text", "by month")
+      .click({ force: true });
+
+    Object.entries(TIME_OPTIONS).forEach(
+      (
+        [bucketSize, { selected, isHiddenByDefault, firstRows }],
+        index,
+        entries,
+      ) => {
+        cy.log(bucketSize);
+
+        if (index > 0) {
+          H.summarize();
+          H.getBinningButtonForDimension({
+            name: "Created At",
+            isSelected: true,
+          }).click({ force: true });
+        }
+
+        // The popover opens expanded when the current bucket is a hidden one.
+        const isExpanded =
+          index > 0 && Boolean(entries[index - 1][1].isHiddenByDefault);
+
+        cy.intercept("POST", "/api/dataset").as(`dataset-${index}`);
         H.popover().within(() => {
-          if (isHiddenByDefault) {
+          if (isHiddenByDefault && !isExpanded) {
             cy.button("More…").click();
           }
           cy.findByText(bucketSize).click();
-          cy.wait("@dataset");
         });
+        cy.wait(`@dataset-${index}`);
 
         H.getBinningButtonForDimension({
           name: "Created At",
@@ -52,34 +66,19 @@ describe("scenarios > binning > correctness > time series", () => {
 
         getTitle(`Count by Created At: ${bucketSize}`);
 
-        assertOnHeaderCells(bucketSize);
-        assertOnTableValues(representativeValues);
+        H.assertTableData({
+          columns: [`Created At: ${bucketSize}`, "Count"],
+          firstRows,
+        });
 
         assertOnTimeSeriesFooter(bucketSize);
-      });
-    },
-  );
+      },
+    );
+  });
 });
-
-function openPopoverFromDefaultBucketSize(name, bucket) {
-  H.getBinningButtonForDimension({ name })
-    .should("have.text", bucket)
-    .click({ force: true });
-}
 
 function getTitle(title) {
   cy.findByText(title);
-}
-
-function assertOnHeaderCells(bucketSize) {
-  cy.get("[data-testid=cell-data]").eq(0).contains(`Created At: ${bucketSize}`);
-  cy.get("[data-testid=cell-data]").eq(1).contains("Count");
-}
-
-function assertOnTableValues(values) {
-  values.map((v) => {
-    cy.get("[data-testid=cell-data]").contains(v).scrollIntoView();
-  });
 }
 
 function assertOnTimeSeriesFooter(str) {

@@ -2,31 +2,20 @@
   "Malli schemas for the model-persistence module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::persisted-info.definition
   "The `:definition` column of a PersistedInfo, decoded."
-  :map)
+  ::lib.schema.metadata/persisted-info.definition)
 
 (mr/def ::persisted-info
   "A PersistedInfo as selected from the app DB: every column of `:persisted_info`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:database_id     ::lib.schema.id/database]
-   [:card_id         [:maybe ::lib.schema.id/card]]
-   [:question_slug   :string]
-   [:table_name      :string]
-   [:definition      [:maybe ::persisted-info.definition]]
-   [:query_hash      [:maybe :string]]
-   [:active          :boolean]
-   [:state           :string]
-   [:refresh_begin   ms/TemporalInstant]
-   [:refresh_end     [:maybe ms/TemporalInstant]]
-   [:state_change_at [:maybe ms/TemporalInstant]]
-   [:error           [:maybe :string]]
-   [:created_at      ms/TemporalInstant]
-   [:creator_id      [:maybe ::lib.schema.id/user]]])
+  [:merge
+   ::persisted-info.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::persisted-info.update
   "What an update (or insert) of a PersistedInfo accepts: every column of `:persisted_info` except `id`, all optional."

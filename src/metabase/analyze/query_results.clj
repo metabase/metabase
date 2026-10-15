@@ -8,6 +8,7 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.query-processor.schema :as query-processor.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -30,7 +31,7 @@
 (mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
-  [col]
+  [col :- ResultColumnMetadata]
   (update
    col
    :semantic_type
@@ -44,18 +45,17 @@
 (mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
-  [column]
-  ;; HACK - not sure why we don't have display_name yet in some cases
-  (merge
-   {:base_type    :type/*
-    :display_name (:name column)}
-   column))
+  [column :- ResultColumnMetadata]
+  (-> column
+      (u/assoc-default :base_type :type/*)
+      ;; HACK - not sure why we don't have display_name yet in some cases
+      (u/assoc-default :display_name (:name column))))
 
 (mu/defn insights-rf :- fn?
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
   results. `metadata` is the usual QP results metadata e.g. as received by an `rff`."
   {:arglists '([metadata])}
-  [{:keys [cols]}]
+  [{:keys [cols]} :- ::query-processor.schema/metadata]
   (let [cols (for [col cols]
                (try
                  (maybe-infer-semantic-type (col->ResultColumnMetadata col))

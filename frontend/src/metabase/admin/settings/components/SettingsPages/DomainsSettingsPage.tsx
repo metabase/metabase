@@ -2,11 +2,6 @@ import type { FormikHelpers } from "formik";
 import { flushSync } from "react-dom";
 import { jt, t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
@@ -22,11 +17,15 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { useAdminSetting, useAdminSettings } from "metabase/settings";
+import {
+  SettingHeader,
+  SettingsPageWrapper,
+  SettingsSection,
+  isSettingSetFromEnvVar,
+} from "metabase/settings-components";
 import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { reload } from "metabase/utils/dom";
-
-import { SettingHeader } from "../SettingHeader";
 
 import {
   type DomainsSettings,
@@ -43,11 +42,11 @@ export function DomainsSettingsPage() {
       "csp-img-allowed-hosts",
     ]);
 
-  const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
-    anchor: "allowed-domains-for-iframes-in-dashboards",
+  const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/domains", {
+    anchor: "allow-iframes-from-a-site-in-dashboards",
   });
-  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/settings", {
-    anchor: "allowed-domains-for-images",
+  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/domains", {
+    anchor: "restrict-where-images-can-load-from",
   });
 
   const customVizAvailable = useHasTokenFeature("custom-viz-available");

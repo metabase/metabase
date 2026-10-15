@@ -10,7 +10,7 @@ export function NoObjectError(props: ImageProps) {
 
   return noObjectIllustration ? (
     <Image
-      alt={t`No results`}
+      alt={t`Nothing found`}
       w={120}
       h={120}
       src={noObjectIllustration}

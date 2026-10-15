@@ -27,7 +27,7 @@
     :steps-taken    []
     :context        context
     :state          (metabot.schema/normalize-state
-                     (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
+                     (or state {:queries {} :charts {} :todos [] :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
@@ -43,6 +43,15 @@
   (-> memory
       (assoc-in (into [:state] path) v)
       (assoc-in (into [:turn-state] path) v)))
+
+(defn- record-client-id
+  "Persist `id` as client-supplied when [[add-client-ids]] marked it and it isn't recorded yet."
+  [memory id]
+  (let [recorded (set (get-in memory [:state :client-ids]))]
+    (if (and (contains? (:client-ids memory) id)
+             (not (contains? recorded id)))
+      (record memory [:client-ids] (conj recorded id))
+      memory)))
 
 (defn get-state
   "The agent's current full working state."
@@ -77,7 +86,9 @@
   "Store a query in state by its query-id.
   Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
-  (record memory [:queries query-id] query))
+  (-> memory
+      (record [:queries query-id] query)
+      (record-client-id query-id)))
 
 (defn find-query
   "Retrieve a query by its query-id. Throws if not found."
@@ -97,7 +108,9 @@
 (defn set-chart
   "Store a chart configuration in state by its chart-id."
   [memory chart-id chart]
-  (record memory [:charts chart-id] chart))
+  (-> memory
+      (record [:charts chart-id] chart)
+      (record-client-id chart-id)))
 
 (defn find-chart
   "Retrieve a chart by its chart-id. Throws if not found."
@@ -111,31 +124,16 @@
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
 
-;;; Transform Management
-
-(defn set-transform
-  "Store a transform in state by its ID."
-  [memory transform-id transform]
-  (record memory [:transforms (str transform-id)] transform))
-
-(defn find-transform
-  "Retrieve a transform by its ID. Throws if not found."
-  [memory transform-id]
-  (let [transforms (get-in memory [:state :transforms] {})]
-    (if-let [transform (get transforms (str transform-id))]
-      transform
-      (throw (ex-info (str "Transform with ID " transform-id " not found in memory. "
-                           "Available transforms: [" (str/join ", " (keys transforms)) "]")
-                      {:agent-error? true
-                       :transform-id transform-id
-                       :available-transforms (keys transforms)})))))
-
-;;; Todos & link registry (whole-value writes)
-
 (defn set-todos
   "Set the todo list (a vector of todo item maps)."
   [memory todos]
   (record memory [:todos] (vec todos)))
+
+(defn add-client-ids
+  "Mark `ids` as the queries and charts the client supplied this turn.
+  Each is persisted, with the ids earlier turns recorded, once a query or chart is stored under it."
+  [memory ids]
+  (update memory :client-ids (fnil into #{}) ids))
 
 (defn set-link-registry
   "Set the link registry (url → stable id mappings)."

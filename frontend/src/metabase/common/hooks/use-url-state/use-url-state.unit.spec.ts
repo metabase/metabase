@@ -1,6 +1,6 @@
 import { createMockLocation } from "__support__/state";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
-import type { Location } from "metabase/router";
+import { type Location, useLocation } from "metabase/router";
 
 import type { QueryParam } from "./types";
 import { type UrlStateConfig, useUrlState } from "./use-url-state";
@@ -41,7 +41,7 @@ const setup = ({ location = createMockLocation() }: SetupOpts = {}) => {
     }),
   };
 
-  return renderHookWithProviders(() => useUrlState(location, config), {
+  return renderHookWithProviders(() => useUrlState(useLocation(), config), {
     initialRoute: `${location.pathname}${location.search}`,
     withRouter: true,
   });
@@ -146,6 +146,20 @@ describe("useUrlState", () => {
     await waitFor(() => {
       expect(router?.location.search).toEqual("?name=xyz&score=456");
     });
+  });
+
+  it("follows the url on navigation, back and forward", () => {
+    const location = createLocation("?name=abc&score=123");
+    const { result, router } = setup({ location });
+
+    act(() => router?.navigate(location.pathname));
+    expect(result.current[0]).toEqual({ name: null, score: null });
+
+    act(() => router?.back());
+    expect(result.current[0]).toEqual({ name: "abc", score: 123 });
+
+    act(() => router?.forward());
+    expect(result.current[0]).toEqual({ name: null, score: null });
   });
 
   it("removes query params", async () => {

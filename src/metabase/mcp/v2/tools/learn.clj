@@ -12,8 +12,8 @@
    is not optional: the v2 gate denies a nil `:scope` outright, so omitting it would hide the
    tool rather than make it public."
   (:require
-   [clojure.string :as str]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.skills :as skills]
    [metabase.metabot.scope :as metabot.scope]))
@@ -23,25 +23,27 @@
 (defn- unknown-topic!
   [topic]
   (common/throw-teaching-error
-   (format "Unknown topic %s. Topics: %s. Call learn() with no arguments for the catalog with descriptions."
-           (pr-str topic) (str/join ", " (skills/topics)))))
+   (message/msg ["Unknown topic %s. Topics: %s. Call learn() with no arguments for the catalog with descriptions."]
+                topic (common/list-message (skills/topics)))))
 
 (registry/deftool learn
-  "Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference \"operators\" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference \"settings\" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context."
-  {:name        "learn"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        [:map {:closed true}
-                 [:topic {:optional true}
-                  [:maybe [:string {:min 1 :description "A topic from the catalog. Omit to list all topics."}]]]
-                 [:reference {:optional true}
-                  [:maybe [:string {:min 1 :description "A reference file of `topic`, by the name the skill (or the catalog) lists."}]]]]}
+  "Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference \"operators\" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), visualization-settings (display choice and settings; reference \"settings\" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context."
+  {:name           "learn"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           [:map {:closed true}
+                    [:topic {:optional true}
+                     [:maybe [:string {:min 1 :description "A topic from the catalog. Omit to list all topics."}]]]
+                    [:reference {:optional true}
+                     [:maybe [:string {:min 1 :description "A reference file of `topic`, by the name the skill (or the catalog) lists."}]]]]}
   [{:keys [topic reference]} _context]
   (common/success-content
    (cond
      (and reference (nil? topic))
      (common/throw-teaching-error
-      "`reference` names a file within a topic — pass `topic` alongside it, e.g. learn(\"query-dialect\", \"operators\").")
+      (message/msg [(str "\"reference\" names a file within a topic — pass \"topic\" "
+                         "alongside it, e.g. learn(\"query-dialect\", \"operators\").")]))
 
      (nil? topic)
      (skills/catalog-text)
@@ -50,11 +52,12 @@
      (or (skills/reference-text topic reference)
          (if-let [names (skills/reference-names topic)]
            (common/throw-teaching-error
-            (format "Topic %s has no reference %s.%s"
-                    (pr-str topic) (pr-str reference)
-                    (if (seq names)
-                      (str " Its references: " (str/join ", " names) ".")
-                      " It has no reference files — call learn(topic) for the skill itself.")))
+            (if (seq names)
+              (message/msg ["Topic %s has no reference %s. Its references: %s."]
+                           topic reference (common/list-message names))
+              (message/msg [(str "Topic %s has no reference %s. It has no reference "
+                                 "files — call learn(topic) for the skill itself.")]
+                           topic reference)))
            (unknown-topic! topic)))
 
      :else

@@ -1,8 +1,15 @@
 import { StaticQuestion } from "@metabase/embedding-sdk-react";
-import { useMetabaseQueryObject } from "@metabase/embedding-sdk-react/data-app";
+import {
+  defineQuery,
+  useMetabaseQueryObject,
+} from "@metabase/embedding-sdk-react/data-app";
 import { useEffect } from "react";
 
 const ORDERS_TABLE_ID = 5;
+
+const OrdersQuery = defineQuery({
+  source: { type: "table", id: ORDERS_TABLE_ID },
+});
 
 const ALLOWED_URL = "https://allowed.data-app.test/ping";
 const BLOCKED_URL = "https://blocked.data-app.test/ping";
@@ -17,9 +24,7 @@ function SandboxProbe() {
 }
 
 export default function App() {
-  const { query } = useMetabaseQueryObject({
-    source: { type: "table", id: ORDERS_TABLE_ID },
-  });
+  const { query } = useMetabaseQueryObject(OrdersQuery);
 
   return (
     <div data-testid="dev-app-content" style={{ padding: 24 }}>

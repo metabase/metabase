@@ -24,6 +24,11 @@
                       {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 10})]
           (testing "returns sandboxed field values"
             (is (= ["African" "American"] (get-in result [:structured-output :value_metadata :field_values])))))
+        (testing "a truncated sample counts only the values the sandbox lets the user see"
+          (is (=? {:field_values ["African"] :field_values_total 2}
+                  (get-in (metabot.tools.field-stats/field-values
+                           {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 1})
+                          [:structured-output :value_metadata]))))
         (finally
           (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
 

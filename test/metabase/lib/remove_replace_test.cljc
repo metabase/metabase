@@ -586,12 +586,14 @@
                              meta/metadata-provider
                              {:segments  [{:id          100
                                            :name        "Price is 4"
-                                           :definition  {:filter
+                                           :definition  {:source-table (meta/id :venues)
+                                                         :filter
                                                          [:= [:field (meta/id :venues :price) nil] 4]}
                                            :table-id    (meta/id :venues)}
                                           {:id          200
                                            :name        "Price is 5"
-                                           :definition  {:filter
+                                           :definition  {:source-table (meta/id :venues)
+                                                         :filter
                                                          [:= [:field (meta/id :venues :price) nil] 5]}
                                            :table-id    (meta/id :venues)}]})
           query (-> (lib/query metadata-provider (meta/table-metadata :venues))

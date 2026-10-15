@@ -13,8 +13,8 @@ on:
         default: 7
         required: false
   schedule:
-    # Run weekly on Sundays at 6 AM UTC
-    - cron: "0 6 * * 0"
+    # Run daily at 6 AM UTC
+    - cron: "0 6 * * *"
 
 jobs:
   collect-and-average-timings:
@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
-      DAYS_BACK: ${{ inputs.days_back || 7 }}
+      DAYS_BACK: ${{ inputs.days_back || 1 }}
     steps:
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -31,7 +31,7 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
 
@@ -55,6 +55,16 @@ jobs:
             });
 
             core.setOutput('artifact-count', result.artifactCount);
+
+      - uses: ./.github/actions/prepare-node-bun
+
+      - name: Upload e2e test timings to Stats
+        if: ${{ github.repository == 'metabase/metabase' }}
+        env:
+          TIMINGS_PATH: e2e/support/timings.json
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-e2e-test-timings.ts
 
       - name: Configure git and commit changes
         id: commit
@@ -110,7 +120,7 @@ jobs:
             --body "$BODY" \
             --label ".CI & Tests" \
             --label "no-backport" \
-            --reviewer metabase/devexp)
+            --reviewer metabase/devex)
 
           PR_NUMBER=${URL##*/}
 

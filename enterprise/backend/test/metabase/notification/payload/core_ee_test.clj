@@ -18,7 +18,7 @@
          site-url           "https://metabase.com"
          admin-email        "ngoc@metabase.com"]
         (is (= {:payload_type :notification/system-event
-                :payload      {:event_info  {:foo :bar}
+                :payload      {:event_info  {}
                                :event_topic :event/user-joined
                                :custom      {}}
                 :context     {:application_name     "Metabase Test"
@@ -32,5 +32,5 @@
                 :creator     nil}
                (-> (notification.payload/notification-payload {:payload_type :notification/system-event
                                                                :payload      {:event_topic :event/user-joined
-                                                                              :event_info {:foo :bar}}})
+                                                                              :event_info {}}})
                    (update-in [:context :style :button] string?))))))))

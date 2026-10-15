@@ -5,26 +5,23 @@ import _ from "underscore";
 
 import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
+import { Box, Flex } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { WHITELABEL_KEY_TO_COLOR_KEY } from "metabase/ui/colors/constants/whitelabel-colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api";
 
-import {
-  TableBody,
-  TableBodyCell,
-  TableBodyRow,
-  TableHeader,
-  TableHeaderCell,
-  TableHeaderRow,
-} from "./BrandColorSettings.styled";
+import S from "./BrandColorSettings.module.css";
 import type { ColorOption } from "./types";
 import { getBrandColorOptions } from "./utils";
 
 export interface BrandColorSettingsProps {
-  colors: Record<string, string>;
-  colorPalette: Record<string, string>;
-  onChange: (colors: Record<string, string>) => void;
+  colors: ColorSettings;
+  colorPalette: ColorPalette;
+  onChange: (colors: ColorSettings) => void;
 }
 
-const BrandColorSettings = ({
+export const BrandColorSettings = ({
   colors,
   colorPalette,
   onChange,
@@ -54,8 +51,8 @@ const BrandColorSettings = ({
 };
 
 interface BrandColorTableProps {
-  colors: Record<string, string>;
-  colorPalette: Record<string, string>;
+  colors: ColorSettings;
+  colorPalette: ColorPalette;
   options: ColorOption[];
   onChange: (colorName: string, color?: string) => void;
 }
@@ -68,23 +65,34 @@ const BrandColorTable = ({
 }: BrandColorTableProps): JSX.Element => {
   return (
     <div>
-      <TableHeader>
-        <TableHeaderRow>
-          <TableHeaderCell>{t`Color`}</TableHeaderCell>
-          <TableHeaderCell>{t`Where it's used`}</TableHeaderCell>
-        </TableHeaderRow>
-      </TableHeader>
-      <TableBody>
+      <Flex
+        className={S.headerBorder}
+        align="center"
+        bg="background_page-secondary"
+        c="text-secondary"
+        fz="xs"
+        fw="bold"
+        lh="xs"
+        lts="0.0625rem"
+        tt="uppercase"
+      >
+        <Box flex="0 0 auto" w="12rem" px="xl" py="sm">{t`Color`}</Box>
+        <Box px="xl" py="sm">{t`Where it's used`}</Box>
+      </Flex>
+      <Box className={S.bodyBorder}>
         {options.map((option) => (
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
-            originalColor={color(option.name, colorPalette)}
+            originalColor={color(
+              WHITELABEL_KEY_TO_COLOR_KEY[option.name],
+              colorPalette,
+            )}
             option={option}
             onChange={onChange}
           />
         ))}
-      </TableBody>
+      </Box>
     </div>
   );
 };
@@ -110,18 +118,17 @@ const BrandColorRow = memo(function BrandColorRow({
   );
 
   return (
-    <TableBodyRow>
-      <TableBodyCell>
+    <Flex className={S.rowDivider} align="center" c="text-secondary">
+      <Box flex="0 0 auto" w="12rem" px="xl" py="lg">
         <ColorPicker
           value={color ?? originalColor}
           placeholder={Color(originalColor).hex()}
           onChange={handleChange}
         />
-      </TableBodyCell>
-      <TableBodyCell>{option.description}</TableBodyCell>
-    </TableBodyRow>
+      </Box>
+      <Box px="xl" py="lg">
+        {option.description}
+      </Box>
+    </Flex>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default BrandColorSettings;

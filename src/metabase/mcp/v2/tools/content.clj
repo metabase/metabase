@@ -27,6 +27,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
@@ -37,9 +38,7 @@
    [metabase.models.interface :as mi]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
-   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -148,7 +147,7 @@
     (when (not= (:type card) tool-type)
       (let [actual (name (:type card))]
         (common/throw-teaching-error
-         (format "Card %s is a %s — request it with type: \"%s\"." (:id card) actual actual))))
+         (message/msg ["Card %s has type %s — request it with type: %s."] (:id card) actual actual))))
     (card-content-row card)))
 
 (defn- card-definition
@@ -400,10 +399,10 @@
 (defn- fetch-notification
   "Fetch + read-check one notification row of `payload-type` by numeric id. Notifications have
    no entity_id column, so entity_id strings are a teaching error for these types."
-  [tool-type payload-type id-or-eid]
+  [tool-type plural payload-type id-or-eid]
   (when-not (int? id-or-eid)
     (common/throw-teaching-error
-     (format "%ss take a numeric id — they have no entity_id." (str/capitalize tool-type))))
+     (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
@@ -441,57 +440,6 @@
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))
           (common/throw-not-found :subscription id-or-eid)))))
-
-;;; --------------------------------------------------- transform --------------------------------------------------
-
-(defn- fetch-transform
-  [id-or-eid]
-  (let [transform (v2.resolve/resolve-and-read-with :model/Transform id-or-eid
-                                                    (fn [id] (transforms/get-transform id)))]
-    (-> (select-keys transform [:id :name :description :source_type :collection_id :entity_id
-                                :source_database_id :target_db_id :run_trigger :creator_id
-                                :owner_user_id :owner_email :tag_ids :created_at :updated_at])
-        (assoc :target   (:target transform)
-               :last_run (some-> (:last_run transform)
-                                 (select-keys [:id :status :start_time :end_time :message])
-                                 u/remove-nils)
-               ;; The target table is hydrated without its own permission check (the transform
-               ;; read-check verifies source tables only), so gate it here.
-               :table    (when-let [table (:table transform)]
-                           (when (mi/can-read? table)
-                             (select-keys table [:id :name :schema :db_id])))
-               ::transform transform))))
-
-(defn- transform-definition
-  "The transform's source: query sources have their query normalized and serialized to the
-   numeric-id MBQL 5 shape; other source types (e.g. python) pass through as stored."
-  [row]
-  (let [source (get-in row [::transform :source])]
-    (if-let [query (:query source)]
-      (let [mp         (some-> (:database query) lib-be/application-database-metadata-provider)
-            serialized (some-> (card-query mp query) lib/prepare-for-serialization)]
-        (when serialized
-          (assoc (dissoc source :query) :query serialized)))
-      source)))
-
-(def ^:private transform-concise-keys
-  [:id :name :description :source_type :target :collection_id :last_run])
-
-(def ^:private transform-detailed-keys
-  (into transform-concise-keys
-        [:entity_id :source_database_id :target_db_id :run_trigger :creator_id :owner_user_id
-         :owner_email :tag_ids :table :created_at :updated_at]))
-
-(def ^:private transform-sample
-  (-> (zipmap transform-detailed-keys (repeat "x"))
-      (assoc :target {:type "x" :schema "x" :name "x"}
-             :last_run {:id 1 :status "x" :start_time "x" :end_time "x" :message "x"}
-             :table {:id 1 :name "x" :schema "x" :db_id 1}
-             :tag_ids [1])))
-
-(projections/register-key-projection! :transform transform-concise-keys
-                                      :detailed-keys transform-detailed-keys
-                                      :sample transform-sample)
 
 ;;; ------------------------------------------------ type dispatch -------------------------------------------------
 
@@ -567,10 +515,8 @@
                               "comments" document-comments}}
    "collection"   {:fetch fetch-collection}
    "snippet"      {:fetch fetch-snippet}
-   "alert"        {:fetch #(fetch-notification "alert" :notification/card %)}
-   "subscription" {:fetch fetch-subscription}
-   "transform"    {:fetch fetch-transform
-                   :includes {"definition" (definition-include transform-definition)}}})
+   "alert"        {:fetch #(fetch-notification "alert" (message/raw "Alerts") :notification/card %)}
+   "subscription" {:fetch fetch-subscription}})
 
 (def ^:private content-types
   (vec (sort (keys type->spec))))
@@ -597,11 +543,11 @@
     (let [applicable (get include->types inc-name)]
       (when-not (some applicable batch-types)
         (common/throw-teaching-error
-         (format "`include: \"%s\"` does not apply to type%s %s — it is available for: %s."
-                 inc-name
-                 (if (= 1 (count batch-types)) "" "s")
-                 (str/join ", " (sort batch-types))
-                 (str/join ", " (sort applicable))))))))
+         (message/msg ["\"include\" section %s does not apply to type%s %s — it is available for: %s."]
+                      inc-name
+                      (message/raw (if (= 1 (count batch-types)) "" "s"))
+                      (common/list-message (sort batch-types))
+                      (common/list-message (sort applicable))))))))
 
 (defn- build-include
   "Apply the `inc-name` section builder that `type` declares in [[type->spec]] to `row`, or nil
@@ -615,8 +561,8 @@
 (defn- content-item-result
   "Build one batch item's result: its projection (with `include` sections or `fields`
    narrowing), or the `{type, id, error}` object that keeps a failing item from sinking the
-   rest of the batch. The `error` text is whatever [[common/->mcp-error-content]] judges safe to
-   return, so incidental exceptions collapse to a generic internal error."
+   rest of the batch. The `error` text is whatever [[common/caller-safe-error-message]] judges safe
+   to return, so incidental exceptions collapse to a generic internal error."
   [{:keys [include] :as args} {:keys [type fields] :as item}]
   ;; `alert` and `subscription` reject a non-numeric id outright, so an id a client serialized as
   ;; a string has to be coerced before the fetch rather than inside it (GHY-4498).
@@ -641,8 +587,10 @@
                 (assoc :type type)))))
       (catch Exception e
         ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
-        ;; judgment and unwrap its text back into the item's `{type, id, error}` shape.
-        {:type type :id id :error (-> (common/->mcp-error-content e) :content first :text)}))))
+        ;; judgment, then render it. JSON quoting is not cleaning — it escapes control characters
+        ;; and quotes but leaves format characters like a bidi override intact — so a plain string
+        ;; from upstream is rendered too, which cleans it whole.
+        {:type type :id id :error (message/render (common/caller-safe-error-message e))}))))
 
 (def ^:private get-content-args-schema
   [:map {:closed true}
@@ -663,20 +611,21 @@
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
-  {:name         "get_content"
-   :scope        metabot.scope/agent-content-read
-   :annotations  {:readOnlyHint true :idempotentHint true}
-   :args         get-content-args-schema}
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim), and materialized parameters (the same tags viewed as parameters); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins). include adds sections on demand — definition returns the stored query (numeric ids) in the shape execute_query and question_write accept; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
+  {:name           "get_content"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           get-content-args-schema}
   [{:keys [items include] :as args} _]
   (when (> (count items) max-items)
     (common/throw-teaching-error
-     (format "`items` accepts at most %d entries per call — you passed %d; split the batch."
-             max-items (count items))))
+     (message/msg ["\"items\" accepts at most %d entries per call — you passed %d; split the batch."]
+                  max-items (count items))))
   ;; Surface an invalid response_format once, before any item work.
   (common/response-format args)
   ;; Reject include sections no item in the batch supports, before any per-item work.
   (when (seq include)
     (check-includes! (into #{} (map :type) items) (distinct include)))
   (common/success-content
-   (json/encode {:results (mapv #(content-item-result args %) items)})))
+   {:results (mapv #(content-item-result args %) items)}))

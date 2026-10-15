@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.usage-metadata.core :as usage-metadata]
    [metabase.usage-metadata.insights :as insights]))
 
@@ -36,10 +37,10 @@
 
 (deftest implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/implicit-segments
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-segment])]
+    (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-segments
+                                            (fn [opts]
+                                              (reset! captured-args opts)
+                                              [sample-segment])]
       (is (= [sample-segment]
              (usage-metadata/implicit-segments {:source-type :card, :source-id 99, :limit 3})))
       (is (= {:source-type :card, :source-id 99, :limit 3}
@@ -47,10 +48,10 @@
 
 (deftest implicit-metrics-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/implicit-metrics
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-metric])]
+    (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-metrics
+                                            (fn [opts]
+                                              (reset! captured-args opts)
+                                              [sample-metric])]
       (is (= [sample-metric]
              (usage-metadata/implicit-metrics {:source-type :table, :source-id 42, :limit 7})))
       (is (= {:source-type :table, :source-id 42, :limit 7}
@@ -58,10 +59,10 @@
 
 (deftest implicit-dimensions-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/implicit-dimensions
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-dimension])]
+    (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-dimensions
+                                            (fn [opts]
+                                              (reset! captured-args opts)
+                                              [sample-dimension])]
       (is (= [sample-dimension]
              (usage-metadata/implicit-dimensions {:source-type :table, :source-id 42, :limit 9})))
       (is (= {:source-type :table, :source-id 42, :limit 9}
@@ -69,10 +70,10 @@
 
 (deftest suggested-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/suggested-segments-for-owner
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-suggested-segment])]
+    (dynamic-redefs/with-dynamic-fn-redefs [insights/suggested-segments-for-owner
+                                            (fn [opts]
+                                              (reset! captured-args opts)
+                                              [sample-suggested-segment])]
       (is (= [sample-suggested-segment]
              (usage-metadata/suggested-segments {:source-type :table, :source-id 42, :limit 5})))
       (is (= {:source-type :table, :source-id 42, :limit 5}
@@ -80,10 +81,10 @@
 
 (deftest profile-observations-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (with-redefs [insights/profile-observations
-                  (fn [opts]
-                    (reset! captured-args opts)
-                    [sample-profile-observation])]
+    (dynamic-redefs/with-dynamic-fn-redefs [insights/profile-observations
+                                            (fn [opts]
+                                              (reset! captured-args opts)
+                                              [sample-profile-observation])]
       (is (= [sample-profile-observation]
              (usage-metadata/profile-observations {:source-type :table, :source-id 42, :limit 4})))
       (is (= {:source-type :table, :source-id 42, :limit 4}

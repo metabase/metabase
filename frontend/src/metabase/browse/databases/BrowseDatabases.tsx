@@ -18,6 +18,7 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -81,7 +82,13 @@ export const BrowseDatabases = () => {
                     title={database.name}
                     icon="database"
                     size="lg"
-                  />
+                    className={DB.databaseCard}
+                  >
+                    <DatabaseQuickLinksMenu
+                      databaseId={database.id}
+                      className={DB.quickLinksTrigger}
+                    />
+                  </BrowseCard>
                 );
               })}
             {isAdmin && <AddDatabaseCard />}

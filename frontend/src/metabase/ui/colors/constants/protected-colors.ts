@@ -6,13 +6,9 @@ import type { MetabaseColorKey } from "../types/color-keys";
  */
 export const PROTECTED_COLORS = [
   // Metabase's own brand
-  "metabase-brand", // Legacy
   "core-metabase_brand",
 
   // Admin-only UI colors
-  "admin-navbar", // Legacy
-  "admin-navbar-secondary", // Legacy
-  "admin-navbar-inverse", // Legacy
   "navbar-admin",
   "navbar-admin-secondary",
   "navbar-admin-inverse",

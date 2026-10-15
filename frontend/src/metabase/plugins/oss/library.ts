@@ -59,9 +59,13 @@ export type CollectionPermissionsModalProps = {
 export type LibraryCollectionType =
   | "library"
   | "library-data"
-  | "library-metrics";
+  | "library-metrics"
+  | "library-dashboards";
 
-export type LibrarySubCollectionType = "library-data" | "library-metrics";
+export type LibrarySubCollectionType =
+  | "library-data"
+  | "library-metrics"
+  | "library-dashboards";
 
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {
@@ -80,6 +84,7 @@ export type GetEntityPickerSyntheticLibraryItemFunction = {
 type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
+  getDataStudioDashboardRoutes: () => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
@@ -129,6 +134,7 @@ type LibraryPlugin = {
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
   getDataStudioLibraryRoutes: () => null,
+  getDataStudioDashboardRoutes: () => null,
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
   useGetLibraryChildCollectionByType: () => ({
     data: undefined,

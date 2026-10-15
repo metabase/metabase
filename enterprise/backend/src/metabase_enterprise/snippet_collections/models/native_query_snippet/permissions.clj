@@ -4,16 +4,20 @@
    [metabase-enterprise.snippet-collections.db :as snippet-collections.db]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as snippets]
+   [metabase.native-query-snippets.schema :as snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn- has-parent-collection-perms?
-  [snippet       :- [:map [:collection_id [:maybe ms/PositiveInt]]]
+  "Whether the current user has `read-or-write` permissions on `snippet`'s parent collection. `snippet` must not be
+  nil: a nonexistent Snippet must fail loudly here rather than silently fall back to root-collection permissions."
+  [snippet       :- [:or
+                     ::snippets.schema/native-query-snippet
+                     ::snippets.schema/native-query-snippet.update]
    read-or-write :- [:enum :read :write]]
-  (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
+  (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"

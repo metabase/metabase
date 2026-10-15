@@ -10,6 +10,13 @@ import {
 import type { TimelineDetailsModalProps } from "./TimelineDetailsModal";
 import TimelineDetailsModal from "./TimelineDetailsModal";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 function setup(props: TimelineDetailsModalProps) {
   renderWithProviders(<TimelineDetailsModal {...props} />);
 }
@@ -51,9 +58,9 @@ describe("TimelineDetailsModal", () => {
     const props = getProps({
       timeline: createMockTimeline({
         events: [
-          createMockTimelineEvent({ name: "RC1" }),
-          createMockTimelineEvent({ name: "RC2" }),
-          createMockTimelineEvent({ name: "Release" }),
+          createMockTimelineEvent({ id: 1, name: "RC1" }),
+          createMockTimelineEvent({ id: 2, name: "RC2" }),
+          createMockTimelineEvent({ id: 3, name: "Release" }),
         ],
       }),
     });

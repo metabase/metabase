@@ -7,6 +7,7 @@
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn query-execution-hash-counts
@@ -16,8 +17,8 @@
    started-before :- ms/TemporalInstant]
   (t2/select [:model/QueryExecution :hash [:%count.* :n]]
              {:where    [:and
-                         [:>= :started_at started-at]
-                         [:<  :started_at started-before]]
+                         [:>= :started_at [:auto/param started-at]]
+                         [:<  :started_at [:auto/param started-before]]]
               :group-by [:hash]}))
 
 (mu/defn raw-field-fingerprint
@@ -28,18 +29,18 @@
 (mu/defn queries-reducible
   "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."
   [conn         :- (ms/InstanceOfClass java.sql.Connection)
-   query-hashes :- [:sequential bytes?]]
-  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in query-hashes]))
+   query-hashes :- [:sequential {:min 1} bytes?]]
+  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param query-hashes]]))
 
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date [:< bucket-date]))
+  (t2/delete! :model/SourceSegmentDaily :bucket_date [:< [:auto/param bucket-date]]))
 
 (mu/defn delete-segment-rollups-for-day!
   "Delete the SourceSegmentDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date bucket-date))
+  (t2/delete! :model/SourceSegmentDaily :bucket_date [:auto/param bucket-date]))
 
 (mu/defn insert-segment-rollups!
   "Insert `rows` into SourceSegmentDaily."
@@ -50,12 +51,12 @@
 (mu/defn delete-segment-composite-rollups-before!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< bucket-date]))
+  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< [:auto/param bucket-date]]))
 
 (mu/defn delete-segment-composite-rollups-for-day!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date bucket-date))
+  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:auto/param bucket-date]))
 
 (mu/defn insert-segment-composite-rollups!
   "Insert `rows` into SourceSegmentCompositeDaily."
@@ -66,12 +67,12 @@
 (mu/defn delete-metric-rollups-before!
   "Delete the SourceMetricDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date [:< bucket-date]))
+  (t2/delete! :model/SourceMetricDaily :bucket_date [:< [:auto/param bucket-date]]))
 
 (mu/defn delete-metric-rollups-for-day!
   "Delete the SourceMetricDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date bucket-date))
+  (t2/delete! :model/SourceMetricDaily :bucket_date [:auto/param bucket-date]))
 
 (mu/defn insert-metric-rollups!
   "Insert `rows` into SourceMetricDaily."
@@ -82,12 +83,12 @@
 (mu/defn delete-dimension-rollups-before!
   "Delete the SourceDimensionDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date [:< bucket-date]))
+  (t2/delete! :model/SourceDimensionDaily :bucket_date [:< [:auto/param bucket-date]]))
 
 (mu/defn delete-dimension-rollups-for-day!
   "Delete the SourceDimensionDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date bucket-date))
+  (t2/delete! :model/SourceDimensionDaily :bucket_date [:auto/param bucket-date]))
 
 (mu/defn insert-dimension-rollups!
   "Insert `rows` into SourceDimensionDaily."
@@ -98,12 +99,12 @@
 (mu/defn delete-dimension-profile-rollups-before!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< bucket-date]))
+  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< [:auto/param bucket-date]]))
 
 (mu/defn delete-dimension-profile-rollups-for-day!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date bucket-date))
+  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:auto/param bucket-date]))
 
 (mu/defn insert-dimension-profile-rollups!
   "Insert `rows` into SourceDimensionProfileDaily."
@@ -114,30 +115,30 @@
 (mu/defn field-names
   "The id, name, and display name of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :display_name] :id [:in field-ids]))
+  (t2/select [:model/Field :id :name :display_name] :id [:in (mapv long field-ids)] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn table-names
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in table-ids]))
+  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-database-ids
   "The id and Database id of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
+  (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn card-names
   "The id and name of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name] :id [:in (mapv long card-ids)]))
 
 (defn- grouped-rollup-where
   [source-type source-id bucket-start bucket-end]
   (cond-> [:and [:in :ownership_mode ["direct" "projected"]]]
     source-type  (conj [:= :source_type (name source-type)])
-    source-id    (conj [:= :source_id source-id])
-    bucket-start (conj [:>= :bucket_date bucket-start])
-    bucket-end   (conj [:<= :bucket_date bucket-end])))
+    source-id    (conj [:= :source_id (long source-id)])
+    bucket-start (conj [:>= :bucket_date [:auto/param bucket-start]])
+    bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]])))
 
 (mu/defn grouped-segment-rows
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
@@ -228,9 +229,9 @@
               [[:sum :count] :total_count]]
              {:where    (cond-> [:and]
                           source-type  (conj [:= :source_type (name source-type)])
-                          source-id    (conj [:= :source_id source-id])
-                          bucket-start (conj [:>= :bucket_date bucket-start])
-                          bucket-end   (conj [:<= :bucket_date bucket-end]))
+                          source-id    (conj [:= :source_id (long source-id)])
+                          bucket-start (conj [:>= :bucket_date [:auto/param bucket-start]])
+                          bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]]))
               :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
               :order-by [[:total_count :desc]]}))
 
@@ -239,9 +240,11 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select [:model/Segment :id :table_id :definition]
              {:where (cond-> [:and [:= :archived false]]
-                       table-id (conj [:= :table_id table-id]))}))
+                       table-id (conj [:= :table_id (long table-id)]))}))
 
 (mu/defn unarchived-metric-cards
   "The id, Database id, query, and schema of the unarchived metric Cards."
   []
-  (t2/select [:model/Card :id :database_id :dataset_query :card_schema] :type "metric" :archived false))
+  (t2/select [:model/Card :id :database_id :dataset_query :card_schema :type :entity_id :result_metadata :dimensions
+              :dimension_mappings]
+             :type "metric" :archived false))

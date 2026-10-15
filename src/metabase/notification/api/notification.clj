@@ -61,9 +61,9 @@
       (throw (ex-info "invalid template" {:status-code 400})))))
 
 (defn- check-inline-channels!
-  "Validate that an inline `:channel` handler requires the same permission as creating one."
+  "Validate that an inline `:channel` or `:channel_id` handler requires the same permission as creating one."
   [handlers]
-  (when (some :channel handlers)
+  (when (some #(or (:channel %) (:channel_id %)) handlers)
     (api/check-403 (mi/can-write? :model/Channel))))
 
 (defn- handler-touches-template?
@@ -175,7 +175,7 @@
 
 (mu/defn create-notification! :- ::models.notification/FullyHydratedNotification
   "Create a notification with permission checks, hydration, email notifications, and event publishing."
-  [notification-info :- ::models.notification/FullyHydratedNotification]
+  [notification-info :- ::CreateNotificationParams]
   (api/create-check :model/Notification notification-info)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!

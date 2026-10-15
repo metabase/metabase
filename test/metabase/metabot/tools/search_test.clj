@@ -3,8 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -53,7 +55,13 @@
             :moderated_status "verified"}
            (#'search/search-result->item
             {:id 7 :type "question" :name "Revenue" :display :line
-             :moderated_status "verified"})))))
+             :moderated_status "verified"}))))
+  (testing "carries the base table of a measure or segment, which the client needs to link to it"
+    (is (= [{:id 8 :type "measure" :name "Revenue" :database_id 2 :table_id 10}
+            {:id 9 :type "segment" :name "Big orders" :database_id 2 :table_id 10}]
+           (map #'search/search-result->item
+                [{:id 8 :type "measure" :name "Revenue" :database_id 2 :base_table_id 10}
+                 {:id 9 :type "segment" :name "Big orders" :database_id 2 :base_table_id 10}])))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
@@ -392,6 +400,30 @@
                     :created_at "2024-01-06"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-measure-segment-test
+  (testing "measure and segment results carry their base table from the index row, and no collection fields"
+    (doseq [model ["measure" "segment"]]
+      (is (= {:id                5
+              :type              model
+              :name              "Big Orders"
+              :description       "desc"
+              :updated_at        "2024-01-05"
+              :created_at        "2024-01-05"
+              :database_id       2
+              :base_table_id     10
+              :base_table_name   "ORDERS"
+              :base_table_schema "PUBLIC"}
+             (#'search/postprocess-search-result {:model        model
+                                                  :id           5
+                                                  :name         "Big Orders"
+                                                  :description  "desc"
+                                                  :updated_at   "2024-01-05"
+                                                  :created_at   "2024-01-05"
+                                                  :database_id  2
+                                                  :table_id     10
+                                                  :table_name   "ORDERS"
+                                                  :table_schema "PUBLIC"}))))))
+
 (deftest search-native-query-test
   (mt/with-test-user :rasta
     (with-redefs [perms/impersonated-user? (fn [] false)
@@ -421,13 +453,19 @@
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
                     api/*current-user-id* 1]
-        (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
+        (testing "nlq-search-tool with no entity_types searches only the queryable types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
-            (is (= #{"table" "dataset" "metric" "card"} @captured))
+            (is (= #{"card"
+                     "dataset"
+                     "measure"
+                     "metric"
+                     "segment"
+                     "table"}
+                   @captured))
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
@@ -452,6 +490,13 @@
                                                                      [])]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
+        (testing "agent-supplied measure and segment types reach the engine unchanged"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
+              (search/search-tool {:keyword_queries ["x"] :entity_types ["measure" "segment"]}))
+            (is (= #{"measure" "segment"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
@@ -491,6 +536,12 @@
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
+(deftest ^:parallel search-failure-throws-test
+  (testing "an exception from search propagates out of the tool (BOT-2199)"
+    (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
+                            (search/search-tool {:keyword_queries ["x"]}))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
@@ -652,6 +703,45 @@
               (is (some? dash-res) "expected the dashboard to appear in search results")
               (is (not (contains? dash-res :portable_entity_id))))))))))
 
+(deftest measure-segment-search-test
+  (testing "measure and segment hits carry a portable entity id and their base table's portable FK, as metrics do"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Measure
+                       {measure-id :id measure-eid :entity_id}
+                       {:name     "MeasureSearch Sample Revenue"
+                        :table_id (mt/id :orders)}
+
+                       :model/Segment
+                       {segment-id :id segment-eid :entity_id}
+                       {:name     "MeasureSearch Sample Big Orders"
+                        :table_id (mt/id :orders)}]
+          (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                by-key  (into {} (map (juxt (juxt :type :id) identity))
+                              (search/search {:term-queries ["MeasureSearch Sample"]}))]
+            (is (=? {:type                   "measure"
+                     :name                   "MeasureSearch Sample Revenue"
+                     :database_id            (mt/id)
+                     :database_name          db-name
+                     :portable_entity_id     measure-eid
+                     :base_table_id          (mt/id :orders)
+                     :base_table_portable_fk [db-name "PUBLIC" "ORDERS"]}
+                    (get by-key ["measure" measure-id])))
+            (is (=? {:type                   "segment"
+                     :name                   "MeasureSearch Sample Big Orders"
+                     :database_id            (mt/id)
+                     :database_name          db-name
+                     :portable_entity_id     segment-eid
+                     :base_table_id          (mt/id :orders)
+                     :base_table_portable_fk [db-name "PUBLIC" "ORDERS"]}
+                    (get by-key ["segment" segment-id])))
+            (testing "the XML the agent sees carries a read_resource uri and the portable ids"
+              (let [xml (llm-shape/search-results->xml (vals by-key))]
+                (is (str/includes? xml (str "<measure id=\"" measure-id "\" uri=\"metabase://measure/" measure-id "\"")))
+                (is (str/includes? xml (str "<segment id=\"" segment-id "\" uri=\"metabase://segment/" segment-id "\"")))
+                (is (str/includes? xml (str "portable_entity_id=\"" measure-eid "\"")))
+                (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))))))))))
+
 (deftest entity-refs->search-results-test
   (testing "hydrates {:model :id} refs (as stored by the semantic layer) into enriched search records"
     (mt/with-test-user :crowberto
@@ -766,6 +856,30 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest embedded-metabot-search-test
+  (mt/with-test-user :crowberto
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :authority_level "official"}
+                     :model/Collection {elsewhere-id :id} {:name "Other sources" :authority_level "official"}
+                     :model/Collection {drafts-id :id} {:name "Embedded drafts"
+                                                        :location (collection/location-path collection-id)}
+                     :model/Dashboard {included-id :id} {:name "Embedded report" :collection_id collection-id}
+                     :model/Dashboard {draft-id :id} {:name "Embedded report draft" :collection_id drafts-id}
+                     :model/Dashboard _ {:name "Embedded report elsewhere" :collection_id elsewhere-id}]
+        (mt/with-temp-vals-in-db :model/Metabot
+                                 (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))
+                                 {:collection_id collection-id :use_verified_content true}
+          (doseq [request-id [metabot.config/embedded-metabot-id "c61bf5f5-1025-47b6-9298-bf1827105bb6"]]
+            (let [metabot (metabot.config/resolve-metabot request-id)
+                  search-args {:term-queries ["Embedded report"]
+                               :entity-types ["dashboard"]
+                               :collection-id elsewhere-id
+                               :metabot metabot}]
+              (is (= #{included-id draft-id}
+                     (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
+              (is (= [included-id]
+                     (mapv :id (search/search search-args)))))))))))
+
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
             containment boundary, not a default. An explicit collection-id, which the v2 search tool
@@ -774,8 +888,8 @@
     (mt/with-test-user :crowberto
       (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
                      :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
-                     :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
-                                                              :collection_id confined-id}]
+                     :model/Metabot metabot {:name          "confined bot"
+                                             :collection_id confined-id}]
         (let [collection-for (fn [search-args]
                                (let [captured (atom ::unset)]
                                  (mt/with-dynamic-fn-redefs [search-core/ranked-results
@@ -785,7 +899,7 @@
                                    (search/search (merge {:term-queries ["anything"]
                                                           :entity-types ["dashboard"]
                                                           :profile-id   "nlq"
-                                                          :metabot-id   metabot-eid}
+                                                          :metabot      metabot}
                                                          search-args)))
                                  @captured))]
           (testing "with no collection-id, the metabot's own collection scopes the search"
@@ -793,8 +907,8 @@
           (testing "an explicit collection-id elsewhere cannot escape the confinement"
             (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
           (testing "an unconfined metabot still honours an explicit collection-id"
-            (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
-              (is (= elsewhere-id (collection-for {:metabot-id    open-eid
+            (mt/with-temp [:model/Metabot open-metabot {:name "open bot" :collection_id nil}]
+              (is (= elsewhere-id (collection-for {:metabot       open-metabot
                                                    :collection-id elsewhere-id}))))))))))
 
 (deftest transform-visibility-is-superuser-only-test

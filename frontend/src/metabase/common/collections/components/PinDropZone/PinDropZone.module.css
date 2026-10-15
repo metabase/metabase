@@ -1,0 +1,39 @@
+/* DropArea positions its own root, hence the !important; its children stay droppable. */
+.dropTarget {
+  position: absolute !important;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--mantine-spacing-lg));
+  right: calc(-1 * var(--mantine-spacing-lg));
+  pointer-events: none;
+
+  > * {
+    pointer-events: all;
+  }
+}
+
+.indicator {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-left: 4px solid var(--mb-color-background_page-tertiary);
+}
+
+.hovered {
+  border-left-color: var(--mb-color-core-brand);
+}
+
+/* Hangs from the container's bottom edge, which meets the items table. */
+.emptyTarget {
+  position: absolute;
+  left: var(--mantine-spacing-lg);
+  right: var(--mantine-spacing-lg);
+  bottom: var(--mantine-spacing-sm);
+  z-index: 1;
+  border: 1px dashed var(--mb-color-core-brand);
+  transition: background-color 0.2s;
+}
+
+.emptyTargetHovered {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}

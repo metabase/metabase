@@ -8,7 +8,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -24,7 +23,6 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
@@ -45,12 +43,6 @@
     (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
 
-(defn enabled-source-types-for-user
-  "Returns set of enabled source types for WHERE clause filtering."
-  []
-  (when (api/is-data-analyst?)
-    (transforms.gating/enabled-source-types)))
-
 (defn- source-query-permissions-ok?
   "Whether the current user may run a query transform's source `query`, per the query processor's own permission
   check. The query is preprocessed first so references that only appear after expansion (cards, snippets) are
@@ -63,10 +55,10 @@
     (qp.setup/with-qp-setup [query query]
       (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
       true)
-    (catch clojure.lang.ExceptionInfo e
+    (catch Exception e
       ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
-      ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
-      ;; is left to validation and execution, which report the specific problem.
+      ;; other reason (a missing required parameter, a malformed query, an inactive table) cannot run at all, and
+      ;; rejecting it is left to validation and execution, which report the specific problem.
       (let [data (ex-data e)]
         (not (or (:permissions-error? data)
                  (= 403 (:status-code data))))))))
@@ -197,9 +189,7 @@
               reliable-row-count? (or (driver.u/supports? driver :transforms/accurate-rows-affected
                                                           {:lib/type :metadata/database :id db-id})
                                       (not full-incremental?))]
-          (when (and (not (str/blank? output-schema))
-                     (not (driver/schema-exists? driver db-id output-schema)))
-            (driver/create-schema-if-needed! driver conn-spec output-schema))
+          (transforms-base.u/create-target-schema! driver db-id conn-spec output-schema)
           (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
           (when-let [{:keys [rows-available] :as srp} source-range-params]
             (tracing/add-span-attrs! :tasks

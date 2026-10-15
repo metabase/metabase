@@ -44,8 +44,8 @@
 
 (def ^:private title-json-schema
   {:type       "object"
-   :properties {:title {:type        "string"
-                        :description "A short title for the conversation. No quotes or extra explanation."}}
+   :properties {"title" {:type        "string"
+                         :description "A short title for the conversation. No quotes or extra explanation."}}
    :required   ["title"]
    :additionalProperties false})
 
@@ -131,7 +131,7 @@
                     {:request-id  (str (random-uuid))
                      :session-id  conversation-id
                      :profile-id  profile-id
-                     :source      "metabot_agent"
+                     :source      "conversation_title"
                      :tag         "conversation-title"})
           title    (clean-title (:title response))]
       (when title

@@ -10,6 +10,7 @@
    [metabase.dashboards.write :as dashboards.write]
    [metabase.documents.core :as documents]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
@@ -26,20 +27,20 @@
    presentational), and neither copy path carries `:archived` over — so duplicating a trashed item
    would resurrect it as a live copy in the collection it was trashed from. Runs after the read
    check, so an unreadable source still collapses to not-found rather than admitting it exists."
-  [model item]
+  [noun item]
   (when (:archived item)
     (common/throw-teaching-error
-     (format "%s %s is in the trash — restore it before duplicating." (name model) (:id item))))
+     (message/msg ["%s %s is in the trash — restore it before duplicating."] noun (:id item))))
   item)
 
 (defn- fetch-question
   [id-or-eid]
   (let [card   (->> (v2.resolve/resolve-and-read :model/Card id-or-eid)
-                    (check-not-archived! :model/Card))]
+                    (check-not-archived! (message/raw "Card")))]
     (when (not= :question (:type card))
       (common/throw-teaching-error
-       (format "Card %s is a %s — duplicate_content supports type \"question\" only."
-               (:id card) (name (:type card)))))
+       (message/msg ["Card %s has type %s — duplicate_content supports type \"question\" only."]
+                    (:id card) (name (:type card)))))
     ;; A Card scoped to a Document is gated by that Document, not by its collection:
     ;; `mi/can-read? :model/Card` conjoins `parent-document-permits?`, which short-circuits to true
     ;; on a nil `document_id`. So a copy that dropped the column would be adjudicated by collection
@@ -51,9 +52,9 @@
     ;; `collection-id`", so refuse and name the operation that does work.
     (when (:document_id card)
       (common/throw-teaching-error
-       (format (str "Card %s is saved inside a document — duplicate the document instead, which "
-                    "copies the questions saved in it.")
-               (:id card))))
+       (message/msg [(str "Card %s is saved inside a document — duplicate the "
+                          "document instead, which copies the questions saved in it.")]
+                    (:id card))))
     card))
 
 (defn- copy-question!
@@ -74,18 +75,22 @@
                      (assoc :name new-name :collection_id collection-id)
                      (dissoc :dashboard_id :collection_position))]
     (api/create-check :model/Card {:collection_id collection-id})
-    (queries/create-card! new-card @api/*current-user*)))
+    ;; Copy semantics for timelines too: an inherited selection the caller cannot read is preserved, as in
+    ;; `POST /api/card/:id/copy`, while any change to it is still checked.
+    (queries/with-copy-source-card card
+      (queries/create-card! new-card @api/*current-user*))))
 
 (defn- fetch-dashboard
   [id-or-eid]
   (->> (v2.resolve/resolve-and-read :model/Dashboard id-or-eid)
-       (check-not-archived! :model/Dashboard)))
+       (check-not-archived! (message/raw "Dashboard"))))
 
 (defn- copy-dashboard!
   [dashboard collection-id new-name deep-copy?]
   (when (and (not deep-copy?) (dashboards.write/contains-dashboard-questions? (:id dashboard)))
     (common/throw-teaching-error
-     "This dashboard has questions saved inside it, so it can't be copied without them — pass is_deep_copy: true to copy the questions too."))
+     (message/msg [(str "This dashboard has questions saved inside it, so it can't be copied "
+                        "without them — pass is_deep_copy: true to copy the questions too.")])))
   (dashboards.write/copy-dashboard! (:id dashboard)
                                     {:name          new-name
                                      :collection_id collection-id
@@ -97,7 +102,7 @@
   ;; teaching error below rather than the not-found collapse, which would wrongly imply the caller
   ;; can't see it.
   (->> (v2.resolve/resolve-and-read :model/Document id-or-eid)
-       (check-not-archived! :model/Document)))
+       (check-not-archived! (message/raw "Document"))))
 
 (defn- copy-document!
   [document collection-id new-name]
@@ -141,10 +146,11 @@
 
 (registry/deftool duplicate-content
   "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. Any copy of a dashboard, shallow or deep, reports cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them, so check this field on every dashboard copy. A question saved inside a document can't be duplicated on its own — duplicate the document instead. Duplicating is creating: you need curate permission on the destination collection. The copy's name and collection come back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement carrying the id, the type, and a count of any uncopied cards."
-  {:name            "duplicate_content"
-   :scope           metabot.scope/agent-content-write
-   :annotations     {:readOnlyHint false :destructiveHint false}
-   :args            duplicate-content-args-schema}
+  {:name           "duplicate_content"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
+   :annotations    {:readOnlyHint false :destructiveHint false}
+   :args           duplicate-content-args-schema}
   [{:keys [type id new_name is_deep_copy] :as args} {:keys [token-scopes]}]
   (let [{:keys [fetch copy!]} (type->spec type)]
     ;; `true?`, not `some?`: `false` is the documented default and means exactly what a question or
@@ -152,7 +158,7 @@
     ;; published strict inputSchema marks every property required, so a strict client must send it.
     (when (and (true? is_deep_copy) (not= type "dashboard"))
       (common/throw-teaching-error
-       (format "`is_deep_copy` applies to dashboards only — omit it when duplicating a %s." type)))
+       (message/msg ["\"is_deep_copy\" applies to dashboards only — omit it when duplicating type %s."] type)))
     (let [source        (fetch id)
           collection-id (destination-collection-id args)
           copy          (copy! source collection-id (or new_name (tru "Copy of {0}" (:name source)))

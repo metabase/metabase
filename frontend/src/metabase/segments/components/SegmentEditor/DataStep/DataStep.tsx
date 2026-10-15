@@ -6,8 +6,8 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import { TableBreadcrumbs } from "metabase/metadata/components";
 import { selectMetadataProvider } from "metabase/metadata-store";
+import { TableBreadcrumbs } from "metabase/metadata/components";
 import { useDispatch, useStore } from "metabase/redux";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
@@ -72,9 +72,8 @@ export function DataStep({
 
         {isNew ? (
           <Button
-            variant="subtle"
-            p={0}
-            c="text-primary"
+            variant="transparent"
+            size="compact-md"
             rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsOpened(true)}
           >

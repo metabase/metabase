@@ -16,6 +16,7 @@
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -40,6 +41,7 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
@@ -72,6 +74,7 @@
 (defn- schedule-purge! [backend]
   (grouper/submit! @purge-queue backend))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -84,6 +87,7 @@
                (m/update-existing object :json_query lib/prepare-for-serialization)
                object))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -201,6 +205,7 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *refresh-lease-duration-ms*
   "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
   the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
@@ -272,9 +277,9 @@
     - `[::miss nil]`     -- no entry; or it's expired, or nearly so, and *this* process won the lease; or it's too
                             stale to serve to anyone. The caller must recompute.
     - `[::canceled nil]` -- the request was canceled."
-  [ignore-cache?
-   query-hash :- bytes?
-   strategy   :- :map
+  [ignore-cache? :- [:maybe :boolean]
+   query-hash    :- bytes?
+   strategy   :- ::lib.schema/cache-strategy
    rff        :- ::qp.schema/rff]
   (if ignore-cache?
     [::miss nil]
@@ -352,7 +357,8 @@
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
 (mu/defn- run-query-with-cache :- :any
-  [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
+  [qp                                                 :- fn?
+   {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see

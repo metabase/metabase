@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useToast } from "metabase/common/hooks";
 import { useUpdateMetabotMutation } from "metabase/metabot";
+import { SettingHeader } from "metabase/settings-components";
 import { Stack, Switch } from "metabase/ui";
 import type { MetabotInfo } from "metabase-types/api";
 
@@ -23,7 +23,7 @@ export function MetabotVerifiedContentConfigurationPane({
     if (result.error) {
       sendToast({
         message: t`Error updating Metabot`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   };

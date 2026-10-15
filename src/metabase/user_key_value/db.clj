@@ -12,7 +12,10 @@
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
-  (t2/select-one :model/UserKeyValue :user_id user-id :namespace namespace :key k))
+  (t2/select-one :model/UserKeyValue
+                 :user_id   (long user-id)
+                 :namespace [:auto/param namespace]
+                 :key       [:auto/param k]))
 
 (mu/defn update-user-key-value!
   "Set the value and expiry of the UserKeyValue of the User with `user-id` for `k` in `namespace`, returning the
@@ -22,7 +25,11 @@
    k          :- :string
    value      :- :string
    expires-at :- [:maybe ms/TemporalInstant]]
-  (t2/update! :model/UserKeyValue :user_id user-id :namespace namespace :key k {:value value, :expires_at expires-at}))
+  (t2/update! :model/UserKeyValue
+              :user_id   (long user-id)
+              :namespace [:auto/param namespace]
+              :key       [:auto/param k]
+              {:value value, :expires_at expires-at}))
 
 (mu/defn insert-user-key-value!
   "Insert a UserKeyValue for the User with `user-id`, returning the number inserted."
@@ -42,7 +49,10 @@
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
-  (t2/delete! :model/UserKeyValue :namespace namespace :user_id user-id :key k))
+  (t2/delete! :model/UserKeyValue
+              :namespace [:auto/param namespace]
+              :user_id   (long user-id)
+              :key       [:auto/param k]))
 
 (mu/defn unexpired-user-key-value
   "The unexpired UserKeyValue of the User with `user-id` for `k` in `namespace`, or nil."
@@ -51,9 +61,9 @@
    k         :- :string]
   (t2/select-one :model/UserKeyValue
                  {:where [:and
-                          [:= :user_id user-id]
-                          [:= :namespace namespace]
-                          [:= :key k]
+                          [:= :user_id (long user-id)]
+                          [:= :namespace [:auto/param namespace]]
+                          [:= :key [:auto/param k]]
                           [:or
                            [:>= :expires_at :%now]
                            [:= :expires_at nil]]]}))
@@ -64,8 +74,8 @@
    namespace :- :string]
   (t2/select :model/UserKeyValue
              {:where [:and
-                      [:= :user_id user-id]
-                      [:= :namespace namespace]
+                      [:= :user_id (long user-id)]
+                      [:= :namespace [:auto/param namespace]]
                       [:or
                        [:>= :expires_at :%now]
                        [:= :expires_at nil]]]}))

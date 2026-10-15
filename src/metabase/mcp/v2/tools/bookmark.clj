@@ -23,6 +23,7 @@
    [metabase.api.common :as api]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
@@ -60,8 +61,9 @@
           ;; are bookmarkable-by-flavor); name the id without a "null" type in that case.
           (common/throw-teaching-error
            (if actual
-             (format "Card %s is a %s — bookmark it with type: \"%s\"." (:id row) actual actual)
-             (format "Card %s can't be bookmarked as type: \"%s\"." (:id row) type))))))
+             (message/msg ["Card %d is a %s — bookmark it with type: %s."]
+                          (:id row) actual actual)
+             (message/msg ["Card %d can't be bookmarked as type: %s."] (:id row) type))))))
     row))
 
 (def ^:private bookmark-content-args-schema
@@ -75,10 +77,12 @@
 
 (registry/deftool bookmark-content
   "Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller. The item's name comes back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement. This response is the only place bookmark state is reported: no tool reads a bookmark back, search and get_content carry no bookmarked field, and there is no bookmark listing — so keep this result if you need it later rather than spending calls looking for a read path."
-  {:name        "bookmark_content"
-   :scope       metabot.scope/agent-content-write
-   :annotations {:readOnlyHint false :destructiveHint false :idempotentHint true}
-   :args        bookmark-content-args-schema}
+  {:name           "bookmark_content"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
+   ;; `destructiveHint`: `bookmarked: false` removes a bookmark.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :idempotentHint true}
+   :args           bookmark-content-args-schema}
   [{:keys [type id bookmarked]} {:keys [token-scopes]}]
   (let [row            (fetch-item type id)
         bookmark-model (get-in type->spec [type :bookmark-model])

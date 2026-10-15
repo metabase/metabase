@@ -1,6 +1,5 @@
 .documentHeader {
   align-items: flex-start;
-  background-color: var(--mb-color-background-primary);
   gap: var(--mantine-spacing-lg);
   justify-content: space-between;
   margin-bottom: var(--mantine-spacing-lg);
@@ -12,6 +11,7 @@
 }
 
 .titleInput {
+  background-color: transparent !important;
   border: none !important;
   padding: 0 !important;
   font-size: 2rem !important;

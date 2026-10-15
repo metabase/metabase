@@ -65,11 +65,11 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/Segment
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
-    :model/Session
     :model/Collection
     :model/CollectionPermissionGraphRevision
     :model/Dashboard
@@ -100,7 +100,6 @@
     :model/ParameterCard
     :model/Action
     :model/ImplicitAction
-    :model/HTTPAction
     :model/QueryAction
     :model/DashboardTab
     :model/ModelIndex
@@ -160,19 +159,21 @@
     :model/TransformTransformTag
     :model/TransformJob
     :model/TransformJobTransformTag
-    ;; Serialization never exports run history; a whole-instance move keeps it.
-    ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
     :model/TransformJobRun
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformDagRun]
+    :model/TransformDagRun
+    :model/McpGroupPermission]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/CustomVizPlugin])))
+      :model/CustomVizPlugin
+      :model/ContentDiagnosticsFinding
+      :model/TransformTest
+      :model/TransformTestRun])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -202,6 +203,7 @@
       (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-h2-database-details*
   "Whether [[copy-data!]] (and thus [[metabase.cmd.load-from-h2/load-from-h2!]]) should copy connection details for H2
   Databases from the source application database. Normally disabled for security reasons. This is only here so we can
@@ -255,6 +257,10 @@
     :model/DataPermissions
     ;; unique_perms_helper is a computed/generated column
     (map #(dissoc % :unique_perms_helper))
+
+    :model/LoginHistory
+    ;; Sessions are no longer copied, and a session deleted while dumping could leave a dangling reference (UXW-5258).
+    (map #(dissoc % :session_id))
 
     ;; else
     identity))
@@ -405,10 +411,9 @@
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
-    :model/Session
     :model/ImplicitAction
-    :model/HTTPAction
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue

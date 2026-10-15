@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]

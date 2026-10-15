@@ -33,6 +33,11 @@ export interface BucketPickerPopoverProps {
   classNames?: { root?: string; chevronDown?: string };
 }
 
+const TRIGGER_BUTTON_VARS = {
+  "--button-color": "var(--bucket-trigger-color)",
+  "--button-hover-color": "var(--bucket-trigger-hover-color)",
+};
+
 export function BucketPickerPopover({
   triggerLabel,
   ariaLabel,
@@ -97,21 +102,22 @@ export function BucketPickerPopover({
           miw="35%"
           maw="50%"
           h="auto"
-          py={0}
-          variant="subtle"
-          color="core-white"
+          size="compact-md"
+          variant="transparent"
+          vars={() => ({ root: TRIGGER_BUTTON_VARS })}
           classNames={{ label: S.triggerButtonLabel }}
+          rightSection={
+            hasChevronDown ? (
+              <Icon
+                name="chevrondown"
+                className={cx(S.chevronDown, classNames.chevronDown)}
+              />
+            ) : (
+              <Icon name="chevronright" className={S.chevronIcon} />
+            )
+          }
         >
           <Ellipsified>{triggerLabel}</Ellipsified>
-          {!hasChevronDown && (
-            <Icon name="chevronright" className={S.chevronIcon} />
-          )}
-          {hasChevronDown && (
-            <Icon
-              name="chevrondown"
-              className={cx(S.chevronDown, classNames.chevronDown)}
-            />
-          )}
         </Button>
       </Popover.Target>
       <Popover.Dropdown
@@ -147,10 +153,9 @@ export function BucketPickerPopover({
               className={S.moreButton}
               onClick={handleExpand}
               variant="subtle"
-              color="core-brand"
+              color="brand"
               fullWidth
               px="lg"
-              py="sm"
               styles={{
                 inner: { display: "flex", justifyContent: "flex-start" },
               }}

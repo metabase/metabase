@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
+   [metabase-enterprise.transforms-python.schema]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]

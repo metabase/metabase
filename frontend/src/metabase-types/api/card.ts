@@ -8,6 +8,7 @@ import type {
   Dashboard,
   DashboardCardSize,
   DashboardId,
+  DashboardParameterMapping,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
@@ -48,6 +49,13 @@ export type CardCreationType =
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
+export type CardParameterMapping = Omit<
+  DashboardParameterMapping,
+  "card_id"
+> & {
+  card_id?: CardId | null;
+};
+
 export interface Card<
   Q extends DatasetQuery = DatasetQuery,
 > extends UnsavedCard<Q> {
@@ -82,6 +90,7 @@ export interface Card<
   metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
+  parameter_mappings?: CardParameterMapping[] | null;
 
   result_metadata: Field[] | null;
   param_fields?: Record<ParameterId, Field[]>;
@@ -136,6 +145,8 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
 export type LineSize = "S" | "M" | "L";
 
+export type LineStyle = "solid" | "dashed" | "dotted";
+
 export type SeriesSettings = {
   title?: string;
   color?: string;
@@ -145,11 +156,13 @@ export type SeriesSettings = {
   display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
-  "line.style"?: "solid" | "dashed" | "dotted";
+  "line.style"?: LineStyle;
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
   show_series_trendline?: boolean;
+  "trendline.color"?: string;
+  "trendline.style"?: LineStyle;
 };
 
 export type SeriesOrderSetting = {
@@ -339,11 +352,17 @@ export type VisualizationSettings = {
   /** Visible table columns and order, as `{ name, enabled }` entries. */
   "table.columns"?: TableColumnOrderSetting[];
 
+  /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
+  "table.pivot"?: boolean;
+
   /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
    */
   column_settings?: Record<string, ColumnSettings>;
+
+  /** Show the x-axis title. `"auto"` hides it on short cards. */
+  "graph.x_axis.labels_enabled"?: boolean | "auto";
 
   /** Override the x-axis label. */
   "graph.x_axis.title_text"?: string;
@@ -362,8 +381,14 @@ export type VisualizationSettings = {
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
 
-  /** Override the y-axis label. */
+  /** Show the y-axis title. `"auto"` hides it on narrow cards. */
+  "graph.y_axis.labels_enabled"?: boolean | "auto";
+
+  /** Override the y-axis label. On a split chart this labels the left axis. */
   "graph.y_axis.title_text"?: string;
+
+  /** Override the right y-axis label on a split chart. Falls back to `graph.y_axis.title_text`. */
+  "graph.y_axis.right.title_text"?: string;
 
   /** Y-axis numeric scale, such as linear, pow, or log. */
   "graph.y_axis.scale"?: YAxisScale;
@@ -563,6 +588,9 @@ export type VisualizationSettings = {
   /** Color used for the list entity icon. */
   "list.entity_icon_color"?: string;
 
+  /** Draw timeline events on time series charts. */
+  "timeline_events.enabled"?: boolean;
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
@@ -614,7 +642,7 @@ export interface CreateCardRequest {
   visualization_settings: VisualizationSettings;
   type?: CardType;
   parameters?: Parameter[];
-  parameter_mappings?: unknown;
+  parameter_mappings?: CardParameterMapping[] | null;
   description?: string | null;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
@@ -624,6 +652,7 @@ export interface CreateCardRequest {
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
+  source_card_id?: CardId;
 }
 
 export interface CreateCardFromCsvRequest {

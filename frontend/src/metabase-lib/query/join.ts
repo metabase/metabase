@@ -203,7 +203,7 @@ export function suggestedJoinConditions(
   return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
-export type JoinFields = Parameters<typeof ML.with_join_fields>[1];
+export type JoinFields = ColumnMetadata[] | "all" | "none";
 
 export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);

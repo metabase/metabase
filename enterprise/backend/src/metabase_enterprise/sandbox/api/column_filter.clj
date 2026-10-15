@@ -26,9 +26,34 @@
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
+
+(def ^:private Card
+  ::queries.schema/card)
+
+(def ^:private PartialField
+  "A Field, as hydrated onto another Field's `:target`/`:name_field` -- only some columns are fetched for these,
+  so it's not a full `::warehouse-schema.schema/field`."
+  [:merge
+   ::warehouse-schema.schema/field.update
+   [:map {:closed true}
+    [:id {:optional true} ms/PositiveInt]]])
+
+(def ^:private Field
+  [:or
+   [:merge
+    ::warehouse-schema.schema/field
+    [:map {:closed true}
+     [:target     {:optional true} [:maybe PartialField]]
+     [:dimensions {:optional true} [:sequential ::warehouse-schema.schema/dimension]]
+     [:name_field {:optional true} [:maybe PartialField]]]]
+   [:map {:closed true}
+    [:id   {:optional true} ms/PositiveInt]
+    [:name {:optional true} :string]]])
 
 (mu/defn find-sandbox-source-cards :- [:map-of ms/PositiveInt :map]
   "Return `{table-id => sandbox-source-card}` for the `table-ids` that have a Card-backed sandbox for the current user.
@@ -56,8 +81,8 @@
   "Filter `fields` to those exposed by `card`, by field id for MBQL sandboxes and by name for native ones.
   Returns `fields` unchanged when `card` is nil or has no `:dataset_query`, and an empty seq when its
   `:result_metadata` is nil/empty (fail-closed; see ns docstring)."
-  [card   :- [:maybe :map]
-   fields :- [:sequential :map]]
+  [card   :- [:maybe Card]
+   fields :- [:sequential Field]]
   (let [sandbox-query (:dataset_query card)]
     (cond
       (nil? card)          fields
@@ -73,7 +98,7 @@
   "Return the `fields` for `table-id` that are visible to the current user under their sandbox configuration.
   Non-sandboxed tables and superusers receive `fields` unchanged."
   [table-id :- ms/PositiveInt
-   fields   :- [:sequential :map]]
+   fields   :- [:sequential Field]]
   (if-let [card (get (find-sandbox-source-cards #{table-id}) table-id)]
     (filter-fields-by-card card fields)
     fields))
@@ -81,7 +106,7 @@
 (mu/defn batch-filter-fields-by-table
   "Return the `{table-id => fields}` map with each table's fields filtered to those visible to the current user.
   Filters per the user's sandbox configuration, using a single DB query for all sandbox source cards."
-  [fields-by-table :- [:map-of ms/PositiveInt [:sequential :map]]]
+  [fields-by-table :- [:map-of ms/PositiveInt [:sequential Field]]]
   (let [card-by-table (find-sandbox-source-cards (set (keys fields-by-table)))]
     (into {}
           (map (fn [[table-id fields]]
