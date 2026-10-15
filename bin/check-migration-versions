@@ -151,3 +151,46 @@ if [[ "$errors" -gt 0 ]]; then
 fi
 
 echo "All new migration files are in the correct directory."
+
+[[ "$BASE_REF" == "master" ]] || exit 0
+
+released_ids() {
+    local major="$1" tag
+    tag=$(git ls-remote --tags --refs origin "v0.${major}.*" |
+        awk '{print $2}' | sed 's|^refs/tags/||' |
+        grep -E "^v0\.${major}\.[0-9]+(\.[0-9]+)?(-beta)?$" | sort -V | tail -1)
+    [[ -z "$tag" ]] && return 0
+    git fetch -q --depth=1 --no-tags origin "+refs/tags/${tag}:refs/check-migration-versions/v${major}"
+    { git grep -hoE "^[[:space:]]*id:[[:space:]]*['\"]?v${major}\.[^'\"[:space:]]+" "refs/check-migration-versions/v${major}" -- resources/migrations || true; } |
+        sed -E "s/^[[:space:]]*id:[[:space:]]*['\"]?//"
+}
+
+unreleased=()
+while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9][0-9]*\)/.*|\1|p')
+    [[ -z "$dir" ]] && continue
+    dir_version=$((10#$dir))
+    [[ "$dir_version" -gt "$CURRENT_VERSION" ]] && continue
+
+    released=$(released_ids "$dir_version")
+    while IFS= read -r id; do
+        [[ -z "$id" ]] && continue
+        grep -qxF "$id" <<<"$released" || unreleased+=("${file}: ${id}")
+    done < <(grep -oE "^[[:space:]]*id:[[:space:]]*['\"]?v[0-9]+\.[^'\"[:space:]]+" "$file" | sed -E "s/^[[:space:]]*id:[[:space:]]*['\"]?//")
+done <<<"$changed_files"
+
+if [[ ${#unreleased[@]} -gt 0 ]]; then
+    echo "" >&2
+    echo "ERROR: these changesets target a released major, but no release of that major has them yet:" >&2
+    printf '  %s\n' "${unreleased[@]}" >&2
+    echo "" >&2
+    echo "Why: the cross-version tests downgrade master's app DB with the released images. A released image" >&2
+    echo "cannot roll back a changeset that it does not have, so the tests fail until that release ships." >&2
+    echo "" >&2
+    echo "To fix: merge the migration into the release branch of each affected major first. When a release" >&2
+    echo "of the oldest one has it, bring the change to master." >&2
+    exit 1
+fi
+
+echo "All changesets for released majors are already released."
