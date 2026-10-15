@@ -217,6 +217,7 @@ function Banner() {
         {t`Research mode helps automate running and inspecting combinations of metrics, dimensions, and event timelines so you can use your brain for analysis, not busy work.`}
       </Text>
       <ActionIcon
+        variant="subtle"
         onClick={() => setHasDismissedBanner(true)}
         aria-label={t`Dismiss`}
       >

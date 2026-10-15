@@ -133,7 +133,12 @@ type CloseLinkProps = {
 
 function CloseLink({ closeUrl }: CloseLinkProps) {
   return (
-    <ActionIcon component={ForwardRefLink} to={closeUrl} aria-label={t`Close`}>
+    <ActionIcon
+      variant="subtle"
+      component={ForwardRefLink}
+      to={closeUrl}
+      aria-label={t`Close`}
+    >
       <FixedSizeIcon name="close" />
     </ActionIcon>
   );
@@ -182,6 +187,7 @@ function EditOnDashboardAction({
   return (
     <Tooltip label={t`Edit on dashboard`} openDelay={TOOLTIP_OPEN_DELAY_MS}>
       <ActionIcon
+        variant="subtle"
         component={ForwardRefLink}
         to={Urls.dashboard(dashboard, { openSubscriptions: subscription.id })}
         aria-label={t`Edit on dashboard`}
@@ -202,7 +208,7 @@ function DisabledEditAction({ reason }: DisabledEditActionProps) {
     <Tooltip label={reason} disabled={reason == null}>
       {/* a disabled button fires no pointer events, so the tooltip listens on a wrapper */}
       <Box>
-        <ActionIcon aria-label={t`Edit on dashboard`} disabled>
+        <ActionIcon variant="subtle" aria-label={t`Edit on dashboard`} disabled>
           <FixedSizeIcon name="pencil" />
         </ActionIcon>
       </Box>
