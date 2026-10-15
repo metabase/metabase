@@ -459,7 +459,8 @@
          (is (=? {:diverged false :clean true :conflicts [] :branch-missing true}
                  (status/push-preview inst s ptu/branch {}))))
        (testing "no base, and someone created the branch with other items: diverged, clean, no conflict"
-         (pltu/commit-snapshot! repo ptu/branch [] {added-id (ptu/item added-id :snippet "Added" nil {:content "x"})})
+         (pltu/commit-snapshot! repo ptu/branch []
+                                {added-id (ptu/item added-id :snippet "Added" "snippetssnippetssnipp" {:content "x"})})
          (is (=? {:diverged true :clean true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
                  (status/push-preview inst s ptu/branch {}))))))))
 

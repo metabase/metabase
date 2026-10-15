@@ -26,7 +26,9 @@
    :write!    (fn [_kind id {:keys [place] :as content}]
                 (when (contains? (:outside @st) id)
                   (instance/refuse! :outside-library id "An item outside the Library has this identity."))
-                (when (and place (not (contains? (:snapshot @st) place)))
+                (when (and place
+                           (not (contains? (:snapshot @st) place))
+                           (not (contains? snapshot/area-roots place)))
                   (instance/refuse! :place id "The container is not in scope."))
                 (vswap! st #(-> %
                                 (assoc-in [:snapshot id] content)

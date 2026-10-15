@@ -20,12 +20,12 @@
 (deftest home-test
   (testing "the Library collection is the directory library/ itself"
     (is (= "library/_collection.yaml" (path (root :type "library")))))
-  (testing "a root-level collection of a namespace is in the directory of its area"
-    (are [ns expected] (= expected (path (root :namespace ns)))
-      "snippets"     "snippets/some_name/_collection.yaml"
-      "transforms"   "transforms/some_name/_collection.yaml"
-      "data-actions" "actions/some_name/_collection.yaml"
-      "data-apps"    "apps/some_name/_collection.yaml"))
+  (testing "a collection at the root of an area is in the directory of its area"
+    (are [ns area expected] (= expected (path (assoc (root :namespace ns) :place area)))
+      "snippets"     "snippetssnippetssnipp" "snippets/some_name/_collection.yaml"
+      "transforms"   "transformstransformst" "transforms/some_name/_collection.yaml"
+      "data-actions" "dataactionsdataaction" "actions/some_name/_collection.yaml"
+      "data-apps"    "dataappsdataappsdatap" "apps/some_name/_collection.yaml"))
   (testing "another root-level collection is in library/"
     (is (= "library/some_name/_collection.yaml" (path (root))))
     (is (= "library/some_name/_collection.yaml" (path (root :type "library-data"))))))
@@ -45,7 +45,7 @@
     :target `collection/home
     :edits  [[:replace '(= "library" type) false]]}
    {:name   :namespace-ignored
-    :doc    "A root-level snippet collection is in library/."
+    :doc    "A snippet collection at the root of the Snippets area is in library/."
     :target `collection/home
     :edits  [[:replace '(get areas namespace) nil]]}])
 

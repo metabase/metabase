@@ -539,14 +539,32 @@
                                                                (assoc-in [:stages 0 :source-table] place)))
                      item))))
 
+(def ^:private area-of-kind
+  "The area of the top-level items of each kind that is in an area by its kind alone."
+  {:glossary-term :glossary
+   :snippet       :snippets})
+
+(defn in-areas
+  "Snapshot `s` in which each item at the root level that belongs to an area has the area root as its place
+  (`snapshot/area-root`): a glossary term, a snippet, and a collection of a namespace. The Library collection, and a
+  collection of no namespace, stay at the root level."
+  [s]
+  (update-vals s (fn [{:keys [kind place attrs] :as item}]
+                   (if-some [area (when (nil? place)
+                                    (or (area-of-kind kind)
+                                        (when (= :collection kind) (some-> (:namespace attrs) keyword))))]
+                     (assoc item :place (snapshot/area-root area))
+                     item))))
+
 (def complete
-  "[[with-refs]] of [[on-their-tables]]."
-  (comp with-refs on-their-tables))
+  "[[with-refs]] of [[on-their-tables]] of [[in-areas]]."
+  (comp with-refs on-their-tables in-areas))
 
 (defn snapshot-gen
   "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the schemas
-  of their codecs. A segment or a measure is on a published table, never at the root level. The references of an item
-  are those of its attributes; they can name items that are not in the snapshot."
+  of their codecs. A segment or a measure is on a published table, never at the root level. A glossary term, a snippet
+  at the top level and a collection of a namespace at the top level are at their area roots ([[in-areas]]). The
+  references of an item are those of its attributes; they can name items that are not in the snapshot."
   ([] (snapshot-gen 30))
   ([max-items]
    (gen/fmap complete

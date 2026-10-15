@@ -1,4 +1,5 @@
 kind: snippet
 id: bAsEfIlTeRsNiPpEt0001
+collection: snippetssnippetssnipp
 content: products.deleted_at IS NULL
 name: Base filter

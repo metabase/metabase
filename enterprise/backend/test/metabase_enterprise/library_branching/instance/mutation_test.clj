@@ -65,8 +65,20 @@
    {:name   :parent-dropped
     :doc    "A collection's place is not its parent: every collection is at the root level."
     :target `kinds.collection/portable-content
-    :edits  [[:replace '(serdes/*export-fk* (parent-id location) :model/Collection) nil]]
+    :edits  [[:replace '(serdes/*export-fk* parent :model/Collection) nil]]
     :tests  [#'kinds-test/collection-content-test
+             #'golden-test/read-gives-golden-items-test]}
+   {:name   :collection-area-dropped
+    :doc    "A collection of a namespace at the root level is at the root level, not at the root of its area."
+    :target `kinds.collection/portable-content
+    :edits  [[:replace '(some-> namespace name keyword snapshot/area-root) nil]]
+    :tests  [#'kinds-test/collection-content-test
+             #'golden-test/read-gives-golden-items-test]}
+   {:name   :snippet-area-dropped
+    :doc    "A snippet in no collection is at the root level, not at the root of the Snippets area."
+    :target `kinds.snippet/portable-content
+    :edits  [[:replace '(snapshot/area-root :snippets) nil]]
+    :tests  [#'kinds-test/snippet-content-test
              #'golden-test/read-gives-golden-items-test]}
    {:name   :no-prefetch
     :doc    "The batched export answers no lookup from the prefetched rows, so each reference costs its own query."
