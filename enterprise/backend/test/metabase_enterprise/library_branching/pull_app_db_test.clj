@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
@@ -123,7 +124,7 @@
                                     (dissoc (:entity_id removed))
                                     (assoc new-id (-> (get base (:entity_id renamed)) (assoc :name "New"))))
                  h1             (pltu/commit-snapshot! repo ptu/branch [c1] remote)
-                 {:keys [result trashed-in-use]} (pull! inst s)]
+                 {:keys [result trashed-in-use] :as pulled} (pull! inst s)]
              (is (= :pulled result))
              (testing "the app DB holds the head, and the base is the head"
                (is (= remote (read-snapshot inst)))
@@ -132,7 +133,13 @@
              (testing "the removed metric is in the trash, and the pull names the outside question that uses it"
                (is (true? (t2/select-one-fn :archived :model/Card (:id removed))))
                (is (= {(:entity_id removed) [{:kind :card :id (:entity_id outside) :name "Outside question"}]}
-                      trashed-in-use)))
+                      trashed-in-use))
+               (testing "the outcome of the pull task names the metric with its user"
+                 (is (= [{:id    (:entity_id removed)
+                          :kind  "metric"
+                          :name  "Removed"
+                          :users [{:kind "card" :id (:entity_id outside) :name "Outside question"}]}]
+                        (get-in (operations/pull-task-result ptu/branch pulled) [:outcome :trashed_in_use])))))
              (testing "a later head that holds the metric again restores the same row"
                (pltu/commit-snapshot! repo ptu/branch [h1] (assoc remote (:entity_id removed) (get base (:entity_id removed))))
                (is (= :pulled (:result (pull! inst s))))

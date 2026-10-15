@@ -199,11 +199,15 @@
 
 (mu/defn fail! :- :boolean
   "Ends task `id` with the error message `message` iff it is open: a running task as failed, a committing task as
-  interrupted, because its push may have landed. True iff it ended it."
-  [id      :- pos-int?
-   message :- :string]
-  (or (end-row! id #{"running"} "failed" {:error_message message})
-      (end-row! id #{"committing"} "interrupted" {:error_message message})))
+  interrupted, because its push may have landed. True iff it ended it. Not built yet: the outcome."
+  ([id      :- pos-int?
+    message :- :string]
+   (or (end-row! id #{"running"} "failed" {:error_message message})
+       (end-row! id #{"committing"} "interrupted" {:error_message message})))
+  ([id       :- pos-int?
+    message  :- :string
+    _outcome :- [:maybe ::outcome]]
+   (fail! id message)))
 
 (mu/defn fail-committing! :- :boolean
   "Ends task `id` as failed with the error message `message` iff it is committing: for a push past its commit point

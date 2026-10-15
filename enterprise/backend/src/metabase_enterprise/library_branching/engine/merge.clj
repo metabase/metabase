@@ -45,6 +45,11 @@
             (assoc finding :ours i :theirs j)))
         (validate/validate m opts)))
 
+(defn side-change
+  "Not built yet: the change of one side of a conflict."
+  [_b _x]
+  nil)
+
 (defn merge
   "The three-way merge of snapshots `o` (ours) and `t` (theirs) from their base `b`. A value of `b` can be
   `:unknown`, a base that equals no content (the base of an identity in the trash of an instance with no base).

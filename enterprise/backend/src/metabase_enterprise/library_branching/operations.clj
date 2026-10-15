@@ -138,6 +138,11 @@
     :no-branch  {:error (format "The repository has no branch %s." branch)}
     :disabled   {:error disabled-message}))
 
+(defn discard-task-result
+  "Not built yet: the task result of a discard."
+  [_branch _result]
+  {:error "Not built yet."})
+
 (defn merge-branch-task-result
   "The task result of `result`, a result of `merge-branch/merge-branch!` of branch `from` into branch `into`:
   `{:outcome o}` when the merge landed or was up to date, else `{:error message}`."
@@ -239,6 +244,11 @@
           (on-result result))
         (deploy-task-result branch result))))))
 
+(defn discard-task!
+  "Not built yet: the discard of the local changes as the work of a task."
+  [_id _branch]
+  {:error "Not built yet."})
+
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
   ([[merge-branch-task-result]]). The commits decode with `pull/decode-opts` of this instance."
@@ -336,6 +346,11 @@
   (check-branch-name! branch-name)
   (let [from (or from (configured-branch))]
     (submit! "branch-create" user-id #(create-branch-task! % branch-name from))))
+
+(defn start-discard!
+  "Not built yet: the start of a discard task."
+  [_user-id]
+  (refuse! "Not built yet."))
 
 (defn start-merge-branch!
   "Starts a task that merges branch `from` into branch `into` (nil: the configured branch), for the user `user-id`, and

@@ -46,21 +46,30 @@
   (is (= {:error "Library branching is not enabled."}
          (operations/push-task-result "main" {:result :disabled}))))
 
+(def ^:private revenue {:kind :metric :name "Revenue"})
+
 (deftest pull-task-result-test
-  (is (= {:outcome {:kind "pulled" :branch "main" :commit "h" :count 2 :trashed 1}}
+  (is (= {:outcome {:kind           "pulled"
+                    :branch         "main"
+                    :commit         "h"
+                    :count          3
+                    :trashed        1
+                    :trashed_in_use [{:id    "b"
+                                      :kind  "metric"
+                                      :name  "Revenue"
+                                      :users [{:kind "card" :id "x" :name "X"} {:kind "dashboard" :id "y" :name "Y"}]}]}}
          (operations/pull-task-result "main" {:result         :pulled
                                               :head           "h"
-                                              :steps          [{:id "a" :write {}} {:id "a" :link #{}} {:id "b" :trash true}]
-                                              :trashed-in-use {"b" [{:kind :card :id "x" :name "X"}]}})))
+                                              :steps          [{:id "a" :write {}} {:id "a" :link #{}}
+                                                               {:id "c" :trash true :pre revenue}
+                                                               {:id "b" :trash true :pre revenue}]
+                                              :trashed-in-use {"b" [{:kind :card :id "x" :name "X"}
+                                                                    {:kind :dashboard :id "y" :name "Y"}]}})))
   (is (= {:outcome {:kind "up-to-date" :branch "main" :commit "h"}}
          (operations/pull-task-result "main" {:result :up-to-date :head "h"})))
   (doseq [[result message]
           [[{:result :invalid :head "h" :findings [{:rule :acyclic :ids #{"a"}}]}
             "The head of branch main breaks the rules acyclic, so nothing was pulled."]
-           [{:result :conflicts :head "h" :conflicts [{:id "a"} {:id "b"}] :violations [{:rule :acyclic}]}
-            "The pull has 2 conflicts and 1 violation, so nothing was pulled."]
-           [{:result :conflicts :head "h" :conflicts [{:id "a"}] :violations []}
-            "The pull has 1 conflict and 0 violations, so nothing was pulled."]
            [{:result :stale :head "h" :ids ["a" "b"]}
             "Saves during the pull changed 2 items, so nothing was pulled. Try again."]
            [{:result :rewritten :head "h"}
@@ -77,6 +86,78 @@
             "Library branching is not enabled."]]]
     (testing (pr-str result)
       (is (= {:error message} (operations/pull-task-result "main" result))))))
+
+(def ^:private conflicts
+  "The conflicts of a merge (`merge/merge`): an update on both sides, a delete on ours, a create on both sides, and an
+  item with an unknown base."
+  [{:id "a" :base revenue :ours (assoc revenue :name "Mine") :theirs (assoc revenue :name "Theirs")}
+   {:id "b" :base revenue :ours nil :theirs (assoc revenue :name "Theirs")}
+   {:id "c" :base nil :ours {:kind :snippet :name "Mine"} :theirs {:kind :snippet :name "Theirs"}}
+   {:id ["Sample Database" "PUBLIC" "ORDERS"] :base :unknown :ours nil :theirs {:kind :published-table :name "Orders"}}])
+
+(def ^:private conflict-entries
+  [{:id "a" :kind "metric" :name "Mine" :ours "updated" :theirs "updated"}
+   {:id "b" :kind "metric" :name "Theirs" :ours "deleted" :theirs "updated"}
+   {:id "c" :kind "snippet" :name "Mine" :ours "created" :theirs "created"}
+   {:id ["Sample Database" "PUBLIC" "ORDERS"] :kind "published-table" :name "Orders" :ours "absent" :theirs "present"}])
+
+(deftest pull-conflicts-task-result-test
+  (testing "a pull with conflicts fails, and its outcome lists each conflict with the change of each side"
+    (is (= {:error   "The pull has 4 conflicts and 1 violation, so nothing was pulled."
+            :outcome {:kind       "conflicts"
+                      :branch     "main"
+                      :commit     "h"
+                      :conflicts  conflict-entries
+                      :violations [{:rule "place-inside" :ours "a" :theirs "c"}]}}
+           (operations/pull-task-result "main" {:result     :conflicts
+                                                :head       "h"
+                                                :conflicts  conflicts
+                                                :violations [{:rule :place-inside :id "c" :place "a" :ours "a"
+                                                              :theirs "c"}]}))))
+  (testing "violations only"
+    (is (= {:error   "The pull has 0 conflicts and 1 violation, so nothing was pulled."
+            :outcome {:kind "conflicts" :branch "main" :commit "h" :conflicts []
+                      :violations [{:rule "acyclic" :ours nil :theirs nil}]}}
+           (operations/pull-task-result "main" {:result :conflicts :head "h" :conflicts []
+                                                :violations [{:rule :acyclic :ids #{"a"} :ours nil :theirs nil}]}))))
+  (testing "a switch with conflicts keeps the outcome of the conflicts"
+    (is (= {:error   "The pull has 1 conflict and 0 violations, so nothing was pulled."
+            :outcome {:kind "conflicts" :branch "dev" :commit "h" :conflicts (subvec conflict-entries 0 1)
+                      :violations []}}
+           (operations/switch-task-result "dev" {:result :conflicts :head "h" :conflicts (subvec conflicts 0 1)
+                                                 :violations []})))))
+
+(deftest discard-task-result-test
+  (is (= {:outcome {:kind           "discarded"
+                    :branch         "main"
+                    :commit         "b"
+                    :count          2
+                    :discarded      2
+                    :trashed        1
+                    :trashed_in_use [{:id "x" :kind "metric" :name "Revenue" :users [{:kind "card" :id "u" :name "U"}]}]}}
+         (operations/discard-task-result "main" {:result         :discarded
+                                                 :base           "b"
+                                                 :steps          [{:id "a" :write {} :pre nil}
+                                                                  {:id "x" :trash true :pre revenue}]
+                                                 :discarded      ["a" "x"]
+                                                 :trashed-in-use {"x" [{:kind :card :id "u" :name "U"}]}})))
+  (is (= {:outcome {:kind "nothing-to-discard" :branch "main" :commit "b"}}
+         (operations/discard-task-result "main" {:result :up-to-date :base "b"})))
+  (doseq [[result message]
+          [[{:result :no-base} "The instance has no base yet, so it has no changes to discard."]
+           [{:result :base-lost :base "b"} "No branch of the repository holds the base b, so nothing was discarded."]
+           [{:result :invalid :base "b" :findings [{:rule :acyclic}]}
+            "The base b breaks the rules acyclic, so nothing was discarded."]
+           [{:result :stale :base "b" :ids ["a"]}
+            "Saves during the discard changed 1 item, so nothing was discarded. Try again."]
+           [{:result :refused :base "b" :refused [{:id "a" :reason :place :message "The container is not in scope."}]}
+            "The instance refused 1 item (The container is not in scope.), so nothing was discarded."]
+           [{:result :base-moved :base "b" :actual "c"} "Another task moved the base, so nothing was discarded."]
+           [{:result :fenced :base "b" :reason {:fenced "cancelled"}}
+            "The task ended before the discard applied, so nothing was discarded."]
+           [{:result :disabled} "Library branching is not enabled."]]]
+    (testing (pr-str result)
+      (is (= {:error message} (operations/discard-task-result "main" result))))))
 
 (deftest merge-branch-task-result-test
   (is (= {:outcome {:kind "merged" :branch "main" :from "dev" :commit "c"}}
@@ -116,7 +197,8 @@
     (tasks.tu/with-no-tasks
       (doseq [[op f] [[:push #(operations/start-push! nil nil)]
                       [:pull #(operations/start-pull! nil)]
-                      [:merge-branch #(operations/start-merge-branch! nil nil "dev")]]]
+                      [:merge-branch #(operations/start-merge-branch! nil nil "dev")]
+                      [:discard #(operations/start-discard! nil)]]]
         (testing op
           (testing "library branching is off"
             (mt/with-temporary-setting-values [library-branching-enabled false]
@@ -194,6 +276,55 @@
                    (is (= [h1 d1] (ptu/commit-parents repo (get-in merged [:outcome :commit]))))
                    (is (= "From dev" (get-in (remote-snapshot "main" (get-in merged [:outcome :commit]))
                                              [(:entity_id metric) :name])))))))))))))
+
+(defn- card-of [id]
+  (t2/select-one [:model/Card :name :archived] :id id))
+
+(deftest discard-on-the-app-db-test
+  (testing (str "a discard of the local changes, as the worker of its task; app DB " (mdb/db-type))
+    (with-remote [_repo url]
+      (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+        (rtu/do-with-library-metric!
+         (fn [metric]
+           (let [discard! #(run-task! "discard-changes" (fn [id] (operations/discard-task! id "main")))]
+             (testing "with no base, there is nothing to discard"
+               (is (=? {:status "failed" :error_message "The instance has no base yet, so it has no changes to discard."}
+                       (discard!))))
+             (let [c1      (get-in (run-task! "push" #(operations/push-task! % "main" "First push")) [:outcome :commit])
+                   created (atom nil)]
+               (try
+                 (testing "with no local change, there is nothing to discard"
+                   (is (=? {:status "successful" :outcome {:kind "nothing-to-discard" :branch "main" :commit c1}}
+                           (discard!))))
+                 (t2/update! :model/Card (:id metric) {:name "Local"})
+                 (reset! created (t2/insert-returning-instance! :model/Card
+                                                                (-> (select-keys metric [:type :collection_id :creator_id
+                                                                                         :display :visualization_settings
+                                                                                         :dataset_query])
+                                                                    (assoc :name "Created"))))
+                 (testing "a discard whose task ended before the apply writes nothing"
+                   (let [{:keys [id]} (tasks/start! "discard-changes" nil)]
+                     (tasks/cancel! id)
+                     (is (= {:error "The task ended before the discard applied, so nothing was discarded."}
+                            (operations/discard-task! id "main")))
+                     (is (= {:name "Local" :archived false} (into {} (card-of (:id metric)))))
+                     (is (= {:name "Created" :archived false} (into {} (card-of (:id @created)))))
+                     (is (= "cancelled" (:status (tasks/task id))))))
+                 (testing "a discard writes the base content over an update, and trashes a create; the base stays"
+                   (is (=? {:status  "successful"
+                            :outcome {:kind "discarded" :branch "main" :commit c1 :count 2 :discarded 2 :trashed 0
+                                      :trashed_in_use []}}
+                           (discard!)))
+                   (is (= {:name "Before" :archived false} (into {} (card-of (:id metric)))))
+                   (is (= {:name "Created" :archived true} (into {} (card-of (:id @created)))))
+                   (is (= c1 (instance/base (operations/instance)))))
+                 (testing "a discard restores an item that the instance moved to the trash"
+                   (t2/update! :model/Card (:id metric) {:archived true})
+                   (is (=? {:status "successful" :outcome {:kind "discarded" :count 1 :discarded 1}} (discard!)))
+                   (is (= {:name "Before" :archived false} (into {} (card-of (:id metric))))))
+                 (finally
+                   (when-let [{:keys [id]} @created]
+                     (t2/delete! :model/Card :id id))))))))))))
 
 ;;; ------------------------------------------------- Branch operations -------------------------------------------------
 
@@ -283,9 +414,16 @@
                              (run-task! "branch-switch" #(operations/switch-task! % "nope"))))
                      (is (= "stash" (repository/branch)))
                      (is (= s1 (instance/base (operations/instance)))))
-                   (testing "a switch with a conflict fails, writes nothing, and the branch setting stays"
+                   (testing "a switch with a conflict fails, writes nothing, and the branch setting stays; the task
+                            lists the conflict"
                      (t2/update! :model/Card (:id metric) {:name "Local"})
-                     (is (=? {:status "failed" :error_message "The pull has 1 conflict and 0 violations, so nothing was pulled."}
+                     (is (=? {:status        "failed"
+                              :error_message "The pull has 1 conflict and 0 violations, so nothing was pulled."
+                              :outcome       {:kind      "conflicts"
+                                              :branch    "main"
+                                              :commit    m1
+                                              :conflicts [{:id eid :kind "metric" :name "Local" :ours "updated"
+                                                           :theirs "updated"}]}}
                              (run-task! "branch-switch" #(operations/switch-task! % "main"))))
                      (is (= "Local" (t2/select-one-fn :name :model/Card (:id metric))))
                      (is (= "stash" (repository/branch)))
