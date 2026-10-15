@@ -88,17 +88,16 @@ describe("scenarios > visualizations > rows", () => {
     });
 
     // Verify hovering bars does not change their size (metabase#43631)
-    cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
+    cy.findByTestId("query-visualization-root")
+      .findByRole("graphics-symbol", { name: "51" })
+      .as("firstBar");
     cy.get("@firstBar")
-      .invoke("width")
+      .invoke("attr", "width")
       .then((prevWidth) => {
-        cy.get("@firstBar")
-          .realHover()
-          .invoke("width")
-          .then((newWidth) => {
-            // eslint-disable-next-line metabase/no-unsafe-element-filtering
-            expect(prevWidth).eq(newWidth);
-          });
+        expect(Number(prevWidth)).to.be.greaterThan(0);
+        cy.get("@firstBar").realHover();
+        H.tooltip().should("contain", "51");
+        cy.get("@firstBar").should("have.attr", "width", prevWidth);
       });
   });
 
@@ -214,5 +213,32 @@ describe("scenarios > visualizations > rows", () => {
     H.main().findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
+  });
+
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      display: "row",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      },
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": 40,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    cy.findByTestId("goal-line-marker").trigger("mouseover");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("40").should("be.visible");
+    });
   });
 });

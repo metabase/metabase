@@ -209,17 +209,14 @@ export type SuggestedMetabotPrompt = {
 };
 
 type BaseSuggestedMetabotPromptsRequest = {
-  metabot_id: MetabotId;
+  metabot_id: MetabotId | MetabotInfo["entity_id"];
   model?: string;
   model_id?: number;
 };
 
 export type SuggestedMetabotPromptsRequest =
-  BaseSuggestedMetabotPromptsRequest & {
-    metabot_id: MetabotId;
-    model?: string;
-    model_id?: number;
-  } & (
+  BaseSuggestedMetabotPromptsRequest &
+    (
       | { sample?: void; limit?: number | null; offset?: number | null }
       | { sample: true; limit?: number | null; offset?: void }
     );
@@ -251,7 +248,6 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
 export type MetabotFeedback = {
-  metabot_id: MetabotId;
   message_id: string;
   freeform_feedback?: string;
 } & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
@@ -259,7 +255,6 @@ export type MetabotFeedback = {
 export type MetabotSourceType = "table" | "card" | "model";
 
 export type MetabotSourceFeedback = {
-  metabot_id: MetabotId;
   message_id: string;
   source_id: number;
   source_type: MetabotSourceType;

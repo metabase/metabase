@@ -17,6 +17,7 @@ import {
   isSectionRoot,
   isSelectableItem,
   toggleItem,
+  toggleItems,
   toggleSectionRoot,
 } from "./utils";
 
@@ -27,6 +28,8 @@ export type UseLibraryBulkSelectionResult = {
   getSelectionState: (row: Row<TreeItem>) => SelectionState;
   getRowCovered: (row: Row<TreeItem>) => boolean;
   onCheckboxClick: (row: Row<TreeItem>) => void;
+  /** Undefined when the top level holds no selectable rows, e.g. section roots. */
+  onSelectAllClick: (() => void) | undefined;
   clear: () => void;
 };
 
@@ -79,6 +82,27 @@ export function useLibraryBulkSelection(
     }
   }, []);
 
+  const topLevelSelectables = useMemo(
+    () =>
+      rows
+        .filter((row) => row.depth === 0)
+        .map((row) => row.original)
+        .filter(isSelectableItem),
+    [rows],
+  );
+
+  // Unlike a section root, the header stands for the whole list, so its second
+  // click also clears the nested rows ticked inside folders.
+  const onSelectAllClick = useCallback(() => {
+    setSelected((prev) => {
+      const prevKeys = getSelectedKeySet(prev);
+      const isAllSelected = topLevelSelectables.every((item) =>
+        prevKeys.has(item.id),
+      );
+      return isAllSelected ? [] : toggleItems(prev, topLevelSelectables);
+    });
+  }, [topLevelSelectables]);
+
   const clear = useCallback(() => {
     setSelected([]);
   }, []);
@@ -109,6 +133,8 @@ export function useLibraryBulkSelection(
     getSelectionState,
     getRowCovered,
     onCheckboxClick,
+    onSelectAllClick:
+      topLevelSelectables.length > 0 ? onSelectAllClick : undefined,
     clear,
   };
 }

@@ -428,7 +428,9 @@ export const DatabaseReplicationForm = ({
                     <Progress
                       value={storageUtilizationPercent}
                       color={
-                        previewResponse?.canSetReplication ? "success" : "error"
+                        previewResponse?.canSetReplication
+                          ? "feedback-positive"
+                          : "feedback-negative"
                       }
                     />
                   ) : (

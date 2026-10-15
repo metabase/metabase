@@ -1,0 +1,1 @@
+To read a saved question or model the user is viewing, run it with `run_query`, with its id as the `query_id`. To read any other saved question or model, build a notebook query with it as the `source-card` and run that.

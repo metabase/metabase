@@ -189,7 +189,7 @@
   (when s
     (str/replace s "|" "\\u007c")))
 
-(defn- truncate
+(defn truncate
   "Cap `s` at `max-len` characters without splitting a surrogate pair, appending an ellipsis when truncated.
   Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
   Returns nil for nil input."

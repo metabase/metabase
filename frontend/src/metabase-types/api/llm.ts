@@ -47,6 +47,7 @@ export type LlmProviderTypeName =
   | "bedrock"
   | "vllm"
   | "ollama"
+  | "openai-compatible"
   | "metabase";
 
 export type LlmProviderFieldType =

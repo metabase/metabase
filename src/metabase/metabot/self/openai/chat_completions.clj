@@ -37,6 +37,43 @@
      :cacheCreationTokens (or (:cache_write_tokens details) 0)
      :cacheReadTokens     (or (:cached_tokens details) 0)}))
 
+(defn usage-once
+  "Move the server's usage in `chunks`, a reducible of Chat Completions chunks, to one final chunk.
+
+  The final `{:usage ...}` chunk carries the last usage the server sent. Some servers repeat their running totals on
+  every chunk, and translating each would count the call many times over. A stream that fails partway, or that the
+  consumer stops, still passes on the usage it received."
+  [chunks]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (let [usage  (volatile! nil)
+            latest (volatile! init)
+            flush  (fn [acc]
+                     (cond-> (unreduced acc)
+                       @usage (rf {:usage @usage})))
+            acc    (try
+                     (reduce (fn [acc chunk]
+                               (when-let [u (:usage chunk)]
+                                 (vreset! usage u))
+                               (vreset! latest (rf acc (dissoc chunk :usage))))
+                             init
+                             chunks)
+                     (catch Throwable t
+                       (flush @latest)
+                       (throw t)))]
+        (unreduced (flush acc))))))
+
+(defn count-reasoning-as-output
+  "Raise a chunk's `completion_tokens` to everything its `total_tokens` holds beyond the prompt.
+
+  Some servers, xAI among them, report reasoning tokens next to `completion_tokens` rather than inside them, and bill
+  them as output: https://docs.x.ai/developers/advanced-api-usage/prompt-caching/usage-and-pricing. A chunk whose
+  total holds nothing more, or that has no total, keeps its `completion_tokens`."
+  [{:keys [usage] :as chunk}]
+  (if-let [total (:total_tokens usage)]
+    (update-in chunk [:usage :completion_tokens] (fnil max 0) (- total (:prompt_tokens usage 0)))
+    chunk))
+
 ;;; AISDK parts → Chat Completions messages
 
 (defn- merge-consecutive-assistant-messages
@@ -222,6 +259,14 @@
         (not-empty arguments) (conj {:type :tool-input-delta :toolCallId id :inputTextDelta arguments})
         true                  (conj {:type :tool-input-available :toolCallId id :toolName name})))))
 
+(defn- error-chunk
+  "The AI SDK `:error` chunk for `error-text`, with the provider's `error` object when it sent one.
+
+  The object keeps fields that the text loses, such as OpenRouter's `metadata.error_type`."
+  [error error-text]
+  (cond-> {:type :error :errorText error-text}
+    (map? error) (assoc :error (assoc error :message error-text))))
+
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
@@ -384,7 +429,7 @@
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
               error-text                                       (-> (close!)
-                                                                   (rf {:type :error :errorText error-text}))))))))))
+                                                                   (rf (error-chunk error error-text)))))))))))
 
 ;;; Request body
 

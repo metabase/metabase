@@ -273,6 +273,7 @@
     :current-user-id                     api/*current-user-id*
     :is-impersonated-user?               (perms/impersonated-user?)
     :is-sandboxed-user?                  (perms/sandboxed-user?)
+    :is-routed-user?                     (perms/routed-user?)
     :is-superuser?                       api/*is-superuser?*
     :current-user-perms                  @api/*current-user-permissions-set*
     :filter-items-in-personal-collection filter-items-in-personal-collection

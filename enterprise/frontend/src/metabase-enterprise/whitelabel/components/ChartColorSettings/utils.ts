@@ -2,47 +2,53 @@ import type { ColorInstance } from "color";
 import Color from "color";
 import _ from "underscore";
 
-import { ACCENT_COUNT } from "metabase/ui/colors/palette";
+import { WHITELABEL_ACCENT_KEYS } from "metabase/ui/colors/constants/whitelabel-colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings, ColorSettingsAccentKey } from "metabase-types/api";
 
-export const getChartColorGroups = (): string[][] => {
-  return _.times(ACCENT_COUNT, (i) => [
-    `accent${i}`,
-    `accent${i}-light`,
-    `accent${i}-dark`,
+export const getChartColorGroups = (): ColorSettingsAccentKey[][] => {
+  return WHITELABEL_ACCENT_KEYS.map((key) => [
+    key,
+    `${key}-light`,
+    `${key}-dark`,
   ]);
 };
 
 export const getDefaultChartColors = (
-  values: Record<string, string>,
-  groups: string[][],
-) => {
+  values: ColorSettings,
+  groups: ColorSettingsAccentKey[][],
+): ColorSettings => {
   return _.omit(values, _.flatten(groups));
 };
 
 export const hasCustomChartColors = (
-  values: Record<string, string>,
-  groups: string[][],
+  values: ColorSettings,
+  groups: ColorSettingsAccentKey[][],
 ) => {
   return _.flatten(groups).some((name) => values[name] != null);
 };
 
 export const getAutoChartColors = (
-  values: Record<string, string>,
-  groups: string[][],
-  palette: Record<string, string>,
-) => {
+  values: ColorSettings,
+  groups: ColorSettingsAccentKey[][],
+  palette: ColorPalette,
+): ColorSettings => {
   const oldColors = groups
     .map(([name]) => values[name])
     .map((value) => (value ? Color(value) : undefined));
 
-  const fallbackColor = Color(palette["brand"]);
+  const fallbackColor = Color(palette["core-brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
 
-  const newValues = groups
-    .map(([name], index) => [name, newColors[index]?.hex()])
-    .filter(([_name, value]) => value != null);
+  const newValues: ColorSettings = { ...values };
+  groups.forEach(([name], index) => {
+    const value = newColors[index]?.hex();
+    if (name !== undefined && value !== undefined) {
+      newValues[name] = value;
+    }
+  });
 
-  return { ...values, ...Object.fromEntries(newValues) };
+  return newValues;
 };
 
 const getAutoColors = (

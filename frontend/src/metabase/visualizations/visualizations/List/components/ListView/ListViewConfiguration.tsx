@@ -48,6 +48,7 @@ import {
   ENTITY_ICONS,
   ENTITY_ICON_COLORS,
   getEntityIcon,
+  getEntityIconColor,
   getIconBackground,
 } from "./styling";
 import { useExternalDragOverlay } from "./use-external-drag-overlay";
@@ -109,7 +110,7 @@ export const ListViewConfiguration = ({
     selectedEntityIcon: settings?.["list.use_image_column"]
       ? null
       : settings?.["list.entity_icon"] || getEntityIcon(entityType),
-    selectedIconColor: settings?.["list.entity_icon_color"],
+    selectedIconColor: getEntityIconColor(settings?.["list.entity_icon_color"]),
     entityIconEnabled: settings?.["list.entity_icon_enabled"] ?? false,
     useImageColumn: settings?.["list.use_image_column"] ?? false,
   }));

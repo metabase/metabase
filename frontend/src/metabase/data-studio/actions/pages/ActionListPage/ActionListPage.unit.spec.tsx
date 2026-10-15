@@ -59,7 +59,7 @@ describe("ActionListPage", () => {
     mockGetBoundingClientRect({ width: 1000, height: 1000 });
   });
 
-  it("lists actions without a model under the Data actions root", async () => {
+  it("lists actions without a model at the top level, without a root row", async () => {
     setup({
       actions: [
         createMockQueryAction({
@@ -72,8 +72,8 @@ describe("ActionListPage", () => {
 
     expect(await screen.findByText("Refund order")).toBeInTheDocument();
     expect(
-      within(screen.getByTestId("library-page")).getByText("Data actions"),
-    ).toBeInTheDocument();
+      within(screen.getByTestId("library-page")).queryByText("Data actions"),
+    ).not.toBeInTheDocument();
   });
 
   it("offers new actions and collections with native write on an actions-enabled database", async () => {

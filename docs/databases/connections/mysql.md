@@ -195,9 +195,9 @@ Set up an additional connection used for write operations. See [Writable connect
 
 Choose whether to enable features related to [Metabase models](../../data-modeling/models/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
 
-### Model actions
+### Data actions
 
-Turn this setting on to allow [actions](../../data-modeling/models/actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
+Turn this setting on to allow [actions](../../data-modeling/models/actions/introduction.md) that use this database to be run. Actions can read, write, and delete data. Your database user will need write permissions.
 
 ### Model persistence
 

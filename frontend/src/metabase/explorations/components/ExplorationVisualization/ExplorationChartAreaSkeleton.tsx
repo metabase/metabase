@@ -17,8 +17,8 @@ export function ExplorationChartAreaSkeleton() {
       <Stack
         flex={1}
         w="100%"
-        bg="background-primary"
-        bd="1px solid border"
+        bg="background_page-primary"
+        bd="1px solid border-neutral"
         bdrs="sm"
         p="xl"
       >

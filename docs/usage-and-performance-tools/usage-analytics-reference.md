@@ -689,6 +689,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - exploration
 - json-download
 - map-tiles
+- metabot
 - metric
 - public-action-execute
 - public-csv-download

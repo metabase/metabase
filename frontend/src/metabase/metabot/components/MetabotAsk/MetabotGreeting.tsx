@@ -61,7 +61,7 @@ export const MetabotGreeting = ({
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
-      metabot_id: metabot.metabotId,
+      metabot_id: metabot.metabotEntityId,
       limit: SUGGESTED_PROMPTS_LIMIT,
       sample: true,
     },
@@ -85,7 +85,7 @@ export const MetabotGreeting = ({
             component={ForwardRefLink}
             to={Urls.newExploration()}
             bd="none"
-            leftSection={<Icon name="telescope" c="brand" />}
+            leftSection={<Icon name="telescope" c="core-brand" />}
           >
             {t`Research`}
           </Button>
