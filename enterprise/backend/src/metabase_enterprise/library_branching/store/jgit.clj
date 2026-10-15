@@ -1,6 +1,6 @@
 (ns metabase-enterprise.library-branching.store.jgit
-  "A `Store` over JGit. Each store object owns one bare repository in a new owner-only directory under
-  `java.io.tmpdir`. It fetches from and pushes to one remote, and `close` removes the directory."
+  "A `Store` over JGit. Each store object owns one bare repository in a new owner-only directory. It fetches from and
+  pushes to one remote, and `close` removes the directory."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -36,14 +36,14 @@
     ref
     (str "refs/heads/" ref)))
 
-(defn- owner-only-temp-dir ^File []
-  (let [tmp    (.toPath (io/file (System/getProperty "java.io.tmpdir")))
-        posix? (contains? (.supportedFileAttributeViews (.getFileSystem tmp)) "posix")
+(defn- owner-only-temp-dir ^File [^File parent]
+  (let [path   (.toPath parent)
+        posix? (contains? (.supportedFileAttributeViews (.getFileSystem path)) "posix")
         attrs  (if posix?
                  (into-array FileAttribute [(PosixFilePermissions/asFileAttribute
                                              (PosixFilePermissions/fromString "rwx------"))])
                  (make-array FileAttribute 0))]
-    (.toFile (Files/createTempDirectory ^Path tmp "metabase-library-branching-" ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))))
+    (.toFile (Files/createTempDirectory ^Path path "metabase-library-branching-" ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))))
 
 (defn url-error
   "nil when a store may connect to `url`, else the message for the person. Accepted: an https:// URL of any host, and a
@@ -297,13 +297,16 @@
   (.dir store))
 
 (defn open-store
-  "A new JGitStore on the remote at `url`, with an empty local repository. Options: `:token` (an access token,
-  sent as the password of the user that `token-user` names) and `:timeout-seconds`, the network timeout of each
-  remote call (default 60). Throws when `url-error` refuses `url`. The caller must `close` it."
-  [url & {:keys [token timeout-seconds] :or {timeout-seconds 60}}]
+  "A new JGitStore on the remote at `url`, with an empty local repository in a new directory under `:parent-dir` (an
+  existing directory, default `java.io.tmpdir`). Other options: `:token` (an access token, sent as the password of the
+  user that `token-user` names) and `:timeout-seconds`, the network timeout of each remote call (default 60). Throws
+  when `url-error` refuses `url`. The caller must `close` it."
+  [url & {:keys [token timeout-seconds parent-dir]
+          :or   {timeout-seconds 60
+                 parent-dir      (io/file (System/getProperty "java.io.tmpdir"))}}]
   (when-let [message (url-error url)]
     (throw (ex-info message {:url url})))
-  (let [dir (owner-only-temp-dir)
+  (let [dir (owner-only-temp-dir parent-dir)
         git (try
               (let [git (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))]
                 (doto (.getConfig (.getRepository git))
