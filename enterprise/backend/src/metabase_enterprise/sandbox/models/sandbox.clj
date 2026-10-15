@@ -72,12 +72,13 @@
       (when-not (isa? col-base-type table-col-base-type)
         (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
           (throw (ex-info msg
-                          {:type        qp.error-type/bad-configuration
-                           :status-code 400
-                           :message     msg
-                           :new-col     col
-                           :expected    table-col-base-type
-                           :actual      (:base_type col)})))))))
+                          {:type          qp.error-type/bad-configuration
+                           :status-code   400
+                           :message       msg
+                           :new-col       col
+                           :expected      table-col-base-type
+                           :actual        (:base_type col)
+                           :response/keys #{:expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
@@ -206,11 +207,13 @@
                               e)))))))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
-  on sandboxes (the Card cannot add fields or change types vs. the original Table)."
+  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches `:dataset_query`,
+  `:archived`, or `:result_metadata` (for a Card-backed sandbox, the column allow-list). If the result metadata
+  changes, also checks that it does not violate the constraints placed on sandboxes (the Card cannot add fields or
+  change types vs. the original Table)."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (some #(contains? changes %) [:dataset_query :archived])
+  (when (some #(contains? changes %) [:dataset_query :archived :result_metadata])
     (check-non-admin-cannot-affect-sandboxing! :card card-id))
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))

@@ -10,9 +10,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; `mcp.core/all-scopes` reads the agent-api's defendpoint metadata, so the namespace has to be
-   ;; loaded for `resource-scopes-are-advertised-test` to see it (nothing else here pulls it in).
-   [metabase.agent-api.api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -336,13 +333,11 @@
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
 
 (deftest resource-scopes-are-advertised-test
-  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a data resource it
-            could never read, or a shell that never gets a credential"
-    (let [advertised (set (mcp.core/all-scopes))]
-      (testing "GHY-4543: data resources count, not just UI shells"
-        (is (contains? (v2.resources/resource-scopes) "agent:resource:read")))
+  (testing "GHY-4157: every v2 resource scope is in the MCP scope list"
+    (is (seq (v2.resources/resource-scopes)) "No scopes in registered resources in MCP")
+    (let [accepted (set (mcp.core/v2-scopes))]
       (doseq [scope (v2.resources/resource-scopes)]
-        (is (contains? advertised scope) scope)))))
+        (is (contains? accepted scope) scope)))))
 
 (deftest resources-scope-gating-test
   (testing "GHY-4543: resources/list lists every resource regardless of scope"
@@ -380,10 +375,10 @@
               (is (true? minted?))))))
       (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
                 challenge for it"
-        (is (= {:status :scope-denied :required-scope "agent:resource:read"}
-               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:content:read"} {}))))
-      (testing "the fields catalog reads with agent:resource:read, and a data resource mints no credential"
-        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})]
+        (is (= {:status :scope-denied :required-scope "agent:content:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:query:run"} {}))))
+      (testing "GHY-4939: the fields catalog reads with agent:content:read, and a data resource mints no credential"
+        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:content:read"})]
           (is (= :ok status))
           (is (false? minted?))))
       (testing "GHY-4157: an unknown URI is not found"

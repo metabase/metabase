@@ -159,7 +159,7 @@
                        "gpt-5.4-nano"                omitted
                        "gpt-5.4"                     omitted
                        "GPT-5.5"                     omitted}
-   ;; Vertex: partner ids, dated with `@`
+   ;; Vertex: partner ids; Haiku 4.5 also in the retired `@`-dated spelling a saved selection may still hold
    :vertex-claude     {"claude-fable-5-1"             32000
                        "claude-fable-5"               32000
                        "claude-opus-5-5"              32000
@@ -168,10 +168,12 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-4-5"             32000
                        "claude-haiku-4-5@20251001"    32000}
    :gemini            {"google/gemini-3.5-flash"      32000
                        "google/gemini-3.6-flash"      32000
                        "google/gemini-3.7-flash"      32000
+                       "google/gemini-3.8-flash"      32000
                        "google/gemini-2.0-flash"      32000}
    :deepseek          {"deepseek-v4-pro"              32000
                        "deepseek-flash"               32000}
@@ -191,7 +193,9 @@
                        "deepseek/deepseek-v4-pro"         32000
                        "deepseek/deepseek-v4-pro-0813"    32000
                        "deepseek/deepseek-v4-flash-0731"  32000
+                       "google/gemini-3.8-flash"          32000
                        "z-ai/glm-5.3"                     32000
+                       "z-ai/glm-5.3-flash"               32000
                        "z-ai/glm-5.2"                     32000
                        "qwen/qwen3.8-max"                 32000
                        ;; the id qwen/qwen3.8-max resolves to on OpenRouter today
@@ -211,6 +215,7 @@
                        "anthropic/claude-fable-6"         32000
                        "openai/gpt-4o"                    32000}
    :zai               {"glm-5.3"                      32000
+                       "glm-5.3-flash"                32000
                        "glm-5.2"                      32000
                        "glm-4.7"                      32000}
    :moonshot          {"kimi-k3"                      32000

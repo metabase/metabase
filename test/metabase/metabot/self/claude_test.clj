@@ -340,6 +340,27 @@
     (testing "no speed through the AI proxy"
       (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
 
+(deftest ^:parallel claude-request-body-nested-object-arguments-test
+  (testing "a replayed tool call whose arguments hold nested string-keyed objects is accepted and sent as-is"
+    ;; Replayed tool calls go through this instrumented entry point, so their arguments must validate here.
+    (let [arguments {:query         {"lib/type" "mbql/query"
+                                     "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                     :visualization {"chart_type" "line"}
+                     :title         "Orders per month"
+                     :description   "Monthly orders in 2025"}
+          body      (claude/claude-request-body
+                     {:input [{:role :user :content "How many orders were placed each month in 2025?"}
+                              {:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments arguments}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "construct_notebook_query"
+                               :result   {:output "query built"}}]})]
+      (is (=? [{:role "user"}
+               {:role    "assistant"
+                :content [{:type "tool_use" :id "call-1" :name "construct_notebook_query" :input arguments}]}
+               {:role "user" :content [{:type "tool_result" :tool_use_id "call-1"}]}]
+              (:messages body))))))
+
 (defn- close-tracking-json-body
   "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
   response body the adapter must not leak."
@@ -696,6 +717,21 @@
           {:model "anthropic.claude-opus-4-8"}           32000
           {:model "my-deployment-3"}                     32000)))))
 
+(deftest ^:parallel context-window-tokens-undated-alias-test
+  (testing "an undated alias reads its dated row"
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "anthropic.claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5-20251001"))))
+  (testing "only a whole alias matches"
+    (is (nil? (claude/context-window-tokens "claude-haiku-4")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-4-5-x")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-9-9")))))
+
+(deftest ^:parallel undated-aliases-are-unambiguous-test
+  (testing "each undated alias names one dated row, so an alias never picks a row at random"
+    (let [stems (keep #(second (re-matches #"(.+)-\d{8}" %)) (keys claude/supported-models))]
+      (is (= (count stems) (count (set stems)))))))
+
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
     (let [input [{:role :user :content "hi"}]]
@@ -854,7 +890,7 @@
                 "claude-haiku-4-5-20251001"]]
       (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
-    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
       (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
@@ -870,6 +906,14 @@
               {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
              (:models (claude/list-models {:credentials byok-credentials})))))))
+
+(deftest list-models-does-not-offer-undated-aliases-test
+  (testing "an undated alias in the account's catalog is not offered: only the dated row is supported"
+    (let [catalog {:data [{:id "claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}
+                          {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]}]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body catalog})]
+        (is (= [{:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]
+               (:models (claude/list-models {:credentials byok-credentials}))))))))
 
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"

@@ -54,24 +54,27 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search`, and the `catalog://metabase/fields` data resource (see [Resources](#resources)) |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
-| `agent:resource:read` | No tools: it gates reading the `catalog://metabase/fields` data resource (see [Resources](#resources)). |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
-Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run agent:resource:read`: a fresh connection can read,
-query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
-(`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
-server metadata still advertises all of them.
+These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
+MCP client grants nothing on the REST API.
 
-`agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
-step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
-chart never embeds.
+The protected-resource metadata's `scopes_supported` and the `scope` of the 401 challenge both list every scope in
+the table, so a fresh connection asks for all of them. Some clients do not step up after a 403: a manual reconnect
+from Claude's connector settings registers a new client and asks for exactly what these list. When they listed only
+the baseline, that reconnect never offered writes, raw SQL, or delivery, and the user had no way to grant them
+(ENG-11089). The authorization server metadata advertises all of them too.
+
+The baseline (`agent:content:read agent:query:run`) is locked on the consent screen: when a client requests one of
+these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never need a step-up. Claude
+Desktop retries a tool after a step-up over a session that doesn't declare MCP Apps support, so a stepped-up
+`visualize_query` is refused and its chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
@@ -153,7 +156,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 | ------------ | ----- | ----------- |
 | `ui://metabase/visualize-query.html` | `agent:query:run` (UI credential only) | The MCP Apps iframe shell `visualize_query` points a capable client at. |
 | `ui://metabase/render-drill-through.html` | `agent:query:run` (UI credential only) | The shell `render_drill_through` points at. |
-| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
+| `catalog://metabase/fields` | `agent:content:read` | The dot-paths each content type accepts in `fields` arguments. |
 
 Every resource is listed whatever the token's scopes. A data resource, such as the fields catalog, is read only by a
 token holding its scope; otherwise the read gets the 403 `insufficient_scope` challenge described under

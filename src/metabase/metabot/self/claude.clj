@@ -356,7 +356,6 @@
    "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :context-window 1000000}
    "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :context-window 1000000}
    "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :context-window  200000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :context-window  200000}
    "claude-sonnet-5-5"          {:display-name "Claude Sonnet 5.5" :context-window 1000000}
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :context-window 1000000}
@@ -381,10 +380,31 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
+(def ^:private undated-aliases
+  "Undated alias → dated id, for every dated row of [[supported-models]].
+
+    \"claude-haiku-4-5\" => \"claude-haiku-4-5-20251001\"
+
+  Before the 4.6 generation, \"the alias is a convenience pointer that resolves to the dated ID\":
+  https://platform.claude.com/docs/en/about-claude/models/overview"
+  (into {}
+        (keep (fn [id]
+                (when-let [[_ alias] (re-matches #"(.+)-\d{8}" id)]
+                  [alias id])))
+        (keys supported-models)))
+
+(defn- supported-model-id
+  "The [[supported-models]] key that describes `model`, which may be vendor-prefixed or an undated alias."
+  [model]
+  (let [id (strip-vendor-prefix model)]
+    (if (contains? supported-models id)
+      id
+      (get undated-aliases id id))))
+
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
   [model :- [:maybe :string]]
-  (get-in supported-models [(strip-vendor-prefix model) :context-window]))
+  (get-in supported-models [(supported-model-id model) :context-window]))
 
 (defn- claude-model-version
   "`[family major minor]` for a Claude opus/sonnet/fable/mythos model id, or nil.

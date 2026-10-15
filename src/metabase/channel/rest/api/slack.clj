@@ -15,6 +15,7 @@
    [metabase.slackbot.api :as slackbot]
    [metabase.slackbot.config :as slackbot.config]
    [metabase.system.core :as system]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -131,7 +132,7 @@
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
-      {:status 400, :body (ex-data info)})))
+      {:status 400, :body (api-error/response-data (ex-data info))})))
 
 (def SlackManifest
   "Malli schema for Slack app manifest. OSS uses a simple manifest, while EE with metabot-v3

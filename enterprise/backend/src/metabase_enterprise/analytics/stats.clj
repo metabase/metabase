@@ -4,7 +4,7 @@
    [metabase-enterprise.analytics.db :as analytics.db]
    [metabase-enterprise.mfa.core :as mfa]
    [metabase-enterprise.scim.core :as scim]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.search.semantic.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]))

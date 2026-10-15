@@ -70,7 +70,7 @@
   This value is used when loading old revision records that predate the schema versioning system."
   20)
 
-(def ^:private current-schema-version
+(def current-card-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
   It is used to guide `after-select` logic in how to modernize a card correctly.
 
@@ -84,13 +84,13 @@
     version.
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
-  and including [[current-schema-version]]."
+  and including [[current-card-schema-version]]."
   24)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
 
-  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-schema-version]]
+  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-card-schema-version]]
   is 25, then the `after-select` logic will effectively call
 
       (-> card
@@ -461,7 +461,7 @@
   (let [card     (lib/normalize ::queries.schema/card card)
         defaults {:parameters         []
                   :parameter_mappings []
-                  :card_schema        current-schema-version}
+                  :card_schema        current-card-schema-version}
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
@@ -760,7 +760,7 @@
           :else
           (loop [card card]
             ;; Use >= to allow for downgrades.
-            (if (>= (:card_schema card) current-schema-version)
+            (if (>= (:card_schema card) current-card-schema-version)
               card
               (let [new-version (inc (:card_schema card))]
                 (recur (assoc (upgrade-card-schema-to card new-version)
@@ -782,7 +782,7 @@
   (let [stored-schema (:card_schema original)]
     (if-not (and stored-schema
                  ;; Use < to leave downgraded rows alone, matching [[upgrade-card-schema-to-latest]].
-                 (< stored-schema current-schema-version)
+                 (< stored-schema current-card-schema-version)
                  (some #(contains? changes %) card-schema/schema-upgrade-triggers))
       card
       ;; Force the `update-baseline-select?` flag to false, since this runs inside the `t2/before-update` process.
@@ -799,7 +799,7 @@
             relevant (when (seq columns)
                        (select-keys upgraded columns))]
         (-> (merge card relevant)
-            (assoc :card_schema current-schema-version))))))
+            (assoc :card_schema current-card-schema-version))))))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -850,7 +850,7 @@
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
-  ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
+  ;; |   See [[current-card-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
@@ -1047,7 +1047,7 @@
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
-               :card_schema current-schema-version)
+               :card_schema current-card-schema-version)
         normalize-card
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
@@ -1108,7 +1108,10 @@
   the chart it was saved from, so sever the link back to its origin — the conversation
   then stops showing that chart as saved. Only content edits count (query, display, viz
   settings); renames, moves, and archiving keep the link. The Metabot save paths stamp
-  these columns with raw table updates, so stamping never re-enters this hook."
+  these columns with raw table updates, so stamping never re-enters this hook.
+
+  Metabot's `run_query` tool also reads these columns, to tell SQL that Metabot saved from SQL
+  a person has since edited. Changing what clears them changes which saved SQL it will run."
   [card changes]
   (if (and (some (partial contains? changes)
                  [:dataset_query :display :visualization_settings])

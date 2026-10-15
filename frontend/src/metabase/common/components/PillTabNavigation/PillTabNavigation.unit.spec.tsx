@@ -103,4 +103,21 @@ describe("PillTabNavigation", () => {
 
     expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
   });
+
+  it("shows the tab count after its label", () => {
+    setup({
+      tabs: [
+        { label: "Usage", to: "/monitor/example/usage" },
+        { label: "Events", to: "/monitor/example/events", count: 0 },
+      ],
+    });
+
+    const tab = screen.getByRole("link", { name: "Events" });
+    expect(within(tab).getByTestId("pill-tab-count")).toHaveTextContent("0");
+    expect(
+      within(screen.getByRole("link", { name: "Usage" })).queryByTestId(
+        "pill-tab-count",
+      ),
+    ).not.toBeInTheDocument();
+  });
 });
