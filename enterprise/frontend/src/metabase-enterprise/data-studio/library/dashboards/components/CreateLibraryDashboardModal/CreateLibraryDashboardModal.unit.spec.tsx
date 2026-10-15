@@ -7,25 +7,18 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
+import { DASHBOARDS_COLLECTION } from "../../../test-utils";
 import { trackDataStudioDashboardCreated } from "../../analytics";
 
 import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
 
 jest.mock("../../analytics");
 
-const DASHBOARDS_COLLECTION = createMockCollection({
-  id: 3,
-  name: "Dashboards",
-  type: "library-dashboards",
-  is_library_root: true,
-  can_write: true,
-});
-
 function setup() {
   const onClose = jest.fn();
   fetchMock.get(
     `path:/api/collection/${DASHBOARDS_COLLECTION.id}`,
-    DASHBOARDS_COLLECTION,
+    createMockCollection({ ...DASHBOARDS_COLLECTION, is_library_root: true }),
   );
   fetchMock.get("path:/api/collection/root", createMockCollection());
   fetchMock.post("path:/api/dashboard", (call) =>

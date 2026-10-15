@@ -85,6 +85,8 @@ export interface Dashboard {
   >;
   auto_apply_filters: boolean;
   archived: boolean;
+  /** Whether the dashboard itself was trashed, rather than a collection above it */
+  archived_directly: boolean;
   is_remote_synced?: boolean;
   public_uuid: string | null;
   initially_published_at: string | null;
@@ -195,14 +197,6 @@ export type ActionDashboardCard = Omit<
     virtual_card: VirtualCard;
   };
 };
-
-/**
- * What GET /api/dashboard/:id sends in place of a dashcard's card, or one of
- * its series, when the user cannot read that card: only its id.
- * `QuestionDashboardCard` does not model it, so read the stub through
- * `isReadableCard` where it matters.
- */
-export type UnreadableCard = Pick<Card, "id">;
 
 export type QuestionDashboardCard = BaseDashboardCard & {
   card_id: CardId | null; // will be null for virtual card

@@ -1,0 +1,1 @@
+export { DocumentReadOnlyView } from "./DocumentReadOnlyView";

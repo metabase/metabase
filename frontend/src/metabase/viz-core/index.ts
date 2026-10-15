@@ -241,6 +241,7 @@ export {
   getDatasetError,
   getDatasetPermissionError,
   getGenericErrorMessage,
+  getPermissionErrorMessage,
   MinColumnsError,
   MinRowsError,
 } from "./lib/errors";

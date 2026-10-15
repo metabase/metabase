@@ -23930,6 +23930,60 @@
         "tags" : [ "/api/document" ]
       }
     },
+    "/api/document/{document-id}/cards" : {
+      "get" : {
+        "description" : "The saved Cards the Document with `document-id` embeds, each once, in document order.\n\n  Embeds can reference any Card, not only the ones saved in the Document, so a Card the current user cannot read is\n  listed by its id alone, in its place. A Card that no longer exists is left out.",
+        "operationId" : "get-api-document-document-id-cards",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "document-id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "cards" : {
+                      "items" : {
+                        "properties" : {
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          }
+                        },
+                        "required" : [ "id" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "cards" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/document/{document-id}/cards",
+        "tags" : [ "/api/document" ]
+      }
+    },
     "/api/document/{document-id}/public-link" : {
       "delete" : {
         "description" : "Remove the public link for a Document.\n\n  Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.\n  This revokes public access to the Document - the existing public link will no longer work.\n\n  Returns a 204 No Content response on success.\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.\n  Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link.",

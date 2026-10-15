@@ -13,6 +13,7 @@ import type {
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
+import { LIBRARY_SECTIONS } from "metabase/common/data-studio/library-sections";
 import {
   Form,
   FormErrorMessage,
@@ -23,6 +24,7 @@ import {
 } from "metabase/forms";
 import { Button, Modal, Stack } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
+import { isLibrarySubCollectionType } from "metabase-types/guards/collection";
 
 type EditCollectionModalProps = {
   collection: Collection | CollectionItem;
@@ -135,19 +137,9 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
 function getPickerEntityType(
   collectionType: Collection["type"] | CollectionItem["type"],
 ): EntityType | undefined {
-  if (collectionType === "library-data") {
-    return "table";
-  }
-
-  if (collectionType === "library-metrics") {
-    return "metric";
-  }
-
-  if (collectionType === "library-dashboards") {
-    return "dashboard";
-  }
-
-  return undefined;
+  return isLibrarySubCollectionType(collectionType)
+    ? LIBRARY_SECTIONS[collectionType].model
+    : undefined;
 }
 
 const pickerOptions: EntityPickerOptions = {

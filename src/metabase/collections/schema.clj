@@ -8,16 +8,39 @@
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
 
+(def ^:constant library-collection-type
+  "The value of the `:type` field for library collections."
+  "library")
+
+(def ^:constant library-data-collection-type
+  "The value of the `:type` field for collections that only allow tables."
+  "library-data")
+
+(def ^:constant library-metrics-collection-type
+  "The value of the `:type` field for collections that only allow metrics."
+  "library-metrics")
+
+(def ^:constant library-dashboards-collection-type
+  "The value of the `:type` field for collections that only allow dashboards and their questions."
+  "library-dashboards")
+
+(def ^:constant library-documents-collection-type
+  "The value of the `:type` field for collections that only allow documents and their questions."
+  "library-documents")
+
+(def library-collection-types
+  "All library `:type` values — collections users curate as the canonical place to find content."
+  #{library-collection-type
+    library-data-collection-type
+    library-metrics-collection-type
+    library-dashboards-collection-type
+    library-documents-collection-type})
+
 (mr/def ::CollectionContentModel [:enum "card" "dataset" "metric"])
 
-(mr/def ::CollectionType [:enum
-                          "instance-analytics"
-                          "trash"
-                          "remote-synced"
-                          "library"
-                          "library-models"
-                          "library-metrics"
-                          "library-dashboards"])
+(mr/def ::CollectionType
+  (into [:enum "instance-analytics" trash-collection-type "remote-synced"]
+        (sort library-collection-types)))
 
 (mr/def ::CardType [:enum "model" "question" "metric"])
 

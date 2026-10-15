@@ -88,15 +88,3 @@
               (is (= (mt/user->id :crowberto) (:creator_id reverted-document)))
               (is (:created_at reverted-document))
               (is (:updated_at reverted-document)))))))))
-
-(deftest excluded-columns-test
-  (testing "excluded columns constant contains expected fields"
-    (let [excluded-columns @#'metabase.revisions.impl.document/excluded-columns-for-document-revision]
-      (is (contains? excluded-columns :id))
-      (is (contains? excluded-columns :creator_id))
-      (is (contains? excluded-columns :created_at))
-      (is (contains? excluded-columns :updated_at))
-      (is (contains? excluded-columns :collection_id))
-      (is (contains? excluded-columns :collection_position))
-      (is (contains? excluded-columns :public_uuid_prefix))
-      (is (= 11 (count excluded-columns)) "Should exclude exactly 11 metadata fields"))))

@@ -1,14 +1,16 @@
 import { Api } from "metabase/api/api";
-import { idTag, listTag } from "metabase/api/tags";
+import { idTag, listTag, provideCardListTags } from "metabase/api/tags";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
+  GetDocumentCardsResponse,
   GetDocumentRequest,
   GetPublicDocument,
   UpdateDocumentRequest,
 } from "metabase-types/api";
+import { isReadableCard } from "metabase-types/guards/card";
 
 export const documentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,6 +21,19 @@ export const documentApi = Api.injectEndpoints({
       }),
       providesTags: (result, error, { id }) =>
         !error ? [idTag("document", id)] : [],
+    }),
+    getDocumentCards: builder.query<
+      GetDocumentCardsResponse,
+      GetDocumentRequest
+    >({
+      query: ({ id }) => ({
+        method: "GET",
+        url: `/api/document/${id}/cards`,
+      }),
+      providesTags: (response, _error, { id }) => [
+        idTag("document", id),
+        ...provideCardListTags(response?.cards.filter(isReadableCard) ?? []),
+      ],
     }),
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
       query: (body) => ({
@@ -139,6 +154,7 @@ export const documentApi = Api.injectEndpoints({
 
 export const {
   useGetDocumentQuery,
+  useGetDocumentCardsQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,

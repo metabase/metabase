@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { c, t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -14,6 +14,8 @@ import { BannerButton } from "./BannerButton";
 type ArchivedEntityBannerProps = {
   name: string;
   entityType: string;
+  /** Replaces the default sentence saying the entity is in the trash */
+  message?: ReactNode;
   canMove: boolean;
   canRestore: boolean;
   canDelete: boolean;
@@ -25,6 +27,7 @@ type ArchivedEntityBannerProps = {
 export const ArchivedEntityBanner = ({
   name,
   entityType,
+  message,
   canRestore,
   canMove,
   canDelete,
@@ -54,9 +57,10 @@ export const ArchivedEntityBanner = ({
               <Icon className={Styles.iconStyle} name="trash_filled" />
             </Box>
             <Text color="text-primary-inverse" size="md" lh="1rem">
-              {c(
-                "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
-              ).t`This ${entityType} is in the trash.`}
+              {message ??
+                c(
+                  "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
+                ).t`This ${entityType} is in the trash.`}
             </Text>
           </Flex>
           {hasAction && (

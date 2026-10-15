@@ -24,6 +24,7 @@ describe("getTreeRowHref", () => {
     ["snippet", "/data-studio/snippets/7"],
     ["action", "/data-studio/actions/7"],
     ["dashboard", "/data-studio/dashboards/7"],
+    ["document", "/data-studio/documents/7"],
   ])("links a %s row to %s", (model, expectedHref) => {
     expect(getTreeRowHref({ original: createLeafItem(model, 7) })).toBe(
       expectedHref,

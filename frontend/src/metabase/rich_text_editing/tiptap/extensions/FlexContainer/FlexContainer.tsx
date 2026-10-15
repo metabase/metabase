@@ -79,6 +79,7 @@ export const FlexContainer: Node<{
 });
 
 const FlexContainerComponent: React.FC<NodeViewProps> = ({
+  editor,
   node,
   updateAttributes,
   selected,
@@ -192,7 +193,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
   );
 
   const renderResizeHandles = () => {
-    if (columnCount <= 1) {
+    if (columnCount <= 1 || !editor.options.editable) {
       return null;
     }
 

@@ -21,6 +21,7 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
 import type {
   Collection,
+  CollectionItem,
   CollectionNamespace,
   LibraryCollection,
   SchemaName,
@@ -37,6 +38,23 @@ import type {
 } from "../types";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
+
+// Library sections the default path opens only when the picker can pick their model
+const SECTION_REQUIRED_MODELS = new Map<
+  CollectionItem["type"],
+  OmniPickerCollectionItem["model"]
+>([
+  ["library-dashboards", "dashboard"],
+  ["library-documents", "document"],
+]);
+
+function isSectionPickable(
+  type: CollectionItem["type"],
+  models: OmniPickerCollectionItem["model"][],
+) {
+  const requiredModel = SECTION_REQUIRED_MODELS.get(type);
+  return requiredModel == null || models.includes(requiredModel);
+}
 
 const getDefaultPath = async ({
   options,
@@ -59,11 +77,9 @@ const getDefaultPath = async ({
     ).unwrap();
 
     if (libraryChildrenResponse) {
-      // The Dashboards section only holds dashboards, so skip it unless we're picking them
       const firstChildCollection = libraryChildrenResponse.data.find(
         (item) =>
-          item.model === "collection" &&
-          (item.type !== "library-dashboards" || models.includes("dashboard")),
+          item.model === "collection" && isSectionPickable(item.type, models),
       );
       // we might also want to check if this collection has any relevant models
       if (firstChildCollection) {

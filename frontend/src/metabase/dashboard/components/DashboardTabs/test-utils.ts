@@ -38,6 +38,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       cache_ttl: null,
       auto_apply_filters: true,
       archived: false,
+      archived_directly: false,
       "last-edit-info": {
         id: 1,
         email: "",

@@ -988,12 +988,24 @@
   `(binding [*copy-source-card* ~source-card] ~@body))
 
 (defn- library-content-type
-  "The content type a Library collection checks `card` against, counting a question as a dashboard question when `dashboard-pending?`."
-  [card dashboard-pending?]
-  (if (and (= :question (keyword (:type card)))
-           (or (:dashboard_id card) dashboard-pending?))
-    :dashboard-question
+  "The content type a Library collection checks `card` against: a question owned by a dashboard or a document counts
+  as a dashboard or document question."
+  [card]
+  (if (= :question (keyword (:type card)))
+    (cond
+      (:dashboard_id card) :dashboard-question
+      (:document_id card)  :document-question
+      :else                :question)
     (:type card)))
+
+(defn- check-library-content
+  "Checks that the Collection `card` is in allows it."
+  [card]
+  (let [content-type (library-content-type card)]
+    ;; Serdes can load a question before the dashboard or document that owns it, so while deserializing an ownerless
+    ;; question is checked once its load completes, in `serdes/load-one!`.
+    (when-not (and mi/*deserializing?* (= :question content-type))
+      (collection/check-allowed-content content-type (:collection_id card)))))
 
 (defn- check-data-app-card
   "Throws unless `card`, when it is in a data app's collection, is what a pull of the app accepts: a question or
@@ -1038,7 +1050,7 @@
         pre-insert
         populate-query-fields
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (check-library-content <>)
     (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
@@ -1062,11 +1074,10 @@
     card))
 
 (defn- check-allowed-content
-  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection or dashboard."
+  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection, dashboard, or document."
   [card changes]
-  (when (some #(contains? changes %) [:collection_id :dashboard_id])
-    (let [card (apply-dashboard-question-updates card changes)]
-      (collection/check-allowed-content (library-content-type card mi/*deserializing?*) (:collection_id card)))))
+  (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
+    (check-library-content (apply-dashboard-question-updates card changes))))
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -1666,8 +1677,7 @@
 (defmethod serdes/load-one! "Card" [ingested maybe-local]
   (u/prog1 (serdes/default-load-one! ingested maybe-local)
     (collection/check-allowed-content
-     (library-content-type <> (and (some? (:dashboard_id ingested))
-                                   (contains? (::serdes/strip ingested) :dashboard_id)))
+     (library-content-type (merge <> (select-keys ingested (::serdes/strip ingested))))
      (:collection_id <>))))
 
 ;; A data app's resource collection holds the saved questions and metric copies the app runs.

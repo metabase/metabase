@@ -18,6 +18,7 @@ import {
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
+import type { LibraryCollectionType } from "metabase-types/api";
 
 import { getDataStudioActionRoutes } from "./actions/routes";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
@@ -71,11 +72,13 @@ const dependenciesUpsellPage = () =>
     Component: DependenciesUpsellPage,
   }));
 
-const libraryUpsellPage = () =>
+const libraryUpsellPage = (section: LibraryCollectionType) => () =>
   import(
     /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/LibraryUpsellPage"
   ).then(({ LibraryUpsellPage }) => ({
-    Component: LibraryUpsellPage,
+    Component: function LibraryUpsellRoute() {
+      return <LibraryUpsellPage section={section} />;
+    },
   }));
 
 const schemaViewerUpsellPage = () =>
@@ -116,12 +119,23 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
           ) : (
-            <Route path="library" lazy={libraryUpsellPage} />
+            <Route path="library" lazy={libraryUpsellPage("library")} />
           )}
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioDashboardRoutes()
           ) : (
-            <Route path="dashboards" lazy={libraryUpsellPage} />
+            <Route
+              path="dashboards"
+              lazy={libraryUpsellPage("library-dashboards")}
+            />
+          )}
+          {PLUGIN_LIBRARY.isEnabled ? (
+            PLUGIN_LIBRARY.getDataStudioDocumentRoutes()
+          ) : (
+            <Route
+              path="documents"
+              lazy={libraryUpsellPage("library-documents")}
+            />
           )}
           {PLUGIN_DEPENDENCIES.isEnabled ? (
             <Route path="dependencies" lazy={dependenciesSectionLayout}>

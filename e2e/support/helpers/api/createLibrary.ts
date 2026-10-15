@@ -1,4 +1,4 @@
-import type { Collection } from "metabase-types/api";
+import type { Collection, LibrarySubCollectionType } from "metabase-types/api";
 
 import { retryRequest } from "../e2e-request-helpers";
 
@@ -39,3 +39,16 @@ export const createLibrary = (): Cypress.Chainable<
       ).then(() => response);
     });
 };
+
+export const createLibrarySection = (
+  type: LibrarySubCollectionType,
+): Cypress.Chainable<Collection> =>
+  createLibrary().then(({ body }) => {
+    const section = body.effective_children?.find(
+      (collection) => collection.type === type,
+    );
+    if (section == null) {
+      throw new Error(`The Library has no ${type} collection`);
+    }
+    return section;
+  });

@@ -60,6 +60,7 @@ import {
   getSidebarMode,
 } from "../selectors";
 
+import { ArchiveDocumentModal } from "./ArchiveDocumentModal";
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
@@ -112,6 +113,7 @@ export const DocumentPage = () => {
   const [duplicateModalMode, setDuplicateModalMode] = useState<
     "duplicate" | "leave" | null
   >(null);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
 
@@ -267,7 +269,7 @@ export const DocumentPage = () => {
                     onMove={() => setCollectionPickerMode("move")}
                     onDuplicate={handleDuplicate}
                     onToggleBookmark={handleToggleBookmark}
-                    onArchive={() => handleUpdate({ archived: true })}
+                    onArchive={() => setIsArchiveModalOpen(true)}
                     onShowHistory={handleShowHistory}
                   />
                   <Editor
@@ -414,6 +416,13 @@ export const DocumentPage = () => {
               }}
               onClose={() => setDuplicateModalMode(null)}
             />
+
+            {isArchiveModalOpen && documentData && (
+              <ArchiveDocumentModal
+                document={documentData}
+                onClose={() => setIsArchiveModalOpen(false)}
+              />
+            )}
           </Box>
           {sidebarMode === "history" && documentData && (
             <Box

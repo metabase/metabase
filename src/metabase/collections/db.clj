@@ -630,6 +630,18 @@
                                [:= :archived false]
                                [:in :collection_id collection-ids]]}))
 
+(defn unarchived-document-collection-ids-in
+  "The distinct `:collection_id`s of the unarchived Documents in the Collections with `collection-ids`, leaving out
+  Documents attached to an Exploration when `exclude-exploration-documents?`."
+  [collection-ids exclude-exploration-documents?]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :document
+             :where           [:and
+                               (when exclude-exploration-documents?
+                                 [:= :exploration_id nil])
+                               [:= :archived false]
+                               [:in :collection_id collection-ids]]}))
+
 (defn collection-children-rows
   "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections.children` from the
   per-model item queries for a Collection's paginated child listing. Follows the same exception as

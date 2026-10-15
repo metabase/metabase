@@ -1,3 +1,4 @@
+import { LIBRARY_SECTIONS } from "metabase/common/data-studio/library-sections";
 import type { ColorName } from "metabase/ui/colors";
 import type {
   CardType,
@@ -8,6 +9,7 @@ import type {
   SearchModel,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { isLibrarySubCollectionType } from "metabase-types/guards/collection";
 
 export type IconModel =
   | SearchModel
@@ -74,3 +76,15 @@ export type IconData = {
   iconUrl?: string;
   tooltip?: string;
 };
+
+/** The icon name of a Library root collection, by the collection's type. */
+export function getLibraryRootIconName(
+  type: ObjectWithModel["type"],
+): IconName | undefined {
+  if (type === "library") {
+    return "repository";
+  }
+  return isLibrarySubCollectionType(type)
+    ? LIBRARY_SECTIONS[type].icon
+    : undefined;
+}

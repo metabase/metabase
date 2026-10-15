@@ -50,6 +50,7 @@ import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
 import { createChartPasteExtension } from "./chart-paste-extension";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
+import ProseS from "./prose.module.css";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -252,7 +253,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
       <DocumentEditorHostProvider hostOverride={hostOverride}>
         <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
           <Box
-            className={S.editorContent}
+            className={cx(ProseS.prose, S.editorContent)}
             ref={editorContainerRef}
             onClick={(e) => {
               // Focus editor when clicking on empty space

@@ -16,8 +16,10 @@ export function MeasureRevisionHistory({
       entityType="measure"
       entityId={measure.id}
       getActionDescription={getMeasureActionDescription}
-      definitionLabel={t`Aggregation`}
-      definitionType="aggregations"
+      diffOptions={{
+        definitionLabel: t`Aggregation`,
+        definitionType: "aggregations",
+      }}
     />
   );
 }

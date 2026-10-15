@@ -68,6 +68,16 @@
    changes :- ::documents.schema/document.update]
   (t2/update! :model/Document id changes))
 
+(mu/defn update-document-body-without-hooks!
+  "Set the stored `:document` column of the Document with `id` to the already-encoded `body`, returning the number
+  updated. Runs none of the model's hooks: publishes no `:event/document-update`, leaves its Cards and `updated_at`
+  alone, and does not reindex it for search."
+  [id   :- ms/PositiveInt
+   body :- :string]
+  (t2/query-one {:update (t2/table-name :model/Document)
+                 :set    {:document body}
+                 :where  [:= :id id]}))
+
 (mu/defn delete-document!
   "Delete the Document with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
@@ -95,11 +105,16 @@
 
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
-  [card-ids    :- [:sequential ::lib.schema.id/card]
+  [card-ids    :- [:sequential {:min 1} ::lib.schema.id/card]
    document-id :- ms/PositiveInt]
   (t2/select :model/Card {:where [:and [:in :id card-ids]
                                   [:or [:<> :document_id document-id]
                                    [:= :document_id nil]]]}))
+
+(mu/defn cards
+  "The Cards with `card-ids`, in no particular order."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids]))
 
 (mu/defn cards-for-document
   "The Cards of the Document with `document-id`."

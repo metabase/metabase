@@ -56,7 +56,8 @@
       (malli.util/assoc :location [:maybe ms/NonBlankString])
       (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
       (malli.util/assoc :is_remote_synced [:maybe :boolean])
-      (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics" "library-dashboards"])
+      (malli.util/assoc :type (into [:enum collection/trash-collection-type]
+                                    (sort collection/library-collection-types)))
       (malli.util/optional-keys [:location :type])
       (malli.util/closed-schema)))
 

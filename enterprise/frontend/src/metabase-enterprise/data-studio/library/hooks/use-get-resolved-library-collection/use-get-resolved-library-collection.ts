@@ -1,8 +1,13 @@
 import { match } from "ts-pattern";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import type { CollectionItem } from "metabase-types/api";
 
 import { useGetLibraryCollection } from "../use-get-library-collection";
+
+function isDataSourceSection(type: CollectionItem["type"]) {
+  return type === "library-data" || type === "library-metrics";
+}
 
 // This hook will return the library collection if there are both metrics and models in the library,
 // the library-metrics collection if the library has no models, or the library-data collection
@@ -22,12 +27,11 @@ export const useGetResolvedLibraryCollection = ({
       libraryCollection && hasStuff ? { id: libraryCollection.id } : skipToken,
     );
 
-  // The Dashboards section never holds data sources
   const subcollectionsWithStuff =
     libraryItems?.data.filter(
       (item) =>
         item.model === "collection" &&
-        item.type !== "library-dashboards" &&
+        isDataSourceSection(item.type) &&
         (item.here?.length || item.below?.length),
     ) ?? [];
 

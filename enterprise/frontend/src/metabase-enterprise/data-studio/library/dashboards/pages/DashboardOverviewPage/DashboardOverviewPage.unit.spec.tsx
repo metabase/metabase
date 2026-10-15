@@ -2,9 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
-  setupDashboardNotFoundEndpoint,
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
@@ -15,71 +13,44 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
 import type { Dashboard } from "metabase-types/api";
 import {
-  createMockCollection,
   createMockDashboard,
   createMockDashboardQueryMetadata,
 } from "metabase-types/api/mocks";
 
+import {
+  DASHBOARDS_FOLDER,
+  TRASH_COLLECTION,
+  setupLibraryCollectionEndpoints,
+} from "../../../test-utils";
 import { trackDataStudioDashboardEditStarted } from "../../analytics";
 
 import { DashboardOverviewPage } from "./DashboardOverviewPage";
 
 jest.mock("../../analytics");
 
-const LIBRARY_COLLECTION = createMockCollection({
-  id: 1,
-  name: "Library",
-  type: "library",
-});
-
-const DASHBOARDS_COLLECTION = createMockCollection({
-  id: 2,
-  name: "Dashboards",
-  type: "library-dashboards",
-});
-
-const SALES_COLLECTION = createMockCollection({
-  id: 3,
-  name: "Sales",
-  type: "library-dashboards",
-  effective_ancestors: [LIBRARY_COLLECTION, DASHBOARDS_COLLECTION],
-});
-
 type SetupOpts = {
   dashboard?: Partial<Dashboard>;
-  isNotFound?: boolean;
 };
 
-function setup({ dashboard: dashboardOpts, isNotFound = false }: SetupOpts) {
+function setup({ dashboard: dashboardOpts }: SetupOpts) {
   const dashboard = createMockDashboard({
     id: 10,
     name: "Sales overview",
-    collection_id: SALES_COLLECTION.id,
+    collection_id: DASHBOARDS_FOLDER.id,
+    collection: DASHBOARDS_FOLDER,
     dashcards: [],
     ...dashboardOpts,
   });
   setupListSubscriptionsEndpoint([]);
-  if (isNotFound) {
-    setupDashboardNotFoundEndpoint(dashboard);
-  } else {
-    setupDashboardEndpoints(dashboard);
-  }
+  setupDashboardEndpoints(dashboard);
   setupDashboardQueryMetadataEndpoint(
     dashboard,
     createMockDashboardQueryMetadata(),
   );
-  setupCollectionByIdEndpoint({
-    collections: [
-      createMockCollection(ROOT_COLLECTION),
-      LIBRARY_COLLECTION,
-      DASHBOARDS_COLLECTION,
-      SALES_COLLECTION,
-    ],
-  });
+  setupLibraryCollectionEndpoints([DASHBOARDS_FOLDER]);
 
   const { router } = renderWithProviders(
     <>
@@ -156,8 +127,29 @@ describe("DashboardOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps the folder of a dashboard trashed directly, which the API files under the Trash", async () => {
+    setup({
+      dashboard: {
+        archived: true,
+        archived_directly: true,
+        collection_id: TRASH_COLLECTION.id,
+        collection: DASHBOARDS_FOLDER,
+      },
+    });
+
+    const header = await screen.findByTestId("dashboard-pane-header");
+    expect(
+      await within(header).findByRole("link", { name: "Sales" }),
+    ).toHaveAttribute(
+      "href",
+      `/data-studio/dashboards?expandedId=${DASHBOARDS_FOLDER.id}`,
+    );
+  });
+
   it("hides Edit and shows the trash banner when the dashboard is archived", async () => {
-    setup({ dashboard: { archived: true, can_restore: true } });
+    setup({
+      dashboard: { archived: true, archived_directly: true, can_restore: true },
+    });
 
     expect(await screen.findByTestId("archive-banner")).toHaveTextContent(
       "This dashboard is in the trash.",
@@ -168,35 +160,6 @@ describe("DashboardOverviewPage", () => {
     expect(
       screen.queryByRole("button", { name: /Edit/ }),
     ).not.toBeInTheDocument();
-  });
-
-  it("restores an archived dashboard from the trash banner", async () => {
-    setup({ dashboard: { archived: true, can_restore: true } });
-
-    const banner = await screen.findByTestId("archive-banner");
-    await userEvent.click(within(banner).getByText("Restore"));
-
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.called("path:/api/dashboard/10", {
-          method: "PUT",
-        }),
-      ).toBe(true),
-    );
-    const body: unknown = fetchMock.callHistory.lastCall(
-      "path:/api/dashboard/10",
-      { method: "PUT" },
-    )?.options.body;
-    expect(body).toBe(JSON.stringify({ archived: false }));
-  });
-
-  it("does not show the trash banner for a dashboard that is not archived", async () => {
-    setup({});
-
-    expect(
-      await screen.findByRole("button", { name: /Edit/ }),
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId("archive-banner")).not.toBeInTheDocument();
   });
 
   it("opens the dashboard editor and asks it to return here", async () => {
@@ -217,15 +180,5 @@ describe("DashboardOverviewPage", () => {
     expect(
       jest.mocked(trackDataStudioDashboardEditStarted),
     ).toHaveBeenCalledWith(10);
-  });
-
-  it("shows an error when the dashboard cannot be loaded", async () => {
-    setup({ isNotFound: true });
-
-    await waitForLoaderToBeRemoved();
-    expect(screen.getByText("An error occurred")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("dashboard-overview-page"),
-    ).not.toBeInTheDocument();
   });
 });

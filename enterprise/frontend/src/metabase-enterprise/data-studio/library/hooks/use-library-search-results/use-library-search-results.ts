@@ -9,7 +9,7 @@ import type { CollectionId, SearchResult } from "metabase-types/api";
 const SEARCH_DEBOUNCE_MS = 300;
 const NO_ITEMS: TreeItem[] = [];
 
-export type LibrarySearchModel = "table" | "metric" | "dashboard";
+export type LibrarySearchModel = "table" | "metric" | "dashboard" | "document";
 
 type LibrarySearchResults = {
   items: TreeItem[];

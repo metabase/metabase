@@ -2,6 +2,11 @@ import {
   canonicalCollectionId,
   isRootCollection,
 } from "metabase/common/collections/utils";
+import {
+  LIBRARY_SECTIONS,
+  type LibrarySectionKey,
+  type LibrarySectionModel,
+} from "metabase/common/data-studio/library-sections";
 import type {
   CollectionData,
   TreeItem,
@@ -10,28 +15,40 @@ import type { SelectionState } from "metabase/ui";
 import type {
   CollectionId,
   CollectionItem,
+  CollectionNamespace,
   DatabaseId,
 } from "metabase-types/api";
+import { isLibrarySubCollectionType } from "metabase-types/guards/collection";
 
-export type LibrarySection =
-  | "data"
-  | "metrics"
-  | "dashboards"
-  | "snippets"
-  | "actions";
+export type LibraryTreeSection = LibrarySectionKey | "snippets" | "actions";
 
-export type SelectableModel =
-  | "table"
-  | "metric"
-  | "dashboard"
-  | "snippet"
-  | "action"
-  | "collection";
+const LEAF_MODEL_SECTIONS = {
+  table: "data",
+  metric: "metrics",
+  dashboard: "dashboards",
+  document: "documents",
+  snippet: "snippets",
+  action: "actions",
+} as const satisfies Record<
+  LibrarySectionModel | "snippet" | "action",
+  LibraryTreeSection
+>;
+
+type LeafModel = keyof typeof LEAF_MODEL_SECTIONS;
+
+export type SelectableModel = LeafModel | "collection";
+
+const COLLECTION_NAMESPACE_SECTIONS: Partial<
+  Record<NonNullable<CollectionNamespace>, LibraryTreeSection>
+> = {
+  snippets: "snippets",
+  "data-actions": "actions",
+};
 
 export type SelectedItem = {
   key: string;
   model: SelectableModel;
-  section: LibrarySection;
+  section: LibraryTreeSection;
   entityId: number;
   sourceCollectionId: CollectionId | null;
   databaseId?: DatabaseId;
@@ -42,17 +59,15 @@ const isCollectionRow = (
   item: TreeItem,
 ): item is TreeItem & { data: CollectionData } => item.model === "collection";
 
+const isLeafModel = (model: TreeItem["model"]): model is LeafModel =>
+  Object.hasOwn(LEAF_MODEL_SECTIONS, model);
+
 const isLeafRow = (
   item: TreeItem,
 ): item is TreeItem & {
-  model: "table" | "metric" | "dashboard" | "snippet" | "action";
+  model: LeafModel;
   data: CollectionItem;
-} =>
-  item.model === "table" ||
-  item.model === "metric" ||
-  item.model === "dashboard" ||
-  item.model === "snippet" ||
-  item.model === "action";
+} => isLeafModel(item.model);
 
 const keyOf = (item: TreeItem): string => item.id;
 
@@ -60,39 +75,16 @@ export function getSelectedKeySet(selected: TreeItem[]): Set<string> {
   return new Set(selected.map(keyOf));
 }
 
-export function getItemSection(item: TreeItem): LibrarySection | null {
-  if (item.model === "table") {
-    return "data";
-  }
-  if (item.model === "metric") {
-    return "metrics";
-  }
-  if (item.model === "dashboard") {
-    return "dashboards";
-  }
-  if (item.model === "snippet") {
-    return "snippets";
-  }
-  if (item.model === "action") {
-    return "actions";
+export function getItemSection(item: TreeItem): LibraryTreeSection | null {
+  if (isLeafModel(item.model)) {
+    return LEAF_MODEL_SECTIONS[item.model];
   }
   if (isCollectionRow(item)) {
-    const { data } = item;
-    if (data.namespace === "snippets") {
-      return "snippets";
-    }
-    if (data.namespace === "data-actions") {
-      return "actions";
-    }
-    if (data.type === "library-metrics") {
-      return "metrics";
-    }
-    if (data.type === "library-data") {
-      return "data";
-    }
-    if (data.type === "library-dashboards") {
-      return "dashboards";
-    }
+    const { namespace, type } = item.data;
+    return (
+      (namespace && COLLECTION_NAMESPACE_SECTIONS[namespace]) ??
+      (isLibrarySubCollectionType(type) ? LIBRARY_SECTIONS[type].key : null)
+    );
   }
   return null;
 }
@@ -121,7 +113,7 @@ function getSectionDirectSelectables(sectionRoot: TreeItem): TreeItem[] {
 
 export function getSelectionSection(
   selected: TreeItem[],
-): LibrarySection | null {
+): LibraryTreeSection | null {
   return selected.length > 0 ? getItemSection(selected[0]) : null;
 }
 

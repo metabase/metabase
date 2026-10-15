@@ -11,7 +11,8 @@
   {collection/library-collection-type
    {:allowed-content-types #{collection/library-data-collection-type
                              collection/library-metrics-collection-type
-                             collection/library-dashboards-collection-type}
+                             collection/library-dashboards-collection-type
+                             collection/library-documents-collection-type}
     :error-message         "Cannot add anything to the semantic layer"}
 
    collection/library-data-collection-type
@@ -28,7 +29,13 @@
                              :model/Pulse
                              :model/Timeline
                              collection/library-dashboards-collection-type}
-    :error-message         "Can only add dashboards to the 'Dashboards' collection"}})
+    :error-message         "Can only add dashboards to the 'Dashboards' collection"}
+
+   collection/library-documents-collection-type
+   {:allowed-content-types #{:model/Document
+                             :document-question
+                             collection/library-documents-collection-type}
+    :error-message         "Can only add documents to the 'Documents' collection"}})
 
 (defenterprise check-library-content
   "Check if the collection's content matches the allowed content.

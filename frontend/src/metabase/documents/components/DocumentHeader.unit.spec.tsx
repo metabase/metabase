@@ -1,12 +1,20 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCommentEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   PrintContext,
   type PrintContextValue,
 } from "metabase/documents/contexts/PrintContext";
-import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
+import {
+  createMockCollection,
+  createMockDocument,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
@@ -26,6 +34,7 @@ const setup = ({
   isBookmarked = false,
   isAdmin = false,
   isPublicSharingEnabled = false,
+  hasLibraryPlugin = false,
   onTitleChange = jest.fn(),
   onSave = jest.fn(),
   onMove = jest.fn(),
@@ -51,6 +60,14 @@ const setup = ({
     onArchive,
     onShowHistory,
   };
+
+  reinitialize();
+  if (hasLibraryPlugin) {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+    setupEnterpriseOnlyPlugin("library");
+  }
 
   setupCommentEndpoints([], {
     target_type: "document",
@@ -302,5 +319,54 @@ describe("DocumentHeader", () => {
       await userEvent.click(screen.getByText("Duplicate"));
       expect(onDuplicate).toHaveBeenCalled();
     });
+  });
+});
+
+describe("DocumentHeader - library document", () => {
+  const libraryDocument = createMockDocument({
+    id: 7,
+    collection: createMockCollection({ id: 2, type: "library-documents" }),
+  });
+
+  it("offers Open in Data Studio first in the menu", async () => {
+    setup({ document: libraryDocument, isAdmin: true, hasLibraryPlugin: true });
+
+    await userEvent.click(screen.getByLabelText("More options"));
+    const [firstItem] = within(await screen.findByRole("menu")).getAllByRole(
+      "menuitem",
+    );
+    expect(firstItem).toHaveTextContent("Open in Data Studio");
+    expect(firstItem).toHaveAttribute("href", "/data-studio/documents/7");
+  });
+
+  it("does not offer Open in Data Studio to a user without Data Studio access", async () => {
+    setup({
+      document: libraryDocument,
+      isAdmin: false,
+      hasLibraryPlugin: true,
+    });
+
+    await userEvent.click(screen.getByLabelText("More options"));
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Open in Data Studio/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer Open in Data Studio for a document outside the Library", async () => {
+    setup({
+      document: createMockDocument({
+        id: 8,
+        collection: createMockCollection({ id: 3, type: null }),
+      }),
+      isAdmin: true,
+      hasLibraryPlugin: true,
+    });
+
+    await userEvent.click(screen.getByLabelText("More options"));
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Open in Data Studio/ }),
+    ).not.toBeInTheDocument();
   });
 });

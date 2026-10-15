@@ -7,7 +7,7 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import {
-  type LibrarySection,
+  type LibraryTreeSection,
   useLibraryBulkSelection,
 } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type {
@@ -41,7 +41,7 @@ type LibraryTreePageProps = {
   searchQuery: string;
   emptyMessage: string;
   defaultExpandedIds?: readonly string[];
-  defaultMoveCollectionIds?: Partial<Record<LibrarySection, CollectionId>>;
+  defaultMoveCollectionIds?: Partial<Record<LibraryTreeSection, CollectionId>>;
   createMenu?: ReactNode;
   pageMenu?: LibraryPageMenuProps;
   emptyState?: ReactNode;
@@ -52,7 +52,7 @@ type LibraryTreePageProps = {
   onSearchQueryChange: (searchQuery: string) => void;
   emptyStateActions?: Partial<Record<LibrarySectionType, () => void>>;
   getTrashMessage?: (
-    section: LibrarySection,
+    section: LibraryTreeSection,
     count: number,
   ) => string | undefined;
 };

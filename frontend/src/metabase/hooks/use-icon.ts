@@ -1,8 +1,12 @@
 import { useCallback } from "react";
 
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
-import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
-import { modelIconMap } from "metabase/common/utils/icon";
+import {
+  type IconData,
+  type ObjectWithModel,
+  getLibraryRootIconName,
+  modelIconMap,
+} from "metabase/common/utils/icon";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getIconForVisualizationType } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
@@ -53,17 +57,12 @@ export const useGetIconBase = () => {
         return { name: "database" };
       }
 
-      if (item.model === "collection" && item.is_library_root === true) {
-        switch (item.type) {
-          case "library":
-            return { name: "repository" };
-          case "library-data":
-            return { name: "table" };
-          case "library-metrics":
-            return { name: "metric" };
-          case "library-dashboards":
-            return { name: "dashboard" };
-        }
+      const libraryRootIconName =
+        item.model === "collection" && item.is_library_root === true
+          ? getLibraryRootIconName(item.type)
+          : undefined;
+      if (libraryRootIconName) {
+        return { name: libraryRootIconName };
       }
 
       return { name: modelIconMap?.[item.model] ?? "unknown" };

@@ -8,6 +8,7 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
+import { OpenInDataStudioMenuItem } from "metabase/common/data-studio/components/OpenInDataStudioMenuItem";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
@@ -27,6 +28,7 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
@@ -222,6 +224,12 @@ export const DocumentHeader = ({
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              {!isNewDocument && document && (
+                <OpenInDataStudioMenuItem
+                  collectionType={document.collection?.type}
+                  to={Urls.dataStudioDocument(document.id)}
+                />
+              )}
               <Menu.Item
                 leftSection={
                   isPreparingForPrint ? (

@@ -122,6 +122,49 @@
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
 
+(deftest get-document-collection-test
+  (testing "GET /api/document/:id hydrates the document's collection"
+    (mt/with-temp [:model/Collection {coll-id :id}     {:name "Heron sightings"}
+                   :model/Document   {document-id :id} {:collection_id coll-id}]
+      (is (=? {:collection {:id coll-id :name "Heron sightings" :type nil}}
+              (mt/user-http-request :crowberto :get 200 (format "document/%s" document-id))))))
+  (testing "GET /api/document/:id has no collection for a document in the root collection"
+    (mt/with-temp [:model/Document {document-id :id} {:collection_id nil}]
+      (is (=? {:collection nil}
+              (mt/user-http-request :crowberto :get 200 (format "document/%s" document-id)))))))
+
+(deftest get-document-cards-test
+  (testing "GET /api/document/:id/cards lists the embedded Cards in document order, each once"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {shared-col :id} {:name "Shared"}
+                     :model/Collection {secret-col :id} {:name "Secret"}
+                     :model/Document   {document-id :id} {:collection_id shared-col}
+                     :model/Card       {owned-id :id}    {:name "Owned" :collection_id shared-col :document_id document-id}
+                     :model/Card       {outside-id :id}  {:name "Outside" :collection_id shared-col}
+                     :model/Card       {secret-id :id}   {:name "Secret" :collection_id shared-col :document_id document-id}
+                     :model/Card       {deleted-id :id}  {:collection_id shared-col}]
+        (t2/delete! :model/Card deleted-id)
+        (t2/update! :model/Document document-id
+                    {:document (documents.test-util/cards->prose-mirror-ast
+                                [outside-id secret-id deleted-id owned-id outside-id])})
+        (t2/update! :model/Card secret-id {:collection_id secret-col})
+        (perms/grant-collection-read-permissions! (perms/all-users-group) shared-col)
+        (testing "a Card the user cannot read is listed by id alone in its place, and a deleted one is left out"
+          (let [{:keys [cards]} (mt/user-http-request :rasta :get 200 (format "document/%s/cards" document-id))]
+            (is (=? [{:id outside-id :name "Outside"} {:id secret-id} {:id owned-id :name "Owned"}]
+                    cards))
+            (is (= {:id secret-id} (second cards)))))
+        (testing "an admin reads every Card"
+          (is (= [outside-id secret-id owned-id]
+                 (map :id (:cards (mt/user-http-request :crowberto :get 200
+                                                        (format "document/%s/cards" document-id))))))))))
+  (testing "GET /api/document/:id/cards checks the document"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {secret-col :id} {}
+                     :model/Document   {document-id :id} {:collection_id secret-col}]
+        (mt/user-http-request :rasta :get 403 (format "document/%s/cards" document-id))
+        (mt/user-http-request :crowberto :get 404 "document/99999/cards")))))
+
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
   view (asynchronously via grouper, so these tests force synchronous batching), giving us a reliable signal
@@ -205,15 +248,16 @@
                      :model/Card {archived-card-id :id} {:name "Archived Card"
                                                          :document_id doc-id
                                                          :collection_id coll-id
-                                                         :dataset_query (mt/mbql-query venues)
-                                                         :archived true}]
-        ;; Ensure the source document embeds the cards we expect to be copied (and one archived card that should not).
+                                                         :dataset_query (mt/mbql-query venues)}]
+        ;; Ensure the source document embeds the cards we expect to be copied, the archived one included.
         (t2/update! :model/Document doc-id
                     {:document {:type "doc"
                                 :content [{:type "cardEmbed" :attrs {:id card-1-id :name nil}}
                                           {:type "paragraph"}
                                           {:type "cardEmbed" :attrs {:id card-2-id :name nil}}
                                           {:type "cardEmbed" :attrs {:id archived-card-id :name nil}}]}})
+        ;; archived after the Document update, whose hook sets the Document's Cards' `:archived` to its own
+        (t2/update! :model/Card archived-card-id {:archived true})
         (let [copied (mt/user-http-request :crowberto :post 200
                                            (format "document/%d/copy" doc-id)
                                            {:name "Copied Document"
@@ -226,7 +270,9 @@
           (testing "copies cards onto the new document"
             (let [new-cards (t2/select :model/Card :document_id (:id copied))]
               (is (= 3 (count new-cards)))
-              (is (every? #(not (contains? #{card-1-id card-2-id archived-card-id} (:id %))) new-cards))))
+              (is (every? #(not (contains? #{card-1-id card-2-id archived-card-id} (:id %))) new-cards))
+              (is (= {"Card 1" false "Card 2" false "Archived Card" true}
+                     (t2/select-fn->fn :name :archived :model/Card :document_id (:id copied))))))
           (testing "updates embedded card IDs in the copied document AST for all copied cards"
             (let [new-cards-by-name (into {} (map (juxt :name :id)) (t2/select :model/Card :document_id (:id copied)))
                   embedded-ids      (keep #(get-in % [:attrs :id]) (get-in copied [:document :content]))]
@@ -1764,9 +1810,8 @@
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived false})
-              ;; Should have published document-update event (not archive event)
-              (is (some #(= :event/document-update (:topic %)) @events))
-              (is (not (some #(= :event/document-delete (:topic %)) @events))))))))))
+              (is (= [:event/document-update]
+                     (filterv #{:event/document-delete :event/document-update} (map :topic @events)))))))))))
 
 (deftest document-archive-transaction-rollback-test
   (testing "Document archiving transaction rollback on failure"

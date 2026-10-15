@@ -75,6 +75,7 @@ export const ResizeNode: Node<{
 });
 
 const ResizeNodeView = ({
+  editor,
   node: { attrs },
   updateAttributes,
 }: NodeViewProps) => {
@@ -109,7 +110,9 @@ const ResizeNodeView = ({
       data-type="resizeNode"
     >
       <NodeViewContent className={S.content} />
-      <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
+      {editor.options.editable && (
+        <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
+      )}
     </NodeViewWrapper>
   );
 };

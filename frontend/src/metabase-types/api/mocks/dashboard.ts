@@ -43,6 +43,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   last_used_param_values: {},
   auto_apply_filters: true,
   archived: false,
+  archived_directly: false,
   public_uuid: null,
   enable_embedding: false,
   embedding_params: null,

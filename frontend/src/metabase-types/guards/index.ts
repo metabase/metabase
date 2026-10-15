@@ -1,5 +1,6 @@
 export * from "./card";
 export * from "./click-behavior";
+export * from "./collection";
 export * from "./common";
 export * from "./dom";
 export * from "./notification-channels";

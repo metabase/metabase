@@ -61,12 +61,19 @@ export const GenericError = forwardRef<HTMLDivElement, GenericErrorProps>(
   },
 );
 
+type NotFoundAction = {
+  label: string;
+  link: string;
+};
+
 export const NotFound = ({
   title = t`We're a little lost...`,
   message = t`The page you asked for couldn't be found.`,
+  action,
 }: {
   title?: string;
   message?: string;
+  action?: NotFoundAction;
 }) => (
   <Flex
     aria-label="error page"
@@ -78,9 +85,11 @@ export const NotFound = ({
     align="center"
   >
     <EmptyState
-      illustrationElement={<img src={NoResults} />}
+      illustrationElement={<img src={NoResults} alt="" />}
       title={title}
       message={message}
+      action={action?.label}
+      link={action?.link}
     />
   </Flex>
 );

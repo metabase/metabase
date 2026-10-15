@@ -9,9 +9,8 @@ import { trackAutoApplyFiltersDisabled } from "metabase/dashboard/analytics";
 import { Switch } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
+import { InfoStatSection } from "../../../../components/InfoStatSection";
 import { useCanEditDashboard } from "../../../hooks/use-can-edit-dashboard";
-
-import { DashboardStat } from "./DashboardStat";
 
 type AutoApplyFiltersStatProps = {
   dashboard: Pick<
@@ -29,7 +28,7 @@ export function AutoApplyFiltersStat({ dashboard }: AutoApplyFiltersStatProps) {
 
   if (!canEdit) {
     return (
-      <DashboardStat
+      <InfoStatSection
         label={t`Auto-apply filters`}
         value={dashboard.auto_apply_filters ? t`On` : t`Off`}
       />
@@ -54,7 +53,7 @@ export function AutoApplyFiltersStat({ dashboard }: AutoApplyFiltersStatProps) {
   };
 
   return (
-    <DashboardStat
+    <InfoStatSection
       label={t`Auto-apply filters`}
       labelId={labelId}
       value={

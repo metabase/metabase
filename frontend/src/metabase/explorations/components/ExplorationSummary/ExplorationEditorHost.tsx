@@ -156,6 +156,7 @@ export const explorationEditorHost: DocumentEditorHost = {
     canEmbedCharts: false,
     canUseMetabot: false,
     canOpenCardInQueryBuilder: false,
+    canEdit: true,
   },
   navigateToCard: navigateToCardFromExploration,
   useCommentUrl: useExplorationSummaryCommentUrl,

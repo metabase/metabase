@@ -773,7 +773,7 @@
               [:= :t.archived_at nil])]})
 
 (defn- annotate-collections
-  [parent-coll colls {:keys [show-dashboard-questions?]}]
+  [parent-coll colls {:keys [show-dashboard-questions? show-exploration-documents?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll nil
                                                             (collection/visible-collection-filter-clause
                                                              :id
@@ -818,6 +818,13 @@
              (map :collection_id)
              (into #{}))
 
+        collections-containing-documents
+        (->> (when (seq descendant-collection-ids)
+               (collections.db/unarchived-document-collection-ids-in descendant-collection-ids
+                                                                     (not show-exploration-documents?)))
+             (map :collection_id)
+             (into #{}))
+
         collections-containing-actions
         (->> (when (seq descendant-collection-ids)
                (collections.db/unarchived-action-collection-ids-in descendant-collection-ids))
@@ -837,6 +844,7 @@
                {:table collections-containing-tables
                 :collection collections-containing-collections
                 :dashboard collections-containing-dashboards
+                :document collections-containing-documents
                 :transform collections-containing-transforms
                 :action collections-containing-actions})
 

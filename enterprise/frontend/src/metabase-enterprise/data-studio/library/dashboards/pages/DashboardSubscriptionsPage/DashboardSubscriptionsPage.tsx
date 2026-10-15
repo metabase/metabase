@@ -75,6 +75,9 @@ function DashboardSubscriptions({ dashboard }: DashboardSubscriptionsProps) {
       selectedSubscriptionId != null ? String(selectedSubscriptionId) : null,
   });
   const manageUrl = Urls.dashboard(dashboard, { openSubscriptions: true });
+  // The dashboard hides its subscriptions sidebar while it is in the trash
+  const canOpenSubscriptionsSidebar =
+    canManageSubscriptions && !dashboard.archived;
   const listUrl = Urls.dataStudioDashboardSubscriptions(dashboard.id);
   const getRowUrl = (subscriptionId: DashboardSubscription["id"]) =>
     subscriptionId === selectedSubscriptionId
@@ -96,7 +99,7 @@ function DashboardSubscriptions({ dashboard }: DashboardSubscriptionsProps) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        {canManageSubscriptions && rows.length > 0 && (
+        {canOpenSubscriptionsSidebar && rows.length > 0 && (
           <Button component={ForwardRefLink} to={manageUrl}>
             {t`Manage subscriptions`}
           </Button>
@@ -114,7 +117,7 @@ function DashboardSubscriptions({ dashboard }: DashboardSubscriptionsProps) {
           emptyState={
             <SubscriptionsEmptyState
               searchQuery={searchQuery}
-              manageUrl={canManageSubscriptions ? manageUrl : null}
+              manageUrl={canOpenSubscriptionsSidebar ? manageUrl : null}
               isAdmin={isAdmin}
             />
           }
