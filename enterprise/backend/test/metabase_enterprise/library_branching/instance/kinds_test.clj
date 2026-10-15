@@ -199,7 +199,12 @@
               (instance/write! kinds.published-table/kind-store k
                                (assoc-in (get before k) [:attrs :description] "Orders of the year before."))
               (is (= "Orders of the year before."
-                     (get-in (app-db/read-current) [k :attrs :description]))))))))))
+                     (get-in (app-db/read-current) [k :attrs :description]))))
+            (testing "a later table with the original name does not take the key from the published table"
+              (let [item (get (app-db/read-current) k)]
+                (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "PUBLIC" :name "lb_kinds_archived" :active true}]
+                  (is (= item (get (app-db/read-current) k)))
+                  (is (= item (instance/current kinds.published-table/kind-store k))))))))))))
 
 (deftest items-fit-the-format-test
   (testing "every item that the instance reads fits the schema of its kind, and survives encode and decode"
