@@ -61,7 +61,7 @@ export const EditorButton = ({
       tooltip={t`Edit question`}
       icon="pencil_lines"
       data-testid="notebook-button"
-      data-active={isOpen}
+      active={isOpen}
       {...actionIconProps}
     />
   );
