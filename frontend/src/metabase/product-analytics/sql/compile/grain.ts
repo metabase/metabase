@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { Grain, Measure } from "../../spec/types";
 
 export const compileGrain = (grain: Grain): string => {
@@ -13,6 +15,18 @@ export const compileGrain = (grain: Grain): string => {
 
 export const grainLabel = (grain: Grain): string =>
   ({ person: "people", session: "sessions", event: "events" })[grain];
+
+/** User-facing name for the column `grainLabel` names. */
+export const grainTitle = (grain: Grain): string => {
+  switch (grain) {
+    case "person":
+      return t`People`;
+    case "session":
+      return t`Sessions`;
+    case "event":
+      return t`Events`;
+  }
+};
 
 export const compileMeasure = (measure: Measure, grain: Grain): string => {
   if (measure.agg === "count") {

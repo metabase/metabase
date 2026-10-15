@@ -22,6 +22,10 @@ const BarViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     defaultSize: getDefaultSize("bar"),
     settings: {
       ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
+      // Set by the product analytics funnel; has no widget
+      "product_analytics.funnel_steps": {
+        getDefault: () => false,
+      },
     },
   };
 

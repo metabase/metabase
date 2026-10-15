@@ -435,6 +435,9 @@ export type VisualizationSettings = {
   /** Explicit order, labels, colors, and enabled state for funnel steps. */
   "funnel.rows"?: SeriesOrderSetting[];
 
+  /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
+  "product_analytics.funnel_steps"?: boolean;
+
   /** Conditional formatting rules for table cells. */
   "table.column_formatting"?: ColumnFormattingSetting[];
 

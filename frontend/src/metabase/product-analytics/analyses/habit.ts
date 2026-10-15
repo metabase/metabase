@@ -4,7 +4,7 @@ import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
-import { grainLabel } from "../sql/compile/grain";
+import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
@@ -137,13 +137,22 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   },
   getVizSettings: (settings) => {
     switch (settings["habit.measure"]) {
-      case "histogram":
+      case "histogram": {
+        const people = grainLabel(settings.counting);
         return {
           "graph.dimensions": ["periods"],
-          "graph.metrics": [grainLabel(settings.counting)],
+          "graph.metrics": [people],
+          series_settings: {
+            [people]: { title: grainTitle(settings.counting) },
+          },
         };
+      }
       case "ratio":
-        return { "graph.dimensions": ["day"], "graph.metrics": ["ratio"] };
+        return {
+          "graph.dimensions": ["day"],
+          "graph.metrics": ["ratio"],
+          series_settings: { ratio: { title: t`Daily over monthly actives` } },
+        };
       case "threshold":
         return {};
     }

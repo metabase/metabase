@@ -24,6 +24,7 @@ import type {
 } from "metabase-types/api";
 
 import type { MissingSetting } from "../analyses/types";
+import { PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE } from "../click-actions-mode";
 
 const SYNTHETIC_CARD_ID = -1;
 
@@ -109,6 +110,7 @@ export const AnalysisResult = ({
               <Visualization
                 rawSeries={rawSeries}
                 isQueryBuilder={false}
+                mode={PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE}
                 onUpdateWarnings={setVizWarnings}
                 onChangeCardAndRun={noop}
               />

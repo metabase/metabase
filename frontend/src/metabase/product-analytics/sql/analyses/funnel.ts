@@ -151,8 +151,9 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
     .map((_, index) => index + 1)
     .join(
       ", ",
-    )}] AS step, [${funnel.steps.map((step) => lit(step.label)).join(", ")}] AS label`;
+    )}] AS step, [${funnel.steps.map((step) => lit(step.label)).join(", ")}] AS step_name`;
 
+  const stepLabel = "concat(toString(step), '. ', step_name)";
   const view = spec.output.funnelView ?? "steps";
   const people = grainLabel(spec.grain);
   let select: string;
@@ -182,8 +183,7 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
   } else if (funnel.ordering === "any") {
     select = [
       "SELECT",
-      "  step,",
-      "  label,",
+      `  ${stepLabel} AS label,`,
       "  " +
         funnel.steps
           .map(
@@ -193,18 +193,17 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
         ` AS ${people}`,
       `FROM ${source}`,
       stepArray,
-      "GROUP BY step, label",
+      "GROUP BY step, step_name",
       "ORDER BY step",
     ].join("\n");
   } else {
     select = [
       "SELECT",
-      "  step,",
-      "  label,",
+      `  ${stepLabel} AS label,`,
       `  countIf(level >= step) AS ${people}`,
       `FROM ${source}`,
       stepArray,
-      "GROUP BY step, label",
+      "GROUP BY step, step_name",
       "ORDER BY step",
     ].join("\n");
   }

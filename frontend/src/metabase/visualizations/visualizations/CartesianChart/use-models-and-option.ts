@@ -13,6 +13,8 @@ import {
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
+  getFunnelStepsModel,
+  getFunnelStepsOption,
   getScatterPlotModel,
   getScatterPlotOption,
   getTimelineEventsModel,
@@ -61,6 +63,8 @@ export function useModelsAndOption(
     ? timelineEvents.length !== 0
     : false;
 
+  const isFunnelSteps = !!settings["product_analytics.funnel_steps"];
+
   const chartModel = useMemo(() => {
     let getModel;
 
@@ -75,7 +79,9 @@ export function useModelsAndOption(
     );
 
     getModel = getCartesianChartModel;
-    if (card.display === "waterfall") {
+    if (isFunnelSteps) {
+      getModel = getFunnelStepsModel;
+    } else if (card.display === "waterfall") {
       getModel = getWaterfallChartModel;
     } else if (card.display === "scatter") {
       getModel = getScatterPlotModel;
@@ -98,6 +104,7 @@ export function useModelsAndOption(
     return model;
   }, [
     card.display,
+    isFunnelSteps,
     seriesToRender,
     settings,
     hiddenSeries,
@@ -143,6 +150,18 @@ export function useModelsAndOption(
     const shouldAnimate = !isReducedMotionPreferred();
 
     let baseOption;
+
+    if (isFunnelSteps) {
+      baseOption = getFunnelStepsOption(
+        chartModel,
+        chartLayout,
+        settings,
+        width,
+        shouldAnimate,
+        renderingContext,
+      );
+      return { ...baseOption, tooltip: tooltipOption };
+    }
 
     switch (card.display) {
       case "waterfall":
@@ -196,6 +215,7 @@ export function useModelsAndOption(
     width,
     height,
     card.display,
+    isFunnelSteps,
     tooltipOption,
     chartModel,
     chartLayout,

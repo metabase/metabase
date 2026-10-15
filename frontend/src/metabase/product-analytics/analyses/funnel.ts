@@ -1,11 +1,13 @@
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
-import { grainLabel } from "../sql/compile/grain";
+import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import { commonSettings } from "./common-settings";
 import {
@@ -36,6 +38,22 @@ const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
   "any",
 ];
 const ANCHORS: readonly FunnelSettings["funnel.anchor"][] = ["first", "each"];
+
+const SERIES_COLOR_NAME = "accent0";
+
+// Every view shares one color. The color name keeps it following the active palette.
+const getSeriesSettings = (
+  metric: string,
+  title: string,
+): Pick<VisualizationSettings, "series_settings"> => ({
+  series_settings: {
+    [metric]: {
+      title,
+      color: color(SERIES_COLOR_NAME),
+      color_name: SERIES_COLOR_NAME,
+    },
+  },
+});
 
 const common = commonSettings({
   granularity: { units: ["hour", "day", "week", "month"], defaultUnit: "week" },
@@ -159,7 +177,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
   getDisplay: (settings) => {
     switch (settings["funnel.view"]) {
       case "steps":
-        return "funnel";
+        return "bar";
       case "overTime":
         return "line";
       case "timeToConvert":
@@ -168,16 +186,29 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
   },
   getVizSettings: (settings) => {
     const people = grainLabel(settings.counting);
+    const peopleTitle = grainTitle(settings.counting);
     switch (settings["funnel.view"]) {
       case "steps":
-        return { "funnel.dimension": "label", "funnel.metric": people };
+        return {
+          "graph.dimensions": ["label"],
+          "graph.metrics": [people],
+          "product_analytics.funnel_steps": true,
+          // The step labels are drawn by the chart, so the layout shouldn't reserve x-axis tick space
+          "graph.x_axis.axis_enabled": false,
+          ...getSeriesSettings(people, peopleTitle),
+        };
       case "overTime":
         return {
           "graph.dimensions": ["period"],
           "graph.metrics": ["conversion"],
+          ...getSeriesSettings("conversion", t`Conversion`),
         };
       case "timeToConvert":
-        return { "graph.dimensions": ["hours"], "graph.metrics": [people] };
+        return {
+          "graph.dimensions": ["hours"],
+          "graph.metrics": [people],
+          ...getSeriesSettings(people, peopleTitle),
+        };
     }
   },
 };
