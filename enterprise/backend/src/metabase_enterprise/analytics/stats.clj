@@ -32,7 +32,7 @@
                     (mfa/mfa-enabled?))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
-                    (analytics.db/database-with-engine-exists? (descendants driver/hierarchy :sql)))
+                    (analytics.db/database-with-engine-exists? (vec (descendants driver/hierarchy :sql))))
     :enabled   (analytics.db/sandbox-exists?)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)

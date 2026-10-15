@@ -1,6 +1,7 @@
 (ns metabase-enterprise.analytics.stats-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase-enterprise.analytics.stats :as ee-stats]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
@@ -21,6 +22,14 @@
   (testing "Every setting returned by `ee-snowplow-settings-data` has a corresponding OSS fallback with the same tags"
     (is (= (map #(dissoc % :value) (@#'stats/default-ee-snowplow-settings-data))
            (map #(dissoc % :value) (ee-stats/ee-snowplow-settings-data))))))
+
+(deftest ee-snowplow-features-sandboxes-test
+  (testing "the sandboxes entry is available with the feature and a SQL database"
+    (mt/id)
+    (mt/id)
+    (mt/with-premium-features #{:official-collections}
+      (is (=? {:name :sandboxes :available true}
+              (m/find-first (comp #{:sandboxes} :name) (ee-stats/ee-snowplow-features-data)))))))
 
 (deftest metabase-analytics-metrics-test
   (testing "Metabase Analytics doesn't contribute to stats"
