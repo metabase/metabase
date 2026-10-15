@@ -1037,7 +1037,8 @@
   The rest of its change to the level counts for nobody.
   It is split into the budgets the commit `:introduced` and `:seeded`, its moves into or out of `:unlimited`, and
   what is `:excused`: pardoned, recounted or spare budget, and the shrinks that only took such budget back.
-  The six parts add up to the change in `:level`."
+  The six parts add up to the change in `:level`.
+  A point is `:changed?` when its commit changed a counted budget at all, though its parts may cancel out."
   [records settled]
   (let [numeric  #(if (number? %) % 0)
         credited (into {}
@@ -1061,14 +1062,15 @@
                                (update (part kind) + (if key (numeric new) (- (numeric new) (numeric old))))))
                            {:introduced 0, :seeded 0, :unlimited 0, :excused 0}
                            changes))]
-    (rest (reductions (fn [point {:keys [sha], :as record}]
+    (rest (reductions (fn [point {:keys [sha changes], :as record}]
                         (let [{:keys [shrink grow]} (get credited sha {:shrink 0, :grow 0})
                               parts                 (raised record)]
                           (merge (commit-ref record)
                                  (update parts :excused - shrink grow)
-                                 {:shrunk shrink
-                                  :grown  grow
-                                  :level  (+ (:level point) (reduce + (vals parts)))})))
+                                 {:shrunk   shrink
+                                  :grown    grow
+                                  :level    (+ (:level point) (reduce + (vals parts)))
+                                  :changed? (not-every? (comp uncounted-linters peek :measure) changes)})))
                       {:level 0}
                       (reverse records)))))
 

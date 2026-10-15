@@ -197,6 +197,9 @@ function points(p) {
   });
 }
 
+// How many commits in a period changed a counted budget, credited or not, as the charts show them.
+const changed = p => points(p).filter(pt => pt["changed?"]).length;
+
 // The parts of a change to the total budget that count for nobody, as the series points name them.
 const uncredited = [
   ["introduced", "new linters and measures"],
@@ -326,14 +329,12 @@ function wire() {
 
 function render(p) {
   const r = p.report;
-  // every commit that moved a budget, credited or not, so the count agrees with the charts
-  const n = points(p).filter(pt => ["shrunk", "grown", ...uncredited.map(([k]) => k)].some(k => pt[k] !== 0)).length;
+  const n = changed(p);
   const head = `<header><h2>${esc(p.label)}</h2><p>${n} commit${n === 1 ? "" : "s"} changed a ratchet budget</p></header>`;
   if (!r.commits) {
     // a period can move the total with no credited change, such as the automation taking back a pardoned raise
-    const moved = points(p).some(pt => uncredited.some(([k]) => pt[k] !== 0));
-    return head + (moved
-      ? `<p class="question">No change in this period is credited to anyone, but the total budget moved.</p>` + trends(p)
+    return head + (n
+      ? `<p class="question">No change in this period is credited to anyone, but the budgets changed.</p>` + trends(p)
       : `<p class="none">No ratchet budget changed in this period.</p>`);
   }
   const t = r.total;
@@ -377,9 +378,10 @@ function render(p) {
 }
 
 function nav(current) {
-  const link = (p, label) => `<a href="#${p.id}" class="${p.id === current ? "on" : ""} ${p.report.commits ? "" : "empty"}">` +
-    `<span>${esc(label || p.label)}</span><span class="n ${p.report.commits ? tone(p.report.total.net, "net") : "zero"}">` +
-    `${p.report.commits ? signed(p.report.total.net) : "·"}</span></a>`;
+  // a period with only uncredited changes is not empty, and its credited net is zero
+  const link = (p, label) => `<a href="#${p.id}" class="${p.id === current ? "on" : ""} ${changed(p) ? "" : "empty"}">` +
+    `<span>${esc(label || p.label)}</span><span class="n ${changed(p) ? tone(p.report.total.net, "net") : "zero"}">` +
+    `${changed(p) ? signed(p.report.total.net) : "·"}</span></a>`;
   const of = kind => data.periods.filter(p => p.kind === kind);
   const weeks = of("week"), months = of("month");
   return `<h1>Ratchet history</h1><p class="asof">as of ${esc(data.generated)}</p>` +

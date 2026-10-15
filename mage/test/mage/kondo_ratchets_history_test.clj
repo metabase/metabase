@@ -405,6 +405,12 @@
 (deftest series-test
   (testing "splits each commit's change to the total budget into what is credited and what counts for nobody"
     (let [records [{:sha "tighten", :changes [{:measure a, :kind :shrink, :delta -2, :old 5, :new 3}]}
+                   {:sha     "uncounted"
+                    :changes [{:measure [:prod :ignore :metabase/prefer-with-dynamic-fn-redefs]
+                               :kind    :shrink
+                               :delta   -9
+                               :old     9
+                               :new     nil}]}
                    {:sha     "mixed"
                     :changes [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :x/y, :new 4}
                               {:measure b, :kind :seed, :old nil, :new 3}
@@ -416,11 +422,12 @@
                                :new     9}]}
                    {:sha "pardoned", :changes [{:measure a, :kind :grow, :delta 5, :old nil, :new 5}]}]
           settled (history/settle {:pardons {"pardoned" {a 5}}, :judged #{}} records)]
-      ;; sha, shrunk, grown, introduced, seeded, unlimited, excused, level
-      (is (= [["pardoned" 0 0 0 0 0 5 5]
-              ["mixed" 0 0 4 3 -2 0 10]
-              ["tighten" -2 0 0 0 0 0 8]]
-             (map (juxt :sha :shrunk :grown :introduced :seeded :unlimited :excused :level)
+      ;; sha, shrunk, grown, introduced, seeded, unlimited, excused, level, changed
+      (is (= [["pardoned" 0 0 0 0 0 5 5 true]
+              ["mixed" 0 0 4 3 -2 0 10 true]
+              ["uncounted" 0 0 0 0 0 0 10 false]
+              ["tighten" -2 0 0 0 0 0 8 true]]
+             (map (juxt :sha :shrunk :grown :introduced :seeded :unlimited :excused :level :changed?)
                   (history/series records settled)))))))
 
 (deftest periods-test
