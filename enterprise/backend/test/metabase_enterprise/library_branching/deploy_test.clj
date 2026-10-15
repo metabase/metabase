@@ -57,7 +57,7 @@
 (def ^:private other-id "OtherSnippet000000001")
 
 (defn- other-snippet []
-  (ptu/item other-id :snippet "Other" nil {:content "other = true"}))
+  (ptu/item other-id :snippet "Other" "snippetssnippetssnipp" {:content "other = true"}))
 
 (defn- described
   [s id text]

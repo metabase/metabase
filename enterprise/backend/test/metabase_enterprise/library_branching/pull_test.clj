@@ -104,7 +104,7 @@
   (enabled
    (with-remote [repo s]
      (let [local-id "LocalSnippet000000001"
-           local    (ptu/item local-id :snippet "Local" nil {:content "local = true"})
+           local    (ptu/item local-id :snippet "Local" "snippetssnippetssnipp" {:content "local = true"})
            h        (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)]
        (testing "with no base, the base snapshot is empty: remote items are created, and local items stay"
          (let [inst (pltu/memory-instance (atom {:snapshot {local-id local}}))]
@@ -440,7 +440,8 @@
      (let [[inst c1] (pushed-instance! s ptu/sample :outside #{new-snippet-id})
            h         (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
                                                                      (ptu/renamed ptu/orders-id "Changed")
-                                                                     (assoc new-snippet-id (new-snippet nil))))
+                                                                     (assoc new-snippet-id
+                                                                            (new-snippet "snippetssnippetssnipp"))))
            result    (pltu/pull! inst s)]
        (testing "the head holds an identity of an item outside the Library: the apply refuses it and writes nothing"
          (is (= {:result  :refused
