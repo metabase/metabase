@@ -8,7 +8,9 @@
    [metabase-enterprise.library-branching.engine.plan :as plan]
    [metabase-enterprise.library-branching.engine.test-util :as engine.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
-   [metabase-enterprise.library-branching.test-util :as lb.tu]))
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
+   [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,14 +41,35 @@
                        (if (some #{to} next) true (recur (into (vec more) next) (conj seen x)))))
       false)))
 
+(defn- unique-key [it]
+  (when-some [k (snapshot/unique-key snapshot/unique-keys it)]
+    [(:kind it) k]))
+
+(defn- key-taken?
+  "True iff an item of `s` other than `id` has the unique key of `content`. An item in `later` does not count: its
+  trash keeps its key, so no order of the steps frees it, and the apply refuses such a plan."
+  [s later id content]
+  (when-some [k (unique-key content)]
+    (some (fn [[j it]] (and (not= j id) (not (later j)) (= k (unique-key it)))) s)))
+
+(defn- put
+  "`state` with `content` as the content of `id`; a fault when another item has its unique key."
+  [{:keys [s later] :as state} id content]
+  (cond-> (assoc-in state [:s id] content)
+    (key-taken? s later id content) (update :faults conj [:key-taken id])))
+
 (defn- run-step
-  "Applies `step` to the simulated instance `{:s snapshot :later #{ids to trash later} :faults []}`, and records each
-  order rule that the step breaks."
-  [{:keys [s later] :as state} {:keys [id write defer link trash]}]
+  "Applies `step` to the simulated instance `{:s snapshot :content {id write} :later #{ids to trash later} :faults []}`
+  as the apply does, and records each order rule that the step breaks. A write with `:defer` leaves an item that exists
+  as it is, and writes a new one without the deferred references; its link writes the whole content."
+  [{:keys [s later content] :as state} {:keys [id write pre defer link interim trash]}]
   (let [fault (fn [state why] (update state :faults conj [why id]))]
     (cond
       write
-      (cond-> (assoc-in state [:s id] write)
+      (cond-> (cond
+                (empty? defer) (put state id write)
+                (nil? pre)     (put state id (update write :refs set/difference (set defer)))
+                :else          state)
         (not (or (nil? (:place write)) (contains? s (:place write))))
         (fault :container-after-content)
 
@@ -57,9 +80,14 @@
         (fault :defer-not-a-ref))
 
       link
-      (cond-> state
+      (cond-> (put state id (get content id))
         (not (every? #(resolves? s %) (map second link)))
         (fault :link-before-target))
+
+      interim
+      (cond-> (put state id interim)
+        (not= (dissoc (get s id) :name) (dissoc interim :name))
+        (fault :interim-not-a-rename))
 
       trash
       (let [s'    (dissoc s id)
@@ -74,7 +102,12 @@
 (defn- simulate
   "`{:s snapshot :faults [...]}` after the steps of `steps`, in order, from snapshot `l`."
   [l steps]
-  (reduce run-step {:s l :later (set (keep #(when (:trash %) (:id %)) steps)) :faults []} steps))
+  (reduce run-step
+          {:s       l
+           :content (into {} (keep (fn [{:keys [id write]}] (when write [id write]))) steps)
+           :later   (set (keep #(when (:trash %) (:id %)) steps))
+           :faults  []}
+          steps))
 
 ;;; --------------------------------------------------- Fixed cases ------------------------------------------------
 
@@ -155,6 +188,19 @@
                        g (engine.tu/item :metric "G" e))
           steps (plan/plan l base l)]
       (is (= [g e t] (map :id steps)))
+      (is (= [] (:faults (simulate l steps))))))
+  (testing "after the first trash of a reference cycle, the rest of the cycle is trashed users first"
+    ;; From a shrunk counterexample of plan-laws-test: table t refers to collection e, e refers to collection d, and d
+    ;; refers to t. After the trash of d, t still refers to e, so t goes to the trash before e.
+    (let [d     (engine.tu/eid "d")
+          e     (engine.tu/eid "e")
+          t     ["Sample Database" nil "ORDERS"]
+          l     (assoc base
+                       t (engine.tu/item :published-table "Orders" nil #{[:card e]})
+                       d (engine.tu/item :collection "D" nil #{[:card t]})
+                       e (engine.tu/item :collection "E" nil #{[:card d]}))
+          steps (plan/plan l base l)]
+      (is (= [d t e] (map :id steps)))
       (is (= [] (:faults (simulate l steps)))))))
 
 (deftest ^:parallel local-change-test
@@ -228,6 +274,88 @@
            (try (plan/plan base (dissoc base sn) base {:system #{sn}})
                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
 
+(def ^:private ka (engine.tu/eid "ka"))
+(def ^:private kb (engine.tu/eid "kb"))
+(def ^:private kc (engine.tu/eid "kc"))
+(def ^:private kd (engine.tu/eid "kd"))
+
+(defn- snippets
+  "`base` with a snippet for each `[id name]` or `[id name refs]` of `specs`, in the Library."
+  [& specs]
+  (into base (map (fn [[id item-name refs]] [id (engine.tu/item :snippet item-name lib refs)])) specs))
+
+(defn- step-forms
+  "`[id form]` of each step: :write, :link, :interim or :trash."
+  [steps]
+  (map (fn [{:keys [id] :as step}] [id (some #(when (contains? step %) %) [:write :link :interim :trash])]) steps))
+
+(defn- key-moves-apply?
+  "True iff the simulated apply of `steps` from `l` reaches `m` with no fault."
+  [l m steps]
+  (= {:s m :faults []} (select-keys (simulate l steps) [:s :faults])))
+
+(deftest ^:parallel key-move-test
+  (testing "a rename that frees a unique key comes before the write that takes it, also when the taker is less"
+    (let [l     (snippets [kb "Filter a"])
+          m     (snippets [kb "Filter b"] [ka "Filter a"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :write] [ka :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "names that differ only in case or accents are one key"
+    (let [l     (snippets [kb "Héron"])
+          m     (snippets [kb "Wren"] [ka "HERON"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :write] [ka :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "a local snapshot can have two names of one key; both are free before a write takes the key"
+    (let [l     (snippets [kb "Robin"] [kc "robin"])
+          m     (snippets [kb "Wren"] [kc "Heron"] [ka "ROBIN"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :write] [kc :write] [ka :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "a swap goes through a temporary name: the least item first takes it, then each item takes its new name"
+    (let [l     (snippets [ka "Filter a"] [kb "Filter b"])
+          m     (snippets [ka "Filter b"] [kb "Filter a"])
+          steps (plan/plan l m l)]
+      (is (= [[ka :interim] [kb :write] [ka :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "a rotation of three names needs one temporary name"
+    (let [l     (snippets [ka "Filter a"] [kb "Filter b"] [kc "Filter c"])
+          m     (snippets [ka "Filter b"] [kb "Filter c"] [kc "Filter a"])
+          steps (plan/plan l m l)]
+      (is (= [[ka :interim] [kc :write] [kb :write] [ka :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "a temporary name is the key of no item of either snapshot, also when an item has the name it would have"
+    (let [temp-of (fn [l m] (:interim (first (plan/plan l m l))))
+          keys-of (fn [& snaps] (set (keep #(snapshot/unique-key snapshot/unique-keys %) (mapcat vals snaps))))
+          l       (snippets [ka "Filter a"] [kb "Filter b"])
+          m       (snippets [ka "Filter b"] [kb "Filter a"])
+          temp    (temp-of l m)
+          l2      (snippets [ka "Filter a"] [kb "Filter b"] [kc (u/upper-case-en (:name temp))])
+          m2      (snippets [ka "Filter b"] [kb "Filter a"] [kc (u/upper-case-en (:name temp))])
+          temp2   (temp-of l2 m2)]
+      (is (= (dissoc (get l ka) :name) (dissoc temp :name)))
+      (is (not (contains? (keys-of l m) (snapshot/unique-key snapshot/unique-keys temp))))
+      (is (= (dissoc (get l ka) :name) (dissoc temp2 :name)))
+      (is (not (contains? (keys-of l2 m2) (snapshot/unique-key snapshot/unique-keys temp2))))
+      (is (key-moves-apply? l2 m2 (plan/plan l2 m2 l2)))))
+  (testing "a key move against a reference: the new holder of the name is a target of the item that frees it"
+    (let [l     (snippets [kb "Filter a"])
+          m     (snippets [kb "Filter b" #{[:snippet ka]}] [ka "Filter a"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :interim] [ka :write] [kb :write]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "an item on a reference cycle changes its name only at its link, so it frees its name by a temporary one"
+    (let [l     (snippets [kc "Filter a"])
+          m     (snippets [kc "Filter c" #{[:snippet kd]}] [kd "Filter d" #{[:snippet kc]}] [ka "Filter a"])
+          steps (plan/plan l m l)]
+      (is (= [kc :interim] (first (step-forms steps))))
+      (is (key-moves-apply? l m steps))))
+  (testing "a trash does not free a name: the plan writes the new holder and trashes the old one, with no interim step"
+    (let [l (snippets [kb "Filter a"])
+          m (snippets [ka "Filter a"])]
+      (is (= [[ka :write] [kb :trash]] (step-forms (plan/plan l m l)))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------
 
 (defn- merged
@@ -236,17 +364,38 @@
   (let [keep (into {} (map (juxt :id :ours)) (:conflicts (merge/merge b l r {})))]
     (:ok (merge/merge b l r keep))))
 
+(defn- plan-laws?
+  "True iff the plan of the merge of `[b l r]` writes each changed item once, with the base content as its
+  precondition, and the simulated apply reaches the merge result with no fault; or the merge has a violation."
+  [[b l :as snaps]]
+  (if-let [m (merged snaps)]
+    (let [steps   (plan/plan l m b)
+          writes  (remove (some-fn :link :interim) steps)
+          written (set (map :id writes))]
+      (and (= written (engine.tu/changed l m))
+           (every? (fn [{:keys [id pre] :as step}]
+                     (or (:link step) (:interim step) (and (= pre (get b id)) (= pre (get l id)))))
+                   steps)
+           (= (count written) (count writes))
+           (let [{:keys [s faults]} (simulate l steps)]
+             (and (= [] faults) (= m s)))))
+    true))
+
 (defspec plan-laws-test 300
-  (prop/for-all [[b l :as snaps] (engine.tu/related-snapshots-gen)]
-    (if-let [m (merged snaps)]
-      (let [steps   (plan/plan l m b)
-            written (set (map :id (remove :link steps)))]
-        (and (= written (engine.tu/changed l m))
-             (every? (fn [{:keys [id pre link]}] (or link (and (= pre (get b id)) (= pre (get l id))))) steps)
-             (= (count written) (count (remove :link steps)))
-             (let [{:keys [s faults]} (simulate l steps)]
-               (and (= [] faults) (= m s)))))
-      true)))
+  (prop/for-all [snaps (engine.tu/related-snapshots-gen)]
+    (plan-laws? snaps)))
+
+(defspec plan-laws-ref-cycle-test 100
+  ;; The random edits of plan-laws-test give a trash of a reference cycle of three or more items rarely, so this
+  ;; property builds a cycle in each case.
+  (prop/for-all [snaps (engine.tu/ref-cycle-snapshots-gen)]
+    (plan-laws? snaps)))
+
+(defspec plan-laws-key-move-test 300
+  ;; The random renames of plan-laws-test rarely move a name from one item to another, so this property builds the
+  ;; moves: renames, swaps, rotations, new holders of a freed name, and references among the items.
+  (prop/for-all [snaps (engine.tu/key-move-snapshots-gen)]
+    (plan-laws? snaps)))
 
 (defspec plan-never-writes-a-local-change-test 300
   (prop/for-all [[b l :as snaps] (engine.tu/related-snapshots-gen)]
@@ -271,19 +420,40 @@
    {:name   :unordered-writes
     :doc    "Writes are in the order of their identities, so content can come before its container or target."
     :target `plan/write-steps
-    :edits  [[:replace '(ordered ids after) '(map vector (sort snapshot/compare-identities ids))]]}
+    :edits  [[:replace '(ordered ids (add-edges after (remove (comp interim first) moves)))
+              '(map vector (sort snapshot/compare-identities ids))]]}
    {:name   :unordered-trashes
     :doc    "Trashes are in the order of their identities, so a container can go before its content."
     :target `plan/trash-steps
-    :edits  [[:replace '(ordered ids after) '(map vector (sort snapshot/compare-identities ids))]]}
+    :edits  [[:replace '(ordered group (dependencies l group)) '(map vector (sort snapshot/compare-identities group))]]}
    {:name   :trash-cycle-unordered
-    :doc    "Inside a reference cycle, trashes ignore places, so a container can go before its content."
-    :target `plan/trash-steps
-    :edits  [[:replace '(dependencies l ids (cyclic-refs l ids)) '(dependencies l ids)]]}
+    :doc    "A cycle starts with its least item, so a container can go to the trash before its content."
+    :target `plan/cycle-start
+    :edits  [[:replace '(first (remove places ids)) '(first ids)]]}
+   {:name   :cycle-rest-unordered
+    :doc    "After the first trash of a cycle, the rest is in the order of the identities: a user after its target."
+    :target `plan/split-cycle
+    :edits  [[:replace '[[start] (vec (remove #{start} ids))] '(mapv vector (cons start (remove #{start} ids)))]]}
    {:name   :trash-first
     :doc    "Trashes come before writes, so a container can be trashed with content that the plan moves out of it."
     :target `plan/plan
-    :edits  [[:replace '(concat writes links trashes) '(concat trashes writes links)]]}
+    :edits  [[:replace '(concat interims writes links trashes) '(concat trashes interims writes links)]]}
+   {:name   :keys-unordered
+    :doc    "Key moves do not order the writes, so a write can take a key that another item still has."
+    :target `plan/write-steps
+    :edits  [[:replace '(add-edges after (remove (comp interim first) moves)) 'after]]}
+   {:name   :no-interim
+    :doc    "No item takes a temporary key, so a swap of two keys is a cycle that no order of the writes allows."
+    :target `plan/write-steps
+    :edits  [[:replace '(interim-ids ids after moves late?) #{}]]}
+   {:name   :late-freer-ordered
+    :doc    "An item whose write leaves it as it is frees its key by the order of the writes; it frees it at its link."
+    :target `plan/interim-ids
+    :edits  [[:replace '(comp late? first) '(constantly false)]]}
+   {:name   :temporary-key-taken
+    :doc    "A temporary key can be the key of another item."
+    :target `plan/temporary-keys
+    :edits  [[:replace '(remove (comp taken snapshot/fold-name) candidates) 'candidates]]}
    {:name   :no-defer
     :doc    "A reference cycle is written in one step per item, so a write refers to an item that does not exist yet."
     :target `plan/write-steps
@@ -303,5 +473,6 @@
 
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
-                                #'local-change-test #'unknown-base-test #'system-item-test
-                                #'plan-laws-test #'plan-unknown-base-test]}))
+                                #'local-change-test #'unknown-base-test #'system-item-test #'key-move-test
+                                #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-laws-key-move-test
+                                #'plan-unknown-base-test]}))

@@ -8,9 +8,12 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-property-test :as property]
-   [metabase-enterprise.library-branching.tasks-test :as tasks-test]))
+   [metabase-enterprise.library-branching.tasks-test :as tasks-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- tests [& vars] (vec vars))
 
@@ -43,7 +46,9 @@
     :doc    "The base moves with no compare-and-swap (TaskLease nocas): a stale pull moves the base back after a push
             that woke up recorded its commit."
     :target `library-branching.db/compare-and-set-base!
-    :edits  [[:replace '(if expected [:= :commit_id [:auto/param expected]] [:= :commit_id nil]) true]]
+    :edits  [[:replace '(if expected
+                          [:and (url-is url) [:= :commit_id [:auto/param expected]]]
+                          [:or [:= :commit_id nil] (url-is-not url)]) true]]
     :tests  (tests #'tasks-test/stale-pull-cannot-move-the-base-back-test
                    #'property/task-lease-properties-test)}
    {:name   :commit-keeps-a-refused-apply

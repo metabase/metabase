@@ -6,9 +6,12 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.scope-property-test :as scope-property-test]
-   [metabase-enterprise.library-branching.scope-test :as scope-test]))
+   [metabase-enterprise.library-branching.scope-test :as scope-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; Each mutation names the tests of the rule that it removes. The property test of scope is in no list: it kills no
 ;; mutation that these tests miss, and it takes most of the time of a run.
@@ -83,6 +86,11 @@
     :target [:method `scope/kind-query :document]
     :edits  [[:remove '[:= :t.exploration_id nil]]]
     :tests  [#'scope-test/exploration-document-test]}
+   {:name   :no-glossary
+    :doc    "No glossary term is in scope, so a push leaves the glossary out."
+    :target `scope/unplaced
+    :edits  [[:replace '(contains? unplaced-kinds kind) false]]
+    :tests  [#'scope-test/glossary-test]}
    {:name   :count-off-by-one
     :doc    "The count of a kind differs from the size of its scope."
     :target `scope/scope-count

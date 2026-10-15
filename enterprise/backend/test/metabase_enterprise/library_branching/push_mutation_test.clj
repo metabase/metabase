@@ -8,9 +8,12 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-app-db-test]
-   [metabase-enterprise.library-branching.push-test]))
+   [metabase-enterprise.library-branching.push-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the push or of the base row."
@@ -75,7 +78,9 @@
    {:name   :base-not-compared
     :doc    "set-base! moves the base row whatever its commit id is."
     :target `library-branching.db/compare-and-set-base!
-    :edits  [[:replace '(if expected [:= :commit_id [:auto/param expected]] [:= :commit_id nil]) true]]}])
+    :edits  [[:replace '(if expected
+                          [:and (url-is url) [:= :commit_id [:auto/param expected]]]
+                          [:or [:= :commit_id nil] (url-is-not url)]) true]]}])
 
 (def ^:private tests
   [#'metabase-enterprise.library-branching.push-test/first-push-writes-the-snapshot-test

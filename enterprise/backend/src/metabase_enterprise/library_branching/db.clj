@@ -40,11 +40,15 @@
 
 ;;; --------------------------------------------------- Read point ---------------------------------------------------
 
+(defn- touch-table
+  [table]
+  (t2/query {:select [[1 :one]] :from [table] :limit 1}))
+
 (defn do-with-read-point
   "Calls `f` with no arguments in a new read-only transaction at REPEATABLE READ isolation, and returns its result:
-  every read of `f` on the app DB sees the database as of one moment. Throws when the calling thread holds an open
-  transaction, whose isolation cannot change."
-  [f]
+  every read of `f` of the table of a model of `models` sees the database as of one moment. Throws when the calling
+  thread holds an open transaction, whose isolation cannot change."
+  [models f]
   (when (mdb/in-transaction?)
     (throw (ex-info "A read point needs a new transaction, and this thread holds an open one." {})))
   (t2/with-connection [^Connection conn]
@@ -56,6 +60,9 @@
       (.setReadOnly conn true)
       (try
         (t2/with-transaction [_ conn]
+          ;; On H2 the snapshot of a table starts at the first read of that table in the transaction, not at the first
+          ;; read of the transaction. A read of each table before `f` puts every table at one moment.
+          (run! touch-table (into (sorted-set) (map t2/table-name) models))
           (f))
         (finally
           (.setReadOnly conn read-only?)
@@ -127,28 +134,44 @@
 ;;; ------------------------------------------------------ Base ------------------------------------------------------
 
 (mr/def ::base-row
-  [:map [:commit_id [:maybe :string]] [:digests [:maybe :string]]])
+  [:map [:commit_id [:maybe :string]] [:digests [:maybe :string]] [:url [:maybe :string]]])
 
 (mu/defn base-row :- [:maybe ::base-row]
-  "`{:commit_id :digests}` of the base row, in the current transaction, or nil when there is no base row."
+  "`{:commit_id :digests :url}` of the base row, in the current transaction, or nil when there is no base row."
   []
-  (t2/query-one {:select [:commit_id :digests]
+  (t2/query-one {:select [:commit_id :digests :url]
                  :from   [:library_branching_base]
                  :where  [:= :id 1]}))
 
+(defn- url-is
+  "The condition that the URL of the base row is `url` (nil: null)."
+  [url]
+  (if url
+    [:= :url [:auto/param url]]
+    [:= :url nil]))
+
+(defn- url-is-not
+  "The condition that the URL of the base row is not `url` (nil: null), where a null URL differs from every URL."
+  [url]
+  (if url
+    [:or [:= :url nil] [:<> :url [:auto/param url]]]
+    [:<> :url nil]))
+
 (mu/defn compare-and-set-base! :- :int
-  "Sets the commit id of the base row to `commit-id` and its digests to `digests`, in one statement, iff its commit id
-  is `expected` (nil: null). Returns the number of rows that the statement changed, 1 or 0."
-  [expected  :- [:maybe :string]
+  "Sets the commit id of the base row to `commit-id`, its digests to `digests` and its URL to `url`, in one statement,
+  iff the base of `url` is `expected`. The base of `url` is the commit id of the row when the row holds `url`, else
+  nil: an instance of another repository has no base. Returns the number of rows that the statement changed, 1 or 0."
+  [url       :- [:maybe :string]
+   expected  :- [:maybe :string]
    commit-id :- :string
    digests   :- :string]
   (first (t2/query {:update :library_branching_base
-                    :set    {:commit_id commit-id :digests digests}
+                    :set    {:commit_id commit-id :digests digests :url url}
                     :where  [:and
                              [:= :id 1]
                              (if expected
-                               [:= :commit_id [:auto/param expected]]
-                               [:= :commit_id nil])]})))
+                               [:and (url-is url) [:= :commit_id [:auto/param expected]]]
+                               [:or [:= :commit_id nil] (url-is-not url)])]})))
 
 ;;; ---------------------------------------------------- Content -----------------------------------------------------
 
@@ -369,6 +392,58 @@
              :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
              :where           [:and [:= :dc.card_id [:auto/param card-id]] [:= :d.archived false]]}))
 
+(defn- values-source-users
+  "The ParameterCard rows that `card-condition` (HoneySQL on `pc.card_id`) selects, each with `:user_collection_id`:
+  the collection of the card or dashboard whose parameter takes its values from the card."
+  [card-condition]
+  {:select    [:pc.id :pc.card_id :pc.parameterized_object_type :pc.parameterized_object_id :pc.parameter_id
+               :pc.created_at :pc.updated_at
+               [[:coalesce :c.collection_id :d.collection_id] :user_collection_id]]
+   :from      [[(t2/table-name :model/ParameterCard) :pc]]
+   :left-join [[(t2/table-name :model/Card) :c]
+               [:and [:= :pc.parameterized_object_type "card"] [:= :c.id :pc.parameterized_object_id]]
+               [(t2/table-name :model/Dashboard) :d]
+               [:and [:= :pc.parameterized_object_type "dashboard"] [:= :d.id :pc.parameterized_object_id]]]
+   :where     card-condition
+   :order-by  [:pc.id]})
+
+(mu/defn values-source-users-of-card :- [:sequential ::row]
+  "The ParameterCard rows of the parameters that take their values from the card `card-id`, each with
+  `:user_collection_id`, the collection of the card or dashboard of the parameter."
+  [card-id :- pos-int?]
+  (t2/query (values-source-users [:= :pc.card_id [:auto/param card-id]])))
+
+(mu/defn values-source-users-in-subtree :- [:sequential ::row]
+  "The ParameterCard rows of the parameters that take their values from a card in the collection `collection-id` or
+  in a collection whose location starts with `location`, each with `:user_collection_id`, the collection of the card
+  or dashboard of the parameter."
+  [collection-id :- pos-int?
+   location      :- :string]
+  (let [collections ^:allow-subquery {:select [:id]
+                                      :from   [(t2/table-name :model/Collection)]
+                                      :where  [:or
+                                               [:= :id [:auto/param collection-id]]
+                                               [:like :location (str location "%")]]}
+        cards       ^:allow-subquery {:select [:id]
+                                      :from   [(t2/table-name :model/Card)]
+                                      :where  [:in :collection_id collections]}]
+    (t2/query (values-source-users [:in :pc.card_id cards]))))
+
+(mu/defn delete-parameter-cards! :- :int
+  "Deletes the ParameterCard rows of `ids`, with no model hook; returns the number of rows."
+  [ids :- ::ids]
+  (if (empty? ids)
+    0
+    (first (t2/query {:delete-from (t2/table-name :model/ParameterCard)
+                      :where       [:in :id ids]}))))
+
+(mu/defn insert-parameter-cards! :- :any
+  "Inserts the ParameterCard rows `rows`, ids included, with no model hook."
+  [rows :- [:sequential {:max 1000} ::row]]
+  (when (seq rows)
+    (t2/query {:insert-into (t2/table-name :model/ParameterCard)
+               :values      rows})))
+
 (mu/defn row-id-by-entity-id :- [:maybe pos-int?]
   "The id of the row of the table of `model` whose entity id is `entity-id`, or nil."
   [model     :- :keyword
@@ -455,6 +530,13 @@
                                            :where  [:and stale [:= :id [:auto/param id]]]})))))
           (map :id (t2/query {:select [:id] :from [:library_branching_task] :where stale})))))
 
+(mu/defn delete-task-rows-before! :- :int
+  "Deletes each task row with a status of `statuses` that started before `cutoff`. Returns the number of rows deleted."
+  [statuses :- ::statuses
+   cutoff   :- ms/TemporalInstant]
+  (first (t2/query {:delete-from :library_branching_task
+                    :where       [:and [:in :status statuses] [:< :started_at [:auto/param cutoff]]]})))
+
 (mu/defn users-by-id :- [:sequential ::row]
   "`{:id :first_name :last_name :email}` of each user of `ids`."
   [ids :- ::ids]
@@ -463,3 +545,43 @@
     (t2/query {:select [:id :first_name :last_name :email]
                :from   [(t2/table-name :model/User)]
                :where  [:in :id ids]})))
+
+(mu/defn glossary-terms-by-entity-id :- [:sequential ::row]
+  "`{:entity_id :term :definition}` of the glossary terms of `entity-ids`."
+  [entity-ids :- ::entity-ids]
+  (t2/query {:select [:entity_id :term :definition]
+             :from   [(t2/table-name :model/Glossary)]
+             :where  [:in :entity_id entity-ids]}))
+
+(mu/defn lock-glossary-term :- [:maybe ::row]
+  "`{:id :entity_id :term :definition}` of the glossary term of `entity-id`, after a lock on its row until the current
+  transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :entity_id :term :definition]
+                 :from   [(t2/table-name :model/Glossary)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn glossary-term-by-term :- [:maybe ::row]
+  "`{:id :entity_id}` of the glossary term whose term equals `term` by the comparison of the app DB, which its unique
+  key on the term also uses; nil when there is none."
+  [term :- :string]
+  (t2/query-one {:select [:id :entity_id]
+                 :from   [(t2/table-name :model/Glossary)]
+                 :where  [:= :term [:auto/param term]]}))
+
+(mu/defn insert-glossary-term! :- ::row
+  "Inserts a glossary term with the columns `row` through the Glossary model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Glossary row))
+
+(mu/defn update-glossary-term! :- :int
+  "Sets the columns `changes` of the glossary term `id` through the Glossary model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Glossary id changes))
+
+(mu/defn delete-glossary-term! :- :int
+  "Deletes the glossary term `id`; returns the number of rows."
+  [id :- pos-int?]
+  (t2/delete! :model/Glossary :id id))

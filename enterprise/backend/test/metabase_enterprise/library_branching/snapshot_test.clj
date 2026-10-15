@@ -1,14 +1,18 @@
 (ns metabase-enterprise.library-branching.snapshot-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [clojure.test.check.random :as random]
    [clojure.test.check.rose-tree :as rose]
+   [metabase-enterprise.library-branching.collation :as collation]
+   [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -120,6 +124,108 @@
 (defn- sibling-clash?
   [s]
   (some #(< 1 %) (vals (frequencies (map (juxt :place :kind :name) (vals s))))))
+
+(defn- one-key? [a b] (= (snapshot/fold-name a) (snapshot/fold-name b)))
+
+(deftest ^:parallel fold-name-test
+  (testing "two names are one key iff utf8mb4_unicode_ci takes them as equal"
+    (testing "case, accents, compatibility forms"
+      (are [a b] (one-key? a b)
+        "Filter"        "filter"
+        "FILTER"        "filter"
+        "Fïlter"        "filter"
+        "Fi\u0308lter"  "Fïlter"
+        "Café"          "cafe"
+        "ﬁlter"         "filter"
+        "Ｆｉｌｔｅｒ"  "filter"
+        "x²"            "x2"
+        "İstanbul"      "istanbul"))
+    (testing "expansions, final sigma, trailing spaces, ignorable characters, supplementary characters"
+      (are [a b] (one-key? a b)
+        "Straße"          "Strasse"
+        "σ"               "ς"
+        "Œuvre"           "OEuvre"
+        "Filter "         "Filter"
+        "Filter \u00A0 "  "Filter"
+        "a\u200Bb"        "ab"
+        "\u200Dab\uFEFF"  "ab"
+        "😀"              "😃"
+        "x🦄y"            "x😀y"))
+    (testing "letters of their own, leading and inner spaces, punctuation, the soft hyphen, U+FFFD"
+      (are [a b] (not (one-key? a b))
+        "ı"       "i"
+        "Łódź"    "Lodz"
+        "Æther"   "AEther"
+        "Øre"     "Ore"
+        "Straße"  "Strase"
+        " Filter" "Filter"
+        "a b"     "ab"
+        "a-b"     "a_b"
+        "a\u00ADb" "ab"
+        "😀"      "\uFFFD"
+        "一"      "丁"))))
+
+(defspec fold-name-ignores-trailing-spaces-test 200
+  (prop/for-all [s   lb.tu/unicode-name-gen
+                 pad (gen/vector (gen/elements [\space \u00A0 \u3000]) 1 3)]
+    (one-key? s (apply str s pad))))
+
+(defspec fold-name-ignores-ignorable-characters-test 200
+  (prop/for-all [s lb.tu/unicode-name-gen
+                 i gen/nat
+                 c (gen/elements [\u200B \u200C \u200D \u2060 \uFEFF])]
+    (let [cps (vec (.toArray (.codePoints ^String s)))
+          i   (mod i (inc (count cps)))]
+      (one-key? s (str (lb.tu/code-points->string (subvec cps 0 i)) c (lb.tu/code-points->string (subvec cps i)))))))
+
+(defspec fold-name-takes-supplementary-characters-as-one-test 200
+  (prop/for-all [s  lb.tu/unicode-name-gen
+                 cp (gen/choose 0x10000 0x10FFFF)]
+    (one-key? s (str/replace s #"[\x{10000}-\x{10FFFF}]" (String. (Character/toChars (int cp)))))))
+
+(defspec fold-name-ignores-ascii-case-test 200
+  (prop/for-all [s gen/string-ascii]
+    (one-key? (u/lower-case-en s) (u/upper-case-en s))))
+
+(def fold-mutations
+  "Each mutation removes one rule of the name fold."
+  [{:name   :case-and-accents-only
+    :doc    "The fold before utf8mb4_unicode_ci: NFKD, no combining mark, lower case."
+    :target `snapshot/fold-name
+    :edits  [[:replace '(collation/primary-key s)
+              '(.toLowerCase ^String (clojure.string/replace (java.text.Normalizer/normalize s java.text.Normalizer$Form/NFKD)
+                                                             #"\p{M}" "")
+                             java.util.Locale/ROOT)]]}
+   {:name   :no-pad-space
+    :doc    "Trailing spaces count."
+    :target `collation/primary-key
+    :edits  [[:replace '(= space-weight (int (.charAt sb (dec end)))) false]]}
+   {:name   :supplementary-by-code-point
+    :doc    "Each supplementary character has weights of its own."
+    :target `collation/code-point-weights
+    :edits  [[:replace '(str (char supplementary-weight)) '(String. (Character/toChars (int cp)))]]}
+   {:name   :no-expansions
+    :doc    "A character has only its first weight, so the sharp s and ss differ."
+    :target `collation/code-point-weights
+    :edits  [[:replace '(aget table cp) '(let [^String w (aget table cp)] (if (seq w) (subs w 0 1) w))]]}
+   {:name   :no-ignorables
+    :doc    "An ignorable character counts as itself."
+    :target `collation/code-point-weights
+    :edits  [[:replace '(aget table cp) '(let [w (aget table cp)] (if (= "" w) (str (char cp)) w))]]}])
+
+(deftest fold-mutations-test
+  (mut/check fold-mutations {:tests [#'fold-name-test #'fold-name-ignores-trailing-spaces-test
+                                     #'fold-name-ignores-ignorable-characters-test
+                                     #'fold-name-takes-supplementary-characters-as-one-test
+                                     #'fold-name-ignores-ascii-case-test]}))
+
+(deftest ^:parallel unique-key-test
+  (testing "a name key compares in its folded form, any other key as it is"
+    (let [table {:snippet {:path [:name] :name? true} :metric {:path [:attrs :path]}}]
+      (is (= (snapshot/fold-name "filter") (snapshot/unique-key table {:kind :snippet :name "Fïlter"})))
+      (is (= "A.py" (snapshot/unique-key table {:kind :metric :name "M" :attrs {:path "A.py"}})))
+      (is (nil? (snapshot/unique-key table {:kind :metric :name "M" :attrs {}})))
+      (is (nil? (snapshot/unique-key table {:kind :collection :name "C"}))))))
 
 (deftest ^:parallel arbitrary-snapshot-gen-faults-test
   (testing "the arbitrary generator gives each kind of structural fault"

@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.core :as collections]
    [metabase.models.serialization :as serdes]
@@ -98,15 +99,19 @@
   (when-let [row (library-branching.db/lock-collection id)]
     (tree/check-in-tree! id (tree/collection-in-tree? row))
     (when-not (:archived row)
-      (request/as-admin
-        (collections/archive-or-unarchive-collection! (library-branching.db/select-collection (:id row))
-                                                      {:archived true})))
+      (values-source/do-keeping-outside-values-sources
+       (library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row))
+       (fn []
+         (request/as-admin
+           (collections/archive-or-unarchive-collection! (library-branching.db/select-collection (:id row))
+                                                         {:archived true})))))
     nil))
 
 (def kind-store
   "The `KindStore` of collections."
   (reify instance/KindStore
     (read-all [_ ids] (read-collections ids))
+    (read-models [_] #{:model/Collection})
     (current [_ id] (current-collection id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-collection! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-collection! id)))))

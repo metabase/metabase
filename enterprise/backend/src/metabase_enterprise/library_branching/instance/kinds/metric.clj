@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -131,13 +132,21 @@
   (when-let [row (library-branching.db/lock-card id)]
     (tree/check-in-tree! id (tree/collection-id-in-tree? (:collection_id row)))
     (when-not (:archived row)
-      (library-branching.db/update-card! (:id row) {:archived true :archived_directly true}))
+      (values-source/do-keeping-outside-values-sources
+       (library-branching.db/values-source-users-of-card (:id row))
+       (fn [] (library-branching.db/update-card! (:id row) {:archived true :archived_directly true}))))
     nil))
+
+(def ^:private models-of-read
+  "The models whose tables a read of metrics reads: the cards and their collections, and the tables, fields, databases,
+  cards, segments and measures that a query refers to."
+  #{:model/Card :model/Collection :model/Database :model/Field :model/Measure :model/Segment :model/Table})
 
 (def kind-store
   "The `KindStore` of metrics."
   (reify instance/KindStore
     (read-all [_ ids] (read-metrics ids))
+    (read-models [_] models-of-read)
     (current [_ id] (current-metric id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-metric! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-metric! id)))))

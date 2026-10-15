@@ -67,14 +67,17 @@
 (defn- unique-key-findings
   [s unique-keys]
   (let [holders (reduce (fn [acc [id {:keys [kind] :as item}]]
-                          (if-some [k (some->> (get unique-keys kind) (get-in item))]
+                          (if-some [k (snapshot/unique-key unique-keys item)]
                             (update acc [kind k] (fnil conj []) id)
                             acc))
                         {}
                         (sorted-items s))]
-    (for [[[kind k] ids] (sort-by (comp first val) snapshot/compare-identities holders)
+    (for [[[kind _] ids] (sort-by (comp first val) snapshot/compare-identities holders)
           :when (next ids)]
-      {:rule :unique-key :kind kind :key k :ids (set ids)})))
+      {:rule :unique-key
+       :kind kind
+       :key  (get-in (get s (first ids)) (get-in unique-keys [kind :path]))
+       :ids  (set ids)})))
 
 (defn- namespace-findings
   [s]
@@ -112,7 +115,8 @@
   - `{:rule :acyclic :ids #{i ...}}`: the items of one containment cycle;
   - `{:rule :kind-fits :id i :place p}`: the kind of container `p` cannot contain the kind of `i`;
   - `{:rule :refs-closed :id i :ref [role target]}`: `target` is neither an item of `s` nor `[:env natural-key]`;
-  - `{:rule :unique-key :kind k :key v :ids #{i ...}}`: the items of kind `k` whose unique key is `v`, two or more;
+  - `{:rule :unique-key :kind k :key v :ids #{i ...}}`: two or more items of kind `k` with one unique key
+    (`snapshot/unique-key`); `v` is the key of the one with the least identity, as it is in that item;
   - `{:rule :namespace :id i :place p}`: collection `i` is in collection `p`, and the two `:namespace` attributes
     differ (absent is one value);
   - `{:rule :ref-kind :id i :ref [role target]}`: `target` is an environment object or an item of `s` whose kind
@@ -120,8 +124,8 @@
   - `{:rule :root :id i}`: item `i` is at the root level and is not one of `:roots`.
 
   `opts`, each with a default: `:roots`, the set of identities that may be at the root level (no check when absent);
-  `:may-contain`, `{kind #{kind}}` ([[snapshot/may-contain]]); `:unique-keys`, `{kind path}`, the path of a key in an
-  item ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]). These tables can
+  `:may-contain`, `{kind #{kind}}` ([[snapshot/may-contain]]); `:unique-keys`, `{kind {:path path :name? bool}}`
+  ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]). These tables can
   name kinds that are not in [[snapshot/kinds]]: validate reads only the kind, place, references, `:namespace` and
   unique key of an item."
   ([s]

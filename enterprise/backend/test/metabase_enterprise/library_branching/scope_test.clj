@@ -54,7 +54,9 @@
     (is (= scope/kinds (set (keys (methods scope/kind-query))))))
   (testing "each kind at a namespace root is a kind of scope, and each such namespace is a root"
     (is (set/subset? (set (keys (:root-level scope/roots))) scope/kinds))
-    (is (set/subset? (set (vals (:root-level scope/roots))) (:namespaces scope/roots)))))
+    (is (set/subset? (set (vals (:root-level scope/roots))) (:namespaces scope/roots))))
+  (testing "each kind with no container is a kind of scope"
+    (is (set/subset? (:unplaced-kinds scope/roots) scope/kinds))))
 
 (deftest library-tree-test
   (testing "the Library, its collections at every depth and their items are in scope"
@@ -277,6 +279,22 @@
         (is (= {:document true :summary false}
                (membership {:document [:document (:entity_id document)]
                             :summary  [:document (:entity_id summary)]})))))))
+
+(deftest glossary-test
+  (testing "every glossary term is in scope: it is in no collection, and Metabase has no trash for it"
+    (mt/with-temp [:model/Glossary term  {:term "lb scope churn" :definition "Who leaves." :creator_id (mt/user->id :crowberto)}
+                   :model/Glossary other {:term       "lb scope retention"
+                                          :definition "Who stays."
+                                          :creator_id (mt/user->id :rasta)}]
+      (is (= {:term true :other true}
+             (membership {:term  [:glossary-term (:entity_id term)]
+                          :other [:glossary-term (:entity_id other)]})))
+      (is (= (t2/count :model/Glossary) (:glossary-term (scope/scope-count))))
+      (is (scope/in-scope? :glossary-term (:entity_id term)))
+      (testing "the roots are an argument: without the glossary kind, no glossary term is in scope"
+        (let [less (update scope/roots :unplaced-kinds disj :glossary-term)]
+          (is (= #{} (:glossary-term (scope/scope-ids less))))
+          (is (not (scope/in-scope? less :glossary-term (:entity_id term)))))))))
 
 (deftest count-test
   (testing "the count of each kind is the size of the scope of that kind"

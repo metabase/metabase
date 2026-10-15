@@ -48,8 +48,8 @@
      (let [ours   (ptu/renamed ptu/sample ptu/revenue-id "Ours")
            theirs (ptu/renamed ptu/sample ptu/orders-id "Theirs")
            [_a f m] (branches! repo ptu/sample ours theirs
-                              :ours-foreign {"README.md" (ptu/utf8 "ours")}
-                              :theirs-foreign {".github/check.yml" (ptu/utf8 "on: push")})
+                               :ours-foreign {"README.md" (ptu/utf8 "ours")}
+                               :theirs-foreign {".github/check.yml" (ptu/utf8 "on: push")})
            {:keys [result commit]} (merge-branch/merge-branch! s feature main {:message "Merge main"})]
        (testing "main is merged into the branch: a merge commit with both heads as parents, the merged snapshot in the
                 encoding of the format, and the foreign files of both sides"
@@ -68,8 +68,8 @@
   (enabled
    (with-remote [repo s]
      (let [[_a f _m] (branches! repo ptu/sample
-                               (ptu/renamed ptu/sample ptu/revenue-id "Ours")
-                               (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))
+                                (ptu/renamed ptu/sample ptu/revenue-id "Ours")
+                                (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))
            {:keys [result conflicts]} (merge-branch/merge-branch! s feature main)]
        (testing "both branches changed one item in different ways: the merge refuses, and the branch stays"
          (is (= :conflicts result))
@@ -107,8 +107,8 @@
   (enabled
    (with-remote [repo s]
      (let [[_a f _m] (branches! repo ptu/sample ptu/sample ptu/sample
-                               :ours-foreign {"README.md" (ptu/utf8 "ours")}
-                               :theirs-foreign {"README.md" (ptu/utf8 "theirs")})]
+                                :ours-foreign {"README.md" (ptu/utf8 "ours")}
+                                :theirs-foreign {"README.md" (ptu/utf8 "theirs")})]
        (is (= {:result :conflicts :conflicts [] :violations [] :foreign ["README.md"]}
               (merge-branch/merge-branch! s feature main)))
        (is (= f (store/head s feature)))))))
@@ -117,7 +117,7 @@
   (enabled
    (with-remote [repo s]
      (let [[_a f _m] (branches! repo ptu/sample (ptu/renamed ptu/sample ptu/revenue-id "Ours")
-                               (ptu/renamed ptu/sample ptu/orders-id "Theirs"))
+                                (ptu/renamed ptu/sample ptu/orders-id "Theirs"))
            other     (promise)
            racing    (ptu/wrap-store s (fn []
                                          (when-not (realized? other)

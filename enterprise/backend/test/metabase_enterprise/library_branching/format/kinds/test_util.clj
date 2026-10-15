@@ -1,6 +1,6 @@
 (ns metabase-enterprise.library-branching.format.kinds.test-util
-  "test.check generators of the `:attrs` of each kind, and of snapshots of the four kinds whose items fit the schemas
-  of their codecs.
+  "test.check generators of the `:attrs` of each kind, and of snapshots of the kinds whose items fit the schemas of
+  their codecs.
 
   Each generator is constructive: it builds a value of the content schema from random choices, filters nothing, and
   never gives an attribute at its default value. An optional attribute is absent or present; absent is the first
@@ -172,12 +172,12 @@
    ;; An entry with no setting is not content, so an empty choice becomes one setting.
    (gen/fmap #(if (empty? %) {:visibility_type "hidden"} %)
              (attrs-of {:display_name    [false non-empty-text-gen]
-                             :description     [false text-gen]
-                             :semantic_type   [false (gen/elements ["type/Currency" "type/FK" "type/Name"])]
-                             :visibility_type [false (gen/elements ["hidden" "details-only"])]
-                             :fk_target       [false field-key-gen]
-                             :settings        [false document-map-gen]
-                             :custom_position [false gen/large-integer]
+                        :description     [false text-gen]
+                        :semantic_type   [false (gen/elements ["type/Currency" "type/FK" "type/Name"])]
+                        :visibility_type [false (gen/elements ["hidden" "details-only"])]
+                        :fk_target       [false field-key-gen]
+                        :settings        [false document-map-gen]
+                        :custom_position [false gen/large-integer]
                         :json_unfolding  [false gen/boolean]}))))
 
 (def published-table-attrs-gen
@@ -201,9 +201,14 @@
              :content       [true text-gen]
              :template_tags [false template-tags-gen]}))
 
+(def glossary-attrs-gen
+  "Generates the `:attrs` of a glossary term."
+  (attrs-of {:definition [true text-gen]}))
+
 (def attrs-gens
   "`{kind generator}` of the `:attrs` of each kind."
   {:collection      collection-attrs-gen
+   :glossary-term   glossary-attrs-gen
    :metric          metric-attrs-gen
    :published-table published-table-attrs-gen
    :snippet         snippet-attrs-gen})
@@ -218,7 +223,7 @@
         s))
 
 (defn snapshot-gen
-  "Generates well-formed snapshots of the four kinds, at most `max-items` (default 30) items, whose items fit the
+  "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the
   schemas of their codecs. The references of an item are those of its attributes; they can name items that are not
   in the snapshot."
   ([] (snapshot-gen 30))

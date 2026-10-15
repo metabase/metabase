@@ -3,25 +3,46 @@
 
   A snapshot maps the identity of each item to the item's content. Two items are equal iff their values are equal."
   (:require
+   [metabase-enterprise.library-branching.collation :as collation]
    [metabase-enterprise.library-branching.registry :as registry]))
 
 (set! *warn-on-reflection* true)
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :metric :published-table :snippet})
+  #{:collection :glossary-term :metric :published-table :snippet})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
   {:collection      #{:collection :metric :published-table :snippet}
+   :glossary-term   #{}
    :metric          #{}
    :published-table #{}
    :snippet         #{}})
 
 (def unique-keys
-  "`{kind path}`: the kinds whose key the app DB keeps unique over all rows of the kind, and the path of that key in
-  an item. An item whose key is nil has none."
-  {:snippet [:name]})
+  "`{kind {:path path :name? bool}}`: the kinds whose key the app DB keeps unique over all rows of the kind, the path of
+  that key in an item, and whether the key is a name. Two names are one key iff their [[fold-name]] forms are equal.
+  An item whose key is nil has none."
+  {:snippet {:path [:name] :name? true}})
+
+(defn fold-name
+  "Name `s` in the form in which two names are one key: its primary weights under utf8mb4_unicode_ci, so two names are
+  one key iff that collation takes them as equal."
+  ^String [^String s]
+  ;; MySQL and MariaDB app DBs keep snippet names unique under utf8mb4_unicode_ci: case, accents, expansions such as ß
+  ;; and ss, trailing spaces and ignorable characters do not count, and all supplementary characters are equal.
+  ;; Postgres and H2 compare names exactly, so this form only refuses more there. The engine uses this one form on every
+  ;; app DB, so a snapshot that validates on one app DB validates on all.
+  (collation/primary-key s))
+
+(defn unique-key
+  "The unique key of `item` by `unique-keys` (in the form of [[unique-keys]]), in the form in which keys compare; nil
+  when the kind of `item` has no key, or its key is nil."
+  [unique-keys item]
+  (when-let [{:keys [path name?]} (get unique-keys (:kind item))]
+    (when-some [k (get-in item path)]
+      (if (and name? (string? k)) (fold-name k) k))))
 
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The

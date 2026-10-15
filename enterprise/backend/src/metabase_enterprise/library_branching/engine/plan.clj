@@ -95,21 +95,116 @@
   (cond-> {:id id :write (get m id) :pre (get b id)}
     (seq defer) (assoc :defer defer)))
 
+;;; -------------------------------------------------- Key moves ---------------------------------------------------
+;;; The app DB keeps some keys unique over all rows (`snapshot/unique-keys`), so a write must not give an item a key
+;;; that another item still has. A key move is a pair `[from to]` of written items: the write of `from` frees a key that
+;;; the write of `to` takes.
+
+(defn- key-of
+  "`[kind key]`: the unique key of item `it` by `unique-keys`, or nil."
+  [unique-keys it]
+  (when-some [k (snapshot/unique-key unique-keys it)]
+    [(:kind it) k]))
+
+(defn- key-moves
+  "The key moves `[from to]` among the items of `ids`: `from` has the key in `l` and not in `m`, and `to` has it in `m`
+  and not in `l`."
+  [unique-keys l m ids]
+  ;; `l` can have two holders of one key: the app DB of `l` can compare names in a form that keeps them apart.
+  (let [holders (group-by #(key-of unique-keys (get l %)) ids)]
+    (vec (for [to   ids
+               :let [k (key-of unique-keys (get m to))]
+               :when (some? k)
+               from (get holders k)
+               :when (and (not= from to) (not= k (key-of unique-keys (get m from))))]
+           [from to]))))
+
+(defn- add-edges
+  [after edges]
+  (reduce (fn [acc [from to]] (update acc from (fnil conj #{}) to)) after edges))
+
+(defn- interim-ids
+  "The items of `ids` that free their key in an interim step before every write: the `from` of each move of `moves` for
+  which `late?` is true; then, while the graph of `after` and the other moves has a cycle, the least `from` of a move
+  inside each cycle. Every cycle has a move, because `after` has no cycle."
+  [ids after moves late?]
+  (loop [interim (into #{} (comp (filter (comp late? first)) (map first)) moves)]
+    (let [edges (remove (comp interim first) moves)
+          succ  (add-edges after edges)
+          picks (for [c (components (sort snapshot/compare-identities ids) #(get succ % #{}))
+                      :when (next c)]
+                  (->> edges
+                       (keep (fn [[from to]] (when (and (c from) (c to)) from)))
+                       (sort snapshot/compare-identities)
+                       first))]
+      (if (seq picks)
+        (recur (into interim picks))
+        interim))))
+
+(defn- temporary-keys
+  "`{id name}`: for each item of `ids`, a temporary name that is the key of no item of `l` or `m`, and of no other item
+  of `ids`."
+  [unique-keys l m ids]
+  (loop [[id & more :as todo] (sort snapshot/compare-identities ids)
+         taken                (set (keep #(snapshot/unique-key unique-keys %) (concat (vals l) (vals m))))
+         out                  {}]
+    (if (empty? todo)
+      out
+      (let [candidates (iterate #(str % "~") (str "Library branching temporary name " id))
+            temp       (first (remove (comp taken snapshot/fold-name) candidates))]
+        (recur more (conj taken (snapshot/fold-name temp)) (assoc out id temp))))))
+
+(defn- interim-steps
+  [unique-keys l m ids]
+  (for [[id temp] (sort-by key snapshot/compare-identities (temporary-keys unique-keys l m ids))
+        :let [item (get l id)]]
+    {:id id :interim (assoc-in item (:path (get unique-keys (:kind item))) temp)}))
+
 (defn- write-steps
-  "`[writes links]` for the items of `ids`, which `m` holds."
-  [m b ids]
+  "`[interims writes links]` for the items of `ids`, which `m` holds."
+  [unique-keys l m b ids]
   (let [deferred (cyclic-refs m ids)
         after    (invert (dependencies m ids deferred))
-        order    (apply concat (ordered ids after))]
-    [(mapv #(write-step m b % (deferred %)) order)
+        moves    (key-moves unique-keys l m ids)
+        ;; The write of an item that exists and has deferred references leaves it as it is, and its link writes its
+        ;; key, after every write.
+        late?    #(and (some? (get b %)) (seq (deferred %)))
+        interim  (interim-ids ids after moves late?)
+        order    (apply concat (ordered ids (add-edges after (remove (comp interim first) moves))))]
+    [(vec (interim-steps unique-keys l m interim))
+     (mapv #(write-step m b % (deferred %)) order)
      (into [] (keep #(when-let [refs (not-empty (deferred %))] {:id % :link refs})) order)]))
 
+(defn- cycle-start
+  "The item of cycle `ids` (a sorted vector) that goes to the trash first: the least one that is the place of no other
+  item of `ids`."
+  [l ids]
+  (let [places (set (keep #(:place (get l %)) ids))]
+    ;; A containment cycle has no such item; a well-formed `l` has none.
+    (or (first (remove places ids)) (first ids))))
+
+(defn- split-cycle
+  "`[group]` for a group of one item; else `[[start] rest]`, the first trash of the cycle `ids` and the rest of it."
+  [l ids]
+  (if (next ids)
+    (let [start (cycle-start l ids)]
+      [[start] (vec (remove #{start} ids))])
+    [ids]))
+
 (defn- trash-steps
-  "The trash steps for the items of `ids`, which the target snapshot lacks: the content and the users of an item first. In a
-  reference cycle, the references give no order."
+  "The trash steps for the items of `ids`, which the target snapshot lacks: the content and the users of an item first.
+  A cycle of places and references starts at [[cycle-start]]; then the rest of the cycle follows the same rule."
   [l b ids]
-  (let [after (dependencies l ids (cyclic-refs l ids))]
-    (into [] (comp cat (map (fn [id] {:id id :trash true :pre (get b id)}))) (ordered ids after))))
+  ;; `todo` is a stack of groups of ids. A group of one item is the next trash. A larger group is split into its
+  ;; cycles in order, and each cycle into its start and its rest.
+  (loop [todo [(vec ids)], out []]
+    (if-let [group (peek todo)]
+      (let [todo (pop todo)]
+        (if (next group)
+          (recur (into todo (rseq (into [] (mapcat #(split-cycle l %)) (ordered group (dependencies l group)))))
+                 out)
+          (recur todo (into out (map (fn [id] {:id id :trash true :pre (get b id)})) group))))
+      out)))
 
 (defn- check-base-equal!
   [l b changed]
@@ -132,23 +227,32 @@
   - `m` must hold each system item of `l` (`opts` `:system`, a set of identities; default [[snapshot/system-ids]]);
     else this throws an ex-info with `:system-ids`, the identities of those that it lacks.
 
+  `opts` `:unique-keys` (default [[snapshot/unique-keys]]) names the keys that no two items may have at one time; a
+  key is a name.
+
   Steps, in this order:
-  - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them. In a
-    reference cycle, a write has `:defer #{ref}`, the references that it leaves out;
+  - interims `{:id i :interim c}`: `c` is `l(i)` with a temporary name, which frees the key of `i` for a write that
+    takes it. An item has one when the moves of keys among the writes make a cycle (a swap), or when its write leaves
+    it as it is (see `:defer`) and another write takes its key;
+  - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them, and a
+    write that frees a key before the write that takes it. In a reference cycle, a write has `:defer #{ref}`, the
+    references that it leaves out;
   - links `{:id i :link #{ref}}`: each sets the deferred references of `i`;
-  - trashes `{:id i :trash true :pre b(i)}`: an item before its container, and before the items that it refers to
-    unless they are on a reference cycle with it.
+  - trashes `{:id i :trash true :pre b(i)}`: an item before its container, and before the items that it refers to.
+    A cycle of places and references starts with its least item that contains no other item of the cycle; the rest
+    of the cycle follows these rules again. So only the references to the first item of a cycle go to the trash
+    before their users.
 
   Of the steps that may come next, the step of the least identity comes first. Each `:pre` is the content that the
-  item must have when the step runs (nil: no item)."
+  item must have before the first step (nil: no item). A trash does not free a key: a trashed item keeps it."
   ([l m b]
    (plan l m b {}))
-  ([l m b {:keys [system] :or {system snapshot/system-ids}}]
+  ([l m b {:keys [system unique-keys] :or {system snapshot/system-ids unique-keys snapshot/unique-keys}}]
    (let [changed (sort snapshot/compare-identities
                        (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))
          removed (remove #(contains? m %) changed)]
      (check-base-equal! l b changed)
      (check-system-kept! system removed)
-     (let [[writes links] (write-steps m b (filter #(contains? m %) changed))
-           trashes        (trash-steps l b removed)]
-       (vec (concat writes links trashes))))))
+     (let [[interims writes links] (write-steps unique-keys l m b (filter #(contains? m %) changed))
+           trashes                 (trash-steps l b removed)]
+       (vec (concat interims writes links trashes))))))

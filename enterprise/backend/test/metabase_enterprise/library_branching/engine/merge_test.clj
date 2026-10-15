@@ -10,6 +10,7 @@
    [metabase-enterprise.library-branching.engine.plan :as plan]
    [metabase-enterprise.library-branching.engine.test-util :as engine.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]))
 
 (set! *warn-on-reflection* true)
@@ -151,6 +152,12 @@
             t (assoc b id3 (engine.tu/item :snippet "N" id0))]
         (is (= {:conflicts  []
                 :violations [{:rule :unique-key :kind :snippet :key "N" :ids #{id2 id3} :ours id2 :theirs id3}]}
+               (merge/merge b o t {})))))
+    (testing "ours renames snippet 1 to N; theirs creates snippet 2 named ň: the names are one key"
+      (let [o (assoc-in b [id1 :name] "N")
+            t (assoc b id2 (engine.tu/item :snippet "ň" lib))]
+        (is (= {:conflicts  []
+                :violations [{:rule :unique-key :kind :snippet :key "N" :ids #{id1 id2} :ours id1 :theirs id2}]}
                (merge/merge b o t {})))))
     (testing "both sides make one snippet with one name: no clash"
       (let [o (assoc b id2 (engine.tu/item :snippet "N" lib))]
@@ -299,7 +306,9 @@
               (and (violation-names-pair? b o t v)
                    (contains? ids (:ours v))
                    (contains? ids (:theirs v))
-                   (= key (:name (get o (:ours v))) (:name (get t (:theirs v))))))
+                   (= (snapshot/fold-name key)
+                      (snapshot/fold-name (:name (get o (:ours v))))
+                      (snapshot/fold-name (:name (get t (:theirs v)))))))
             (filter #(= :unique-key (:rule %)) (:violations (merge/merge b o t {}))))))
 
 (defspec unknown-base-merge-test 300
