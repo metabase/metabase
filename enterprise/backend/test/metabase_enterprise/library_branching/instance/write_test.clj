@@ -359,7 +359,8 @@
           (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
           (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
           (t2/delete! :model/Dimension :field_id [:in field-ids])
-          (t2/delete! :model/FieldValues :field_id (mt/id :venues :price)))
+          (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
+          (t2/insert! :model/FieldValues {:field_id (mt/id :venues :price) :type :full :values [1 2 3 4]}))
         (let [id        (table-key :venues)
               price     (mt/id :venues :price)
               item      {:kind  :published-table
@@ -371,36 +372,54 @@
                                           :PRICE       {:display_name "Price level"
                                                         :remapping    {:type   "internal"
                                                                        :name   "Price"
-                                                                       :values [[1 "$"] [2 "$$"]]}}}}}
+                                                                       :labels [[1 "$"] [2 "$$"]]}}}}}
               refs      #(assoc % :refs (format.kinds/refs :published-table id (:attrs %)))
               dimension #(t2/select-one [:model/Dimension :type :name :human_readable_field_id]
                                         :field_id (mt/id :venues %))
-              values    #(t2/select-one [:model/FieldValues :values :human_readable_values] :field_id price :type :full)]
-          (testing "a write sets both kinds of remapping"
+              values    #(some-> (t2/select-one [:model/FieldValues :values :human_readable_values]
+                                                :field_id price :type :full)
+                                 (->> (into {})))]
+          (testing "a write sets both kinds of remapping; the labels go to the values that warehouse sync found, and a
+                    value with no label gets its own text"
             (write! :published-table id item)
             (is (= (refs item) (current :published-table id)))
             (is (= {:type :external :name "Category" :human_readable_field_id (mt/id :categories :name)}
                    (into {} (dimension :category_id))))
             (is (= {:type :internal :name "Price" :human_readable_field_id nil} (into {} (dimension :price))))
-            (is (= {:values [1 2] :human_readable_values ["$" "$$"]} (into {} (values)))))
+            (is (= {:values [1 2 3 4] :human_readable_values ["$" "$$" "3" "4"]} (values))))
           (testing "a local removal of a remapping is a change of the table, and a write restores it"
             (t2/delete! :model/Dimension :field_id (mt/id :venues :category_id))
             (is (not= (refs item) (current :published-table id)))
             (write! :published-table id item)
             (is (= (refs item) (current :published-table id))))
-          (testing "a write changes the type of a remapping and its values"
+          (testing "a write changes the type of a remapping and its labels"
             (let [changed (-> item
                               (assoc-in [:attrs :fields :CATEGORY_ID :remapping] {:type "internal" :name "Kind"})
-                              (assoc-in [:attrs :fields :PRICE :remapping :values] [[1 "Cheap"] [2 "Dear"] [3 "Very"]]))]
+                              (assoc-in [:attrs :fields :PRICE :remapping :labels] [[1 "Cheap"] [2 "Dear"] [3 "Very"]]))]
               (write! :published-table id changed)
               (is (= (refs changed) (current :published-table id)))
               (is (= {:type :internal :name "Kind" :human_readable_field_id nil}
-                     (into {} (dimension :category_id))))))
-          (testing "an internal remapping with no values clears the human-readable values"
-            (let [changed (update-in item [:attrs :fields :PRICE :remapping] dissoc :values)]
+                     (into {} (dimension :category_id))))
+              (is (= {:values [1 2 3 4] :human_readable_values ["Cheap" "Dear" "Very" "4"]} (values)))))
+          (testing "an internal remapping with no labels clears the human-readable values"
+            (let [changed (update-in item [:attrs :fields :PRICE :remapping] dissoc :labels)]
               (write! :published-table id changed)
               (is (= (refs changed) (current :published-table id)))
-              (is (empty? (:human_readable_values (values))))))
+              (is (= {:values [1 2 3 4] :human_readable_values []} (values)))))
+          (testing "a label of a value that warehouse sync did not find stays out of the instance, and the values stay"
+            (let [changed (assoc-in item [:attrs :fields :PRICE :remapping :labels] [[1 "$"] [9 "Nine"]])]
+              (write! :published-table id changed)
+              (is (= (refs (assoc-in item [:attrs :fields :PRICE :remapping :labels] [[1 "$"]]))
+                     (current :published-table id)))
+              (is (= {:values [1 2 3 4] :human_readable_values ["$" "2" "3" "4"]} (values)))))
+          (testing "with no field values row, a write sets the dimension and inserts no row"
+            (t2/delete! :model/FieldValues :field_id price)
+            (write! :published-table id item)
+            (is (= (refs (update-in item [:attrs :fields :PRICE :remapping] dissoc :labels))
+                   (current :published-table id)))
+            (is (= {:type :internal :name "Price" :human_readable_field_id nil} (into {} (dimension :price))))
+            (is (nil? (values)))
+            (t2/insert! :model/FieldValues {:field_id price :type :full :values [1 2 3 4]}))
           (testing "a write with no remapping removes the dimension, and keeps the other settings of the field"
             (let [changed (-> item
                               (update-in [:attrs :fields] dissoc :CATEGORY_ID)

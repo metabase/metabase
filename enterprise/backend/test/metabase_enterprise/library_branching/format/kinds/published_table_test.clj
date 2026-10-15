@@ -122,7 +122,10 @@
 
 (def ^:private remapped-attrs
   {:fields {:PRODUCT_ID {:remapping {:type "external" :name "Product" :field product-title}}
-            :RATING     {:remapping {:type "internal" :name "Rating" :values [[1 "Bad"] [2 "Good"]]}}
+            :RATING     {:remapping {:type "internal" :name "Rating" :labels [[1 "Bad"] [2 "Good"]]}}
+            :FLAG       {:remapping {:type   "internal"
+                                     :name   "Flag"
+                                     :labels [[nil "None"] [false "No"] [7 "Seven"] [7.5 "Half"] ["x" "Ex"]]}}
             :STATUS     {:display_name "Status"
                          :remapping    {:type "internal" :name "Status"}}}})
 
@@ -134,6 +137,7 @@
     (is (= #{[:table [:env events]]
              [:field [:env [sd nil "EVENTS" "PRODUCT_ID"]]]
              [:field [:env [sd nil "EVENTS" "RATING"]]]
+             [:field [:env [sd nil "EVENTS" "FLAG"]]]
              [:field [:env [sd nil "EVENTS" "STATUS"]]]
              [:remapping [:env product-title]]}
            (kinds/refs :published-table events remapped-attrs)))))
@@ -146,20 +150,35 @@
                        (assoc item :attrs a :refs (kinds/refs :published-table events a))))))
   (testing "a remapping of another shape is not content"
     (doseq [r [{:type "external" :name "Product"}
-               {:type "external" :name "Product" :field product-title :values [[1 "x"]]}
+               {:type "external" :name "Product" :field product-title :labels [[1 "x"]]}
                {:type "internal" :name "Rating" :field product-title}
-               {:type "internal" :name "Rating" :values []}
-               {:type "internal" :name "Rating" :values [[1]]}
-               {:type "internal" :name "Rating" :values [[1 " "]]}
-               {:type "internal" :name "Rating" :values [[1 2]]}
-               {:type "internal" :name "Rating" :values [[{:a 1} "One"]]}
-               {:type "internal" :values [[1 "Bad"]]}
-               {:type "internal" :name "" :values [[1 "Bad"]]}
+               {:type "internal" :name "Rating" :values [[1 "Bad"]]}
+               {:type "internal" :name "Rating" :labels []}
+               {:type "internal" :name "Rating" :labels [[1]]}
+               {:type "internal" :name "Rating" :labels [[1 nil]]}
+               {:type "internal" :name "Rating" :labels [[1 " "]]}
+               {:type "internal" :name "Rating" :labels [[1 2]]}
+               {:type "internal" :name "Rating" :labels [[{:a 1} "One"]]}
+               {:type "internal" :labels [[1 "Bad"]]}
+               {:type "internal" :name "" :labels [[1 "Bad"]]}
                {:type "other" :name "Rating"}]]
       (let [a {:fields {:RATING {:remapping r}}}]
         (is (not (mr/validate (codec/schema published-table/codec)
                               (assoc item :attrs a :refs (kinds/refs :published-table events a))))
-            (pr-str r))))))
+            (pr-str r)))))
+  (testing "a label that no person set is not content: the text of its value, the text \"null\" of a null value, and the
+           text with no decimals of a whole decimal value"
+    (doseq [labels [[[1 "1"]] [["x" "x"]] [[true "true"]] [[nil "null"]] [[2.0 "2"]] [[2.0 "2.0"]]]]
+      (let [a {:fields {:RATING {:remapping {:type "internal" :name "Rating" :labels labels}}}}]
+        (is (not (mr/validate (codec/schema published-table/codec)
+                              (assoc item :attrs a :refs (kinds/refs :published-table events a))))
+            (pr-str labels)))))
+  (testing "the labels are in the order of their values, with one label for each value"
+    (doseq [labels [[[2 "Good"] [1 "Bad"]] [[1 "Bad"] [1 "Worse"]] [["x" "Ex"] [7 "Seven"]] [[7 "Seven"] [false "No"]]]]
+      (let [a {:fields {:RATING {:remapping {:type "internal" :name "Rating" :labels labels}}}}]
+        (is (not (mr/validate (codec/schema published-table/codec)
+                              (assoc item :attrs a :refs (kinds/refs :published-table events a))))
+            (pr-str labels))))))
 
 (deftest remapping-round-trip-test
   (testing "both kinds of remapping survive encode, the bytes and decode"
