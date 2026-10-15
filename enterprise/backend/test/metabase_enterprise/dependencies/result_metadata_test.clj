@@ -128,7 +128,7 @@
               metadata (rename-column (:result_metadata card) "TOTAL" "Grand total")]
           (t2/update! :model/Card card-id {:name "Renamed"})
           (is (zero? (dependencies.db/set-card-result-metadata!
-                     card-id (:updated_at card) metadata)))
+                      card-id (:updated_at card) metadata)))
           (is (= (:result_metadata card)
                  (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
 
