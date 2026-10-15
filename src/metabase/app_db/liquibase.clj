@@ -482,20 +482,18 @@
             "v45.00-001" legacy-migrations-file
             "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
 
-(def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
-
-(defn- handle-special-case-migrations
-  "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
-  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
-  available migration and explicitly return 55 as the available major version if so."
-  [s]
-  (when (contains? special-case-migrations s)
-    55))
+(def ^:private special-case-migrations
+  "Maps changeset IDs from a later version to the major version of the release line that ships them.
+  These IDs don't decide the latest applied version, because they sort among the later version's own."
+  {"v56.2025-06-05T16:48:48" 55
+   "v56.2025-05-19T16:48:48" 55
+   "v65.2026-10-07T12:00:00" 64
+   "v65.2026-10-07T12:00:01" 64})
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
   [s]
-  (if-let [special-cased (handle-special-case-migrations s)]
+  (if-let [special-cased (special-case-migrations s)]
     [special-cased]
     (map #(Integer/parseInt %) (re-seq #"\d+" s))))
 
@@ -514,9 +512,11 @@
   "Gets the latest version applied to the database."
   [conn ^Database database]
   (when-not (fresh-install? conn database)
-    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY id DESC LIMIT 1"
-                                  (.getDatabaseChangeLogTableName database))
-          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
+    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' AND id NOT IN (%s) ORDER BY id DESC LIMIT 1"
+                                  (.getDatabaseChangeLogTableName database)
+                                  (str/join ", " (repeat (count special-case-migrations) "?")))
+          changeset-id (last (map :id (jdbc/query {:connection conn}
+                                                  (into [changeset-query] (keys special-case-migrations)))))]
       (some-> changeset-id extract-numbers first))))
 
 (defn changesets-from-later-version
@@ -526,7 +526,7 @@
         versions (range (inc latest-available) (inc latest-applied))
         clauses  (str/join " OR " (map #(format "id LIKE 'v%d.%%'" %) versions))
         query    (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC" table clauses)]
-    (mapv :id (jdbc/query {:connection conn} [query]))))
+    (into [] (comp (map :id) (remove special-case-migrations)) (jdbc/query {:connection conn} [query]))))
 
 (defn rollback-major-version!
   "Roll back migrations later than given Metabase major version. If force is true, it will ignore any checks and always
