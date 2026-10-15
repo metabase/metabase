@@ -226,6 +226,7 @@ class SnippetSidebarInner extends Component<
                       <ActionIcon
                         variant="subtle"
                         size="sm"
+                        aria-label={t`Search snippets`}
                         onClick={this.showSearch}
                       >
                         <Icon name="search" />
@@ -235,7 +236,11 @@ class SnippetSidebarInner extends Component<
                     {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
-                          <ActionIcon variant="subtle" size="sm">
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            aria-label={t`Add`}
+                          >
                             <Icon name="add" />
                           </ActionIcon>
                         </Menu.Target>
