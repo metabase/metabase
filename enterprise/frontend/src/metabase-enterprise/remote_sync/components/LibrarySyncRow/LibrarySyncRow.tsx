@@ -21,7 +21,7 @@ export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
   };
 
   return (
-    <SyncListRow icon="repository" label={t`Library`}>
+    <SyncListRow label={t`Library`} icon="repository">
       <Switch
         checked={isChecked}
         onChange={(e) => handleToggle(e.currentTarget.checked)}

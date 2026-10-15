@@ -29,9 +29,9 @@ export const CollectionSyncRow = ({
 
   return (
     <SyncListRow
+      label={collection.name}
       icon={icon.name}
       iconColor={icon.color}
-      label={collection.name}
     >
       <Switch
         checked={isChecked}

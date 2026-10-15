@@ -26,14 +26,14 @@ export const SyncedContentSection = () => {
       <Stack gap="lg">
         <Box className={S.collectionSyncList}>
           <SyncedContentRow
-            icon="folder"
             label={t`Library`}
+            icon="folder"
             to={Urls.dataStudioLibrary()}
           />
           {isTransformsEnabled && (
             <SyncedContentRow
-              icon="transform"
               label={t`Transforms`}
+              icon="transform"
               to={Urls.transformList()}
             />
           )}
@@ -50,13 +50,13 @@ export const SyncedContentSection = () => {
 };
 
 type SyncedContentRowProps = {
-  icon: IconName;
   label: string;
+  icon: IconName;
   to: string;
 };
 
-const SyncedContentRow = ({ icon, label, to }: SyncedContentRowProps) => (
-  <SyncListRow icon={icon} label={label}>
+const SyncedContentRow = ({ label, icon, to }: SyncedContentRowProps) => (
+  <SyncListRow label={label} icon={icon}>
     <Anchor
       component={Link}
       to={to}
