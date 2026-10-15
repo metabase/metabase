@@ -49,11 +49,13 @@
     (submit-after-commit! :ok)))
 
 (defn- mark-changed!
-  "Mark the entity `entity-type` `entity-id` for recalculation; the backfill job marks it and its dependents for
-  re-analysis."
+  "Mark the entity `entity-type` `entity-id` for recalculation and, when analyzable, for re-analysis; the backfill job
+  marks its dependents for re-analysis."
   [entity-type entity-id]
   (when entity-id
     (deps.dependency-status/mark-stale! entity-type [entity-id])
+    (when (contains? deps.findings/analyzable-entities entity-type)
+      (deps.findings/mark-entity-stale! entity-type entity-id))
     (trigger-jobs!)))
 
 (defn- changed?

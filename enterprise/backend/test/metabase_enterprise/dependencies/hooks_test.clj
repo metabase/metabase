@@ -40,6 +40,19 @@
           (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
           (is (stale? :card card-id)))))))
 
+(deftest card-update-marks-finding-test
+  (testing "updating a card's query marks its own analysis finding stale in the same transaction"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/DependencyStatus :model/AnalysisFinding]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
+          (deps.analysis-finding/upsert-analysis! :card card-id true [])
+          (let [finding-stale? #(t2/select-one-fn :stale :model/AnalysisFinding
+                                                  :analyzed_entity_type :card :analyzed_entity_id card-id)]
+            (t2/update! :model/Card card-id {:name "Renamed"})
+            (is (not (finding-stale?)))
+            (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
+            (is (finding-stale?))))))))
+
 (deftest card-update-without-feature-test
   (testing "without the dependencies feature the hooks do nothing"
     (mt/with-premium-features #{}

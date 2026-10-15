@@ -75,21 +75,14 @@
    entity-type
    (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
-(defn- mark-findings-stale!
-  "Mark the entity `entity-type` `entity-id`, when analyzable, and its transitive dependents for re-analysis."
-  [entity-type entity-id]
-  (if (contains? deps.findings/analyzable-entities entity-type)
-    (deps.findings/mark-entity-and-transitive-dependents-stale! entity-type entity-id)
-    (deps.findings/mark-transitive-dependents-stale! {entity-type [entity-id]})))
-
 (defn- compute-deps-for-entity!
-  "Mark an entity that a write marked stale and its dependents for re-analysis, then compute and store its
+  "Mark the dependents of an entity that a write marked stale for re-analysis, then compute and store its
   dependencies and update its dependency_status. Entities are expected to be pre-hydrated by
   [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (when (:stale (dependencies.db/dependency-status entity-type (:id entity)))
-    (mark-findings-stale! entity-type (:id entity)))
+    (deps.findings/mark-transitive-dependents-stale! {entity-type [(:id entity)]}))
   (t2/with-transaction [_]
     (let [deps (deps.calculation/calculate-deps entity-type entity)]
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
