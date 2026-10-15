@@ -12,7 +12,7 @@ describe("EmbeddingDataPicker", () => {
   });
 
   it("should count tables, models, and metrics to choose between the simple and full data pickers", async () => {
-    setup({ dataPicker: "staged" });
+    setup({ embeddingType: "full-app", dataPicker: "staged" });
 
     expect(await screen.findByText("Raw Data")).toBeInTheDocument();
     const [entityCountCall] = fetchMock.callHistory.calls("entity-count");
@@ -25,7 +25,7 @@ describe("EmbeddingDataPicker", () => {
 
   describe("multi-stage data picker", () => {
     it("should show tables when there is no models", async () => {
-      setup({ hasModels: false });
+      setup({ embeddingType: "full-app", hasModels: false });
 
       const databaseOption = await screen.findByText("Sample Database");
       expect(databaseOption).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe("EmbeddingDataPicker", () => {
     });
 
     it('should show "BUCKET" step when there are both models and tables', async () => {
-      setup();
+      setup({ embeddingType: "full-app" });
 
       expect(await screen.findByText("Models")).toBeInTheDocument();
       const rawDataOption = screen.getByText("Raw Data");
@@ -60,6 +60,7 @@ describe("EmbeddingDataPicker", () => {
     describe("entity_types", () => {
       it('should show only models when `entity_types=["models"]`', async () => {
         setup({
+          embeddingType: "full-app",
           entityTypes: ["model"],
         });
 
@@ -71,6 +72,7 @@ describe("EmbeddingDataPicker", () => {
 
       it('should show only tables when `entity_types=["table"]`', async () => {
         setup({
+          embeddingType: "full-app",
           entityTypes: ["table"],
         });
 
@@ -82,6 +84,7 @@ describe("EmbeddingDataPicker", () => {
 
       it('should not show "saved questions" in the database list when `entity_types=["table"]`', async () => {
         setup({
+          embeddingType: "full-app",
           entityTypes: ["table"],
         });
 
@@ -91,6 +94,7 @@ describe("EmbeddingDataPicker", () => {
 
       it('should show both models and tables when `entity_types=["models", "table"]`', async () => {
         setup({
+          embeddingType: "full-app",
           entityTypes: ["model", "table"],
         });
 
@@ -101,7 +105,7 @@ describe("EmbeddingDataPicker", () => {
       });
 
       it("should show metrics without configuring `entity_types`", async () => {
-        setup({ hasMetrics: true });
+        setup({ embeddingType: "full-app", hasMetrics: true });
 
         expect(await screen.findByText("Metrics")).toBeInTheDocument();
         expect(screen.getByText("Models")).toBeInTheDocument();
@@ -110,6 +114,7 @@ describe("EmbeddingDataPicker", () => {
 
       it('should not show metrics when `entity_types=["table"]`', async () => {
         setup({
+          embeddingType: "full-app",
           hasMetrics: true,
           entityTypes: ["table"],
         });
@@ -120,6 +125,7 @@ describe("EmbeddingDataPicker", () => {
 
       it('should not show metrics when `entity_types=["model", "table"]`', async () => {
         setup({
+          embeddingType: "full-app",
           hasMetrics: true,
           entityTypes: ["model", "table"],
         });
@@ -129,10 +135,23 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 
-      it('should show metrics only when the context includes "metric"', async () => {
+      it('should ignore "metric" in full-app entity_types and show the default', async () => {
         setup({
+          embeddingType: "full-app",
           hasMetrics: true,
-          contextEntityTypes: ["metric"],
+          entityTypes: ["metric"],
+        });
+
+        expect(await screen.findByText("Metrics")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should show metrics only when modular embedding entityTypes include "metric"', async () => {
+        setup({
+          embeddingType: "modular",
+          hasMetrics: true,
+          entityTypes: ["metric"],
         });
 
         expect(await screen.findByText("Metrics")).toBeInTheDocument();
@@ -140,19 +159,8 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
       });
 
-      it('should not show metrics when the context leaves out "metric"', async () => {
-        setup({
-          hasMetrics: true,
-          contextEntityTypes: ["model", "table"],
-        });
-
-        expect(await screen.findByText("Models")).toBeInTheDocument();
-        expect(screen.getByText("Raw Data")).toBeInTheDocument();
-        expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
-      });
-
       it("should not show metrics when the instance has none", async () => {
-        setup({ hasMetrics: false });
+        setup({ embeddingType: "full-app", hasMetrics: false });
 
         expect(await screen.findByText("Models")).toBeInTheDocument();
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
@@ -168,7 +176,11 @@ describe("EmbeddingDataPicker", () => {
 
   describe("simple data picker", () => {
     it("should show metrics without configuring `entity_types`", async () => {
-      setup({ dataPicker: "flat", hasMetrics: true });
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasMetrics: true,
+      });
 
       expect(
         await screen.findByRole("link", { name: "Revenue" }),
@@ -179,7 +191,12 @@ describe("EmbeddingDataPicker", () => {
     });
 
     it("should not show metrics at the join step", async () => {
-      setup({ dataPicker: "flat", hasMetrics: true, isJoinStep: true });
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasMetrics: true,
+        isJoinStep: true,
+      });
 
       expect(
         await screen.findByRole("link", { name: "Orders model" }),

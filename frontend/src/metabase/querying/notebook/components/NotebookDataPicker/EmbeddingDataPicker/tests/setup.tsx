@@ -1,11 +1,14 @@
+import { configureStore } from "@reduxjs/toolkit";
+
 import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { createMockEmbeddingDataPickerState } from "__support__/state/embedding-data-picker";
 import { renderWithProviders } from "__support__/ui";
+import { embed, setInitialUrlOptions } from "metabase/redux/embed";
+import { reducer as embeddingDataPickerReducer } from "metabase/redux/embedding-data-picker";
 import type {
   EmbeddingDataPicker as EmbeddingDataPickerVariant,
   EmbeddingEntityType,
@@ -28,10 +31,10 @@ import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 import { EmbeddingDataPickerContextProvider } from "../context";
 
 interface SetupOpts {
+  embeddingType: "full-app" | "modular";
   hasModels?: boolean;
   hasMetrics?: boolean;
   entityTypes?: EmbeddingEntityType[];
-  contextEntityTypes?: EmbeddingEntityType[];
   dataPicker?: EmbeddingDataPickerVariant;
   isJoinStep?: boolean;
 }
@@ -41,13 +44,13 @@ const DEFAULT_OPTS: Partial<SetupOpts> = {
 };
 
 export function setup({
+  embeddingType,
   hasModels = DEFAULT_OPTS.hasModels,
   hasMetrics = false,
   entityTypes,
-  contextEntityTypes,
   dataPicker = "staged",
   isJoinStep = false,
-}: SetupOpts = {}) {
+}: SetupOpts) {
   const query = createEmptyQuery();
 
   setupEmbeddingDataPickerDecisionEndpoints(dataPicker);
@@ -72,9 +75,9 @@ export function setup({
   );
 
   renderWithProviders(
-    contextEntityTypes ? (
+    embeddingType === "modular" ? (
       <EmbeddingDataPickerContextProvider
-        entityTypes={contextEntityTypes}
+        entityTypes={entityTypes}
         dataPicker="staged"
       >
         {picker}
@@ -82,16 +85,30 @@ export function setup({
     ) : (
       picker
     ),
-    entityTypes
+    embeddingType === "full-app" && entityTypes
       ? {
           storeInitialState: createMockState({
-            embeddingDataPicker: createMockEmbeddingDataPickerState({
-              entityTypes,
-            }),
+            embeddingDataPicker:
+              getFullAppEmbeddingDataPickerState(entityTypes),
           }),
         }
       : undefined,
   );
+}
+
+// Full-app embedding takes `entity_types` from the URL, so this runs the real
+// entry point and its allowlist instead of writing the state directly
+function getFullAppEmbeddingDataPickerState(
+  entityTypes: EmbeddingEntityType[],
+) {
+  const store = configureStore({
+    reducer: { embeddingDataPicker: embeddingDataPickerReducer, embed },
+  });
+  const search = new URLSearchParams(
+    entityTypes.map((entityType) => ["entity_types", entityType]),
+  ).toString();
+  store.dispatch(setInitialUrlOptions({ search }));
+  return store.getState().embeddingDataPicker;
 }
 
 function createDatabase() {
