@@ -709,9 +709,6 @@
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
      :join [[[:to_tsquery ^:allow-raw-sql [:inline tsv-lang] [:lift ts-search-expr]]
              :query] [:= 1 1]]
-     ;; this query runs against the pgvector database and is compiled with Honey SQL rather than Funny SQL, so use
-     ;; Honey SQL's `@@` operator here rather than Funny SQL's `::postgres-full-text-search-match`, which Honey SQL
-     ;; would otherwise compile as a function call named `POSTGRES FULL TEXT SEARCH MATCH`.
      :where (let [ts-query-filter [sql.pg-ops/atat vector-column :query]]
               (if (seq filters)
                 (into [:and ts-query-filter] [filters])

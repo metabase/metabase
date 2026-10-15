@@ -347,8 +347,6 @@
 ;;; register with Honey SQL 2
 (sql/register-dialect!
  ::application-db
- ;; these functions are deprecated and should be removed entirely in the near future, but until then keep using them
- ;; for their intended purpose
  (assoc (sql/get-dialect :ansi)
         :quote           quote-for-application-db
         :clause-order-fn clause-order-fn-for-application-db))
