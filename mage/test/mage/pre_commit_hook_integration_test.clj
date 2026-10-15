@@ -20,11 +20,9 @@
 (def ^:private lint-staged-bin
   (str (fs/path u/project-root-directory "node_modules" ".bin" "lint-staged")))
 
-;; Kills lint-staged mid-run. The grandparent is killed too when it is lint-staged, as with Volta's node shim.
+;; Kills lint-staged mid-run, as if bun or node crashed.
 (def ^:private crash-script
   "#!/bin/sh
-gp=$(ps -o ppid= -p $PPID | tr -d ' ')
-ps -o command= -p \"$gp\" | grep -q lint-staged && kill -KILL \"$gp\"
 kill -KILL $PPID
 sleep 5
 ")
