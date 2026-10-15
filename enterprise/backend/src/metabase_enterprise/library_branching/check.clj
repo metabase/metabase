@@ -136,6 +136,9 @@
     :root         (str (item-text s id) " is at the root level, and it is not a fixed root.")
     :unique-key   (str "These items of kind " (name kind) " have one key " (pr-str key) ", which must be unique: "
                        (str/join ", " (map (partial item-text s) (sort-by id-text ids))) ".")
+    :nested-identity (str "These items of kind " (name kind) " hold one nested entry " (pr-str key)
+                          ", which must be in one item only: "
+                          (str/join ", " (map (partial item-text s) (sort-by id-text ids))) ".")
     :namespace    (str (item-text s id) " is in " (item-text s place) ", which is in another namespace.")
     :ref-kind     (str (item-text s id) " refers to " (target-text s ref) ", which is not of a kind that the reference"
                        " allows.")

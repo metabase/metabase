@@ -79,6 +79,21 @@
        :key  (get-in (get s (first ids)) (get-in unique-keys [kind :path]))
        :ids  (set ids)})))
 
+(defn- nested-identity-findings
+  [s nested-ids]
+  (let [holders (reduce (fn [acc [id {:keys [kind] :as item}]]
+                          (reduce (fn [acc nested] (update acc [kind nested] (fnil conj []) id))
+                                  acc
+                                  (distinct (snapshot/nested-identities nested-ids item))))
+                        {}
+                        (sorted-items s))]
+    ;; In the order of the least holder, then of the nested identity.
+    (for [[[kind nested] ids] (->> holders
+                                   (sort-by (comp second key))
+                                   (sort-by (comp first val) snapshot/compare-identities))
+          :when (next ids)]
+      {:rule :nested-identity :kind kind :key nested :ids (set ids)})))
+
 (defn- namespace-findings
   [s]
   (for [[id {:keys [kind place attrs]}] (sorted-items s)
@@ -117,6 +132,8 @@
   - `{:rule :refs-closed :id i :ref [role target]}`: `target` is neither an item of `s` nor `[:env natural-key]`;
   - `{:rule :unique-key :kind k :key v :ids #{i ...}}`: two or more items of kind `k` with one unique key
     (`snapshot/unique-key`); `v` is the key of the one with the least identity, as it is in that item;
+  - `{:rule :nested-identity :kind k :key e :ids #{i ...}}`: two or more items of kind `k` hold a nested entry with
+    the identity `e` (`snapshot/nested-identities`);
   - `{:rule :namespace :id i :place p}`: collection `i` is in collection `p`, and the two `:namespace` attributes
     differ (absent is one value);
   - `{:rule :ref-kind :id i :ref [role target]}`: `target` is an environment object or an item of `s` whose kind
@@ -125,18 +142,20 @@
 
   `opts`, each with a default: `:roots`, the set of identities that may be at the root level (no check when absent);
   `:may-contain`, `{kind #{kind}}` ([[snapshot/may-contain]]); `:unique-keys`, `{kind {:path path :name? bool}}`
-  ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]). These tables can
-  name kinds that are not in [[snapshot/kinds]]: validate reads only the kind, place, references, `:namespace` and
-  unique key of an item."
+  ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]); `:nested-ids`, `{kind
+  path}` ([[snapshot/nested-ids]]). These tables can name kinds that are not in [[snapshot/kinds]]: validate reads only
+  the kind, place, references, `:namespace`, unique key and nested identities of an item."
   ([s]
    (validate s {}))
-  ([s {:keys [roots may-contain unique-keys ref-kinds]
-       :or   {may-contain snapshot/may-contain unique-keys snapshot/unique-keys ref-kinds snapshot/ref-kinds}}]
+  ([s {:keys [roots may-contain unique-keys ref-kinds nested-ids]
+       :or   {may-contain snapshot/may-contain unique-keys snapshot/unique-keys ref-kinds snapshot/ref-kinds
+              nested-ids snapshot/nested-ids}}]
    (vec (concat (place-findings s)
                 (cycle-findings s)
                 (kind-findings s may-contain)
                 (ref-findings s)
                 (unique-key-findings s unique-keys)
+                (nested-identity-findings s nested-ids)
                 (namespace-findings s)
                 (ref-kind-findings s ref-kinds)
                 (root-findings s roots)))))

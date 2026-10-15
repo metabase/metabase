@@ -48,13 +48,18 @@
       (if (and name? (string? k)) (fold-name k) k))))
 
 (def nested-ids
-  "`{kind path}`: the kinds whose items hold nested entries with identities of their own. A stub."
-  {})
+  "`{kind path}`: the kinds whose items hold nested entries with identities of their own, and the path in an item of the
+  vector of those entries. Each entry has its identity under `:id`. The app DB keeps the identities of the entries of
+  a kind unique over all items of the kind."
+  {:timeline [:attrs :events]})
 
 (defn nested-identities
-  "The identities of the nested entries of `item`. A stub."
-  [_nested-ids _item]
-  nil)
+  "The identities of the nested entries of `item` by `nested-ids` (in the form of [[nested-ids]])."
+  [nested-ids item]
+  (when-let [path (get nested-ids (:kind item))]
+    (let [entries (get-in item path)]
+      (when (sequential? entries)
+        (keep #(when (map? %) (:id %)) entries)))))
 
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The
