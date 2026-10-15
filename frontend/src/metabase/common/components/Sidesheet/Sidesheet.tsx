@@ -60,7 +60,7 @@ export function Sidesheet({
     >
       {withOverlay && (
         <Modal.Overlay
-          bg="overlay"
+          bg="modal-overlay"
           {...overlayProps}
           data-testid="modal-overlay"
         />

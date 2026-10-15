@@ -78,8 +78,14 @@
                               :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
-                              :connection-impersonation        true}]
+                              :connection-impersonation        true
+                              :jdbc/set-query-timeout          false
+                              :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
+
+(defmethod sql.qp/use-ctes-for-stages? :starburst
+  [_driver]
+  true)
 
 (defn- format-field
   [name value]
@@ -522,7 +528,8 @@
 
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)
+        catalog (u/lower-case-en catalog)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database

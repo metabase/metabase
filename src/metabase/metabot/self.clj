@@ -273,7 +273,9 @@
                  :cache-creation-tokens cache-creation
                  :cache-read-tokens     cache-read
                  :conversation-id       session-id
-                 :profile-id            profile-id
+                 ;; ai_usage_log names only the profiles its analytics views label, so a profile outside that
+                 ;; list is logged without one rather than failing the turn.
+                 :profile-id            (usage/valid-usage-profile-id profile-id)
                  :request-id            request-id
                  :ai-proxied            (boolean ai-proxy?)})))
            part))))
@@ -374,6 +376,61 @@
     (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
     :unavailable))
 
+(def ^:private context-overflow-message
+  "The overflow 400 text of providers that send no structured code for it.
+
+  Probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989): OpenRouter \"This endpoint's maximum context
+  length is 200000 tokens\", DeepSeek \"This model's maximum context length is 1048576 tokens\", Mistral \"Prompt
+  1000015 > 262144 maximum context length\", Moonshot \"exceeded model token limit: 262144\". Documented: Moonshot
+  \"Input token length too long\" and \"prompt tokens + max_tokens exceeds the model specification\"
+  (https://platform.kimi.ai/docs/api/errors), Anthropic \"prompt is too long\"
+  (https://platform.claude.com/docs/en/build-with-claude/context-windows). Probed 2026-10-13: OpenRouter relays an
+  upstream overflow as that upstream's own text, \"prompt is too long: 250027 tokens > 200000 maximum\". Gemini on
+  Vertex: \"The input token count exceeds the maximum number of tokens allowed 1048576.\" with `INVALID_ARGUMENT`."
+  (re-pattern (str/join "|" ["maximum context length"                    ; OpenRouter, DeepSeek, Mistral
+                             "exceeded model token limit"                ; Moonshot
+                             "token length too long"                     ; Moonshot
+                             "exceeds the model specification"           ; Moonshot
+                             "prompt is too long"                        ; Anthropic; OpenRouter relaying it
+                             "input token count exceeds the maximum"]))) ; Gemini
+
+(defn- context-overflow-object?
+  "True when a provider's `error` object says the prompt does not fit the model's context window.
+
+  Reads the object of a 400 body or of an error streamed after a 200."
+  [{:keys [message code metadata]}]
+  (or ;; https://openrouter.ai/docs/api_reference/errors-and-debugging ("Typed error codes")
+   (= "context_length_exceeded" (:error_type metadata))
+   ;; https://docs.z.ai/api-reference/api-code (1261 "Prompt too long")
+   (= "1261" (str code))
+   (boolean (re-find context-overflow-message (str message)))
+   ;; OpenRouter sends an upstream's overflow as "Provider returned error", with no `error_type`. The upstream's own
+   ;; body is a JSON string in `metadata.raw` (probed 2026-10-13, https://github.com/metabase/metabase/pull/83989).
+   (boolean (re-find context-overflow-message (str (:raw metadata))))))
+
+(defn- context-overflow?
+  "True when a provider API error's ex-data is a 400 for a prompt that does not fit the model's context window."
+  [{:keys [status body]}]
+  (and (= status 400)
+       ;; Mistral puts its error at the top level, not under `error`.
+       (context-overflow-object? (or (:error body) body))))
+
+(defn- context-full-error
+  "The user-facing `{:message :error-code}` for a conversation too long for the model's context window."
+  []
+  {:error-code core/context-full-error-code
+   :message    (tru "This conversation has reached its maximum length and can''t continue. Please start a new chat.")})
+
+(defn context-overflow-error
+  "A user-facing `{:message :error-code}` for a request too long for the model's context window, or nil.
+
+  Returns the map when the provider rejected the request because the conversation does not fit the window.
+  Unlike [[provider-error]], this also applies on the managed provider: the conversation is full, not the account."
+  [e]
+  (let [data (ex-data e)]
+    (when (and (:api-error data) (context-overflow? data))
+      (context-full-error))))
+
 (defn provider-error
   "A user-facing `{:message :error-code}` for a provider failure we can explain better than the generic error, or nil.
   Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them.
@@ -408,12 +465,23 @@
                                        (tru "{0} is having problems right now. Try again in a few minutes." provider-name)
                                        (tru "The AI provider is having problems right now. Please try again in a few minutes."))}))))))
 
+(defn- streamed-error
+  "The user-facing `{:message :error-code}` for an `error` object streamed after a 200, or nil.
+
+  A context overflow gets [[context-full-error]]; there is no status to check. OpenRouter sends every failure after
+  its 200 inside the stream, with a typed `error.metadata.error_type`
+  (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
+  [provider error]
+  (if (context-overflow-object? error)
+    (context-full-error)
+    (provider-error provider nil error)))
+
 (defn- provider-error-xf
-  "Transducer that replaces the error on a streamed `:error` part with [[provider-error]]'s, when it has one."
+  "Transducer that replaces the error on a streamed `:error` part with [[streamed-error]]'s, when it has one."
   [provider]
   (map (fn [part]
          (if-let [error (when (= :error (:type part))
-                          (provider-error provider nil (:error part)))]
+                          (streamed-error provider (:error part)))]
            (assoc part :error error)
            part))))
 
@@ -585,14 +653,15 @@
 
 (defn- structured-output-in-text
   "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
-  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches."
+  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches.
+  Keys below the top level are strings, as in a tool call's arguments ([[core/stringify-nested-keys]])."
   [parts json-schema]
   (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
         schema (json-schema->malli json-schema)]
     (some (fn [candidate]
             (let [value (try (json/decode-document+kw candidate) (catch Exception _ nil))]
               (when (mr/validate schema value)
-                value)))
+                (core/stringify-nested-keys value))))
           (cons text (reverse (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text)))))))
 
 (defn- incomplete-structured-output-error
@@ -675,23 +744,25 @@
       (with-retries
         tracking-opts
         (fn []
-          (let [parts (into []
-                            (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
-                            (stream-fn streaming-opts))
-                result (some (fn [{:keys [type arguments]}]
-                               (when (= type :tool-input)
-                                 arguments))
-                             parts)
-                error  (some (fn [{:keys [type error]}]
-                               (when (= type :error)
-                                 error))
-                             parts)
+          (let [parts    (into []
+                               (comp (core/aisdk-xf)
+                                     (report-aisdk-errors-xf tracking-opts)
+                                     (report-token-usage-xf tracking-opts))
+                               (stream-fn streaming-opts))
+                result   (some (fn [{:keys [type arguments]}]
+                                 (when (= type :tool-input)
+                                   arguments))
+                               parts)
+                error    (some (fn [{:keys [type error]}]
+                                 (when (= type :error)
+                                   error))
+                               parts)
+                unparsed (core/unparsed-arguments result)
                 ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
                 ;; part, which the agent loop emits and this single-shot path never runs.
                 incomplete-reason (core/parts->incomplete-finish-reason parts)
-                malformed?        (and (map? result) (contains? result :_raw_arguments))]
+                ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
+                malformed?        (contains? unparsed :raw-arguments)]
             (cond
               ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
               ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
@@ -699,14 +770,15 @@
               (and malformed? (= incomplete-reason "length"))
               (throw (incomplete-structured-output-error parts incomplete-reason))
 
-              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
-              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
-              ;; bogus map back to the caller as if it were a valid structured result.
-              malformed?
-              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
-                              {:parts         parts
-                               :error-code    "structured-output-invalid"
-                               :raw-arguments (:_raw_arguments result)}))
+              ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
+              ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
+              unparsed
+              (throw (ex-info (if malformed?
+                                "LLM returned malformed JSON in its structured tool call"
+                                "LLM returned a JSON value that is not an object in its structured tool call")
+                              (merge {:parts      parts
+                                      :error-code "structured-output-invalid"}
+                                     unparsed)))
 
               result
               {:result result :parts parts}

@@ -44,9 +44,12 @@
     (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
       (mt/with-current-user (mt/user->id :rasta)
         (list-apps {} {})
-        (doseq [[query expected] [[{} [{:name "birds" :display_name "Birds"}
-                                       {:name "disabled" :display_name "Disabled"}]]
-                                  [{:available true} [{:name "birds" :display_name "Birds"}]]]]
+        (doseq [[query expected] [[{} [{:name "birds" :display_name "Birds"
+                                        :resource_collection_id (:resource_collection_id app)}
+                                       {:name "disabled" :display_name "Disabled"
+                                        :resource_collection_id (:resource_collection_id disabled)}]]
+                                  [{:available true} [{:name "birds" :display_name "Birds"
+                                                       :resource_collection_id (:resource_collection_id app)}]]]]
           (t2/with-call-count [call-count]
             (is (= expected (list-apps {} query)))
             (is (= 1 (call-count)))))))))
@@ -284,7 +287,7 @@
           (perms/revoke-collection-permissions! group-id collection-id)
           (mt/user-http-request :rasta :get 403 "apps/birds")
           (resources/ensure-resources! app)
-          (is (= {:name "birds" :display_name "Birds"}
+          (is (= {:name "birds" :display_name "Birds" :resource_collection_id collection-id}
                  (mt/user-http-request :rasta :get 200 "apps/birds"))))))))
 
 (deftest tenant-users-cannot-inherit-app-access-test

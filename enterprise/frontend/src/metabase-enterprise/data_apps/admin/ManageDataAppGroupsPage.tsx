@@ -68,7 +68,7 @@ const DataAppGroups = ({
     const { error } = await addGroups({ name: appName, group_ids: groupIds });
 
     if (error) {
-      sendToast({ message: t`Failed to add groups`, icon: "warning" });
+      sendToast({ message: t`Failed to add groups`, variant: "negative" });
       return false;
     }
 
@@ -81,7 +81,7 @@ const DataAppGroups = ({
     const { error } = await removeGroup({ name: appName, group_id: group.id });
 
     if (error) {
-      sendToast({ message: t`Failed to remove group`, icon: "warning" });
+      sendToast({ message: t`Failed to remove group`, variant: "negative" });
     }
 
     return !error;

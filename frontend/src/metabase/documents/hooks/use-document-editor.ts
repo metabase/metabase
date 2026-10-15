@@ -50,6 +50,7 @@ import {
   getDraftCards,
   getHasUnsavedChanges,
 } from "../selectors";
+import { getDocumentCardToCreate } from "../utils/draftCardUtils";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
@@ -328,10 +329,10 @@ export function useDocumentEditor({
               if (cardId < 0 && draftCards[cardId]) {
                 const originalId: CardId | undefined =
                   draftCardOriginalIds[cardId];
-                cardsToSave[cardId] =
-                  originalId != null
-                    ? { ...draftCards[cardId], source_card_id: originalId }
-                    : draftCards[cardId];
+                cardsToSave[cardId] = getDocumentCardToCreate(
+                  draftCards[cardId],
+                  originalId,
+                );
               }
             }
           }
@@ -385,7 +386,7 @@ export function useDocumentEditor({
         }
       } catch (error) {
         console.error("Failed to save document:", error);
-        sendToast({ message: t`Error saving document`, icon: "warning" });
+        sendToast({ message: t`Error saving document`, variant: "negative" });
         return {
           error: error,
         };

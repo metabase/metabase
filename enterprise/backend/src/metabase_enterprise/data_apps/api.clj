@@ -21,14 +21,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.io ByteArrayInputStream)
-   (java.net URI)))
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,27 +44,6 @@
    "Cache-Control"                "no-cache"})
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
-
-(defn- metaplow-origin
-  "Origin of the configured Metaplow collector, without its `/api/send` path.
-   The data-app sandbox accepts origins, not URLs with paths."
-  []
-  (when-let [url (setting/get-value-of-type :string :metaplow-url)]
-    (try
-      (let [uri    (URI. url)
-            scheme (some-> (.getScheme uri) u/lower-case-en)
-            host   (.getHost uri)
-            port   (.getPort uri)]
-        (when (and (#{"http" "https"} scheme) host)
-          (str scheme "://" host (when-not (= -1 port) (str ":" port)))))
-      (catch Exception _))))
-
-(defn- bundle-allowed-hosts
-  "Origins the bundle may fetch, including the configured analytics collector."
-  [allowed-hosts]
-  (let [origin (metaplow-origin)]
-    (cond-> allowed-hosts
-      origin (conj origin))))
 
 (defn- repo-status []
   (let [url (data-apps.apps/repo-url)]
@@ -124,7 +100,8 @@
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]])
+   [:display_name ms/NonBlankString]
+   [:resource_collection_id ms/PositiveInt]])
 
 (def ^:private RepoStatusResponse
   [:map
@@ -193,7 +170,7 @@
   [app]
   (if api/*is-superuser?*
     (assoc app :outdated (data-app.config/outdated? app))
-    (select-keys app [:name :display_name])))
+    (select-keys app [:name :display_name :resource_collection_id])))
 
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
@@ -287,9 +264,10 @@
   nil)
 
 (api.macros/defendpoint :post "/generate/app" :- ::data-apps.schema/app-files
-  "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
-  YAML a remote-sync export writes, with new entity IDs. For superusers: the files are written into the app's
-  repository, which only an admin works with."
+  "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
+  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app
+  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works
+  with."
   [_route-params
    _query-params
    body :- ::data-apps.schema/app-request]
@@ -410,12 +388,8 @@
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers
-                                   ;; JSON array of origins the sandboxed bundle may fetch/XHR. Include
-                                   ;; the configured product analytics collector so SDK analytics work
-                                   ;; without granting access to the collector for another environment.
-                                   ;; The iframe reads this to configure its Near-Membrane fetch allowlist.
                                    (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                          (json/encode (bundle-allowed-hosts (:allowed_hosts row))))
+                                          (json/encode (:allowed_hosts row)))
                                    (cond-> etag (assoc "ETag" etag)))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404

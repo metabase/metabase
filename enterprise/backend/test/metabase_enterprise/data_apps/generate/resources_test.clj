@@ -512,6 +512,8 @@
                :type                   "question"
                :display                "table"
                :creator_id             "crowberto@metabase.com"
+               :created_at             string?
+               :card_schema            pos-int?
                :visualization_settings {:column_settings nil}
                :parameters             []
                :parameter_mappings     []
@@ -519,7 +521,7 @@
                                         :stages   [{:source-table (table-path "VENUES") :limit 5}]}}
               entity))
       (is (not-any? (partial contains? entity)
-                    [:description :collection_position :public_uuid :card_schema :archived :enable_embedding])
+                    [:description :collection_position :public_uuid :archived :enable_embedding])
           "what serialization leaves unset or at its default is left out, as the format omits it"))))
 
 (deftest keys-come-in-the-order-serialization-writes-them-test

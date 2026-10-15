@@ -93,7 +93,7 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
         (resource/stack-resource-context
          (let [{:keys [timeline_events title display_type]} chart-config
                opts  {:deep? (if (nil? deep) true (boolean deep))}
-               stats (interestingness/compute-chart-stats chart-config opts)
+               stats (interestingness/compute-chart-stats (select-keys chart-config [:series :display_type]) opts)
                context {:title           title
                         :display-type    display_type
                         :stats           stats

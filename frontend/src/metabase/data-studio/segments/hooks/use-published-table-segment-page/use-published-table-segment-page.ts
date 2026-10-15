@@ -54,7 +54,7 @@ export function usePublishedTableSegmentPage(
     });
 
     if (error) {
-      sendToast({ icon: "warning", message: t`Failed to remove segment` });
+      sendToast({ variant: "negative", message: t`Failed to remove segment` });
     } else {
       sendToast({ icon: "check", message: t`Segment removed` });
       navigate(Urls.dataStudioTableSegments(tableId));
