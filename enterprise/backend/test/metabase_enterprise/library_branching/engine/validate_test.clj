@@ -135,9 +135,9 @@
            (validate/validate (assoc-in with-areas [folder :attrs :namespace] "transforms"))))
     (is (= [{:rule :namespace :id finance :place transforms-root}]
            (validate/validate (update-in with-areas [finance :attrs] dissoc :namespace)))))
-  (testing "an item with the identity of an area root is a finding"
-    (is (= [{:rule :area-root :id snippets-root}]
-           (validate/validate (assoc with-areas snippets-root (engine.tu/item :collection "Fake" lib)))))))
+  (testing "an item with the identity of an area root is a finding; the items at that place are in the item"
+    (is (= #{{:rule :area-root :id snippets-root} {:rule :namespace :id folder :place snippets-root}}
+           (set (validate/validate (assoc with-areas snippets-root (engine.tu/item :collection "Fake" lib))))))))
 
 (deftest ^:parallel unique-key-test
   (testing "two snippets with one name are one finding that names both, with the kind and the key"
@@ -355,7 +355,7 @@
   [{:name   :no-place-rule
     :doc    "A place that is not in the snapshot is no finding."
     :target `validate/validate
-    :edits  [[:remove '(place-findings s)]]}
+    :edits  [[:remove '(place-findings s areas)]]}
    {:name   :no-cycle-rule
     :doc    "A containment cycle is no finding."
     :target `validate/validate
@@ -363,7 +363,7 @@
    {:name   :no-kind-rule
     :doc    "A kind that its container cannot contain is no finding."
     :target `validate/validate
-    :edits  [[:remove '(kind-findings s may-contain)]]}
+    :edits  [[:remove '(kind-findings s may-contain areas)]]}
    {:name   :no-ref-rule
     :doc    "A dangling reference is no finding."
     :target `validate/validate
@@ -391,18 +391,38 @@
    {:name   :no-namespace-rule
     :doc    "A child collection in another namespace than its parent is no finding."
     :target `validate/validate
-    :edits  [[:remove '(namespace-findings s)]]}
+    :edits  [[:remove '(namespace-findings s areas)]]}
    {:name   :no-ref-kind-rule
     :doc    "An action on a question is no finding."
     :target `validate/validate
     :edits  [[:remove '(ref-kind-findings s ref-kinds)]]}
+   {:name   :no-area-roots
+    :doc    "A place that names an area root is a finding, so every item at the top level of an area is refused."
+    :target `validate/place-findings
+    :edits  [[:replace '(not (contains? areas place)) true]]}
+   {:name   :area-id-dropped
+    :doc    "The identity of the Snippets area root is not a fixed root, so every snippet at the top level is refused."
+    :target `snapshot/area-roots
+    :edits  [[:replace "snippetssnippetssnipp" "snippetssnippetssnipX"]]}
+   {:name   :no-area-kinds
+    :doc    "An area root holds an item of any kind, so a glossary term can be at the root of the Snippets area."
+    :target `validate/kind-findings
+    :edits  [[:replace '(:kinds area) nil]]}
+   {:name   :no-area-namespace
+    :doc    "A collection at an area root can have any namespace."
+    :target `validate/namespace-findings
+    :edits  [[:replace '(not= (:namespace attrs) (:namespace area)) false]]}
+   {:name   :no-area-root-rule
+    :doc    "An item with the identity of an area root is no finding."
+    :target `validate/validate
+    :edits  [[:remove '(area-root-findings s areas)]]}
    {:name   :ref-kind-env-fits
     :doc    "An environment object fits every role, so an action can name a table as its model."
     :target `validate/ref-kind-findings
     :edits  [[:replace '(env-target? target) false]]}])
 
 (deftest validate-mutations-test
-  (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test
+  (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test #'area-root-test
                                 #'refs-closed-test #'root-test #'unique-key-test #'namespace-test
                                 #'action-model-test #'several-findings-test
                                 #'arbitrary-snapshot-findings-test #'ref-kinds-findings-test #'roots-test]}))
