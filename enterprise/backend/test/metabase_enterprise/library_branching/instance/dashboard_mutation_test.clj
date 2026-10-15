@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.format.kinds.visualization :as visualization]
    [metabase-enterprise.library-branching.instance.dashboard-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.dashboard-test :as dashboard-test]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
@@ -148,7 +149,25 @@
             reported."
     :target `library-branching.db/dashboards-with-settings-mentioning
     :edits  [[:replace '[:= :d.archived false] 'false]]
-    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}])
+    :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
+   {:name   :metric-link-not-exported
+    :doc    "A read keeps the row id of the metric that a link card links to, so a pull into another instance links to
+            another row."
+    :target `dashboard/export-settings
+    :edits  [[:replace '(resolve-metric-link settings serdes/*export-fk*) 'settings]]
+    :tests  [#'dashboard-test/metric-link-card-test]}
+   {:name   :metric-link-not-imported
+    :doc    "A write stores the identity of the metric that a link card links to, not its row id."
+    :target `dashboard/import-settings
+    :edits  [[:replace '(resolve-metric-link settings serdes/*import-fk*) 'settings]]
+    :tests  [#'dashboard-test/metric-link-card-test]}
+   {:name   :metric-link-not-a-reference
+    :doc    "A link card to a metric gives no reference, so a push can leave the metric out and the in-use report of a
+            trashed metric does not name the dashboard."
+    :target `visualization/link-card-roles
+    :edits  [[:replace '(assoc item-roles "metric" :card) 'item-roles]]
+    :tests  [#'dashboard-test/metric-link-card-test
+             #'dashboard-test/trashed-metric-linked-by-a-link-card-in-use-test]}])
 
 (deftest dashboard-mutations-test
   (mut/check mutations {}))

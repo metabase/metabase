@@ -17,6 +17,11 @@
    "dashboard"  :dashboard
    "collection" :collection})
 
+(def ^:private link-card-roles
+  "Values of a link card's `model` whose target is an item, with the role of the reference: [[item-roles]] and a
+  metric. A click behavior cannot link to a metric."
+  (assoc item-roles "metric" :card))
+
 (defn- text
   "The text of the map key `k`: a keyword's name with its namespace, or a string."
   [k]
@@ -61,7 +66,7 @@
     (let [{:keys [model id]} entity]
       (when (some? id)
         (cond
-          (contains? item-roles model) [[(get item-roles model) id]]
+          (contains? link-card-roles model) [[(get link-card-roles model) id]]
           (= "table" model)            [[:table [:env id]]]
           (= "database" model)         [[:database [:env [id]]]])))))
 
