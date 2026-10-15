@@ -2,9 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/settings-components";
-import { Box, Stack, Tabs } from "metabase/ui";
-import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
-import type { ColorPalette } from "metabase/ui/colors/types";
+import { Box, Stack, Tabs, useColorScheme } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors/derive-theme";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import { BrandColorSettings } from "../BrandColorSettings";
@@ -13,20 +12,22 @@ import { ChartColorSettings } from "../ChartColorSettings";
 
 export interface ColorSettingsProps {
   initialColors: ColorSettingsType | null;
-  themeColors: ColorPalette;
   onChange?: (colors: ColorSettingsType) => void;
 }
 
 export const ColorSettings = ({
   initialColors,
-  themeColors,
   onChange,
 }: ColorSettingsProps): JSX.Element => {
   const [colors, setColors] = useState(initialColors ?? {});
+  const { resolvedColorScheme } = useColorScheme();
 
   const colorPalette = useMemo(() => {
-    return { ...themeColors, ...mapWhitelabelColorsToTokens(colors) };
-  }, [colors, themeColors]);
+    return deriveFullMetabaseTheme({
+      colorScheme: resolvedColorScheme,
+      whitelabelColors: colors,
+    }).colors;
+  }, [colors, resolvedColorScheme]);
 
   const handleChange = useCallback(
     (colors: ColorSettingsType) => {
