@@ -102,8 +102,14 @@
              margin: 0 0 12px; font-size: 13px; }
   .callout p { margin: 0; }
   .callout ul { margin: 4px 0 0; padding-left: 18px; }
-  .reconcile { margin: 12px 0 0; }
-  .reconcile b { font-family: var(--mono); font-weight: 600; }
+  .reconcile { margin: 12px 0 0; max-width: 460px; background: var(--panel); border: 1px solid var(--line);
+               border-radius: 10px; padding: 12px 16px; }
+  .reconcile h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .reconcile > div { display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
+  .reconcile .hint { margin: 6px 0 0; }
+  .reconcile .part { padding-left: 12px; }
+  .reconcile .end { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; font-weight: 600; }
+  .callout .term { font-weight: 500; color: var(--accent); }
   details.data { margin-top: 10px; }
   details.people { margin-top: 30px; border-top: 1px solid var(--line); padding-top: 14px; }
   details.people > summary { cursor: pointer; font-weight: 600; font-size: 15px; }
@@ -227,10 +233,14 @@ const uncredited = [
 function reconcile(pts, before) {
   const start = before ? before.level : 0, end = pts[pts.length - 1].level;
   const sum = k => pts.reduce((a, pt) => a + pt[k], 0);
-  const terms = [["credited net change", sum("shrunk") + sum("grown")],
-                 ...uncredited.map(([k, name]) => [name, sum(k)]).filter(([, n]) => n !== 0)];
-  return `<p class="reconcile">Total budget <b>${start}</b> → <b>${end}</b>: ` +
-    terms.map(([name, n]) => `${esc(name)} <b>${signed(n)}</b>`).join(", ") + ".</p>";
+  const parts = uncredited.map(([k, name]) => [name, sum(k)]).filter(([, n]) => n !== 0);
+  const row = (cls, label, value) => `<div class="${cls}"><span>${esc(label)}</span><span class="num">${value}</span></div>`;
+  return `<div class="reconcile"><h4>How the total budget changed</h4>` +
+    row("start", "Total budget at the start", start) +
+    row("credited", "Credited change, the net on the left", signed(sum("shrunk") + sum("grown"))) +
+    (parts.length ? `<p class="hint">Counted for nobody</p>` : "") +
+    parts.map(([name, n]) => row("part", name[0].toUpperCase() + name.slice(1), signed(n))).join("") +
+    row("end", "Total budget at the end", end) + `</div>`;
 }
 
 // The rows a total-budget tooltip adds for the commit's own step.
@@ -282,9 +292,9 @@ function trends(p) {
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
   return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
     `<div class="callout"><p>The two charts measure different things, so they can move apart:</p><ul>` +
-    `<li><b>Credited change</b> counts only changes someone is credited or blamed for.</li>` +
-    `<li><b>Total budget</b> also moves for changes that count for nobody, such as a new ratchet over existing debt.</li>` +
-    `<li><b>The line under the charts</b> shows how the two add up.</li></ul></div>` +
+    `<li><span class="term">Credited change</span> counts only changes someone is credited or blamed for.</li>` +
+    `<li><span class="term">Total budget</span> also moves for changes that count for nobody, such as a new ratchet over existing debt.</li>` +
+    `<li><span class="term">The breakdown under the charts</span> shows how the two add up.</li></ul></div>` +
     `<div class="grid2">` +
     chart("c-change", "Credited change", "Running totals from the start of the period. Up is worse.",
       pts, span,
