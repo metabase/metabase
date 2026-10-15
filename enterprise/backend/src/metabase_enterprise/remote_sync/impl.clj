@@ -394,8 +394,9 @@
         has-dirty? (remote-sync.object/dirty-global?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true})))
+                      {:status-code   400
+                       :conflicts     true
+                       :response/keys #{:conflicts}})))
     (run-async! "import" branch (fn [task-id] (import! (source.p/snapshot source) task-id (assoc import-args :force? force?))))))
 
 (defn async-export!
@@ -414,8 +415,9 @@
         current-source-version (source.p/version snapshot)]
     (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
-                      {:status-code 400
-                       :conflicts true})))
+                      {:status-code   400
+                       :conflicts     true
+                       :response/keys #{:conflicts}})))
     (run-async! "export" branch (fn [task-id] (export! snapshot task-id message)))))
 
 (defn finish-remote-config!

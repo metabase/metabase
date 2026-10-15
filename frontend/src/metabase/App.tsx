@@ -3,6 +3,7 @@ import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
   Archived,
@@ -52,7 +53,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={findErrorMessage(data)} />;
 };
 
 interface AppStateProps {

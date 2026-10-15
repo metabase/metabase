@@ -71,7 +71,7 @@
                                                                       :is_tenant_group false}]
           (mt/with-model-cleanup [:model/User]
             (testing "tenant users cannot be added to non-tenant groups via POST"
-              (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
+              (is (=? "Cannot add non-tenant user to tenant-group or vice versa"
                       (mt/user-http-request :crowberto :post 400 "user"
                                             {:first_name "External"
                                              :last_name "User"
@@ -81,7 +81,7 @@
                                                                       {:id normal-group-id}]}))))
 
             (testing "internal users cannot be added to tenant groups via POST"
-              (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
+              (is (=? "Cannot add non-tenant user to tenant-group or vice versa"
                       (mt/user-http-request :crowberto :post 400 "user"
                                             {:first_name "Internal"
                                              :last_name "User"
@@ -101,14 +101,14 @@
 
           (testing "tenant users cannot be added to non-tenant groups via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
-              (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
+              (is (=? "Cannot add non-tenant user to tenant-group or vice versa"
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
                                             {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id normal-group-id}]})))))
 
           (testing "internal users cannot be added to tenant groups via PUT"
             (mt/with-temp [:model/User {internal-user-id :id} {}]
-              (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
+              (is (=? "Cannot add non-tenant user to tenant-group or vice versa"
                       (mt/user-http-request :crowberto :put 400 (str "user/" internal-user-id)
                                             {:user_group_memberships [{:id (u/the-id (perms/all-users-group))}
                                                                       {:id tenant-group-id}]}))))))))))
@@ -123,7 +123,7 @@
 
           (testing "cannot create tenant user as group manager via POST"
             (mt/with-model-cleanup [:model/User]
-              (is (=? {:message "Tenant users cannot be made group managers"}
+              (is (=? "Tenant users cannot be made group managers"
                       (mt/user-http-request :crowberto :post 400 "user"
                                             {:first_name "External"
                                              :last_name "Manager"
@@ -136,7 +136,7 @@
           (testing "cannot make external user group manager via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               ;; This test is expected to fail until group manager restrictions are implemented
-              (is (=? {:message "Tenant users cannot be made group managers"}
+              (is (=? "Tenant users cannot be made group managers"
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
                                             {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id tenant-group-id

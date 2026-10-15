@@ -106,9 +106,10 @@
           (let [kw (some-> value keyword)]
             (when-not (contains? writable-data-authority-types kw)
               (throw (ex-info (str "Illegal value for data_authority: " kw)
-                              {:field       :data_authority
-                               :value       value
-                               :status-code 400}))))
+                              {:field         :data_authority
+                               :value         value
+                               :status-code   400
+                               :response/keys #{:field}}))))
           (some-> value name))})
 
 (def ^:private transform-data-layer

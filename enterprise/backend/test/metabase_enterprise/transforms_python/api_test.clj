@@ -29,7 +29,7 @@
                 (mt/user-http-request :crowberto :get 200 "ee/transforms-python/library/common"))))
       (testing "rejects invalid paths"
         (is (= "Invalid library path. Only 'common' is currently supported."
-               (:message (mt/user-http-request :crowberto :get 400 "ee/transforms-python/library/invalid-path"))))))))
+               (mt/user-http-request :crowberto :get 400 "ee/transforms-python/library/invalid-path")))))))
 
 (deftest put-library-path-test
   (testing "PUT /api/ee/transforms-python/library/:path"
@@ -79,8 +79,8 @@
         (is (= 1 (t2/count :model/PythonLibrary)) "Should not create duplicate records"))
       (testing "rejects invalid paths"
         (is (= "Invalid library path. Only 'common' is currently supported."
-               (:message (mt/user-http-request :crowberto :put 400 "ee/transforms-python/library/invalid-path"
-                                               {:source "def test(): pass"}))))))))
+               (mt/user-http-request :crowberto :put 400 "ee/transforms-python/library/invalid-path"
+                                     {:source "def test(): pass"})))))))
 
 (deftest test-run-test
   (mt/with-premium-features #{:transforms :transforms-python}

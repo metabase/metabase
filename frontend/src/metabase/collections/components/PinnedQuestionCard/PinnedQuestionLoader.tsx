@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { useGetCardQuery } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
@@ -60,7 +60,7 @@ const PinnedQuestionLoader = ({
 
   if (!question) {
     return children({
-      error: getResponseErrorMessage(error),
+      error: findErrorMessage(error),
       errorIcon: "warning",
       loading: false,
     });

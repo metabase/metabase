@@ -10,6 +10,7 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.api-error :as api-error]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -335,3 +336,12 @@
         (doseq [[sql & params] qe-queries
                 :let [plan (-> (t2/query (into [(str "EXPLAIN " sql)] params)) first :plan)]]
           (is (re-find #"IDX_QUERY_EXECUTION_STARTED_AT: STARTED_AT" plan)))))))
+
+(deftest invalid-token-error-response-test
+  (testing "an invalid token's error response carries its `:error-details`, and nothing else from the ex-data"
+    (let [data (try (token-check/-set-premium-embedding-token! "not-a-token")
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (is (= {:message       "Token format is invalid."
+              :error-details "Token should be 64 hexadecimal characters."}
+             (api-error/response-data data)))
+      (is (= 400 (:status-code data))))))

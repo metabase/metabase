@@ -33,6 +33,7 @@ import type {
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -323,7 +324,7 @@ const SdkDashboardInner = ({
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkError
-          message={errorPage.data?.message ?? t`Something's gone wrong`}
+          message={getErrorMessage(errorPage, t`Something's gone wrong`)}
         />
       </SdkDashboardStyledWrapper>
     );

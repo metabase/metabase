@@ -11,6 +11,7 @@
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -127,7 +128,7 @@
 
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
-      {:status 400, :body (ex-data info)})))
+      {:status 400, :body (api-error/response-data (ex-data info))})))
 
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))

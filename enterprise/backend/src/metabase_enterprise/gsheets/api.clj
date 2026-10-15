@@ -93,7 +93,9 @@
                                         :status-code status-code
                                         :hm/response (loggable-response hm-response)
                                         :message message
-                                        :error_message ((comp :status-reason :body) hm-response)})))))
+                                        :error_message ((comp :status-reason :body) hm-response)
+                                        ;; Harbormaster's status and body, to help debug a failed request
+                                        :response/keys #{:hm/response}})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
