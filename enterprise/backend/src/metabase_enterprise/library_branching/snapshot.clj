@@ -10,11 +10,12 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :glossary-term :measure :metric :published-table :segment :snippet})
+  #{:collection :dashboard :glossary-term :measure :metric :published-table :segment :snippet})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
-  {:collection      #{:collection :metric :published-table :snippet}
+  {:collection      #{:collection :dashboard :metric :published-table :snippet}
+   :dashboard       #{}
    :glossary-term   #{}
    :measure         #{}
    :metric          #{}
@@ -49,7 +50,8 @@
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The
   table can name kinds outside [[kinds]]."
-  {:action {:model #{:model}}})
+  {:action    {:model #{:model}}
+   :dashboard {:action #{:action} :dashboard #{:dashboard}}})
 
 (def system-ids
   "The identities of the system items that every instance of a release has from the install on: the Library

@@ -6,6 +6,8 @@
   about, one query per kind of lookup reads them all, and a second pass answers from the result."
   (:require
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.instance :as instance]
+   [metabase.models.db :as models.db]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]))
@@ -41,8 +43,8 @@
 
 (def ^:private batched-models
   "The models whose rows are top-level serdes entities: their portable id is their `entity_id`."
-  #{:model/Card :model/Collection :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet
-    :model/Segment})
+  #{:model/Action :model/Card :model/Collection :model/Dashboard :model/Document :model/Measure
+    :model/NativeQuerySnippet :model/Segment :model/Timeline})
 
 (defn- model-keyword
   [model]
@@ -181,3 +183,47 @@
     (with-resolver (recording-resolver requests) #(run! f xs))
     (let [resolver (prefetched-resolver (fetch @requests) database-resolver)]
       (with-resolver resolver #(mapv f xs)))))
+
+;;; ---------------------------------------------------- Imports -----------------------------------------------------
+
+(defn- strict-import-resolver
+  "A serdes import resolver that finds rows as serdes import does, and refuses item `id` (::instance/refused) for a
+  reference to an item, a database, a table or a field that this instance does not have: it creates no row."
+  [id]
+  (reify serdes.resolve/SerdesImportResolver
+    (import-fk [_ eid model]
+      (try
+        (binding [serdes.resolve/*import-resolver* nil] (serdes/*import-fk* eid model))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= :target-not-found (::serdes/type (ex-data e)))
+            (instance/refuse! :reference id (str "This instance has no " (name model) " " (pr-str eid) ".")
+                              {:target eid})
+            (throw e)))))
+    (import-fk-keyed [_ portable model field]
+      (binding [serdes.resolve/*import-resolver* nil] (serdes/*import-fk-keyed* portable model field)))
+    (import-user [_ email]
+      (binding [serdes.resolve/*import-resolver* nil] (serdes/*import-user* email)))
+    (import-database-fk [_ db-name]
+      (when db-name
+        (or (models.db/database-id-by-name db-name)
+            (instance/refuse! :environment id (str "This instance has no database " (pr-str db-name) ".")
+                              {:target [db-name]}))))
+    (import-table-fk [this [db-name schema table-name :as table-key]]
+      (when table-key
+        (or (models.db/table-id-by-name table-name schema (serdes.resolve/import-database-fk this db-name))
+            (instance/refuse! :environment id (str "This instance has no table " (pr-str table-key) ".")
+                              {:target table-key}))))
+    (import-field-fk [this [db-name schema table-name & field-names :as field-key]]
+      (when field-key
+        (or (models.db/field-pk-in-path (serdes.resolve/import-table-fk this [db-name schema table-name])
+                                        (reverse field-names))
+            (instance/refuse! :environment id (str "This instance has no field " (pr-str field-key) ".")
+                              {:target field-key}))))))
+
+(defn do-with-strict-import
+  "Calls `f` with no arguments and returns its result. Each serdes import of `f` finds its rows as serdes import does,
+  creates none, and throws ::instance/refused for item `id` when this instance has no row for a reference: an item, a
+  database, a table or a field."
+  [id f]
+  (binding [serdes.resolve/*import-resolver* (strict-import-resolver id)]
+    (f)))

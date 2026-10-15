@@ -201,9 +201,9 @@
 (deftest unknown-models-test
   (testing "a file of a model that has no old-format decoder is an item that does not decode: the pull refuses it,
            and never drops the item"
-    (is (= {:findings [{:type :unknown-kind :model "Dashboard" :file 0
-                        :reason "No old-format decoder for the model Dashboard"}]}
-           (decode ["name: Sales\nentity_id: DashboardXXXXXXXXXXXX\nserdes/meta:\n- model: Dashboard\n"])))))
+    (is (= {:findings [{:type :unknown-kind :model "Pulse" :file 0
+                        :reason "No old-format decoder for the model Pulse"}]}
+           (decode ["name: Sales\nentity_id: PulsePulseXXXXXXXXXXX\nserdes/meta:\n- model: Pulse\n"])))))
 
 (deftest findings-test
   (testing "a file that its kind refuses is an invalid item, with its position"
