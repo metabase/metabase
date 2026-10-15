@@ -1,6 +1,6 @@
 (ns metabase-enterprise.library-branching.push-test-util
   "Helpers of the push tests: a remote on disk, an instance in memory, wrappers that put an event of the world between
-  two steps of a push, sample items, and a generator of snapshots that a push accepts."
+  two steps of a push, a push as a task, sample items, and a generator of snapshots that a push accepts."
   (:require
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.engine.diff :as diff]
@@ -9,9 +9,11 @@
    [metabase-enterprise.library-branching.format.kinds.test-util :as kinds.tu]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
+   [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.test-util :as lb.tu])
   (:import
    (java.io File)
@@ -138,21 +140,52 @@
   [inst overrides]
   (->WrappedInstance inst overrides))
 
-(defrecord RacingStore [s before-cas]
+(defrecord RacingStore [s before-cas after-cas]
   store/Store
   (head [_ r] (store/head s r))
+  (branches [_] (store/branches s))
+  (default-branch [_] (store/default-branch s))
   (read-tree [_ c] (store/read-tree s c))
   (changed-paths [_ a b] (store/changed-paths s a b))
   (write-commit [_ ps t m] (store/write-commit s ps t m))
-  (cas-ref! [_ r e n] (before-cas) (store/cas-ref! s r e n))
+  (cas-ref! [_ r e n]
+    (before-cas)
+    (let [result (store/cas-ref! s r e n)]
+      (after-cas)
+      result))
   (ancestor? [_ a b] (store/ancestor? s a b))
   (merge-base [_ a b] (store/merge-base s a b))
   (close [_] (store/close s)))
 
 (defn wrap-store
-  "`s` with `before-cas`, a function of no argument that runs before each `cas-ref!`."
-  [s before-cas]
-  (->RacingStore s before-cas))
+  "`s` with `before-cas` and `after-cas`, functions of no argument that run before and after each `cas-ref!`."
+  ([s before-cas]
+   (wrap-store s before-cas (constantly nil)))
+  ([s before-cas after-cas]
+   (->RacingStore s before-cas after-cas)))
+
+;;; ------------------------------------------------------- Tasks ------------------------------------------------------
+
+(def ended-by-test-message
+  "The error message of a push task that the test ends."
+  "The test ended the task.")
+
+(defn do-with-push-task!
+  "Calls `(f task-id)` with a new running push task (`tasks/start!`), and ends the task afterwards when it is still
+  open, as the caller of a push does."
+  [f]
+  (let [{:keys [id]} (tasks/start! "push" nil)]
+    (try
+      (f id)
+      (finally
+        (tasks/fail! id ended-by-test-message)))))
+
+(defn push!
+  "`push/push!` of `inst` to [[branch]] of store `s`, with `opts`, as a new push task ([[do-with-push-task!]])."
+  ([inst s]
+   (push! inst s {}))
+  ([inst s opts]
+   (do-with-push-task! #(push/push! inst s branch % opts))))
 
 (defn local-changes
   "The local changes of `inst`: `{:created :deleted :updated}`, the difference by digest of its synced snapshot from

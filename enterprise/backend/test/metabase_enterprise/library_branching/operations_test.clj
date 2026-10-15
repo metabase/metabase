@@ -41,6 +41,8 @@
          (operations/push-task-result "main" {:result   :invalid
                                               :findings [{:rule :refs-closed :id "a"} {:rule :place-inside :id "b"}
                                                          {:rule :refs-closed :id "c"}]})))
+  (is (= {:error "The task ended before the push reached its commit point, so nothing was pushed."}
+         (operations/push-task-result "main" {:result :fenced :status "cancelled"})))
   (is (= {:error "Library branching is not enabled."}
          (operations/push-task-result "main" {:result :disabled}))))
 
