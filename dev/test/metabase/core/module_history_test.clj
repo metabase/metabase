@@ -8,6 +8,8 @@
    [dev.module-source :as module-source]
    [hooks.common.modules]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel source-requires-test
   (testing "static requires come from the ns form, dynamic ones from require calls outside comments"
     (is (= '{:namespace metabase.x.core
