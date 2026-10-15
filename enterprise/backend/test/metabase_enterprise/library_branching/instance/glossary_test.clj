@@ -33,7 +33,13 @@
 
 (defn- write! [id item] (instance/write! (store) id item))
 
-(defn- current [id] (instance/current (store) id))
+(defn- current-state [id] (instance/current (store) id))
+
+(defn- current
+  "The content of glossary term `id` when it is live, else nil."
+  [id]
+  (let [{:keys [state content]} (current-state id)]
+    (when (= :live state) content)))
 
 (defn- trash! [id] (instance/trash! (store) id))
 
@@ -104,9 +110,9 @@
   (t2/with-transaction [_ nil {:rollback-only true}]
     (let [item (term-item "lb written" "From the head.")]
       (testing "a write of a new identity creates the term, and current returns the content"
-        (is (nil? (current churn-id)))
+        (is (= {:state :absent} (current-state churn-id)))
         (write! churn-id item)
-        (is (= item (current churn-id)))
+        (is (= {:state :live :content item} (current-state churn-id)))
         (is (= {:term "lb written" :definition "From the head." :creator_id config/internal-mb-user-id}
                (t2/select-one [:model/Glossary :term :definition :creator_id] :entity_id churn-id))))
       (let [id (t2/select-one-pk :model/Glossary :entity_id churn-id)]
@@ -183,9 +189,10 @@
     (t2/with-transaction [_ nil {:rollback-only true}]
       (let [row (insert-term! "lb trashed" "Gone soon.")
             id  (:entity_id row)]
-        (is (= (term-item "lb trashed" "Gone soon.") (current id)))
+        (is (= {:state :live :content (term-item "lb trashed" "Gone soon.")} (current-state id)))
         (trash! id)
-        (is (nil? (current id)))
+        (testing "a deleted term is absent: no trashed state keeps its content"
+          (is (= {:state :absent} (current-state id))))
         (is (not (contains? (app-db/read-current) id)))
         (is (not (t2/exists? :model/Glossary :entity_id id)))
         (testing "a trash of an identity that no row has does nothing"

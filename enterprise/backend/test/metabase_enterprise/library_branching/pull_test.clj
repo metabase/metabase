@@ -16,6 +16,7 @@
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -118,6 +119,29 @@
            (is (= :conflicts result))
            (is (= [ptu/snippet-id] (map :id conflicts)))
            (is (nil? (instance/base inst)))))))))
+
+(deftest create-and-trash-during-a-first-pull-is-not-lost-test
+  (testing "TLC run v4c: the instance has no base, and the plan creates a snippet of the head. After the read of the
+           pull, a person creates that snippet and moves it to the trash. The apply sees the trashed identity, which
+           with no base it may not write: the person's delete is not lost"
+    (enabled
+     (with-remote [repo s]
+       (let [h       (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
+             theirs  (get ptu/sample ptu/snippet-id)
+             inst    (pltu/memory-instance (atom {:snapshot (dissoc ptu/sample ptu/snippet-id)}))
+             once    (atom false)
+             racing  (ptu/wrap-instance inst {:read-snapshot
+                                              (fn [read-snapshot]
+                                                (let [r (read-snapshot)]
+                                                  (when (compare-and-set! once false true)
+                                                    (swap! (:state inst) assoc-in [:trash ptu/snippet-id] theirs))
+                                                  r))})
+             {:keys [result head]} (pltu/pull! racing s)]
+         (is (= h head))
+         (is (contains? #{:stale :conflicts} result))
+         (is (not (contains? (pltu/snapshot-of inst) ptu/snippet-id)))
+         (is (= theirs (get-in @(:state inst) [:trash ptu/snippet-id])))
+         (is (nil? (instance/base inst))))))))
 
 (deftest pull-of-a-missing-branch-test
   (enabled
@@ -519,7 +543,36 @@
          (is (= ptu/sample (pltu/snapshot-of inst)))
          (is (= c1 (instance/base inst))))))))
 
+(deftest pull-refuses-a-name-that-a-trashed-snippet-holds-test
+  (testing "the head adds a snippet with the name of a snippet in the trash of the instance: the apply refuses with
+           the pair, writes nothing, and the base stays"
+    (enabled
+     (with-remote [repo s]
+       (let [trashed-id "TrashedActiveSnippet1"
+             trashed    (ptu/item trashed-id :snippet "Active orders" nil {:content "status = 'active'"})
+             [inst c1]  (pushed-instance! s ptu/sample :trash {trashed-id trashed})
+             h          (pltu/commit-snapshot! repo ptu/branch [c1]
+                                               (assoc ptu/sample new-snippet-id (assoc (new-snippet nil) :name "Active orders")))]
+         (is (= {:result    :key-clash
+                 :head      h
+                 :key-clash [{:rule :unique-key :kind :snippet :key "Active orders" :ids #{new-snippet-id trashed-id}}]}
+                (pltu/pull! inst s)))
+         (is (= ptu/sample (pltu/snapshot-of inst)))
+         (is (= c1 (instance/base inst))))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
+
+(defn- trashed-name-clashes
+  "The pairs `#{i j}` of snippets where `i` is in `s2` and `j` is a snippet of `s1` that `s2` removes, so the pull of
+  `s2` over `s1` trashes `j`, which keeps its name, one key with the name of `i` (`snapshot/unique-key`)."
+  [s1 s2]
+  (set (for [[j item-j] s1
+             :when (and (= :snippet (:kind item-j)) (not (contains? s2 j)))
+             [i item-i] s2
+             :when (and (= :snippet (:kind item-i))
+                        (= (snapshot/unique-key snapshot/unique-keys item-i)
+                           (snapshot/unique-key snapshot/unique-keys item-j)))]
+         #{i j})))
 
 (defspec pull-lands-the-head-property-test 25
   (prop/for-all [[s1 s2] (gen/tuple ptu/pushable-snapshot-gen ptu/pushable-snapshot-gen)]
@@ -527,9 +580,17 @@
      (with-remote [repo s]
        (let [[inst c1] (pushed-instance! s s1)
              h         (pltu/commit-snapshot! repo ptu/branch (if c1 [c1] []) s2)
-             {:keys [result]} (pltu/pull! inst s)]
-         ;; with no local change, the instance takes the head: get(A) = S after an apply of S
-         (and (= :pulled result)
-              (= s2 (pltu/snapshot-of inst))
-              (= h (instance/base inst))
-              (= none (ptu/local-changes inst))))))))
+             clashes   (trashed-name-clashes s1 s2)
+             {:keys [result key-clash]} (pltu/pull! inst s)]
+         (if (seq clashes)
+           ;; the head gives a snippet the name of a snippet that it removes: the trash keeps the removed one with its
+           ;; name, so the apply refuses with exactly those pairs, and writes nothing
+           (and (= :key-clash result)
+                (= clashes (set (map :ids key-clash)))
+                (= s1 (pltu/snapshot-of inst))
+                (= c1 (instance/base inst)))
+           ;; with no local change, the instance takes the head: get(A) = S after an apply of S
+           (and (= :pulled result)
+                (= s2 (pltu/snapshot-of inst))
+                (= h (instance/base inst))
+                (= none (ptu/local-changes inst)))))))))

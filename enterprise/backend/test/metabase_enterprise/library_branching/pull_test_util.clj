@@ -7,7 +7,8 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.pull :as pull]
-   [metabase-enterprise.library-branching.push-test-util :as ptu])
+   [metabase-enterprise.library-branching.push-test-util :as ptu]
+   [metabase-enterprise.library-branching.snapshot :as snapshot])
   (:import
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId ObjectInserter PersonIdent Repository)))
@@ -16,12 +17,23 @@
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
-(defn- memory-ops!
-  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`."
+(defn memory-ops!
+  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`, a state of
+  [[memory-instance]]."
   [st]
-  {:current   (fn [kind id]
-                (let [item (get-in @st [:snapshot id])]
-                  (when (= kind (:kind item)) item)))
+  {:current     (fn [kind id]
+                  (let [{:keys [snapshot trash]} @st]
+                    (cond
+                      (= kind (:kind (get snapshot id))) {:state :live :content (get snapshot id)}
+                      (= kind (:kind (get trash id)))    {:state :trashed :content (get trash id)}
+                      :else                              {:state :absent})))
+   :key-holders (fn [kind k]
+                  (let [{:keys [snapshot trash]} @st]
+                    (into #{}
+                          (keep (fn [[id item]]
+                                  (when (and (= kind (:kind item)) (= k (snapshot/unique-key snapshot/unique-keys item)))
+                                    id)))
+                          (concat snapshot trash))))
    :write!    (fn [_kind id {:keys [place] :as content}]
                 (when (contains? (:outside @st) id)
                   (instance/refuse! :outside-library id "An item outside the Library has this identity."))

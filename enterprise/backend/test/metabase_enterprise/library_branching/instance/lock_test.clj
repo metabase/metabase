@@ -78,7 +78,7 @@
 
 (defn- while-current-holds!
   "Calls `(current ks id)` in a transaction of another thread, and while that transaction is open, `(save-result!
-  save!)`. Returns `[the content that current returned, the save result while it held, the save result after]`."
+  save!)`. Returns `[the result of current, the save result while it held, the save result after]`."
   [ks id save!]
   (let [held     (promise)
         release  (promise)
@@ -136,7 +136,8 @@
                   ["a glossary term" :glossary-term (:entity_id term)
                    #(t2/query-one {:update :glossary :set {:definition "Saved"} :where [:= :id (:id term)]})]]]
            (testing label
-             (let [[content during after] (while-current-holds! (get stores kind) id save!)]
-               (is (map? content))
+             (let [[current during after] (while-current-holds! (get stores kind) id save!)]
+               (is (= :live (:state current)))
+               (is (map? (:content current)))
                (is (= :lock-wait during))
                (is (= :saved after))))))))))

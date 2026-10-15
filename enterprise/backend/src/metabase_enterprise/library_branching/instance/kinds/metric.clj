@@ -81,11 +81,14 @@
           (keys (:attrs format.metric/spec)))))
 
 (defn current-metric
-  "The content of the in-scope metric `id`, after a lock on its row, or nil."
+  "The state of metric `id` (`instance/current`), after a lock on its row."
   [id]
-  (library-branching.db/lock-card id)
-  (when (scope/in-scope? :metric id)
-    (get (read-metrics [id]) id)))
+  (let [row (library-branching.db/lock-card id)]
+    (content/current-state (boolean (and row
+                                         (= "metric" (some-> (:type row) clojure.core/name))
+                                         (tree/collection-id-in-tree? (:collection_id row))))
+                           #(scope/in-scope? :metric id)
+                           #(get (read-metrics [id]) id))))
 
 (defn- columns
   "The card columns of the attributes `ks` of `attrs`, an absent one at its default, through the imports `imports`."

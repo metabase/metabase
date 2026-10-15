@@ -101,6 +101,21 @@
     :doc    "A trash of a collection does not keep the values sources outside the Library of the cards in its subtree."
     :target `kinds.collection/trash-collection!
     :edits  [[:replace '(library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row)) []]]}
+   {:name   :trashed-is-absent
+    :doc    "current gives a trashed item as absent, so a first pull can write over an identity that a person deleted."
+    :target `content/current-state
+    :edits  [[:replace '{:state :trashed :content (read)} '{:state :absent}]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/current-states-test]}
+   {:name   :current-other-kind
+    :doc    "current of a metric takes a card of another kind with the identity as the metric."
+    :target `kinds.metric/current-metric
+    :edits  [[:replace '(= "metric" (some-> (:type row) clojure.core/name)) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/current-states-test]}
+   {:name   :system-item-trashed
+    :doc    "trash! of a collection does not refuse a system item of the Library."
+    :target `kinds.collection/trash-collection!
+    :edits  [[:replace '(contains? snapshot/system-ids id) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/trash-of-a-system-item-is-refused-test]}
    {:name   :save-rule-sees-no-trash
     :doc    "The save rule finds no reference to an item that is not in scope."
     :target `save-rule/findings
@@ -127,6 +142,9 @@
    #'metabase-enterprise.library-branching.instance.write-test/published-table-legacy-visibility-type-test
    #'metabase-enterprise.library-branching.instance.write-test/snippet-write-test
    #'metabase-enterprise.library-branching.instance.write-test/write-of-current-content-changes-no-row-test
+   #'metabase-enterprise.library-branching.instance.write-test/current-states-test
+   #'metabase-enterprise.library-branching.instance.write-test/published-table-states-test
+   #'metabase-enterprise.library-branching.instance.write-test/trash-of-a-system-item-is-refused-test
    #'metabase-enterprise.library-branching.instance.write-test/take-theirs-over-a-local-change-test
    #'metabase-enterprise.library-branching.instance.write-property-test/metric-laws-test
    #'metabase-enterprise.library-branching.instance.write-property-test/library-collection-laws-test
