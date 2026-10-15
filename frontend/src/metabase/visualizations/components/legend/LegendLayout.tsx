@@ -70,40 +70,40 @@ export const LegendLayout = ({
   const hasDimensions = width > 0 && height > 0;
   const size = getLegendSize({ width, height, isQueryBuilder, isFullscreen });
 
-  const layout = useMemo(
-    () =>
-      getLegendLayout({
-        items,
-        position: legendPosition,
-        width,
-        height,
-        chartHeight,
-        horizontalWidth: width - Math.abs(indent),
-        size,
-        fontFamily,
-        measureText,
-        alwaysVisible,
-        isReversed,
-      }),
-    [
+  const layout = useMemo(() => {
+    if (!hasDimensions || !hasLegend) {
+      return HIDDEN_LEGEND_LAYOUT;
+    }
+    return getLegendLayout({
       items,
-      legendPosition,
+      position: legendPosition,
       width,
       height,
       chartHeight,
-      indent,
+      horizontalWidth: width - Math.abs(indent),
       size,
       fontFamily,
       measureText,
       alwaysVisible,
       isReversed,
-    ],
-  );
+    });
+  }, [
+    hasDimensions,
+    hasLegend,
+    items,
+    legendPosition,
+    width,
+    height,
+    chartHeight,
+    indent,
+    size,
+    fontFamily,
+    measureText,
+    alwaysVisible,
+    isReversed,
+  ]);
 
-  const visibleLayout =
-    hasDimensions && hasLegend ? layout : HIDDEN_LEGEND_LAYOUT;
-  const isLegendBeforeChart =
-    visibleLayout.type !== "hidden" && visibleLayout.isBeforeChart;
+  const isLegendBeforeChart = layout.type !== "hidden" && layout.isBeforeChart;
   const { horizontalGap, verticalGap } = LEGEND_SIZES[size];
 
   const legendProps = {
@@ -116,36 +116,32 @@ export const LegendLayout = ({
     isReversed,
   };
 
-  const horizontalLegend = visibleLayout.type === "horizontal" && (
+  const horizontalLegend = layout.type === "horizontal" && (
     <Flex
       justify="center"
       flex="0 0 auto"
       miw={0}
-      mt={visibleLayout.isBeforeChart ? 0 : horizontalGap}
-      mb={visibleLayout.isBeforeChart ? horizontalGap : 0}
+      mt={isLegendBeforeChart ? 0 : horizontalGap}
+      mb={isLegendBeforeChart ? horizontalGap : 0}
       ml={Math.max(indent, 0)}
       mr={Math.max(-indent, 0)}
       data-testid="legend-horizontal"
     >
-      <Legend {...legendProps} visibleLength={visibleLayout.visibleCount} />
+      <Legend {...legendProps} visibleLength={layout.visibleCount} />
     </Flex>
   );
 
-  const verticalLegend = visibleLayout.type === "vertical" && (
+  const verticalLegend = layout.type === "vertical" && (
     <Box
       className={cx(S.verticalLegend, CS.overflowHidden)}
       flex="0 0 auto"
       miw={0}
-      ml={visibleLayout.isBeforeChart ? 0 : verticalGap}
-      mr={visibleLayout.isBeforeChart ? verticalGap : 0}
-      style={{ width: visibleLayout.width }}
+      ml={isLegendBeforeChart ? 0 : verticalGap}
+      mr={isLegendBeforeChart ? verticalGap : 0}
+      style={{ width: layout.width }}
       data-testid="legend-vertical"
     >
-      <Legend
-        {...legendProps}
-        visibleLength={visibleLayout.visibleCount}
-        isVertical
-      />
+      <Legend {...legendProps} visibleLength={layout.visibleCount} isVertical />
     </Box>
   );
 

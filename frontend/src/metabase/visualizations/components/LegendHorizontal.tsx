@@ -32,7 +32,12 @@ export function LegendHorizontal({
       axis: "horizontal",
       isEnabled: isSingleRow,
     });
-  const isMeasuring = overflowCount === 0;
+  const itemClassName = isSingleRow
+    ? cx(LegendS.singleRowItem, {
+        // items keep their natural width until the overflow is measured
+        [CS.flexNoShrink]: overflowCount === 0,
+      })
+    : undefined;
 
   return (
     <ol
@@ -62,11 +67,7 @@ export function LegendHorizontal({
             ref={(element) => {
               itemRefs.current[index] = element;
             }}
-            className={
-              isSingleRow
-                ? cx(LegendS.singleRowItem, { [CS.flexNoShrink]: isMeasuring })
-                : undefined
-            }
+            className={itemClassName}
             data-testid={`legend-item-${title}`}
             aria-current={hovered ? !isMuted : undefined}
           >
