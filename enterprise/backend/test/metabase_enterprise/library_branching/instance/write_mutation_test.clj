@@ -113,10 +113,20 @@
     :doc    "A remapping that the content no longer has stays."
     :target `kinds.published-table/write-remapping!
     :edits  [[:replace '(library-branching.db/delete-dimension! field-id) nil]]}
-   {:name   :stale-remapped-values-kept
-    :doc    "An internal remapping with no values keeps the human-readable values of an earlier remapping."
-    :target `kinds.published-table/write-remapping!
-    :edits  [[:replace '(library-branching.db/clear-remapped-values! field-id) nil]]}
+   {:name   :stale-labels-kept
+    :doc    "An internal remapping with no labels keeps the labels of an earlier remapping."
+    :target `kinds.published-table/write-labels!
+    :edits  [[:replace '(library-branching.db/set-human-readable-values! fv-id target)
+              '(when target (library-branching.db/set-human-readable-values! fv-id target))]]}
+   {:name   :labels-not-on-their-values
+    :doc    "A write sets the labels in place of the human-readable values with no regard to the values that warehouse
+            sync found."
+    :target `kinds.published-table/write-labels!
+    :edits  [[:replace '(mapv (fn [v] (get by-value v (unlabelled-text v))) values) '(mapv second labels)]]}
+   {:name   :labels-written-again
+    :doc    "A write of the labels that the row already has writes the row again."
+    :target `kinds.published-table/write-labels!
+    :edits  [[:replace '(not= (labels-of values current) (labels-of values target)) true]]}
    {:name   :outside-values-sources-cleared
     :doc    "A trash keeps no ParameterCard row of a user outside the Library tree, so the Card save path clears the
             values source of each parameter outside the Library that takes its values from a trashed card."

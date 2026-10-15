@@ -525,26 +525,12 @@
   [field-id :- pos-int?]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(mu/defn set-remapped-values! :- :any
-  "Sets the values and the human-readable values of the newest full field values row of field `field-id` through the
-  FieldValues model; with no such row, inserts one with them."
-  [field-id              :- pos-int?
-   values                :- [:sequential [:maybe [:or :string number? :boolean]]]
+(mu/defn set-human-readable-values! :- :int
+  "Sets the human-readable values of the field values row `id` to `human-readable-values` (nil: none) through the
+  FieldValues model; returns the number of rows."
+  [id                    :- pos-int?
    human-readable-values :- [:maybe [:sequential [:maybe :string]]]]
-  (if-let [id (:id (last (remapped-values-by-field-id [field-id])))]
-    (t2/update! :model/FieldValues id {:values values :human_readable_values human-readable-values})
-    (t2/insert! :model/FieldValues {:field_id              field-id
-                                    :type                  :full
-                                    :values                values
-                                    :human_readable_values human-readable-values})))
-
-(mu/defn clear-remapped-values! :- :any
-  "Removes the human-readable values of the newest full field values row of field `field-id`, if it has any, through
-  the FieldValues model."
-  [field-id :- pos-int?]
-  (let [{:keys [id human_readable_values]} (last (remapped-values-by-field-id [field-id]))]
-    (when (seq human_readable_values)
-      (t2/update! :model/FieldValues id {:human_readable_values nil}))))
+  (t2/update! :model/FieldValues id {:human_readable_values human-readable-values}))
 
 ;;; ----------------------------------------------------- Users ------------------------------------------------------
 

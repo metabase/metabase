@@ -4,13 +4,45 @@
   display name (under `display_name`), and its place is the collection, under `collection`. The attributes are the
   values a person sets on the table and its fields; `:fields` maps each field name to its settings, a nested field
   under its parent's `:fields`. The setting `:remapping` of a field is its remapping: a foreign-key remapping names its
-  target field by natural key; an internal remapping holds its pairs of value and human-readable value."
+  target field by natural key; an internal remapping holds, under `:labels`, the labels that a person set, as pairs of
+  value and label in the order of [[sort-labels]]. The values of the field are not content: warehouse sync finds them."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.library-branching.format.kinds.common :as common]
    [metabase-enterprise.library-branching.registry :as registry]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
+
+(defn default-label?
+  "True iff `label` is the label that Metabase shows for the field value `value` when no person set one: nil, a blank
+  text, the text of `value`, \"null\" for a null value, or for a whole decimal value its text with no decimals."
+  [value label]
+  (or (nil? label)
+      (str/blank? label)
+      (= label (str value))
+      (and (nil? value) (= "null" label))
+      (and (double? value)
+           (== value (Math/rint value))
+           (< (Math/abs (double value)) 1e15)
+           (= label (str (long value))))))
+
+(defn- value-rank
+  [v]
+  (cond (nil? v) 0 (boolean? v) 1 (number? v) 2 :else 3))
+
+(defn sort-labels
+  "The labels `labels`, pairs `[value label]`, in the order of the format: a null value, then false and true, then
+  numbers, then texts, each in the order of its values."
+  [labels]
+  ;; `pr-str` orders two numbers that compare equal, such as 1 and 1.0.
+  (vec (sort-by (fn [[v]] [(value-rank v) v (pr-str v)]) labels)))
+
+(defn- canonical-labels?
+  [labels]
+  (or (empty? labels)
+      (and (apply distinct? (map first labels))
+           (= labels (sort-labels labels)))))
 
 (registry/def ::remapping
   [:or
@@ -21,11 +53,16 @@
    [:map {:closed true}
     [:type [:= "internal"]]
     [:name [:string {:min 1}]]
-    [:values {:optional true}
-     ;; Metabase keeps a human-readable value only when it is nil or a text that is not blank.
-     [:vector {:min 1} [:tuple
-                        [:and ::common/document [:maybe [:or :string number? :boolean]]]
-                        [:maybe [:and :string [:re #"\S"]]]]]]]])
+    [:labels {:optional true}
+     [:and
+      [:vector {:min 1} [:tuple
+                         [:and ::common/document [:maybe [:or :string number? :boolean]]]
+                         ;; Metabase keeps a human-readable value only when it is nil or a text that is not blank.
+                         [:and :string [:re #"\S"]]]]
+      [:fn {:error/message "a label is not the text that Metabase shows for its value with no label"}
+       #(not-any? (fn [[v l]] (default-label? v l)) %)]
+      [:fn {:error/message "the labels are in the order of their values, one label for each value"}
+       canonical-labels?]]]]])
 
 (def ^:private field-setting-schemas
   {:display_name       [:string {:min 1}]

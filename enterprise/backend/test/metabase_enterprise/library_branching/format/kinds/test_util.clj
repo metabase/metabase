@@ -324,16 +324,29 @@
   "Generates the `:attrs` of a model."
   (attrs-of (assoc card-attrs :result_metadata [false (gen/vector result-column-gen 1 3)])))
 
+(defn- label-order
+  "The sort key of a label `[value label]` in the order of the format: null, then false and true, then numbers, then
+  texts, each kind in the order of its values."
+  [[v]]
+  [(cond (nil? v) 0 (boolean? v) 1 (number? v) 2 :else 3) v])
+
+(def ^:private labels-gen
+  "Generates the labels of an internal remapping: up to 3 values with a label each, in the order of the format. No
+  label is the text of its value, because no value text starts with an arrow. No two numbers are equal in value."
+  (gen/fmap (fn [pairs] (vec (sort-by label-order (map (fn [[v l]] [v (str "\u2192 " l)]) pairs))))
+            (gen/vector-distinct-by first
+                                    (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean (gen/return nil)
+                                                            (gen/fmap #(+ 0.5 %) gen/small-integer)])
+                                               text-gen)
+                                    {:max-elements 3})))
+
 (def ^:private remapping-gen
   "Generates the remapping of a field: a foreign-key remapping to a field, or an internal remapping with or without
-  its values."
+  labels."
   (gen/one-of
    [(gen/fmap (fn [[n k]] {:type "external" :name n :field k}) (gen/tuple non-empty-text-gen field-key-gen))
-    (gen/fmap (fn [[n values]] (cond-> {:type "internal" :name n} (seq values) (assoc :values values)))
-              (gen/tuple non-empty-text-gen
-                         (gen/vector (gen/tuple (gen/one-of [gen/large-integer text-gen gen/boolean])
-                                                (gen/one-of [non-empty-text-gen (gen/return nil)]))
-                                     0 3)))]))
+    (gen/fmap (fn [[n labels]] (cond-> {:type "internal" :name n} (seq labels) (assoc :labels labels)))
+              (gen/tuple non-empty-text-gen labels-gen))]))
 
 (def ^:private field-settings-gen
   (gen/recursive-gen

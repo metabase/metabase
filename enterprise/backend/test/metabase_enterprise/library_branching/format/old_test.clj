@@ -534,17 +534,17 @@
 
 ;;; ------------------------------------------------ Properties --------------------------------------------------------
 
-(defn- without-remapped-values
-  "The `:fields` attribute `fields` with no values of an internal remapping."
+(defn- without-labels
+  "The `:fields` attribute `fields` with no labels of an internal remapping."
   [fields]
   (update-vals fields (fn [entry]
-                        (cond-> (update entry :remapping #(some-> % (dissoc :values)))
+                        (cond-> (update entry :remapping #(some-> % (dissoc :labels)))
                           (nil? (:remapping entry)) (dissoc :remapping)
-                          (:fields entry)           (update :fields without-remapped-values)))))
+                          (:fields entry)           (update :fields without-labels)))))
 
 (defn- holdable
   "Snapshot `s` as an instance can hold it: no visualization setting is nil, as the instance drops those. The old format
-  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no values of
+  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no labels of
   an internal remapping: remote sync writes no field values."
   [s]
   (update-vals s (fn [{:keys [kind] :as it}]
@@ -557,7 +557,7 @@
 
                      :published-table
                      (cond-> it
-                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-remapped-values))
+                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-labels))
 
                      it))))
 
