@@ -815,7 +815,7 @@
                             :uri            "/api/dataset"
                             :headers        {"x-metabase-mcp-ui-auth"
                                              (mcp.session/issue-ui-credential
-                                              session-id (mt/user->id :crowberto) #{"agent:search"})}})))))))))))
+                                              session-id (mt/user->id :crowberto) #{"agent:content:read"})}})))))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -1471,6 +1471,41 @@
                 (is (= 403 (:status response)))
                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
                                    "error_description=\"scope_probe_sql requires agent:sql:run")))))))))))
+
+(deftest mb-full-token-keeps-its-named-mcp-scopes-test
+  (testing "GHY-4942: mb:full grants nothing in MCP, but a token granted mb:full next to named MCP scopes still holds
+            those scopes exactly, so it reaches the tools they gate. A client that sends no RFC 8707 resource keeps
+            mb:full through consent, so the user can grant both."
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_sql"
+      :scope          metabot.scope/agent-sql-run
+      :default-access :allowed
+      :description    "test-only tool gated on agent:sql:run"
+      :annotations    {:readOnlyHint true}
+      :args           [:map]
+      :handler        (fn [_ _] {:content [{:type "text" :text "served"}]})}
+     (fn []
+       (testing "a tool gated on the named scope is served"
+         (v2.tu/do-with-bearer-token!
+          #{"mb:full" "agent:sql:run"}
+          (fn [auth]
+            (let [[session-id] (initialize! auth)
+                  response     (bearer-mcp-request auth
+                                                   (jsonrpc-request "tools/call" {:name "scope_probe_sql" :arguments {}})
+                                                   {"mcp-session-id" session-id})]
+              (is (= 200 (:status response)))
+              (is (= "served" (-> response :body :result :content first :text)))))))
+       (testing "the sentinel never reaches MCP, so the token still mints a UI credential"
+         (v2.tu/do-with-bearer-token!
+          #{"mb:full" "agent:query:run"}
+          (fn [auth]
+            (let [session-id (initialize-ui-client! auth)
+                  response   (bearer-mcp-request auth
+                                                 (jsonrpc-request "tools/call"
+                                                                  {:name "refresh_ui_credential" :arguments {}})
+                                                 {"mcp-session-id" session-id})]
+              (is (= 200 (:status response)))
+              (is (string? (get-in response [:body :result :_meta :com.metabase/mcp-apps :credential])))))))))))
 
 (deftest ui-credential-honors-only-mcp-scopes-test
   (testing "GHY-4942: the iframe credential reaches only what the MCP scopes it carries allow"

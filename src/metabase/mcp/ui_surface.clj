@@ -5,6 +5,7 @@
    whose token may hold nothing but `agent:query:run`, so what it reaches has to be decided here rather than
    inherited from whatever the embedded app happens to call."
   (:require
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
@@ -63,9 +64,8 @@
    Credentials minted before the scope claim existed decode to an empty scope set, so a rolling deploy
    degrades a credential to the routes that cost no scope rather than to full access.
 
-   A route that costs a scope needs that exact scope string in the claim. Wildcards and the
-   `::scope/unrestricted` sentinel are not MCP scopes and satisfy no such route."
+   A route that costs a scope needs the claim to hold it, by [[metabase.mcp.scope/matches?]]."
   [method uri {:keys [token-scopes]}]
   (when-let [entry (surface-entry method uri)]
     (boolean (or (nil? (val entry))
-                 (contains? token-scopes (val entry))))))
+                 (mcp.scope/matches? token-scopes (val entry))))))

@@ -12,9 +12,9 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
-   [metabase.api.macros.scope :as scope]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
    [metabase.util.json :as json]
@@ -152,10 +152,10 @@
   surface used to mint claimless, gate-exempt `:legacy` credentials through a 2-arity of this fn; that shim
   retired with v1.)
 
-  Throws a 403 when `token-scopes` is nil or holds `::scope/unrestricted`: such a session holds no MCP scope."
+  Throws a 403 when `token-scopes` holds no MCP scope (see [[mcp.scope/valid-scope?]])."
   [session-id user-id token-scopes]
-  (when (or (nil? token-scopes) (contains? token-scopes ::scope/unrestricted))
-    (throw (ex-info "An unrestricted session cannot mint an MCP UI credential." {:status-code 403})))
+  (when-not (some mcp.scope/valid-scope? token-scopes)
+    (throw (ex-info "A session with no MCP scope cannot mint an MCP UI credential." {:status-code 403})))
   (sign-ui-credential session-id user-id (encode-token-scopes token-scopes)))
 
 (defn resolve-ui-credential

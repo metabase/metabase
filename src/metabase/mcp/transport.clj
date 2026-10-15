@@ -768,9 +768,10 @@
            ;; MCP authenticates only with an OAuth bearer token. The session middleware already ignores sessions and
            ;; API keys on the MCP paths; this check keeps a request with a current user but no OAuth marker from
            ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. An `mb:full` token
-           ;; carries only the unrestricted sentinel, which is not an MCP scope, so it reaches no scoped tool.
+           ;; carries the unrestricted sentinel next to its other granted scopes; the sentinel is not an MCP scope, so
+           ;; only those strings reach MCP.
            (and session-auth (:authenticated-via-oauth? request))
-           (dispatch session-auth (set token-scopes))
+           (dispatch session-auth (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer

@@ -108,7 +108,7 @@
                                                               session-id user-id scopes)
                                     "mcp-session-id" session-id}}}
                         {:encodedQuery "ZW5jb2RlZA=="}))]
-      (is (= 403 (:status (post! #{"agent:search"} 403))))
+      (is (= 403 (:status (post! #{"agent:content:read"} 403))))
       (is (= 200 (:status (post! #{"agent:query:run"} 200)))))))
 
 (deftest dataset-routes-cost-the-query-scope-test
@@ -127,7 +127,7 @@
                         {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
                                                      "mcp-session-id" session-id}}}
                         query))]
-      (is (= 403 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:search"})
+      (is (= 403 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:content:read"})
                                  403))))
       (is (= 202 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
                                  202)))))))
