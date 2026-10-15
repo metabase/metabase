@@ -1,4 +1,4 @@
-import type { AnalysisSpec } from "../../spec/types";
+import type { AnalysisSpec, FunnelSpec } from "../../spec/types";
 import { seconds } from "../compile/actorPredicate";
 import { bucket, lit } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
@@ -13,42 +13,41 @@ const MODE: Record<string, string> = {
   any: "",
 };
 
-export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
-  const funnel = spec.funnel;
-  if (!funnel || funnel.steps.length === 0) {
-    return {
-      ctes: [],
-      select: "SELECT 'Add at least one step' AS message",
-      warnings: ["The funnel has no steps yet."],
-    };
-  }
-
-  const warnings: string[] = [];
-  const window = seconds(funnel.window);
-  const n = funnel.steps.length;
-
-  const stepFlags = funnel.steps.map((step, index) => ({
+/** The step flags, plus the disqualifier flags, on `scoped_events`. */
+export const funnelFlags = (funnel: FunnelSpec) => [
+  ...funnel.steps.map((step, index) => ({
     as: `step_${index + 1}`,
     sql: flagSql(step.flag),
-  }));
-  const exclusionFlags = funnel.exclusions.map((exclusion, index) => ({
+  })),
+  ...funnel.exclusions.map((exclusion, index) => ({
     as: `excl_${index + 1}`,
     sql: flagSql(exclusion.flag),
-  }));
+  })),
+];
 
-  const base = scopedEvents(spec, undefined, [...stepFlags, ...exclusionFlags]);
-  warnings.push(...base.warnings);
-
-  const stamps = funnel.steps
+/** When each actor first did each step: `t_1` … `t_n`. */
+export const funnelStepTimes = (funnel: FunnelSpec): string =>
+  funnel.steps
     .map((_, index) => `  minIf(ts, step_${index + 1}) AS t_${index + 1}`)
     .join(",\n");
 
-  let levelExpr: string;
-  if (funnel.ordering === "any") {
-    levelExpr = funnel.steps
-      .map((_, index) => `  countIf(step_${index + 1}) > 0 AS hit_${index + 1}`)
-      .join(",\n");
-  } else if (funnel.anchor === "each" && n > 1) {
+/** Whether each actor did each step at all: `hit_1` … `hit_n`. */
+export const funnelHits = (funnel: FunnelSpec): string =>
+  funnel.steps
+    .map((_, index) => `  countIf(step_${index + 1}) > 0 AS hit_${index + 1}`)
+    .join(",\n");
+
+/**
+ * Per-actor aggregates ending in `level`, how far the actor got in order.
+ * Only for orderings that enforce one; see `funnelHits` for "any".
+ */
+export const funnelOrderedLevel = (
+  funnel: FunnelSpec,
+): { sql: string; warnings: string[] } => {
+  const window = seconds(funnel.window);
+  const n = funnel.steps.length;
+
+  if (funnel.anchor === "each" && n > 1) {
     const pairs = funnel.steps
       .slice(0, -1)
       .map(
@@ -75,16 +74,47 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       "    0",
       "  ) AS level",
     ].join("\n");
-    levelExpr = [pairs.join(",\n"), chooser].join(",\n");
-    warnings.push(
-      "“Counted fresh from each step” evaluates each hop's window on its own, so an actor who completes a later hop before an earlier one is still counted. windowFunnel cannot re-anchor inside a single call.",
-    );
-  } else {
-    levelExpr =
+    return {
+      sql: [pairs.join(",\n"), chooser].join(",\n"),
+      warnings: [
+        "“Counted fresh from each step” evaluates each hop's window on its own, so an actor who completes a later hop before an earlier one is still counted. windowFunnel cannot re-anchor inside a single call.",
+      ],
+    };
+  }
+
+  return {
+    sql:
       `  windowFunnel(${window}${MODE[funnel.ordering] ?? ""})(\n` +
       "    ts,\n" +
       funnel.steps.map((_, index) => `    step_${index + 1}`).join(",\n") +
-      "\n  ) AS level";
+      "\n  ) AS level",
+    warnings: [],
+  };
+};
+
+export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
+  const funnel = spec.funnel;
+  if (!funnel || funnel.steps.length === 0) {
+    return {
+      ctes: [],
+      select: "SELECT 'Add at least one step' AS message",
+      warnings: ["The funnel has no steps yet."],
+    };
+  }
+
+  const warnings: string[] = [];
+  const n = funnel.steps.length;
+
+  const base = scopedEvents(spec, undefined, funnelFlags(funnel));
+  warnings.push(...base.warnings);
+
+  let levelExpr: string;
+  if (funnel.ordering === "any") {
+    levelExpr = funnelHits(funnel);
+  } else {
+    const ordered = funnelOrderedLevel(funnel);
+    levelExpr = ordered.sql;
+    warnings.push(...ordered.warnings);
   }
 
   const levels: Cte = {
@@ -99,7 +129,7 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       "  actor,",
       ...splitCols(base),
       levelExpr + ",",
-      stamps,
+      funnelStepTimes(funnel),
       "FROM scoped_events",
       `GROUP BY ${splitGroup(base)}actor`,
     ]
