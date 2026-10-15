@@ -1,5 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
+   [metabase.dashboards.card-run-perms :as card-run-perms]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -9,6 +11,12 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model))
+
+(t2/define-before-insert :model/DashboardCardSeries
+  [{:keys [dashboardcard_id card_id] :as series}]
+  (when (card-run-perms/check-enabled?)
+    (card-run-perms/check-can-add-cards-to-dashboard! (dashboards.db/dashcard-dashboard-id dashboardcard_id) :dashcard [card_id]))
+  series)
 
 ;; Serialization
 
