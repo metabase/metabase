@@ -310,10 +310,24 @@
         {:description "Curated." :fields {:F1 {:description "curated"}}}
         #{[:table [:env orders]] [:field [:env (conj orders "F1")]]}))
 
+(def ^:private remapped-item
+  "[[settings-item]] with the internal remapping of F2 that [[f2-dimension-yaml]] holds."
+  (-> settings-item
+      (assoc-in [:attrs :fields :F2] {:remapping {:type "internal" :name "Remapped F2"}})
+      (update :refs conj [:field [:env (conj orders "F2")]])))
+
+(defn- f2-field-yaml
+  "A field file that an older remote sync wrote for F2, with the dimensions `dimensions` (YAML flow mappings)."
+  [& dimensions]
+  (str "name: F2\ntable_id: [test-db, null, Test Table]\nbase_type: type/Text\n"
+       "dimensions:\n" (apply str (map #(str "- " % "\n") dimensions))
+       "serdes/meta:\n- {model: Database, id: test-db}\n- {model: Table, id: Test Table}\n"
+       "- {model: Field, id: F2}\n"))
+
 (deftest table-settings-test
-  (testing "a published table is its settings file and the settings files of its fields; a dimension file loads, and
-           remappings are not content of the format yet"
-    (is (= {orders settings-item}
+  (testing "a published table is its settings file and the settings files of its fields; a dimension file is the
+           remapping of its field"
+    (is (= {orders remapped-item}
            (snapshot-of [table-settings-yaml f1-settings-yaml f2-dimension-yaml]))))
   (testing "a settings file that v64 wrote, with the settings of its fields under `fields`, gives the same item"
     (is (= {orders settings-item}
@@ -323,17 +337,41 @@
   (testing "a settings file that v64 wrote for a table with no field settings has an empty `fields`"
     (is (= {orders (assoc settings-item :attrs {:description "Curated."} :refs #{[:table [:env orders]]})}
            (snapshot-of [(str table-settings-yaml "fields: []\n")]))))
-  (testing "a field file that an older remote sync wrote, with the dimensions that it carries, loads"
-    (is (= {orders settings-item}
+  (testing "a field file that an older remote sync wrote, with the dimensions that it carries, gives the remapping"
+    (is (= {orders remapped-item}
            (snapshot-of [table-settings-yaml f1-settings-yaml
-                         (str "name: F2\ntable_id: [test-db, null, Test Table]\nbase_type: type/Text\n"
-                              "dimensions:\n- {name: Remapped F2, type: internal, entity_id: DimensionF2XXXXXXXXXX}\n"
-                              "serdes/meta:\n- {model: Database, id: test-db}\n- {model: Table, id: Test Table}\n"
-                              "- {model: Field, id: F2}\n")]))))
+                         (f2-field-yaml "{name: Remapped F2, type: internal, entity_id: DimensionF2XXXXXXXXXX}")]))))
+  (testing "a dimension file wins over the dimensions of a field file"
+    (is (= {orders remapped-item}
+           (snapshot-of [table-settings-yaml f1-settings-yaml f2-dimension-yaml
+                         (f2-field-yaml "{name: Older, type: internal, entity_id: DimensionF2YYYYYYYYYY}")]))))
   (testing "with no settings file, the table is not published: its field settings files are not an item"
     (is (= {} (snapshot-of [f1-settings-yaml f2-dimension-yaml]))))
   (testing "a settings file of a table that is not published is not an item"
     (is (= {} (snapshot-of [(str/replace table-settings-yaml "is_published: true" "is_published: false")])))))
+
+(deftest remapping-test
+  (testing "a foreign-key remapping names its target field by natural key, which is a reference of the table"
+    (let [target ["test-db" nil "Other" "NAME"]]
+      (is (= {orders (-> settings-item
+                         (assoc-in [:attrs :fields :F2] {:remapping {:type "external" :name "Other name" :field target}})
+                         (update :refs conj [:field [:env (conj orders "F2")]] [:remapping [:env target]]))}
+             (snapshot-of [table-settings-yaml f1-settings-yaml
+                           (str "name: Other name\ntype: external\nentity_id: DimensionF2XXXXXXXXXX\n"
+                                "field_id: [test-db, null, Test Table, F2]\n"
+                                "human_readable_field_id: [test-db, null, Other, NAME]\n"
+                                "serdes/meta:\n- model: Dimension\n")])))
+      (testing "a foreign-key remapping in a field file"
+        (is (= target
+               (get-in (snapshot-of [table-settings-yaml
+                                     (f2-field-yaml (str "{name: Other name, type: external, entity_id: DimensionF2XXXXXXXXXX,"
+                                                         " human_readable_field_id: [test-db, null, Other, NAME]}"))])
+                       [orders :attrs :fields :F2 :remapping :field]))))))
+  (testing "a dimension of another type, or a foreign-key remapping with no target, is a finding"
+    (doseq [doc ["name: X\ntype: other\n" "name: X\ntype: external\n"]]
+      (is (seq (:findings (decode [table-settings-yaml
+                                   (str doc "field_id: [test-db, null, Test Table, F2]\nserdes/meta:\n- model: Dimension\n")])))
+          doc))))
 
 (deftest user-set-values-test
   (testing "a value whose flag is false or absent is the value of warehouse sync, not one that the user set"
@@ -455,16 +493,31 @@
 
 ;;; ------------------------------------------------ Properties --------------------------------------------------------
 
+(defn- without-remapped-values
+  "The `:fields` attribute `fields` with no values of an internal remapping."
+  [fields]
+  (update-vals fields (fn [entry]
+                        (cond-> (update entry :remapping #(some-> % (dissoc :values)))
+                          (nil? (:remapping entry)) (dissoc :remapping)
+                          (:fields entry)           (update :fields without-remapped-values)))))
+
 (defn- holdable
   "Snapshot `s` as an instance can hold it: no visualization setting is nil, as the instance drops those. The old format
-  writes `column_settings: null`, so it cannot tell a nil setting from an absent one."
+  writes `column_settings: null`, so it cannot tell a nil setting from an absent one. The old format has no values of
+  an internal remapping: remote sync writes no field values."
   [s]
   (update-vals s (fn [{:keys [kind] :as it}]
-                   (if (= :metric kind)
+                   (case kind
+                     :metric
                      (let [vs (into {} (remove (comp nil? val)) (get-in it [:attrs :visualization_settings]))]
                        (if (seq vs)
                          (assoc-in it [:attrs :visualization_settings] vs)
                          (update it :attrs dissoc :visualization_settings)))
+
+                     :published-table
+                     (cond-> it
+                       (get-in it [:attrs :fields]) (update-in [:attrs :fields] without-remapped-values))
+
                      it))))
 
 (defspec old-format-round-trip-property-test 50
