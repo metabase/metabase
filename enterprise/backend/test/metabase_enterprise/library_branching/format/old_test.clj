@@ -305,7 +305,7 @@
            instance and in every pull"
     (let [s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])]
       (is (= {(old.glossary/term-identity "Churn") (item :glossary-term "Churn" "glossaryglossarygloss"
-                                                            {:definition "Customers who cancel."})}
+                                                         {:definition "Customers who cancel."})}
              s))
       (is (= s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])))))
   (testing "a file with an entity id has that identity"
@@ -560,6 +560,65 @@
   (testing "an archived timeline is not in the snapshot"
     (is (= {} (snapshot-of [(str/replace timeline-yaml "archived: false\ncreated_at" "archived: true\ncreated_at")])))))
 
+;;; ------------------------------------------------- Dashboards -------------------------------------------------------
+
+(defn- link-dashboard
+  "The old-format file of dashboard `id` with one link card to the entity `entity`."
+  [id dashcard-id entity]
+  (String. (old.tu/bytes-of (old.tu/dashboard-doc id {:name  "Links"
+                                                      :place "LibraryCollectionXXXX"
+                                                      :attrs {:dashcards [{:id     dashcard-id
+                                                                           :row    0
+                                                                           :col    0
+                                                                           :size_x 4
+                                                                           :size_y 2
+                                                                           :visualization_settings
+                                                                           {:virtual_card {:display "link"}
+                                                                            :link         {:entity entity}}}]}}))
+           StandardCharsets/UTF_8))
+
+(defn- card-ids-of
+  "The option `:card-ids` of the decoder for the cards `ids`, `{row-id entity-id}`."
+  [ids]
+  (fn [row-ids] (select-keys ids row-ids)))
+
+(deftest metric-link-card-test
+  (let [metric-link (link-dashboard "LinksDashboardXXXXXXX" "LinkDashcardXXXXXXXXX"
+                                    {:model "metric" :id 76 :name "Orders"})
+        link-entity #(get-in % ["LinksDashboardXXXXXXX" :attrs :dashcards 0 :visualization_settings :link :entity])]
+    (testing "the export keeps the row id of a link card to a metric: with the card of that row on the instance, the
+             link card holds the identity of the metric, and the dashboard refers to it"
+      (let [s (snapshot-of [metric-link] {:card-ids (card-ids-of {76 "MetricCardXXXXXXXXXXX"})})]
+        (is (= {:model "metric" :id "MetricCardXXXXXXXXXXX" :name "Orders"} (link-entity s)))
+        (is (contains? (get-in s ["LinksDashboardXXXXXXX" :refs]) [:card "MetricCardXXXXXXXXXXX"]))))
+    (testing "with no card of that row on the instance, the file does not decode: the finding names the dashboard and
+             the row id"
+      (doseq [opts [{} {:card-ids (card-ids-of {77 "MetricCardXXXXXXXXXXX"})}]]
+        (is (=? {:findings [{:type    :unknown-row-id
+                             :id      "LinksDashboardXXXXXXX"
+                             :row-ids [76]
+                             :file    0
+                             :reason  #"LinksDashboardXXXXXXX.*76"}]}
+                (decode [metric-link] opts)))))
+    (testing "the decode asks for the cards once, with the row ids of the link cards to a metric only"
+      (let [calls (atom [])
+            ids   (fn [row-ids] (swap! calls conj row-ids) {})]
+        (decode [metric-link
+                 (link-dashboard "OtherDashboardXXXXXXX" "OtherDashcardXXXXXXXX" {:model "metric" :id 5 :name "O"})
+                 (link-dashboard "QuestionLinksXXXXXXXX" "QuestionDashcardXXXXX"
+                                 {:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"})]
+                {:card-ids ids})
+        (is (= [[5 76]] @calls))
+        (reset! calls [])
+        (is (= {:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"}
+               (get-in (snapshot-of [(link-dashboard "QuestionLinksXXXXXXXX" "QuestionDashcardXXXXX"
+                                                     {:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"})]
+                                    {:card-ids ids})
+                       ["QuestionLinksXXXXXXXX" :attrs :dashcards 0 :visualization_settings :link :entity])))
+        (is (= [] @calls))))
+    (testing "a dashboard in the trash asks for no card and gives no finding"
+      (is (= {} (snapshot-of [(str/replace metric-link "archived: false" "archived: true")]))))))
+
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 
 (deftest claims-decode-test
@@ -573,7 +632,12 @@
     (is (= "Test table"
            (get-in (claims/decode kinds/codecs {"t.yaml" (utf8 (str/replace table-settings-yaml "display_name: Renamed\n" ""))}
                                   {:table-names (names-of {orders "Test table"})})
-                   [:snapshot orders :name]))))
+                   [:snapshot orders :name])))
+    (is (= "MetricCardXXXXXXXXXXX"
+           (get-in (claims/decode kinds/codecs {"d.yaml" (utf8 (link-dashboard "LinksDashboardXXXXXXX" "LinkDashcardXXXXXXXXX"
+                                                                               {:model "metric" :id 76 :name "Orders"}))}
+                                  {:card-ids (card-ids-of {76 "MetricCardXXXXXXXXXXX"})})
+                   [:snapshot "LinksDashboardXXXXXXX" :attrs :dashcards 0 :visualization_settings :link :entity :id]))))
   (testing "a tree with item files of both formats and no format version file is refused"
     (is (= {:findings [{:type :mixed-format
                         :reason "The tree holds item files of the old format and of the new format, and no format version file."}]}
