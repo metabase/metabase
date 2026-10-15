@@ -169,10 +169,10 @@
                              (let [item (resolve-item world item)
                                    item (assoc item :refs (format.kinds/refs :dashboard id (:attrs item)))]
                                (instance/write! store id item)
-                               (= item (instance/current store id))))
+                               (= {:state :live :content item} (instance/current store id))))
                            items)
            before  (rows id)]
-       (instance/write! store id (instance/current store id))
+       (instance/write! store id (:content (instance/current store id)))
        (and put-get (= before (rows id)))))))
 
 (defspec dashboard-laws-test 25

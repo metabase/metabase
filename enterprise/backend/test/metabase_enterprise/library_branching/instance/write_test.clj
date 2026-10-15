@@ -288,10 +288,12 @@
                 metric-c (live :metric (:entity_id metric))
                 folder-c (live :collection (:entity_id folder))
                 snip-c   (live :snippet (:entity_id snip))]
-            (testing "an identity that no row has, a row outside the Library tree, and a card of another kind are absent"
+            (testing "a card of another card kind is the item of its row, with the content of its own kind"
+              (is (= {:state :live :content (live :question (:entity_id question))}
+                     (current-state :metric (:entity_id question)))))
+            (testing "an identity that no row has and a row outside the Library tree are absent"
               (is (= {:state :absent} (current-state :metric "lbNoSuchMetric0000001")))
               (is (= {:state :absent} (current-state :metric (:entity_id mine))))
-              (is (= {:state :absent} (current-state :metric (:entity_id question))))
               (is (= {:state :absent} (current-state :collection (:entity_id outside))))
               (is (= {:state :absent} (current-state :collection "lbNoSuchCollection001")))
               (is (= {:state :absent} (current-state :snippet "lbNoSuchSnippet000001")))

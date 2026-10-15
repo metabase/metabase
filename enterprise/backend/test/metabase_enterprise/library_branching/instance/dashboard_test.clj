@@ -43,7 +43,13 @@
 
 (defn- write! [id item] (instance/write! (store) id (with-refs id item)))
 
-(defn- current [id] (instance/current (store) id))
+(defn- current-state [id] (instance/current (store) id))
+
+(defn- current
+  "The content of dashboard `id` when it is live, else nil."
+  [id]
+  (let [{:keys [state content]} (current-state id)]
+    (when (= :live state) content)))
 
 (defn- trash! [id] (instance/trash! (store) id))
 
@@ -228,7 +234,8 @@
          (is (= #{(:entity_id in)} (:dashboard (scope/scope-ids scope/roots [:dashboard]))))
          (is (= 1 (:dashboard (scope/scope-count))))
          (is (some? (current (:entity_id in))))
-         (is (every? nil? (map (comp current :entity_id) [archived out]))))))))
+         (is (= :trashed (:state (current-state (:entity_id archived)))))
+         (is (= {:state :absent} (current-state (:entity_id out)))))))))
 
 ;;; ----------------------------------------------------- Writes ----------------------------------------------------
 
@@ -319,7 +326,7 @@
                                                                 :collection_id (:id dashboards)})]
        (testing "trash! moves the dashboard and its questions to the trash"
          (trash! dashboard-id)
-         (is (nil? (current dashboard-id)))
+         (is (= :trashed (:state (current-state dashboard-id))))
          (is (:archived (t2/select-one :model/Dashboard (:id d))))
          (is (:archived (t2/select-one :model/Card (:id question)))))
        (testing "a trash of a trashed dashboard, or of no dashboard, does nothing"

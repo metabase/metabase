@@ -147,9 +147,10 @@
     :edits  [[:replace '{:state :trashed :content (read)} '{:state :absent}]]
     :tests  [#'metabase-enterprise.library-branching.instance.write-test/current-states-test]}
    {:name   :current-other-kind
-    :doc    "current of a metric takes a card of another kind with the identity as the metric."
-    :target `kinds.metric/current-metric
-    :edits  [[:replace '(= "metric" (some-> (:type row) clojure.core/name)) true]]
+    :doc    "current of a card kind gives a card of another kind of its row as absent, so the precondition of a change
+            of kind inside the row never holds."
+    :target `kinds.card/current-card
+    :edits  [[:replace '(snapshot/same-row? kind row-kind) '(= kind row-kind)]]
     :tests  [#'metabase-enterprise.library-branching.instance.write-test/current-states-test]}
    {:name   :system-item-trashed
     :doc    "trash! of a collection does not refuse a system item of the Library."
