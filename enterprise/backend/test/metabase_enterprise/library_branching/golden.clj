@@ -75,6 +75,9 @@
   "The entity id of the Active product filter snippet, which uses the Base filter."
   "aCtIvEpRoDuCtFiLtEr01")
 
+(def snippets-root
+  "The identity of the root of the Snippets area."
+  "snippetssnippetssnipp")
 (def total-revenue-path
   "The file of the Total Revenue metric."
   "library/metrics/revenue/total_revenue.metric.yaml")
@@ -107,6 +110,15 @@
   ^bytes []
   (utf-8 (str/replace (text (manifest-bytes)) products-table "")))
 
+(def marker-text
+  "A text with characters that a YAML reader strips, folds or reads as a marker: a byte order mark first, then NEL,
+  LS, PS, a C0 control, a C1 control and DEL."
+  "\uFEFFTotal\u0085Revenue\u2028\u2029\u0001\u009F\u007F")
+
+(def marker-description-line
+  "The line of the description [[marker-text]] in the bytes of the writer."
+  "description: \"\uFEFFTotal\\NRevenue\\L\\P\\x01\\x9f\\x7f\"\n")
+
 (def app-files
   "The own files of a data app, a broken YAML file and a Kubernetes manifest: foreign files."
   {"apps/sales/App.tsx"      "export default function App() { return null; }\n"
@@ -134,10 +146,15 @@
      "duplicate-format"       (v (tree-with {"library/format.yaml" "format: library-branching/1\n"}))
      "place-inside"           (v (tree-with {"library/metrics/_collection.yaml" nil}))
      "acyclic"                (v (edit "library/_collection.yaml" #(str % "parent: " revenue-id "\n")))
-     "kind-fits"              (v (edit base-filter-path #(str % "collection: " total-revenue-id "\n")))
+     "kind-fits"              (v (edit base-filter-path #(str/replace % (str "collection: " snippets-root "\n")
+                                                                      (str "collection: " total-revenue-id "\n"))))
+     "area-root"              (v (tree-with {"library/fake/_collection.yaml"
+                                             (str "kind: collection\nid: " snippets-root "\nname: Fake\nparent: "
+                                                  library-id "\n")}))
      "refs-closed"            (v (tree-with {base-filter-path nil}))
      "root"                   (v (edit total-revenue-path #(str/replace % (str "collection: " revenue-id "\n") "")))
      "unique-key"             (v (edit active-filter-path #(str/replace % "name: Active product filter" "name: Base filter")))
+     "green-marker-text"      (v (edit total-revenue-path #(str/replace % "description: Sum of order totals, after discounts.\n" marker-description-line)))
      "namespace"              (v (edit revenue-path #(str % "namespace: snippets\n")))
      "env-resolves"           {:tree golden :manifest (manifest-without-products)}
      "manifest-unreadable"    {:tree golden :manifest (utf-8 "databases: [")}

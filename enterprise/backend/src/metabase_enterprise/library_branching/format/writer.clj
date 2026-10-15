@@ -81,12 +81,20 @@
 (def ^:private line-break
   #"[\n\r\u0085  ]")
 
+(defn- byte-order-mark?
+  [^String s]
+  ;; SnakeYAML writes U+FEFF raw in a plain scalar, and a reader drops it at the start of the file: a document that is
+  ;; the string "\uFEFF" reads as no document. In double quotes it is after the quote.
+  (str/includes? s "\uFEFF"))
+
 (defn scalar-style
-  "The style that the writer asks for string `s`: double-quoted for text with a Unicode line break, a literal block for
-  text with a line break, else plain. The emitter quotes a string that the asked style cannot hold."
+  "The style that the writer asks for string `s`: double-quoted for text with a Unicode line break or a byte order mark,
+  a literal block for text with a line break, else plain. The emitter quotes a string that the asked style cannot
+  hold."
   [^String s]
   (cond
     (re-find unicode-line-break s) DumperOptions$ScalarStyle/DOUBLE_QUOTED
+    (byte-order-mark? s)           DumperOptions$ScalarStyle/DOUBLE_QUOTED
     (str/includes? s "\n")        DumperOptions$ScalarStyle/LITERAL
     :else                          DumperOptions$ScalarStyle/PLAIN))
 
@@ -94,7 +102,9 @@
   [^String k]
   ;; A key with a line break is not a simple key. The emitter writes it as an explicit key, and in single quotes it
   ;; takes more than one line.
-  (if (re-find line-break k) DumperOptions$ScalarStyle/DOUBLE_QUOTED DumperOptions$ScalarStyle/PLAIN))
+  (if (or (re-find line-break k) (byte-order-mark? k))
+    DumperOptions$ScalarStyle/DOUBLE_QUOTED
+    DumperOptions$ScalarStyle/PLAIN))
 
 (defn- scalar-node
   ^Node [^Tag tag ^String text style]

@@ -122,7 +122,8 @@
                         [entity-id {:kind  :collection
                                     :name  entity-id
                                     :place (cond (int? parent)        (eid-of parent)
-                                                 (= :library parent) (:entity_id library))
+                                                 (= :library parent) (:entity_id library)
+                                                 (= :snippets root)  "snippetssnippetssnipp")
                                     :refs  #{}
                                     :attrs (attrs {:description description
                                                    :namespace   (when (= :snippets root) "snippets")})}])))
@@ -143,7 +144,7 @@
                  (map (fn [{:keys [entity-id place description content]}]
                         [entity-id {:kind  :snippet
                                     :name  entity-id
-                                    :place (eid-of place)
+                                    :place (or (eid-of place) "snippetssnippetssnipp")
                                     :refs  #{}
                                     :attrs (attrs {:description   description
                                                    :content       content

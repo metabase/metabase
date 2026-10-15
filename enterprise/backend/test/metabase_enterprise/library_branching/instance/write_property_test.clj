@@ -109,6 +109,8 @@
       {:display display :query query :description desc :visualization_settings settings
        :collection_preview preview :collection_position position})))
 
+(def ^:private snippets-root "snippetssnippetssnipp")
+
 (defn- card-gen
   "A generator of the content of a card of `kind`, :question or :model, in a data app's collection."
   [kind]
@@ -132,7 +134,7 @@
   (gen/let [item-name (gen/elements ["Folder" "Revenue folder" "Sub folder"])
             desc      (optional (gen/elements ["What finance signs off on." "Notes"]))
             official  (optional (gen/return "official"))
-            place     (gen/elements (if (= :library area) [::metrics ::sub] [nil ::folder ::inner]))]
+            place     (gen/elements (if (= :library area) [::metrics ::sub] [snippets-root ::folder ::inner]))]
     (with-attrs {:kind :collection :name item-name :place place}
       (if (= :library area)
         {:type "library-metrics" :description desc :authority_level official}
@@ -145,7 +147,7 @@
 
 (def ^:private snippet-gen
   (gen/let [item-name (gen/elements ["Generated snippet one" "Generated snippet two"])
-            place     (gen/elements [nil ::folder ::inner])
+            place     (gen/elements [snippets-root ::folder ::inner])
             body      (gen/elements snippet-bodies)
             desc      (optional (gen/elements ["A filter." "Notes"]))]
     (with-attrs {:kind :snippet :name item-name :place place}
@@ -295,7 +297,8 @@
       (is (some #(get-in % [:attrs :description]) (sample metric-gen)) "a metric with a description")
       (is (some #(= ::cols-named (get-in % [:attrs :result_metadata])) (sample (card-gen :model)))
           "a model with an edited column")
-      (is (some #(nil? (:place %)) (sample (collection-gen :snippets))) "a collection at the root level")
+      (is (some #(= snippets-root (:place %)) (sample (collection-gen :snippets))) "a collection at the area root")
+      (is (some #(= snippets-root (:place %)) (sample snippet-gen)) "a snippet at the area root")
       (is (some #(get-in % [:attrs :template_tags]) (sample snippet-gen)) "a snippet with a tag")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :fk_target]) tables) "a foreign key target")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :remapping]) tables) "a foreign-key remapping")

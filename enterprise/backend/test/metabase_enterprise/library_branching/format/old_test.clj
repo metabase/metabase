@@ -128,6 +128,20 @@
                          (collection-yaml "V57ChildCollXXXXXXXXX" "V57 Child"
                                           :parent-id "V57ParentCollXXXXXXXX" :type "remote-synced")])))))
 
+(deftest top-level-collections-of-areas-test
+  (testing "a collection of a namespace with no parent is at the root of the namespace's area"
+    (doseq [[ns-name area-root] [["snippets" "snippetssnippetssnipp"] ["transforms" "transformstransformst"]
+                                 ["data-actions" "dataactionsdataaction"] ["data-apps" "dataappsdataappsdatap"]]]
+      (testing ns-name
+        (is (= {"AreaCollectionXXXXXXX" (item :collection "Folder" area-root {:namespace ns-name})}
+               (snapshot-of [(collection-yaml "AreaCollectionXXXXXXX" "Folder" :namespace ns-name)]))))))
+  (testing "a collection of a namespace with a parent stays in its parent"
+    (is (= {"AreaParentCollXXXXXXX" (item :collection "Parent" "snippetssnippetssnipp" {:namespace "snippets"})
+            "AreaChildCollXXXXXXXX" (item :collection "Child" "AreaParentCollXXXXXXX" {:namespace "snippets"})}
+           (snapshot-of [(collection-yaml "AreaParentCollXXXXXXX" "Parent" :namespace "snippets")
+                         (collection-yaml "AreaChildCollXXXXXXXX" "Child" :namespace "snippets"
+                                          :parent-id "AreaParentCollXXXXXXX")])))))
+
 (deftest old-format-paths-test
   (testing "a tree at old paths (the entity id in the file name) decodes: the identity and the place are in the file"
     (let [eid  "OldFmtCollXXXXXXXXXXX"
@@ -250,7 +264,7 @@
 
 (deftest snippets-test
   (testing "a snippet: no template tags is the default; a snippet tag refers to its snippet"
-    (is (= {"BaseFilterSnippetXXXX" (item :snippet "Base filter" nil {:content "x IS NULL"})
+    (is (= {"BaseFilterSnippetXXXX" (item :snippet "Base filter" "snippetssnippetssnipp" {:content "x IS NULL"})
             "ActiveSnippetXXXXXXXX"
             (item :snippet "Active" "SnippetCollectionXXXX"
                   {:content       "{{snippet: Base filter}}"
@@ -290,11 +304,13 @@
   (testing "a glossary file keyed by its term has an identity that is a function of the term: the same on every
            instance and in every pull"
     (let [s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])]
-      (is (= {(old.glossary/term-identity "Churn") (item :glossary-term "Churn" nil {:definition "Customers who cancel."})}
+      (is (= {(old.glossary/term-identity "Churn") (item :glossary-term "Churn" "glossaryglossarygloss"
+                                                            {:definition "Customers who cancel."})}
              s))
       (is (= s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])))))
   (testing "a file with an entity id has that identity"
-    (is (= {"ChurnTermEntityIdXXXX" (item :glossary-term "Churn" nil {:definition "Customers who cancel."})}
+    (is (= {"ChurnTermEntityIdXXXX" (item :glossary-term "Churn" "glossaryglossarygloss"
+                                          {:definition "Customers who cancel."})}
            (snapshot-of [(glossary-yaml "ChurnTermEntityIdXXXX" "Churn" "Customers who cancel.")])))))
 
 (deftest nano-id-shaped-term-test
@@ -302,7 +318,8 @@
            one with an entity id"
     (let [term "AbCdEfGhIjKlMnOpQrStU"]
       (is (= 21 (count term)))
-      (is (= {(old.glossary/term-identity term) (item :glossary-term term nil {:definition "Looks like an id."})}
+      (is (= {(old.glossary/term-identity term) (item :glossary-term term "glossaryglossarygloss"
+                                                      {:definition "Looks like an id."})}
              (snapshot-of [(legacy-glossary-yaml term "Looks like an id.")])))
       (is (not= term (old.glossary/term-identity term))))))
 
