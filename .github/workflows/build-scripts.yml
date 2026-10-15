@@ -7,7 +7,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: build_scripts embedder_plugin
+      filters: build_scripts embedder_plugin library_checker
 
   test-embedder-plugin:
     needs: gate
@@ -59,6 +59,36 @@ jobs:
       run: >-
         ./bin/test-agent --drivers=postgres :only
         '[metabase-enterprise.search.semantic.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
+
+  test-library-checker:
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'library_checker') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v7
+    - name: Prepare back-end environment
+      timeout-minutes: 5
+      uses: ./.github/actions/prepare-backend
+    - name: Set up Babashka
+      uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
+      with:
+        # The version that the checker config and the example workflow of library branching pin.
+        babashka-version: 1.12.212
+    - name: Run the checker tests in babashka
+      run: bb --config bin/library-checker/bb.edn test
+    - name: Build the checker jar
+      run: bb --config bin/library-checker/bb.edn build
+    - name: Compare the checker jar with the checker on the JVM
+      run: bb --config bin/library-checker/bb.edn agree
+    - name: Upload the checker jar
+      uses: actions/upload-artifact@v7
+      with:
+        name: library-checker
+        path: target/library-checker/library-checker.jar
+        if-no-files-found: error
 
   test-build-scripts:
     needs: gate
