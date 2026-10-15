@@ -483,10 +483,8 @@
             "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
 
 (def ^:private special-case-migrations
-  "Migrations that a release line ships under a later version's ID, mapped to that line's major version.
-  55 shipped v56 migrations through an inadvertent backport and its fix, and 64 restored the two v65 migrations that
-  1.64.2.1 ran. They count as the line's version, but don't decide the latest applied version, because their IDs sort
-  among the later version's own."
+  "Maps changeset IDs from a later version to the major version of the release line that ships them.
+  These IDs don't decide the latest applied version, because they sort among the later version's own."
   {"v56.2025-06-05T16:48:48" 55
    "v56.2025-05-19T16:48:48" 55
    "v65.2026-10-07T12:00:00" 64
