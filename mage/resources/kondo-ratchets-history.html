@@ -237,7 +237,7 @@ function reconcile(pts, before) {
   const row = (cls, label, value) => `<div class="${cls}"><span>${esc(label)}</span><span class="num">${value}</span></div>`;
   // the left column adds up on its own; the right one breaks down its "counted for nobody" line
   const steps = row("", "Total budget at the start", start) +
-    row("", "Credited change, the net on the left", signed(sum("shrunk") + sum("grown"))) +
+    row("", "Relevant changes, the net on the left", signed(sum("shrunk") + sum("grown"))) +
     (parts.length ? row("", "Counted for nobody", signed(parts.reduce((a, [, n]) => a + n, 0))) : "") +
     row("end", "Total budget at the end", end);
   const nobody = parts.length
@@ -250,7 +250,7 @@ function reconcile(pts, before) {
 
 // The rows a total-budget tooltip adds for the commit's own step.
 function stepParts(pt) {
-  return [["credited", pt.shrunk + pt.grown], ...uncredited.map(([k, name]) => [name, pt[k]])]
+  return [["relevant", pt.shrunk + pt.grown], ...uncredited.map(([k, name]) => [name, pt[k]])]
     .filter(([, n]) => n !== 0);
 }
 
@@ -297,11 +297,11 @@ function trends(p) {
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
   return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
     `<div class="callout"><p>The two charts measure different things, so they can move apart:</p><ul>` +
-    `<li><span class="term">Credited change</span> counts only changes someone is credited or blamed for.</li>` +
-    `<li><span class="term">Total budget</span> also moves for changes that count for nobody, such as a new ratchet over existing debt.</li>` +
+    `<li><span class="term">Relevant changes</span> tracks actual fixes and regressions: suppressions removed or added.</li>` +
+    `<li><span class="term">Total budget</span> also moves when what we measure changes, such as a new ratchet over existing debt.</li>` +
     `<li><span class="term">The breakdown under the charts</span> shows how the two add up.</li></ul></div>` +
     `<div class="grid2">` +
-    chart("c-change", "Credited change", "Running totals from the start of the period. Up is worse.",
+    chart("c-change", "Relevant changes", "Running totals from the start of the period. Up is worse.",
       pts, span,
       [{key: "cumGrown", name: "Grown", color: "--grown", area: true},
        {key: "cumNet", name: "Net", color: "--net"},
@@ -311,7 +311,7 @@ function trends(p) {
       pts, span, [{key: "level", name: "Total budget", color: "--level"}],
       {level: before ? before.level : null}, false, stepParts) +
     `</div>${reconcile(pts, before)}<details class="data"><summary>Data table</summary>` +
-    table(["commit", "shrunk", "grown", "not credited", "net so far", "total budget"], rows) + `</details>`);
+    table(["commit", "shrunk", "grown", "other", "net so far", "total budget"], rows) + `</details>`);
 }
 
 function commitLink(c) {
@@ -365,7 +365,7 @@ function render(p) {
   if (!r.commits) {
     // a period can move the total with no credited change, such as the automation taking back a pardoned raise
     return head + (n
-      ? `<p class="question">No change in this period is credited to anyone, but the budgets changed.</p>` + trends(p)
+      ? `<p class="question">No relevant change in this period, but the budgets changed.</p>` + trends(p)
       : `<p class="none">No ratchet budget changed in this period.</p>`);
   }
   const t = r.total;
