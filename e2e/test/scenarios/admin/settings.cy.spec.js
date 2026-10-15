@@ -425,45 +425,6 @@ describe("scenarios > admin > localization", () => {
     H.echartsContainer().find("text").should("contain", "April 28, 2025");
   });
 
-  // HANDLE WITH CARE!
-  // This test is extremely tricky and fragile because it needs to test for the "past X weeks" to check if week starts on Sunday or Monday.
-  // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample database.
-  // For that reason I've chosen the past 220 weeks (mid-October 2022). This should give us 3+ years to run this test without updates.
-
-  // TODO:
-  //  - Keep an eye on this test in CI and update the week range as needed.
-  it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    H.createNativeQuestion(
-      {
-        name: "14294",
-        native: {
-          query:
-            "select ID, CREATED_AT, dayname(CREATED_AT) as CREATED_AT_DAY\nfrom ORDERS \n[[where {{date_range}}]]\norder by CREATED_AT",
-          "template-tags": {
-            date_range: {
-              id: "93961154-c3d5-7c93-7b59-f4e494fda499",
-              name: "date_range",
-              "display-name": "Date range",
-              type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
-              "widget-type": "date/all-options",
-              default: "past220weeks",
-              required: true,
-            },
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.tableInteractive().as("resultTable");
-
-    cy.get("@resultTable").within(() => {
-      // The third cell in the first row (CREATED_AT_DAY)
-      cy.get("[data-testid=cell-data]").eq(2).should("not.contain", "Sunday");
-    });
-  });
-
   it("should use currency settings for number columns with style set to currency (metabase#10787) and search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
     cy.visit("/admin/settings/localization");

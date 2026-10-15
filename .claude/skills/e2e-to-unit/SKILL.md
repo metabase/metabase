@@ -157,6 +157,27 @@ Write the report to `local/claude/<spec-name>-e2e-to-unit.md`. Include:
 - Bugs in production code, and gaps between the frontend types and what the backend sends. Report them only. Do not fix them.
 - The before and after count of e2e tests.
 
+## Step 7: PR description
+
+When the PR is open, write its description to a local file: `local/claude/pr-<branch>.md`. Do not post it.
+
+- Write each paragraph and each bullet as one line. Do not break lines inside a sentence.
+- Start with a short summary for human reviewers: how many e2e tests you deleted and why, which unit specs you added or extended, and the e2e assertions that the probe showed to be incorrect.
+- Put the evidence in a collapsible block at the end: the table of each e2e assertion → unit `file:line` and backend `file:line`.
+
+```html
+<details>
+<summary>Coverage evidence</summary>
+
+| e2e test | Assertion | Covered by |
+|---|---|---|
+| ... | ... | `path/to/spec.tsx:42` |
+
+</details>
+```
+
+- Do not repeat the full report. Do not include session history (what you tried first, or what a reviewer corrected).
+
 ## Practical notes
 
 - **Do the classification yourself.** One read of a large spec is fast. Use subagents only for the grep for coverage across many specs.
