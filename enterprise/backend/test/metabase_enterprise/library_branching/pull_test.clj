@@ -116,6 +116,29 @@
            (is (= [ptu/snippet-id] (map :id conflicts)))
            (is (nil? (instance/base inst)))))))))
 
+(deftest create-and-trash-during-a-first-pull-is-not-lost-test
+  (testing "TLC run v4c: the instance has no base, and the plan creates a snippet of the head. After the read of the
+           pull, a person creates that snippet and moves it to the trash. The apply sees the trashed identity, which
+           with no base it may not write: the person's delete is not lost"
+    (enabled
+     (with-remote [repo s]
+       (let [h       (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)
+             theirs  (get ptu/sample ptu/snippet-id)
+             inst    (pltu/memory-instance (atom {:snapshot (dissoc ptu/sample ptu/snippet-id)}))
+             once    (atom false)
+             racing  (ptu/wrap-instance inst {:read-snapshot
+                                              (fn [read-snapshot]
+                                                (let [r (read-snapshot)]
+                                                  (when (compare-and-set! once false true)
+                                                    (swap! (:state inst) assoc-in [:trash ptu/snippet-id] theirs))
+                                                  r))})
+             {:keys [result head]} (pltu/pull! racing s)]
+         (is (= h head))
+         (is (contains? #{:stale :conflicts} result))
+         (is (not (contains? (pltu/snapshot-of inst) ptu/snippet-id)))
+         (is (= theirs (get-in @(:state inst) [:trash ptu/snippet-id])))
+         (is (nil? (instance/base inst))))))))
+
 (deftest pull-of-a-missing-branch-test
   (enabled
    (with-remote [repo s]
@@ -462,6 +485,23 @@
            h         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))]
        (testing "the task of the pull may not commit (a cancel): the apply writes nothing, and the base stays"
          (is (= {:result :fenced :head h :reason :cancelled} (pltu/pull! inst s {:fence (constantly :cancelled)})))
+         (is (= ptu/sample (pltu/snapshot-of inst)))
+         (is (= c1 (instance/base inst))))))))
+
+(deftest pull-refuses-a-name-that-a-trashed-snippet-holds-test
+  (testing "the head adds a snippet with the name of a snippet in the trash of the instance: the apply refuses with
+           the pair, writes nothing, and the base stays"
+    (enabled
+     (with-remote [repo s]
+       (let [trashed-id "TrashedActiveSnippet1"
+             trashed    (ptu/item trashed-id :snippet "Active orders" nil {:content "status = 'active'"})
+             [inst c1]  (pushed-instance! s ptu/sample :trash {trashed-id trashed})
+             h          (pltu/commit-snapshot! repo ptu/branch [c1]
+                                               (assoc ptu/sample new-snippet-id (assoc (new-snippet nil) :name "Active orders")))]
+         (is (= {:result    :key-clash
+                 :head      h
+                 :key-clash [{:rule :unique-key :kind :snippet :key "Active orders" :ids #{new-snippet-id trashed-id}}]}
+                (pltu/pull! inst s)))
          (is (= ptu/sample (pltu/snapshot-of inst)))
          (is (= c1 (instance/base inst))))))))
 
