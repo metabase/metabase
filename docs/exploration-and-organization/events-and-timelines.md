@@ -75,6 +75,11 @@ To hide a timeline and its events everywhere, [archive the timeline](#archiving-
 
 Line, bar, area, combo, scatter, and waterfall charts on a dashboard show the events their question was saved with. Questions saved with events turned off (or saved before Metabase started recording events) don't show any events on dashboards. Very small cards don't have room for events, so they won't show them even when a timeline is on, and their **three-dot menu** (**...**) leaves out the **Events** item.
 
+Some cards never show events, whatever their question was saved with:
+
+- Cards whose visualization you edited on the dashboard with the **pencil** icon, including cards that [combine multiple questions](../dashboards/multiple-series.md#combining-multiple-questions-on-one-dashboard-card).
+- Action buttons, as well as text, heading, link, and iframe cards.
+
 To change which events a chart shows while viewing a dashboard, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing every timeline you can view that has an event in the range of that chart, whatever collection the timeline lives in. You can:
 
 - Toggle a timeline or an event on or off for that card.
@@ -89,10 +94,14 @@ Exporting a dashboard to PDF captures the page as you're viewing it, so the PDF 
 
 ## Events in public links and embeds
 
-_Dashboards_ shared via a [public link](../embedding/public-links.md), static embedding, interactive embedding, or the embedded analytics SDK show the events each question was saved with. Public and statically embedded _questions_, SDK questions, and dashboard subscriptions don't show events.
+_Dashboards_ shared via a [public link or embed](../embedding/public-links.md), a [guest embed](../embedding/guest-embedding.md), a [modular embed](../embedding/modular-embedding.md), or [full app embedding](../embedding/full-app-embedding.md) show the events each question was saved with. People viewing an embedded or public dashboard can't toggle, add, or edit events; the cards' **Events** menu items and the events sidebar are only available in Metabase itself.
 
-- **Public links and guest embeds** show a question's saved events to anyone viewing the dashboard, even people who can't access the timeline's collection. Only people who can view a timeline can add a question that uses the timeline to a shared dashboard.
-- **Interactive embedding and the SDK** only show events from timelines the viewer has access to.
+_Questions_ shared on their own through a public link, a guest embed, or a modular embed don't show events, and neither do dashboard subscriptions.
+
+Who sees which events depends on how the dashboard is shared:
+
+- **Public links, public embeds, and guest embeds** show a question's saved events to anyone viewing the dashboard, even people who can't access the timeline's collection. Only people who can view a timeline can add a question that uses the timeline to a shared dashboard.
+- **Modular embeds with SSO and full app embedding** only show events from timelines the viewer has access to.
 
 ## Edit an event
 
