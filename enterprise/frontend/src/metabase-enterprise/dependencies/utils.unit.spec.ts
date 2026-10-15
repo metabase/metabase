@@ -11,6 +11,7 @@ import type {
 import {
   createMockActionDependencyNode,
   createMockActionDependencyNodeData,
+  createMockActionParameter,
   createMockAnalysisFindingError,
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
@@ -69,6 +70,7 @@ import {
   getNodeLastEditedBy,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeParameters,
   getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
@@ -389,6 +391,30 @@ describe("getNodeDescription", () => {
   });
 });
 
+describe("getNodeParameters", () => {
+  it("should return the parameters of a data action", () => {
+    const parameter = createMockActionParameter();
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({
+        model_id: null,
+        parameters: [parameter],
+      }),
+    });
+    expect(getNodeParameters(node)).toEqual([parameter]);
+  });
+
+  it("should return null for an action of a model, whose parameters come from the model", () => {
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({
+        model_id: 2,
+        type: "implicit",
+        parameters: [],
+      }),
+    });
+    expect(getNodeParameters(node)).toBeNull();
+  });
+});
+
 describe("getParameterIcon", () => {
   it.each<{ type: string; expected: IconName }>([
     { type: "id", expected: "label" },
@@ -517,6 +543,19 @@ describe("getNodeLocationInfo", () => {
       data: createMockActionDependencyNodeData({
         model_id: 2,
         collection: createMockCollection({ name: "My Collection" }),
+      }),
+    });
+    expect(getNodeLocationInfo(node)).toBeNull();
+  });
+
+  it("should not link an action in a data app collection to the Data Studio actions root", () => {
+    const node = createMockActionDependencyNode({
+      data: createMockActionDependencyNodeData({
+        collection: createMockCollection({
+          id: 9,
+          name: "App collection",
+          namespace: "data-apps",
+        }),
       }),
     });
     expect(getNodeLocationInfo(node)).toBeNull();

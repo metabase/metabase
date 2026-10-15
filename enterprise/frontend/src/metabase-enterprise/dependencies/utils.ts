@@ -356,12 +356,11 @@ export function getNodeLocationInfo(
 
 function getDataActionLocationInfo(
   collection: Collection | null | undefined,
-): NodeLocationInfo {
-  if (
-    collection != null &&
-    collection.namespace === "data-actions" &&
-    !isRootCollection(collection)
-  ) {
+): NodeLocationInfo | null {
+  if (collection != null && !isRootCollection(collection)) {
+    if (collection.namespace !== "data-actions") {
+      return null;
+    }
     return {
       icon: "collection",
       links: [
@@ -507,7 +506,9 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
 }
 
 export function getNodeParameters(node: DependencyNode): Parameter[] | null {
-  return node.type === "action" ? (node.data.parameters ?? []) : null;
+  return node.type === "action" && node.data.model_id == null
+    ? (node.data.parameters ?? [])
+    : null;
 }
 
 export function getParameterIcon(parameter: Parameter): IconName {
