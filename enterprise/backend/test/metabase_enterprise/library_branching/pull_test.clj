@@ -519,6 +519,45 @@
          (is (= ptu/sample (pltu/snapshot-of inst)))
          (is (= c1 (instance/base inst))))))))
 
+;;; ---------------------------------------------------- Kind change -------------------------------------------------
+
+(def ^:private kind-change-id "KindChangeItem0000001")
+
+(deftest pull-of-an-identity-of-another-kind-test
+  (enabled
+   (with-remote [repo s]
+     (let [collection (ptu/item kind-change-id :collection "Robin" ptu/library-id {})
+           term       (ptu/item kind-change-id :glossary-term "Robin" nil {:definition "A bird."})
+           local      (assoc ptu/sample kind-change-id collection)
+           [inst c1]  (pushed-instance! s local)
+           remote     (assoc ptu/sample kind-change-id term)
+           h          (pltu/commit-snapshot! repo ptu/branch [c1] remote)
+           {:keys [result steps]} (pltu/pull! inst s)]
+       (testing "the head gives the identity of a collection to a glossary term: the pull writes the term, then trashes
+                the collection"
+         (is (= :pulled result))
+         (is (= [{:id kind-change-id :write term :pre nil} {:id kind-change-id :trash true :pre collection}] steps))
+         (is (= remote (pltu/snapshot-of inst)))
+         (is (= h (instance/base inst)))
+         (is (= none (ptu/local-changes inst))))
+       (testing "a later head with the collection again: the pull writes it, then removes the term"
+         (pltu/commit-snapshot! repo ptu/branch [h] local)
+         (is (= :pulled (:result (pltu/pull! inst s))))
+         (is (= local (pltu/snapshot-of inst))))))))
+
+(deftest pull-of-a-local-kind-change-and-a-remote-edit-test
+  (enabled
+   (with-remote [repo s]
+     (let [local     (assoc-in ptu/sample [ptu/revenue-id :kind] :question)
+           [inst c1] (pushed-instance! s local)
+           _         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed local ptu/revenue-id "Theirs"))]
+       (testing "the instance makes a question a model, and the head renames the question: a conflict of the item"
+         (pltu/save! inst #(assoc-in % [ptu/revenue-id :kind] :model))
+         (let [{:keys [result conflicts]} (pltu/pull! inst s)]
+           (is (= :conflicts result))
+           (is (= [ptu/revenue-id] (map :id conflicts)))
+           (is (= c1 (instance/base inst)))))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
 
 (defspec pull-lands-the-head-property-test 25
