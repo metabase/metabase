@@ -31,8 +31,11 @@
 
   `:thinking-only?` marks a model that rejects `thinking {:type \"disabled\"}` — see
   [[thinking-only-model?]]."
-  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576 :thinking-only? true}
-   "glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
+  {"glm-5.3"       {:display-name "GLM-5.3"       :context-window 1048576 :thinking-only? true}
+   ;; https://docs.z.ai/guides/vlm/glm-5.3-flash. Probed 2026-10-06: Z.AI rejects the disable with error 1210.
+   ;; Probed 2026-10-07: a title-shaped forced call spent 19 completion tokens at "low" and 109 at "max".
+   "glm-5.3-flash" {:display-name "GLM-5.3-Flash" :context-window 1048576 :thinking-only? true}
+   "glm-5.2"       {:display-name "GLM-5.2"       :context-window 1048576}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
