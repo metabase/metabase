@@ -25,7 +25,6 @@ import {
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector, useStore } from "metabase/redux";
-import { closeNavbar } from "metabase/redux/app";
 import {
   editSummary,
   setIsNativeEditorOpen,
