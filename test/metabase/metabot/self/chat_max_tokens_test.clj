@@ -94,6 +94,7 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-5-5"             32000
                        "claude-opus-4-5-20251101"     32000
                        "claude-sonnet-4-5-20250929"   32000
                        "claude-haiku-4-5-20251001"    32000
