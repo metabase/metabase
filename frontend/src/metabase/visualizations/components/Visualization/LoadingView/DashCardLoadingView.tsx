@@ -15,7 +15,8 @@ export const DashCardLoadingView = ({
   isSlow,
   expectedDuration,
   display,
-}: LoadingViewProps & { display?: CardDisplayType }) => {
+  gridWidth,
+}: LoadingViewProps & { display?: CardDisplayType; gridWidth?: number }) => {
   const { url, showMetabaseLinks } = useLearnUrl(
     "metabase-basics/administration/administration-and-operation/making-dashboards-faster",
   );
@@ -41,7 +42,7 @@ export const DashCardLoadingView = ({
       data-testid="loading-indicator"
       className={cx(CS.fullHeight, !isScalar && cx(CS.px2, CS.pb2))}
     >
-      <ChartSkeleton display={display} />
+      <ChartSkeleton display={display} gridWidth={gridWidth} />
       <Transition
         mounted={!!isSlow}
         transition={{

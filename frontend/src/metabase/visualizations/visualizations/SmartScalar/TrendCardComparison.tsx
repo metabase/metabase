@@ -11,6 +11,7 @@ interface TrendCardComparisonProps {
   title: ReactNode;
   trend: Trend;
   availableWidth: number;
+  isNarrow: boolean;
 }
 
 export function TrendCardComparison({
@@ -18,12 +19,11 @@ export function TrendCardComparison({
   title,
   trend,
   availableWidth,
+  isNarrow,
 }: TrendCardComparisonProps) {
   if (trend.comparisons.length === 0) {
     return title;
   }
-
-  const isNarrow = availableWidth < tier.minWidth - 2 * tier.xPadding;
 
   if (tier.size === 100 || (tier.size === 150 && isNarrow)) {
     return (

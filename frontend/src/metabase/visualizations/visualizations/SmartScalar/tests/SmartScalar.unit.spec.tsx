@@ -31,11 +31,17 @@ const createMockInsights = (insights: Partial<Insight>[]) => insights;
 const setup = (series: Series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
-function setupCompactTrend(
-  comparisonCount: number,
+interface CompactTrendSetupOpts {
+  comparisonCount: number;
+  width?: number;
+  gridWidth?: number;
+}
+
+function setupCompactTrend({
+  comparisonCount,
   width = 170,
-  gridWidth?: number,
-) {
+  gridWidth,
+}: CompactTrendSetupOpts) {
   const comparisonTypes = [
     { id: "1", type: "previousPeriod" as const },
     { id: "2", type: "previousValue" as const },
@@ -482,7 +488,7 @@ describe("SmartScalar", () => {
     );
 
     it("should show the description for a single compact comparison", async () => {
-      setupCompactTrend(1);
+      setupCompactTrend({ comparisonCount: 1 });
       await userEvent.hover(screen.getByLabelText("info icon"));
       await waitFor(() =>
         expect(screen.getByText("Monthly revenue")).toBeVisible(),
@@ -490,7 +496,7 @@ describe("SmartScalar", () => {
     });
 
     it("should keep extra comparisons accessible on a narrow three-column dashboard card", async () => {
-      setupCompactTrend(3, 106, 3);
+      setupCompactTrend({ comparisonCount: 3, width: 106, gridWidth: 3 });
       expect(screen.getByText("Revenue")).toBeVisible();
       expect(screen.getByText("+20%")).toBeVisible();
       expect(screen.getByText("+2")).toBeVisible();
@@ -501,7 +507,7 @@ describe("SmartScalar", () => {
     });
 
     it("should keep extra comparisons in the tooltip on the smallest cards", async () => {
-      setupCompactTrend(3, 82, 2);
+      setupCompactTrend({ comparisonCount: 3, width: 82, gridWidth: 2 });
       expect(screen.getByText("Revenue")).toBeVisible();
       expect(screen.queryByText("+2")).not.toBeInTheDocument();
       await userEvent.hover(screen.getByTestId("scalar-previous-value"));
@@ -512,7 +518,7 @@ describe("SmartScalar", () => {
     it.each([2, 3])(
       "should show %s compact comparisons and hide the info icon",
       async (count) => {
-        setupCompactTrend(count);
+        setupCompactTrend({ comparisonCount: count });
         expect(screen.getByText("Revenue")).toBeVisible();
         expect(screen.getByText("+20%")).toBeVisible();
         expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
