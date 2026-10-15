@@ -13,10 +13,15 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { queryToSearch, useSearchParams } from "metabase/router";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import {
+  useAdminSetting,
+  useSetting,
+  useSettingSwitch,
+} from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
+  SwitchSettingsSection,
 } from "metabase/settings-components";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
@@ -155,24 +160,18 @@ function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
 }
 
 function MetabotQueryExecutionSettingsSection({ id }: { id: string }) {
-  const { value, updateSetting, isLoading } = useAdminSetting(
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
     "metabot-query-execution-enabled?",
   );
 
-  const handleChange = async (checked: boolean) => {
-    await updateSetting({
-      key: "metabot-query-execution-enabled?",
-      value: checked,
-    });
-  };
-
   return (
-    <ToggleSettingsSection
-      checked={value === true}
+    <SwitchSettingsSection
+      checked={checked}
       description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
-      disabled={isLoading}
       id={id}
-      onChange={handleChange}
+      lockedEnvName={envName}
+      onChange={onChange}
+      switchDisabled={isBusy}
       title={t`Let Metabot read query results`}
     />
   );
