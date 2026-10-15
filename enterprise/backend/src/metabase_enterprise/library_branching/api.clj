@@ -78,8 +78,8 @@
   "Saves the repository settings that library branching shares with remote sync. A blank URL turns library branching
   off. The obfuscated saved token keeps the saved token, and a value from an environment variable stays. A change of
   the URL, the token, the type or the branch is checked against the repository first. After the save, a consumption
-  instance with a branch starts a deploy, and the response has its task id. 400 while a task runs, and when the check
-  fails. Superuser only."
+  instance with a branch starts a deploy, and the response has its task id. 400 while a task runs, when the check
+  fails, and for a switch to read-only while the instance has changes that a deploy would stop on. Superuser only."
   [_route-params
    _query-params
    body :- [:map {:closed true}
@@ -89,7 +89,7 @@
             [:remote-sync-branch {:optional true} [:maybe :string]]
             [:remote-sync-auto-import {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (repository/save-settings! body api/*current-user-id*)
+  (operations/save-settings! body api/*current-user-id*)
   (if-let [task (operations/start-deploy-after-save! api/*current-user-id*)]
     {:success true :task_id (:id task)}
     {:success true}))
@@ -148,6 +148,8 @@
                                            [:head_findings Findings]
                                            [:local ChangeSet]
                                            [:remote [:maybe ChangeSet]]
+                                           [:read_only :boolean]
+                                           [:drift [:maybe [:sequential Identity]]]
                                            [:shadowed_tables [:sequential [:map
                                                                            [:id pos-int?]
                                                                            [:name :string]
@@ -156,13 +158,15 @@
   "The status of the instance and the configured branch: the base, the head, whether the branch is missing, whether no
   branch holds the base (then nothing shows as synced), the findings of the head, the local and remote changes as
   identities, and the published tables that do not sync because another published table has their key, each with a
-  message for the person. 400 when no repository or branch is configured, and with the message for the person when
-  the remote call fails. Superuser only."
+  message for the person. On a read-only instance, `drift` lists the changes on the instance that no commit holds:
+  they stop a deploy until an admin discards them; it is nil on a read-write instance. 400 when no repository or
+  branch is configured, and with the message for the person when the remote call fails. Superuser only."
   []
   (api/check-superuser)
-  (let [branch (status-branch)
-        {:keys [base head branch-missing base-lost head-findings local remote shadowed-tables]}
-        (with-store #(status/status (operations/instance) % branch {}))]
+  (let [branch     (status-branch)
+        read-only? (not (repository/read-write?))
+        {:keys [base head branch-missing base-lost head-findings local remote shadowed-tables drift]}
+        (with-store #(status/status (operations/instance) % branch {:consumption? read-only?}))]
     {:base           base
      :head           head
      :branch_missing branch-missing
@@ -170,6 +174,8 @@
      :head_findings  head-findings
      :local           (change-set-response local)
      :remote          (change-set-response remote)
+     :read_only       read-only?
+     :drift           drift
      :shadowed_tables (mapv (fn [t] (assoc (select-keys t [:id :name :key]) :message (scope/shadowed-message t)))
                             shadowed-tables)}))
 
@@ -318,11 +324,16 @@
   (task-response (operations/start-merge-branch! api/*current-user-id* into from)))
 
 (api.macros/defendpoint :post "/deploy" :- [:map [:task_id pos-int?]]
-  "Starts a deploy of the configured branch onto this consumption instance, as a task, and returns its id. 400 when
-  library branching is off or not configured, on a creation instance, and while a task runs. Superuser only."
-  []
+  "Starts a deploy of the configured branch onto this consumption instance, as a task, and returns its id. With
+  `discard_changes`, the admin discards the drift: the deploy writes the head over the changes on the instance that no
+  commit holds. 400 when library branching is off or not configured, on a creation instance, and while a task runs.
+  Superuser only."
+  [_route-params
+   _query-params
+   {:keys [discard_changes]} :- [:maybe [:map {:closed true}
+                                         [:discard_changes {:optional true} :boolean]]]]
   (api/check-superuser)
-  (task-response (operations/start-deploy! api/*current-user-id*)))
+  (task-response (operations/start-deploy! api/*current-user-id* {:discard? (boolean discard_changes)})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library-branching` routes."
