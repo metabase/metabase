@@ -66,8 +66,8 @@
    {:name   :no-table-item-lock
     :doc    "current reads a segment or a measure with no row lock, so a save by another connection does not wait."
     :target `library-branching.db/lock-table-item
-    :edits  [[:replace '[:update] nil]]
+    :edits  [[:remove :for] [:remove '[:update]]]
     :tests  [#'lock-test/current-locks-the-row-test]}])
 
 (deftest table-item-mutations-test
-  (mut/check mutations {:timeout-ms 300000}))
+  (mut/check mutations {}))
