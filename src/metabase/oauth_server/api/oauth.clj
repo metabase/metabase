@@ -126,8 +126,7 @@
    registered human-readable description. Returns nil when no scope was requested."
   [scope-param]
   (when-let [scopes (scope-tokens scope-param)]
-    (let [rank     (zipmap consent-scope-order (range))
-          baseline (set (mcp/v2-baseline-scopes))]
+    (let [rank     (zipmap consent-scope-order (range))]
       (->> scopes
            ;; `sort-by` is stable, so unranked scopes keep their request order
            (sort-by #(rank % (count rank)))
@@ -137,7 +136,7 @@
                     ;; Flag the broad first-party grant so the consent page can warn about it without
                     ;; hardcoding the scope string in the view.
                     :full-access? (= s oauth-server/full-access-scope)
-                    :locked?      (contains? baseline s)}))))))
+                    :locked?      (mcp/v2-baseline-scope? s)}))))))
 
 (defn- form-values
   "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."
@@ -153,7 +152,7 @@
    that was not offered."
   [offered chosen]
   (when (every? (set offered) chosen)
-    (filterv (some-fn (set chosen) (set (mcp/v2-baseline-scopes))) offered)))
+    (filterv (some-fn (set chosen) mcp/v2-baseline-scope?) offered)))
 
 ;;; ------------------------------------------- Error descriptions ------------------------------------------------
 

@@ -2498,7 +2498,7 @@
         (let [mcp-uri   (str "http://localhost:3000" (mcp/mcp-canonical-path))
               not-mcp   (first-non-mcp-default-scope)
               ;; what `POST /oauth/register` stores for a client that registered with the baseline `scope`
-              client-id (:client_id (create-test-client! {:scopes            (vec (mcp/v2-baseline-scopes))
+              client-id (:client_id (create-test-client! {:scopes            (filterv mcp/v2-baseline-scope? (mcp/v2-scopes))
                                                           :registration_type "dynamic"}))
               authorize (fn [scope & resource]
                           (apply mt/user-http-request-full-response

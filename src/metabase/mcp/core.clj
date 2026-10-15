@@ -83,8 +83,7 @@
   []
   mcp.scope/v2-surface-scopes)
 
-(defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] that the consent page locks: when a client requests one of these, the user cannot untick
-  it."
-  []
-  mcp.scope/v2-baseline-scopes)
+(defn v2-baseline-scope?
+  "Is `scope` locked on the consent page?"
+  [scope]
+  (mcp.scope/v2-baseline-scope? scope))

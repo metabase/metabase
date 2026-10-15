@@ -556,8 +556,8 @@
             `metabot.scope` from anything `mcp.core` reaches deadlocks namespace loading at web-server start.
             This is what keeps the literals honest in place of that require."
     (is (= [metabot.scope/agent-content-read
-            metabot.scope/agent-content-write
             metabot.scope/agent-query-run
+            metabot.scope/agent-content-write
             metabot.scope/agent-sql-run
             metabot.scope/agent-delivery-write]
            mcp.scope/v2-surface-scopes))))
@@ -826,7 +826,7 @@
                                                       {:request-options {:headers {}}}
                                                       (jsonrpc-request "initialize"))]
             (is (str/ends-with? (get-in response [:headers "WWW-Authenticate"] "")
-                                (str ", scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run "
+                                (str ", scope=\"agent:content:read agent:query:run agent:content:write agent:sql:run "
                                      "agent:delivery:write\"")))))))
     (testing "ENG-11089: an invalid bearer token's challenge asks for the same scopes"
       (doseq [path ["metabase-mcp" "mcp"]]
@@ -838,7 +838,7 @@
             (is (= (str "Bearer realm=\"mcp\", "
                         "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                         "/api/" path "\", "
-                        "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run "
+                        "scope=\"agent:content:read agent:query:run agent:content:write agent:sql:run "
                         "agent:delivery:write\", "
                         "error=\"invalid_token\"")
                    (get-in response [:headers "WWW-Authenticate"])))))))
@@ -850,7 +850,7 @@
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                     "/api/metabase-mcp\", "
-                    "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run "
+                    "scope=\"agent:content:read agent:query:run agent:content:write agent:sql:run "
                     "agent:delivery:write\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 
@@ -1082,26 +1082,24 @@
 ;;; ------------------------------------------- Insufficient-scope step-up -----------------------------------------
 
 (deftest ^:parallel step-up-scopes-test
+  ;; Real scope strings: `matches?` only ever matches a v2 surface scope.
   (let [step-up-scopes #'v2.api/step-up-scopes
-        surface        ["s:a" "s:b" "s:c" "s:d"]]
+        [a b c d]      ["agent:content:read" "agent:query:run" "agent:content:write" "agent:sql:run"]
+        surface        [a b c d]]
     (testing "GHY-4543: the challenge asks for the surface scopes the token holds plus the required one, in surface
               order, so a client that replaces its scope with the challenged one keeps what it had"
-      (is (= ["s:a" "s:c" "s:d"] (step-up-scopes surface #{"s:d" "s:a"} "s:c"))))
+      (is (= [a c d] (step-up-scopes surface #{d a} c))))
     (testing "held scopes outside the surface, and the unrestricted sentinel, are not echoed back"
-      (is (= ["s:b"] (step-up-scopes surface #{"agent:question:create" :metabase.api.macros.scope/unrestricted}
-                                     "s:b"))))
+      (is (= [b] (step-up-scopes surface #{"agent:question:create" :metabase.api.macros.scope/unrestricted} b))))
     (testing "a required scope the token already holds is not repeated"
-      (is (= ["s:a" "s:b"] (step-up-scopes surface #{"s:a" "s:b"} "s:b"))))
+      (is (= [a b] (step-up-scopes surface #{a b} b))))
     (testing "a required scope outside the surface still reaches the challenge, after the surface scopes"
-      (is (= ["s:a" "x:y"] (step-up-scopes surface #{"s:a"} "x:y"))))
+      (is (= [a "x:y"] (step-up-scopes surface #{a} "x:y"))))
     (testing "no token scopes at all yields just the required one"
-      (is (= ["s:c"] (step-up-scopes surface nil "s:c"))))
+      (is (= [c] (step-up-scopes surface nil c))))
     (testing "GHY-4942: a held wildcard covers no surface scope, so it is not echoed back"
-      (is (= ["agent:sql:run"]
-             (step-up-scopes ["agent:content:read" "agent:content:write" "agent:query:run" "agent:sql:run"]
-                             #{"agent:content:*"}
-                             "agent:sql:run")))
-      (is (= ["s:b"] (step-up-scopes surface #{"*"} "s:b"))))))
+      (is (= [d] (step-up-scopes surface #{"agent:content:*"} d)))
+      (is (= [b] (step-up-scopes surface #{"*"} b))))))
 
 (defn- bearer-session-post!
   "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path extra-headers]})` that
@@ -1222,7 +1220,7 @@
   (testing "GHY-4543: a client holding only the always-granted baseline is challenged, on a write, for the
             baseline plus the scope that write needs, so its step-up keeps what it already holds"
     (v2.tu/do-with-bearer-token!
-     (set mcp.scope/v2-baseline-scopes)
+     v2.tu/baseline-scopes
      (fn [headers]
        (let [post!    (bearer-session-post! headers)
              response (post! 403 (jsonrpc-request "tools/call"
@@ -1230,7 +1228,7 @@
                                                    :arguments {:method "create" :name "Step-up probe"}}))]
          (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
                                (str "Bearer error=\"insufficient_scope\", "
-                                    "scope=\"agent:content:read agent:content:write agent:query:run\", "
+                                    "scope=\"agent:content:read agent:query:run agent:content:write\", "
                                     "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "))))))))
 
 (defn- orders-query
@@ -1249,7 +1247,7 @@
             connected client queries and charts without a 403."
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (v2.tu/do-with-bearer-token!
-       (set mcp.scope/v2-baseline-scopes)
+       v2.tu/baseline-scopes
        (fn [headers]
          (let [session-id (-> (client/client-full-response :post 200 endpoint
                                                            {:request-options {:headers headers}}
@@ -1328,7 +1326,7 @@
   (testing "GHY-4543, GHY-4939: the locked baseline carries agent:content:read, so a client that unticked everything
             else still reads the fields catalog without stepping up"
     (v2.tu/do-with-bearer-token!
-     (set mcp.scope/v2-baseline-scopes)
+     v2.tu/baseline-scopes
      (fn [headers]
        (let [response ((bearer-session-post! headers)
                        200
@@ -1548,7 +1546,7 @@
   "The `WWW-Authenticate` an in-handler agent:sql:run denial of `tool-name` sends a [[content-write-scopes]] token."
   [tool-name]
   (str "Bearer error=\"insufficient_scope\", "
-       "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run\", "
+       "scope=\"agent:content:read agent:query:run agent:content:write agent:sql:run\", "
        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
        "error_description=\"" tool-name " requires agent:sql:run "
        "(" (registry/english-scope-label "agent:sql:run") ")"))

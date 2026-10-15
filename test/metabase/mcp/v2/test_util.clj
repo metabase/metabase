@@ -18,6 +18,10 @@
    gate call it with these."
   (set mcp.scope/v2-surface-scopes))
 
+(def baseline-scopes
+  "Token scopes holding only the scopes the consent page locks."
+  (set (filter mcp.scope/v2-baseline-scope? mcp.scope/v2-surface-scopes)))
+
 (defn do-with-bearer-token!
   "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
   ([scopes f]
