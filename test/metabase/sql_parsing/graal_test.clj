@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics-interface]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.files :as u.files])
   (:import
@@ -55,11 +56,13 @@
   (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
                 "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
                 "the timeout (#77084).")
-    (dynamic-redefs/with-dynamic-fn-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
-                                            graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)
-                                            ;; poison only the timeout metric; leave the acquisition inc! alone
-                                            analytics-interface/inc! (fn [k & _]
-                                                                       (when (= k :metabase-sql-parsing/context-timeouts)
-                                                                         (throw (Exception. "boom"))))]
-      (is (thrown? TimeoutException
-                   (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))
+    ;; the timeout belongs to the GraalPy transport, so the API only reaches it when GraalPy is the backend
+    (when-not (= :sqlglot-java (sql-tools.settings/current-parser-backend))
+      (dynamic-redefs/with-dynamic-fn-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
+                                              graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)
+                                              ;; poison only the timeout metric; leave the acquisition inc! alone
+                                              analytics-interface/inc! (fn [k & _]
+                                                                         (when (= k :metabase-sql-parsing/context-timeouts)
+                                                                           (throw (Exception. "boom"))))]
+        (is (thrown? TimeoutException
+                     (sql-parsing/referenced-tables "postgres" "SELECT 1")))))))
