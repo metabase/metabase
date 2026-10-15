@@ -16,7 +16,7 @@ type ColorScheme = "light" | "dark";
 type HostContract = {
   contractVersion: number;
   sandbox: Record<string, string[]>;
-  colors: Record<ColorScheme, Record<string, string>>;
+  colors: Record<string, { role: string } & Record<ColorScheme, string>>;
   columns: Record<string, { column: object; predicates: string[] }>;
 };
 
@@ -114,12 +114,7 @@ const getHostPredicates = (kind: string, column: object) =>
     .map(([name]) => name)
     .sort();
 
-const colorNames = Object.keys(CONTRACT.colors.light);
-
-const resolveColors = (colorScheme: ColorScheme) =>
-  Object.fromEntries(
-    colorNames.map((name) => [name, resolveColor(name, colorScheme)]),
-  );
+const colorNames = Object.keys(CONTRACT.colors);
 
 const computeContract = (): HostContract => ({
   contractVersion: CONTRACT.contractVersion,
@@ -130,7 +125,16 @@ const computeContract = (): HostContract => ({
     urlValuedAttributes: readBlocklist("URL_VALUED_ATTRS"),
     blockedApiCalls: readBlockedApiCalls(),
   },
-  colors: { light: resolveColors("light"), dark: resolveColors("dark") },
+  colors: Object.fromEntries(
+    Object.entries(CONTRACT.colors).map(([name, { role }]) => [
+      name,
+      {
+        role,
+        light: resolveColor(name, "light"),
+        dark: resolveColor(name, "dark"),
+      },
+    ]),
+  ),
   columns: Object.fromEntries(
     Object.entries(CONTRACT.columns).map(([kind, { column }]) => [
       kind,
@@ -142,9 +146,7 @@ const computeContract = (): HostContract => ({
 const toComparable = ({ colors, ...rest }: HostContract) =>
   JSON.stringify({
     ...rest,
-    colorNames: COLOR_SCHEMES.map((colorScheme) =>
-      Object.keys(colors[colorScheme]),
-    ),
+    colorNames: Object.keys(colors),
   });
 
 describe("custom-viz host-contract.json", () => {
@@ -159,6 +161,12 @@ describe("custom-viz host-contract.json", () => {
       Object.values(expected.sandbox).every((list) => list.length > 0),
     ).toBe(true);
     expect(colorNames.length).toBeGreaterThan(0);
+  });
+
+  it("gives every color a role", () => {
+    expect(
+      colorNames.filter((name) => !CONTRACT.colors[name].role.trim()),
+    ).toEqual([]);
   });
 
   it("lists only color names the host palette knows", () => {
