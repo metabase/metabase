@@ -1126,6 +1126,21 @@
                  (is (every? #(= #{:jsonrpc :id} (disj (set (keys %)) :error :result)) (:body response))
                      "no transport-internal marker leaks into a batch element"))))))))))
 
+(deftest wildcard-token-scopes-grant-no-mcp-tool-test
+  (testing "GHY-4942: MCP tools match only the named scopes a token holds. A wildcard (`*`, `agent:*`) is not a
+            registered scope and cannot be granted today, but a token minted before registration validated scopes
+            can still carry one, and it must not reach every tool on the surface"
+    (doseq [wildcard ["*" "agent:*"]]
+      (testing (pr-str wildcard)
+        (do-with-bearer-token!
+         #{"agent:content:read" wildcard}
+         (fn [headers]
+           (let [post!    (bearer-session-post! headers)
+                 response (post! 403 (jsonrpc-request "tools/call" {:name "execute_sql" :arguments {}}))]
+             (is (= 403 (:status response)))
+             (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                "error_description=\"execute_sql requires agent:sql:run")))))))))
+
 (deftest in-handler-scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: the scope checks inside tool handlers (here alert_write's deferred agent:query:run check) answer
             with the same 403 challenge as the registry gate, naming their own required scope"
