@@ -13,10 +13,10 @@
 
 (deftest ^:parallel count-by-kind-test
   (testing "every kind has a count, 0 when the snapshot has no item of it"
-    (is (= {:collection 0 :metric 0 :published-table 0 :snippet 0} (count/count-by-kind {}))))
+    (is (= {:collection 0 :measure 0 :metric 0 :published-table 0 :segment 0 :snippet 0} (count/count-by-kind {}))))
   (testing "each item counts once, for its kind"
     (let [lib (engine.tu/eid "lib")]
-      (is (= {:collection 1 :metric 2 :published-table 1 :snippet 0}
+      (is (= {:collection 1 :measure 0 :metric 2 :published-table 1 :segment 0 :snippet 0}
              (count/count-by-kind {lib                                   (engine.tu/item :collection "Library" nil)
                                    (engine.tu/eid "m1")                  (engine.tu/item :metric "A" lib)
                                    (engine.tu/eid "m2")                  (engine.tu/item :metric "A" lib)

@@ -201,12 +201,54 @@
              :content       [true text-gen]
              :template_tags [false template-tags-gen]}))
 
+(defn- table-definition-gen
+  "Generates the definition of a table item: one MBQL stage on a table with the clauses of `clauses-gen`, a map
+  generator. The table and the database are placeholders; [[complete]] sets them to the item's place."
+  [clauses-gen]
+  (gen/fmap (fn [[t clauses]]
+              {:lib/type "mbql/query"
+               :database "Sample Database"
+               :stages   [(merge clauses {:lib/type t :source-table ["Sample Database" "PUBLIC" "ORDERS"]})]})
+            (gen/tuple (stage-type-gen "mbql.stage/mbql") clauses-gen)))
+
+(def segment-definition-gen
+  "Generates the definition of a segment: filters only."
+  (table-definition-gen (gen/fmap (fn [fs] {:filters fs}) (gen/vector filter-gen 1 3))))
+
+(def ^:private measure-aggregation-gen
+  (gen/one-of [(gen/return ["count" {}])
+               (gen/fmap (fn [r] ["sum" {} r]) field-ref-gen)
+               (gen/fmap (fn [id] ["measure" {} id]) lb.tu/entity-id-gen)]))
+
+(def measure-definition-gen
+  "Generates the definition of a measure: one aggregation, with no metric."
+  (table-definition-gen (gen/fmap (fn [a] {:aggregation [a]}) measure-aggregation-gen)))
+
+(def segment-attrs-gen
+  "Generates the `:attrs` of a segment."
+  (attrs-of {:description             [false text-gen]
+             :points_of_interest      [false text-gen]
+             :caveats                 [false text-gen]
+             :show_in_getting_started [false (gen/return true)]
+             :definition              [true segment-definition-gen]}))
+
+(def measure-attrs-gen
+  "Generates the `:attrs` of a measure."
+  (attrs-of {:description [false text-gen]
+             :definition  [true measure-definition-gen]}))
+
 (def attrs-gens
   "`{kind generator}` of the `:attrs` of each kind."
   {:collection      collection-attrs-gen
+   :measure         measure-attrs-gen
    :metric          metric-attrs-gen
    :published-table published-table-attrs-gen
+   :segment         segment-attrs-gen
    :snippet         snippet-attrs-gen})
+
+(def table-item-kinds
+  "The kinds whose items live on a published table."
+  #{:measure :segment})
 
 ;;; ---------------------------------------------------- Snapshots ---------------------------------------------------
 
@@ -217,15 +259,30 @@
         (map (fn [[id item]] [id (assoc item :refs (kinds/refs (:kind item) id (:attrs item)))]))
         s))
 
+(defn on-their-tables
+  "Snapshot `s` with the definition of each table item (a segment or a measure) on the table of its place, which is
+  a table key."
+  [s]
+  (update-vals s (fn [{:keys [kind place] :as item}]
+                   (if (contains? table-item-kinds kind)
+                     (update-in item [:attrs :definition] #(-> %
+                                                               (assoc :database (first place))
+                                                               (assoc-in [:stages 0 :source-table] place)))
+                     item))))
+
+(def complete
+  "[[with-refs]] of [[on-their-tables]]."
+  (comp with-refs on-their-tables))
+
 (defn snapshot-gen
-  "Generates well-formed snapshots of the four kinds, at most `max-items` (default 30) items, whose items fit the
-  schemas of their codecs. The references of an item are those of its attributes; they can name items that are not
-  in the snapshot."
+  "Generates well-formed snapshots of every kind, at most `max-items` (default 30) items, whose items fit the schemas
+  of their codecs. A segment or a measure is on a published table, never at the root level. The references of an item
+  are those of its attributes; they can name items that are not in the snapshot."
   ([] (snapshot-gen 30))
   ([max-items]
-   (gen/fmap with-refs
+   (gen/fmap complete
              (lb.tu/well-formed-snapshot-gen {:kinds       snapshot/kinds
                                               :may-contain snapshot/may-contain
-                                              :root-kinds  snapshot/kinds
+                                              :root-kinds  (apply disj snapshot/kinds table-item-kinds)
                                               :attrs       attrs-gens
                                               :max-items   max-items}))))

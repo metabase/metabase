@@ -111,6 +111,16 @@
                                                         :is_published  true
                                                         :collection_id (:id data)})
              _       (insert! :model/FieldUserSettings {:field_id (mt/id :venues :price) :display_name "Locked price"})
+             segment (insert! :model/Segment {:name       "Locked segment"
+                                              :table_id   (mt/id :venues)
+                                              :creator_id user
+                                              :definition (let [mp (mt/metadata-provider)]
+                                                            (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                        (lib/< (lib.metadata/field mp (mt/id :venues :price)) 2)))})
+             measure (insert! :model/Measure {:name       "Locked measure"
+                                              :table_id   (mt/id :venues)
+                                              :creator_id user
+                                              :definition (sum-query :venues :price)})
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -126,7 +136,11 @@
                                    :where  [:= :table_id (mt/id :venues)]})]
                   ["the settings row of a field of a published table" :published-table table
                    #(t2/query-one {:update :metabase_field_user_settings :set {:description "Saved"}
-                                   :where  [:= :field_id (mt/id :venues :price)]})]]]
+                                   :where  [:= :field_id (mt/id :venues :price)]})]
+                  ["a segment" :segment (:entity_id segment)
+                   #(t2/query-one {:update :segment :set {:name "Saved"} :where [:= :id (:id segment)]})]
+                  ["a measure" :measure (:entity_id measure)
+                   #(t2/query-one {:update :measure :set {:name "Saved"} :where [:= :id (:id measure)]})]]]
            (testing label
              (let [[content during after] (while-current-holds! (get stores kind) id save!)]
                (is (map? content))

@@ -49,8 +49,8 @@
   (testing "one codec for each kind of the snapshot"
     (is (= snapshot/kinds (set (keys by-kind)))))
   (testing "the words and directory kinds of the layout"
-    (is (= {:collection ["collection" true] :metric ["metric" false] :published-table ["table" false]
-            :snippet ["snippet" false]}
+    (is (= {:collection ["collection" true] :measure ["measure" false] :metric ["metric" false]
+            :published-table ["table" false] :segment ["segment" false] :snippet ["snippet" false]}
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
 ;;; ------------------------------------------------------ Laws -------------------------------------------------------
@@ -103,6 +103,10 @@
       (doseq [prefix ["library/_collection.yaml" "snippets/" "transforms/" "actions/" "apps/"]]
         (is (some #(str/starts-with? % prefix) paths) prefix))
       (is (some #(re-find #"\.table\.yaml$" %) paths) "a published table")
+      (is (some #(re-find #"\.table/[^/]+\.segment\.yaml$" %) paths) "a segment in the directory of its table")
+      (is (some #(re-find #"\.table/[^/]+\.measure\.yaml$" %) paths) "a measure in the directory of its table")
+      (is (some #(some (fn [[role]] (= :segment role)) (:refs %)) items) "a reference to a segment")
+      (is (some #(some (fn [[role]] (= :measure role)) (:refs %)) items) "a reference to a measure")
       (is (some #(str/includes? % "~") paths) "an identity suffix")
       (is (some #(str/includes? % "native:") texts) "a native stage")
       (is (some #(str/includes? % "joins:") texts) "a join")
@@ -140,6 +144,8 @@
 (def ^:private active-filter-id "aCtIvEpRoDuCtFiLtEr01")
 (def ^:private finance-id "fInAnCeCoLlEcTiOnId00")
 (def ^:private orders [sd "PUBLIC" "ORDERS"])
+(def ^:private large-orders-id "lArGeOrDeRsSeGmEnT001")
+(def ^:private order-total-id "oRdErToTaLmEaSuRe0001")
 
 (defn- collection [nm place & {:as attrs}]
   {:kind :collection :name nm :place place :refs #{} :attrs (or attrs {})})
@@ -216,6 +222,38 @@
             :fields      {:TOTAL   {:display_name "Total" :semantic_type "type/Currency"}
                           :USER_ID {:visibility_type "hidden" :fk_target [sd "PUBLIC" "PEOPLE" "ID"]}}}}
 
+   large-orders-id
+   {:kind  :segment
+    :name  "Large orders"
+    :place orders
+    :refs  #{[:database [:env [sd]]]
+             [:source-table [:env orders]]
+             [:field [:env [sd "PUBLIC" "ORDERS" "TOTAL"]]]}
+    :attrs {:description "Orders over 100."
+            :definition  {:lib/type "mbql/query"
+                          :database sd
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table orders
+                                      :filters      [[">" {} ["field" {:base-type "type/Float"}
+                                                              [sd "PUBLIC" "ORDERS" "TOTAL"]]
+                                                      100]]}]}}}
+
+   order-total-id
+   {:kind  :measure
+    :name  "Order total"
+    :place orders
+    :refs  #{[:database [:env [sd]]]
+             [:source-table [:env orders]]
+             [:field [:env [sd "PUBLIC" "ORDERS" "TOTAL"]]]
+             [:segment large-orders-id]}
+    :attrs {:definition {:lib/type "mbql/query"
+                         :database sd
+                         :stages   [{:lib/type     "mbql.stage/mbql"
+                                     :source-table orders
+                                     :aggregation  [["sum-where" {}
+                                                     ["field" {:base-type "type/Float"} [sd "PUBLIC" "ORDERS" "TOTAL"]]
+                                                     ["segment" {} large-orders-id]]]}]}}}
+
    base-filter-id
    {:kind :snippet :name "Base filter" :place nil :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
 
@@ -271,7 +309,9 @@
           [kind item] [[:metric (get golden-snapshot total-revenue-id)]
                        [:collection (get golden-snapshot revenue-id)]
                        [:snippet (get golden-snapshot base-filter-id)]
-                       [:published-table (get golden-snapshot orders)]]]
+                       [:published-table (get golden-snapshot orders)]
+                       [:segment (get golden-snapshot large-orders-id)]
+                       [:measure (get golden-snapshot order-total-id)]]]
     (testing (str kind " with " k)
       (is (not (mr/validate (codec/schema (get by-kind kind)) (assoc-in item [:attrs k] "x"))))))
   (testing "a metric file with a public link or the embedding settings is invalid, and decode-tree reports it"
