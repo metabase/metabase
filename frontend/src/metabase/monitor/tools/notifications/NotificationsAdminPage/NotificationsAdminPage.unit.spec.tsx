@@ -671,7 +671,6 @@ describe("NotificationsAdminPage", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
-      // Row 26 opens the second page, so the first page held rows 1-25.
       expect(
         await screen.findByTestId("notification-row-26"),
       ).toBeInTheDocument();
