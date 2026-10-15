@@ -18,7 +18,8 @@
 (def ^:private other-id "AcHuRnGlOsSaRyTeRm002")
 
 (def ^:private churn
-  {:kind :glossary-term :name "Churn" :place nil :refs #{} :attrs {:definition "The share of customers who cancel."}})
+  {:kind  :glossary-term :name "Churn" :place "glossaryglossarygloss" :refs #{}
+   :attrs {:definition "The share of customers who cancel."}})
 
 (def ^:private churn-text
   "kind: glossary-term\nid: ChUrNgLoSsArYtErM0001\ndefinition: The share of customers who cancel.\nterm: Churn\n")
@@ -61,8 +62,11 @@
     (is (fits? (assoc churn :name (apply str (repeat 255 "é")))))
     (is (not (fits? (assoc churn :name (apply str (repeat 256 "a"))))))
     (is (not (fits? (assoc churn :name "")))))
-  (testing "a glossary term has no place: an item with a place does not fit, and a file with a collection is invalid"
+  (testing "the place of a glossary term is the root of the Glossary area: an item at another place does not fit, and a
+           file with a collection is invalid"
     (is (not (fits? (assoc churn :place "cOlQuErIeS0ExAmPlE2x1"))))
+    (is (not (fits? (assoc churn :place nil))))
+    (is (not (fits? (assoc churn :place "snippetssnippetssnipp"))))
     (is (invalid? (str churn-text "collection: cOlQuErIeS0ExAmPlE2x1\n")))
     (is (invalid? (str churn-text "parent: cOlQuErIeS0ExAmPlE2x1\n"))))
   (testing "a glossary term has no references, whatever its definition says"
@@ -74,11 +78,12 @@
       (is (invalid? (str churn-text (name k) ": x\n")) (str k)))))
 
 (deftest root-test
-  (testing "every glossary term is at the root level and is a fixed root"
-    (is (= #{churn-id} (roots/root-ids {churn-id churn})))
+  (testing "every glossary term is at the root of the Glossary area, so it is not at the root level"
+    (is (= #{} (roots/root-ids {churn-id churn})))
     (is (= [] (validate/validate {churn-id churn} {:roots (roots/root-ids {churn-id churn})}))))
-  (testing "the roots are an argument: without the glossary kind, a glossary term is not a root"
-    (is (= #{} (roots/root-ids (update roots/roots :unplaced-kinds disj :glossary-term) {churn-id churn})))))
+  (testing "a glossary term at the root level is no fixed root"
+    (is (= [{:rule :root :id churn-id}]
+           (validate/validate {churn-id (assoc churn :place nil)} {:roots #{}})))))
 
 (deftest tree-test
   (testing "a tree of glossary terms decodes, also as a flat list of files"

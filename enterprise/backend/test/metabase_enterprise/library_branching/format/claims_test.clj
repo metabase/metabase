@@ -272,7 +272,11 @@
       (is (= s (claims/with-system-items s)))))
   (testing "with no Library, no section is added: an instance has the Library only after a person creates it"
     (is (= {} (claims/with-system-items {})))
-    (is (= {team-id (assoc team :place nil)} (claims/with-system-items {team-id (assoc team :place nil)})))))
+    (is (= {team-id (assoc team :place nil)} (claims/with-system-items {team-id (assoc team :place nil)}))))
+  (testing "a system item at an area root is added to every snapshot: the area root is in every snapshot"
+    (let [item {:kind :collection :name "Common" :place "transformstransformst" :refs #{}
+                :attrs {:namespace "transforms"}}]
+      (is (= {"cOmMoNsYsTeMiTeM0001" item} (claims/with-system-items {"cOmMoNsYsTeMiTeM0001" item} {}))))))
 
 (deftest decode-completes-the-system-items-test
   (testing "decode gives the sections of the Library that the tree of a Library lacks"
@@ -324,6 +328,10 @@
     :doc    "Completion adds a section with no Library, so a pull creates the Library on an instance that has none."
     :target `claims/with-system-items
     :edits  [[:replace '(contains? s place) true]]}
+   {:name   :area-root-not-completed
+    :doc    "Completion skips a system item at an area root, so a repository that predates it trashes it on a pull."
+    :target `claims/with-system-items
+    :edits  [[:replace '(contains? snapshot/area-roots place) false]]}
    {:name   :lints-everywhere
     :doc    "Every foreign YAML file is a lint, also one outside the area directories."
     :target `claims/foreign-lints

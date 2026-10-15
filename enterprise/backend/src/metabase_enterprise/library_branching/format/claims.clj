@@ -16,7 +16,8 @@
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.manifest :as manifest]
    [metabase-enterprise.library-branching.format.old :as old]
-   [metabase-enterprise.library-branching.format.tree :as tree])
+   [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase-enterprise.library-branching.snapshot :as snapshot])
   (:import
    (java.security MessageDigest)))
 
@@ -152,17 +153,20 @@
          ["librarylibrarydashbrd" "Dashboards" "library-dashboards"]]))
 
 (defn with-system-items
-  "Snapshot `s` with each item of [[system-items]] that it lacks and whose place it holds (or that is at the root
-  level), at its release content. An item of `s` keeps its content."
-  [s]
-  (loop [s s]
-    (let [m (filter (fn [[id {:keys [place]}]]
-                      (and (not (contains? s id))
-                           (or (nil? place) (contains? s place))))
-                    system-items)]
-      (if (seq m)
-        (recur (into s m))
-        s))))
+  "Snapshot `s` with each item of `items` (`{identity item}`, default [[system-items]]) that it lacks and whose place it
+  holds (or that is at the root level or at an area root), at its content in `items`. An item of `s` keeps its
+  content."
+  ([s]
+   (with-system-items system-items s))
+  ([items s]
+   (loop [s s]
+     (let [m (filter (fn [[id {:keys [place]}]]
+                       (and (not (contains? s id))
+                            (or (nil? place) (contains? s place) (contains? snapshot/area-roots place))))
+                     items)]
+       (if (seq m)
+         (recur (into s m))
+         s)))))
 
 (defn decode
   "The snapshot that the tree `files` (`{path bytes}`) holds, with the codecs `codecs`, then [[with-system-items]]:

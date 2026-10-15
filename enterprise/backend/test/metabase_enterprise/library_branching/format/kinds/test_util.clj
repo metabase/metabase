@@ -438,8 +438,8 @@
 (defn snapshot-gen
   "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the schemas
   of their codecs. A segment or a measure is on a published table, never at the root level. A glossary term, a snippet
-  at the top level and a collection of a namespace at the top level are at their area roots ([[in-areas]]). The references of an item
-  are those of its attributes; they can name items that are not in the snapshot."
+  at the top level and a collection of a namespace at the top level are at their area roots ([[in-areas]]). The
+  references of an item are those of its attributes; they can name items that are not in the snapshot."
   ([] (snapshot-gen 30))
   ([max-items]
    (gen/fmap complete

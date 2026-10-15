@@ -379,8 +379,9 @@
 
 (defn arbitrary-snapshot-gen
   "Generates snapshots with no structural guarantee: a place or a reference can name an identity that is not in the
-  snapshot, a place can name an area root, places can form cycles, and any kind can be in any container. A snapshot has at most min(size,
-  `:max-items`) items. With the default options, every snapshot validates against `::snapshot/snapshot`.
+  snapshot, a place can name an area root, places can form cycles, and any kind can be in any container. A snapshot
+  has at most min(size, `:max-items`) items. With the default options, every snapshot validates against
+  `::snapshot/snapshot`.
 
   Options: `:kinds`, `:attrs` and `:max-items`, as for [[well-formed-snapshot-gen]]."
   ([] (arbitrary-snapshot-gen {}))

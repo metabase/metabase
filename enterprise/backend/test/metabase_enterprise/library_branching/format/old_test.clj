@@ -289,7 +289,8 @@
              s))
       (is (= s (snapshot-of [(legacy-glossary-yaml "Churn" "Customers who cancel.")])))))
   (testing "a file with an entity id has that identity"
-    (is (= {"ChurnTermEntityIdXXXX" (item :glossary-term "Churn" "glossaryglossarygloss" {:definition "Customers who cancel."})}
+    (is (= {"ChurnTermEntityIdXXXX" (item :glossary-term "Churn" "glossaryglossarygloss"
+                                          {:definition "Customers who cancel."})}
            (snapshot-of [(glossary-yaml "ChurnTermEntityIdXXXX" "Churn" "Customers who cancel.")])))))
 
 (deftest nano-id-shaped-term-test

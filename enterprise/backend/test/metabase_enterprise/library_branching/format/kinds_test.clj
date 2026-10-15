@@ -126,7 +126,8 @@
       (is (some #(< 3 (count (:refs %))) items) "an item with several references")
       (doseq [[area-id {:keys [kinds]}] snapshot/area-roots
               kind                      (filter snapshot/kinds kinds)]
-        (is (some #(and (= area-id (:place %)) (= kind (:kind %))) items) (str "an item of kind " kind " at " area-id))))))
+        (is (some #(and (= area-id (:place %)) (= kind (:kind %))) items)
+            (str "an item of kind " kind " at " area-id))))))
 
 
 ;;; ---------------------------------------------------- Golden files -------------------------------------------------
@@ -336,7 +337,8 @@
       (is (not (str/includes? file "glossaryglossarygloss")))
       (is (= [churn-id (get golden-snapshot churn-id)] (decode-text file)))))
   (testing "a snippet file with no place decodes to the root level, which validate refuses"
-    (is (nil? (:place (second (decode-text "kind: snippet\nid: bAsEfIlTeRsNiPpEt0001\nname: Base filter\ncontent: x\n"))))))
+    (is (nil? (:place (second (decode-text (str "kind: snippet\nid: bAsEfIlTeRsNiPpEt0001\nname: Base filter\n"
+                                                "content: x\n")))))))
   (testing "a glossary term at another place does not fit the schema of its kind"
     (is (not (mr/validate (codec/schema (:glossary-term by-kind)) (assoc (get golden-snapshot churn-id) :place nil))))))
 
@@ -451,6 +453,15 @@
     :doc    "Encode does not write the place, so decode cannot rebuild the container (Alloy PlaceFromDirectoryFails)."
     :target `common/encode-item
     :edits  [[:replace '(some? place) false]]}
+   {:name   :fixed-place-dropped
+    :doc    "Decode gives no place to a glossary term, so the term is at the root level and validate refuses it."
+    :target `common/decode-doc
+    :edits  [[:replace '(if place-key (get doc place-key) fixed-place) '(when place-key (get doc place-key))]]}
+   {:name   :area-root-not-home
+    :doc    "The layout takes an area root for a container that the snapshot lacks, so an item at an area root has no
+            path."
+    :target `layout/at-home?
+    :edits  [[:replace '(contains? snapshot/area-roots place) false]]}
    {:name   :refs-unchecked
     :doc    "The schema does not check the references against the attributes, so the engine can see stale refs."
     :target `common/refs-consistent?
@@ -458,4 +469,4 @@
 
 (deftest kinds-mutations-test
   (mut/check mutations {:tests [#'defaults-test #'invalid-documents-test #'references-test #'golden-tree-test
-                                #'instance-local-attributes-test]}))
+                                #'instance-local-attributes-test #'area-root-files-test]}))

@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.format.old.collection :as old.collection]
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
+   [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
    [metabase-enterprise.library-branching.format.old.table-item :as old.table-item]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.test.fixtures :as fixtures]))
@@ -122,6 +123,16 @@
     :target `old.published-table/assemble
     :edits  [[:replace '(get table-names table-key) nil]]
     :tests  [#'old-test/display-names-test]}
+   {:name   :namespace-collection-unplaced
+    :doc    "A collection of a namespace with no parent is at the root level, not at the root of its area."
+    :target `old.collection/decode
+    :edits  [[:replace '(namespace-root (:namespace doc)) nil]]
+    :tests  [#'old-test/top-level-collections-of-areas-test]}
+   {:name   :snippet-unplaced
+    :doc    "A snippet with no collection is at the root level, not at the root of the Snippets area."
+    :target `old.snippet/decode
+    :edits  [[:replace '(snapshot/area-root :snippets) nil]]
+    :tests  [#'old-test/snippets-test]}
    {:name   :table-item-unplaced
     :doc    "A segment or a measure is at the root level: its place is not the source table of its definition."
     :target `old.table-item/decode-as
