@@ -3,7 +3,10 @@
   form of the tag map: a snippet reference holds the identity of its snippet. Not content: the archive column (scope)
   and the bookkeeping columns."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.format.kinds :as format.kinds]
+   [metabase-enterprise.library-branching.format.kinds.portable :as format.portable]
    [metabase-enterprise.library-branching.format.kinds.snippet :as format.snippet]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.content :as content]
@@ -99,9 +102,23 @@
       (library-branching.db/update-snippet! (:id row) {:archived true}))
     nil))
 
+(defn stub-snippet
+  "Snippet `content` of identity `id` without the template tags that hold one of the references `refs`. Its text still
+  names them; Metabase keeps such a tag with no target until the target exists."
+  [id content refs]
+  (let [attrs (->> (update (:attrs content) :template_tags
+                           (fn [tags]
+                             (into {} (remove (fn [[_ tag]] (seq (set/intersection refs (format.portable/refs tag))))) tags)))
+                   (content/attrs format.snippet/spec))]
+    (assoc content :attrs attrs :refs (format.kinds/refs :snippet id attrs))))
+
 (def kind-store
   "The `KindStore` of snippets."
-  (reify instance/KindStore
+  (reify
+    instance/Stub
+    (stub [_ id content refs] (stub-snippet id content refs))
+
+    instance/KindStore
     (read-all [_ ids] (read-snippets ids))
     (current [_ id] (current-snippet id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-snippet! id item)))

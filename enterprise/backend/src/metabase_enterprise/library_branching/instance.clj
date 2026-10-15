@@ -26,6 +26,12 @@
     Library that uses the item still resolves. Nothing happens when no row has the identity, or when it is already in
     the trash. Throws ::refused when `id` names a row outside the Library tree."))
 
+(defprotocol Stub
+  "A kind whose items can be on a reference cycle: an apply writes a new item of the cycle first as a stub."
+  (stub [ks id content refs]
+    "The content of a new item `id` of this kind: `content` without the references `refs`, for a write before the
+    targets of `refs` exist."))
+
 (defprotocol Instance
   "One Metabase instance as library branching sees it."
   (read-snapshot [inst]
@@ -36,9 +42,12 @@
     "The base commit id, or nil before the first sync.")
   (base-digests [inst commit]
     "The digests that [[set-base!]] stored with the base, `{identity digest}`, when the base is `commit`; else nil.")
-  (apply-plan! [inst plan new-base]
-    "In one transaction: for each step, lock the item, check its precondition, write or trash it; then set the base
-    to `new-base`. Returns {:ok {:trashed-in-use ids}}, or {:stale ids} and writes nothing.")
+  (apply-plan! [inst plan opts]
+    "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
+    precondition, then write, link or trash each item, then move the base from `(:base opts)` to `(:new-base opts)`
+    with `(:digests opts)` (as [[set-base!]]), then call `(:head-ok? opts)`, which is false when the planned head left
+    the branch history. Returns the result of `apply/apply-plan`: `{:ok {:trashed-in-use m}}`, or one of `{:stale
+    ids}`, `{:refused [...]}`, `{:base-moved actual}` and `{:rewritten new-base}`, and then writes nothing.")
   (set-base! [inst expected new digests]
     "Moves the base from `expected` to `new` (`expected` nil: there is no base), and stores `digests`, the
     `{identity digest}` of the content of `new`, with it, in one compare-and-swap. Returns :ok, or {:moved actual} and

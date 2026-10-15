@@ -69,6 +69,25 @@
   (t2/with-transaction [_]
     (f)))
 
+(defn do-in-locking-transaction
+  "Calls `f` with no arguments in a new transaction at READ COMMITTED isolation, and returns its result; inside an
+  open transaction, in a savepoint of it. A throw of `f` rolls the transaction back. After `f` locks a row, each read
+  of it sees its last committed content."
+  [f]
+  (if (mdb/in-transaction?)
+    (do-in-transaction f)
+    (t2/with-connection [^Connection conn]
+      (let [isolation (.getTransactionIsolation conn)]
+        ;; At REPEATABLE READ (the default of MySQL and MariaDB) a plain read after a lock reads the snapshot of the
+        ;; first read of the transaction, which can predate a commit to a row that the transaction locks later. The app
+        ;; DB data source opens its connections at READ COMMITTED; a connection that a caller changed is set again.
+        (.setTransactionIsolation conn Connection/TRANSACTION_READ_COMMITTED)
+        (try
+          (t2/with-transaction [_ conn]
+            (f))
+          (finally
+            (.setTransactionIsolation conn isolation)))))))
+
 ;;; ------------------------------------------------ Reference lookups -----------------------------------------------
 
 (mu/defn fields-by-id :- [:sequential ::row]
@@ -332,3 +351,27 @@
   [field-id :- pos-int?
    changes  :- ::row]
   (t2/update! :model/FieldUserSettings field-id changes))
+
+;;; ----------------------------------------------------- Users ------------------------------------------------------
+
+(mu/defn cards-mentioning :- [:sequential ::row]
+  "The cards not in the trash whose stored query text holds the text of `id`, as instances of `:model/Card`: every card
+  whose query refers to the row `id`, and maybe others."
+  [id :- pos-int?]
+  (t2/select :model/Card {:where [:and [:= :archived false] [:like :dataset_query (str "%" id "%")]]}))
+
+(mu/defn dashboards-showing :- [:sequential ::row]
+  "`{:entity_id :name}` of each dashboard not in the trash that has a card of the card `card-id`."
+  [card-id :- pos-int?]
+  (t2/query {:select-distinct [:d.entity_id :d.name]
+             :from            [[(t2/table-name :model/Dashboard) :d]]
+             :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
+             :where           [:and [:= :dc.card_id [:auto/param card-id]] [:= :d.archived false]]}))
+
+(mu/defn row-id-by-entity-id :- [:maybe pos-int?]
+  "The id of the row of the table of `model` whose entity id is `entity-id`, or nil."
+  [model     :- :keyword
+   entity-id :- :string]
+  (:id (t2/query-one {:select [:id]
+                      :from   [(t2/table-name model)]
+                      :where  [:= :entity_id [:auto/param entity-id]]})))
