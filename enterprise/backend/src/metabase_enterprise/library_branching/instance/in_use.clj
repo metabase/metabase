@@ -11,12 +11,16 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private model-of
-  {:metric  :model/Card
+  {:measure :model/Measure
+   :metric  :model/Card
+   :segment :model/Segment
    :snippet :model/NativeQuerySnippet})
 
 (def ^:private roles
   "The roles of a reference that uses an item of each kind."
-  {:metric  #{:metric :card :source-card}
+  {:measure #{:measure}
+   :metric  #{:metric :card :source-card}
+   :segment #{:segment}
    :snippet #{:snippet}})
 
 (defn- card-refs
@@ -43,8 +47,8 @@
 
 (defn trashed-in-use
   "`{identity [{:kind :id :name} ...]}`: of the trashed items `trashed` (`[{:id :kind}]`), each one that a card or a
-  dashboard outside the scope of `roots` (default `scope/roots`) uses, with those users, sorted. Only metrics and
-  snippets have such users. Reads in the current transaction."
+  dashboard outside the scope of `roots` (default `scope/roots`) uses, with those users, sorted. Only metrics,
+  snippets, segments and measures have such users. Reads in the current transaction."
   ([trashed]
    (trashed-in-use scope/roots trashed))
   ([roots trashed]

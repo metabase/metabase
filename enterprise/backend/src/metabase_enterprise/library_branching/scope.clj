@@ -264,6 +264,27 @@
          (map (fn [kind] [kind (library-branching.db/row-count (kind-query roots kind))]))
          kinds)))
 
+(defn row-in-scope?
+  "True iff the row with app DB id `row-id` of the table of `kind` holds an in-scope item for `roots` (default
+  [[roots]]). Reads the app DB in the current transaction, with one query."
+  ([kind row-id]
+   (row-in-scope? roots kind row-id))
+  ([roots kind row-id]
+   (pos? (library-branching.db/row-count
+          (subquery {:select [:s.id] :from [[(kind-query roots kind) :s]] :where [:= :s.id row-id]})))))
+
+(defn place-in-scope?
+  "True iff a new item of `kind` in the collection with app DB id `collection-id` (nil: at the root level) is in scope
+  for `roots` (default [[roots]]): the collection is in scope, or, at the root level, `roots` puts the root-level or
+  unplaced items of `kind` in scope. Reads the app DB in the current transaction, with at most one query."
+  ([kind collection-id]
+   (place-in-scope? roots kind collection-id))
+  ([roots kind collection-id]
+   (if (some? collection-id)
+     (row-in-scope? roots :collection collection-id)
+     (boolean (or (unplaced roots kind)
+                  (contains? (:namespaces roots) (get (:root-level roots) kind)))))))
+
 (defn in-scope?
   "True iff the item of `kind` with identity `id` is in scope for `roots` (default [[roots]]). Reads the app DB in the
   current transaction, with one query."

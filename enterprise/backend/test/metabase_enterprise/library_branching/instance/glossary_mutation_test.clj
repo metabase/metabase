@@ -19,7 +19,7 @@
   [{:name   :no-lock
     :doc    "current reads a glossary term with no row lock, so a save of the term by another connection does not wait."
     :target `library-branching.db/lock-glossary-term
-    :edits  [[:replace '[:update] nil]]
+    :edits  [[:remove :for] [:remove '[:update]]]
     :tests  [#'lock-test/current-locks-the-row-test]}
    {:name   :definition-not-written
     :doc    "A write of a changed definition leaves the old one, so a pull of a new definition shows as a conflict."
@@ -74,4 +74,4 @@
     :tests  [#'glossary-test/refused-writes-write-nothing-test]}])
 
 (deftest glossary-mutations-test
-  (mut/check mutations {:timeout-ms 300000}))
+  (mut/check mutations {}))

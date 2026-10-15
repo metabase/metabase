@@ -72,11 +72,14 @@
   (repository/test-connection! body)
   {:status "success"})
 
-(api.macros/defendpoint :put "/settings" :- [:map [:success [:= true]]]
+(api.macros/defendpoint :put "/settings" :- [:map
+                                             [:success [:= true]]
+                                             [:task_id {:optional true} pos-int?]]
   "Saves the repository settings that library branching shares with remote sync. A blank URL turns library branching
   off. The obfuscated saved token keeps the saved token, and a value from an environment variable stays. A change of
-  the URL, the token, the type or the branch is checked against the repository first. 400 while a task runs, and when
-  the check fails. Superuser only."
+  the URL, the token, the type or the branch is checked against the repository first. After the save, a consumption
+  instance with a branch starts a deploy, and the response has its task id. 400 while a task runs, and when the check
+  fails. Superuser only."
   [_route-params
    _query-params
    body :- [:map {:closed true}
@@ -87,7 +90,9 @@
             [:remote-sync-auto-import {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (repository/save-settings! body api/*current-user-id*)
-  {:success true})
+  (if-let [task (operations/start-deploy-after-save! api/*current-user-id*)]
+    {:success true :task_id (:id task)}
+    {:success true}))
 
 (api.macros/defendpoint :get "/branches" :- [:map [:items [:sequential :string]]]
   "The names of the branches of the repository now, with a fresh remote call. 400 when no repository is configured,
@@ -247,21 +252,51 @@
   {:task_id id})
 
 (api.macros/defendpoint :post "/push" :- [:map [:task_id pos-int?]]
-  "Starts a push of the synced snapshot to the configured branch, as a task, and returns its id. 400 when library
-  branching is off or not configured, on a read-only instance, and while a task runs. Superuser only."
+  "Starts a push of the synced snapshot to the configured branch, as a task, and returns its id. With `new_branch`, the
+  push creates that branch instead, and the instance uses it after the push. 400 when library branching is off or not
+  configured, on a read-only instance, and while a task runs; for a new branch, also for a name that is not a valid
+  branch name, and when the branch setting comes from an environment variable. Superuser only."
   [_route-params
    _query-params
-   {:keys [message]} :- [:map {:closed true}
-                         [:message {:optional true} ms/NonBlankString]]]
+   {:keys [message new_branch]} :- [:map {:closed true}
+                                    [:message {:optional true} ms/NonBlankString]
+                                    [:new_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
-  (task-response (operations/start-push! api/*current-user-id* message)))
+  (task-response (operations/start-push! api/*current-user-id* message new_branch)))
 
 (api.macros/defendpoint :post "/pull" :- [:map [:task_id pos-int?]]
-  "Starts a pull of the configured branch into the instance, as a task, and returns its id. 400 as for a push.
-  Superuser only."
-  []
+  "Starts a pull of the configured branch into the instance, as a task, and returns its id. A pull of `branch`, another
+  branch than the configured one, is a switch to it. 400 as for a push. Superuser only."
+  [_route-params
+   _query-params
+   {:keys [branch]} :- [:maybe [:map {:closed true}
+                                [:branch {:optional true} ms/NonBlankString]]]]
   (api/check-superuser)
-  (task-response (operations/start-pull! api/*current-user-id*)))
+  (task-response (operations/start-pull! api/*current-user-id* branch)))
+
+(api.macros/defendpoint :post "/create-branch" :- [:map [:task_id pos-int?]]
+  "Starts the creation of branch `name` at the head of branch `from` (default: the configured branch), as a task, and
+  returns its id. The instance uses the new branch after it, with the same base. 400 as for a push to a new branch.
+  Superuser only."
+  [_route-params
+   _query-params
+   {branch-name :name :keys [from]} :- [:map {:closed true}
+                                        [:name ms/NonBlankString]
+                                        [:from {:optional true} ms/NonBlankString]]]
+  (api/check-superuser)
+  (task-response (operations/start-create-branch! api/*current-user-id* branch-name from)))
+
+(api.macros/defendpoint :post "/switch-branch" :- [:map [:task_id pos-int?]]
+  "Starts a switch of the instance to branch `branch`, as a task, and returns its id. The switch is a pull of `branch`:
+  local changes are kept or are conflicts, and the branch setting changes only when the switch succeeds. 400 when
+  library branching is off or not configured, on a read-only instance, while a task runs, and when the branch setting
+  comes from an environment variable. Superuser only."
+  [_route-params
+   _query-params
+   {:keys [branch]} :- [:map {:closed true}
+                        [:branch ms/NonBlankString]]]
+  (api/check-superuser)
+  (task-response (operations/start-switch! api/*current-user-id* branch)))
 
 (api.macros/defendpoint :post "/merge-branch" :- [:map [:task_id pos-int?]]
   "Starts a merge of branch `from` into branch `into` (default: the configured branch) in the repository, as a task,
@@ -273,6 +308,13 @@
                            [:into {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (task-response (operations/start-merge-branch! api/*current-user-id* into from)))
+
+(api.macros/defendpoint :post "/deploy" :- [:map [:task_id pos-int?]]
+  "Starts a deploy of the configured branch onto this consumption instance, as a task, and returns its id. 400 when
+  library branching is off or not configured, on a creation instance, and while a task runs. Superuser only."
+  []
+  (api/check-superuser)
+  (task-response (operations/start-deploy! api/*current-user-id*)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library-branching` routes."

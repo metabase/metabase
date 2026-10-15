@@ -326,7 +326,7 @@
       (rtu/do-recording-stores
        (fn [calls]
          (testing "the obfuscated token keeps the stored token, and the check uses the stored token"
-           (is (= :ok (save! {url-key url token-key (setting/obfuscate-value "full-token") branch-key "dev"})))
+           (is (= :ok (save! {url-key url token-key (setting/obfuscate-value "full-token") branch-key "main"})))
            (is (= "full-token" (setting/get token-key)))
            (is (= {:url url :token "full-token"} (last @calls))))
          (testing "a switch to read-only with no token in the body keeps the token"
@@ -334,8 +334,8 @@
            (is (= "full-token" (setting/get token-key)))
            (is (= :read-only (setting/get :remote-sync-type))))
          (testing "a change of the branch of a read-only instance with no token keeps the token"
-           (is (= :ok (save! {branch-key "main"})))
-           (is (= "main" (setting/get branch-key)))
+           (is (= :ok (save! {branch-key "dev"})))
+           (is (= "dev" (setting/get branch-key)))
            (is (= "full-token" (setting/get token-key))))
          (testing "another token replaces it"
            (is (= :ok (save! {token-key "other-token"})))
@@ -378,3 +378,50 @@
         (testing "a blank URL does not clear the values of the environment"
           (is (= :ok (save! {url-key ""})))
           (is (= [url "env-token" "env-branch"] (map setting/get [url-key token-key branch-key]))))))))
+
+;;; ----------------------------------------------- The branch in a save ------------------------------------------------
+
+(def ^:private branch-change-message
+  "The branch of a read-write instance changes only with a branch switch, which keeps the local changes.")
+
+(deftest branch-change-refused-examples-test
+  (let [url   "https://git.example.com/a.git"
+        saved {url-key url token-key nil :remote-sync-type :read-write branch-key "main" :remote-sync-auto-import false}]
+    (doseq [[expected doc body saved env]
+            [[true "a change of the branch of a creation instance" {branch-key "dev"} saved #{}]
+             [true "a blank branch on a creation instance" {branch-key ""} saved #{}]
+             [true "no branch on a creation instance" {branch-key nil} saved #{}]
+             [true "a change to a creation instance and of the branch" {branch-key "dev" :remote-sync-type :read-write}
+              (assoc saved :remote-sync-type :read-only) #{}]
+             [true "the same URL and another branch" {url-key url branch-key "dev"} saved #{}]
+             [false "the same branch" {branch-key "main"} saved #{}]
+             [false "no branch in the body" {:remote-sync-auto-import true} saved #{}]
+             [false "the first setup: no branch is saved" {branch-key "dev"} (assoc saved branch-key nil) #{}]
+             [false "the first setup: a blank branch is saved" {branch-key "dev"} (assoc saved branch-key "") #{}]
+             [false "a consumption instance" {branch-key "dev"} (assoc saved :remote-sync-type :read-only) #{}]
+             [false "a change to a consumption instance" {branch-key "dev" :remote-sync-type :read-only} saved #{}]
+             [false "a blank URL turns library branching off" {url-key "" branch-key nil} saved #{}]
+             [false "another repository, for which the instance has no base"
+              {url-key "https://other.example.com/b.git" branch-key "dev"} saved #{}]
+             [false "a branch from an environment variable is never written" {branch-key "dev"} saved #{branch-key}]]]
+      (testing doc
+        (is (= expected (repository/branch-change-refused? body saved env)))))))
+
+(deftest save-refuses-a-change-of-the-branch-of-a-creation-instance-test
+  (testing "a change of the branch in a save of a creation instance is refused before any remote call; the switch
+           changes it"
+    (with-remote [repo url]
+      (rtu/remote-with-branches! repo ["main" "dev"])
+      (with-save-fixture {url-key url branch-key "main" :remote-sync-type :read-write}
+        (let [before (rtu/saved)]
+          (rtu/do-recording-stores
+           (fn [calls]
+             (doseq [body [{branch-key "dev"} {branch-key ""} {url-key url branch-key "dev"}]]
+               (testing (pr-str body)
+                 (is (= {:status-code 400 :message branch-change-message} (save! body)))))
+             (is (= [] @calls))))
+          (is (= before (rtu/saved)))
+          (is (nil? (tasks/newest-task))))
+        (testing "the same branch saves"
+          (is (= :ok (save! {branch-key "main" :remote-sync-auto-import true})))
+          (is (= "main" (setting/get branch-key))))))))

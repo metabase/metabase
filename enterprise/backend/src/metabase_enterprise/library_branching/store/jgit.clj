@@ -52,6 +52,11 @@
   (when-not (some #(str/starts-with? url %) ["https://" "file://"])
     "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"))
 
+(defn valid-branch-name?
+  "True iff `branch-name` is a name that git accepts for a branch."
+  [^String branch-name]
+  (Repository/isValidRefName (str Constants/R_HEADS branch-name)))
+
 (defn token-user
   "The user name that the host of `url` expects with an access token as the password."
   [^String url]

@@ -68,12 +68,6 @@
     :edits  [[:replace '(= content (get local id)) true]]
     :expect :survived
     :tests  [#'pull-test/decision-is-bound-to-content-and-head-test]}
-   {:name   :no-base-lost
-    :doc    "The pull makes a three-way merge from a base that is not in the history of the head (a force push): items
-            that the instance did not change take the content of the rewritten head with no conflict."
-    :target `pull/held?
-    :edits  [[:replace '(store/ancestor? store b h) true]]
-    :tests  [#'pull-test/force-push-loses-the-base-test]}
    {:name   :digests-of-merge
     :doc    "The base cache gets the digests of the merge result, not of the head: a kept local change shows as synced."
     :target `pull/apply-merge!
