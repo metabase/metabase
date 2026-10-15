@@ -301,7 +301,7 @@ export function ProviderConnectionForm({
               disabledFields={connection?.env_fields}
             />
           </AdvancedSettings>
-          {error && <Text c="error">{error}</Text>}
+          {error && <Text c="feedback-negative">{error}</Text>}
         </Stack>
         <FormFooter pageProps={{ mt: "xl" }}>
           {match({ isEditing, onCancel })

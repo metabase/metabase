@@ -224,7 +224,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         H.getSimpleEmbedIframeContent()
           .findByTestId("question-download-widget-button")
-          .should("have.css", "background-color", "rgb(7, 23, 34)");
+          .should("have.css", "background-color", "rgb(12, 28, 39)");
 
         H.publishChanges("card");
         cy.button("Unpublish").should("be.visible");

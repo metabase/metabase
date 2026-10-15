@@ -21,13 +21,13 @@ export default {
 
 export const Default = {
   args: {
-    sections: [{ value: 40, color: "brand" }],
+    sections: [{ value: 40, color: "core-brand" }],
   },
 };
 
 export const WithLabel = {
   args: {
-    sections: [{ value: 72, color: "brand" }],
+    sections: [{ value: 72, color: "core-brand" }],
     label: "72%",
   },
 };
@@ -36,16 +36,16 @@ export const Small = {
   args: {
     size: 14,
     thickness: 2.5,
-    sections: [{ value: 90, color: "brand" }],
+    sections: [{ value: 90, color: "core-brand" }],
   },
 };
 
 export const MultipleSections = {
   args: {
     sections: [
-      { value: 40, color: "brand" },
-      { value: 20, color: "warning" },
-      { value: 15, color: "danger" },
+      { value: 40, color: "core-brand" },
+      { value: 20, color: "feedback-warning" },
+      { value: 15, color: "feedback-negative" },
     ],
   },
 };

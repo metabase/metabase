@@ -274,7 +274,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="lg" bg="background-secondary">
+      <Stack flex={1} mih={0} gap="lg" bg="background_page-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
@@ -307,8 +307,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           <Box flex={1} mih={0} />
         )}
         <Flex
-          bg="background-primary"
-          bd="1px solid border"
+          bg="background_page-primary"
+          bd="1px solid border-neutral"
           bdrs="sm"
           mx="xl"
           pr="0.75rem"

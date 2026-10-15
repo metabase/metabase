@@ -93,7 +93,7 @@ export const FullscreenContexts: Story = { args: { width: 960, height: 500 } };
 function SdkChart({ theme }: { theme: MetabaseTheme }) {
   return (
     <SdkVisualizationWrapper theme={theme}>
-      <Box w={640} h={360} bg="background-primary">
+      <Box w={640} h={360} bg="background_page-primary">
         <Visualization rawSeries={series} width={640} height={360} />
       </Box>
     </SdkVisualizationWrapper>
@@ -116,7 +116,7 @@ export const SdkCustomGridlineAndFont: Story = {
         fontSize: "20px",
         components: {
           cartesian: {
-            splitLine: { lineStyle: { color: "var(--mb-color-brand)" } },
+            splitLine: { lineStyle: { color: "var(--mb-color-core-brand)" } },
           },
         },
       }}
