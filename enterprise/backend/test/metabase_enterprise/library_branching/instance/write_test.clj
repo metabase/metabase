@@ -350,6 +350,74 @@
           (write! :published-table id item)
           (is (= (refs item) (current :published-table id))))))))
 
+(deftest published-table-remapping-write-test
+  (testing "a write sets the remappings of the fields; a local removal is a change that the next write undoes; a write
+            with no remapping removes it"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_ nil {:rollback-only true}]
+        (let [field-ids (t2/select-pks-set :model/Field :table_id (mt/id :venues))]
+          (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
+          (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
+          (t2/delete! :model/Dimension :field_id [:in field-ids])
+          (t2/delete! :model/FieldValues :field_id (mt/id :venues :price)))
+        (let [id        (table-key :venues)
+              price     (mt/id :venues :price)
+              item      {:kind  :published-table
+                         :name  "Places"
+                         :place (:entity_id data)
+                         :attrs {:fields {:CATEGORY_ID {:remapping {:type  "external"
+                                                                    :name  "Category"
+                                                                    :field (field-key :categories :name)}}
+                                          :PRICE       {:display_name "Price level"
+                                                        :remapping    {:type   "internal"
+                                                                       :name   "Price"
+                                                                       :values [[1 "$"] [2 "$$"]]}}}}}
+              refs      #(assoc % :refs (format.kinds/refs :published-table id (:attrs %)))
+              dimension #(t2/select-one [:model/Dimension :type :name :human_readable_field_id]
+                                        :field_id (mt/id :venues %))
+              values    #(t2/select-one [:model/FieldValues :values :human_readable_values] :field_id price :type :full)]
+          (testing "a write sets both kinds of remapping"
+            (write! :published-table id item)
+            (is (= (refs item) (current :published-table id)))
+            (is (= {:type :external :name "Category" :human_readable_field_id (mt/id :categories :name)}
+                   (into {} (dimension :category_id))))
+            (is (= {:type :internal :name "Price" :human_readable_field_id nil} (into {} (dimension :price))))
+            (is (= {:values [1 2] :human_readable_values ["$" "$$"]} (into {} (values)))))
+          (testing "a local removal of a remapping is a change of the table, and a write restores it"
+            (t2/delete! :model/Dimension :field_id (mt/id :venues :category_id))
+            (is (not= (refs item) (current :published-table id)))
+            (write! :published-table id item)
+            (is (= (refs item) (current :published-table id))))
+          (testing "a write changes the type of a remapping and its values"
+            (let [changed (-> item
+                              (assoc-in [:attrs :fields :CATEGORY_ID :remapping] {:type "internal" :name "Kind"})
+                              (assoc-in [:attrs :fields :PRICE :remapping :values] [[1 "Cheap"] [2 "Dear"] [3 "Very"]]))]
+              (write! :published-table id changed)
+              (is (= (refs changed) (current :published-table id)))
+              (is (= {:type :internal :name "Kind" :human_readable_field_id nil}
+                     (into {} (dimension :category_id))))))
+          (testing "an internal remapping with no values clears the human-readable values"
+            (let [changed (update-in item [:attrs :fields :PRICE :remapping] dissoc :values)]
+              (write! :published-table id changed)
+              (is (= (refs changed) (current :published-table id)))
+              (is (empty? (:human_readable_values (values))))))
+          (testing "a write with no remapping removes the dimension, and keeps the other settings of the field"
+            (let [changed (-> item
+                              (update-in [:attrs :fields] dissoc :CATEGORY_ID)
+                              (update-in [:attrs :fields :PRICE] dissoc :remapping))]
+              (write! :published-table id changed)
+              (is (= (refs changed) (current :published-table id)))
+              (is (nil? (dimension :category_id)))
+              (is (nil? (dimension :price)))
+              (is (= "Price level" (t2/select-one-fn :display_name :model/FieldUserSettings :field_id price)))))
+          (testing "a remapping to a field that the instance does not have is refused, and writes nothing"
+            (let [before (current :published-table id)]
+              (is (= :environment
+                     (refusal #(write! :published-table id
+                                       (assoc-in item [:attrs :fields :CATEGORY_ID :remapping :field]
+                                                 (conj (table-key :categories) "NO_SUCH_FIELD"))))))
+              (is (= before (current :published-table id))))))))))
+
 (deftest published-table-legacy-visibility-type-test
   (testing "a visibility type that a person saved reads as the data layer that Metabase gives it, and a write of that
             content changes no row"
@@ -407,7 +475,9 @@
      :collections (t2/select :collection :entity_id [:in (filter string? ids)] {:order-by [:id]})
      :snippets    (t2/select :native_query_snippet :entity_id [:in (filter string? ids)] {:order-by [:id]})
      :tables      (t2/select :metabase_table_user_settings {:order-by [:table_id]})
-     :fields      (t2/select :metabase_field_user_settings {:order-by [:field_id]})}))
+     :fields      (t2/select :metabase_field_user_settings {:order-by [:field_id]})
+     :dimensions  (t2/select :dimension {:order-by [:id]})
+     :values      (t2/select :metabase_fieldvalues :field_id (mt/id :venues :price) {:order-by [:id]})}))
 
 (deftest write-of-current-content-changes-no-row-test
   (testing "GetPut: a write of the current content of each item changes no row, not even a time stamp"
@@ -425,7 +495,12 @@
                                                  :is_published  true
                                                  :collection_id (:id data)
                                                  :description   "Places."}
-                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}]
+                     :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}
+                     :model/Dimension         _ {:field_id                (mt/id :venues :category_id)
+                                                 :name                    "Category"
+                                                 :type                    :external
+                                                 :human_readable_field_id (mt/id :categories :name)}
+                     :model/Dimension         _ {:field_id (mt/id :venues :price) :name "Price" :type :internal}]
         (let [s      (app-db/read-current)
               before (rows s)]
           (doseq [[id item] (sort-by (comp str key) s)]

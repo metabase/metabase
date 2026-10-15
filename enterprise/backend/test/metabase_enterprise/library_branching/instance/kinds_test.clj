@@ -159,6 +159,41 @@
           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :users :name) :display_name "Who"}]
             (is (nil? (read-item (table-key :users))))))))))
 
+(deftest published-table-remapping-content-test
+  (testing "a published table holds the remappings of its fields: a foreign-key remapping by the natural key of its
+            target field, an internal remapping with its values"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_ nil {:rollback-only true}]
+        (t2/delete! :model/FieldValues :field_id [:in [(mt/id :venues :price) (mt/id :venues :name)]])
+        (t2/insert! :model/TableUserSettings {:table_id (mt/id :venues) :is_published true :collection_id (:id data)})
+        (t2/insert! :model/Dimension {:field_id                (mt/id :venues :category_id)
+                                      :name                    "Category"
+                                      :type                    :external
+                                      :human_readable_field_id (mt/id :categories :name)})
+        (t2/insert! :model/Dimension {:field_id (mt/id :venues :price) :name "Price" :type :internal})
+        (t2/insert! :model/Dimension {:field_id (mt/id :venues :name) :name "Name" :type :internal})
+        (t2/insert! :model/FieldValues {:field_id              (mt/id :venues :price)
+                                        :type                  :full
+                                        :values                [1 2 3 4]
+                                        :human_readable_values ["$" "$$" "$$$" "$$$$"]})
+        (t2/insert! :model/FieldValues {:field_id (mt/id :venues :name) :type :full :values ["A" "B"]})
+        (let [item (read-item (table-key :venues))]
+          (is (= {:CATEGORY_ID {:remapping {:type "external" :name "Category" :field (field-key :categories :name)}}
+                  :PRICE       {:remapping {:type   "internal"
+                                            :name   "Price"
+                                            :values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]}}
+                  :NAME        {:remapping {:type "internal" :name "Name"}}}
+                 (get-in item [:attrs :fields])))
+          (is (contains? (:refs item) [:remapping [:env (field-key :categories :name)]])))
+        (testing "the human-readable values of a field with no internal remapping are no content"
+          (t2/delete! :model/Dimension :field_id (mt/id :venues :price))
+          (t2/update! :model/Dimension {:field_id (mt/id :venues :name)} {:type :external
+                                                                          :human_readable_field_id (mt/id :venues :id)})
+          (t2/update! :model/FieldValues {:field_id (mt/id :venues :name)} {:human_readable_values ["a" "b"]})
+          (is (= {:CATEGORY_ID {:remapping {:type "external" :name "Category" :field (field-key :categories :name)}}
+                  :NAME        {:remapping {:type "external" :name "Name" :field (field-key :venues :id)}}}
+                 (get-in (read-item (table-key :venues)) [:attrs :fields]))))))))
+
 (defn- archive-by-sync!
   "Archives table `table-id` as warehouse sync archives a table that the warehouse no longer has: sync deactivates it,
   and archives and renames it after the threshold."
@@ -217,6 +252,11 @@
                      :model/NativeQuerySnippet _ {:name "A filter" :collection_id (:id f) :content "{{x}} > 1"}
                      :model/TableUserSettings _ {:table_id (mt/id :venues) :is_published true :collection_id (:id data)}
                      :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :semantic_type :type/Currency}
+                     :model/Dimension         _ {:field_id                (mt/id :venues :category_id)
+                                                 :name                    "Category"
+                                                 :type                    :external
+                                                 :human_readable_field_id (mt/id :categories :name)}
+                     :model/Dimension         _ {:field_id (mt/id :venues :price) :name "Price" :type :internal}
                      :model/Glossary          _ {:term       "lb format churn"
                                                  :definition "Who leaves: 10% of: them."
                                                  :creator_id (mt/user->id :crowberto)}]
@@ -308,6 +348,7 @@
                      :model/NativeQuerySnippet _ {:name "One" :collection_id (:id f) :content "1 = 1"}
                      :model/TableUserSettings _ {:table_id (mt/id :venues) :is_published true :collection_id (:id data)}
                      :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :display_name "Price level"}
+                     :model/Dimension         _ {:field_id (mt/id :venues :price) :name "Price" :type :internal}
                      :model/Glossary          _ {:term "lb batch one" :definition "1" :creator_id (mt/user->id :rasta)}]
         (let [few (statements-of-read)]
           (mt/with-temp [:model/Card              _ {:name          "Latitude"
@@ -331,6 +372,11 @@
                          :model/FieldUserSettings _ {:field_id (mt/id :users :name) :display_name "Who"}
                          :model/FieldUserSettings _ {:field_id           (mt/id :checkins :user_id)
                                                      :fk_target_field_id (mt/id :users :id)}
+                         :model/Dimension         _ {:field_id (mt/id :users :name) :name "Who" :type :internal}
+                         :model/Dimension         _ {:field_id                (mt/id :checkins :user_id)
+                                                     :name                    "User"
+                                                     :type                    :external
+                                                     :human_readable_field_id (mt/id :users :name)}
                          :model/TableUserSettings _ {:table_id      (mt/id :checkins)
                                                      :is_published  true
                                                      :collection_id (:id data)}

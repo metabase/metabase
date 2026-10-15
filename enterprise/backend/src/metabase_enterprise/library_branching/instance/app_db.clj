@@ -12,7 +12,9 @@
    [metabase-enterprise.library-branching.instance.kinds.glossary :as kinds.glossary]
    [metabase-enterprise.library-branching.instance.kinds.measure :as kinds.measure]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
+   [metabase-enterprise.library-branching.instance.kinds.model :as kinds.model]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
+   [metabase-enterprise.library-branching.instance.kinds.question :as kinds.question]
    [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.scope :as scope]
@@ -27,7 +29,9 @@
    :glossary-term   kinds.glossary/kind-store
    :measure         kinds.measure/kind-store
    :metric          kinds.metric/kind-store
+   :model           kinds.model/kind-store
    :published-table kinds.published-table/kind-store
+   :question        kinds.question/kind-store
    :segment         kinds.segment/kind-store
    :snippet         kinds.snippet/kind-store})
 
@@ -128,6 +132,7 @@
     {:snapshot (read-at-read-point stores roots)})
   (base [_] (base url))
   (base-digests [_ commit] (base-digests url commit))
+  (table-names [_ table-keys] (kinds.published-table/sync-display-names table-keys))
   (apply-plan! [_ plan opts] (apply-plan! stores roots url plan opts))
   (set-base! [_ expected new digests] (set-base! url expected new digests)))
 

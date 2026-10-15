@@ -110,6 +110,7 @@
   (base-digests [_ commit]
     (let [{:keys [base digests]} @state]
       (when (and (some? commit) (= commit base)) digests)))
+  (table-names [_ table-keys] (select-keys (:table-names @state) table-keys))
   (apply-plan! [_ _plan _opts] (instance/not-yet! `instance/apply-plan!))
   (set-base! [_ expected new digests]
     (let [[old] (swap-vals! state (fn [st] (cond-> st
@@ -117,7 +118,8 @@
       (if (= expected (:base old)) :ok {:moved (:base old)}))))
 
 (defn fake-instance
-  "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d}`."
+  "An `Instance` in memory, over the atom `state`: `{:snapshot s :base b :digests d :table-names n}`, where `n` is
+  `{table-key name}`, the display names of warehouse sync."
   [state]
   (->FakeInstance state))
 
@@ -128,6 +130,7 @@
                        (instance/read-snapshot inst)))
   (base [_] (instance/base inst))
   (base-digests [_ commit] (instance/base-digests inst commit))
+  (table-names [_ table-keys] (instance/table-names inst table-keys))
   (apply-plan! [_ plan opts] (instance/apply-plan! inst plan opts))
   (set-base! [_ expected new digests]
     (if-let [f (:set-base! overrides)]
@@ -242,10 +245,11 @@
   (case kind
     :collection (cond-> (update item :attrs dissoc :namespace)
                   (nil? place) (update :attrs assoc :type "library"))
-    :metric     (update item :attrs #(-> %
-                                         (assoc :query (count-query orders-table))
-                                         (dissoc :visualization_settings :parameters :parameter_mappings
-                                                 :dimensions :dimension_mappings)))
+    (:metric :question :model)
+    (update item :attrs #(-> %
+                             (assoc :query (count-query orders-table))
+                             (dissoc :visualization_settings :parameters :parameter_mappings
+                                     :dimensions :dimension_mappings :dashboard_id :document_id)))
     :snippet    (update item :attrs dissoc :template_tags)
     :segment    (assoc-in item [:attrs :definition :stages 0 :filters] [[">" {} ["field" {:base-type "type/Integer"} "ID"] 1]])
     :measure    (assoc-in item [:attrs :definition :stages 0 :aggregation] [["count" {}]])

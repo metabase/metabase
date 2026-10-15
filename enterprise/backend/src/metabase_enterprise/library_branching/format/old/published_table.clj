@@ -114,11 +114,24 @@
   [doc _opts]
   {:parts [(field-part :file doc)]})
 
+(defn remapping
+  "The `:remapping` field setting of dimension document `doc`. The old format holds no values of an internal remapping."
+  [doc]
+  (when-not (map? doc)
+    (codec/invalid! "A dimension is not a map."))
+  (case (some-> (:type doc) name)
+    "external" {:type  "external"
+                :name  (:name doc)
+                :field (field-key! (or (:human_readable_field_id doc)
+                                       (codec/invalid! "A foreign-key remapping has no target field.")))}
+    "internal" {:type "internal" :name (:name doc)}
+    (codec/invalid! (str "A dimension of an unknown type: " (pr-str (:type doc))))))
+
 (defn decode-dimension
   "The part of a dimension document: a remapping of its field."
   [doc _opts]
   (let [k (field-key! (:field_id doc))]
-    {:parts [(part (subvec k 0 3) :remapping :key k)]}))
+    {:parts [(part (subvec k 0 3) :remapping :key k :remapping (remapping doc) :source :file)]}))
 
 (defn decode-field
   "A field document that an older version wrote: the field itself is environment, and its `dimensions` are
@@ -127,7 +140,8 @@
   (if-let [dimensions (seq (:dimensions doc))]
     (let [k (field-key! (conj (if (vector? (:parent_id doc)) (:parent_id doc) (table-key! (:table_id doc)))
                               (:name doc)))]
-      {:parts (mapv (fn [_] (part (subvec k 0 3) :remapping :key k)) dimensions)})
+      {:parts (mapv (fn [d] (part (subvec k 0 3) :remapping :key k :remapping (remapping d) :source :field))
+                    dimensions)})
     {:skip :environment}))
 
 (defn decode-table
@@ -146,33 +160,57 @@
   [p]
   (= :file (:source p)))
 
-(defn- fields-attr
-  "The `:fields` attribute of the field parts `parts`: for each field, the part of its settings file, else the entry of
-  a v64 table settings file."
+(defn- by-field
+  "`[[field-key part] ...]` of the parts `parts`: for each field, its part of a file of its own, else the first."
   [parts]
   (->> (group-by :key parts)
        (map (fn [[k ps]] [k (or (some (fn [p] (when (from-file? p) p)) ps) (first ps))]))
-       (sort-by (comp pr-str first))
-       (reduce (fn [acc [k {:keys [values]}]]
-                 (if (seq values) (update-in acc (field-path k) merge values) acc))
-               {})))
+       (sort-by (comp pr-str first))))
+
+(defn- fields-attr
+  "The `:fields` attribute of the field parts `parts` and the remapping parts `remappings`: for each field, the part of
+  its settings file, else the entry of a v64 table settings file; and the remapping of its Dimension file, else the
+  first of the dimensions of its field file."
+  [parts remappings]
+  (let [settings (reduce (fn [acc [k {:keys [values]}]]
+                           (if (seq values) (update-in acc (field-path k) merge values) acc))
+                         {}
+                         (by-field parts))]
+    (reduce (fn [acc [k {:keys [remapping]}]]
+              (assoc-in acc (conj (field-path k) :remapping) remapping))
+            settings
+            (by-field remappings))))
 
 (defn- duplicates
   "`tree/duplicate-findings` of the parts `parts`, each with its `:file`, by `id-of`."
   [id-of parts]
   (tree/duplicate-findings (map (fn [p] {:item [(id-of p)] :file (:file p)}) parts)))
 
+(defn- unnamed?
+  "True iff part `p` is the settings of a published table with no display name."
+  [{:keys [type doc]}]
+  (and (= :table type) (true? (:is_published doc)) (nil? (:display_name doc))))
+
+(defn resolve-names
+  "`opts` with `:table-names` as `{table-key name}`: `((:table-names opts) ks)`, where `ks` is the sorted vector of
+  the keys of the published tables of the parts `parts` whose settings have no display name. `{}` when there is no
+  such table or no `:table-names`; then `(:table-names opts)` is not called."
+  [opts parts]
+  (let [ks (vec (sort (distinct (keep (fn [p] (when (unnamed? p) (second (:of p)))) parts))))
+        f  (:table-names opts)]
+    (assoc opts :table-names (if (and f (seq ks)) (f ks) {}))))
+
 (defn assemble
   "The published table with key `table-key` from its parts `parts`: `{:doc d :file n}`, where `n` is the file of its
   settings; `{:skip reason}` when the table is not published; or `{:findings [f ...]}`. A table with no settings file
-  is not published. With no display name in its settings, the name is `(get (:table-names opts) table-key)`, else
-  the table name of the key."
+  is not published. With no display name in its settings, the name is `(get (:table-names opts) table-key)` (opts
+  of [[resolve-names]]), else the table name of the key."
   [table-key parts {:keys [table-names]}]
-  (let [{settings :table fields :field} (group-by :type parts)
+  (let [{settings :table fields :field remappings :remapping} (group-by :type parts)
         findings (concat (duplicates (constantly table-key) settings)
-                         (duplicates :key (filter from-file? fields)))
+                         (duplicates :key (filter from-file? fields))
+                         (duplicates :key (filter from-file? remappings)))
         {:keys [doc file]} (first settings)]
-    ;; The format has no remapping attribute yet, so the remappings of the fields are not content.
     (cond
       (seq findings)                 {:findings (vec findings)}
       (empty? settings)              {:skip :unpublished}
@@ -183,4 +221,4 @@
                               (merge (table-values doc)
                                      {:display_name (or (:display_name doc) (get table-names table-key) (peek table-key))
                                       :collection   (:collection_id doc)
-                                      :fields       (fields-attr fields)}))})))
+                                      :fields       (fields-attr fields remappings)}))})))
