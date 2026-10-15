@@ -148,6 +148,7 @@ git checkout path/to/Component.tsx
    `bunx jest --silent <paths...>`
 5. Run `bun run type-check-pure`. If it fails with no file location (for example `TS2589: Type instantiation is excessively deep`), find the file with `git stash push <file>`, one file at a time. Generic mock factories can cause this error when you give them a union key or a conditional value. Give them a literal key.
 6. Do not run ESLint. The pre-commit hooks run oxlint.
+7. Before each commit, run `git status --short` and `git diff --cached --name-only`. Stage explicit paths, never `git commit -a`. The staged files must be test files, test support, the e2e spec, or this skill. If a production file shows as modified, a mutation check (Step 4) is still in progress. Do not stage it, and do not commit while other agents run tests: the pre-commit hook stashes unstaged changes for a short time.
 
 ## Step 6: Report
 
