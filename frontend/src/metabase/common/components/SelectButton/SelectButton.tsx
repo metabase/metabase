@@ -2,14 +2,11 @@ import cx from "classnames";
 import type { ButtonHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import * as React from "react";
+import { t } from "ttag";
 
-import { Icon, InputBase } from "metabase/ui";
+import { Icon, Input, InputBase } from "metabase/ui";
 
 import S from "./SelectButton.module.css";
-
-/* Room for the clear icon and the chevron side by side:
-   8px padding + 12px icon + 4px gap + 12px icon + 8px padding. */
-const CLEAR_SECTION_WIDTH = "2.75rem";
 
 export interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
@@ -22,8 +19,8 @@ export interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElemen
   onClear?: () => void;
   dataTestId?: string;
   classNames?: {
-    root?: string;
-    icon?: string;
+    input?: string;
+    section?: string;
   };
 }
 
@@ -45,16 +42,14 @@ const SelectButtonInner = forwardRef(function SelectButton(
 ) {
   const handleClear = useCallback(
     (event: React.MouseEvent) => {
-      if (onClear) {
-        // Required not to trigger the usual SelectButton's onClick handler
-        event.stopPropagation();
-        onClear();
-      }
+      // Required not to trigger the usual SelectButton's onClick handler
+      event.stopPropagation();
+      onClear?.();
     },
     [onClear],
   );
 
-  const showClear = hasValue && !!onClear;
+  const showClear = hasValue && onClear !== undefined && !disabled;
 
   return (
     <InputBase
@@ -66,32 +61,25 @@ const SelectButtonInner = forwardRef(function SelectButton(
       ref={ref}
       disabled={disabled}
       onClick={onClick}
+      className={cx(S.root, { [S.fullWidth]: fullWidth }, className)}
+      style={style}
       rightSection={
-        <>
-          {showClear && (
-            <Icon
-              className={cx(S.clear, classNames.icon)}
-              name="close"
-              onClick={handleClear}
-            />
-          )}
-          <Icon className={classNames.icon} name="chevrondown" />
-        </>
+        showClear ? (
+          <Input.ClearButton
+            aria-label={t`Clear`}
+            className={S.clear}
+            onClick={handleClear}
+          />
+        ) : (
+          <Icon name="chevrondown" />
+        )
       }
       rightSectionPointerEvents="none"
-      rightSectionWidth={showClear ? CLEAR_SECTION_WIDTH : undefined}
       classNames={{
-        root: cx(S.root, { [S.fullWidth]: fullWidth }),
         wrapper: S.wrapper,
-        section: S.section,
-        input: cx(
-          S.input,
-          { [S.noValue]: !hasValue },
-          classNames.root,
-          className,
-        ),
+        section: cx(S.section, classNames.section),
+        input: cx(S.input, { [S.noValue]: !hasValue }, classNames.input),
       }}
-      styles={{ input: style }}
       {...rest}
     >
       <span className={S.content} data-testid="select-button-content">

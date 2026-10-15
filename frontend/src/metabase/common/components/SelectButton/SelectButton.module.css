@@ -18,13 +18,11 @@
   padding-inline-end: var(--input-right-section-width);
 }
 
-.section {
-  gap: 0.25rem;
-}
-
-.clear {
+/* The class is doubled because Input.ClearButton is a CloseButton, which paints
+   its own color at the same specificity instead of following the section. */
+.clear.clear {
+  color: inherit;
   pointer-events: auto;
-  cursor: pointer;
 }
 
 .content {

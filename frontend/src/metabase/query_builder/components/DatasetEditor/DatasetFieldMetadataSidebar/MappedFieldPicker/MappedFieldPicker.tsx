@@ -64,15 +64,15 @@ export function MappedFieldPicker({
     return (
       <SelectButton
         classNames={{
-          root: cx(
+          input: cx(
             MappedFieldPickerS.StyledSelectButton,
             {
               [MappedFieldPickerS.hasValue]: selectedField,
             },
             className,
           ),
-          icon: selectedField
-            ? MappedFieldPickerS.StyledSelectIconOnBrand
+          section: selectedField
+            ? MappedFieldPickerS.StyledSelectSectionOnBrand
             : undefined,
         }}
         hasValue={!!selectedField}
