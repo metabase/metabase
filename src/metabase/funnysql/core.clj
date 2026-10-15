@@ -1079,7 +1079,9 @@
   (infix-operand! s context)
   (append-sql! context ")"))
 
-(defn- postgres-full-text-search-match [[lhs rhs] context]
+(defn- postgres-full-text-search-match
+  "Implementation for [[honey.sql.pg-ops/atat]] (`@@`)."
+  [[lhs rhs] context]
   (check-identifier-form lhs)
   (check-identifier-form rhs)
   (compile! lhs context)
@@ -1138,9 +1140,6 @@
     ::h2x/mysql-interval    (h2x-interval! :mysql args context)
 
     ;; other custom operators
-    honey.sql.pg-ops/atat
-    (postgres-full-text-search-match args context)
-
     (:abs
      :avg
      :ceil
@@ -1193,9 +1192,17 @@
     (simple-fn! f args context)
 
     #_else
-    (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/fn-call! if it should be"
-                                         (pr-str f))
-                    {:f f, :args args}))))
+    (condp f =
+      ;; [[honey.sql.pg-ops/atat]] is just `:@@`, but that doesn't work as a keyword literal, and [[case]] treats the
+      ;; raw symbol as a compile-time constant instead of evaluating it to `:@@`, so unfortunately we just have to
+      ;; have this fallback [[condp]] here 😢
+      honey.sql.pg-ops/atat
+      (postgres-full-text-search-match args context)
+
+      #_else
+      (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/fn-call! if it should be"
+                                           (pr-str f))
+                      {:f f, :args args})))))
 
 (defn- sequence! [xs context]
   (cond
