@@ -189,27 +189,16 @@
   [model]
   (str/starts-with? (str model) "anthropic/"))
 
-(defn- anthropic-current-gen?
-  "Current-generation Claude on OpenRouter: Fable, Opus >= 4.7, Sonnet >= 5."
-  [model]
-  (or (str/starts-with? model "anthropic/claude-fable")
-      (when-let [[_ family major minor] (re-find #"^anthropic/claude-(opus|sonnet)-(\d+)(?:\.(\d+))?" model)]
-        (let [major (parse-long major)
-              minor (or (some-> minor parse-long) 0)]
-          (case family
-            "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
-            "sonnet" (>= major 5))))))
-
 (defn- model-supports-temperature?
   "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's
-  GPT-5 and o-series, and current-generation Claude. Neither `openai.clj`'s nor `claude.clj`'s
-  predicate can be reused — both are keyed to their own provider's id shape, and would silently
-  return true for OpenRouter's `vendor/model` ids with dotted versions."
+  GPT-5 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
+  prefix is off)."
   [model]
   (let [model (str model)]
     (not (or (str/starts-with? model "openai/gpt-5")
              (re-find #"^openai/o\d" model)
-             (anthropic-current-gen? model)))))
+             (and (anthropic-model? model)
+                  (claude/model-current-gen? (subs model (count "anthropic/"))))))))
 
 (defn- supports-required-tool-choice?
   "Whether `model` accepts `:tool_choice \"required\"`: true unless its [[supported-models]] row says otherwise."

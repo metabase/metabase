@@ -271,7 +271,8 @@
 (defn- turn-input-parts
   "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
   Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
-  the turn, and Claude Opus and Sonnet 5.5 reject a replayed thinking block once anything before it has changed."
+  the turn, and Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything
+  before it has changed."
   [sent-parts context memory link-registry]
   (into sent-parts
         (invert-links (subvec (messages/build-message-history context memory) (count sent-parts))

@@ -224,6 +224,7 @@
                     {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
+                    {:id "anthropic/claude-haiku-5-5"          :display_name "Claude Haiku 5.5"}
                     {:id "anthropic/claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}]
     ;; Google lists Claude Haiku 4.5 without the `@20251001` date it once carried:
     ;; https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5
