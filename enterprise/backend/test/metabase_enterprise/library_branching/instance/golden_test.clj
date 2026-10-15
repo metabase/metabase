@@ -63,6 +63,9 @@
                    :model/Collection metrics  {:name "Metrics" :type "library-metrics"
                                                :location (children-location library)
                                                :entity_id (eid-of :collection "Metrics")}
+                   :model/Collection dashboards {:name "Dashboards" :type "library-dashboards"
+                                                 :location (children-location library)
+                                                 :entity_id (eid-of :collection "Dashboards")}
                    :model/Collection revenue  {:name "Revenue" :location (children-location metrics)
                                                :description "Revenue metrics that finance signs off on."
                                                :entity_id (eid-of :collection "Revenue")}
@@ -177,6 +180,40 @@
                      :archived      false
                      :created_at    (java.time.OffsetDateTime/now)
                      :updated_at    (java.time.OffsetDateTime/now)})
+        (let [releases (t2/insert-returning-instance! :model/Timeline
+                                                      {:name          "Releases"
+                                                       :entity_id     (eid-of :timeline "Releases")
+                                                       :collection_id (:id dashboards)
+                                                       :description   "What we shipped."
+                                                       :icon          "bell"
+                                                       :creator_id    (mt/user->id :crowberto)})]
+          (doseq [event [{:timeline_id  (:id releases)
+                          :entity_id    "lAuNcHeVeNt000000001A"
+                          :name         "Launch"
+                          :timestamp    (java.time.OffsetDateTime/parse "2024-03-01T11:00:00+01:00")
+                          :timezone     "Europe/Paris"
+                          :time_matters true
+                          :icon         "cake"
+                          :creator_id   (mt/user->id :crowberto)}
+                         {:timeline_id  (:id releases)
+                          :entity_id    "oUtAgEeVeNt000000002B"
+                          :name         "Outage"
+                          :description  "The API was down."
+                          :timestamp    (java.time.OffsetDateTime/parse "2024-05-02T00:00:00Z")
+                          :timezone     "UTC"
+                          :time_matters false
+                          :icon         "star"
+                          :creator_id   (mt/user->id :crowberto)}
+                         {:timeline_id  (:id releases)
+                          :entity_id    "aRcHiVeDeVeNt0000003C"
+                          :name         "Archived"
+                          :timestamp    (java.time.OffsetDateTime/parse "2024-06-01T00:00:00Z")
+                          :timezone     "UTC"
+                          :time_matters false
+                          :icon         "star"
+                          :archived     true
+                          :creator_id   (mt/user->id :crowberto)}]]
+            (t2/insert! :model/TimelineEvent event)))
         (t2/insert! :model/Glossary {:term       "Churn"
                                      :entity_id  (eid-of :glossary-term "Churn")
                                      :definition "The share of customers who cancel in a month."

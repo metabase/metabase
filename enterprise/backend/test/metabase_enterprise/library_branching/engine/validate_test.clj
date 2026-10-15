@@ -126,6 +126,43 @@
       (is (= [] (validate/validate (assoc library filter-2 (engine.tu/item :snippet "Filter" sub))
                                    {:unique-keys {}}))))))
 
+(def ^:private timeline-1 (engine.tu/eid "timeline1"))
+(def ^:private timeline-2 (engine.tu/eid "timeline2"))
+(def ^:private event-1 (engine.tu/eid "event1"))
+(def ^:private event-2 (engine.tu/eid "event2"))
+
+(defn- timeline-with
+  "A timeline named `nm` in `place` whose events have the identities `event-ids`."
+  [nm place event-ids]
+  (assoc-in (engine.tu/item :timeline nm place) [:attrs :events] (mapv (fn [e] {:id e :name "x"}) event-ids)))
+
+(deftest ^:parallel nested-identity-test
+  (testing "two timelines that hold an event with one identity are one finding that names both, with the event"
+    (is (= [{:rule :nested-identity :kind :timeline :key event-1 :ids #{timeline-1 timeline-2}}]
+           (validate/validate (assoc library
+                                     timeline-1 (timeline-with "A" sub [event-1])
+                                     timeline-2 (timeline-with "B" lib [event-2 event-1]))))))
+  (testing "two shared events are two findings, in the order of their identities"
+    (is (= [:nested-identity :nested-identity]
+           (map :rule (validate/validate (assoc library
+                                                timeline-1 (timeline-with "A" sub [event-1 event-2])
+                                                timeline-2 (timeline-with "B" lib [event-1 event-2]))))))
+    (is (= [event-1 event-2]
+           (map :key (validate/validate (assoc library
+                                               timeline-1 (timeline-with "A" sub [event-2 event-1])
+                                               timeline-2 (timeline-with "B" lib [event-2 event-1])))))))
+  (testing "events with other identities are no finding, nor is an event twice in one timeline, which the schema of
+           the kind refuses"
+    (is (= [] (validate/validate (assoc library
+                                        timeline-1 (timeline-with "A" sub [event-1])
+                                        timeline-2 (timeline-with "B" lib [event-2])))))
+    (is (= [] (validate/validate (assoc library timeline-1 (timeline-with "A" sub [event-1 event-1]))))))
+  (testing "`:nested-ids` replaces the table"
+    (is (= [] (validate/validate (assoc library
+                                        timeline-1 (timeline-with "A" sub [event-1])
+                                        timeline-2 (timeline-with "B" lib [event-1]))
+                                 {:nested-ids {}})))))
+
 (deftest ^:parallel namespace-test
   (testing "a child collection in another namespace than its parent is a finding"
     (is (= [{:rule :namespace :id sub :place lib}]
@@ -340,6 +377,14 @@
     :doc    "An action on a question is no finding."
     :target `validate/validate
     :edits  [[:remove '(ref-kind-findings s ref-kinds)]]}
+   {:name   :no-nested-identity-rule
+    :doc    "Two timelines that hold one event are no finding, so an apply moves the event from one to the other."
+    :target `validate/validate
+    :edits  [[:remove '(nested-identity-findings s nested-ids)]]}
+   {:name   :nested-identity-in-one-item
+    :doc    "An event twice in one timeline is a finding of two holders, which names one item twice."
+    :target `validate/nested-identity-findings
+    :edits  [[:replace '(distinct (snapshot/nested-identities nested-ids item)) '(snapshot/nested-identities nested-ids item)]]}
    {:name   :ref-kind-env-fits
     :doc    "An environment object fits every role, so an action can name a table as its model."
     :target `validate/ref-kind-findings
@@ -347,6 +392,6 @@
 
 (deftest validate-mutations-test
   (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test
-                                #'refs-closed-test #'root-test #'unique-key-test #'namespace-test
+                                #'refs-closed-test #'root-test #'unique-key-test #'nested-identity-test #'namespace-test
                                 #'action-model-test #'several-findings-test
                                 #'arbitrary-snapshot-findings-test #'ref-kinds-findings-test #'roots-test]}))

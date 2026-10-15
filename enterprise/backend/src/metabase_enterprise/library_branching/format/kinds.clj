@@ -8,7 +8,8 @@
    [metabase-enterprise.library-branching.format.kinds.metric :as metric]
    [metabase-enterprise.library-branching.format.kinds.published-table :as published-table]
    [metabase-enterprise.library-branching.format.kinds.segment :as segment]
-   [metabase-enterprise.library-branching.format.kinds.snippet :as snippet]))
+   [metabase-enterprise.library-branching.format.kinds.snippet :as snippet]
+   [metabase-enterprise.library-branching.format.kinds.timeline :as timeline]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,11 +20,13 @@
    :metric          metric/spec
    :published-table published-table/spec
    :segment         segment/spec
-   :snippet         snippet/spec})
+   :snippet         snippet/spec
+   :timeline        timeline/spec})
 
 (def codecs
   "One codec for each kind of `snapshot/kinds`, for `writer/encode-tree`, `tree/decode-tree` and `layout/layout`."
-  [collection/codec glossary/codec measure/codec metric/codec published-table/codec segment/codec snippet/codec])
+  [collection/codec glossary/codec measure/codec metric/codec published-table/codec segment/codec snippet/codec
+   timeline/codec])
 
 (defn refs
   "The `:refs` of the item of kind `kind` with identity `id` and attributes `attrs`. Throws for an unknown kind."

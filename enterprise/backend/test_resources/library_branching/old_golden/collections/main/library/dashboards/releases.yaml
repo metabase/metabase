@@ -1,0 +1,36 @@
+collection_id: dAsHbOaRdScOlLeCtIoN1
+created_at: '2026-10-15T10:11:10.790127Z'
+creator_id: crowberto@metabase.com
+description: What we shipped.
+entity_id: rElEaSeStImElInE00001
+events:
+- archived: true
+  created_at: '2026-10-15T10:11:10.790127Z'
+  creator_id: crowberto@metabase.com
+  entity_id: aRcHiVeDeVeNt0000003C
+  icon: star
+  name: Archived
+  time_matters: false
+  timestamp: '2024-06-01T00:00:00Z'
+  timezone: UTC
+- created_at: '2026-10-15T10:11:10.790127Z'
+  creator_id: crowberto@metabase.com
+  entity_id: lAuNcHeVeNt000000001A
+  icon: cake
+  name: Launch
+  time_matters: true
+  timestamp: '2024-03-01T11:00:00+01:00'
+  timezone: Europe/Paris
+- created_at: '2026-10-15T10:11:10.790127Z'
+  creator_id: crowberto@metabase.com
+  description: The API was down.
+  entity_id: oUtAgEeVeNt000000002B
+  icon: star
+  name: Outage
+  time_matters: false
+  timestamp: '2024-05-02T00:00:00Z'
+  timezone: UTC
+icon: bell
+name: Releases
+serdes/meta:
+- model: Timeline

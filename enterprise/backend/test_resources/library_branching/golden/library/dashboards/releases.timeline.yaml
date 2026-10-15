@@ -1,0 +1,9 @@
+kind: timeline
+id: rElEaSeStImElInE00001
+collection: dAsHbOaRdScOlLeCtIoN1
+description: What we shipped.
+events:
+- {id: lAuNcHeVeNt000000001A, icon: cake, name: Launch, time_matters: true, timestamp: '2024-03-01T10:00:00Z', timezone: Europe/Paris}
+- {id: oUtAgEeVeNt000000002B, description: The API was down., name: Outage, timestamp: '2024-05-02T00:00:00Z', timezone: UTC}
+icon: bell
+name: Releases

@@ -96,14 +96,23 @@
                      refs))
            (vals s))))
 
+(defn nested-ids-unique?
+  "True iff no two items of snapshot `s` of one kind hold a nested entry with one identity
+  ([[snapshot/nested-identities]])."
+  [s]
+  (let [ks (mapcat (fn [{:keys [kind] :as item}]
+                     (map (partial vector kind) (distinct (snapshot/nested-identities snapshot/nested-ids item))))
+                   (vals s))]
+    (= (count ks) (count (set ks)))))
+
 (defn well-formed?
   "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
-  [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the two rules that the
-  model does not have: [[namespaces-fit?]] and [[ref-kinds-fit?]]."
+  [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the three rules that
+  the model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]] and [[nested-ids-unique?]]."
   ([s] (well-formed? s snapshot/may-contain))
   ([s may-contain]
    (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s)
-        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s))))
+        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (nested-ids-unique? s))))
 
 ;;; --------------------------------------------- Identities and values ----------------------------------------------
 

@@ -14,6 +14,7 @@
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
    [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
+   [metabase-enterprise.library-branching.instance.kinds.timeline :as kinds.timeline]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
@@ -27,7 +28,8 @@
    :metric          kinds.metric/kind-store
    :published-table kinds.published-table/kind-store
    :segment         kinds.segment/kind-store
-   :snippet         kinds.snippet/kind-store})
+   :snippet         kinds.snippet/kind-store
+   :timeline        kinds.timeline/kind-store})
 
 (defn read-current
   "The synced snapshot for `stores` (`{kind KindStore}`, default [[kind-stores]]) and `roots` (default

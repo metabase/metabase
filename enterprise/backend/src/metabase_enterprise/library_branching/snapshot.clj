@@ -10,17 +10,18 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :glossary-term :measure :metric :published-table :segment :snippet})
+  #{:collection :glossary-term :measure :metric :published-table :segment :snippet :timeline})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
-  {:collection      #{:collection :metric :published-table :snippet}
+  {:collection      #{:collection :metric :published-table :snippet :timeline}
    :glossary-term   #{}
    :measure         #{}
    :metric          #{}
    :published-table #{:measure :segment}
    :segment         #{}
-   :snippet         #{}})
+   :snippet         #{}
+   :timeline        #{}})
 
 (def unique-keys
   "`{kind {:path path :name? bool}}`: the kinds whose key the app DB keeps unique over all rows of the kind, the path of
@@ -45,6 +46,15 @@
   (when-let [{:keys [path name?]} (get unique-keys (:kind item))]
     (when-some [k (get-in item path)]
       (if (and name? (string? k)) (fold-name k) k))))
+
+(def nested-ids
+  "`{kind path}`: the kinds whose items hold nested entries with identities of their own. A stub."
+  {})
+
+(defn nested-identities
+  "The identities of the nested entries of `item`. A stub."
+  [_nested-ids _item]
+  nil)
 
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The

@@ -12,6 +12,7 @@
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
    [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
    [metabase-enterprise.library-branching.format.old.table-item :as old.table-item]
+   [metabase-enterprise.library-branching.format.old.timeline :as old.timeline]
    [metabase-enterprise.library-branching.format.tree :as tree]))
 
 (set! *warn-on-reflection* true)
@@ -36,7 +37,8 @@
    "NativeQuerySnippet" #'old.snippet/decode
    "Segment"            #'old.table-item/decode-segment
    "Table"              #'old.published-table/decode-table
-   "TableUserSettings"  #'old.published-table/decode-table-settings})
+   "TableUserSettings"  #'old.published-table/decode-table-settings
+   "Timeline"           #'old.timeline/decode})
 
 (def assemblers
   "`{kind f}`: the builder of each kind whose item is several parts. `(f id parts opts)` takes the identity, the parts

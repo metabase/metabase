@@ -75,6 +75,10 @@
   "The entity id of the Active product filter snippet, which uses the Base filter."
   "aCtIvEpRoDuCtFiLtEr01")
 
+(def releases-id
+  "The entity id of the Releases timeline."
+  "rElEaSeStImElInE00001")
+
 (def total-revenue-path
   "The file of the Total Revenue metric."
   "library/metrics/revenue/total_revenue.metric.yaml")
@@ -87,6 +91,10 @@
 (def active-filter-path
   "The file of the Active product filter snippet."
   "snippets/filters/active_product_filter.snippet.yaml")
+(def releases-path
+  "The file of the Releases timeline."
+  "library/dashboards/releases.timeline.yaml")
+
 (def revenue-path
   "The file of the Revenue collection."
   "library/metrics/revenue/_collection.yaml")
@@ -136,6 +144,9 @@
      "root"                   (v (edit total-revenue-path #(str/replace % (str "collection: " revenue-id "\n") "")))
      "unique-key"             (v (edit active-filter-path #(str/replace % "name: Active product filter" "name: Base filter")))
      "namespace"              (v (edit revenue-path #(str % "namespace: snippets\n")))
+     "nested-identity"        (v (tree-with {"library/dashboards/copy.timeline.yaml"
+                                             (str/replace (text (get golden releases-path))
+                                                          (str "id: " releases-id) "id: cOpYoFrElEaSeS0000001")}))
      "env-resolves"           {:tree golden :manifest (manifest-without-products)}
      "manifest-unreadable"    {:tree golden :manifest (utf-8 "databases: [")}
      "canonical-path"         (v (-> golden

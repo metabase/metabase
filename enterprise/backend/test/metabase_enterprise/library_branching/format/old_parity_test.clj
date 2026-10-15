@@ -23,7 +23,8 @@
 
 (def ^:private library-tree
   "The entity ids of the collections of the Library in the golden content, each after its parent."
-  ["LiBrArYcOlLeCtIoN0001" "dAtAcOlLeCtIoNiD00000" "mEtRiCsCoLlEcTiOnId00" "cOlQuErIeS0ExAmPlE2x1"])
+  ["LiBrArYcOlLeCtIoN0001" "dAtAcOlLeCtIoNiD00000" "mEtRiCsCoLlEcTiOnId00" "cOlQuErIeS0ExAmPlE2x1"
+   "dAsHbOaRdScOlLeCtIoN1"])
 
 (defn- remote-sync-export!
   "`{path bytes}`: the files of a full push of remote sync, with the Library synced and transforms on."

@@ -97,6 +97,33 @@
           :serdes/meta [{:model "Measure"}]}
          attrs))
 
+(defn timeline-doc
+  "The old document of timeline `id`, with its events under `events`, each with every column. The time of an event has
+  an offset, as the export keeps the offset that the app DB returns."
+  [id {:keys [name place attrs]}]
+  (merge {:name          name
+          :entity_id     id
+          :created_at    created-at
+          :creator_id    "crowberto@metabase.com"
+          :archived      false
+          :default       false
+          :icon          "star"
+          :collection_id place
+          :serdes/meta   [{:model "Timeline"}]}
+         (dissoc attrs :events)
+         {:events (mapv (fn [{:keys [id timestamp] :as e}]
+                          (merge {:entity_id    id
+                                  :created_at   created-at
+                                  :creator_id   "crowberto@metabase.com"
+                                  :archived     false
+                                  :description  nil
+                                  :time_matters false
+                                  :icon         "star"}
+                                 (dissoc e :id)
+                                 {:timestamp (str (.atOffset (java.time.Instant/parse timestamp)
+                                                             (java.time.ZoneOffset/ofHours 2)))}))
+                        (:events attrs))}))
+
 (def ^:private table-flags
   {:description        :description_set
    :caveats            :caveats_set
@@ -160,6 +187,7 @@
                    :glossary-term   [(glossary-doc id item)]
                    :segment         [(segment-doc id item)]
                    :measure         [(measure-doc id item)]
+                   :timeline        [(timeline-doc id item)]
                    :published-table (cons (table-settings-doc id item)
                                           (for [[field-key settings] (sort-by (comp pr-str key)
                                                                               (flat-fields id (:fields attrs)))]

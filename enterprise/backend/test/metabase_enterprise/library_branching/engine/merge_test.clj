@@ -168,6 +168,19 @@
             t (assoc b id2 (engine.tu/item :snippet "N" lib))]
         (is (= {:ok (assoc o id2 (get t id2))} (merge/merge b o t {})))))))
 
+(deftest ^:parallel nested-identities-test
+  (testing "each side adds a timeline that holds one event: the result has two holders, a violation that names the pair"
+    (let [lib    (engine.tu/eid "lib")
+          event  {:id (engine.tu/eid "event") :name "Launch"}
+          tl     (fn [nm] (assoc-in (engine.tu/item :timeline nm lib) [:attrs :events] [event]))
+          b      {lib (engine.tu/item :collection "Library" nil)}
+          o      (assoc b id1 (tl "Ours"))
+          t      (assoc b id2 (tl "Theirs"))]
+      (is (= {:conflicts  []
+              :violations [{:rule :nested-identity :kind :timeline :key (:id event) :ids #{id1 id2}
+                            :ours id1 :theirs id2}]}
+             (merge/merge b o t {}))))))
+
 (deftest ^:parallel violations-with-conflicts-test
   (testing "with a conflict, the check runs on the result in which the conflicted item keeps ours"
     (let [lib (engine.tu/eid "lib")

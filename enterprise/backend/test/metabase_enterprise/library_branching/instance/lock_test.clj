@@ -150,6 +150,14 @@
                                               :table_id   (mt/id :venues)
                                               :creator_id user
                                               :definition (sum-query :venues :price)})
+             dashes  (insert! :model/Collection {:name     "Lock dashboards"
+                                                 :type     "library-dashboards"
+                                                 :location (children-location library)})
+             tl      (insert! :model/Timeline {:name "Locked timeline" :collection_id (:id dashes) :icon "star"
+                                               :creator_id user})
+             event   (insert! :model/TimelineEvent {:timeline_id (:id tl) :name "Locked event" :timezone "UTC"
+                                                    :timestamp (java.time.OffsetDateTime/parse "2024-01-01T00:00:00Z")
+                                                    :time_matters false :icon "star" :creator_id user})
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -171,7 +179,11 @@
                   ["a segment" :segment (:entity_id segment)
                    #(t2/query-one {:update :segment :set {:name "Saved"} :where [:= :id (:id segment)]})]
                   ["a measure" :measure (:entity_id measure)
-                   #(t2/query-one {:update :measure :set {:name "Saved"} :where [:= :id (:id measure)]})]]]
+                   #(t2/query-one {:update :measure :set {:name "Saved"} :where [:= :id (:id measure)]})]
+                  ["a timeline" :timeline (:entity_id tl)
+                   #(t2/query-one {:update :timeline :set {:name "Saved"} :where [:= :id (:id tl)]})]
+                  ["an event of a timeline" :timeline (:entity_id tl)
+                   #(t2/query-one {:update :timeline_event :set {:name "Saved"} :where [:= :id (:id event)]})]]]
            (testing label
              (let [[content during after] (while-current-holds! (get stores kind) id save!)]
                (is (map? content))

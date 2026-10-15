@@ -115,6 +115,15 @@
       [{:level :structural :rule :unique-key :kind :snippet :key "Base filter"
         :ids #{golden/base-filter-id golden/active-filter-id}}]
 
+      ;; two timelines that hold one event
+      (golden/tree-with {"library/dashboards/copy.timeline.yaml"
+                         (str/replace (golden/text (get (golden/tree) golden/releases-path))
+                                      (str "id: " golden/releases-id) "id: cOpYoFrElEaSeS0000001")})
+      [{:level :structural :rule :nested-identity :kind :timeline :key "lAuNcHeVeNt000000001A"
+        :ids #{golden/releases-id "cOpYoFrElEaSeS0000001"}}
+       {:level :structural :rule :nested-identity :kind :timeline :key "oUtAgEeVeNt000000002B"
+        :ids #{golden/releases-id "cOpYoFrElEaSeS0000001"}}]
+
       ;; a child collection in another namespace than its parent
       (golden/edit golden/revenue-path #(str % "namespace: snippets\n"))
       [{:level :structural :rule :namespace :id golden/revenue-id :place golden/metrics-id :path golden/revenue-path}])))
@@ -191,6 +200,16 @@
       (is (str/includes? line "\"Base filter\""))
       (is (str/includes? line golden/base-filter-id))
       (is (str/includes? line golden/active-filter-id))
+      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
+  (testing "a shared event names the kind, the event and both items"
+    (let [[line] (check/report (checked (golden/tree-with {"library/dashboards/copy.timeline.yaml"
+                                                           (str/replace (golden/text (get (golden/tree) golden/releases-path))
+                                                                        (str "id: " golden/releases-id)
+                                                                        "id: cOpYoFrElEaSeS0000001")})))]
+      (is (str/includes? line "timeline"))
+      (is (str/includes? line "lAuNcHeVeNt000000001A"))
+      (is (str/includes? line golden/releases-id))
+      (is (str/includes? line "cOpYoFrElEaSeS0000001"))
       (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
   (testing "a namespace finding names the collection and its parent"
     (let [[line] (check/report (checked (golden/edit golden/revenue-path #(str % "namespace: snippets\n"))))]
