@@ -141,6 +141,8 @@
 (defrecord RacingStore [s before-cas]
   store/Store
   (head [_ r] (store/head s r))
+  (branches [_] (store/branches s))
+  (default-branch [_] (store/default-branch s))
   (read-tree [_ c] (store/read-tree s c))
   (changed-paths [_ a b] (store/changed-paths s a b))
   (write-commit [_ ps t m] (store/write-commit s ps t m))
