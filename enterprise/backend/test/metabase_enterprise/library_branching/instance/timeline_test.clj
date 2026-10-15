@@ -260,7 +260,7 @@
            (testing "and sends no update: on Postgres a time stamp that an update sets in this transaction equals the
                     one of the insert, so only the statements show it"
              (let [updates (atom [])
-                   spy     (fn [f] (fn [& args] (swap! updates conj f) 0))]
+                   spy     (fn [f] (fn [& _args] (swap! updates conj f) 0))]
                (mt/with-dynamic-fn-redefs [library-branching.db/update-timeline!        (spy :update-timeline!)
                                            library-branching.db/update-timeline-event!  (spy :update-timeline-event!)
                                            library-branching.db/archive-timeline-events! (spy :archive-timeline-events!)]
