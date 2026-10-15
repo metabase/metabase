@@ -21,6 +21,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
@@ -29,7 +30,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.util.concurrent Future TimeUnit TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -101,7 +103,7 @@
 (defn hard-time-limit-ms
   "The time a worker may run before it is stopped and its task fails: ten times [[time-limit-ms]]."
   []
-  (throw (ex-info "Not implemented yet: hard-time-limit-ms" {})))
+  (* 10 (time-limit-ms)))
 
 (defn- cutoff []
   (t/minus (now) (t/millis (time-limit-ms))))
@@ -400,13 +402,31 @@
         (ensure-ended! id)))
     (task id)))
 
+(defn- timeout-message [ms]
+  (str "Task stopped: it ran for longer than its time limit of " (u/format-milliseconds ms)))
+
 (defn submit!
   "Starts a task of `kind` for the user `user-id` with [[start!]], then runs `f` as its worker with [[run-task!]] and
-  `opts` in a virtual thread. Returns the new task at once. Throws as [[start!]] does."
-  [kind user-id f & {:as opts}]
-  (let [{:keys [id] :as started} (start! kind user-id)]
+  `opts` in a virtual thread. Returns the new task at once. Throws as [[start!]] does.
+
+  A worker that runs for longer than `(:timeout-ms opts)` (default [[hard-time-limit-ms]]) is interrupted, and its
+  task, when still open, fails with a message that names the time limit."
+  [kind user-id f & {:keys [timeout-ms] :as opts}]
+  (let [{:keys [id] :as started} (start! kind user-id)
+        timeout-ms               (or timeout-ms (hard-time-limit-ms))
+        ^Future worker           (u.jvm/in-virtual-thread*
+                                  (run-task! id f (dissoc opts :timeout-ms)))]
     (u.jvm/in-virtual-thread*
-     (run-task! id f opts))
+     (try
+       (.get worker timeout-ms TimeUnit/MILLISECONDS)
+       (catch TimeoutException _
+         ;; The task ends before the interrupt, so the error of the interrupted worker does not replace this message.
+         (when (fail! id (timeout-message timeout-ms))
+           (log/warnf "Library branching task %d ran for longer than %d ms, so it was stopped" id timeout-ms))
+         (.cancel worker true))
+       (catch Throwable _
+         ;; run-task! logs the failures of the worker
+         nil)))
     started))
 
 (defn interrupt-running-tasks!

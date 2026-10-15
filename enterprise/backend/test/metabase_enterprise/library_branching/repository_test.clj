@@ -15,6 +15,7 @@
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.repository-test-util :as rtu :refer [with-remote with-settings]]
    [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
@@ -92,7 +93,9 @@
                                                  (obfuscated-token? body saved) (->> (remove #{token-key})))))))
      :turn-off-clears    (or (not (turns-off? body)) (every? nil? (vals writes)))
      :body-values        (or (turns-off? body) (= writes (select-keys body (keys writes))))
-     :obfuscated-keeps   (or (not (obfuscated-token? body saved)) (= (get saved token-key) (get after token-key)))
+     :obfuscated-keeps   (or (turns-off? body)
+                             (not (obfuscated-token? body saved))
+                             (= (get saved token-key) (get after token-key)))
      :check              (= check (when (and (not (turns-off? body)) (some repository/git-keys (keys body)))
                                     (connection-after after)))
      :default-branch     (= default-branch? (boolean (and check
@@ -134,9 +137,26 @@
       (is (= (zipmap (keys laws) (repeat true)) laws) (pr-str save))
       (every? true? (vals laws)))))
 
+;;; ------------------------------------------------------- Store -------------------------------------------------------
+
+(deftest open-store-has-the-saved-connection-and-the-timeout-setting-test
+  (testing "every remote call of the store has the timeout of remote-sync-git-timeout-seconds and the saved token"
+    (with-remote [repo url]
+      (rtu/remote-with-branches! repo ["main"])
+      (with-settings {url-key url token-key "saved-token"}
+        (mt/with-temporary-setting-values [remote-sync-git-timeout-seconds 17]
+          (let [calls    (atom [])
+                original (dynamic-redefs/original-fn #'store.jgit/open-transport)]
+            (dynamic-redefs/with-dynamic-fn-redefs
+              [store.jgit/open-transport (fn [repo url token timeout-seconds]
+                                           (swap! calls conj {:url url :token token :timeout timeout-seconds})
+                                           (original repo url token timeout-seconds))]
+              (is (= #{"main"} (repository/do-with-store store/branches)))
+              (is (= [{:url url :token "saved-token" :timeout 17}] @calls)))))))))
+
 ;;; -------------------------------------------------- Test Connection --------------------------------------------------
 
-(defn- test-connection [body]
+(defn- test-connection! [body]
   (try
     (repository/test-connection! body)
     :ok
@@ -147,7 +167,7 @@
   (with-remote [repo url]
     (rtu/remote-with-branches! repo ["main"])
     (with-settings {url-key url branch-key "main"}
-      (is (= :ok (test-connection {}))))))
+      (is (= :ok (test-connection! {}))))))
 
 (deftest test-connection-makes-a-fresh-remote-call-test
   (testing "each Test Connection asks the remote again: a remote that went away fails the next test"
@@ -157,13 +177,13 @@
                   (with-settings {url-key url}
                     (rtu/do-recording-stores
                      (fn [calls]
-                       (is (= :ok (test-connection {})))
-                       (is (= :ok (test-connection {})))
+                       (is (= :ok (test-connection! {})))
+                       (is (= :ok (test-connection! {})))
                        (is (= 2 (count @calls)) "one store, and so one remote call, for each test"))))
                   url)]
         (with-settings {url-key url}
           (is (= {:status-code 400 :message "Repository not found: Please check the repository URL"}
-                 (test-connection {}))))))))
+                 (test-connection! {}))))))))
 
 (deftest test-connection-uses-the-values-of-the-form-test
   (with-remote [repo url]
@@ -172,31 +192,31 @@
       (rtu/do-recording-stores
        (fn [calls]
          (testing "a URL and a token of the form override the saved ones"
-           (is (= :ok (test-connection {url-key url token-key "new-token"})))
+           (is (= :ok (test-connection! {url-key url token-key "new-token"})))
            (is (= [{:url url :token "new-token"}] @calls)))
          (testing "the obfuscated saved token means the saved token"
            (reset! calls [])
-           (is (= :ok (test-connection {url-key url token-key (setting/obfuscate-value "saved-token")})))
+           (is (= :ok (test-connection! {url-key url token-key (setting/obfuscate-value "saved-token")})))
            (is (= [{:url url :token "saved-token"}] @calls)))
          (testing "no token in the form means the saved token"
            (reset! calls [])
-           (is (= :ok (test-connection {url-key url})))
+           (is (= :ok (test-connection! {url-key url})))
            (is (= [{:url url :token "saved-token"}] @calls)))
          (testing "a nil token in the form means no token"
            (reset! calls [])
-           (is (= :ok (test-connection {url-key url token-key nil})))
+           (is (= :ok (test-connection! {url-key url token-key nil})))
            (is (= [{:url url :token nil}] @calls))))))))
 
 (deftest test-connection-messages-test
   (testing "no URL in the form and none saved"
     (with-settings {}
-      (is (= {:status-code 400 :message "Library branching is not configured."} (test-connection {})))
-      (is (= {:status-code 400 :message "Library branching is not configured."} (test-connection {url-key "  "})))))
+      (is (= {:status-code 400 :message "Library branching is not configured."} (test-connection! {})))
+      (is (= {:status-code 400 :message "Library branching is not configured."} (test-connection! {url-key "  "})))))
   (testing "a URL that the URL rule refuses"
     (with-settings {}
       (is (= {:status-code 400
               :message     "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"}
-             (test-connection {url-key "asdf://foo/bar.git"})))))
+             (test-connection! {url-key "asdf://foo/bar.git"})))))
   (testing "a token that the remote refuses gets the message of an authentication failure"
     (with-remote [repo url]
       (rtu/remote-with-branches! repo ["main"])
@@ -206,11 +226,11 @@
                                        (throw (TransportException. (URIish. ^String url)
                                                                    (.-notAuthorized (JGitText/get)))))]
           (is (= {:status-code 400 :message "Authentication failed: Please check your git credentials"}
-                 (test-connection {}))))))))
+                 (test-connection! {}))))))))
 
 ;;; -------------------------------------------------------- Save -------------------------------------------------------
 
-(defn- save [body]
+(defn- save! [body]
   (try
     (repository/save-settings! body (mt/user->id :crowberto))
     :ok
@@ -229,7 +249,7 @@
     (rtu/remote-with-branches! repo ["main" "dev"])
     (with-save-fixture {}
       (testing "a save of a URL and a branch"
-        (is (= :ok (save {url-key url branch-key "dev" :remote-sync-type :read-write})))
+        (is (= :ok (save! {url-key url branch-key "dev" :remote-sync-type :read-write})))
         (is (= {url-key url token-key nil branch-key "dev" :remote-sync-type :read-write :remote-sync-auto-import false}
                (rtu/saved))))
       (testing "the save ran as a task of kind settings"
@@ -240,11 +260,11 @@
   (with-remote [repo url]
     (rtu/remote-with-branches! repo ["trunk" "dev"])
     (with-save-fixture {}
-      (is (= :ok (save {url-key url branch-key ""})))
+      (is (= :ok (save! {url-key url branch-key ""})))
       (is (= "trunk" (setting/get branch-key)))
       (testing "with no branch in the body either"
         (setting/set! branch-key nil)
-        (is (= :ok (save {url-key url})))
+        (is (= :ok (save! {url-key url})))
         (is (= "trunk" (setting/get branch-key)))))))
 
 (deftest save-refuses-what-does-not-connect-test
@@ -253,15 +273,15 @@
       (testing "a URL that the URL rule refuses"
         (is (= {:status-code 400
                 :message     "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"}
-               (save {url-key "asdf://foo/bar.git"}))))
+               (save! {url-key "asdf://foo/bar.git"}))))
       (testing "a URL that does not reach a repository, with the message of the failure"
         (is (= {:status-code 400 :message "Repository not found: Please check the repository URL"}
-               (save {url-key "file:///no/such/library-branching/repository"}))))
+               (save! {url-key "file:///no/such/library-branching/repository"}))))
       (testing "a read-only instance on a branch that the repository does not have"
         (with-remote [repo url]
           (rtu/remote-with-branches! repo ["main"])
           (is (= {:status-code 400 :message "The repository has no branch nope."}
-                 (save {url-key url branch-key "nope" :remote-sync-type :read-only})))))
+                 (save! {url-key url branch-key "nope" :remote-sync-type :read-only})))))
       (testing "nothing changed, and no task ran"
         (is (= before (rtu/saved)))
         (is (nil? (tasks/newest-task)))))))
@@ -280,7 +300,7 @@
                            {:remote-sync-auto-import true}
                            {url-key ""}]]
                (testing (pr-str body)
-                 (is (= {:status-code 400 :message "Library branching task in progress"} (save body)))))
+                 (is (= {:status-code 400 :message "Library branching task in progress"} (save! body)))))
              (is (= [] @calls) "no remote call")
              (is (= before (rtu/saved)))
              (is (= (:id running) (:id (tasks/newest-task))) "no settings task"))))))))
@@ -292,11 +312,11 @@
       (rtu/do-recording-stores
        (fn [calls]
          (testing "auto-import only: no remote call"
-           (is (= :ok (save {:remote-sync-auto-import true})))
+           (is (= :ok (save! {:remote-sync-auto-import true})))
            (is (true? (setting/get :remote-sync-auto-import)))
            (is (= [] @calls)))
          (testing "a change of the branch or of the role calls the remote"
-           (is (= :ok (save {branch-key "main" :remote-sync-type :read-only})))
+           (is (= :ok (save! {branch-key "main" :remote-sync-type :read-only})))
            (is (= 1 (count @calls)))))))))
 
 (deftest save-token-rules-test
@@ -306,22 +326,22 @@
       (rtu/do-recording-stores
        (fn [calls]
          (testing "the obfuscated token keeps the stored token, and the check uses the stored token"
-           (is (= :ok (save {url-key url token-key (setting/obfuscate-value "full-token") branch-key "dev"})))
+           (is (= :ok (save! {url-key url token-key (setting/obfuscate-value "full-token") branch-key "dev"})))
            (is (= "full-token" (setting/get token-key)))
            (is (= {:url url :token "full-token"} (last @calls))))
          (testing "a switch to read-only with no token in the body keeps the token"
-           (is (= :ok (save {:remote-sync-type :read-only})))
+           (is (= :ok (save! {:remote-sync-type :read-only})))
            (is (= "full-token" (setting/get token-key)))
            (is (= :read-only (setting/get :remote-sync-type))))
          (testing "a change of the branch of a read-only instance with no token keeps the token"
-           (is (= :ok (save {branch-key "main"})))
+           (is (= :ok (save! {branch-key "main"})))
            (is (= "main" (setting/get branch-key)))
            (is (= "full-token" (setting/get token-key))))
          (testing "another token replaces it"
-           (is (= :ok (save {token-key "other-token"})))
+           (is (= :ok (save! {token-key "other-token"})))
            (is (= "other-token" (setting/get token-key))))
          (testing "a nil token clears it"
-           (is (= :ok (save {token-key nil})))
+           (is (= :ok (save! {token-key nil})))
            (is (nil? (setting/get token-key)))))))))
 
 (deftest turn-off-keeps-the-base-row-test
@@ -333,14 +353,14 @@
           (is (= :ok (instance/set-base! (app-db/app-db-instance app-db/kind-stores scope/roots url) nil c {})))
           (rtu/do-recording-stores
            (fn [calls]
-             (is (= :ok (save {url-key ""})))
+             (is (= :ok (save! {url-key ""})))
              (is (= [] @calls) "no remote call")))
           (is (false? (repository/configured?)))
           (is (= [nil nil nil] (map setting/get [url-key token-key branch-key])))
           (is (=? {:commit_id c :url url}
                   (t2/query-one {:select [:commit_id :url] :from [:library_branching_base] :where [:= :id 1]})))
           (testing "the same URL again finds the base"
-            (is (= :ok (save {url-key url branch-key "main"})))
+            (is (= :ok (save! {url-key url branch-key "main"})))
             (is (= c (instance/base (app-db/app-db-instance app-db/kind-stores scope/roots (repository/url)))))))))))
 
 (deftest save-keeps-values-from-environment-variables-test
@@ -351,10 +371,10 @@
                                     mb-remote-sync-token  "env-token"
                                     mb-remote-sync-branch "env-branch"]
         (testing "a save through the API of the URL, the token and the branch leaves the values of the environment"
-          (is (= :ok (save {url-key "https://api.example.com/a.git" token-key "api-token" branch-key "api-branch"
+          (is (= :ok (save! {url-key "https://api.example.com/a.git" token-key "api-token" branch-key "api-branch"
                             :remote-sync-type :read-only})))
           (is (= [url "env-token" "env-branch" :read-only]
                  (map setting/get [url-key token-key branch-key :remote-sync-type]))))
         (testing "a blank URL does not clear the values of the environment"
-          (is (= :ok (save {url-key ""})))
+          (is (= :ok (save! {url-key ""})))
           (is (= [url "env-token" "env-branch"] (map setting/get [url-key token-key branch-key]))))))))

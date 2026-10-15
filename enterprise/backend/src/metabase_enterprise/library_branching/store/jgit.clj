@@ -46,11 +46,10 @@
     (.toFile (Files/createTempDirectory ^Path tmp "metabase-library-branching-" ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))))
 
 (defn url-error
-  "nil when a store may connect to `url`, else the message for the person. Accepted: an https:// URL of any host,
-  and an http:// URL, a file:// URL or a local path with no colon."
+  "nil when a store may connect to `url`, else the message for the person. Accepted: an https:// URL of any host, and a
+  file:// URL. A token never goes over plain http://."
   [^String url]
-  (when-not (or (not (str/includes? url ":"))
-                (some #(str/starts-with? url %) ["https://" "http://" "file://"]))
+  (when-not (some #(str/starts-with? url %) ["https://" "file://"])
     "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"))
 
 (defn token-user

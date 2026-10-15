@@ -45,7 +45,9 @@
    {:name   :base-not-compared
     :doc    "set-base! moves the base row whatever its commit id is."
     :target `library-branching.db/compare-and-set-base!
-    :edits  [[:replace '(if expected [:= :commit_id [:auto/param expected]] [:= :commit_id nil]) true]]}])
+    :edits  [[:replace '(if expected
+                          [:and (url-is url) [:= :commit_id [:auto/param expected]]]
+                          [:or [:= :commit_id nil] (url-is-not url)]) true]]}])
 
 (def ^:private tests
   [#'metabase-enterprise.library-branching.push-test/first-push-writes-the-snapshot-test

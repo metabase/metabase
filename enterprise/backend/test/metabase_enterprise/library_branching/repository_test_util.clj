@@ -108,7 +108,7 @@
 
 ;;; ------------------------------------------------------- Tasks ------------------------------------------------------
 
-(defn synchronous-submit
+(defn synchronous-submit!
   "`tasks/submit!` that runs the worker on the calling thread, and returns the task as it started."
   [kind user-id f & {:as opts}]
   (let [{:keys [id] :as started} (tasks/start! kind user-id)]
@@ -116,7 +116,7 @@
     started))
 
 (defmacro with-synchronous-tasks
-  "Runs `body` with [[synchronous-submit]] as `tasks/submit!`."
+  "Runs `body` with [[synchronous-submit!]] as `tasks/submit!`."
   [& body]
-  `(dynamic-redefs/with-dynamic-fn-redefs [tasks/submit! synchronous-submit]
+  `(dynamic-redefs/with-dynamic-fn-redefs [tasks/submit! synchronous-submit!]
      ~@body))

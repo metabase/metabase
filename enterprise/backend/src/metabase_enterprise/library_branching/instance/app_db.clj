@@ -52,19 +52,27 @@
   (binding [*print-length* nil, *print-level* nil, *print-meta* false, *print-namespace-maps* false]
     (pr-str (into (sorted-map-by snapshot/compare-identities) digests))))
 
+(defn base
+  "The base of the repository at `url`: the commit id of the base row when the row holds `url`, else nil."
+  [url]
+  (let [{:keys [commit_id] :as row} (base-row)]
+    (when (= url (:url row))
+      commit_id)))
+
 (defn base-digests
-  "The digests of the base row, when its commit id is `commit`; else nil."
-  [commit]
-  (let [{:keys [commit_id digests]} (base-row)]
-    (when (and (some? commit) (= commit commit_id) digests)
+  "The digests of the base row, when the base of `url` is `commit`; else nil."
+  [url commit]
+  (let [{:keys [digests]} (base-row)]
+    (when (and (some? commit) (= commit (base url)) digests)
       (edn/read-string digests))))
 
 (defn set-base!
-  "Moves the base row from `expected` to `new`, with `digests`, in one compare-and-swap: :ok, or {:moved actual}."
-  [expected new digests]
-  (if (= 1 (library-branching.db/compare-and-set-base! expected new (write-digests digests)))
+  "Moves the base of the repository at `url` from `expected` to `new`, with `digests`, in one compare-and-swap: :ok, or
+  {:moved actual}, where `actual` is the base of `url`."
+  [url expected new digests]
+  (if (= 1 (library-branching.db/compare-and-set-base! url expected new (write-digests digests)))
     :ok
-    {:moved (:commit_id (base-row))}))
+    {:moved (base url)}))
 
 (defn- kind-store
   [stores kind id]
@@ -80,23 +88,23 @@
                         (str "A new item of the kind " (name kind) " cannot be written before the items it refers to.")))))
 
 (defn- ops
-  [stores roots]
+  [stores roots url]
   {:current   (fn [kind id] (instance/current (kind-store stores kind id) id))
    :write!    (fn [kind id content] (instance/write! (kind-store stores kind id) id content))
    :trash!    (fn [kind id] (instance/trash! (kind-store stores kind id) id))
    :stub      (partial stub stores)
-   :set-base! set-base!
+   :set-base! (partial set-base! url)
    :in-use    (partial in-use/trashed-in-use roots)})
 
 (defn apply-plan!
-  "`apply/apply-plan` of `plan` with the kind stores `stores`, in a transaction of [[library-branching.db/do-in-locking-transaction]]
-  that commits only an `:ok` result."
-  [stores roots plan opts]
+  "`apply/apply-plan` of `plan` with the kind stores `stores`, moving the base of the repository at `url`, in a
+  transaction of [[library-branching.db/do-in-locking-transaction]] that commits only an `:ok` result."
+  [stores roots url plan opts]
   (let [result (volatile! nil)]
     (try
       (library-branching.db/do-in-locking-transaction
        (fn []
-         (let [r (apply/apply-plan (ops stores roots) plan opts)]
+         (let [r (apply/apply-plan (ops stores roots url) plan opts)]
            (vreset! result r)
            (when-not (contains? r :ok)
              (throw (ex-info "The apply writes nothing." {::rollback true}))))))
@@ -109,10 +117,10 @@
   instance/Instance
   (read-snapshot [_]
     {:snapshot (read-at-read-point stores roots)})
-  (base [_] (:commit_id (base-row)))
-  (base-digests [_ commit] (base-digests commit))
-  (apply-plan! [_ plan opts] (apply-plan! stores roots plan opts))
-  (set-base! [_ expected new digests] (set-base! expected new digests)))
+  (base [_] (base url))
+  (base-digests [_ commit] (base-digests url commit))
+  (apply-plan! [_ plan opts] (apply-plan! stores roots url plan opts))
+  (set-base! [_ expected new digests] (set-base! url expected new digests)))
 
 (defn app-db-instance
   "The `Instance` of this process's app DB, for `stores` (default [[kind-stores]]), `roots` (default [[scope/roots]])

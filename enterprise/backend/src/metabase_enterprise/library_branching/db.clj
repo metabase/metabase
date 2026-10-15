@@ -127,28 +127,44 @@
 ;;; ------------------------------------------------------ Base ------------------------------------------------------
 
 (mr/def ::base-row
-  [:map [:commit_id [:maybe :string]] [:digests [:maybe :string]]])
+  [:map [:commit_id [:maybe :string]] [:digests [:maybe :string]] [:url [:maybe :string]]])
 
 (mu/defn base-row :- [:maybe ::base-row]
-  "`{:commit_id :digests}` of the base row, in the current transaction, or nil when there is no base row."
+  "`{:commit_id :digests :url}` of the base row, in the current transaction, or nil when there is no base row."
   []
-  (t2/query-one {:select [:commit_id :digests]
+  (t2/query-one {:select [:commit_id :digests :url]
                  :from   [:library_branching_base]
                  :where  [:= :id 1]}))
 
+(defn- url-is
+  "The condition that the URL of the base row is `url` (nil: null)."
+  [url]
+  (if url
+    [:= :url [:auto/param url]]
+    [:= :url nil]))
+
+(defn- url-is-not
+  "The condition that the URL of the base row is not `url` (nil: null), where a null URL differs from every URL."
+  [url]
+  (if url
+    [:or [:= :url nil] [:<> :url [:auto/param url]]]
+    [:<> :url nil]))
+
 (mu/defn compare-and-set-base! :- :int
-  "Sets the commit id of the base row to `commit-id` and its digests to `digests`, in one statement, iff its commit id
-  is `expected` (nil: null). Returns the number of rows that the statement changed, 1 or 0."
-  [expected  :- [:maybe :string]
+  "Sets the commit id of the base row to `commit-id`, its digests to `digests` and its URL to `url`, in one statement,
+  iff the base of `url` is `expected`. The base of `url` is the commit id of the row when the row holds `url`, else
+  nil: an instance of another repository has no base. Returns the number of rows that the statement changed, 1 or 0."
+  [url       :- [:maybe :string]
+   expected  :- [:maybe :string]
    commit-id :- :string
    digests   :- :string]
   (first (t2/query {:update :library_branching_base
-                    :set    {:commit_id commit-id :digests digests}
+                    :set    {:commit_id commit-id :digests digests :url url}
                     :where  [:and
                              [:= :id 1]
                              (if expected
-                               [:= :commit_id [:auto/param expected]]
-                               [:= :commit_id nil])]})))
+                               [:and (url-is url) [:= :commit_id [:auto/param expected]]]
+                               [:or [:= :commit_id nil] (url-is-not url)])]})))
 
 ;;; ---------------------------------------------------- Content -----------------------------------------------------
 
@@ -454,6 +470,13 @@
                                            :set    changes
                                            :where  [:and stale [:= :id [:auto/param id]]]})))))
           (map :id (t2/query {:select [:id] :from [:library_branching_task] :where stale})))))
+
+(mu/defn delete-task-rows-before! :- :int
+  "Deletes each task row with a status of `statuses` that started before `cutoff`. Returns the number of rows deleted."
+  [statuses :- ::statuses
+   cutoff   :- ms/TemporalInstant]
+  (first (t2/query {:delete-from :library_branching_task
+                    :where       [:and [:in :status statuses] [:< :started_at [:auto/param cutoff]]]})))
 
 (mu/defn users-by-id :- [:sequential ::row]
   "`{:id :first_name :last_name :email}` of each user of `ids`."
