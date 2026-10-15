@@ -89,7 +89,9 @@
                    (is (= {:base c1 :head h1 :branch_missing false :base_lost false :head_findings nil
                            :local  {:created [] :deleted [] :updated [entity_id]}
                            :remote {:created [] :deleted [] :updated [entity_id]}
-                           :shadowed_tables []}
+                           :shadowed_tables []
+                           :read_only false
+                           :drift nil}
                           (get-route "/status" 200))))
                  (testing "the push preview names the conflict"
                    (is (= {:has_changes true :clean false :conflicts [{:id entity_id :kind "metric" :name "After"}]

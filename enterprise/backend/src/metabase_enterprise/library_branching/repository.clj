@@ -168,19 +168,35 @@
           (not (contains? env :remote-sync-branch))
           (not= current (:remote-sync-branch body))))))
 
+(defn switches-to-read-only?
+  "True iff a save of `body` over the saved values `saved`, with the keys `env` from environment variables (as in
+  [[save-plan]]), makes a creation instance a consumption instance. Pure. A save that turns library branching off does
+  not."
+  [body saved env]
+  (boolean
+   (and (= :read-only (:remote-sync-type body))
+        (= :read-write (:remote-sync-type saved))
+        (not (contains? env :remote-sync-type))
+        (not (and (contains? body :remote-sync-url) (str/blank? (:remote-sync-url body)))))))
+
 (defn- check-connection!
   "Checks `connection` of [[save-plan]] with one fresh remote call, and returns the writes that it adds: the default
-  branch of the repository when `default-branch?`. Throws 400 with the message for the person."
-  [{:keys [url token branch type]} default-branch?]
+  branch of the repository when `default-branch?`. With `drift` (not nil), the save is a switch to the consumption
+  role: `(drift store connection)`, with the branch after the save, gives the changes on the instance that a deploy of
+  that branch would stop on, and the save is refused when it gives any. Throws 400 with the message for the person."
+  [{:keys [url token branch type] :as connection} default-branch? drift]
   (check-url! (present url))
   (remote-call! url token
                 (fn [s]
                   (let [branches (store/branches s)]
                     (when (and (= :read-only type) (present branch) (not (contains? branches branch)))
                       (refuse! (tru "The repository has no branch {0}." branch)))
-                    (if-let [default (and default-branch? (store/default-branch s))]
-                      {:remote-sync-branch default}
-                      {})))))
+                    (let [default (and default-branch? (store/default-branch s))]
+                      (when (and drift (seq (drift s (assoc connection :branch (or default branch)))))
+                        (refuse! (tru "There are unsaved changes in the synced content which will be overwritten switching to read-only mode.")))
+                      (if default
+                        {:remote-sync-branch default}
+                        {}))))))
 
 (defn- saved-values []
   (into {} (map (juxt identity setting/get)) setting-keys))
@@ -215,15 +231,20 @@
 
   Throws ex-info with `:status-code` 400, and changes nothing, while a task runs and for a change of the branch that
   [[branch-change-refused?]] refuses (then it calls no remote), and when the check fails (with the message for the
-  person)."
-  [body user-id]
-  (when (tasks/live-task)
-    (refuse! (tru "Library branching task in progress")))
-  (when (branch-change-refused? body (saved-values) (env-keys))
-    (refuse! (tru "The branch of a read-write instance changes only with a branch switch, which keeps the local changes.")))
-  (let [{:keys [writes check default-branch?]} (save-plan body (saved-values) (env-keys))
-        writes (cond-> writes
-                 check (merge (check-connection! check default-branch?)))]
-    (when (seq writes)
-      (write-as-task! writes user-id))
-    writes))
+  person). `opts`: `:drift`, a function of a store and the connection after the save (`{:url :token :branch :type}`)
+  that gives the changes on the instance that a deploy would stop on; with it, a save that [[switches-to-read-only?]]
+  is refused while it gives any."
+  ([body user-id]
+   (save-settings! body user-id {}))
+  ([body user-id {:keys [drift]}]
+   (when (tasks/live-task)
+     (refuse! (tru "Library branching task in progress")))
+   (when (branch-change-refused? body (saved-values) (env-keys))
+     (refuse! (tru "The branch of a read-write instance changes only with a branch switch, which keeps the local changes.")))
+   (let [{:keys [writes check default-branch?]} (save-plan body (saved-values) (env-keys))
+         switch-drift (when (switches-to-read-only? body (saved-values) (env-keys)) drift)
+         writes (cond-> writes
+                  check (merge (check-connection! check default-branch? switch-drift)))]
+     (when (seq writes)
+       (write-as-task! writes user-id))
+     writes)))

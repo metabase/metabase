@@ -64,16 +64,49 @@
           (changed-ids bs l)
           (or by-digest (sort snapshot/compare-identities (keys l))))))))
 
+(defn- head-snapshot
+  "The snapshot of the head of branch `branch` of `store`, decoded with the options `opts`, or nil when the branch does
+  not exist or its head does not decode."
+  [store codecs opts branch]
+  (when-let [h (store/head store branch)]
+    (:snapshot (pull/decode-commit store codecs h opts))))
+
+(defn instance-drift
+  "The drift of instance `inst` before a deploy of branch `branch`, as [[drift]] of its synced snapshot: with a base,
+  against the content of the base; with no base, against the snapshot of the head of `branch`, so every item is drift
+  when the branch does not exist or its head does not decode. `(with-store f)` calls `f` with a store of the repository;
+  it is not called when the digests of the synced snapshot equal the base digests. `opts`: `:codecs` (default
+  `kinds/codecs`)."
+  [inst with-store branch opts]
+  (let [codecs  (:codecs opts kinds/codecs)
+        b       (instance/base inst)
+        l       (:snapshot (instance/read-snapshot inst))
+        digests (when b (instance/base-digests inst b))]
+    (if (and digests (= digests (writer/item-digests codecs l)))
+      []
+      (with-store (fn [s]
+                    (drift inst s codecs b l (when-not b
+                                               (head-snapshot s codecs (pull/decode-opts inst) branch))))))))
+
 (defn- apply-head!
   "Read, the drift check, plan and apply of head `h` with snapshot `r`, against base commit `b`, again after a stale
-  precondition, at most `retries` times."
-  [inst store branch {:keys [codecs retries fence]} b h r]
+  precondition, at most `retries` times. With `discard-drift?`, the drift does not stop the apply: the plan writes the
+  head over it."
+  [inst store branch {:keys [codecs retries fence discard-drift?]} b h r]
   (loop [attempt 0]
     (let [l   (:snapshot (instance/read-snapshot inst))
           ids (drift inst store codecs b l r)]
-      (if (seq ids)
+      (cond
+        (and (seq ids) (not discard-drift?))
         {:result :drift :head h :ids (vec ids)}
-        ;; With no drift, the base content is the local content, so every step's precondition is the local content.
+
+        ;; a discard at the base with no drift has nothing to do
+        (and (= b h) (empty? ids))
+        {:result :up-to-date :head h}
+
+        ;; With no drift, the base content is the local content, so every step's precondition is the local content. A
+        ;; discard takes the local content as the precondition too: the admin chose to write over it.
+        :else
         (let [steps  (plan/plan l r l)
               result (instance/apply-plan! inst steps {:base     b
                                                        :new-base h
@@ -84,7 +117,8 @@
                                                        :fence    (or fence (constantly nil))})]
           (cond
             (:ok result)
-            {:result :deployed :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
+            (cond-> {:result :deployed :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
+              discard-drift? (assoc :discarded (vec ids)))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -114,19 +148,22 @@
 
   Every result other than `:deployed` writes nothing. The head and the base decode with `pull/decode-opts` of `inst`.
   `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in `apply/apply-plan`), `:retries` (default
-  `pull/default-retries`)."
+  `pull/default-retries`), `:discard-drift?`: the admin's choice to discard the drift. Then no result is `:drift`: the
+  deploy writes the head over the drift, also when the head is the base, and `:deployed` has `:discarded ids`, the drift
+  that it wrote over."
   ([inst store branch env]
    (deploy! inst store branch env {}))
   ([inst store branch env opts]
-   (let [{:keys [codecs retries] :as opts} (merge {:codecs kinds/codecs :retries pull/default-retries} opts)]
+   (let [{:keys [codecs retries discard-drift?] :as opts} (merge {:codecs kinds/codecs :retries pull/default-retries}
+                                                                 opts)]
      (if-not (settings/library-branching-enabled)
        {:result :disabled}
        (loop [rewrites 0]
          (let [b (instance/base inst)
                h (store/head store branch)]
            (cond
-             (nil? h) {:result :no-branch}
-             (= b h)  {:result :up-to-date :head h}
+             (nil? h)                           {:result :no-branch}
+             (and (= b h) (not discard-drift?)) {:result :up-to-date :head h}
              :else
              (let [{r :snapshot :keys [findings]} (check-head store codecs (pull/decode-opts inst) env h)]
                (if-not r
