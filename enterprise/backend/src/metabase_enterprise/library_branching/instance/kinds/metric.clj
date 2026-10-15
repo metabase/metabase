@@ -71,5 +71,5 @@
   (reify instance/KindStore
     (read-all [_ ids] (read-metrics ids))
     (current [_ _id] (instance/not-yet! `instance/current))
-    (write! [_ _content] (instance/not-yet! `instance/write!))
+    (write! [_ _id _content] (instance/not-yet! `instance/write!))
     (trash! [_ _id] (instance/not-yet! `instance/trash!))))

@@ -1,0 +1,134 @@
+(ns metabase-enterprise.library-branching.instance.lock-test
+  "The row locks of `current`: while a transaction holds the content of an item from `current`, a save of that item by
+  another connection waits. The test sees the wait as a lock timeout of the other connection, so it needs no sleep.
+  Another connection sees only committed rows, so these tests commit their content and delete it afterwards; they
+  are not parallel."
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase.app-db.core :as mdb]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
+
+(defn- sum-query
+  [table field]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id table field)))))))
+
+(defn- children-location
+  [{:keys [id location]}]
+  (str location id "/"))
+
+(defn- do-with-committed-content
+  "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and with the Library
+  collection (made for the call when there is none). Deletes every inserted row afterwards, the last first."
+  [f]
+  (let [inserted (atom ())
+        insert!  (fn [model row]
+                   (let [r (t2/insert-returning-instance! model row)]
+                     (swap! inserted conj [model r])
+                     r))]
+    (try
+      (f insert! (or (t2/select-one :model/Collection :type "library" :archived false)
+                     (insert! :model/Collection {:name "Library" :type "library" :location "/"})))
+      (finally
+        (doseq [[model row] @inserted]
+          (case model
+            :model/TableUserSettings (t2/delete! :model/TableUserSettings :table_id (:table_id row))
+            :model/FieldUserSettings (t2/delete! :model/FieldUserSettings :field_id (:field_id row))
+            (t2/delete! model :id (:id row))))))))
+
+(defn- with-short-lock-wait!
+  "Calls `f` in a transaction on a connection of its own whose lock waits end in an error after at most 1 s, and
+  returns its result. Restores the connection's setting before the pool gets it back."
+  [f]
+  (t2/with-connection [^Connection conn]
+    (case (mdb/db-type)
+      :h2 (let [before (:t (t2/query-one ["SELECT LOCK_TIMEOUT() AS t"]))]
+            (t2/query ["SET LOCK_TIMEOUT 100"])
+            (try (t2/with-transaction [_ conn] (f))
+                 (finally (t2/query [(str "SET LOCK_TIMEOUT " (long before))]))))
+      :postgres (t2/with-transaction [_ conn]
+                  (t2/query ["SET LOCAL lock_timeout = '100ms'"])
+                  (f))
+      (:mysql :mariadb) (let [before (:t (t2/query-one ["SELECT @@innodb_lock_wait_timeout AS t"]))]
+                          (t2/query ["SET SESSION innodb_lock_wait_timeout = 1"])
+                          (try (t2/with-transaction [_ conn] (f))
+                               (finally (t2/query [(str "SET SESSION innodb_lock_wait_timeout = " (long before))])))))))
+
+(defn- save-result!
+  "`:saved` when `save!` commits on another connection, `:lock-wait` when it fails, as a wait for a row lock does."
+  [save!]
+  (try
+    (with-short-lock-wait! save!)
+    :saved
+    (catch Exception _
+      :lock-wait)))
+
+(defn- while-current-holds!
+  "Calls `(current ks id)` in a transaction of another thread, and while that transaction is open, `(save-result!
+  save!)`. Returns `[the content that current returned, the save result while it held, the save result after]`."
+  [ks id save!]
+  (let [held     (promise)
+        release  (promise)
+        holder   (future
+                   (t2/with-transaction [_]
+                     (deliver held (instance/current ks id))
+                     (deref release 60000 nil)))
+        content  (deref held 60000 ::no-content)
+        during   (save-result! save!)]
+    (deliver release true)
+    @holder
+    [content during (save-result! save!)]))
+
+(deftest current-locks-the-row-test
+  (testing (str "while a transaction holds an item from current, another connection waits to save it; app DB "
+                (mdb/db-type))
+    (do-with-committed-content
+     (fn [insert! library]
+       (let [user    (mt/user->id :crowberto)
+             metrics (insert! :model/Collection {:name     "Lock metrics"
+                                                 :type     "library-metrics"
+                                                 :location (children-location library)})
+             data    (insert! :model/Collection {:name     "Lock data"
+                                                 :type     "library-data"
+                                                 :location (children-location library)})
+             metric  (insert! :model/Card {:name "Locked" :type :metric :collection_id (:id metrics) :creator_id user
+                                           :display :scalar :visualization_settings {}
+                                           :dataset_query (sum-query :venues :price)})
+             snippet (insert! :model/NativeQuerySnippet {:name       (str "Locked snippet " (random-uuid))
+                                                         :content    "1 = 1"
+                                                         :creator_id user})
+             _       (insert! :model/TableUserSettings {:table_id      (mt/id :venues)
+                                                        :is_published  true
+                                                        :collection_id (:id data)})
+             _       (insert! :model/FieldUserSettings {:field_id (mt/id :venues :price) :display_name "Locked price"})
+             stores  app-db/kind-stores
+             table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
+                       [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
+         (doseq [[label kind id save!]
+                 [["a metric" :metric (:entity_id metric)
+                   #(t2/query-one {:update :report_card :set {:name "Saved"} :where [:= :id (:id metric)]})]
+                  ["a collection" :collection (:entity_id metrics)
+                   #(t2/query-one {:update :collection :set {:name "Saved"} :where [:= :id (:id metrics)]})]
+                  ["a snippet" :snippet (:entity_id snippet)
+                   #(t2/query-one {:update :native_query_snippet :set {:content "2 = 2"} :where [:= :id (:id snippet)]})]
+                  ["the settings row of a published table" :published-table table
+                   #(t2/query-one {:update :metabase_table_user_settings :set {:description "Saved"}
+                                   :where  [:= :table_id (mt/id :venues)]})]
+                  ["the settings row of a field of a published table" :published-table table
+                   #(t2/query-one {:update :metabase_field_user_settings :set {:description "Saved"}
+                                   :where  [:= :field_id (mt/id :venues :price)]})]]]
+           (testing label
+             (let [[content during after] (while-current-holds! (get stores kind) id save!)]
+               (is (map? content))
+               (is (= :lock-wait during))
+               (is (= :saved after))))))))))
