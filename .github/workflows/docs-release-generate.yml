@@ -6,17 +6,21 @@ on:
   workflow_dispatch:
     inputs:
       target_branch:
-        description: "Target branch for documentation update"
+        description: "Target branch for documentation update. Leave empty for every release branch below."
         required: false
-        default: "release-x.63.x"
+        default: ""
         type: string
 
 jobs:
   update-release-docs:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    name: Call documentation update for release branch
+    name: Call documentation update for ${{ matrix.target_branch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target_branch: ${{ fromJSON(inputs.target_branch && format('["{0}"]', inputs.target_branch) || '["release-x.64.x", "release-x.65.x"]') }}
     uses: ./.github/workflows/docs-generate-base.yml
     with:
-      target_branch: ${{ inputs.target_branch || 'release-x.63.x' }}
+      target_branch: ${{ matrix.target_branch }}
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
