@@ -17,7 +17,7 @@ import {
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import { useDispatch, useSelector } from "metabase/redux";
-import { openDiagnostics } from "metabase/redux/app";
+import { closeNavbar, openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
@@ -117,6 +117,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "insight",
         perform: () => {
           dispatch(closeModal());
+          dispatch(closeNavbar());
           navigate(
             Urls.newQuestion({
               mode: "notebook",
@@ -137,6 +138,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "sql",
         perform: () => {
           dispatch(closeModal());
+          dispatch(closeNavbar());
           navigate(
             Urls.newQuestion({
               DEPRECATED_RAW_MBQL_type: "native",
@@ -177,6 +179,7 @@ export const useCommandPaletteBasicActions = ({
       section: "basic",
       icon: "document",
       perform: () => {
+        dispatch(closeNavbar());
         navigate(Urls.newDocument());
       },
     });
