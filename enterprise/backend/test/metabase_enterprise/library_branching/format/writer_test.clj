@@ -220,7 +220,24 @@
    {:name   :literal-for-every-string
     :doc    "Every string is a literal block. The text is still canonical and still reads back, but it is not legible."
     :target `writer/scalar-style
-    :edits  [[:replace '(str/includes? s "\n") true]]}])
+    :edits  [[:replace '(str/includes? s "\n") true]]}
+   {:name   :clauses-in-block
+    :doc    "A clause is in block style, one element on each line."
+    :target `writer/sequence-style
+    :edits  [[:replace '(string? (first x)) false]]}
+   {:name   :every-vector-in-flow
+    :doc    "Every vector is in flow style, so a vector of clauses or of maps is one line."
+    :target `writer/sequence-style
+    :edits  [[:replace '(string? (first x)) true]]}
+   {:name   :width-80
+    :doc    "The writer splits a line past 80 columns, also inside a clause."
+    :target `writer/dumper-options
+    :edits  [[:replace 'Integer/MAX_VALUE 80]]}
+   {:name   :multi-line-keys
+    :doc    "A key with a line break is in single quotes, on more than one line."
+    :target `writer/key-style
+    :edits  [[:replace 'line-break 'unicode-line-break]]}])
 
 (deftest writer-mutations-test
-  (mut/check writer-mutations {:tests [#'write-yaml-test #'canonical-bytes-test]}))
+  (mut/check writer-mutations {:tests [#'write-yaml-test #'clause-test #'canonical-bytes-test
+                                       #'clause-is-one-line-test]}))
