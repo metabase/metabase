@@ -1196,6 +1196,10 @@
       ;; [[honey.sql.pg-ops/atat]] is just `:@@`, but that doesn't work as a keyword literal, and [[case]] treats the
       ;; raw symbol as a compile-time constant instead of evaluating it to `:@@`, so unfortunately we just have to
       ;; have this fallback [[condp]] here 😢
+      ;;
+      ;; TODO (Cam 2026-10-15) consider whether we should switch to a custom namespaced keyword called
+      ;; `:metabase.funnysql.core/postgres-full-text-search-match`, this was actually what I did originally but I
+      ;; changed it to the Honey SQL keyword for compatibility
       honey.sql.pg-ops/atat
       (postgres-full-text-search-match args context)
 
