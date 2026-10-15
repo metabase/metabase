@@ -67,7 +67,7 @@
                                                        :target [:variable [:template-tag "id"]]}]}
                                         "UPDATE venues SET name = {{name}} WHERE id = {{id}}")
           a2      (insert-query-action! {} "UPDATE venues SET name = 'x'")
-          content #(instance/current (store) (:entity_id %))]
+          content #(:content (instance/current (store) (:entity_id %)))]
       (f {::refunds (:entity_id refunds)
           ::returns (:entity_id returns)
           ::m1      (:entity_id m1)
@@ -134,8 +134,8 @@
        (every? (fn [item]
                  (let [item (resolve-item world item)]
                    (instance/write! (store) id item)
-                   (and (= item (instance/current (store) id))
+                   (and (= {:state :live :content item} (instance/current (store) id))
                         (let [before (rows)]
-                          (instance/write! (store) id (instance/current (store) id))
+                          (instance/write! (store) id (:content (instance/current (store) id)))
                           (= before (rows))))))
                items)))))

@@ -37,7 +37,13 @@
   [item]
   (assoc item :refs (format.kinds/refs :action nil (:attrs item))))
 
-(defn- current [id] (instance/current (store) id))
+(defn- current-state [id] (instance/current (store) id))
+
+(defn- current
+  "The content of action `id` when it is live, else nil."
+  [id]
+  (let [{:keys [state content]} (current-state id)]
+    (when (= :live state) content)))
 
 (defn- trash! [id] (instance/trash! (store) id))
 
@@ -290,13 +296,15 @@
            (is (= template (current new-id))))
          (testing "trash! moves the action to the trash, and a write of the trashed identity restores the same row"
            (trash! new-id)
-           (is (nil? (current new-id)))
+           (is (= {:state :trashed :content template} (current-state new-id)))
            (is (true? (t2/select-one-fn :archived :model/Action row-id)))
            (is (nil? (trash! new-id)) "a trash of an action in the trash does nothing")
            (write! new-id template)
            (is (= template (current new-id)))
            (is (= row-id (t2/select-one-pk :model/Action :entity_id new-id)))
            (is (false? (t2/select-one-fn :archived :model/Action row-id)))))
+       (testing "an identity that no row has is absent"
+         (is (= {:state :absent} (current-state "lbNoSuchAction0000001"))))
        (testing "a trash of an identity that no row has does nothing"
          (is (nil? (trash! "lbNoSuchAction0000001"))))))))
 
@@ -328,6 +336,8 @@
            (is (= :place (refusal #(write! new-id (assoc root :place (:entity_id plain))))))
            (collections.tu/with-library [{:keys [data]}]
              (is (= :place (refusal #(write! new-id (assoc root :place (:entity_id data))))))))
+         (testing "an action on a model outside the Library is absent"
+           (is (= {:state :absent} (current-state (:entity_id outside)))))
          (testing "a row outside the Library tree with the identity: an action on a model outside the Library"
            (is (= :outside-library (refusal #(write! (:entity_id outside) root))))
            (is (= :outside-library (refusal #(trash! (:entity_id outside))))))
