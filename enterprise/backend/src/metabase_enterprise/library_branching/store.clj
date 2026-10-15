@@ -5,7 +5,8 @@
 
 (defprotocol Store
   "A git repository: commits, trees and refs. The local object store holds the commits that `head` fetched and
-  the commits that `write-commit` wrote; the other methods read only the local object store.
+  the commits that `write-commit` wrote; `cas-ref!`, `branches` and `default-branch` also call the remote, and the
+  other methods read only the local object store. A failed remote call throws an ex-info.
 
   Laws:
   - `(cas-ref! s r e n)` is :ok iff the remote `r` was `e`; then `r` is `n`. Else it returns {:moved actual},
@@ -17,6 +18,11 @@
   - `(merge-base s a b)` is an ancestor of `a` and of `b`, and no other common ancestor has it as an ancestor."
   (head [store ref]
     "The commit id that `ref` names on the remote now (after a fetch), or nil.")
+  (branches [store]
+    "The set of branch names on the remote now, without `refs/heads/`. A fresh remote call that fetches nothing.")
+  (default-branch [store]
+    "The name of the branch that the remote's HEAD names now, without `refs/heads/`, or nil when HEAD names no
+    branch that exists (an empty repository). A fresh remote call that fetches nothing.")
   (read-tree [store commit]
     "The tree of `commit` as {path bytes}. Lazy per file is allowed.")
   (changed-paths [store from to]

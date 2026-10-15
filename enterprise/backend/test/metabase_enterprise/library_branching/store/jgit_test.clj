@@ -10,15 +10,21 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.store :as store]
-   [metabase-enterprise.library-branching.store.jgit :as store.jgit])
+   [metabase-enterprise.library-branching.store.jgit :as store.jgit]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs])
   (:import
    (java.io File)
+   (java.net UnknownHostException)
    (java.nio.file Files LinkOption)
    (java.nio.file.attribute FileAttribute PosixFilePermission)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId ObjectInserter PersonIdent Ref Repository)))
+   (org.eclipse.jgit.errors NoRemoteRepositoryException TransportException)
+   (org.eclipse.jgit.internal JGitText)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId ObjectInserter PersonIdent Ref Repository)
+   (org.eclipse.jgit.transport CredentialItem CredentialItem$Password CredentialItem$Username CredentialsProvider
+                               Transport URIish)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,6 +103,11 @@
   [^Repository repo]
   (into {} (map (fn [^Ref r] [(.getName r) (some-> (.getObjectId r) .name)]))
         (.getRefs (.getRefDatabase repo))))
+
+(defn- set-remote-head!
+  "Makes HEAD of the remote `repo` a symbolic ref to `ref`, as the default branch of a hosted repository is."
+  [^Repository repo ^String ref]
+  (.link (.updateRef repo Constants/HEAD) ref))
 
 (defn- store-refs [s]
   (with-open [git (Git/open (store.jgit/directory s))]
@@ -441,3 +452,214 @@
           (let [c0 (store/write-commit s [] {"a.txt" (utf8 "zero")} "zero")]
             (is (= :ok (store/cas-ref! s "main" nil c0)))
             (is (= c0 (remote-ref remote "refs/heads/main")))))))))
+
+;;; branches and default-branch
+
+(deftest branches-test
+  (with-remote [remote url]
+    (with-store [s url]
+      (testing "an empty remote has no branch"
+        (is (= #{} (store/branches s))))
+      (let [c0 (remote-commit! remote "refs/heads/main" [] "zero")]
+        (set-remote-head! remote "refs/heads/main")
+        (set-remote-ref! remote "refs/tags/v1" c0)
+        (testing "the branch names, with no HEAD and no tag"
+          (is (= #{"main"} (store/branches s))))
+        (testing "a branch that another writer adds after the first call is listed: each call asks the remote"
+          (set-remote-ref! remote "refs/heads/feature/x" c0)
+          (is (= #{"main" "feature/x"} (store/branches s))))
+        (testing "a deleted branch is not listed"
+          (set-remote-ref! remote "refs/heads/feature/x" nil)
+          (is (= #{"main"} (store/branches s))))
+        (testing "branches fetches nothing"
+          (is (= {} (store-refs s))))))))
+
+(deftest default-branch-test
+  (with-remote [remote url]
+    (with-store [s url]
+      (testing "an empty remote has no default branch"
+        (is (nil? (store/default-branch s))))
+      (let [c0 (remote-commit! remote "refs/heads/main" [] "zero")]
+        (set-remote-ref! remote "refs/heads/develop" c0)
+        (testing "the branch that HEAD of the remote names"
+          (set-remote-head! remote "refs/heads/main")
+          (is (= "main" (store/default-branch s))))
+        (testing "a change of the default branch on the remote shows in the next call"
+          (set-remote-head! remote "refs/heads/develop")
+          (is (= "develop" (store/default-branch s))))
+        (testing "a HEAD that names a branch that does not exist"
+          (set-remote-head! remote "refs/heads/gone")
+          (is (nil? (store/default-branch s))))))))
+
+(def ^:private gen-branch-name
+  "A branch name: a leaf of 1 to 4 characters, alone or under one of two directories. No leaf can equal a directory
+  name, so no branch is a directory of another."
+  (gen/fmap (fn [[dir leaf]] (cond->> leaf dir (str dir "/")))
+            (gen/tuple (gen/elements [nil "feature" "release"])
+                       (gen/fmap str/join (gen/vector (gen/elements ["a" "b" "c" "0" "1" "_"]) 1 4)))))
+
+(def ^:private gen-remote-refs
+  "The branches of a remote, a choice of the branch that HEAD names (an index into the branches, or a name that is no
+  branch), and tags with the names of branches."
+  (gen/let [names (gen/set gen-branch-name {:max-elements 6})
+            head  (gen/one-of [(gen/return nil) gen/nat (gen/return "gone")])
+            tags  (gen/vector-distinct (gen/elements (if (seq names) (vec names) ["t"])) {:max-elements 2})]
+    {:branches (sort names) :head head :tags tags}))
+
+(defspec branches-and-default-branch-law-test 30
+  (prop/for-all [{:keys [branches head tags]} gen-remote-refs]
+    (with-remote [remote url]
+      (when (seq branches)
+        (let [c0 (remote-commit! remote (str "refs/heads/" (first branches)) [] "zero")]
+          (doseq [b (rest branches)] (set-remote-ref! remote (str "refs/heads/" b) c0))
+          (doseq [t tags] (set-remote-ref! remote (str "refs/tags/" t) c0))))
+      (let [head-branch (cond
+                          (nat-int? head) (when (seq branches) (nth branches (mod head (count branches))))
+                          (string? head)  head)]
+        (when head-branch
+          (set-remote-head! remote (str "refs/heads/" head-branch)))
+        (with-store [s url]
+          (let [want {:branches (set branches)
+                      :default  (when (contains? (set branches) head-branch) head-branch)}
+                got  {:branches (store/branches s) :default (store/default-branch s)}]
+            (is (= want got))
+            (= want got)))))))
+
+;;; Connection: the URL rule, the credentials, the timeout, the failure reasons
+
+(deftest url-error-test
+  (testing "git:// and ssh:// URLs and other schemes are refused with a message"
+    (doseq [url ["git://github.com/foo/bar.git" "ssh://git@github.com/foo/bar.git" "git@github.com:foo/bar.git"
+                 "asdf://foo/bar.git"]]
+      (testing url
+        (is (= "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
+               (store.jgit/url-error url))))))
+  (testing "an HTTPS URL of any host, and the other forms that remote sync accepts, are accepted"
+    (doseq [url ["https://github.com/foo/bar.git" "https://gitlab.com/foo/bar.git" "https://bitbucket.org/foo/bar.git"
+                 "https://dev.azure.com/org/project/_git/repo" "https://git.example.com/a/b.git"
+                 "http://git.example.com/a/b.git" "file:///tmp/repo" "/tmp/repo"]]
+      (testing url
+        (is (nil? (store.jgit/url-error url)))))))
+
+(def ^:private gen-scheme
+  (gen/fmap str/join (gen/vector (gen/elements ["a" "f" "g" "h" "i" "l" "p" "s" "t" "e" "+"]) 1 6)))
+
+(defspec url-error-law-test 100
+  (prop/for-all [scheme gen-scheme
+                 rest   (gen/fmap str/join (gen/vector (gen/elements ["a" "/" "." "-" "@"]) 0 12))]
+    (let [url (str scheme "://" rest)]
+      (= (contains? #{"https" "http" "file"} scheme)
+         (nil? (store.jgit/url-error url))))))
+
+(deftest open-store-refuses-a-bad-url-test
+  (let [tmp    (io/file (System/getProperty "java.io.tmpdir"))
+        before (set (.list tmp))
+        result (try
+                 (store.jgit/open-store "ssh://git@github.com/foo/bar.git")
+                 (catch clojure.lang.ExceptionInfo e e))]
+    (when (satisfies? store/Store result)
+      (store/close result))
+    (is (instance? clojure.lang.ExceptionInfo result))
+    (is (= (store.jgit/url-error "ssh://git@github.com/foo/bar.git") (ex-message result)))
+    (testing "and makes no local directory"
+      (is (empty? (filter #(str/starts-with? % "metabase-library-branching-")
+                          (remove before (.list tmp))))))))
+
+(deftest token-user-test
+  (testing "each host gets the user name that it expects with an access token"
+    (doseq [[url user] [["https://github.com/org/repo.git" "x-access-token"]
+                        ["https://gitlab.com/org/repo.git" "x-access-token"]
+                        ["https://dev.azure.com/org/project/_git/repo" "x-access-token"]
+                        ["https://git.example.com/org/repo.git" "x-access-token"]
+                        ["https://bitbucket.org/org/repo.git" "x-token-auth"]
+                        ["https://BitBucket.org/org/repo.git" "x-token-auth"]
+                        ["file:///tmp/repo" "x-access-token"]]]
+      (testing url
+        (is (= user (store.jgit/token-user url)))))))
+
+(defn- credential-values
+  "[user password] that `provider` gives for `url`, or nil for no provider."
+  [^CredentialsProvider provider ^String url]
+  (when provider
+    (let [user     (CredentialItem$Username.)
+          password (CredentialItem$Password.)]
+      (.get provider (URIish. url) ^"[Lorg.eclipse.jgit.transport.CredentialItem;" (into-array CredentialItem [user password]))
+      [(.getValue user) (String. (.getValue password))])))
+
+(deftest credentials-provider-test
+  (testing "the token is the password of the user of the host"
+    (is (= ["x-token-auth" "tok"]
+           (credential-values (#'store.jgit/credentials-provider "https://bitbucket.org/a/b.git" "tok")
+                              "https://bitbucket.org/a/b.git")))
+    (is (= ["x-access-token" "tok"]
+           (credential-values (#'store.jgit/credentials-provider "https://github.com/a/b.git" "tok")
+                              "https://github.com/a/b.git"))))
+  (testing "no token, no credentials"
+    (is (nil? (#'store.jgit/credentials-provider "https://github.com/a/b.git" nil)))))
+
+(defn- do-recording-transports
+  "Calls `(f calls)`, where `calls` is an atom that receives `{:timeout s :credentials [user password]}` for each
+  transport that the store opens to a remote."
+  [f]
+  (let [calls    (atom [])
+        original (dynamic-redefs/original-fn #'store.jgit/open-transport)]
+    (dynamic-redefs/with-dynamic-fn-redefs
+      [store.jgit/open-transport (fn [repo url & more]
+                                   (let [^Transport t (apply original repo url more)]
+                                     (swap! calls conj {:timeout     (.getTimeout t)
+                                                        :credentials (credential-values (.getCredentialsProvider t) url)})
+                                     t))]
+      (f calls))))
+
+(deftest every-remote-call-has-the-timeout-and-the-credentials-test
+  (with-remote [remote url]
+    (remote-commit! remote "refs/heads/main" [] "zero")
+    (set-remote-head! remote "refs/heads/main")
+    (doseq [[opts want] [[{:token "tok" :timeout-seconds 17} {:timeout 17 :credentials ["x-access-token" "tok"]}]
+                         [{} {:timeout 60 :credentials nil}]]]
+      (testing (pr-str opts)
+        (do-recording-transports
+         (fn [calls]
+           (let [s (store.jgit/open-store url opts)]
+             (try
+               (doseq [[op call] [[:head #(store/head s "main")]
+                                  [:branches #(store/branches s)]
+                                  [:default-branch #(store/default-branch s)]
+                                  [:cas-ref! #(let [h  (store/head s "main")
+                                                    c1 (store/write-commit s [h] {"a.txt" (utf8 "one")} "one")]
+                                                (reset! calls [])
+                                                (store/cas-ref! s "main" h c1))]]]
+                 (testing op
+                   (when-not (= :cas-ref! op) (reset! calls []))
+                   (call)
+                   (is (seq @calls) "the call opens a transport")
+                   (is (every? #{want} @calls))))
+               (finally
+                 (store/close s))))))))))
+
+(deftest failure-reason-test
+  (testing "a remote that does not exist"
+    (with-store [s (remote-url (io/file (System/getProperty "java.io.tmpdir") (str "no-such-remote-" (random-uuid))))]
+      (doseq [[op call] [[:head #(store/head s "main")]
+                         [:branches #(store/branches s)]
+                         [:default-branch #(store/default-branch s)]]]
+        (testing op
+          (let [e (try (call) nil (catch clojure.lang.ExceptionInfo e e))]
+            (is (= :not-found (:reason (ex-data e)))))))))
+  (testing "the reason of a JGit failure"
+    (let [uri (URIish. "https://github.com/a/b.git")
+          t   (JGitText/get)]
+      (doseq [[e reason] [[(TransportException. uri (.-notAuthorized t)) :auth-failed]
+                          [(TransportException. uri (.-noCredentialsProvider t)) :auth-failed]
+                          [(TransportException. uri (.-authenticationNotSupported t)) :auth-failed]
+                          [(NoRemoteRepositoryException. uri "not found.") :not-found]
+                          [(TransportException. uri "cannot open git-upload-pack" (UnknownHostException. "x")) :unreachable]
+                          [(TransportException. uri "something else") nil]]]
+        (testing (ex-message e)
+          (is (= reason (#'store.jgit/failure-reason e))))))))
+
+(deftest failure-message-test
+  (is (= "Authentication failed: Please check your git credentials" (store.jgit/failure-message :auth-failed)))
+  (is (= "Repository not found: Please check the repository URL" (store.jgit/failure-message :not-found)))
+  (is (= "Network error: Unable to reach git repository host" (store.jgit/failure-message :unreachable)))
+  (is (nil? (store.jgit/failure-message nil))))

@@ -42,15 +42,44 @@
                  (make-array FileAttribute 0))]
     (.toFile (Files/createTempDirectory ^Path tmp "metabase-library-branching-" ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))))
 
+(defn- not-implemented []
+  (throw (ex-info "Not implemented yet." {})))
+
+(defn url-error
+  "nil when a store may connect to `url`, else the message for the person."
+  [_url]
+  (not-implemented))
+
+(defn token-user
+  "The user name that the host of `url` expects with an access token as the password."
+  [_url]
+  (not-implemented))
+
+(defn- credentials-provider [_url _token]
+  (not-implemented))
+
+(defn- open-transport
+  "A new transport to the remote at `url`, with the network timeout and the credentials of every remote call. The
+  caller closes it."
+  ^Transport [^Repository repo ^String url token timeout-seconds]
+  (doto (Transport/open repo (URIish. url))
+    (.setTimeout (int timeout-seconds))
+    (.setCredentialsProvider (when token (UsernamePasswordCredentialsProvider. "x-access-token" ^String token)))))
+
+(defn- failure-reason [_e]
+  (not-implemented))
+
+(defn failure-message
+  "The message for the person for the `:reason` of the ex-data of a failed remote call, or nil when it has none."
+  [_reason]
+  (not-implemented))
+
 (defn- remote-op
   "Calls `(f transport)` on a new transport to the remote, and closes it. Throws an ex-info that names `op` when
   the transport fails."
   [^Repository repo ^String url token timeout-seconds op f]
   (try
-    (with-open [transport (Transport/open repo (URIish. url))]
-      (.setTimeout transport (int timeout-seconds))
-      (when token
-        (.setCredentialsProvider transport (UsernamePasswordCredentialsProvider. "x-access-token" ^String token)))
+    (with-open [transport (open-transport repo url token timeout-seconds)]
       (f transport))
     (catch Exception e
       (throw (ex-info (format "Git %s of %s failed: %s" op url (ex-message e)) {:operation op :url url} e)))))
@@ -69,6 +98,12 @@
                                        (fn [^Transport transport]
                                          (.fetch transport NullProgressMonitor/INSTANCE [fetch-spec])))]
     (some-> (.getAdvertisedRef result (qualify ref)) ^Ref identity .getObjectId .name)))
+
+(defn- branches* [_repo _url _token _timeout-seconds]
+  (not-implemented))
+
+(defn- default-branch* [_repo _url _token _timeout-seconds]
+  (not-implemented))
 
 (defn- read-tree* [^Repository repo commit]
   (with-open [rw (RevWalk. repo)
@@ -189,6 +224,10 @@
   store/Store
   (head [_ ref]
     (fetch-head (.getRepository git) url token timeout-seconds ref))
+  (branches [_]
+    (branches* (.getRepository git) url token timeout-seconds))
+  (default-branch [_]
+    (default-branch* (.getRepository git) url token timeout-seconds))
   (read-tree [_ commit]
     (read-tree* (.getRepository git) commit))
   (changed-paths [_ from to]
