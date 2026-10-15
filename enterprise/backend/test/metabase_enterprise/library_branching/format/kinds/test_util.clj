@@ -9,7 +9,8 @@
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase-enterprise.library-branching.test-util :as lb.tu]))
+   [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -142,6 +143,133 @@
                                              (gen/tuple (stage-type-gen "mbql.stage/mbql") (clauses-gen (gen/return []))))
                                    0 2))))
 
+;;; ------------------------------------------------ Visualization settings -------------------------------------------
+
+;; Each generator of this section gives `[value refs]`: a part of the visualization settings in the portable document
+;; form, and the references that it holds.
+
+(def ^:private json-field-key-gen
+  "Field keys whose names JSON escapes or that hold a slash."
+  (gen/fmap (fn [[k field]] (conj k field))
+            (gen/tuple lb.tu/table-key-gen (gen/elements ["ID" "a/b" "say \"hi\"" "Société" "back\\slash"]))))
+
+(defn- json-keyword
+  "The keyword whose name is the JSON text of `x`, as the export gives a key that holds JSON text."
+  [x]
+  (keyword (json/encode x)))
+
+(defn- refs-union
+  "`[values refs]` of the pairs `pairs`: the values, and the union of their references."
+  [pairs]
+  [(mapv first pairs) (into #{} (mapcat second) pairs)])
+
+(defn- map-entries-union
+  "`[map refs]` of the pairs `pairs` of `[[k v] refs]`: the first entry of each key, and the union of the references of
+  those entries."
+  [pairs]
+  (let [kept (vals (reduce (fn [m [[k] :as pair]] (if (contains? m k) m (assoc m k pair))) {} pairs))]
+    (update (refs-union kept) 0 #(into {} %))))
+
+(def ^:private column-ref-gen
+  "A column reference of a column settings key: by field key (legacy and MBQL 5 options), or by name."
+  (gen/one-of [(gen/fmap (fn [k] [["ref" ["field" k nil]] #{[:field [:env k]]}]) json-field-key-gen)
+               (gen/fmap (fn [k] [["ref" ["field" k {"base-type" "type/Integer"}]] #{[:field [:env k]]}])
+                         json-field-key-gen)
+               (gen/return [["ref" ["field" "count" {"base-type" "type/Integer"}]] #{}])
+               (gen/return [["name" "COUNT"] #{}])]))
+
+(def ^:private parameter-mapping-gen
+  "A click-behavior parameter mapping: to a dimension (JSON text in its key, its id and its target id), to a
+  dashboard parameter, or to a native variable."
+  (gen/one-of
+   [(gen/fmap (fn [[k opts]]
+                (let [dim  (cond-> ["dimension" ["field" k nil]] opts (conj opts))
+                      text (json/encode dim)]
+                  [[(keyword text) {:id     text
+                                    :source {:type "column" :id "TOTAL" :name "Total"}
+                                    :target {:type "dimension" :id text :dimension dim}}]
+                   #{[:field [:env k]]}]))
+              (gen/tuple json-field-key-gen (gen/elements [nil {:stage-number 0}])))
+    (gen/fmap (fn [p] [[(keyword p) {:id p :source {:type "column" :id "ID" :name "ID"} :target {:type "parameter" :id p}}]
+                       #{}])
+              (gen/elements ["a1b2c3d4" "p"]))
+    (gen/return [[:v {:id "v" :source {:type "column" :id "ID" :name "ID"} :target {:type "variable" :id "v"}}] #{}])]))
+
+(def ^:private parameter-mappings-gen
+  (gen/fmap map-entries-union (gen/vector parameter-mapping-gen 1 3)))
+
+(def ^:private click-behavior-gen
+  "A click behavior: a link to a question or a dashboard, with or without a tab and parameter mappings; a link to a
+  URL; a cross filter; or an action menu."
+  (gen/one-of
+   [(gen/fmap (fn [[[link-type role] id tab [mappings mapping-refs]]]
+                [(cond-> {:type "link" :linkType link-type :targetId id}
+                   tab      (assoc :tabId tab)
+                   mappings (assoc :parameterMapping mappings))
+                 (conj (set mapping-refs) [role id])])
+              (gen/tuple (gen/elements [["dashboard" :dashboard] ["question" :card]])
+                         lb.tu/entity-id-gen
+                         (gen/one-of [(gen/return nil) lb.tu/entity-id-gen])
+                         (gen/one-of [(gen/return [nil #{}]) parameter-mappings-gen])))
+    (gen/return [{:type "link" :linkType "url" :linkTemplate "https://example.com/{{ID}}"} #{}])
+    (gen/fmap (fn [[mappings refs]] [{:type "crossfilter" :parameterMapping mappings} refs]) parameter-mappings-gen)
+    (gen/return [{:type "actionMenu"} #{}])]))
+
+(def ^:private column-setting-gen
+  "`[[key setting] refs]` of one entry of the column settings."
+  (gen/fmap (fn [[[column column-refs] title [cb cb-refs]]]
+              [[(json-keyword column) (cond-> {}
+                                        title (assoc :column_title title)
+                                        cb    (assoc :click_behavior cb))]
+               (into column-refs cb-refs)])
+            (gen/tuple column-ref-gen
+                       (gen/one-of [(gen/return nil) (gen/return "Title")])
+                       (gen/one-of [(gen/return [nil #{}]) click-behavior-gen]))))
+
+(def ^:private link-entity-gen
+  "The entity of a link card: an item by entity id, or a table or database by natural key."
+  (gen/one-of
+   [(gen/fmap (fn [[[model role] id]] [{:model model :id id :name "Linked"} #{[role id]}])
+              (gen/tuple (gen/elements [["card" :card] ["dataset" :card] ["question" :card] ["dashboard" :dashboard]
+                                        ["collection" :collection]])
+                         lb.tu/entity-id-gen))
+    (gen/fmap (fn [k] [{:model "table" :id k :name "Orders"} #{[:table [:env k]]}]) lb.tu/table-key-gen)
+    (gen/fmap (fn [db] [{:model "database" :id db :name db} #{[:database [:env [db]]]}])
+              (gen/elements ["Sample Database" "Aviary"]))]))
+
+(defn- optional-part
+  "`[[k value] refs]` from `[value refs]` of `g`, or nil (absent, the first choice)."
+  [k g]
+  (gen/one-of [(gen/return nil) (gen/fmap (fn [[v refs]] [[k v] refs]) g)]))
+
+(def visualization-settings-refs-gen
+  "Generates `[settings refs]`: visualization settings in the portable document form with every position that holds a
+  reference (column settings keys and click behaviors, a top-level click behavior, a link card, timelines, a pivot
+  split), never empty, and the references that they hold."
+  (gen/fmap
+   (fn [parts]
+     (let [[entries refs] (refs-union (remove nil? parts))
+           settings       (into {} entries)]
+       [(if (empty? settings) {:graph.dimensions ["CREATED_AT"]} settings) refs]))
+   (gen/tuple
+    (optional-part :column_settings (gen/fmap map-entries-union (gen/vector column-setting-gen 1 3)))
+    (optional-part :click_behavior click-behavior-gen)
+    (optional-part :link (gen/fmap (fn [[entity refs]] [{:entity entity} refs]) link-entity-gen))
+    (optional-part :timeline.selected_timeline_ids
+                   (gen/fmap (fn [ids] [ids (into #{} (map (fn [id] [:timeline id])) ids)])
+                             (gen/vector lb.tu/entity-id-gen 0 2)))
+    (optional-part :timeline.excluded_timeline_event_ids
+                   (gen/fmap (fn [pairs] [pairs (into #{} (map (fn [[tl _]] [:timeline tl])) pairs)])
+                             (gen/vector (gen/tuple lb.tu/entity-id-gen lb.tu/entity-id-gen) 0 2)))
+    (optional-part :pivot_table.column_split
+                   (gen/fmap (fn [k] [{:rows [["field" k nil]] :columns [] :values []} #{[:field [:env k]]}])
+                             field-key-gen))
+    (optional-part :graph.dimensions (gen/return [["CREATED_AT"] #{}])))))
+
+(def visualization-settings-gen
+  "Generates visualization settings of [[visualization-settings-refs-gen]], or other document maps."
+  (gen/one-of [(gen/fmap first visualization-settings-refs-gen) document-map-gen]))
+
 ;;; ---------------------------------------------------- Attributes ---------------------------------------------------
 
 (def collection-attrs-gen
@@ -156,7 +284,7 @@
   (attrs-of {:description            [false text-gen]
              :display                [true (gen/elements ["scalar" "line" "bar" "table"])]
              :query                  [true query-gen]
-             :visualization_settings [false document-map-gen]
+             :visualization_settings [false visualization-settings-gen]
              :parameters             [false (gen/vector document-map-gen 1 2)]
              :parameter_mappings     [false (gen/vector document-map-gen 1 2)]
              :collection_position    [false gen/large-integer]
@@ -204,14 +332,55 @@
 (def glossary-attrs-gen
   "Generates the `:attrs` of a glossary term."
   (attrs-of {:definition [true text-gen]}))
+(defn- table-definition-gen
+  "Generates the definition of a table item: one MBQL stage on a table with the clauses of `clauses-gen`, a map
+  generator. The table and the database are placeholders; [[complete]] sets them to the item's place."
+  [clauses-gen]
+  (gen/fmap (fn [[t clauses]]
+              {:lib/type "mbql/query"
+               :database "Sample Database"
+               :stages   [(merge clauses {:lib/type t :source-table ["Sample Database" "PUBLIC" "ORDERS"]})]})
+            (gen/tuple (stage-type-gen "mbql.stage/mbql") clauses-gen)))
+
+(def segment-definition-gen
+  "Generates the definition of a segment: filters only."
+  (table-definition-gen (gen/fmap (fn [fs] {:filters fs}) (gen/vector filter-gen 1 3))))
+
+(def ^:private measure-aggregation-gen
+  (gen/one-of [(gen/return ["count" {}])
+               (gen/fmap (fn [r] ["sum" {} r]) field-ref-gen)
+               (gen/fmap (fn [id] ["measure" {} id]) lb.tu/entity-id-gen)]))
+
+(def measure-definition-gen
+  "Generates the definition of a measure: one aggregation, with no metric."
+  (table-definition-gen (gen/fmap (fn [a] {:aggregation [a]}) measure-aggregation-gen)))
+
+(def segment-attrs-gen
+  "Generates the `:attrs` of a segment."
+  (attrs-of {:description             [false text-gen]
+             :points_of_interest      [false text-gen]
+             :caveats                 [false text-gen]
+             :show_in_getting_started [false (gen/return true)]
+             :definition              [true segment-definition-gen]}))
+
+(def measure-attrs-gen
+  "Generates the `:attrs` of a measure."
+  (attrs-of {:description [false text-gen]
+             :definition  [true measure-definition-gen]}))
 
 (def attrs-gens
   "`{kind generator}` of the `:attrs` of each kind."
   {:collection      collection-attrs-gen
    :glossary-term   glossary-attrs-gen
+   :measure         measure-attrs-gen
    :metric          metric-attrs-gen
    :published-table published-table-attrs-gen
+   :segment         segment-attrs-gen
    :snippet         snippet-attrs-gen})
+
+(def table-item-kinds
+  "The kinds whose items live on a published table."
+  #{:measure :segment})
 
 ;;; ---------------------------------------------------- Snapshots ---------------------------------------------------
 
@@ -222,15 +391,30 @@
         (map (fn [[id item]] [id (assoc item :refs (kinds/refs (:kind item) id (:attrs item)))]))
         s))
 
+(defn on-their-tables
+  "Snapshot `s` with the definition of each table item (a segment or a measure) on the table of its place, which is
+  a table key."
+  [s]
+  (update-vals s (fn [{:keys [kind place] :as item}]
+                   (if (contains? table-item-kinds kind)
+                     (update-in item [:attrs :definition] #(-> %
+                                                               (assoc :database (first place))
+                                                               (assoc-in [:stages 0 :source-table] place)))
+                     item))))
+
+(def complete
+  "[[with-refs]] of [[on-their-tables]]."
+  (comp with-refs on-their-tables))
+
 (defn snapshot-gen
-  "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the
-  schemas of their codecs. The references of an item are those of its attributes; they can name items that are not
-  in the snapshot."
+  "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the schemas
+  of their codecs. A segment or a measure is on a published table, never at the root level. The references of an item
+  are those of its attributes; they can name items that are not in the snapshot."
   ([] (snapshot-gen 30))
   ([max-items]
-   (gen/fmap with-refs
+   (gen/fmap complete
              (lb.tu/well-formed-snapshot-gen {:kinds       snapshot/kinds
                                               :may-contain snapshot/may-contain
-                                              :root-kinds  snapshot/kinds
+                                              :root-kinds  (apply disj snapshot/kinds table-item-kinds)
                                               :attrs       attrs-gens
                                               :max-items   max-items}))))

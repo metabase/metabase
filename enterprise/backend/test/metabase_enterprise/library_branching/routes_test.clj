@@ -36,6 +36,7 @@
    [:post "/merge-branch"]        {:from "dev"}
    [:post "/create-branch"]       {:name "feature"}
    [:post "/switch-branch"]       {:branch "dev"}
+   [:post "/deploy"]              {}
    [:get "/status"]               {}
    [:get "/is-dirty"]             {}
    [:get "/dirty"]                {}

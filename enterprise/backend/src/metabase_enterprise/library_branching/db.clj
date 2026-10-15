@@ -585,3 +585,52 @@
   "Deletes the glossary term `id`; returns the number of rows."
   [id :- pos-int?]
   (t2/delete! :model/Glossary :id id))
+;;; ------------------------------------------------- Table items -------------------------------------------------
+;; Segments and measures: rows that live on a warehouse table.
+
+(mr/def ::table-item-model
+  [:enum :model/Segment :model/Measure])
+
+(mu/defn tables-by-id :- [:sequential ::row]
+  "`{:id :is_published :collection_id}` of each table of `ids`, with the values that users see."
+  [ids :- ::ids]
+  (t2/query {:select [:t.id :t.is_published :t.collection_id]
+             :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+             :where  [:in :t.id ids]}))
+
+(mu/defn table-items-by-entity-id :- [:sequential ::row]
+  "The rows of `model` of `entity-ids`, as instances of `model`."
+  [model      :- ::table-item-model
+   entity-ids :- ::entity-ids]
+  (t2/select model :entity_id [:in entity-ids]))
+
+(mu/defn lock-table-item :- [:maybe ::row]
+  "`{:id :table_id :archived}` of the row of `model` of `entity-id`, after a lock on it until the current transaction
+  ends; nil when there is none."
+  [model     :- ::table-item-model
+   entity-id :- :string]
+  (t2/query-one {:select [:id :table_id :archived]
+                 :from   [(t2/table-name model)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn insert-table-item! :- ::row
+  "Inserts a row of `model` with the columns `row` through the model, and returns it."
+  [model :- ::table-item-model
+   row   :- ::row]
+  (t2/insert-returning-instance! model row))
+
+(mu/defn update-table-item! :- :int
+  "Sets the columns `changes` of the row `id` of `model` through the model; returns the number of rows."
+  [model   :- ::table-item-model
+   id      :- pos-int?
+   changes :- ::row]
+  (t2/update! model id changes))
+
+(mu/defn archive-table-items! :- :int
+  "Archives the rows of `model` of `entity-ids` through the model; returns the number of rows."
+  [model      :- ::table-item-model
+   entity-ids :- ::entity-ids]
+  (if (empty? entity-ids)
+    0
+    (t2/update! model {:entity_id [:in entity-ids]} {:archived true})))

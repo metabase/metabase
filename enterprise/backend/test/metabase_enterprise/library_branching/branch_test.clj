@@ -17,6 +17,7 @@
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
    [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
   (:import
@@ -81,10 +82,11 @@
 ;;; ----------------------------------------------- Push to a new branch -----------------------------------------------
 
 (defn- push-new!
+  "A push of `inst` to the new branch `branch-name` of store `s`, as a new push task."
   ([inst s branch-name]
    (push-new! inst s branch-name {}))
   ([inst s branch-name opts]
-   (push/push! inst s branch-name (assoc opts :new-branch? true))))
+   (ptu/do-with-push-task! #(push/push! inst s branch-name % (assoc opts :new-branch? true)))))
 
 (deftest push-to-a-new-branch-test
   (enabled
@@ -129,11 +131,15 @@
          (is (= {:result :branch-exists :head taken} (push-new! inst s "taken")))
          (is (= taken (branch-head repo "taken")))
          (is (= m0 (instance/base inst))))
-       (testing "a branch that someone creates during the push is refused, and keeps their commit"
+       (testing "a branch that someone creates during the push is refused, and keeps their commit; the push passed its
+                commit point and did not land, so its task failed"
          (let [theirs (atom nil)
                racing (ptu/wrap-store s #(reset! theirs (pltu/commit-snapshot! repo "raced" [m0] ptu/sample)))]
-           (let [result (push-new! inst racing "raced")]
-             (is (= {:result :branch-exists :head @theirs} result)))
+           (ptu/do-with-push-task!
+            (fn [task]
+              (let [result (push/push! inst racing "raced" task {:new-branch? true})]
+                (is (= {:result :branch-exists :head @theirs} result))
+                (is (=? {:status "failed" :error_message (push/branch-exists-message "raced")} (tasks/task task))))))
            (is (= @theirs (branch-head repo "raced")))
            (is (= m0 (instance/base inst)))))))))
 
@@ -143,13 +149,19 @@
      (let [m0      (pltu/commit-snapshot! repo "main" [] ptu/sample)
            inst    (synced-instance (ptu/renamed ptu/sample ptu/orders-id "Mine") m0)
            records (atom [])
-           {:keys [commit]} (push-new! inst s "stash" {:record (fn [set-base]
-                                                                 (let [r (set-base)]
-                                                                   (swap! records conj [r (instance/base inst)])
-                                                                   r))})]
-       (testing "the move of the base runs inside the record function, once"
-         (is (= [[:ok commit]] @records)))
-       (is (= commit (branch-head repo "stash")))))))
+           {:keys [commit]} (push-new! inst s "stash" {:on-record #(swap! records conj (instance/base inst))})]
+       (testing "the record hook runs once, after the move of the base"
+         (is (= [commit] @records)))
+       (is (= commit (branch-head repo "stash")))))
+   (testing "a push whose base another task moved does not call the record hook"
+     (with-remote [repo s]
+       (let [m0      (pltu/commit-snapshot! repo "main" [] ptu/sample)
+             inner   (synced-instance (ptu/renamed ptu/sample ptu/orders-id "Mine") m0)
+             inst    (ptu/wrap-instance inner {:set-base! (fn [_set-base _expected _new _digests] {:moved "other"})})
+             records (atom 0)
+             {:keys [result]} (push-new! inst s "stash" {:on-record #(swap! records inc)})]
+         (is (= :base-moved result))
+         (is (zero? @records)))))))
 
 (deftest push-to-a-new-branch-refuses-an-invalid-snapshot-test
   (enabled

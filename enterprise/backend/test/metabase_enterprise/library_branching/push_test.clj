@@ -1,6 +1,8 @@
 (ns metabase-enterprise.library-branching.push-test
-  "The push, against a remote on disk and an instance in memory. The scenarios of the formal model are here: a save
-  during the push, a crash between the move of the branch and the move of the base, and a remote that moves."
+  "The push, against a remote on disk and an instance in memory. The scenarios of the formal models are here: a save
+  during the push, a crash between the move of the branch and the move of the base, a remote that moves, and the
+  TaskLease traces of a push (a cancel at each side of the commit point, and a paused push that wakes up after its
+  task was superseded). Each push runs as a task, whose row is in the app DB."
   {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
    [clojure.string :as str]
@@ -18,6 +20,8 @@
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
    [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.tasks :as tasks]
+   [metabase-enterprise.library-branching.tasks-test-util :as tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -27,9 +31,9 @@
 
 (defn- push!
   ([inst s]
-   (push/push! inst s ptu/branch))
+   (ptu/push! inst s))
   ([inst s opts]
-   (push/push! inst s ptu/branch opts)))
+   (ptu/push! inst s opts)))
 
 (defmacro ^:private enabled
   [& body]
@@ -333,6 +337,264 @@
            (is (= "# Our content" (get after "README.md"))))
          (testing "the next push with no change has nothing to push"
            (is (= {:result :nothing-to-push :commit commit} (push! inst s)))))))))
+
+(def ^:private revenue-path "library/metrics/revenue.metric.yaml")
+
+(def ^:private revenue-suffixed-path
+  (str "library/metrics/revenue~" ptu/revenue-id ".metric.yaml"))
+
+(defn- base-with!
+  "Commits on `c1` the tree of `c1` changed by `f`, as a person who edits the repository, and makes it the base of the
+  instance state `state`, with no digests: the push compares with the tree of the base."
+  [repo s state c1 f]
+  (let [h (ptu/remote-commit! repo [c1] (f (store/read-tree s c1)))]
+    (swap! state assoc :base h :digests nil)
+    h))
+
+(defn- moved-under
+  "Tree `t` with each file under the directory `from` moved under the directory `to`."
+  [t from to]
+  (into {}
+        (map (fn [[p b]] [(if (str/starts-with? p (str from "/")) (str to (subs p (count from))) p) b]))
+        t))
+
+(deftest foreign-file-at-the-path-of-an-item-stays-test
+  (testing "M6-068 and M6-069: a file that is not an item file sits at the path of an item. The push keeps it with
+            its bytes, and writes the item at the path with its identity as a suffix"
+    (doseq [[label text] [["text" "These are notes, not an item."]
+                          ["YAML that does not parse" "kind: [\n"]
+                          ["a YAML map that is no item file" "name: Revenue\n"]]]
+      (testing label
+        (enabled
+         (with-remote [repo s]
+           (let [state (atom {:snapshot ptu/sample})
+                 inst  (ptu/fake-instance state)
+                 c1    (:commit (push! inst s))]
+             (base-with! repo s state c1 #(assoc % revenue-path (ptu/utf8 text)))
+             (swap! state update :snapshot ptu/renamed ptu/orders-id "All orders")
+             (let [{:keys [result commit]} (push! inst s)
+                   after                   (tree-of s commit)]
+               (is (= :pushed result))
+               (is (= text (get after revenue-path)))
+               (is (str/includes? (get after revenue-suffixed-path) (str "id: " ptu/revenue-id)))
+               (is (= (:snapshot @state) (ptu/commit-snapshot s commit)))
+               (testing "the next push with no change has nothing to push"
+                 (is (= {:result :nothing-to-push :commit commit} (push! inst s))))))))))))
+
+(deftest foreign-file-at-the-suffixed-path-too-test
+  (testing "the path of an item and the path with its identity as a suffix both hold foreign files: the item gets a
+            number after its suffix, and both foreign files stay"
+    (enabled
+     (with-remote [repo s]
+       (let [state (atom {:snapshot ptu/sample})
+             inst  (ptu/fake-instance state)
+             c1    (:commit (push! inst s))]
+         (base-with! repo s state c1 #(assoc % revenue-path (ptu/utf8 "one") revenue-suffixed-path (ptu/utf8 "two")))
+         (swap! state update :snapshot ptu/renamed ptu/orders-id "All orders")
+         (let [{:keys [result commit]} (push! inst s)
+               after                   (tree-of s commit)]
+           (is (= :pushed result))
+           (is (= ["one" "two"] [(get after revenue-path) (get after revenue-suffixed-path)]))
+           (is (str/includes? (get after (str "library/metrics/revenue~" ptu/revenue-id "~2.metric.yaml"))
+                              (str "id: " ptu/revenue-id)))
+           (is (= (:snapshot @state) (ptu/commit-snapshot s commit)))))))))
+
+(deftest foreign-file-where-a-directory-of-an-item-is-test
+  (testing "a foreign file has the path of the directory of a collection, or a foreign directory has the path of the
+            file of a metric: the push keeps the foreign file, and the item gets its identity as a suffix"
+    (doseq [[label edit kept item-path]
+            [["a file at the path of a directory"
+              #(-> % (moved-under "library/metrics" "library/elsewhere") (assoc "library/metrics" (ptu/utf8 "a file")))
+              "library/metrics"
+              (str "library/metrics~" ptu/metrics-id "/_collection.yaml")]
+             ["a directory at the path of a file"
+              #(-> % (dissoc revenue-path) (assoc (str revenue-path "/README.md") (ptu/utf8 "a file")))
+              (str revenue-path "/README.md")
+              revenue-suffixed-path]]]
+      (testing label
+        (enabled
+         (with-remote [repo s]
+           (let [state (atom {:snapshot ptu/sample})
+                 inst  (ptu/fake-instance state)
+                 c1    (:commit (push! inst s))]
+             (base-with! repo s state c1 edit)
+             (swap! state update :snapshot ptu/renamed ptu/orders-id "All orders")
+             (let [{:keys [result commit]} (push! inst s)
+                   after                   (tree-of s commit)]
+               (is (= :pushed result))
+               (is (= "a file" (get after kept)))
+               (is (contains? after item-path))
+               (is (= (:snapshot @state) (ptu/commit-snapshot s commit)))))))))))
+
+(deftest push-never-overwrites-a-foreign-file-test
+  (testing "a foreign file at a path that no suffix can avoid (the format version file, or a fixed directory of the
+            layout): the push refuses with the two paths, and writes nothing"
+    (doseq [[label edit finding]
+            [["the format version file"
+              #(assoc % tree/format-path (ptu/utf8 "notes: mine\n"))
+              {:rule :foreign-path :path tree/format-path :foreign tree/format-path}]
+             ["the fixed directory of the snippets"
+              #(-> % (moved-under "snippets" "elsewhere") (assoc "snippets" (ptu/utf8 "a file")))
+              {:rule :foreign-path :path "snippets/active.snippet.yaml" :foreign "snippets"}]]]
+      (testing label
+        (enabled
+         (with-remote [repo s]
+           (let [state (atom {:snapshot ptu/sample})
+                 inst  (ptu/fake-instance state)
+                 c1    (:commit (push! inst s))
+                 h     (base-with! repo s state c1 edit)]
+             (swap! state update :snapshot ptu/renamed ptu/orders-id "All orders")
+             (is (= {:result :invalid :findings [finding]} (push! inst s)))
+             (is (= h (ptu/remote-head repo)))
+             (is (= h (instance/base inst))))))))))
+
+(deftest files-that-sync-does-not-own-stay-in-the-directory-of-an-item-test
+  (testing "M11-038, the push part: the directory of a collection holds the files of an app (App.tsx, package.json,
+            YAML files that are not item files). A push of a change, and a push that removes the collection, keep them
+            and remove only the item files"
+    (enabled
+     (with-remote [repo s]
+       (let [state   (atom {:snapshot ptu/sample})
+             inst    (ptu/fake-instance state)
+             c1      (:commit (push! inst s))
+             foreign {"library/metrics/App.tsx"      "export default function App() {}"
+                      "library/metrics/package.json" "{\"name\": \"app\"}"
+                      "library/metrics/broken.yaml"  "kind: [\n"
+                      "library/metrics/i18n/en.yaml" "hello: Hello\n"}]
+         (base-with! repo s state c1 #(merge % (update-vals foreign ptu/utf8)))
+         (swap! state update :snapshot ptu/renamed ptu/orders-id "All orders")
+         (let [{:keys [result commit]} (push! inst s)]
+           (is (= :pushed result))
+           (is (= foreign (select-keys (tree-of s commit) (keys foreign)))))
+         (swap! state update :snapshot dissoc ptu/metrics-id ptu/revenue-id ptu/orders-id)
+         (let [{:keys [result commit]} (push! inst s)
+               after                   (tree-of s commit)]
+           (is (= :pushed result))
+           (is (= foreign (select-keys after (keys foreign))))
+           (is (= #{} (set (remove (set (keys foreign)) (filter #(str/starts-with? % "library/metrics/") (keys after))))))
+           (is (= (:snapshot @state) (ptu/commit-snapshot s commit)))))))))
+
+;;; ------------------------------------------------- The task of a push ---------------------------------------------
+
+(defn- task-row [id]
+  (select-keys (tasks/task id) [:status :outcome :error_message]))
+
+(deftest push-ends-its-task-past-the-commit-point-test
+  (enabled
+   (with-remote [_repo s]
+     (let [state (atom {:snapshot ptu/sample})
+           inst  (ptu/fake-instance state)]
+       (testing "a push that lands ends its task as successful, with the outcome that names the branch and the commit"
+         (ptu/do-with-push-task!
+          (fn [task]
+            (let [{:keys [result commit]} (push/push! inst s ptu/branch task)]
+              (is (= :pushed result))
+              (is (= {:status "successful" :outcome {:kind "pushed" :branch ptu/branch :commit commit} :error_message nil}
+                     (task-row task)))))))
+       (testing "a push that stops before its commit point leaves its task running, for its caller to end"
+         (ptu/do-with-push-task!
+          (fn [task]
+            (is (= :nothing-to-push (:result (push/push! inst s ptu/branch task))))
+            (is (= "running" (:status (tasks/task task)))))))))))
+
+(deftest cancel-before-the-commit-point-stops-the-push-test
+  (testing "TaskLease nocommitpoint: a push reads the instance, then its task ends (an admin cancels it, or a reader
+            supersedes it): the push stops at its commit point, so the branch and the base do not move"
+    (doseq [[label end! status] [["a cancel" tasks/cancel! "cancelled"]
+                                 ["a supersede" #(do (tu/pause! %) (tasks/supersede-stale!)) "interrupted"]]]
+      (testing label
+        (enabled
+         (with-remote [repo s]
+           (let [state (atom {:snapshot ptu/sample})
+                 inst  (ptu/fake-instance state)
+                 c1    (:commit (push! inst s))]
+             (swap! state update :snapshot ptu/renamed ptu/revenue-id "Changed")
+             (ptu/do-with-push-task!
+              (fn [task]
+                (let [racing (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot]
+                                                                       (let [r (read-snapshot)]
+                                                                         (end! task)
+                                                                         r))})]
+                  (is (= {:result :fenced :status status} (push/push! racing s ptu/branch task)))
+                  (is (= c1 (ptu/remote-head repo)))
+                  (is (= c1 (instance/base inst)))
+                  (is (= status (:status (tasks/task task))))
+                  (is (= {:created #{} :deleted #{} :updated #{ptu/revenue-id}} (ptu/local-changes inst)))))))))))))
+
+(deftest cancel-after-the-commit-point-is-refused-test
+  (testing "TaskLease nocommitpoint: an admin cancels a push after its commit point. The cancel is refused, and the
+            push lands, records its base, and ends its task as successful"
+    (enabled
+     (with-remote [repo s]
+       (let [inst (ptu/fake-instance (atom {:snapshot ptu/sample}))]
+         (ptu/do-with-push-task!
+          (fn [task]
+            (let [cancel (promise)
+                  racing (ptu/wrap-store s #(deliver cancel (tasks/cancel! task)))
+                  {:keys [result commit]} (push/push! inst racing ptu/branch task)]
+              (is (= {:refused "committing"} (deref cancel 0 ::none)))
+              (is (= :pushed result))
+              (is (= commit (ptu/remote-head repo)))
+              (is (= commit (instance/base inst)))
+              (is (= "successful" (:status (tasks/task task))))))))))))
+
+(deftest remote-refusal-after-the-commit-point-fails-the-task-test
+  (testing "the branch moves after the commit point of a push: the remote compare-and-swap refuses, the push did not
+            land, so its task ends as failed, not as interrupted"
+    (enabled
+     (with-remote [repo s]
+       (let [state (atom {:snapshot ptu/sample})
+             inst  (ptu/fake-instance state)
+             c1    (:commit (push! inst s))
+             other (promise)
+             racing (ptu/wrap-store s #(when-not (realized? other)
+                                         (deliver other (ptu/remote-commit! repo [c1] {"README.md" (ptu/utf8 "x")}))))]
+         (swap! state update :snapshot ptu/renamed ptu/revenue-id "Changed")
+         (ptu/do-with-push-task!
+          (fn [task]
+            (let [result (push/push! inst racing ptu/branch task)]
+              (is (= {:result :remote-moved :base c1 :head (deref other 0 ::none)} result)))
+            (is (= c1 (instance/base inst)))
+            (is (= {:status "failed" :error_message (push/remote-moved-message ptu/branch)}
+                   (select-keys (task-row task) [:status :error_message]))))))))))
+
+(deftest paused-push-cannot-move-the-base-back-test
+  (testing "TaskLease nocas: a push lands on the branch, then its worker pauses before the record step, and a reader
+            supersedes its task. A pull moves the base to the commit of the push, and a new push moves it on. When
+            the paused push wakes up, its record step finds another base, and keeps it"
+    (enabled
+     (with-remote [repo s]
+       (let [state  (atom {:snapshot ptu/sample})
+             inst   (ptu/fake-instance state)
+             c1     (:commit (push! inst s))
+             first-snap (ptu/renamed ptu/sample ptu/revenue-id "First")
+             landed (promise)
+             later  (promise)]
+         (swap! state assoc :snapshot first-snap)
+         (ptu/do-with-push-task!
+          (fn [task]
+            (let [paused (ptu/wrap-store
+                          s
+                          (constantly nil)
+                          (fn []
+                            (let [c2 (ptu/remote-head repo)]
+                              (deliver landed c2)
+                              (tu/pause! task)
+                              (tasks/supersede-stale!)
+                              ;; the pull sees the snapshot of the push on both sides, and only moves the base
+                              (instance/set-base! inst c1 c2 (writer/item-digests kinds/codecs first-snap))
+                              (swap! state update :snapshot ptu/renamed ptu/revenue-id "Second")
+                              (deliver later (push! inst s)))))
+                  result (push/push! inst paused ptu/branch task)
+                  c3     (:commit (deref later 0 nil))]
+              (is (= :pushed (:result (deref later 0 nil))))
+              (is (= [(deref landed 0 nil)] (ptu/commit-parents repo c3)))
+              (is (= {:result :base-moved :commit (deref landed 0 nil) :base c3} result))
+              (is (= c3 (instance/base inst)))
+              (is (= c3 (ptu/remote-head repo)))
+              (is (= "interrupted" (:status (tasks/task task))))
+              (testing "the base content is the content of the newest push"
+                (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst))))))))))))
 
 ;;; ---------------------------------------------------- Properties --------------------------------------------------
 

@@ -1,14 +1,18 @@
 (ns metabase-enterprise.library-branching.operations
   "Push, pull, merge-branch and the branch operations (create a branch, push to a new branch, switch to another
-  branch) on the configured repository and the app DB instance, each as a task: each start function checks the
-  preconditions of its operation, starts its task, and returns the task at once; a worker runs the operation. The
-  result of the operation ends the task: an outcome for a success, an error message for every other result. A branch
-  operation writes the branch setting only when it succeeds, in the transaction that ends it."
+  branch) on a creation instance, and the deploy on a consumption instance, on the configured repository and the app DB
+  instance, each as a task: each start function checks the preconditions of its operation, starts its task, and
+  returns the task at once; a worker runs the operation. The result of the operation ends the task: an outcome for a
+  success, an error message for every other result. A branch operation writes the branch setting only when it
+  succeeds, in the transaction that ends it."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library-branching.branch :as branch]
-   [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.format.manifest :as format.manifest]
+   [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.manifest :as manifest]
    [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.push :as push]
@@ -18,7 +22,8 @@
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.settings.core :as setting]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,6 +31,11 @@
   "The app DB instance, with its base keyed by the repository URL."
   []
   (app-db/app-db-instance app-db/kind-stores scope/roots (repository/url)))
+
+(defn instance-env
+  "The environment of this instance (`format.manifest/env`), from its manifest: what a deploy validates a head against."
+  []
+  (format.manifest/env (manifest/manifest)))
 
 ;;; --------------------------------------------------- Task results ---------------------------------------------------
 
@@ -37,9 +47,9 @@
   (str n " " word (when-not (= 1 n) "s")))
 
 (defn- rules
-  "The names of the rules that `findings` break, sorted, each once."
+  "The names of the rules that `findings` break, sorted, each once. A finding of the format names its rule by `:type`."
   [findings]
-  (str/join ", " (sort (distinct (map (comp name :rule) findings)))))
+  (str/join ", " (sort (distinct (map (fn [{:keys [rule type]}] (name (or rule type))) findings)))))
 
 (defn push-task-result
   "The task result of `result`, a result of `push/push!` on branch `branch`: `{:outcome o}` when the push landed or had
@@ -47,12 +57,12 @@
   [branch {:keys [result commit findings]}]
   (case result
     ;; a push whose base another task moved is on the branch all the same
-    (:pushed :base-moved) {:outcome {:kind "pushed" :branch branch :commit commit}}
+    (:pushed :base-moved) {:outcome (push/outcome branch commit)}
     :nothing-to-push      {:outcome {:kind "nothing-to-push" :branch branch :commit commit}}
-    :remote-moved         {:error (format "The branch %s moved since the last sync, so nothing was pushed. Pull first."
-                                          branch)}
+    :remote-moved         {:error (push/remote-moved-message branch)}
     :invalid              {:error (format "The Library breaks the rules %s, so nothing was pushed." (rules findings))}
     :branch-exists        {:error (format "The repository already has a branch %s, so nothing was pushed." branch)}
+    :fenced               {:error "The task ended before the push reached its commit point, so nothing was pushed."}
     :disabled             {:error disabled-message}))
 
 (defn pull-task-result
@@ -99,6 +109,32 @@
     :no-branch     {:error (format "The repository has no branch %s." ref)}
     :fenced        {:error "The task ended before the branch was created, so nothing changed."}))
 
+(defn deploy-task-result
+  "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
+  or was up to date, else `{:error message}`."
+  [branch {:keys [result head steps trashed-in-use findings ids refused]}]
+  (case result
+    :deployed   {:outcome {:kind    "deployed"
+                           :branch  branch
+                           :commit  head
+                           :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
+                           :trashed (count trashed-in-use)}}
+    :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
+    :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was deployed."
+                                branch (rules findings))}
+    :drift      {:error (format "This read-only instance has %s that no commit holds, so nothing was deployed."
+                                (n-of (count ids) "changed item"))}
+    :stale      {:error (format "Saves during the deploy changed %s, so nothing was deployed. Try again."
+                                (n-of (count ids) "item"))}
+    :rewritten  {:error (format "The branch %s was rewritten during the deploy, so nothing was deployed. Try again."
+                                branch)}
+    :refused    {:error (format "The instance refused %s (%s), so nothing was deployed."
+                                (n-of (count refused) "item") (str/join "; " (map :message refused)))}
+    :base-moved {:error "Another task moved the base, so nothing was deployed."}
+    :fenced     {:error "The task ended before the deploy applied, so nothing was deployed."}
+    :no-branch  {:error (format "The repository has no branch %s." branch)}
+    :disabled   {:error disabled-message}))
+
 (defn merge-branch-task-result
   "The task result of `result`, a result of `merge-branch/merge-branch!` of branch `from` into branch `into`:
   `{:outcome o}` when the merge landed or was up to date, else `{:error message}`."
@@ -122,30 +158,20 @@
   [branch]
   (setting/set! :remote-sync-branch branch))
 
-(defn- record-with-branch
-  "The `:record` of `push/push!` that also makes `branch` the branch setting, in the transaction that moves the base."
-  [branch]
-  (fn [set-base]
-    (library-branching.db/do-in-transaction
-     (fn []
-       (let [moved (set-base)]
-         (when (= :ok moved)
-           (write-branch! branch))
-         moved)))))
-
 (defn push-task!
   "Runs the push to branch `branch` with the commit message `message` (nil: the default) as the work of task `id`, and
   returns its task result ([[push-task-result]]). With `(:new-branch? opts)`, the push creates `branch`, and the
-  branch setting becomes `branch` with the move of the base."
+  branch setting becomes `branch` in the record step of the push, with the move of the base."
   ([id branch message]
    (push-task! id branch message {}))
-  ([_id branch message {:keys [new-branch?]}]
+  ([id branch message {:keys [new-branch?]}]
    (repository/do-with-store
     (fn [s]
-      (push-task-result branch (push/push! (instance) s branch
+      (push-task-result branch (push/push! (instance) s branch id
                                            (cond-> {}
                                              message     (assoc :message message)
-                                             new-branch? (assoc :new-branch? true :record (record-with-branch branch)))))))))
+                                             new-branch? (assoc :new-branch? true
+                                                                :on-record #(write-branch! branch)))))))))
 
 (defn pull-task!
   "Runs the pull of branch `branch` as the work of task `id`, and returns its task result ([[pull-task-result]]). The
@@ -192,6 +218,14 @@
        (when (= :created (:result result))
          (tasks/record! id (fn [] (write-branch! branch-name) task-result)))
        task-result))))
+
+(defn deploy-task!
+  "Runs the deploy of branch `branch` as the work of task `id`, against the environment of this instance, and returns
+  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running."
+  [id branch]
+  (repository/do-with-store
+   (fn [s]
+     (deploy-task-result branch (deploy/deploy! (instance) s branch (instance-env) {:fence (fn [] (tasks/fence id))})))))
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
@@ -297,3 +331,49 @@
   (check-start!)
   (let [into (or into (configured-branch))]
     (submit! "merge-branch" user-id #(merge-branch-task! % into from))))
+
+(defn- check-deploy-start!
+  "Throws 400 unless library branching is on and configured, and the instance is a consumption instance."
+  []
+  (when-not (settings/library-branching-enabled)
+    (refuse! (tru "Library branching is not enabled.")))
+  (when-not (repository/configured?)
+    (refuse! (tru "Library branching is not configured.")))
+  (when (repository/read-write?)
+    (refuse! (tru "Deploy is only allowed when remote-sync-type is read-only."))))
+
+(defn start-deploy!
+  "Starts a deploy task of the configured branch, for the user `user-id` (nil: the system), and returns the task. The
+  apply of the deploy commits only while its task is running. Throws ex-info with `:status-code` 400 when library
+  branching is off or not configured, on a creation instance, with no branch, and while a task runs."
+  [user-id]
+  (check-deploy-start!)
+  (let [branch (configured-branch)]
+    (submit! "deploy" user-id #(deploy-task! % branch))))
+
+(defn- deploys?
+  "True iff this instance deploys its branch: library branching is on and configured, the instance is a consumption
+  instance, and a branch is set."
+  []
+  (boolean (and (settings/library-branching-enabled)
+                (repository/configured?)
+                (not (repository/read-write?))
+                (repository/branch))))
+
+(defn start-deploy-after-save!
+  "Starts a deploy task for the user `user-id` after a save of the settings, and returns it, iff this instance now
+  deploys its branch; else nil. Throws as [[start-deploy!]] while a task runs."
+  [user-id]
+  (when (deploys?)
+    (start-deploy! user-id)))
+
+(defn start-initial-deploy!
+  "Starts a deploy task for the system, and returns it, iff this instance deploys its branch and has no base yet: the
+  first deploy of a consumption instance at boot. Else, and when the start fails, nil; a failure is logged."
+  []
+  (when (and (deploys?) (nil? (instance/base (instance))))
+    (try
+      (start-deploy! nil)
+      (catch Exception e
+        (log/warn e "Library branching could not start the first deploy.")
+        nil))))

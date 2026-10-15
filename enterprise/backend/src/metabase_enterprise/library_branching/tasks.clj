@@ -205,6 +205,13 @@
   (or (end-row! id #{"running"} "failed" {:error_message message})
       (end-row! id #{"committing"} "interrupted" {:error_message message})))
 
+(mu/defn fail-committing! :- :boolean
+  "Ends task `id` as failed with the error message `message` iff it is committing: for a push past its commit point
+  whose remote compare-and-swap refused, so the push did not land. True iff it ended it."
+  [id      :- pos-int?
+   message :- :string]
+  (end-row! id #{"committing"} "failed" {:error_message message}))
+
 (mu/defn interrupt! :- :boolean
   "Ends task `id` as interrupted with the error message `message` iff it is open. True iff it ended it."
   [id      :- pos-int?
