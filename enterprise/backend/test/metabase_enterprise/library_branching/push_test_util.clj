@@ -10,18 +10,14 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.push :as push]
+   [metabase-enterprise.library-branching.remote-test-util :as remote.tu]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.test-util :as lb.tu])
   (:import
-   (java.io File)
    (java.nio.charset StandardCharsets)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
-   (org.apache.commons.io FileUtils)
-   (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId ObjectInserter PersonIdent Repository)))
 
@@ -43,16 +39,13 @@
 (defn do-with-remote
   "Calls `(f repo store)`: `repo` is a new empty bare repository, and `store` a JGit store on it. Removes both after."
   [f]
-  (let [dir (.toFile (Files/createTempDirectory "library-branching-push-" (make-array FileAttribute 0)))]
-    (try
-      (with-open [git (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))]
-        (let [s (store.jgit/open-store (str "file://" (.getAbsolutePath ^File dir)))]
-          (try
-            (f (.getRepository git) s)
-            (finally
-              (store/close s)))))
-      (finally
-        (FileUtils/deleteDirectory dir)))))
+  (remote.tu/do-with-bare-remote
+   (fn [repo url]
+     (let [s (store.jgit/open-store url)]
+       (try
+         (f repo s)
+         (finally
+           (store/close s)))))))
 
 (defmacro with-remote
   "Binds `repo` to a new empty bare remote repository and `store` to a JGit store on it, for `body`."

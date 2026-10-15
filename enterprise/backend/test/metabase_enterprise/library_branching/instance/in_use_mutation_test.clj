@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.instance.in-use-mutation-test
-  "Mutations of the rules of the in-use report of a trashed card: the links to it by click behaviors and link cards.
-  Each mutation removes or weakens one rule, and the test that it names must fail."
+  "Mutations of the rules of the in-use report of a trashed card: the links to it by click behaviors and link cards,
+  and the dashboards that show it as a series. Each mutation removes or weakens one rule, and the test that it names
+  must fail."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
@@ -56,7 +57,23 @@
     :doc    "The in-use report names a card in the trash that links to the trashed card."
     :target `library-branching.db/cards-with-settings-mentioning
     :edits  [[:replace '[:= :archived false] 'true]]
-    :tests  [#'card-test/trashed-card-linked-in-use-test]}])
+    :tests  [#'card-test/trashed-card-linked-in-use-test]}
+   {:name   :series-ignored
+    :doc    "The in-use report of a trashed card names only the dashboards with a dashboard card of the card, so a
+            dashboard that shows it only as a series is not reported."
+    :target `library-branching.db/dashboards-showing
+    :edits  [[:replace '[:= :dcs.card_id [:auto/param card-id]] 'false]]
+    :tests  [#'card-test/trashed-card-series-in-use-test]}
+   {:name   :trashed-dashboards-kept
+    :doc    "The in-use report names a dashboard in the trash that shows the trashed card."
+    :target `library-branching.db/dashboards-showing
+    :edits  [[:replace '[:= :d.archived false] 'true]]
+    :tests  [#'card-test/trashed-card-series-in-use-test]}
+   {:name   :showing-dashboards-in-scope
+    :doc    "The in-use report of a trashed card names a dashboard in the Library that shows it."
+    :target `in-use/query-users
+    :edits  [[:replace '(not (contains? in-scope entity_id)) 'true]]
+    :tests  [#'card-test/trashed-card-series-in-use-test]}])
 
 (deftest in-use-mutations-test
   (mut/check mutations {}))

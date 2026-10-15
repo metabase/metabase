@@ -541,12 +541,16 @@
   (t2/select :model/Card {:where [:and [:= :archived false] [:like :dataset_query (str "%" id "%")]]}))
 
 (mu/defn dashboards-showing :- [:sequential ::row]
-  "`{:entity_id :name}` of each dashboard not in the trash that has a card of the card `card-id`."
+  "`{:entity_id :name}` of each dashboard not in the trash that shows the card `card-id`: a dashboard card of the card,
+  or a dashboard card with the card as a series."
   [card-id :- pos-int?]
   (t2/query {:select-distinct [:d.entity_id :d.name]
              :from            [[(t2/table-name :model/Dashboard) :d]]
              :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
-             :where           [:and [:= :dc.card_id [:auto/param card-id]] [:= :d.archived false]]}))
+             :left-join       [[(t2/table-name :model/DashboardCardSeries) :dcs] [:= :dcs.dashboardcard_id :dc.id]]
+             :where           [:and
+                               [:or [:= :dc.card_id [:auto/param card-id]] [:= :dcs.card_id [:auto/param card-id]]]
+                               [:= :d.archived false]]}))
 
 (mu/defn cards-with-settings-mentioning :- [:sequential :string]
   "The entity ids of the cards not in the trash whose stored visualization settings text holds the text of `id`: every
