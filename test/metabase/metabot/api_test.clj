@@ -229,6 +229,48 @@
               (testing "a Slack thread does not"
                 (is (false? (offered? thread)))))))))))
 
+(deftest native-agent-streaming-context-overflow-error-test
+  (testing "an OpenRouter 400 for a request over the window streams the \"full\" copy and error code"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))
+              ;; OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+              ;; https://github.com/metabase/metabase/pull/83989).
+              e               (ex-info "OpenRouter API error (HTTP 400)"
+                                       {:api-error true
+                                        :status    400
+                                        :provider  "openrouter"
+                                        :body      {:error {:message  "This endpoint's maximum context length is 200000 tokens."
+                                                            :code     400
+                                                            :metadata {:provider_name nil}}}})]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     {:message         "Test full context"
+                                                      :context         {}
+                                                      :conversation_id conversation-id
+                                                      :state           {}}))
+                    events   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (mapv #(json/decode+kw (subs % 6))))]
+                (is (=? {:errorText "This conversation has reached its maximum length and can't continue. Please start a new chat."}
+                        (u/seek #(= "error" (:type %)) events)))
+                (is (=? {:finishReason    "error"
+                         :messageMetadata {:errorCode "ai_provider_context_full"}}
+                        (u/seek #(= "finish" (:type %)) events)))
+                (testing "the conversation endpoint keeps the turn, so a reload still reads as full"
+                  (is (=? [{:role "user"}
+                           {:role   "agent"
+                            :status {:type "errored" :error {:type "ai_provider_context_full" :message string?}}}]
+                          (:messages (mt/user-http-request :rasta :get 200
+                                                           (str "metabot/conversations/" conversation-id))))))))))))))
+
 (def ^:private openrouter-error-chunks
   "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as
   `finish_reason \"error\"` rather than as an error event."
@@ -279,6 +321,60 @@
                     (is (= []
                            (:messages (mt/user-http-request :rasta :get 200
                                                             (str "metabot/conversations/" conversation-id)))))))))))))))
+
+(def ^:private openrouter-midstream-overflow-chunks
+  "Raw OpenRouter chunks for an overflow streamed after the 200: a first chunk of text, then OpenRouter's documented
+  mid-stream error event.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  `error.code` 400, `error.message` \"Provider returned error\" and `error.metadata.error_type`
+  \"context_length_exceeded\" in place of the example's rate-limit values."
+  [{:id      "gen-abc123"
+    :object  "chat.completion.chunk"
+    :created 1234567890
+    :model   "anthropic/claude-haiku-4.5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:id       "gen-abc123"
+    :object   "chat.completion.chunk"
+    :created  1234567890
+    :model    "anthropic/claude-haiku-4.5"
+    :provider "Anthropic"
+    :error    {:code 400 :message "Provider returned error" :metadata {:error_type "context_length_exceeded"}}
+    :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}])
+
+(deftest native-agent-streaming-openrouter-midstream-context-overflow-test
+  (testing "an overflow OpenRouter streams after its 200 streams the \"full\" copy and error code"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                                                        openrouter-midstream-overflow-chunks))
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "Test full context"
+                                                    :context         {}
+                                                    :conversation_id conversation-id
+                                                    :state           {}})
+                    events   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (mapv #(json/decode+kw (subs % 6))))]
+                (is (=? {:errorText "This conversation has reached its maximum length and can't continue. Please start a new chat."}
+                        (u/seek #(= "error" (:type %)) events)))
+                (is (=? {:finishReason    "error"
+                         :messageMetadata {:errorCode "ai_provider_context_full"}}
+                        (u/seek #(= "finish" (:type %)) events)))
+                (testing "the conversation endpoint keeps the turn, so a reload still reads as full"
+                  (is (=? [{:role "user"}
+                           {:role   "agent"
+                            :status {:type "errored" :error {:type "ai_provider_context_full" :message string?}}}]
+                          (:messages (mt/user-http-request :rasta :get 200
+                                                           (str "metabot/conversations/" conversation-id))))))))))))))
 
 (deftest emits-title-event-inline-when-ready-during-stream-test
   (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"
@@ -812,7 +908,7 @@
               (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (swap! llm-calls inc) (mut/mock-llm-response []))
                                           conversation-title/ensure-title! (fn [& _] (swap! title-calls inc) {:status :ready :title "x"})]
                 (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-                  (is (=? {:message #"Unknown profile"}
+                  (is (=? #"Unknown profile.*"
                           (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
                                                 {:message         "hello"
                                                  :context         {}

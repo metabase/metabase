@@ -21,7 +21,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *snowplow-collector*
   "Fake Snowplow collector"
   (atom []))

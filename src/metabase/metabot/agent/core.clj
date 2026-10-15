@@ -25,6 +25,7 @@
    [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
+   [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -495,7 +496,7 @@
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
   does (see [[turn-input-parts]])."
-  [{:keys [messages state metabot profile-id context tracking-opts conversation-id]
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -518,10 +519,15 @@
                          (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
                          (assoc :conversation-id conversation-id
-                                :tool-names (set (keys base-tools)))
+                                :tool-names (set (keys base-tools))
+                                :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot profile-id)
+        ;; The show_chart argument only does anything alongside run_query, so a turn without run_query declares
+        ;; construct_notebook_query as it was before the argument existed.
+        tools        (update-vals (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot profile-id)
+                                    (not (contains? base-tools "run_query"))
+                                    (m/update-existing "construct_notebook_query" tools/without-show-chart))
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
@@ -560,7 +566,8 @@
   {:type :text, :id (str (random-uuid)), :text message})
 
 (defn- error-part [^Exception e]
-  {:type :error, :error (or (self/provider-error e)
+  {:type :error, :error (or (self/context-overflow-error e)
+                            (self/provider-error e)
                             {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
 
 (defn- accumulate-usage-xf
@@ -734,7 +741,9 @@
             [:eval-session-id {:optional true}
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
-            [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
+            [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
+            ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
+            [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
         profile-id         (:profile-id opts)
         debug?             (:debug? opts)

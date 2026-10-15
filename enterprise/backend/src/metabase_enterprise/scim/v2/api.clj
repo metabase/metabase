@@ -115,10 +115,11 @@
 (defn- throw-scim-error
   [status message]
   (throw (ex-info message
-                  {:schemas     [error-schema-uri]
-                   :detail      message
-                   :status      status
-                   :status-code status})))
+                  {:schemas       [error-schema-uri]
+                   :detail        message
+                   :status        status
+                   :status-code   status
+                   :response/keys #{:schemas :detail :status}})))
 
 (defn- scim-response
   "Wraps an object in a response with the correct SCIM content-type. Status defaults to 200 unless otherwise specified."
@@ -301,10 +302,11 @@
           (catch Exception e
             (let [message (format "Error updating user: %s" (ex-message e))]
               (throw (ex-info message
-                              {:schemas     [error-schema-uri]
-                               :detail      message
-                               :status      400
-                               :status-code 400})))))))))
+                              {:schemas       [error-schema-uri]
+                               :detail        message
+                               :status        400
+                               :status-code   400
+                               :response/keys #{:schemas :detail :status}})))))))))
 
 (defn- patch->boolean
   "SCIM sends `active` as a JSON boolean, but clients in the wild send the strings \"true\"/\"false\" too. Anything

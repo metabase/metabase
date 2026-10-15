@@ -14,12 +14,12 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
-   [metabase.entity-retrieval.core :as entity-retrieval]
-   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
    [metabase.osi.schema]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
