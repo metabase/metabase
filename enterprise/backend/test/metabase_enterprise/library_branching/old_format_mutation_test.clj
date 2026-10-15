@@ -9,9 +9,12 @@
    [metabase-enterprise.library-branching.format.old :as old]
    [metabase-enterprise.library-branching.format.old-test :as old-test]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
+   [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.old-format-app-db-test :as old-format-app-db-test]
+   [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull :as pull]
+   [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.status :as status]
    [metabase.test.fixtures :as fixtures]))
 
@@ -46,6 +49,22 @@
     :target `status/decode
     :edits  [[:replace '(select-keys opts [:table-names]) {}]]
     :tests  [#'old-format-app-db-test/pull-of-old-format-trees-names-tables-as-the-instance-does-test]}
+   {:name   :push-base-unnamed
+    :doc    "The push decodes a base with no stored digests with no names: each table with no user display name is a
+            local change, so the content of the base is something to push."
+    :target `push/base-digests
+    :edits  [[:replace '(pull/decode-opts inst) {}]]
+    :tests  [#'old-format-app-db-test/push-of-old-format-base-names-tables-as-the-instance-does-test]}
+   {:name   :merge-branch-task-unnamed
+    :doc    "The merge-branch task gives merge-branch no names: the merge writes the table name of a key as a name."
+    :target `operations/merge-branch-task!
+    :edits  [[:replace '(pull/decode-opts (instance)) {}]]
+    :tests  [#'old-format-app-db-test/merge-branch-of-old-format-trees-names-tables-as-the-instance-does-test]}
+   {:name   :merge-branch-unnamed
+    :doc    "Merge-branch decodes the commits with no names: the merge writes the table name of a key as a name."
+    :target `merge-branch/merge-branch!
+    :edits  [[:replace '(select-keys opts [:table-names]) {}]]
+    :tests  [#'old-format-app-db-test/merge-branch-of-old-format-trees-names-tables-as-the-instance-does-test]}
    {:name   :names-with-user-values
     :doc    "The instance gives the display names with the user values: a local rename of a table changes its base too,
             so it is no local change."
