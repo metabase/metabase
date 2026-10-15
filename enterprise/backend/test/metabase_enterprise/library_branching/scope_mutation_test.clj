@@ -83,6 +83,11 @@
     :target [:method `scope/kind-query :document]
     :edits  [[:remove '[:= :t.exploration_id nil]]]
     :tests  [#'scope-test/exploration-document-test]}
+   {:name   :no-glossary
+    :doc    "No glossary term is in scope, so a push leaves the glossary out."
+    :target `scope/unplaced
+    :edits  [[:replace '(contains? unplaced-kinds kind) false]]
+    :tests  [#'scope-test/glossary-test]}
    {:name   :count-off-by-one
     :doc    "The count of a kind differs from the size of its scope."
     :target `scope/scope-count

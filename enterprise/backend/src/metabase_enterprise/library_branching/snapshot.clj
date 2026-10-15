@@ -9,11 +9,12 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :metric :published-table :snippet})
+  #{:collection :glossary-term :metric :published-table :snippet})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
   {:collection      #{:collection :metric :published-table :snippet}
+   :glossary-term   #{}
    :metric          #{}
    :published-table #{}
    :snippet         #{}})

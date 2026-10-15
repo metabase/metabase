@@ -49,8 +49,8 @@
   (testing "one codec for each kind of the snapshot"
     (is (= snapshot/kinds (set (keys by-kind)))))
   (testing "the words and directory kinds of the layout"
-    (is (= {:collection ["collection" true] :metric ["metric" false] :published-table ["table" false]
-            :snippet ["snippet" false]}
+    (is (= {:collection ["collection" true] :glossary-term ["term" false] :metric ["metric" false]
+            :published-table ["table" false] :snippet ["snippet" false]}
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
 ;;; ------------------------------------------------------ Laws -------------------------------------------------------
@@ -100,7 +100,7 @@
           paths (mapcat keys trees)
           texts (mapcat vals trees)]
       (is (= snapshot/kinds (set (map :kind items))) "every kind")
-      (doseq [prefix ["library/_collection.yaml" "snippets/" "transforms/" "actions/" "apps/"]]
+      (doseq [prefix ["library/_collection.yaml" "snippets/" "transforms/" "actions/" "apps/" "glossary/"]]
         (is (some #(str/starts-with? % prefix) paths) prefix))
       (is (some #(re-find #"\.table\.yaml$" %) paths) "a published table")
       (is (some #(str/includes? % "~") paths) "an identity suffix")
@@ -139,6 +139,7 @@
 (def ^:private base-filter-id "bAsEfIlTeRsNiPpEt0001")
 (def ^:private active-filter-id "aCtIvEpRoDuCtFiLtEr01")
 (def ^:private finance-id "fInAnCeCoLlEcTiOnId00")
+(def ^:private churn-id "ChUrNgLoSsArYtErM0001")
 (def ^:private orders [sd "PUBLIC" "ORDERS"])
 
 (defn- collection [nm place & {:as attrs}]
@@ -219,6 +220,13 @@
    base-filter-id
    {:kind :snippet :name "Base filter" :place nil :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
 
+   churn-id
+   {:kind  :glossary-term
+    :name  "Churn"
+    :place nil
+    :refs  #{}
+    :attrs {:definition "The share of customers who cancel in a month."}}
+
    active-filter-id
    {:kind  :snippet
     :name  "Active product filter"
@@ -271,7 +279,8 @@
           [kind item] [[:metric (get golden-snapshot total-revenue-id)]
                        [:collection (get golden-snapshot revenue-id)]
                        [:snippet (get golden-snapshot base-filter-id)]
-                       [:published-table (get golden-snapshot orders)]]]
+                       [:published-table (get golden-snapshot orders)]
+                       [:glossary-term (get golden-snapshot churn-id)]]]
     (testing (str kind " with " k)
       (is (not (mr/validate (codec/schema (get by-kind kind)) (assoc-in item [:attrs k] "x"))))))
   (testing "a metric file with a public link or the embedding settings is invalid, and decode-tree reports it"
@@ -301,6 +310,9 @@
           (str k)))))
 
 (deftest required-attributes-test
+  (testing "a glossary term needs a definition"
+    (is (not (mr/validate (codec/schema (:glossary-term by-kind))
+                          (update (get golden-snapshot churn-id) :attrs dissoc :definition)))))
   (testing "a metric needs a display and a query; a snippet needs content"
     (is (not (mr/validate (codec/schema (:metric by-kind))
                           (update (get golden-snapshot total-revenue-id) :attrs dissoc :display))))
