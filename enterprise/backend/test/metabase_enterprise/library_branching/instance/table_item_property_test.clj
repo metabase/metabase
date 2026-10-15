@@ -62,7 +62,7 @@
                                                                                             (lib.metadata/segment mp (:id s1))))}
                      :model/Measure           m3 {:table_id (mt/id :checkins) :name "m3" :definition (sum-of mp :checkins :user_id)}]
         (let [store      #(get app-db/kind-stores %)
-              definition (fn [kind row] (get-in (instance/current (store kind) (:entity_id row)) [:attrs :definition]))]
+              definition (fn [kind row] (get-in (instance/current (store kind) (:entity_id row)) [:content :attrs :definition]))]
           (t2/with-transaction [_ nil {:rollback-only true}]
             (f {::venues   (table-key :venues)
                 ::checkins (table-key :checkins)
@@ -131,10 +131,10 @@
                              (let [item (resolve-item world item)
                                    item (assoc item :refs (format.kinds/refs kind id (:attrs item)))]
                                (instance/write! store id item)
-                               (= item (instance/current store id))))
+                               (= {:state :live :content item} (instance/current store id))))
                            items)
            before  (rows id)]
-       (instance/write! store id (instance/current store id))
+       (instance/write! store id (:content (instance/current store id)))
        (and put-get (= before (rows id)))))))
 
 (def ^:private trials 30)

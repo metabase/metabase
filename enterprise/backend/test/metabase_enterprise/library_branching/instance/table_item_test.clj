@@ -38,6 +38,8 @@
 
 (defn- current [kind id] (instance/current (store kind) id))
 
+(defn- content [kind id] (:content (current kind id)))
+
 (defn- trash! [kind id] (instance/trash! (store kind) id))
 
 (defn- refusal
@@ -259,32 +261,35 @@
             (let [model (if (= :segment kind) :model/Segment :model/Measure)
                   item  (-> template (assoc :name "Written") (assoc-in [:attrs :description] "Written by sync."))]
               (testing "a write of a new identity creates the item on its table, and current returns the content"
+                (is (= {:state :absent} (current kind id)))
                 (write! kind id item)
-                (is (= (assoc item :refs (format.kinds/refs kind id (:attrs item))) (current kind id)))
+                (is (= {:state :live :content (assoc item :refs (format.kinds/refs kind id (:attrs item)))}
+                       (current kind id)))
                 (is (= {:table_id (mt/id :venues) :archived false}
                        (t2/select-one [model :table_id :archived] :entity_id id))))
               (let [row-id (t2/select-one-pk model :entity_id id)]
                 (testing "an absent attribute goes to its default"
                   (write! kind id (update item :attrs dissoc :description))
                   (is (nil? (t2/select-one-fn :description model row-id)))
-                  (is (= (dissoc (update item :attrs dissoc :description) :refs) (dissoc (current kind id) :refs))))
+                  (is (= (dissoc (update item :attrs dissoc :description) :refs) (dissoc (content kind id) :refs))))
                 (testing "a write of the current content changes no row"
                   (let [before (t2/select-one (t2/table-name model) row-id)]
-                    (instance/write! (store kind) id (current kind id))
+                    (instance/write! (store kind) id (content kind id))
                     (is (= before (t2/select-one (t2/table-name model) row-id)))))
                 (testing "trash! moves the item to the trash, and a write of the trashed identity restores the same row"
-                  (trash! kind id)
-                  (is (nil? (current kind id)))
+                  (let [live (content kind id)]
+                    (trash! kind id)
+                    (is (= {:state :trashed :content live} (current kind id))))
                   (is (t2/select-one-fn :archived model row-id))
                   (is (nil? (trash! kind id)) "a trash of an item in the trash does nothing")
                   (write! kind id item)
-                  (is (= (:attrs item) (:attrs (current kind id))))
+                  (is (= (:attrs item) (:attrs (content kind id))))
                   (is (= row-id (t2/select-one-pk model :entity_id id)))
                   (is (false? (t2/select-one-fn :archived model row-id))))))))
         (testing "a write of a segment on another table moves it to that table"
           (let [moved (assoc (read-item (:entity_id c)) :name "Moved")]
             (write! :segment new-segment-id moved)
-            (is (= (table-key :checkins) (:place (current :segment new-segment-id))))
+            (is (= (table-key :checkins) (:place (content :segment new-segment-id))))
             (is (= (mt/id :checkins) (t2/select-one-fn :table_id :model/Segment :entity_id new-segment-id)))))
         (testing "a trash of an identity that no row has does nothing"
           (is (nil? (trash! :segment "lbNoSuchSegment000001")))
@@ -345,8 +350,8 @@
           (is (seq expected))
           (trash! :segment (:entity_id s))
           (trash! :measure (:entity_id m))
-          (is (nil? (current :segment (:entity_id s))))
-          (is (nil? (current :measure (:entity_id m))))
+          (is (= :trashed (:state (current :segment (:entity_id s)))))
+          (is (= :trashed (:state (current :measure (:entity_id m)))))
           (is (= expected (run))))))))
 
 (deftest trashed-segment-or-measure-in-use-test
@@ -392,26 +397,30 @@
         (let [before (app-db/read-current)
               venues (table-key :venues)
               ids    (map :entity_id [s m])]
-          (testing "trash! of a published table moves its segments and measures to the trash"
+          (testing (str "trash! of a published table moves its segments and measures to the trash; the table is no "
+                        "longer published, so their rows are outside the Library tree")
             (trash! :published-table venues)
-            (is (= [nil nil nil] [(current :published-table venues) (current :segment (:entity_id s))
-                                  (current :measure (:entity_id m))]))
+            (is (= (repeat 3 {:state :absent}) [(current :published-table venues) (current :segment (:entity_id s))
+                                                (current :measure (:entity_id m))]))
             (is (every? true? (map #(t2/select-one-fn :archived %1 :entity_id %2)
                                    [:model/Segment :model/Measure] ids))))
           (testing "a write of the trashed table restores it alone"
             (write! :published-table venues (get before venues))
-            (is (= (get before venues) (current :published-table venues)))
-            (is (= [nil nil] [(current :segment (:entity_id s)) (current :measure (:entity_id m))])))
+            (is (= {:state :live :content (get before venues)} (current :published-table venues)))
+            (is (= [{:state :trashed :content (get before (:entity_id s))}
+                    {:state :trashed :content (get before (:entity_id m))}]
+                   [(current :segment (:entity_id s)) (current :measure (:entity_id m))])))
           (testing "a write of each segment and measure restores it; one archived before stays archived"
             (write! :segment (:entity_id s) (get before (:entity_id s)))
             (write! :measure (:entity_id m) (get before (:entity_id m)))
             (is (= (select-keys before (cons venues ids)) (select-keys (app-db/read-current) (cons venues ids))))
             (is (true? (t2/select-one-fn :archived :model/Measure (:id old)))))
-          (testing "trash! of a collection moves the segments of its tables to the trash"
+          (testing (str "trash! of a collection moves the segments of its tables to the trash; the trash unpublishes "
+                        "the tables, so their rows are outside the Library tree")
             (trash! :collection (:entity_id sub))
-            (is (nil? (current :segment (:entity_id cs))))
+            (is (= {:state :absent} (current :segment (:entity_id cs))))
             (is (true? (t2/select-one-fn :archived :model/Segment (:id cs))))
-            (is (some? (current :segment (:entity_id s))) "a segment of a table in another collection stays")))))))
+            (is (= :live (:state (current :segment (:entity_id s)))) "a segment of a table in another collection stays")))))))
 
 ;;; ---------------------------------------------------- Save rule ---------------------------------------------------
 

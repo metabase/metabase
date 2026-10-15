@@ -197,13 +197,17 @@
       (instance/refuse! :environment id "This instance has no table with this natural key.")))
 
 (defn current-published-table
-  "The content of the in-scope published table `id`, after a lock on its settings row and the settings rows of its
-  fields, or nil."
+  "The state of published table `id` (`instance/current`), after a lock on its settings row and the settings rows of
+  its fields. A table has no trash: an unpublished table is absent."
   [id]
-  (when-let [table (table-of-key id)]
-    (library-branching.db/lock-table-settings (:id table))
-    (when (scope/in-scope? :published-table id)
-      (get (read-published-tables [id]) id))))
+  ;; The trash of a published table is an unpublish, and no row tells an unpublish from a table that was never
+  ;; published, so neither is trashed.
+  (let [table (table-of-key id)]
+    (when table
+      (library-branching.db/lock-table-settings (:id table)))
+    (if (and table (scope/in-scope? :published-table id))
+      {:state :live :content (get (read-published-tables [id]) id)}
+      {:state :absent})))
 
 (defn- field-ids
   "`{[name ...] field-id}`: the path of names from the top-level field down to each field of table `table-id`. Of two

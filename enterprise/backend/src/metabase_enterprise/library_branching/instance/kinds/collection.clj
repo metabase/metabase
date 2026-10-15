@@ -55,11 +55,12 @@
   (contains? (:collection-types scope/roots) type))
 
 (defn current-collection
-  "The content of the in-scope collection `id`, after a lock on its row, or nil."
+  "The state of collection `id` (`instance/current`), after a lock on its row."
   [id]
-  (library-branching.db/lock-collection id)
-  (when (scope/in-scope? :collection id)
-    (get (read-collections [id]) id)))
+  (let [row (library-branching.db/lock-collection id)]
+    (content/current-state (boolean (and row (tree/collection-in-tree? row)))
+                           #(scope/in-scope? :collection id)
+                           #(get (read-collections [id]) id))))
 
 (defn- columns
   "The collection columns of the attributes `ks` of `attrs`, an absent one at its default."
@@ -104,6 +105,8 @@
 (defn trash-collection!
   "Moves collection `id` to the trash with its subtree and the items in them, as the Trash of Metabase does."
   [id]
+  (when (contains? snapshot/system-ids id)
+    (instance/refuse! :system-item id "A system item of the Library cannot go to the trash."))
   (when-let [row (library-branching.db/lock-collection id)]
     (tree/check-in-tree! id (tree/collection-in-tree? row))
     (when-not (:archived row)

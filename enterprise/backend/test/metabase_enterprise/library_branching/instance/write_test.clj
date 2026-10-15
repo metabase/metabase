@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,7 +30,13 @@
   [kind id item]
   (instance/write! (store kind) id (assoc item :refs (format.kinds/refs kind id (:attrs item)))))
 
-(defn current [kind id] (instance/current (store kind) id))
+(defn current-state [kind id] (instance/current (store kind) id))
+
+(defn current
+  "The content of item `id` of `kind` when it is live, else nil."
+  [kind id]
+  (let [{:keys [state content]} (current-state kind id)]
+    (when (= :live state) content)))
 
 (defn trash! [kind id] (instance/trash! (store kind) id))
 
@@ -241,6 +248,84 @@
           (write! :collection (:entity_id sub) (get before (:entity_id sub)))
           (write! :metric (:entity_id metric) (get before (:entity_id metric)))
           (is (= (select-keys before ids) (select-keys (app-db/read-current) ids))))))))
+
+(deftest trash-of-a-system-item-is-refused-test
+  (testing "trash! of a system item of the Library refuses, and changes no row"
+    (doseq [id (sort snapshot/system-ids)]
+      (let [row    #(t2/select-one [:model/Collection :archived :location] :entity_id id)
+            before (row)]
+        (is (= :system-item (refusal #(trash! :collection id))) id)
+        (is (= before (row)) id)))))
+
+;;; ---------------------------------------------------- States ----------------------------------------------------
+
+(deftest current-states-test
+  (testing "current gives the state of an item: live with its content, trashed with the content that it has, or absent"
+    (collections.tu/with-library [{:keys [metrics]}]
+      (let [personal (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))]
+        (mt/with-temp [:model/Collection         folder   {:name     "States"
+                                                           :type     "library-metrics"
+                                                           :location (children-location metrics)}
+                       :model/Card               metric   {:name          "State metric"
+                                                           :type          :metric
+                                                           :display       :scalar
+                                                           :collection_id (:id folder)
+                                                           :dataset_query (sum-query :venues :price)}
+                       :model/Card               mine     {:name          "My state metric"
+                                                           :type          :metric
+                                                           :display       :scalar
+                                                           :collection_id personal
+                                                           :dataset_query (sum-query :venues :price)}
+                       :model/Collection         app      {:name "A state app" :namespace "data-apps" :location "/"}
+                       :model/Card               question {:name          "A state question"
+                                                           :type          :question
+                                                           :display       :table
+                                                           :collection_id (:id app)
+                                                           :dataset_query (sum-query :venues :price)}
+                       :model/Collection         outside  {:name "My states" :location (str "/" personal "/")}
+                       :model/NativeQuerySnippet snip     {:name "State snippet" :content "1 = 1"}]
+          (let [live     (fn [kind id]
+                           (let [{:keys [state content]} (current-state kind id)]
+                             (is (= :live state) [kind id])
+                             content))
+                metric-c (live :metric (:entity_id metric))
+                folder-c (live :collection (:entity_id folder))
+                snip-c   (live :snippet (:entity_id snip))]
+            (testing "a card of another card kind is the item of its row, with the content of its own kind"
+              (is (= {:state :live :content (live :question (:entity_id question))}
+                     (current-state :metric (:entity_id question)))))
+            (testing "an identity that no row has and a row outside the Library tree are absent"
+              (is (= {:state :absent} (current-state :metric "lbNoSuchMetric0000001")))
+              (is (= {:state :absent} (current-state :metric (:entity_id mine))))
+              (is (= {:state :absent} (current-state :collection (:entity_id outside))))
+              (is (= {:state :absent} (current-state :collection "lbNoSuchCollection001")))
+              (is (= {:state :absent} (current-state :snippet "lbNoSuchSnippet000001")))
+              (is (= {:state :absent} (current-state :published-table [(db-name) "PUBLIC" "NO_SUCH_TABLE"]))))
+            (testing "a trashed snippet, a trashed collection and a metric in it are trashed, with their content"
+              (trash! :snippet (:entity_id snip))
+              (trash! :collection (:entity_id folder))
+              (is (= {:state :trashed :content snip-c} (current-state :snippet (:entity_id snip))))
+              (is (= {:state :trashed :content folder-c} (current-state :collection (:entity_id folder))))
+              (is (= {:state :trashed :content metric-c} (current-state :metric (:entity_id metric)))))
+            (testing "a write restores a trashed item: it is live again"
+              (write! :snippet (:entity_id snip) snip-c)
+              (is (= {:state :live :content snip-c} (current-state :snippet (:entity_id snip)))))))))))
+
+(deftest published-table-states-test
+  (testing "a published table is live; an unpublished table is absent, because no row tells an unpublish from a table
+            that was never published"
+    (collections.tu/with-library [{:keys [data]}]
+      (t2/with-transaction [_ nil {:rollback-only true}]
+        (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
+        (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-set :model/Field :table_id (mt/id :venues))])
+        (let [id   (table-key :venues)
+              item {:kind :published-table :name "Places" :place (:entity_id data) :attrs {:description "Places."}}]
+          (is (= {:state :absent} (current-state :published-table id)))
+          (write! :published-table id item)
+          (is (= {:state :live :content (assoc item :refs (format.kinds/refs :published-table id (:attrs item)))}
+                 (current-state :published-table id)))
+          (trash! :published-table id)
+          (is (= {:state :absent} (current-state :published-table id))))))))
 
 ;;; ---------------------------------------------------- Places ----------------------------------------------------
 

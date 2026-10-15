@@ -15,23 +15,31 @@
     "The models whose app DB tables a read of this kind reads: the scope query of the kind, and [[read-all]] with the
     lookups of the references that its items can hold. A read point reads each of these tables first.")
   (current [ks id]
-    "Content of item `id`, after a lock on its row and its child rows until the current transaction ends, or nil when
-    it is not in scope: it does not exist, is in the trash, or is outside the Library tree.")
+    "The state of item `id`, after a lock on its row and its child rows until the current transaction ends:
+    `{:state :live :content c}` when it is in scope; `{:state :trashed :content c}` when its row is in the Library
+    tree and in the trash; else `{:state :absent}` (no row of this kind has the identity, or the row is outside the
+    Library tree).")
   (write! [ks id content]
     "Makes the content of item `id` equal to `content`, an item of this kind: every content attribute is set, an
     absent one to its default; a trashed item with this identity is restored. Only a row inside the Library tree
     matches `id`. Instance-local attributes do not change. Laws: a write of the current content changes no row
-    (GetPut); current after write returns `content` (PutGet). Throws ::refused, and writes nothing, when `content`
-    is not an item of this kind, when `id` names a row outside the Library tree or of another kind, when the place
-    or an environment reference of `content` does not resolve on this instance, when another item of a kind whose
-    names Metabase keeps unique (a glossary term) has the name of `content`, or when a content rule of the instance
-    (the Library's) refuses `content` at its place.")
+    (GetPut); current after write returns `{:state :live :content content}` (PutGet). Throws ::refused, and writes
+    nothing, when `content` is not an item of this kind, when `id` names a row outside the Library tree or of another
+    kind, when the place or an environment reference of `content` does not resolve on this instance, when another
+    item of a kind whose names Metabase keeps unique (a glossary term) has the name of `content`, or when a content
+    rule of the instance (the Library's) refuses `content` at its place.")
   (trash! [ks id]
     "Moves item `id` and the items under it to the trash. The identity and the content stay; content outside the
     Library that uses the item still resolves. An item of a kind that Metabase keeps no trash for (a glossary term) is
     deleted. Nothing happens when no row has the identity, or when it is already in the trash. Throws ::refused, and
-    trashes nothing, when `id` names a row outside the Library tree, or when a content rule of the instance refuses
-    the trash."))
+    trashes nothing, when `id` names a row outside the Library tree or a system item (`snapshot/system-ids`), or when
+    a content rule of the instance refuses the trash."))
+
+(defprotocol UniqueKey
+  "A kind whose key the app DB keeps unique over all its rows (`snapshot/unique-keys`)."
+  (key-holders [ks]
+    "`{k #{identity}}`: for each key `k` of a row of this kind, in its compared form (`snapshot/unique-key`), the
+    identities of the rows with that key: rows in the trash and rows outside the Library tree included."))
 
 (defprotocol Stub
   "A kind whose items can be on a reference cycle: an apply writes a new item of the cycle first as a stub."
@@ -60,10 +68,11 @@
     not. A row id of no card has no entry.")
   (apply-plan! [inst plan opts]
     "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
-    precondition, then write, link or trash each item, then move the base from `(:base opts)` to `(:new-base opts)`
-    with `(:digests opts)` (as [[set-base!]]), then call `(:head-ok? opts)`, which is false when the planned head left
-    the branch history, then, for a success, `(:on-commit opts)`, whose writes commit with the apply. Returns the
-    result of `apply/apply-plan`: `{:ok {:trashed-in-use m}}`, or one of `{:stale ids}`, `{:refused [...]}`,
+    precondition, check the unique keys of the written items, then write, link or trash each item, then move the base
+    from `(:base opts)` to `(:new-base opts)` with `(:digests opts)` (as [[set-base!]]), then call `(:head-ok? opts)`,
+    which is false when the planned head left the branch history, then, for a success, `(:on-commit opts)`, whose
+    writes commit with the apply. Returns the result of `apply/apply-plan`: `{:ok {:trashed-in-use m}}`, or one of
+    `{:fenced reason}`, `{:stale ids}`, `{:key-clash findings}`, `{:refused [...]}`,
     `{:base-moved actual}` and `{:rewritten new-base}`, and then writes nothing.")
   (set-base! [inst expected new digests]
     "Moves the base from `expected` to `new` (`expected` nil: there is no base), and stores `digests`, the

@@ -47,6 +47,16 @@
       (instance/refuse! :invalid-content id (str "The content is not an item of the kind " (name kind) ".")
                         {:explanation (registry/explain schema item)}))))
 
+(defn current-state
+  "The value of `instance/current` for an item whose row is in the Library tree iff `in-tree?` (false also when there is
+  no row): `{:state :absent}` when it is not; else `{:state :live :content (read)}` when `(in-scope?)`, and
+  `{:state :trashed :content (read)}` when not."
+  [in-tree? in-scope? read]
+  (cond
+    (not in-tree?) {:state :absent}
+    (in-scope?)    {:state :live :content (read)}
+    :else          {:state :trashed :content (read)}))
+
 (defn attr-value
   "The value of attribute `k` of format spec `spec` in `attrs`: its value, or its default when absent."
   [spec attrs k]

@@ -459,6 +459,23 @@
            (is (= work (pltu/snapshot-of prod)))
            (is (= merged (instance/base prod)))))))))
 
+(deftest deploy-renames-a-trashed-snippet-whose-name-the-head-takes-test
+  (enabled
+   (with-remote [repo s]
+     (let [before   (assoc ptu/sample other-id (other-snippet))
+           c1       (pltu/commit-snapshot! repo ptu/branch [] before)
+           [inst _] (deployed-instance! s)
+           new-id   "NewOtherSnippet000001"
+           h        (pltu/commit-snapshot! repo ptu/branch [c1]
+                                           (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"})))]
+       (testing "the head removes a snippet and adds one with a name of one key: the deploy renames the removed snippet,
+                trashes it, and writes the new one"
+         (is (= :deployed (:result (deploy! inst s))))
+         (is (= (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"}))
+                (pltu/snapshot-of inst)))
+         (is (= "Other (trashed OtherSnippet000000001)" (get-in @(:state inst) [:trash other-id :name])))
+         (is (= h (instance/base inst))))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
 
 (defspec deploy-shows-the-head-property-test 25
@@ -470,7 +487,8 @@
              r1   (deploy! inst s {:env (env-of s1)})
              h    (pltu/commit-snapshot! repo ptu/branch [c1] s2)
              r2   (deploy! inst s {:env (env-of s2)})]
-         ;; with no drift, a consumption instance shows exactly the head after each deploy (ProdShowsValid)
+         ;; with no drift, a consumption instance shows exactly the head after each deploy (ProdShowsValid), also when
+         ;; the head gives a snippet the name of a snippet that it removes
          (and (= :deployed (:result r1))
               (= :deployed (:result r2))
               (= s2 (pltu/snapshot-of inst))

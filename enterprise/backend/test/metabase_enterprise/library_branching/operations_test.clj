@@ -85,6 +85,8 @@
             "The branch main was rewritten during the pull, so nothing was pulled. Try again."]
            [{:result :refused :head "h" :refused [{:id "a" :reason :place :message "The container is not in scope."}]}
             "The instance refused 1 item (The container is not in scope.), so nothing was pulled."]
+           [{:result :key-clash :head "h" :key-clash [{:rule :unique-key :kind :snippet :key "Filter" :ids #{"a" "b"}}]}
+            "The head of branch main gives 1 item the name of another item on this instance, also one in the trash (\"Filter\"), so nothing was pulled."]
            [{:result :base-moved :head "h" :base "b"}
             "Another task moved the base, so nothing was pulled."]
            [{:result :fenced :head "h" :reason {:fenced "cancelled"}}

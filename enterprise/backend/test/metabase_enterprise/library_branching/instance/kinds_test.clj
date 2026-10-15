@@ -267,7 +267,7 @@
               (is (= [{:id (:id table) :db (db-name) :schema "PUBLIC" :table "lb_kinds_archived"}]
                      (library-branching.db/table-keys-by-id [(:id table)]))))
             (testing "the current content and a write find the table by its original key"
-              (is (= (get before k) (instance/current kinds.published-table/kind-store k)))
+              (is (= {:state :live :content (get before k)} (instance/current kinds.published-table/kind-store k)))
               (instance/write! kinds.published-table/kind-store k
                                (assoc-in (get before k) [:attrs :description] "Orders of the year before."))
               (is (= "Orders of the year before."
@@ -276,7 +276,7 @@
               (let [item (get (app-db/read-current) k)]
                 (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "PUBLIC" :name "lb_kinds_archived" :active true}]
                   (is (= item (get (app-db/read-current) k)))
-                  (is (= item (instance/current kinds.published-table/kind-store k))))))))))))
+                  (is (= {:state :live :content item} (instance/current kinds.published-table/kind-store k))))))))))))
 
 (deftest items-fit-the-format-test
   (testing "every item that the instance reads fits the schema of its kind, and survives encode and decode"

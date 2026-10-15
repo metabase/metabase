@@ -181,6 +181,22 @@
     :target `kinds.collection/trash-collection!
     :edits  [[:replace '(library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row)) []]]
     :tests  [#'metabase-enterprise.library-branching.instance.cascade-test/collection-trash-keeps-outside-values-sources-test]}
+   {:name   :trashed-is-absent
+    :doc    "current gives a trashed item as absent, so a first pull can write over an identity that a person deleted."
+    :target `content/current-state
+    :edits  [[:replace '{:state :trashed :content (read)} '{:state :absent}]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/current-states-test]}
+   {:name   :current-other-kind
+    :doc    "current of a card kind gives a card of another kind of its row as absent, so the precondition of a change
+            of kind inside the row never holds."
+    :target `kinds.card/current-card
+    :edits  [[:replace '(snapshot/same-row? kind row-kind) '(= kind row-kind)]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/current-states-test]}
+   {:name   :system-item-trashed
+    :doc    "trash! of a collection does not refuse a system item of the Library."
+    :target `kinds.collection/trash-collection!
+    :edits  [[:replace '(contains? snapshot/system-ids id) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/trash-of-a-system-item-is-refused-test]}
    {:name   :save-rule-sees-no-trash
     :doc    "The save rule finds no reference to an item that is not in scope."
     :target `save-rule/findings
