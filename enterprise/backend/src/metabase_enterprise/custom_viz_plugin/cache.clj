@@ -15,8 +15,8 @@
    [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
-   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -223,8 +223,19 @@
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
 
-(defn- derived-columns
-  "DB columns derived from a validated bundle."
+(defn check-bundle-identifier!
+  "Throw a 400 ex-info unless the `name` in `validated`'s manifest equals `identifier`, the identity an existing
+  plugin's questions are saved under. Returns `validated`."
+  [identifier {:keys [manifest] :as validated}]
+  (let [bundle-name (:name manifest)]
+    (when-not (= bundle-name identifier)
+      (throw (ex-info (format "Bundle manifest \"name\" (%s) does not match the plugin's identifier (%s)."
+                              bundle-name identifier)
+                      {:status-code 400})))
+    validated))
+
+(defn derived-columns
+  "DB columns derived from a validated bundle (see [[validate-bundle!]])."
   [{:keys [bytes hash manifest version-str]}]
   {:status           :active
    :error_message    nil
@@ -241,7 +252,7 @@
   [{:keys [id]} validated]
   (t2/update! :model/CustomVizPlugin id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin/select-one-non-blob :id id))
+  (custom-viz-plugin.db/non-blob-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
