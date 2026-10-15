@@ -4,8 +4,8 @@
   snapshot that it wrote."
   (:require
    [metabase-enterprise.library-branching.engine.validate :as validate]
+   [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
-   [metabase-enterprise.library-branching.format.tree :as tree]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.roots :as roots]
@@ -19,15 +19,15 @@
   "Library branching push")
 
 (defn foreign-files
-  "The files of tree `t`, `{path bytes}`, that sync does not own: each file whose path is not `tree/managed-path?`."
+  "The files of tree `t`, `{path bytes}`, that a push keeps at their paths: `claims/kept-files`."
   [t]
-  (into {} (remove (comp tree/managed-path? key)) t))
+  (claims/kept-files (claims/item-claims t)))
 
 (defn tree-digests
-  "The item digests of the snapshot that the managed files of tree `t` hold, with the codecs `codecs`, or nil when
-  they do not decode (a tree in the old format, for example)."
+  "The item digests of the snapshot that tree `t` holds (`claims/decode`), with the codecs `codecs`, or nil when it
+  does not decode (a tree in the old format, for example)."
   [codecs t]
-  (some->> (tree/decode-tree codecs (keep (fn [[p b]] (when (tree/managed-path? p) b)) t))
+  (some->> (claims/decode codecs t)
            :snapshot
            (writer/item-digests codecs)))
 
@@ -43,8 +43,8 @@
   "Writes the commit of snapshot `s` on base `b`, moves `branch` to it from `b`, then moves the base to it with the
   digests of `s`."
   [inst store codecs branch message b base-tree s digests]
-  ;; Foreign files of the base stay at their paths. A file that sync owns is written again from `s`, so it leaves
-  ;; the tree when its item left `s`, and it moves to its canonical path when someone moved it.
+  ;; Foreign files of the base stay at their paths. An item file is written again from `s`, so it leaves the tree
+  ;; when its item left `s`, and it moves to its canonical path when someone moved it.
   (let [files (merge (foreign-files @base-tree) (writer/encode-tree codecs s))
         c     (store/write-commit store (if b [b] []) files message)
         moved (store/cas-ref! store branch b c)]

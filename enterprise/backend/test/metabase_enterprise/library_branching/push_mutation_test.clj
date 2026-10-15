@@ -41,7 +41,7 @@
     :doc    "The push keeps every file of the base tree: a file of a removed item, a moved file and the files of the
             old format stay."
     :target `push/foreign-files
-    :edits  [[:replace '(remove (comp tree/managed-path? key)) '(map identity)]]}
+    :edits  [[:replace '(claims/kept-files (claims/item-claims t)) 't]]}
    {:name   :base-not-compared
     :doc    "set-base! moves the base row whatever its commit id is."
     :target `library-branching.db/compare-and-set-base!

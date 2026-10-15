@@ -130,11 +130,12 @@
      (let [a (pltu/commit-snapshot! repo main [] ptu/sample)
            _ (pltu/reset-branch! repo feature a)
            _ (pltu/commit-on! repo main [a] (assoc (writer/encode-tree kinds/codecs ptu/sample)
-                                                   "library/broken.metric.yaml" (ptu/utf8 "kind: [\n")))
+                                                   "library/broken.metric.yaml"
+                                                   (ptu/utf8 "kind: metric\nid: BrokenMetric000000001\n")))
            f (pltu/commit-snapshot! repo feature [a] (ptu/renamed ptu/sample ptu/revenue-id "Ours"))
            {:keys [result findings]} (merge-branch/merge-branch! s feature main)]
        (is (= :invalid result))
-       (is (= [:unreadable] (map :type findings)))
+       (is (= [:invalid] (map :type findings)))
        (is (= f (store/head s feature)))))))
 
 (deftest disabled-merge-branch-test
