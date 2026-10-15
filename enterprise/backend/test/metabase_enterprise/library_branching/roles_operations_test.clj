@@ -12,8 +12,11 @@
    [metabase-enterprise.library-branching.api]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
+   [metabase-enterprise.library-branching.pull-test-util :as pltu]
+   [metabase-enterprise.library-branching.push-test-util :as ptu]
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.repository-test-util :as rtu :refer [with-remote with-settings]]
+   [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.app-db.core :as mdb]
    [metabase.settings.core :as setting]
@@ -35,11 +38,11 @@
     (tasks/run-task! id work)))
 
 (defn- do-with-pushed-metric!
-  "Calls `(f metric base)` on a creation instance on a new remote: `metric` is a committed metric of the Library, and
-  `base` the commit of a push of the synced content, which creates the branch main; it is the base of the instance.
-  Library branching is on, with no task row before the push. Clears the base afterwards."
+  "Calls `(f metric base repo)` on a creation instance on the new remote `repo`: `metric` is a committed metric of the
+  Library, and `base` the commit of a push of the synced content, which creates the branch main; it is the base of the
+  instance. Library branching is on, with no task row before the push. Clears the base afterwards."
   [f]
-  (with-remote [_repo url]
+  (with-remote [repo url]
     (with-settings {:remote-sync-url url :remote-sync-branch "main"}
       (reset-base!)
       (try
@@ -48,7 +51,7 @@
            (let [pushed (run-task! "push" #(operations/push-task! % "main" "The base"))
                  base   (get-in pushed [:outcome :commit])]
              (assert base (pr-str pushed))
-             (f metric base))))
+             (f metric base repo))))
         (finally
           (reset-base!))))))
 
@@ -56,6 +59,12 @@
   (t2/update! :model/Card (:id metric) {:name metric-name}))
 
 (defn- base [] (instance/base (operations/instance)))
+
+(defn- remote-snapshot
+  [commit]
+  (repository/do-with-store (fn [s]
+                              (store/head s "main")
+                              (ptu/commit-snapshot s commit))))
 
 ;;; ---------------------------------------------------- Role switch ---------------------------------------------------
 
@@ -67,7 +76,7 @@
     (mt/with-premium-features #{:remote-sync}
       (rtu/with-synchronous-tasks
         (do-with-pushed-metric!
-         (fn [metric c1]
+         (fn [metric c1 _repo]
            (testing "a local change: the switch is refused, and nothing changes (scenario M12-028)"
              (rename! metric "Local")
              (let [newest (:id (tasks/newest-task))]
@@ -119,7 +128,7 @@
   ;; Scenarios M9-011 and M9-012 (changed).
   (rtu/with-synchronous-tasks
     (do-with-pushed-metric!
-     (fn [metric c1]
+     (fn [metric c1 _repo]
        (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-allow nil]
          (testing "no drift: the instance starts, and starts no deploy, as it has a base"
            (is (= :starts (boot-check)))
@@ -149,23 +158,27 @@
   (mt/with-premium-features #{:remote-sync}
     (rtu/with-synchronous-tasks
       (do-with-pushed-metric!
-       (fn [metric c1]
+       (fn [metric c1 repo]
          (mt/with-temporary-setting-values [remote-sync-type :read-only]
            (rename! metric "Script")
            (testing "the status shows the drift of the read-only instance, with the identity of the item"
              (is (=? {:read_only true :drift [(:entity_id metric)]}
                      (mt/user-http-request :crowberto :get 200 "ee/library-branching/status"))))
-           (testing "a deploy stops on the drift"
-             (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/library-branching/deploy" {})]
-               (is (=? {:status "failed"} (tasks/task task_id))))
-             (is (= "Script" (t2/select-one-fn :name :model/Card (:id metric)))))
-           (testing "the admin discards the changes: the deploy restores the content of the base"
-             (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/library-branching/deploy"
-                                                           {:discard_changes true})]
-               (is (=? {:status "successful" :outcome {:kind "deployed" :commit c1 :discarded 1}}
-                       (tasks/task task_id))))
-             (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
-             (is (= c1 (base))))
+           (let [h (pltu/commit-snapshot! repo "main" [c1] (ptu/renamed (remote-snapshot c1) (:entity_id metric) "Main"))]
+             (testing "a deploy of a new head stops on the drift, and the drift stays"
+               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/library-branching/deploy" {})]
+                 (is (=? {:status        "failed"
+                          :error_message "This read-only instance has 1 changed item that no commit holds, so nothing was deployed."}
+                         (tasks/task task_id))))
+               (is (= "Script" (t2/select-one-fn :name :model/Card (:id metric))))
+               (is (= c1 (base))))
+             (testing "the admin discards the changes: the deploy writes the head over them"
+               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/library-branching/deploy"
+                                                             {:discard_changes true})]
+                 (is (=? {:status "successful" :outcome {:kind "deployed" :commit h :discarded 1}}
+                         (tasks/task task_id))))
+               (is (= "Main" (t2/select-one-fn :name :model/Card (:id metric))))
+               (is (= h (base)))))
            (testing "no drift left"
              (is (=? {:read_only true :drift []}
                      (mt/user-http-request :crowberto :get 200 "ee/library-branching/status")))))

@@ -111,14 +111,16 @@
 
 (defn deploy-task-result
   "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
-  or was up to date, else `{:error message}`."
-  [branch {:keys [result head steps trashed-in-use findings ids refused]}]
+  or was up to date, else `{:error message}`. The outcome of a deploy that discarded drift has `:discarded`, the number
+  of items of the drift."
+  [branch {:keys [result head steps trashed-in-use findings ids refused discarded]}]
   (case result
-    :deployed   {:outcome {:kind    "deployed"
-                           :branch  branch
-                           :commit  head
-                           :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
-                           :trashed (count trashed-in-use)}}
+    :deployed   {:outcome (cond-> {:kind    "deployed"
+                                   :branch  branch
+                                   :commit  head
+                                   :count   (count (filter #(or (contains? % :write) (contains? % :trash)) steps))
+                                   :trashed (count trashed-in-use)}
+                            discarded (assoc :discarded (count discarded)))}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was deployed."
                                 branch (rules findings))}
@@ -221,11 +223,16 @@
 
 (defn deploy-task!
   "Runs the deploy of branch `branch` as the work of task `id`, against the environment of this instance, and returns
-  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running."
-  [id branch]
-  (repository/do-with-store
-   (fn [s]
-     (deploy-task-result branch (deploy/deploy! (instance) s branch (instance-env) {:fence (fn [] (tasks/fence id))})))))
+  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running. With
+  `(:discard? opts)`, the deploy writes the head over the drift (`deploy/deploy!` with `:discard-drift?`)."
+  ([id branch]
+   (deploy-task! id branch {}))
+  ([id branch {:keys [discard?]}]
+   (repository/do-with-store
+    (fn [s]
+      (deploy-task-result branch (deploy/deploy! (instance) s branch (instance-env)
+                                                 {:fence          (fn [] (tasks/fence id))
+                                                  :discard-drift? (boolean discard?)}))))))
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
@@ -332,6 +339,18 @@
   (let [into (or into (configured-branch))]
     (submit! "merge-branch" user-id #(merge-branch-task! % into from))))
 
+(defn- role-switch-drift
+  "The drift that a deploy would stop on after a switch of this instance to the consumption role on `connection`
+  (`{:url :branch}`), read through `store` (`deploy/instance-drift`)."
+  [store {:keys [url branch]}]
+  (deploy/instance-drift (app-db/app-db-instance app-db/kind-stores scope/roots url) (fn [f] (f store)) branch {}))
+
+(defn save-settings!
+  "`repository/save-settings!` of `body` for the user `user-id`, with the role switch rule: a switch of this creation
+  instance to the consumption role is refused with 400 while the instance has changes that a deploy would stop on."
+  [body user-id]
+  (repository/save-settings! body user-id {:drift role-switch-drift}))
+
 (defn- check-deploy-start!
   "Throws 400 unless library branching is on and configured, and the instance is a consumption instance."
   []
@@ -344,12 +363,15 @@
 
 (defn start-deploy!
   "Starts a deploy task of the configured branch, for the user `user-id` (nil: the system), and returns the task. The
-  apply of the deploy commits only while its task is running. Throws ex-info with `:status-code` 400 when library
-  branching is off or not configured, on a creation instance, with no branch, and while a task runs."
-  [user-id]
-  (check-deploy-start!)
-  (let [branch (configured-branch)]
-    (submit! "deploy" user-id #(deploy-task! % branch))))
+  apply of the deploy commits only while its task is running. With `(:discard? opts)`, the deploy discards the drift:
+  it writes the head over the changes on the instance that no commit holds. Throws ex-info with `:status-code` 400
+  when library branching is off or not configured, on a creation instance, with no branch, and while a task runs."
+  ([user-id]
+   (start-deploy! user-id {}))
+  ([user-id opts]
+   (check-deploy-start!)
+   (let [branch (configured-branch)]
+     (submit! "deploy" user-id #(deploy-task! % branch (select-keys opts [:discard?]))))))
 
 (defn- deploys?
   "True iff this instance deploys its branch: library branching is on and configured, the instance is a consumption
@@ -367,18 +389,49 @@
   (when (deploys?)
     (start-deploy! user-id)))
 
-(defn check-boot!
-  "Throws when this consumption instance must not start: not implemented yet."
+(defn- overwrite-allowed?
+  "True iff `MB_REMOTE_SYNC_ALLOW` holds overwrite-unpublished: the admin's choice, before the boot, to discard drift."
   []
-  nil)
+  (boolean (some-> (setting/get :remote-sync-allow) (str/includes? "overwrite-unpublished"))))
+
+(defn- boot-drift
+  "The drift of this instance (`deploy/instance-drift`) against its base, or nil when it has no base or the drift cannot
+  be read; a failure is logged."
+  [inst branch]
+  (when (instance/base inst)
+    (try
+      (deploy/instance-drift inst repository/do-with-store branch {})
+      (catch Exception e
+        (log/warn e "Library branching could not read the drift of this instance at boot; the deploy checks it.")
+        nil))))
+
+(defn check-boot!
+  "Throws ex-info when this consumption instance must not start: it has a repository and no branch, or it has drift
+  (changes on the instance that its base commit does not hold), unless `MB_REMOTE_SYNC_ALLOW` holds
+  overwrite-unpublished. Returns nil else, also when the drift cannot be read."
+  []
+  (when (and (settings/library-branching-enabled) (repository/configured?) (not (repository/read-write?)))
+    (let [branch (repository/branch)]
+      (when-not branch
+        (throw (ex-info (tru "Library branching is enabled with read-only type, but no branch is set.") {})))
+      (when-not (overwrite-allowed?)
+        (when-let [ids (seq (boot-drift (instance) branch))]
+          (throw (ex-info (tru "Library branching is enabled with read-only type, but there are unpublished changes: {0} that no commit holds. To discard them, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`."
+                               (n-of (count ids) "changed item"))
+                          {:ids (vec ids)})))))))
 
 (defn start-initial-deploy!
-  "Starts a deploy task for the system, and returns it, iff this instance deploys its branch and has no base yet: the
-  first deploy of a consumption instance at boot. Else, and when the start fails, nil; a failure is logged."
+  "Starts a deploy task for the system at boot, and returns it, iff this instance deploys its branch and has no base
+  yet (the first deploy), or iff `MB_REMOTE_SYNC_ALLOW` holds overwrite-unpublished and the instance has no base or
+  has drift: then the deploy discards the drift. Else, and when the start fails, nil; a failure is logged."
   []
-  (when (and (deploys?) (nil? (instance/base (instance))))
-    (try
-      (start-deploy! nil)
-      (catch Exception e
-        (log/warn e "Library branching could not start the first deploy.")
-        nil))))
+  (when (deploys?)
+    (let [inst      (instance)
+          no-base?  (nil? (instance/base inst))
+          discard?  (and (overwrite-allowed?) (or no-base? (seq (boot-drift inst (repository/branch)))))]
+      (when (or no-base? discard?)
+        (try
+          (start-deploy! nil {:discard? (boolean discard?)})
+          (catch Exception e
+            (log/warn e "Library branching could not start the first deploy.")
+            nil))))))

@@ -160,10 +160,10 @@
          (is (= 0 @calls)))
        (testing "a change since the base is drift, in the order of the identities"
          (pltu/save! inst #(-> % (described ptu/snippet-id "Drift") (ptu/renamed ptu/orders-id "Script")))
-         (is (= [ptu/orders-id ptu/snippet-id] (deploy/instance-drift inst (counting-with-store s calls) ptu/branch {}))))
+         (is (= [ptu/snippet-id ptu/orders-id] (deploy/instance-drift inst (counting-with-store s calls) ptu/branch {}))))
        (testing "a new head does not change the drift, which is against the base"
          (pltu/commit-snapshot! repo ptu/branch [c1] (described ptu/sample ptu/snippet-id "Drift"))
-         (is (= [ptu/orders-id ptu/snippet-id] (deploy/instance-drift inst (counting-with-store s calls) ptu/branch {}))))
+         (is (= [ptu/snippet-id ptu/orders-id] (deploy/instance-drift inst (counting-with-store s calls) ptu/branch {}))))
        (testing "with no base, the drift is against the head of the branch"
          (let [fresh (pltu/memory-instance (atom {:snapshot (-> ptu/sample
                                                                 (described ptu/snippet-id "Drift")
