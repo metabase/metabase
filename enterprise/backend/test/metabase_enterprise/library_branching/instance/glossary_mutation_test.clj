@@ -7,9 +7,12 @@
    [metabase-enterprise.library-branching.instance.glossary-test :as glossary-test]
    [metabase-enterprise.library-branching.instance.kinds.glossary :as kinds.glossary]
    [metabase-enterprise.library-branching.instance.lock-test :as lock-test]
-   [metabase-enterprise.library-branching.mutation.core :as mut]))
+   [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the glossary kind store."

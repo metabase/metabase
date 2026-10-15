@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.instance.values-source :as values-source]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase.collections.core :as collections]
    [metabase.models.serialization :as serdes]
@@ -98,9 +99,12 @@
   (when-let [row (library-branching.db/lock-collection id)]
     (tree/check-in-tree! id (tree/collection-in-tree? row))
     (when-not (:archived row)
-      (request/as-admin
-        (collections/archive-or-unarchive-collection! (library-branching.db/select-collection (:id row))
-                                                      {:archived true})))
+      (values-source/do-keeping-outside-values-sources
+       (library-branching.db/values-source-users-in-subtree (:id row) (tree/children-location row))
+       (fn []
+         (request/as-admin
+           (collections/archive-or-unarchive-collection! (library-branching.db/select-collection (:id row))
+                                                         {:archived true})))))
     nil))
 
 (def kind-store

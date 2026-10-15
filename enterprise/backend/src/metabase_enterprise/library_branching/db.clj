@@ -392,6 +392,58 @@
              :join            [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.dashboard_id :d.id]]
              :where           [:and [:= :dc.card_id [:auto/param card-id]] [:= :d.archived false]]}))
 
+(defn- values-source-users
+  "The ParameterCard rows that `card-condition` (HoneySQL on `pc.card_id`) selects, each with `:user_collection_id`:
+  the collection of the card or dashboard whose parameter takes its values from the card."
+  [card-condition]
+  {:select    [:pc.id :pc.card_id :pc.parameterized_object_type :pc.parameterized_object_id :pc.parameter_id
+               :pc.created_at :pc.updated_at
+               [[:coalesce :c.collection_id :d.collection_id] :user_collection_id]]
+   :from      [[(t2/table-name :model/ParameterCard) :pc]]
+   :left-join [[(t2/table-name :model/Card) :c]
+               [:and [:= :pc.parameterized_object_type "card"] [:= :c.id :pc.parameterized_object_id]]
+               [(t2/table-name :model/Dashboard) :d]
+               [:and [:= :pc.parameterized_object_type "dashboard"] [:= :d.id :pc.parameterized_object_id]]]
+   :where     card-condition
+   :order-by  [:pc.id]})
+
+(mu/defn values-source-users-of-card :- [:sequential ::row]
+  "The ParameterCard rows of the parameters that take their values from the card `card-id`, each with
+  `:user_collection_id`, the collection of the card or dashboard of the parameter."
+  [card-id :- pos-int?]
+  (t2/query (values-source-users [:= :pc.card_id [:auto/param card-id]])))
+
+(mu/defn values-source-users-in-subtree :- [:sequential ::row]
+  "The ParameterCard rows of the parameters that take their values from a card in the collection `collection-id` or
+  in a collection whose location starts with `location`, each with `:user_collection_id`, the collection of the card
+  or dashboard of the parameter."
+  [collection-id :- pos-int?
+   location      :- :string]
+  (let [collections ^:allow-subquery {:select [:id]
+                                      :from   [(t2/table-name :model/Collection)]
+                                      :where  [:or
+                                               [:= :id [:auto/param collection-id]]
+                                               [:like :location (str location "%")]]}
+        cards       ^:allow-subquery {:select [:id]
+                                      :from   [(t2/table-name :model/Card)]
+                                      :where  [:in :collection_id collections]}]
+    (t2/query (values-source-users [:in :pc.card_id cards]))))
+
+(mu/defn delete-parameter-cards! :- :int
+  "Deletes the ParameterCard rows of `ids`, with no model hook; returns the number of rows."
+  [ids :- ::ids]
+  (if (empty? ids)
+    0
+    (first (t2/query {:delete-from (t2/table-name :model/ParameterCard)
+                      :where       [:in :id ids]}))))
+
+(mu/defn insert-parameter-cards! :- :any
+  "Inserts the ParameterCard rows `rows`, ids included, with no model hook."
+  [rows :- [:sequential {:max 1000} ::row]]
+  (when (seq rows)
+    (t2/query {:insert-into (t2/table-name :model/ParameterCard)
+               :values      rows})))
+
 (mu/defn row-id-by-entity-id :- [:maybe pos-int?]
   "The id of the row of the table of `model` whose entity id is `entity-id`, or nil."
   [model     :- :keyword

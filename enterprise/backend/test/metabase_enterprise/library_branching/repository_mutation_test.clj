@@ -15,9 +15,12 @@
    [metabase-enterprise.library-branching.task-cleanup :as task-cleanup]
    [metabase-enterprise.library-branching.task-cleanup-test :as task-cleanup-test]
    [metabase-enterprise.library-branching.tasks :as tasks]
-   [metabase-enterprise.library-branching.tasks-test :as tasks-test]))
+   [metabase-enterprise.library-branching.tasks-test :as tasks-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule."
