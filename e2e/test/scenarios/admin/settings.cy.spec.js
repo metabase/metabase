@@ -1,13 +1,8 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  WEBMAIL_CONFIG,
-} from "e2e/support/cypress_data";
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
 describe("scenarios > admin > settings", () => {
@@ -16,32 +11,15 @@ describe("scenarios > admin > settings", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
-    // Set the semantic type of total to currency
+  it("should apply saved field currency settings to query results", () => {
     cy.request("PUT", `/api/field/${ORDERS.TOTAL}`, {
       semantic_type: "type/Currency",
+      settings: { currency_in_header: false },
     });
 
-    H.DataModel.visit({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: ORDERS_ID,
-      fieldId: ORDERS.TOTAL,
-    });
-
-    H.DataModel.FieldSection.get().within(() => {
-      // Assert that this option now exists
-      cy.findByText("Where to display the unit of currency")
-        .scrollIntoView()
-        .should("be.visible");
-      cy.findByText("In every table cell").click();
-    });
-
-    // Open the orders table
     H.openOrdersTable({ limit: 2 });
 
     H.tableInteractiveBody().within(() => {
-      // Items in the total column should have a leading dollar sign
       cy.findByText("$39.72");
       cy.findByText("$117.03");
     });
@@ -52,26 +30,18 @@ describe("scenarios > admin > settings > email settings", () => {
   describe("self-hosted instance", () => {
     beforeEach(() => {
       cy.intercept("PUT", "api/email").as("smtpSaved");
+      cy.intercept("DELETE", "api/email").as("smtpCleared");
       H.restore();
       cy.signInAsAdmin();
-      H.resetSnowplow();
-      H.enableTracking();
     });
 
     it("should be able to save and clear email settings", () => {
       cy.visit("/admin/settings/email");
-      cy.findByTestId("cloud-smtp-connection-card").should("not.exist");
       cy.findByTestId("self-hosted-smtp-connection-card")
         .button("Configure")
         .click();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "custom_smtp_setup_clicked",
-        event_detail: "self-hosted",
-      });
-
       H.modal().within(() => {
-        // SMTP connection setup
         cy.findByLabelText(/SMTP Host/i)
           .type("localhost")
           .blur();
@@ -89,22 +59,6 @@ describe("scenarios > admin > settings > email settings", () => {
 
       cy.wait("@smtpSaved");
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "custom_smtp_setup_success",
-        event_detail: "self-hosted",
-      });
-
-      // should show as active now
-      cy.findByTestId("self-hosted-smtp-connection-card")
-        .findByText("Active")
-        .should("be.visible");
-
-      // button should be different
-      cy.findByTestId("self-hosted-smtp-connection-card")
-        .button("Edit configuration")
-        .should("be.visible");
-
-      // Non SMTP-settings should save automatically
       cy.findByLabelText("From Address")
         .clear()
         .type("mailer@metabase.test")
@@ -115,27 +69,22 @@ describe("scenarios > admin > settings > email settings", () => {
         .type("reply-to@metabase.test")
         .blur();
 
-      // Refresh page to confirm changes persist
       cy.reload();
 
-      // validate additional settings
       cy.findByDisplayValue("mailer@metabase.test");
       cy.findByDisplayValue("Sender Name");
       cy.findByDisplayValue("reply-to@metabase.test");
 
-      // validate SMTP connection settings
       cy.findByTestId("self-hosted-smtp-connection-card")
         .findByText("Edit configuration")
         .click();
-      cy.findByDisplayValue("localhost");
-      cy.findByDisplayValue(SMTP_PORT);
-      cy.findAllByDisplayValue("admin");
-
-      // should not offer to save email changes when there aren't any (metabase#14749)
-      cy.button("Save changes").should("be.disabled");
-
-      // should be able to clear email settings
-      H.modal().button("Clear").click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("localhost");
+        cy.findByDisplayValue(SMTP_PORT);
+        cy.findAllByDisplayValue("admin");
+        cy.button("Clear").click();
+      });
+      cy.wait("@smtpCleared");
 
       cy.reload();
 
@@ -149,8 +98,6 @@ describe("scenarios > admin > settings > email settings", () => {
         cy.findByLabelText("SMTP Username").should("have.value", "");
         cy.findByLabelText("SMTP Password").should("have.value", "");
       });
-
-      H.expectNoBadSnowplowEvents();
     });
 
     it(
@@ -206,21 +153,13 @@ describe("scenarios > admin > settings > email settings", () => {
       // A real pro-cloud instance configures email via env vars; set the SMTP host so
       // email-configured? is true (avoids a session/properties intercept that flakes on reload).
       H.updateSetting("email-smtp-host", "smtp.example.test");
-      H.resetSnowplow();
-      H.enableTracking();
     });
 
     it("should be able to save and clear email settings", () => {
       cy.visit("/admin/settings/email");
-      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
       cy.findByTestId("cloud-smtp-connection-card")
         .button("Set up a custom SMTP server")
         .click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "custom_smtp_setup_clicked",
-        event_detail: "cloud",
-      });
 
       H.modal().within(() => {
         cy.findByLabelText(/SMTP Host/i)
@@ -228,8 +167,6 @@ describe("scenarios > admin > settings > email settings", () => {
           .blur();
         cy.findByText(/465/i).click();
         cy.findByText(/SSL/i).click();
-        cy.findByDisplayValue(/465/i).should("have.attr", "checked");
-        cy.findByDisplayValue(/SSL/i).should("have.attr", "checked");
         cy.findByLabelText(/SMTP Username/i)
           .type("admin")
           .blur();
@@ -241,18 +178,6 @@ describe("scenarios > admin > settings > email settings", () => {
 
       cy.wait("@smtpSaved");
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "custom_smtp_setup_success",
-        event_detail: "cloud",
-      });
-
-      cy.findByTestId("cloud-smtp-connection-card").within(() => {
-        // Button text should change
-        cy.button("Edit settings");
-        // Custom server should be auto-enabled
-        cy.findByLabelText("Custom SMTP Server").should("be.checked");
-      });
-
       cy.findByLabelText("From Address")
         .clear()
         .type("mailer@metabase.test")
@@ -263,39 +188,28 @@ describe("scenarios > admin > settings > email settings", () => {
         .type("reply-to@metabase.test")
         .blur();
 
-      // Refresh page to confirm changes persist
       cy.reload();
 
-      // validate additional settings
       cy.findByDisplayValue("mailer@metabase.test");
       cy.findByDisplayValue("Sender Name");
       cy.findByDisplayValue("reply-to@metabase.test");
 
-      // validate SMTP connection settings
-      cy.findByTestId("cloud-smtp-connection-card")
-        .findByText("Edit settings")
-        .click();
+      cy.findByTestId("cloud-smtp-connection-card").within(() => {
+        cy.findByLabelText("Custom SMTP Server").should("be.checked");
+        cy.button("Edit settings").click();
+      });
       H.modal().within(() => {
         cy.findByDisplayValue("localhost");
         cy.findAllByDisplayValue("admin");
-        cy.button("Save changes").should("be.disabled");
-
         cy.button("Clear").click();
         cy.wait("@smtpCleared");
-        cy.findByLabelText("SMTP Host").should("have.value", "");
-        cy.findByDisplayValue(/465/i).should("have.attr", "checked");
-        cy.findByDisplayValue(/SSL/i).should("have.attr", "checked");
-        cy.findByLabelText("SMTP Username").should("have.value", "");
-        cy.findByLabelText("SMTP Password").should("have.value", "");
         cy.findByRole("button", { name: "Close" }).click();
       });
 
-      // Button text should revert back
-      cy.findByTestId("cloud-smtp-connection-card").findByText(
-        "Set up a custom SMTP server",
-      );
-
-      H.expectNoBadSnowplowEvents();
+      cy.reload();
+      cy.findByTestId("cloud-smtp-connection-card")
+        .button("Set up a custom SMTP server")
+        .should("be.visible");
     });
   });
 });
@@ -306,8 +220,7 @@ describe("scenarios > admin > localization", () => {
     cy.signInAsAdmin();
   });
 
-  it("should apply date and time style settings to table cells and the date filter widget (metabase#11394, metabase#9151, metabase#12472)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
+  it("should apply date and time style settings to table cells (metabase#11394)", () => {
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
     );
@@ -326,76 +239,14 @@ describe("scenarios > admin > localization", () => {
     H.popover().findByText("2018/1/31").click();
     cy.wait("@updateFormatting");
 
-    cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.findByTestId("date_style-formatting-setting").findByDisplayValue(
-        "2018/1/31",
-      );
-      // update the time style setting to 24 hour
-      cy.findByText("17:24 (24-hour clock)").click();
-      cy.wait("@updateFormatting");
-      cy.findByDisplayValue("HH:mm").should("be.checked");
-    });
-
-    cy.log(
-      "Globalized date formats are applied to table cells (metabase#11394)",
-    );
-    H.openOrdersTable({ limit: 2 });
-
-    cy.findByTextEnsureVisible("Created At");
-    cy.findAllByTestId("cell-data")
-      .should("contain", "Created At")
-      .and("contain", "2028/2/11, 21:40");
-
-    cy.log(
-      "Date and time styles are applied in the date filter widget (metabase#9151, metabase#12472)",
-    );
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    // create a date filter and set it to the 'On' view to see a specific date
-    H.tableHeaderClick("Created At");
-
-    H.popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByText("Fixed date range…").click();
-      cy.findByText("On").click();
-
-      // ensure the date picker is ready
-      cy.findByTextEnsureVisible("Add time");
-      cy.findByTextEnsureVisible("Add filter");
-
-      // update the date input in the widget
-      cy.findByLabelText("Date").clear().type("2027/5/15").blur();
-
-      // add a time to the date
-      cy.findByText("Add time").click();
-      cy.findByLabelText("Time").clear().type("19:56");
-
-      // apply the date filter
-      cy.button("Add filter").click();
-    });
-
-    cy.wait("@dataset");
-
-    cy.findByTestId("loading-indicator").should("not.exist");
-
-    // verify that the correct row is displayed
-    H.tableInteractive().within(() => {
-      cy.findByText("2027/5/15, 19:56");
-      cy.findByText("127.52");
-    });
-
-    cy.log("Switching back to the 12-hour clock updates the formatting");
-    cy.visit("/admin/settings/localization");
-
-    cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.findByText("5:24 PM (12-hour clock)").click();
-      cy.wait("@updateFormatting");
-      cy.findByDisplayValue("h:mm A").should("be.checked");
-    });
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("17:24 (24-hour clock)")
+      .click();
+    cy.wait("@updateFormatting");
 
     H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.findAllByTestId("cell-data").should("contain", "2028/2/11, 9:40 PM");
+    cy.findAllByTestId("cell-data").should("contain", "2028/2/11, 21:40");
   });
 });

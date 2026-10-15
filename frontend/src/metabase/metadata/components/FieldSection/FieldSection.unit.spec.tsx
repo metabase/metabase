@@ -19,6 +19,7 @@ import {
 import {
   createOrdersQuantityField,
   createOrdersTable,
+  createOrdersTotalField,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -31,6 +32,14 @@ const QUANTITY_FIELD = createOrdersQuantityField();
 const ORDERS_TABLE = createOrdersTable({ fields: [QUANTITY_FIELD] });
 
 const SAMPLE_DB = createSampleDatabase({ tables: [ORDERS_TABLE] });
+
+const CURRENCY_FIELD = createOrdersTotalField({
+  semantic_type: "type/Currency",
+});
+
+const CURRENCY_TABLE = createOrdersTable({ fields: [CURRENCY_FIELD] });
+
+const CURRENCY_DB = createSampleDatabase({ tables: [CURRENCY_TABLE] });
 
 const JSON_FIELD = createMockField({
   id: 100,
@@ -232,6 +241,41 @@ describe("FieldSection", () => {
       await userEvent.tab();
 
       await assertErrorToast("Failed to update formatting of Quantity");
+    });
+  });
+
+  describe("formatting", () => {
+    it("shows where to display the unit of currency for a currency field", () => {
+      setup({
+        field: CURRENCY_FIELD,
+        table: CURRENCY_TABLE,
+        database: CURRENCY_DB,
+      });
+
+      // hidden settings widgets stay in the DOM with the `hidden` attribute
+      expect(
+        screen.getByText("Where to display the unit of currency"),
+      ).toBeVisible();
+      expect(screen.getByLabelText("In the column heading")).toBeChecked();
+      expect(screen.getByLabelText("In every table cell")).not.toBeChecked();
+    });
+
+    it("saves the currency unit in every table cell", async () => {
+      setup({
+        field: CURRENCY_FIELD,
+        table: CURRENCY_TABLE,
+        database: CURRENCY_DB,
+      });
+
+      await userEvent.click(screen.getByLabelText("In every table cell"));
+
+      const putRoute = `field-${getRawTableFieldId(CURRENCY_FIELD)}-put`;
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(putRoute)).toHaveLength(1);
+      });
+      const [call] = fetchMock.callHistory.calls(putRoute);
+      const body: unknown = JSON.parse(String(call.options.body));
+      expect(body).toMatchObject({ settings: { currency_in_header: false } });
     });
   });
 });

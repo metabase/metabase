@@ -71,6 +71,29 @@ describe("SpecificDatePicker", () => {
     });
   });
 
+  it('should be able to set "on" filter with a year-first typed date and a time (metabase#9151, metabase#12472)', async () => {
+    const { onChange } = setup();
+
+    await userEvent.click(screen.getByText("On"));
+    const dateInput = screen.getByLabelText("Date");
+    await userEvent.clear(dateInput);
+    await userEvent.type(dateInput, "2027/5/15");
+    await userEvent.tab();
+    await userEvent.click(screen.getByText("Add time"));
+    const timeInput = screen.getByLabelText("Time");
+    await userEvent.clear(timeInput);
+    await userEvent.type(timeInput, "19:56");
+    await userEvent.click(screen.getByText("Apply"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      type: "specific",
+      operator: "=",
+      values: [new Date(2027, 4, 15, 19, 56)],
+      hasTime: true,
+    });
+  });
+
   it('should be able to set "before" filter', async () => {
     const { onChange } = setup();
 
