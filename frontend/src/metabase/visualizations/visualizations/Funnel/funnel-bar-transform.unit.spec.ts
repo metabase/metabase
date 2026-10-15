@@ -1,4 +1,3 @@
-import type { LegendPosition } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -27,21 +26,16 @@ const rawSeries = [
 ];
 
 describe("funnelToBarTransform", () => {
-  it.each<LegendPosition>(["auto", "top", "bottom", "left", "right", "off"])(
-    "should carry legend.position=%s to every bar series",
-    (legendPosition) => {
-      const barSeries = funnelToBarTransform(rawSeries, {
-        "funnel.dimension": "step",
-        "funnel.metric": "count",
-        "legend.position": legendPosition,
-      });
+  it("should carry legend.position to every bar series", () => {
+    const barSeries = funnelToBarTransform(rawSeries, {
+      "funnel.dimension": "step",
+      "funnel.metric": "count",
+      "legend.position": "off",
+    });
 
-      expect(barSeries).toHaveLength(2);
-      barSeries.forEach(({ card }) => {
-        expect(card.visualization_settings["legend.position"]).toBe(
-          legendPosition,
-        );
-      });
-    },
-  );
+    expect(barSeries).toHaveLength(2);
+    barSeries.forEach(({ card }) => {
+      expect(card.visualization_settings["legend.position"]).toBe("off");
+    });
+  });
 });

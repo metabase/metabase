@@ -102,25 +102,13 @@ describe("ChartWithLegend", () => {
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Foo 10%");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Bar 90%");
   });
-});
 
-describe("ChartWithLegend with an explicit position", () => {
   it("should render no legend when the position is off", () => {
     setup({ legendPosition: "off" });
 
     expect(screen.getByText("Chart stub")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
   });
-
-  it.each<LegendPosition>(["top", "bottom", "left", "right"])(
-    "should render no %s legend below the width where the automatic layout drops it",
-    (legendPosition) => {
-      setup({ legendPosition, width: HIDE_HORIZONTAL_LEGEND_THRESHOLD - 1 });
-
-      expect(screen.getByText("Chart stub")).toBeInTheDocument();
-      expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
-    },
-  );
 });
 
 describe("getChartLayout", () => {
@@ -214,17 +202,9 @@ describe("getChartLayout", () => {
     expect(layout).toMatchObject({ type: "small", hasDimensions: false });
   });
 
-  it("should use the small layout without a legend when the position is off", () => {
-    expect(getChartLayout({ ...defaultInput, position: "off" })).toMatchObject({
-      type: "small",
-      LegendComponent: undefined,
-      hasDimensions: true,
-    });
-  });
-
-  it.each([
-    { position: "left" as const, isLegendBeforeChart: true },
-    { position: "right" as const, isLegendBeforeChart: false },
+  it.each<{ position: LegendPosition; isLegendBeforeChart: boolean }>([
+    { position: "left", isLegendBeforeChart: true },
+    { position: "right", isLegendBeforeChart: false },
   ])(
     "should place a $position legend beside the chart even when the grid is tall",
     ({ position, isLegendBeforeChart }) => {
@@ -249,9 +229,9 @@ describe("getChartLayout", () => {
     },
   );
 
-  it.each([
-    { position: "top" as const, isLegendBeforeChart: true },
-    { position: "bottom" as const, isLegendBeforeChart: false },
+  it.each<{ position: LegendPosition; isLegendBeforeChart: boolean }>([
+    { position: "top", isLegendBeforeChart: true },
+    { position: "bottom", isLegendBeforeChart: false },
   ])(
     "should stack a $position legend with the chart even when the area is wide",
     ({ position, isLegendBeforeChart }) => {

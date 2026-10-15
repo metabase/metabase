@@ -18,7 +18,7 @@ import type { LegendPosition } from "metabase-types/api";
 import styles from "./ChartWithLegend.module.css";
 import { LegendHorizontal } from "./LegendHorizontal";
 import { LegendVertical } from "./LegendVertical";
-import { LEGEND_PLACEMENTS } from "./legend/placement";
+import { LEGEND_PLACEMENTS, type LegendPlacement } from "./legend/placement";
 import type { LegendHover, LegendTitle } from "./types";
 
 const GRID_ASPECT_RATIO = 4 / 3;
@@ -27,8 +27,6 @@ const PADDING = 14;
 const DEFAULT_GRID_SIZE = 100;
 export const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
 export const HIDE_SECONDARY_INFO_THRESHOLD = 260;
-const AUTO_SIDE_PLACEMENT = LEGEND_PLACEMENTS.left;
-const AUTO_STACKED_PLACEMENT = LEGEND_PLACEMENTS.bottom;
 
 type GridSize = {
   width: number;
@@ -237,28 +235,26 @@ export function getChartLayout({
     legendTitles,
   };
 
-  if (position === "off") {
+  const autoPlacement = getAutoPlacement(area, gridSize);
+  if (position === "off" || autoPlacement == null) {
     return getSmallLayout(area);
   }
-  const autoLayout = getAutoLayout(area, gridSize);
-  if (position === "auto" || autoLayout.type === "small") {
-    return autoLayout;
-  }
 
-  const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[position];
+  const isAuto = position === "auto";
+  const { orientation, isBeforeChart } =
+    LEGEND_PLACEMENTS[isAuto ? autoPlacement : position];
   return orientation === "vertical"
-    ? getSideLayout(area, isBeforeChart)
+    ? getSideLayout(area, { isLegendBeforeChart: isBeforeChart })
     : getStackedLayout(area, {
         isLegendBeforeChart: isBeforeChart,
-        isLegendSingleRow: true,
+        isLegendSingleRow: !isAuto,
       });
 }
 
-function getAutoLayout(
-  area: LayoutArea,
+function getAutoPlacement(
+  { adjustedWidth, adjustedHeight }: LayoutArea,
   gridSize: GridSize | undefined,
-): ChartLayout {
-  const { adjustedWidth, adjustedHeight } = area;
+): LegendPlacement | null {
   const calculatedGridSize = gridSize || {
     width: adjustedWidth / DEFAULT_GRID_SIZE,
     height: adjustedHeight / DEFAULT_GRID_SIZE,
@@ -268,7 +264,7 @@ function getAutoLayout(
     calculatedGridSize.width > calculatedGridSize.height / GRID_ASPECT_RATIO;
 
   if (isHorizontal && adjustedWidth > HIDE_HORIZONTAL_LEGEND_THRESHOLD) {
-    return getSideLayout(area, AUTO_SIDE_PLACEMENT.isBeforeChart);
+    return "left";
   }
 
   if (
@@ -276,13 +272,10 @@ function getAutoLayout(
     calculatedGridSize.height > 3 &&
     calculatedGridSize.width > 2
   ) {
-    return getStackedLayout(area, {
-      isLegendBeforeChart: AUTO_STACKED_PLACEMENT.isBeforeChart,
-      isLegendSingleRow: false,
-    });
+    return "bottom";
   }
 
-  return getSmallLayout(area);
+  return null;
 }
 
 function getSideLayout(
@@ -293,7 +286,7 @@ function getSideLayout(
     aspectRatio,
     legendTitles,
   }: LayoutArea,
-  isLegendBeforeChart: boolean,
+  { isLegendBeforeChart }: Pick<ChartLayout, "isLegendBeforeChart">,
 ): ChartLayout {
   const processedLegendTitles =
     adjustedWidth < HIDE_SECONDARY_INFO_THRESHOLD

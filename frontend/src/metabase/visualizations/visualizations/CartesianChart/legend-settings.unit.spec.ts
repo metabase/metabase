@@ -39,7 +39,7 @@ const getDisplayWidgetIds = (display: CardDisplayType) => {
     ),
   ];
   const { series } = getVisualizationTransformed(rawSeries);
-  return getSettingsWidgetsForSeries(series, jest.fn(), true)
+  return getSettingsWidgetsForSeries(series, () => {}, true)
     .filter((widget) => !widget.hidden && widget.section === "Display")
     .map((widget) => widget.id);
 };
@@ -51,7 +51,7 @@ describe("legend.position in the dashboard settings sidebar", () => {
       const ids = getDisplayWidgetIds(display);
 
       expect(ids).toContain("series_settings");
-      expect(ids.indexOf("legend.position")).toBeGreaterThanOrEqual(0);
+      expect(ids).toContain("legend.position");
       expect(ids.indexOf("legend.position")).toBeLessThan(
         ids.indexOf("series_settings"),
       );

@@ -47,6 +47,11 @@ const setup = ({
   );
 };
 
+const isBefore = (element: Element, other: Element) =>
+  Boolean(
+    element.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+
 describe("LegendLayout", () => {
   it("should render the chart without a legend on cards smaller than the minimum size", () => {
     setup({ names: ["a", "b"], width: 400, height: 150 });
@@ -61,10 +66,7 @@ describe("LegendLayout", () => {
     const legend = screen.getByTestId("legend-horizontal");
     expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
     expect(screen.queryByTestId("legend-vertical")).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId("chart").compareDocumentPosition(legend) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(isBefore(screen.getByTestId("chart"), legend)).toBe(true);
   });
 
   it("should render a vertical legend next to the chart when the items overflow the row", () => {
@@ -105,22 +107,12 @@ describe("LegendLayout", () => {
     });
 
     expect(
-      screen
-        .getByText("action")
-        .compareDocumentPosition(screen.getByTestId("chart")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+      isBefore(screen.getByText("action"), screen.getByTestId("chart")),
+    ).toBe(true);
   });
 });
 
-const isBefore = (element: Element, other: Element) =>
-  Boolean(
-    element.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING,
-  );
-
 describe("LegendLayout with an explicit position", () => {
-  const SMALL_CARD = { width: 400, height: 150 };
-
   it("should render no legend when the position is off", () => {
     setup({ names: ["first", "second"], legendPosition: "off" });
 
@@ -128,51 +120,33 @@ describe("LegendLayout with an explicit position", () => {
     expect(screen.queryByLabelText("Legend")).not.toBeInTheDocument();
   });
 
-  it("should render no legend on a card too small for the automatic layout", () => {
-    setup({ names: ["first", "second"], legendPosition: "top", ...SMALL_CARD });
-
-    expect(screen.getByTestId("chart")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Legend")).not.toBeInTheDocument();
-  });
-
-  it("should render a top legend above the chart", () => {
-    setup({ names: ["first", "second"], legendPosition: "top" });
-
-    const legend = screen.getByTestId("legend-horizontal");
-    expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
-    expect(isBefore(legend, screen.getByTestId("chart"))).toBe(true);
-  });
-
-  it("should render a bottom legend below the chart", () => {
-    setup({
-      names: ["first", "second"],
+  it.each<{
+    legendPosition: LegendPosition;
+    testId: string;
+    isLegendFirst: boolean;
+  }>([
+    { legendPosition: "top", testId: "legend-horizontal", isLegendFirst: true },
+    {
       legendPosition: "bottom",
-    });
-
-    const legend = screen.getByTestId("legend-horizontal");
-    expect(isBefore(screen.getByTestId("chart"), legend)).toBe(true);
-  });
-
-  it("should render a left legend before the chart", () => {
-    setup({
-      names: ["first", "second"],
-      legendPosition: "left",
-    });
-
-    const legend = screen.getByTestId("legend-vertical");
-    expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
-    expect(isBefore(legend, screen.getByTestId("chart"))).toBe(true);
-  });
-
-  it("should render a right legend after the chart", () => {
-    setup({
-      names: ["first", "second"],
+      testId: "legend-horizontal",
+      isLegendFirst: false,
+    },
+    { legendPosition: "left", testId: "legend-vertical", isLegendFirst: true },
+    {
       legendPosition: "right",
-    });
+      testId: "legend-vertical",
+      isLegendFirst: false,
+    },
+  ])(
+    "should render a $legendPosition legend on that side of the chart",
+    ({ legendPosition, testId, isLegendFirst }) => {
+      setup({ names: ["first", "second"], legendPosition });
 
-    const legend = screen.getByTestId("legend-vertical");
-    expect(isBefore(screen.getByTestId("chart"), legend)).toBe(true);
-  });
+      const legend = screen.getByTestId(testId);
+      expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
+      expect(isBefore(legend, screen.getByTestId("chart"))).toBe(isLegendFirst);
+    },
+  );
 
   it("should keep the action buttons above a top legend", () => {
     setup({

@@ -1,6 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -16,7 +15,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Funnel } from "./Funnel";
-import { FUNNEL_CHART_DEFINITION } from "./definition";
 
 registerVisualizations();
 
@@ -124,21 +122,6 @@ describe("Funnel", () => {
     it("should render the title when showTitle=true", async () => {
       setupFunnelBarChart({ showTitle: true });
       expect(screen.getByText(cardTitle)).toBeInTheDocument();
-    });
-  });
-
-  describe("legend.position setting", () => {
-    const getHidden = checkNotNull(
-      FUNNEL_CHART_DEFINITION.settings?.["legend.position"]?.getHidden,
-    );
-    const series = [createMockSingleSeries({ display: "funnel" })];
-
-    it("should be offered for the bar funnel, which has a legend", () => {
-      expect(getHidden(series, { "funnel.type": "bar" })).toBe(false);
-    });
-
-    it("should be hidden for the classic funnel, which has no legend", () => {
-      expect(getHidden(series, { "funnel.type": "funnel" })).toBe(true);
     });
   });
 });

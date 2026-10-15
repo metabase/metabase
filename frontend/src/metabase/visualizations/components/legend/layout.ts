@@ -5,7 +5,7 @@ import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
-import { LEGEND_PLACEMENTS } from "./placement";
+import { LEGEND_PLACEMENTS, type LegendPlacement } from "./placement";
 
 export type LegendSize = "sm" | "lg" | "md";
 
@@ -102,8 +102,6 @@ export const MIN_LEGEND_CARD_HEIGHT = 200;
 const MAX_VERTICAL_WIDTH_RATIO = 0.25;
 const MAX_TRUNCATED_ITEMS_RATIO = 0.5;
 export const MIN_VISIBLE_COUNT = 1;
-const AUTO_ROW_PLACEMENT = LEGEND_PLACEMENTS.bottom;
-const AUTO_COLUMN_PLACEMENT = LEGEND_PLACEMENTS.right;
 
 export type LegendLayoutResult =
   | { type: "hidden" }
@@ -151,72 +149,38 @@ export function getLegendLayout(
   options: GetLegendLayoutOptions,
 ): LegendLayoutResult {
   const { items, position, alwaysVisible = false } = options;
-  if (items.length === 0 || position === "off") {
-    return HIDDEN_LEGEND_LAYOUT;
-  }
-  if (position === "auto") {
-    return getAutoLegendLayout(options);
-  }
-  if (isCardTooSmall(options) && !alwaysVisible) {
+  if (
+    items.length === 0 ||
+    position === "off" ||
+    (isCardTooSmall(options) && !alwaysVisible)
+  ) {
     return HIDDEN_LEGEND_LAYOUT;
   }
 
   const metrics = measureLegend(options);
-  const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[position];
+  const isAuto = position === "auto";
+  const placement = isAuto ? getAutoPlacement(metrics) : position;
+  const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[placement];
   if (orientation === "horizontal") {
     return {
       type: "horizontal",
       isBeforeChart,
-      visibleCount: getRowVisibleCount(metrics),
+      visibleCount: isAuto ? items.length : getRowVisibleCount(metrics),
     };
   }
-  if (isColumnMostlyTruncated(metrics) && !alwaysVisible) {
-    return HIDDEN_LEGEND_LAYOUT;
-  }
-  return getColumnLayout(
-    metrics,
-    getColumnVisibleCount(metrics, MIN_VISIBLE_COUNT),
+  return getColumnLayout(metrics, {
     isBeforeChart,
-  );
+    minVisibleCount: isAuto && !alwaysVisible ? 0 : MIN_VISIBLE_COUNT,
+    alwaysVisible,
+  });
 }
 
-function getAutoLegendLayout(
-  options: GetLegendLayoutOptions,
-): LegendLayoutResult {
-  const { items, alwaysVisible = false } = options;
-  if (isCardTooSmall(options) && !alwaysVisible) {
-    return HIDDEN_LEGEND_LAYOUT;
-  }
-
-  const metrics = measureLegend(options);
-  const fitsInRow =
-    getRowWidth(metrics.itemWidths, metrics.config) <=
-    metrics.availableRowWidth;
-  if (fitsInRow) {
-    return {
-      type: "horizontal",
-      isBeforeChart: AUTO_ROW_PLACEMENT.isBeforeChart,
-      visibleCount: items.length,
-    };
-  }
-
-  if (isColumnMostlyTruncated(metrics) && !alwaysVisible) {
-    return HIDDEN_LEGEND_LAYOUT;
-  }
-
-  const visibleCount = getColumnVisibleCount(
-    metrics,
-    alwaysVisible ? MIN_VISIBLE_COUNT : 0,
-  );
-  if (visibleCount === 0) {
-    return HIDDEN_LEGEND_LAYOUT;
-  }
-  return getColumnLayout(
-    metrics,
-    visibleCount,
-    AUTO_COLUMN_PLACEMENT.isBeforeChart,
-  );
-}
+const getAutoPlacement = ({
+  itemWidths,
+  config,
+  availableRowWidth,
+}: LegendMetrics): LegendPlacement =>
+  getRowWidth(itemWidths, config) <= availableRowWidth ? "bottom" : "right";
 
 const isCardTooSmall = ({ width, height }: GetLegendLayoutOptions) =>
   width < MIN_LEGEND_CARD_WIDTH || height < MIN_LEGEND_CARD_HEIGHT;
@@ -331,9 +295,24 @@ function getColumnVisibleCount(
 
 function getColumnLayout(
   metrics: LegendMetrics,
-  visibleCount: number,
-  isBeforeChart: boolean,
+  {
+    isBeforeChart,
+    minVisibleCount,
+    alwaysVisible,
+  }: {
+    isBeforeChart: boolean;
+    minVisibleCount: number;
+    alwaysVisible: boolean;
+  },
 ): LegendLayoutResult {
+  if (isColumnMostlyTruncated(metrics) && !alwaysVisible) {
+    return HIDDEN_LEGEND_LAYOUT;
+  }
+  const visibleCount = getColumnVisibleCount(metrics, minVisibleCount);
+  if (visibleCount === 0) {
+    return HIDDEN_LEGEND_LAYOUT;
+  }
+
   const { itemWidths, config, measureOverflowLabel } = metrics;
   const overflowCount = itemWidths.length - visibleCount;
   const overflowLabelWidth =

@@ -256,15 +256,18 @@ export type TableColumnOrderSetting = {
 };
 
 export type StackType = "stacked" | "normalized" | null;
-export type LegendPosition =
-  | "auto"
-  | "top"
-  | "bottom"
-  | "left"
-  | "right"
-  | "off";
 export type StackValuesDisplay = "total" | "all" | "series";
 export type StackValueFormat = "value" | "percentage";
+
+export const LEGEND_POSITIONS = [
+  "auto",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "off",
+] as const;
+export type LegendPosition = (typeof LEGEND_POSITIONS)[number];
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];

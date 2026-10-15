@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
+import type { LegendTitle } from "metabase/visualizations/components/types";
+
 type LegendOverflowAxis = "vertical" | "horizontal";
 
 const AXIS_EDGES = {
@@ -11,8 +13,7 @@ const AXIS_EDGES = {
 >;
 
 interface UseLegendOverflowOptions {
-  itemCount: number;
-  itemsKey: string;
+  titles: LegendTitle[];
   minVisibleCount: number;
   axis: LegendOverflowAxis;
   isEnabled?: boolean;
@@ -21,16 +22,17 @@ interface UseLegendOverflowOptions {
 /**
  * Measures how many legend items overflow the container along `axis`.
  * `visibleCount` is how many leading items to render, leaving one slot for the
- * overflow label but never fewer than `minVisibleCount`. A new `itemsKey`
- * discards the previous measurement.
+ * overflow label but never fewer than `minVisibleCount`. New titles discard the
+ * previous measurement.
  */
 export function useLegendOverflow({
-  itemCount,
-  itemsKey,
+  titles,
   minVisibleCount,
   axis,
   isEnabled = true,
 }: UseLegendOverflowOptions) {
+  const itemCount = titles.length;
+  const itemsKey = JSON.stringify(titles);
   const [overflowCount, setOverflowCount] = useState(0);
   const [size, setSize] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLOListElement>(null);

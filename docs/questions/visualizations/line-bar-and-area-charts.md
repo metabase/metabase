@@ -228,7 +228,7 @@ To permanently hide the series from the chart, use the [data settings](#data-set
 
 You can also select a range on the chart to filter results to a specific time period, then drill through to the individual records.
 
-To move or hide the legend, go to the **Display** tab and set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** picks a side that fits the card. With **Top**, **Bottom**, **Left**, or **Right**, legend items that don't fit go into a **+ N more** list. On very small cards, Metabase hides the legend whatever position you pick. Turning the legend off brings back any series you hid by clicking the legend.
+To move or hide the legend, go to the **Display** tab and set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** picks a side that fits the card. Legend items that don't fit go into a **+ N more** list. Metabase hides the legend on very small cards whatever position you pick, and hides a legend to the left or right of the chart when most of its labels would be cut off. Turning the legend off brings back any series you hid by clicking the legend.
 
 ## Further reading
 

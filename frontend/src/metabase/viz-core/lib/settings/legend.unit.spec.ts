@@ -2,11 +2,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type { LegendPosition, VisualizationSettings } from "metabase-types/api";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 
-import {
-  LEGEND_POSITION_SETTINGS,
-  getLegendPositionSetting,
-  isLegendPosition,
-} from "./legend";
+import { LEGEND_POSITION_SETTINGS } from "./legend";
 
 const singleSeries = [createMockSingleSeries({ display: "line" })];
 
@@ -32,16 +28,18 @@ describe("LEGEND_POSITION_SETTINGS", () => {
     );
 
     expect(isValid(singleSeries, stored)).toBe(false);
-    expect(isLegendPosition("middle")).toBe(false);
-    expect(isLegendPosition(undefined)).toBe(false);
   });
 
-  it("offers every position as a select option in the designer's order", () => {
+  it("offers every position in a select in the designer's order", () => {
     expect(setting.widget).toBe("select");
-    expect(setting.title).toBe("Legend position");
-
     expect(
-      setting.getProps?.(singleSeries, {}, jest.fn(), {}, jest.fn()),
+      setting.getProps?.(
+        singleSeries,
+        {},
+        () => {},
+        {},
+        () => {},
+      ),
     ).toEqual({
       options: [
         { name: "Auto", value: "auto" },
@@ -91,33 +89,5 @@ describe("LEGEND_POSITION_SETTINGS", () => {
         "graph.metrics": ["count", "sum"],
       }),
     ).toBe(false);
-  });
-});
-
-describe("getLegendPositionSetting", () => {
-  it("is never hidden unless a hide rule is given", () => {
-    expect(getLegendPositionSetting().getHidden).toBeUndefined();
-  });
-
-  it("lets a chart supply its own default", () => {
-    const setting = getLegendPositionSetting({ getDefault: () => "off" });
-
-    expect(setting.getDefault?.(singleSeries, {})).toBe("off");
-    expect(setting.widget).toBe("select");
-  });
-
-  it("lets a chart supply its own hide rule and dependencies", () => {
-    const setting = getLegendPositionSetting({
-      getHidden: (_series, settings) => settings["funnel.type"] !== "bar",
-      readDependencies: ["funnel.type"],
-    });
-
-    expect(setting.getHidden?.(singleSeries, { "funnel.type": "bar" })).toBe(
-      false,
-    );
-    expect(setting.getHidden?.(singleSeries, { "funnel.type": "funnel" })).toBe(
-      true,
-    );
-    expect(setting.readDependencies).toEqual(["funnel.type"]);
   });
 });

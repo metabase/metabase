@@ -3,7 +3,7 @@ import { useSet } from "react-use";
 
 import type { LegendPosition } from "metabase-types/api";
 
-const NONE = new Set<never>();
+const NO_HIDDEN_SERIES = new Set<never>();
 
 /**
  * Series the user hid through the legend. Turning the legend off brings them
@@ -21,5 +21,5 @@ export function useLegendHiddenSeries<Key>(
     }
   }, [isLegendOff, reset]);
 
-  return [isLegendOff ? NONE : hiddenSeries, toggle];
+  return [isLegendOff ? NO_HIDDEN_SERIES : hiddenSeries, toggle];
 }

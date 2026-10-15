@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
-import type { LegendPosition, Series } from "metabase-types/api";
+import {
+  LEGEND_POSITIONS,
+  type LegendPosition,
+  type Series,
+} from "metabase-types/api";
+import { isLegendPosition } from "metabase-types/guards";
 
 import type {
   ComputedVisualizationSettings,
@@ -19,18 +24,6 @@ const LEGEND_POSITION_LABELS: Record<LegendPosition, () => string> = {
 
 export const DEFAULT_LEGEND_POSITION: LegendPosition = "auto";
 
-export const isLegendPosition = (value: unknown): value is LegendPosition =>
-  typeof value === "string" && Object.hasOwn(LEGEND_POSITION_LABELS, value);
-
-type LegendPositionOption = { name: string; value: LegendPosition };
-
-const getLegendPositionOptions = (): LegendPositionOption[] =>
-  Object.entries(LEGEND_POSITION_LABELS).map(([value, getLabel]) => ({
-    name: getLabel(),
-    // Object.entries widens the key to string; the record is keyed by the enum.
-    value: value as LegendPosition,
-  }));
-
 export const getLegendPositionSetting = (
   overrides: Pick<
     SeriesSettingDefinition,
@@ -44,7 +37,12 @@ export const getLegendPositionSetting = (
   widget: "select",
   getDefault: () => DEFAULT_LEGEND_POSITION,
   isValid: (_series, settings) => isLegendPosition(settings["legend.position"]),
-  getProps: () => ({ options: getLegendPositionOptions() }),
+  getProps: () => ({
+    options: LEGEND_POSITIONS.map((value) => ({
+      name: LEGEND_POSITION_LABELS[value](),
+      value,
+    })),
+  }),
   ...overrides,
 });
 

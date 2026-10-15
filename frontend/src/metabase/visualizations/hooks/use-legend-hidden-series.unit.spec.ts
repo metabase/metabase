@@ -4,16 +4,19 @@ import type { LegendPosition } from "metabase-types/api";
 
 import { useLegendHiddenSeries } from "./use-legend-hidden-series";
 
-const setup = (initialPosition: LegendPosition) =>
+interface SetupOpts {
+  legendPosition: LegendPosition;
+}
+
+const setup = ({ legendPosition }: SetupOpts) =>
   renderHook(
-    ({ legendPosition }: { legendPosition: LegendPosition }) =>
-      useLegendHiddenSeries<string>(legendPosition),
-    { initialProps: { legendPosition: initialPosition } },
+    (props: SetupOpts) => useLegendHiddenSeries<string>(props.legendPosition),
+    { initialProps: { legendPosition } },
   );
 
 describe("useLegendHiddenSeries", () => {
   it("should hide the series toggled through the legend", () => {
-    const { result } = setup("auto");
+    const { result } = setup({ legendPosition: "auto" });
 
     act(() => result.current[1]("a"));
 
@@ -21,7 +24,7 @@ describe("useLegendHiddenSeries", () => {
   });
 
   it("should show every series again when the legend is turned off", () => {
-    const { result, rerender } = setup("auto");
+    const { result, rerender } = setup({ legendPosition: "auto" });
     act(() => result.current[1]("a"));
 
     rerender({ legendPosition: "off" });
@@ -30,7 +33,7 @@ describe("useLegendHiddenSeries", () => {
   });
 
   it("should not hide the series again when the legend comes back", () => {
-    const { result, rerender } = setup("right");
+    const { result, rerender } = setup({ legendPosition: "right" });
     act(() => result.current[1]("a"));
 
     rerender({ legendPosition: "off" });
