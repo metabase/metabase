@@ -1939,7 +1939,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 ### `MB_METABOT_QUERY_EXECUTION_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `true`
 - [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
