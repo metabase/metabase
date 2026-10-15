@@ -952,6 +952,16 @@
       (is (= "Email (1)" (lib.expression/unique-expression-name query 0 "Email"))))
     (testing "when a disambiguated custom column already exists"
       (let [query2 (lib/expression query "Email (1)"
-                                   (lib/concat (meta/field-metadata :people :email) 3))]
+                                   (lib/concat (meta/field-metadata :people :email) ".com"))]
         (testing "and you add a new one"
-          (is (= "Email (2)" (lib.expression/unique-expression-name query2 0 "Email"))))))))
+          (is (= "Email (2)" (lib.expression/unique-expression-name query2 0 "Email"))))))
+    (testing "when a column name needs escaping"
+      (let [query2 (lib/expression query "net.net"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))
+            query3 (lib/expression query "netxnet"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))
+            query4 (lib/expression query2 "netxnet (1)"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))]
+        (is (= "net.net (1)" (lib.expression/unique-expression-name query2 0 "net.net")))
+        (is (= "net.net" (lib.expression/unique-expression-name query3 0 "net.net")))
+        (is (= "net.net (1)" (lib.expression/unique-expression-name query4 0 "net.net")))))))

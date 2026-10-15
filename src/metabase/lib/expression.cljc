@@ -824,8 +824,9 @@
         other-names (set (map :display-name columns))]
     (if (not (other-names suggested-name))
       suggested-name
-      (let [re-duplicates (re-pattern (str "^" suggested-name " \\([0-9]+\\)$"))
-            duplicates    (set (filter #(or (= % suggested-name)
-                                            (re-matches re-duplicates %))
-                                       other-names))]
+      (let [start (str suggested-name " (")
+            ;; can't use regexes here because js/RegExp.escape is too new
+            duplicates (into #{suggested-name}
+                             (filter #(str/starts-with? % start) other-names))]
         (unique-name duplicates suggested-name (count duplicates))))))
+str/replace
