@@ -1,0 +1,16 @@
+kind: segment
+id: lArGeOrDeRsSeGmEnT001
+definition:
+  database: Sample Database
+  stages:
+  - filters:
+    - - '>'
+      - {}
+      - - field
+        - {base-type: type/Float}
+        - [Sample Database, PUBLIC, ORDERS, TOTAL]
+      - 100
+    source-table: [Sample Database, PUBLIC, ORDERS]
+description: Orders over 100.
+name: Large orders
+table: [Sample Database, PUBLIC, ORDERS]
