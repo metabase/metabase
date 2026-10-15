@@ -98,6 +98,9 @@
   .tip .what { margin: 2px 0 4px; }
   .tip .row { display: flex; justify-content: space-between; gap: 16px; }
   .tip .row b { font-family: var(--mono); }
+  .tip .step { color: var(--muted); margin-top: 6px; }
+  .reconcile { margin: 12px 0 0; }
+  .reconcile b { font-family: var(--mono); font-weight: 600; }
   details.data { margin-top: 10px; }
   details.data summary { cursor: pointer; color: var(--muted); font-size: 12px; }
   .none { color: var(--muted); padding: 40px 0; }
@@ -191,8 +194,33 @@ function points(p) {
   });
 }
 
+// The parts of a change to the total budget that count for nobody, as the series points name them.
+const uncredited = [
+  ["introduced", "new linters and measures"],
+  ["seeded", "new ratchets over existing debt"],
+  ["unlimited", "moved into or out of :unlimited"],
+  ["excused", "pardoned, recounted or spare"],
+];
+
+// How the credited change and the parts that count for nobody add up to the change in the total budget.
+function reconcile(pts, before) {
+  const start = before ? before.level : 0, end = pts[pts.length - 1].level;
+  const sum = k => pts.reduce((a, pt) => a + pt[k], 0);
+  const terms = [["credited net change", sum("shrunk") + sum("grown")],
+                 ...uncredited.map(([k, name]) => [name, sum(k)]).filter(([, n]) => n !== 0)];
+  return `<p class="reconcile">Total budget <b>${start}</b> → <b>${end}</b>: ` +
+    terms.map(([name, n]) => `${esc(name)} <b>${signed(n)}</b>`).join(", ") + ".</p>";
+}
+
+// The rows a total-budget tooltip adds for the commit's own step.
+function stepParts(pt) {
+  return [["credited", pt.shrunk + pt.grown], ...uncredited.map(([k, name]) => [name, pt[k]])]
+    .filter(([, n]) => n !== 0);
+}
+
 // One chart: `series` are {key, name, color, area}; `start` holds each series' value before the first point.
-function chart(id, title, sub, pts, span, series, start, zero) {
+// `detail`, if given, maps a point to extra [name, change] rows for its tooltip.
+function chart(id, title, sub, pts, span, series, start, zero, detail) {
   // a series with no value before its first point has no start, and its line begins at that point
   const values = pts.flatMap(pt => series.map(s => pt[s.key]))
     .concat(series.map(s => start[s.key]).filter(v => v != null), zero ? [0] : []);
@@ -214,7 +242,7 @@ function chart(id, title, sub, pts, span, series, start, zero) {
   const last = pts[pts.length - 1];
   const legend = series.length > 1 ? `<p class="legend">${series.map(s =>
     `<span><span class="key" style="border-color: var(${s.color})"></span>${esc(s.name)} <b>${signed(last[s.key])}</b></span>`).join("")}</p>` : "";
-  drawn[id] = {pts, series, x, y, zero};
+  drawn[id] = {pts, series, x, y, zero, detail};
   return `<div class="chart-card"><h4><span>${esc(title)}</span>${series.length === 1 ? `<span class="now">${last[series[0].key]}</span>` : ""}</h4><p class="sub">${esc(sub)}</p>${legend}` +
     `<svg class="chart" id="${id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${grid}${dates}${areas}${lines}` +
     `<line class="cross" y1="${M.t}" y2="${H - M.b}"/>${dots}</svg><div class="tip"></div></div>`;
@@ -227,20 +255,24 @@ function trends(p) {
   const end = Math.min(p.to ? Date.parse(p.to) : Infinity, Date.parse(data.generated) + 864e5);
   const span = [p.from ? Date.parse(p.from) : pts[0].t, Math.max(end, pts[pts.length - 1].t)];
   const rows = pts.map(pt => `<tr><td>${esc(pt.date.slice(0, 10))} ${commitLink(pt)}</td>${num(pt.shrunk)}${num(pt.grown)}` +
+    `<td class="num">${signed(uncredited.reduce((a, [k]) => a + pt[k], 0))}</td>` +
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
-  return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
+  return section("Trends",
+    "Each step is a commit that changed a budget. The left chart counts only changes someone is credited or blamed for. " +
+    "The total budget also moves for changes that count for nobody, such as a new ratchet over existing debt, " +
+    "so the two need not move together. The line under the charts shows how they add up.",
     `<div class="grid2">` +
-    chart("c-change", "Cumulative change", "Running totals from the start of the period. Up is worse.",
+    chart("c-change", "Credited change", "Running totals from the start of the period. Up is worse.",
       pts, span,
       [{key: "cumGrown", name: "Grown", color: "--grown", area: true},
        {key: "cumNet", name: "Net", color: "--net"},
        {key: "cumShrunk", name: "Shrunk", color: "--shrunk", area: true}],
       {cumGrown: 0, cumNet: 0, cumShrunk: 0}, true) +
-    chart("c-level", "Total budget", "All budgets summed. A ratchet on existing debt raises it.",
+    chart("c-level", "Total budget", "All budgets summed, including changes that count for nobody. Hover a step to see its parts.",
       pts, span, [{key: "level", name: "Total budget", color: "--level"}],
-      {level: before ? before.level : null}, false) +
-    `</div><details class="data"><summary>Data table</summary>` +
-    table(["commit", "shrunk", "grown", "net so far", "total budget"], rows) + `</details>`);
+      {level: before ? before.level : null}, false, stepParts) +
+    `</div>${reconcile(pts, before)}<details class="data"><summary>Data table</summary>` +
+    table(["commit", "shrunk", "grown", "not credited", "net so far", "total budget"], rows) + `</details>`);
 }
 
 function commitLink(c) {
@@ -249,7 +281,7 @@ function commitLink(c) {
 
 // Crosshair and tooltip: the pointer picks the latest commit at or before its x.
 function wire() {
-  for (const [id, {pts, series, x, y, zero}] of Object.entries(drawn)) {
+  for (const [id, {pts, series, x, y, zero, detail}] of Object.entries(drawn)) {
     const svg = document.getElementById(id);
     if (!svg) continue;
     const tip = svg.parentNode.querySelector(".tip"), cross = svg.querySelector(".cross");
@@ -267,14 +299,21 @@ function wire() {
       const add = (cls, text) => { const el = document.createElement("div"); el.className = cls; el.textContent = text; tip.appendChild(el); return el; };
       add("when", `${at.date.slice(0, 10)} · ${at.author}`);
       add("what", at.subject);
-      for (const s of series) {
-        const row = add("row", ""), name = document.createElement("span"), value = document.createElement("b");
-        name.textContent = s.name; value.textContent = zero ? signed(at[s.key]) : at[s.key];
-        row.append(name, value);
+      const row = (label, text) => {
+        const el = add("row", ""), name = document.createElement("span"), value = document.createElement("b");
+        name.textContent = label; value.textContent = text;
+        el.append(name, value);
+      };
+      for (const s of series) row(s.name, zero ? signed(at[s.key]) : at[s.key]);
+      const parts = detail ? detail(at) : [];
+      if (parts.length) {
+        add("step", "This commit");
+        for (const [label, n] of parts) row(label, signed(n));
       }
       const left = e.clientX - box.left + 28;
       tip.style.left = (left + 300 > box.width ? Math.max(0, left - 340) : left) + "px";
-      tip.style.top = (svg.offsetTop + 8) + "px";
+      // an SVG element has no offsetTop, so place the tip from the boxes
+      tip.style.top = (box.top - svg.parentNode.getBoundingClientRect().top + 8) + "px";
       tip.style.visibility = "visible";
     });
   }

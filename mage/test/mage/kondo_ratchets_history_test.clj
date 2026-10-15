@@ -404,19 +404,25 @@
                          {:measure a, :kind :grow, :delta 3}]}]))))))
 
 (deftest series-test
-  (testing "gives each commit's counted change and the total budget after it, oldest first"
+  (testing "splits each commit's change to the total budget into what is credited and what counts for nobody"
     (let [records [{:sha "tighten", :changes [{:measure a, :kind :shrink, :delta -2, :old 5, :new 3}]}
                    {:sha     "mixed"
                     :changes [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :x/y, :new 4}
+                              {:measure b, :kind :seed, :old nil, :new 3}
+                              {:measure new-linter, :kind :unlimit, :old 2, :new :unlimited}
                               {:measure [:prod :ignore :metabase/prefer-with-dynamic-fn-redefs]
                                :kind    :grow
                                :delta   8
                                :old     1
                                :new     9}]}
-                   {:sha "seed", :changes [{:measure a, :kind :grow, :delta 5, :old nil, :new 5}]}]
-          settled (history/settle {:pardons {"seed" {a 5}}, :settled #{}} records)]
-      (is (= [["seed" 0 0 5] ["mixed" 0 0 9] ["tighten" -2 0 7]]
-             (map (juxt :sha :shrunk :grown :level) (history/series records settled)))))))
+                   {:sha "pardoned", :changes [{:measure a, :kind :grow, :delta 5, :old nil, :new 5}]}]
+          settled (history/settle {:pardons {"pardoned" {a 5}}, :settled #{}} records)]
+      ;; sha, shrunk, grown, introduced, seeded, unlimited, excused, level
+      (is (= [["pardoned" 0 0 0 0 0 5 5]
+              ["mixed" 0 0 4 3 -2 0 10]
+              ["tighten" -2 0 0 0 0 0 8]]
+             (map (juxt :sha :shrunk :grown :introduced :seeded :unlimited :excused :level)
+                  (history/series records settled)))))))
 
 (deftest periods-test
   (testing "covers all time, then each week from its Monday and each month, back to the first commit"
@@ -610,6 +616,18 @@
                       [pr author tighten?
                        (map (juxt :kind :measure :delta :added) changes)
                        (update-vals (or causes {}) #(map (juxt :author :pr :delta) %))]))))))))
+
+(deftest series-adds-up-test
+  (testing "the credited change and the parts that count for nobody add up to each change in the total budget"
+    (with-fixture-repo!
+      (fn [repo]
+        (let [records (history/records repo)
+              points  (history/series records (history/settle {:settled #{}} records))
+              parts   (juxt :shrunk :grown :introduced :seeded :unlimited :excused)]
+          (is (= {:levels [3 1 8 2]
+                  :sums   [3 -2 7 -6]}
+                 {:levels (map :level points)
+                  :sums   (map #(reduce + (parts %)) points)})))))))
 
 (deftest run-test
   (binding [c/*disable-colors* true]

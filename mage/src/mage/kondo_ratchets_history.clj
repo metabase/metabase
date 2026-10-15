@@ -1012,25 +1012,42 @@
 (defn series
   "One point per commit in `records`, the whole history newest first, in the order they landed.
   A point holds how far the commit `:shrunk` and `:grown` the budgets in `settled`, those records as [[settle]]
-  returns them, and the `:level` after it: the sum of every counted numeric budget."
+  returns them, and the `:level` after it: the sum of every counted numeric budget.
+  The rest of its change to the level counts for nobody.
+  It is split into the budgets the commit `:introduced` and `:seeded`, its moves into or out of `:unlimited`, and
+  what is `:excused`: pardoned, recounted or spare budget, and the shrinks that only took such budget back.
+  The six parts add up to the change in `:level`."
   [records settled]
-  (let [numeric #(if (number? %) % 0)
-        moved   (into {}
-                      (for [{:keys [sha changes]} settled]
-                        [sha (reduce (fn [acc {:keys [kind delta]}]
-                                       (cond-> acc (#{:shrink :grow} kind) (update kind + delta)))
-                                     {:shrink 0, :grow 0}
-                                     changes)]))
-        raised  (fn [{:keys [changes]}]
-                  (reduce + (for [{:keys [measure key old new]} changes
-                                  :when (not (uncounted-linters (peek measure)))]
-                              ;; a newly discouraged symbol carries its own budget; see [[budget-changes]]
-                              (if key (numeric new) (- (numeric new) (numeric old))))))]
+  (let [numeric  #(if (number? %) % 0)
+        credited (into {}
+                       (for [{:keys [sha changes]} settled]
+                         [sha (reduce (fn [acc {:keys [kind delta]}]
+                                        (cond-> acc (#{:shrink :grow} kind) (update kind + delta)))
+                                      {:shrink 0, :grow 0}
+                                      changes)]))
+        part     {:introduce :introduced
+                  :seed      :seeded
+                  :limit     :unlimited
+                  :unlimit   :unlimited
+                  ;; whatever of a raise or shrink is not credited below
+                  :shrink    :excused
+                  :grow      :excused}
+        raised   (fn [{:keys [changes]}]
+                   (reduce (fn [acc {:keys [kind measure key old new]}]
+                             (cond-> acc
+                               (not (uncounted-linters (peek measure)))
+                               ;; a newly discouraged symbol carries its own budget; see [[budget-changes]]
+                               (update (part kind) + (if key (numeric new) (- (numeric new) (numeric old))))))
+                           {:introduced 0, :seeded 0, :unlimited 0, :excused 0}
+                           changes))]
     (rest (reductions (fn [point {:keys [sha], :as record}]
-                        (assoc (commit-ref record)
-                               :shrunk (get-in moved [sha :shrink] 0)
-                               :grown  (get-in moved [sha :grow] 0)
-                               :level  (+ (:level point) (raised record))))
+                        (let [{:keys [shrink grow]} (get credited sha {:shrink 0, :grow 0})
+                              parts                 (raised record)]
+                          (merge (commit-ref record)
+                                 (update parts :excused - shrink grow)
+                                 {:shrunk shrink
+                                  :grown  grow
+                                  :level  (+ (:level point) (reduce + (vals parts)))})))
                       {:level 0}
                       (reverse records)))))
 
