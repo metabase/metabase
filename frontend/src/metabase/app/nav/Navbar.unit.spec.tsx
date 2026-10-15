@@ -22,11 +22,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import {
-  CLOSE_NAVBAR,
-  OPEN_NAVBAR,
-  isNavbarOpenForPathname,
-} from "metabase/redux/app";
+import { CLOSE_NAVBAR, OPEN_NAVBAR } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
@@ -71,7 +67,7 @@ async function setup({
 
   const storeInitialState = createMockState({
     app: createMockAppState({
-      isNavbarOpen: isOpen ?? isNavbarOpenForPathname(pathname, true),
+      isNavbarOpen: isOpen ?? true,
     }),
     embed: createMockEmbedState({
       options: createMockEmbedOptions(embedOptions),
@@ -119,35 +115,23 @@ describe("nav > containers > Navbar > Core App", () => {
   });
 
   ["question/1", "model/1", "dashboard/1"].forEach((pathname) => {
-    it(`should be hidden on initial load for a ${pathname}`, async () => {
+    it(`should be open on initial load for a ${pathname}`, async () => {
       await setup({ pathname: `/${pathname}` });
-      await expectNavbarClosed();
+      await expectNavbarOpen();
     });
   });
 
-  it("should hide when visiting a question", async () => {
+  it("should stay open when visiting a question", async () => {
     const store = await setup({ pathname: "/" });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
+    await expectNavbarOpen();
+  });
+
+  it("should stay closed when visiting a question after being closed manually", async () => {
+    const store = await setup({ isOpen: false, pathname: "/collection/1" });
     await expectNavbarClosed();
-  });
-
-  it("should stay open when navigating to the database reference questions page (metabase#72001)", async () => {
-    const store = await setup({ pathname: "/reference/databases/1" });
-    await expectNavbarOpen();
-    dispatchLocationChange({
-      store,
-      pathname: "/reference/databases/1/tables/2/questions",
-    });
-    await expectNavbarOpen();
-  });
-
-  it("should hide when visiting a question and stay hidden when returning to collection", async () => {
-    const store = await setup({ pathname: "/collection/1" });
-    await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
-    await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/1" });
     await expectNavbarClosed();
   });
 
@@ -167,29 +151,30 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarOpen();
   });
 
-  it("should preserve state when navigating collections", async () => {
+  it("should only change state on explicit open/close actions, not navigation", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/collection/2" });
     await expectNavbarOpen();
     dispatchLocationChange({ store, pathname: "/question/1" });
+    await expectNavbarOpen();
+    dispatchLocationChange({ store, pathname: "/dashboard/1" });
+    await expectNavbarOpen();
+    // act(...) flushes the connected Navbar re-render caused by the dispatch
+    act(() => {
+      store.dispatch({ type: CLOSE_NAVBAR });
+    });
     await expectNavbarClosed();
     dispatchLocationChange({ store, pathname: "/collection/3" });
     await expectNavbarClosed();
-    dispatchLocationChange({ store, pathname: "/collection/4" });
+    dispatchLocationChange({ store, pathname: "/question/2" });
     await expectNavbarClosed();
-    // act(...) flushes the connected Navbar re-render caused by the dispatch
     act(() => {
       store.dispatch({ type: OPEN_NAVBAR });
     });
     await expectNavbarOpen();
-    dispatchLocationChange({ store, pathname: "/collection/5" });
+    dispatchLocationChange({ store, pathname: "/collection/4" });
     await expectNavbarOpen();
-    act(() => {
-      store.dispatch({ type: CLOSE_NAVBAR });
-    });
-    dispatchLocationChange({ store, pathname: "/collection/6" });
-    await expectNavbarClosed();
   });
 
   describe("embedded", () => {
