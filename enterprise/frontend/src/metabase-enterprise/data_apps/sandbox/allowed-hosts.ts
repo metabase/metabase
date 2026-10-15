@@ -3,11 +3,9 @@
  *
  * By default the sandbox hard-blocks all network egress (see
  * `metabase/utils/scripts-sandbox/distortions-blocked-apis`). When an app
- * declares `allowed_hosts` in its `data_app.yaml`, those origins — and ONLY
- * those, never the Metabase origin, which stays reachable only via sanctioned
- * SDK calls — become reachable through `fetch`/`XMLHttpRequest`. Host matching
- * mirrors the CSP `connect-src` the backend emits for the same hosts, so the JS
- * layer and the browser CSP layer agree.
+ * declares `allowed_hosts` in its `data_app.yaml`, those origins become reachable
+ * through `fetch`. The instance origin allows only `/api/analytics-proxy` for SDK
+ * analytics. Other instance requests must use SDK calls. XHR stays blocked.
  *
  * The wildcard semantics (`*.example.com` matches subdomains, not the apex)
  * intentionally match the backend's `approved-domain?`
@@ -15,6 +13,8 @@
  * There's no shared implementation — that one is Clojure, this runs in the
  * sandboxed browser realm — so keep the two in sync if either changes.
  */
+
+import { ANALYTICS_PROXY_PATH } from "embedding-sdk-shared/constants/analytics";
 
 import type { SandboxBlockedNetworkListener, SandboxRealm } from "./types";
 
@@ -115,6 +115,7 @@ const getBlockedReason = (
   base: string,
   allowedHosts: string[],
   metabaseOrigin: string,
+  analyticsProxyPath: string,
 ): string | null => {
   const url = toUrl(input, base);
 
@@ -123,6 +124,11 @@ const getBlockedReason = (
   }
 
   if (url.origin === metabaseOrigin) {
+    // whitelist analytics proxy endpoint explicitly
+    if (url.pathname === analyticsProxyPath) {
+      return null;
+    }
+
     return `${url.origin} (the instance origin is reachable only via the SDK)`;
   }
 
@@ -153,17 +159,21 @@ export const makeSandboxFetch = (
   allowedHosts: string[],
   label: string,
   onBlocked?: SandboxBlockedNetworkListener,
-): typeof fetch | null => {
-  if (allowedHosts.length === 0) {
-    return null;
-  }
-
+): typeof fetch => {
   const realFetch = targetWindow.fetch.bind(targetWindow);
   const base = targetWindow.location.href;
   const metabaseOrigin = targetWindow.location.origin;
+  const metabaseRoot = (targetWindow.MetabaseRoot ?? "/").replace(/\/+$/, "");
+  const analyticsProxyPath = `${metabaseRoot}${ANALYTICS_PROXY_PATH}`;
 
   return function dataAppFetch(input: RequestInfo | URL, init?: RequestInit) {
-    const reason = getBlockedReason(input, base, allowedHosts, metabaseOrigin);
+    const reason = getBlockedReason(
+      input,
+      base,
+      allowedHosts,
+      metabaseOrigin,
+      analyticsProxyPath,
+    );
 
     if (reason) {
       reportBlockedEvent(onBlocked, {
