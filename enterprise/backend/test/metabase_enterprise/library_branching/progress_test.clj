@@ -174,7 +174,7 @@
                  (is (=? {:status "cancelled" :error_message "Task cancelled"} (deref worker wait-ms nil)))
                  (is (= c1 (remote-head "main"))))))))))))
 
-(defn- cancelled-task-id
+(defn- cancelled-task-id!
   "The id of a new task of `kind` that an admin cancelled before its worker started."
   [kind]
   (let [{:keys [id]} (tasks/start! kind (mt/user->id :crowberto))]
@@ -192,7 +192,7 @@
                  c1      (get-in (run-task! "push" #(operations/push-task! % "main" "First")) [:outcome :commit])
                  name-of #(t2/select-one-fn :name :model/Card (:id metric))
                  stops   (fn [kind work]
-                           (let [id                 (cancelled-task-id kind)
+                           (let [id                 (cancelled-task-id! kind)
                                  [result fractions] (recording! #(work id))]
                              (testing "the first report finds the task ended, and the worker goes no further"
                                (is (= [0.0] fractions)))
