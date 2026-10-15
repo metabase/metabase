@@ -227,6 +227,26 @@
   Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
   false)
 
+(def ^:private sqlite-sample-database-path
+  "The exact `:db` path string of the bundled Sample Database, registered by the sample-data module when it extracts
+  the file, or nil before then. On a hosted instance, SQLite may open no other file; on self-hosted, this one is exempt
+  from the `readable-paths` and `writable-paths` allowlists. Exact-string match is enough: a stored Database row
+  carries the registered string verbatim, so a match can only name the Sample Database file itself."
+  (atom nil))
+
+(defn register-sqlite-sample-database-path!
+  "Record `path` as the bundled Sample Database's file, replacing any path recorded before. Called by the sample-data
+  module each time it extracts the file."
+  [path]
+  (reset! sqlite-sample-database-path path))
+
+(defn sqlite-sample-database-path?
+  "Whether `db` (a SQLite `:db` connection detail) is exactly the path registered via
+  [[register-sqlite-sample-database-path!]]."
+  [db]
+  (boolean (and (string? db)
+                (= db @sqlite-sample-database-path))))
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
