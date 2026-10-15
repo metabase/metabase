@@ -3,6 +3,7 @@
   that rolls back."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
@@ -350,6 +351,14 @@
           (write! :published-table id item)
           (is (= (refs item) (current :published-table id))))))))
 
+(defn- field-values-writes
+  "The number of writes of human-readable values that `(f)` makes."
+  [f]
+  (let [n (atom 0)]
+    (mt/with-dynamic-fn-redefs [library-branching.db/set-human-readable-values! (fn [& _] (swap! n inc) 1)]
+      (f))
+    @n))
+
 (deftest published-table-remapping-write-test
   (testing "a write sets the remappings of the fields; a local removal is a change that the next write undoes; a write
             with no remapping removes it"
@@ -386,7 +395,9 @@
             (is (= {:type :external :name "Category" :human_readable_field_id (mt/id :categories :name)}
                    (into {} (dimension :category_id))))
             (is (= {:type :internal :name "Price" :human_readable_field_id nil} (into {} (dimension :price))))
-            (is (= {:values [1 2 3 4] :human_readable_values ["$" "$$" "3" "4"]} (values))))
+            (is (= {:values [1 2 3 4] :human_readable_values ["$" "$$" "3" "4"]} (values)))
+            (testing "a write of the current content writes no field values"
+              (is (zero? (field-values-writes #(write! :published-table id (current :published-table id)))))))
           (testing "a local removal of a remapping is a change of the table, and a write restores it"
             (t2/delete! :model/Dimension :field_id (mt/id :venues :category_id))
             (is (not= (refs item) (current :published-table id)))
@@ -405,13 +416,17 @@
             (let [changed (update-in item [:attrs :fields :PRICE :remapping] dissoc :labels)]
               (write! :published-table id changed)
               (is (= (refs changed) (current :published-table id)))
-              (is (= {:values [1 2 3 4] :human_readable_values []} (values)))))
+              (is (= {:values [1 2 3 4] :human_readable_values []} (values)))
+              (testing "and a write of that content again writes no field values"
+                (is (zero? (field-values-writes #(write! :published-table id changed)))))))
           (testing "a label of a value that warehouse sync did not find stays out of the instance, and the values stay"
             (let [changed (assoc-in item [:attrs :fields :PRICE :remapping :labels] [[1 "$"] [9 "Nine"]])]
               (write! :published-table id changed)
               (is (= (refs (assoc-in item [:attrs :fields :PRICE :remapping :labels] [[1 "$"]]))
                      (current :published-table id)))
-              (is (= {:values [1 2 3 4] :human_readable_values ["$" "2" "3" "4"]} (values)))))
+              (is (= {:values [1 2 3 4] :human_readable_values ["$" "2" "3" "4"]} (values)))
+              (testing "and a write of that content again writes no field values"
+                (is (zero? (field-values-writes #(write! :published-table id changed)))))))
           (testing "with no field values row, a write sets the dimension and inserts no row"
             (t2/delete! :model/FieldValues :field_id price)
             (write! :published-table id item)

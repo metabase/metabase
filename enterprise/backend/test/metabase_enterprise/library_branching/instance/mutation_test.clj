@@ -107,11 +107,17 @@
     :target `kinds.published-table/field-values
     :edits  [[:replace '(assoc :remapping (remapping (:dimension row))) '(identity)]]
     :tests  [#'kinds-test/published-table-remapping-content-test]}
-   {:name   :no-remapped-values
-    :doc    "An internal remapping holds none of its values."
+   {:name   :no-labels
+    :doc    "An internal remapping holds none of its labels."
     :target `kinds.published-table/remapping
-    :edits  [[:replace '(seq human_readable_values) false]]
+    :edits  [[:replace '(seq ls) false]]
     :tests  [#'kinds-test/published-table-remapping-content-test]}
+   {:name   :sync-values-in-content
+    :doc    "An internal remapping holds every value that warehouse sync found, with its label, so a scan that adds or
+            drops a value is a local change."
+    :target `kinds.published-table/labels-of
+    :edits  [[:replace '(remove (fn [[v l]] (format.published-table/default-label? v l))) '(identity)]]
+    :tests  [#'kinds-test/published-table-rescan-keeps-remapping-test]}
    {:name   :remapping-needs-user-settings
     :doc    "A remapping of a field with no user settings row is not read."
     :target `kinds.published-table/field-settings-rows
