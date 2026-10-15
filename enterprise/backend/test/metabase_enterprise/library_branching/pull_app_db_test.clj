@@ -316,3 +316,32 @@
                     (pull! inst s)))
              (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
              (is (= c1 (instance/base inst))))))))))
+
+(deftest pull-refuses-a-name-that-the-collation-takes-as-one-test
+  (testing (str "MySQL and MariaDB keep snippet names unique under utf8mb4_unicode_ci, which takes some names as one "
+                "that differ in more than case or accents. A new snippet with such a name of a snippet in the trash: "
+                "the apply refuses with the pair before it writes, and the app DB gives no constraint error; app DB "
+                (mdb/db-type))
+    (doseq [[trashed-name new-name] [["lb pull Straße" "lb pull Strasse"]
+                                     ["lb pull clash" "lb pull clash  "]
+                                     ["lb pull clash" "lb pull cl​ash"]
+                                     ["lb pull 😀" "lb pull 🎉"]]]
+      (testing (pr-str trashed-name new-name)
+        (do-with-committed-content!
+         (fn [insert! _metrics]
+           (let [trashed (insert! :model/NativeQuerySnippet {:name       trashed-name
+                                                             :content    "1 = 1"
+                                                             :archived   true
+                                                             :creator_id (mt/user->id :crowberto)})
+                 new-id  (second created-ids)]
+             (with-remote [repo s]
+               (let [[inst c1 base] (pushed! s)
+                     item           {:kind :snippet :name new-name :place nil :refs #{} :attrs {:content "2 = 2"}}
+                     h              (pltu/commit-snapshot! repo ptu/branch [c1] (assoc base new-id item))]
+                 (is (= {:result    :key-clash
+                         :head      h
+                         :key-clash [{:rule :unique-key :kind :snippet :key new-name
+                                      :ids  #{new-id (:entity_id trashed)}}]}
+                        (pull! inst s)))
+                 (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
+                 (is (= c1 (instance/base inst))))))))))))
