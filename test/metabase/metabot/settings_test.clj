@@ -113,6 +113,13 @@
       (is (boolean? (metabot.settings/embedded-metabot-enabled?)))
       (is (string? (metabot.settings/llm-metabot-provider))))))
 
+(deftest query-execution-on-by-default-test
+  (testing "an instance that never set it can run queries, and one that turned it off keeps it off"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? nil]
+      (is (true? (metabot.settings/metabot-query-execution-enabled?))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (is (false? (metabot.settings/metabot-query-execution-enabled?))))))
+
 (deftest metabot-configured-with-managed-connection-and-proxy-url-test
   (testing "returns true when the managed connection is selected and the LLM proxy is configured"
     (mt/with-premium-features #{:metabase-ai-managed}
