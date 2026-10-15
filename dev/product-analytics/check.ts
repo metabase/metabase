@@ -6,6 +6,7 @@
  */
 
 import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sql";
+import type { ProjectedColumn } from "../../frontend/src/metabase/product-analytics/columns";
 import type {
   AnalysisKind,
   AnalysisSpec,
@@ -82,6 +83,7 @@ SELECT
   created_at,
   event_name,
   url_path,
+  country,
   if(url_path = '/pricing', 1, 0) AS ev_1,
   if(event_name = 'trial_started', 1, 0) AS ev_2,
   if(event_name = 'checkout_completed', 1, 0) AS ev_3,
@@ -109,6 +111,13 @@ const check = (name: string, ok: boolean, detail: string) => {
   }
 };
 
+const cohortColumns = (spec: AnalysisSpec): ProjectedColumn[] =>
+  spec.cohorts?.by === "attribute"
+    ? [{ as: "cohort_attribute", alias: "country" }]
+    : spec.cohorts !== undefined
+      ? [{ as: "cohort_start", alias: "created_at" }]
+      : [];
+
 const run = async (
   kind: AnalysisKind,
   truth: GroundTruth,
@@ -125,6 +134,7 @@ const run = async (
       url_path: "url_path",
     },
     flags: Object.values(FLAG),
+    extraColumns: cohortColumns(spec),
   });
   const rows = await chJson(built.sql);
   console.log(`\n${label} (${rows.length} rows)`);
@@ -196,6 +206,12 @@ const run = async (
       values.every((value) => value >= 0 && value <= 1),
       `min ${Math.min(...values)} max ${Math.max(...values)}`,
     );
+    const cohorts = new Set(rows.map((row) => String(row.cohort)));
+    check(
+      "cohorts has several rows",
+      cohorts.size > 1,
+      [...cohorts].slice(0, 4).join(", "),
+    );
   }
 };
 
@@ -231,6 +247,19 @@ for (const [label, overrides] of pathsVariants) {
     ...overrides,
   };
   await run("paths", truth, { ...pathsSpec, paths }, `paths (${label})`);
+}
+
+const cohortsSpec = defaultSpec("cohorts");
+if (cohortsSpec.cohorts !== undefined) {
+  await run(
+    "cohorts",
+    truth,
+    {
+      ...cohortsSpec,
+      cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
+    },
+    "cohorts (by country)",
+  );
 }
 
 if (failures.length > 0) {

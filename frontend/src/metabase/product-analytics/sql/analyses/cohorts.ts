@@ -1,8 +1,14 @@
-import type { AnalysisSpec, Period } from "../../spec/types";
+import type { AnalysisSpec, CohortsSpec, Period } from "../../spec/types";
 import { flagSql } from "../compile/flag";
 import type { Cte, QueryPlan } from "../compose";
 
 import { scopedEvents, startOf } from "./base";
+
+/** The columns the planner reads on `events_base` beyond the roles. */
+export const COHORT_COLUMN_NAMES: Record<CohortsSpec["by"], string> = {
+  startDate: "cohort_start",
+  attribute: "cohort_attribute",
+};
 
 const periodOf = (spec: AnalysisSpec): Period =>
   spec.bucket.granularity === "month"
@@ -18,27 +24,44 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   }
 
   const period = periodOf(spec);
+  const cohortColumn = COHORT_COLUMN_NAMES[cohorts.by];
   const warnings: string[] = [];
 
   const base = scopedEvents(spec, undefined, [
-    { as: "is_start", sql: flagSql(cohorts.start.flag) },
     { as: "is_return", sql: flagSql(cohorts.return.flag) },
+    { as: cohortColumn, sql: cohortColumn },
   ]);
   warnings.push(...base.warnings);
 
   const ctes: Cte[] = [...base.ctes];
 
+  // Period 0 is the period of the actor's earliest start date, or of their
+  // first event when cohorts are attribute values.
+  const [cohort, started, note] =
+    cohorts.by === "startDate"
+      ? [
+          startOf(period, `min(${cohortColumn})`),
+          startOf(period, `min(${cohortColumn})`),
+          `each ${spec.grain} placed in the ${period} their start date falls in`,
+        ]
+      : [
+          `argMax(${cohortColumn}, ts)`,
+          startOf(period, "min(ts)"),
+          `each ${spec.grain} placed with their latest ${cohortColumn}, from the ${period} of their first event`,
+        ];
+
   ctes.push({
     name: "starts",
-    note: `each ${spec.grain} placed in the ${period} their clock started`,
+    note,
     deps: ["scoped_events"],
     body: [
       "SELECT",
       "  actor,",
-      `  ${startOf(period, "minIf(ts, is_start)")} AS cohort`,
+      `  ${cohort} AS cohort,`,
+      `  ${started} AS started`,
       "FROM scoped_events",
       "GROUP BY actor",
-      "HAVING countIf(is_start) > 0",
+      "HAVING cohort IS NOT NULL",
     ].join("\n"),
   });
 
@@ -50,8 +73,8 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       "SELECT",
       "  s.cohort AS cohort,",
       "  s.actor AS actor,",
-      `  groupArray(dateDiff('${period}', s.cohort, ${startOf(period, "e.ts")})) AS came_back,`,
-      `  max(dateDiff('${period}', s.cohort, ${startOf(period, "e.ts")})) AS furthest`,
+      `  groupArray(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS came_back,`,
+      `  max(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS furthest`,
       "FROM starts AS s",
       "LEFT JOIN (SELECT actor, ts FROM scoped_events WHERE is_return) AS e",
       "  ON e.actor = s.actor",
@@ -78,17 +101,14 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
         : `  uniqExactIf(actor, ${matched}) AS value`,
       "FROM offsets",
       `ARRAY JOIN range(${cohorts.horizon}) AS offset`,
-      cohorts.rowMode === "started"
-        ? `WHERE cohort IN (\n  SELECT DISTINCT cohort FROM starts ORDER BY cohort LIMIT ${cohorts.startPeriods}\n)`
-        : "",
       "GROUP BY cohort, offset",
       "ORDER BY cohort, offset",
-    ]
-      .filter(Boolean)
-      .join("\n"),
+    ].join("\n"),
     warnings: [
       ...warnings,
-      "Later cohorts have had less time to come back, so the far columns thin out — that is the triangle, not missing data.",
+      cohorts.by === "startDate"
+        ? "Later cohorts have had less time to come back, so the far columns thin out — that is the triangle, not missing data."
+        : "Each person's clock starts at their first event in the date range.",
     ],
   };
 };

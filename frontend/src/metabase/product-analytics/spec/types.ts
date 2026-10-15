@@ -119,9 +119,12 @@ export interface LifecycleSpec {
 }
 
 export interface CohortsSpec {
-  rowMode: "defined" | "started";
-  start: FlagRef;
-  startPeriods: number;
+  /**
+   * What places an actor in a cohort: the period of their earliest start
+   * date, or the value of an attribute. Either way, period 0 is the period
+   * their clock started; see `planCohorts`.
+   */
+  by: "startDate" | "attribute";
   return: FlagRef;
   returnRule: "exactly" | "onOrAfter";
   horizon: number;

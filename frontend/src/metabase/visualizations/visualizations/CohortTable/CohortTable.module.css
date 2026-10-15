@@ -1,0 +1,74 @@
+.root {
+  display: grid;
+  align-content: start;
+  gap: 0.125rem;
+  min-width: max-content;
+  padding: 0.25rem;
+}
+
+/* The header row and each row's cohort label and size stick while the
+   period columns scroll under them. Both are subgrids so their cells still
+   line up with the columns of the root grid. The shadows fill the grid gap
+   next to them, so scrolled cells don't show through it. */
+.headerRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--mb-color-background-primary);
+  box-shadow: 0 0.125rem 0 var(--mb-color-background-primary);
+}
+
+.frozen {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: subgrid;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--mb-color-background-primary);
+  box-shadow: 0.125rem 0 0 var(--mb-color-background-primary);
+}
+
+.header {
+  padding: 0.5rem 0.75rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.headerLabel {
+  composes: header;
+  text-align: left;
+}
+
+.label {
+  padding: 0.5rem 0.75rem;
+  color: var(--mb-color-text-secondary);
+  align-self: center;
+  white-space: nowrap;
+}
+
+.size {
+  composes: label;
+  text-align: right;
+}
+
+.cell {
+  min-width: 4.5rem;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 0.125rem;
+  color: var(--mb-color-text-primary);
+  font-weight: 500;
+}
+
+.lightText {
+  color: var(--mb-color-text-white);
+}

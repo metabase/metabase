@@ -69,6 +69,7 @@ export const useAnalysisQuery = ({
       return {
         request: nativeCompileRequest(built.query),
         databaseId: built.databaseId,
+        extraColumns: built.extraColumns,
       };
     } catch (error) {
       return {
@@ -84,10 +85,11 @@ export const useAnalysisQuery = ({
   const baseSql = native.currentData?.query;
 
   const built =
-    spec && baseSql && compiledDatabaseId !== undefined
+    spec && baseSql && compiledBase?.extraColumns !== undefined
       ? buildSql(spec, baseSql, {
           columns: base.columns,
           flags: base.events.map(({ flag }) => flag),
+          extraColumns: compiledBase.extraColumns,
         })
       : undefined;
 

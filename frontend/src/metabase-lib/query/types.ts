@@ -432,6 +432,12 @@ export type JoinStrategyDisplayInfo = {
   shortName: string;
 };
 
+export type JoinDisplayInfo = {
+  /** The join's alias, which prefixes the aliases of its columns. */
+  name: string;
+  displayName: string;
+};
+
 declare const DrillThruSymbol: unique symbol;
 export type DrillThru = unknown & { _opaque: typeof DrillThruSymbol };
 

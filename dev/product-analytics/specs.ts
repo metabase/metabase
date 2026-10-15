@@ -111,9 +111,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
         kind,
         ...chrome,
         cohorts: {
-          rowMode: "started",
-          start: { flag: FLAG.signup },
-          startPeriods: 8,
+          by: "startDate",
           return: { flag: FLAG.active },
           returnRule: "onOrAfter",
           horizon: 8,

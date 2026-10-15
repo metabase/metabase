@@ -1,11 +1,16 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { ConcreteTableId, Table } from "metabase-types/api";
 
+import { getPersonColumn, getUsersTableLink } from "./analyses/column-roles";
 import { getColumnRoles } from "./analyses/common-settings";
 import { getAnalysisConfig } from "./analyses/config";
-import type { AnalysisContext, AnalysisSettingsByKind } from "./analyses/types";
+import type {
+  AnalysisContext,
+  AnalysisSettingsByKind,
+  UsersTable,
+} from "./analyses/types";
 import type { BaseQueryInput } from "./base-query";
 import { createFlagAllocator } from "./events/allocate-flags";
 import { computeSettings, getSettingWidgets } from "./settings/compute";
@@ -19,6 +24,28 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
   tableId: ConcreteTableId | undefined;
   stored: StoredSettings;
   onChangeSettings: (changes: Partial<AnalysisSettingsByKind[K]>) => void;
+};
+
+/** The table the person column links to, once its metadata is loaded. */
+const useUsersTable = (
+  table: Table | undefined,
+  stored: StoredSettings,
+): UsersTable | undefined => {
+  const link = useMemo(
+    () => getUsersTableLink(table, getPersonColumn(table, stored)),
+    [table, stored],
+  );
+  const metadata = useGetTableQueryMetadataQuery(
+    link !== undefined ? { id: link.tableId } : skipToken,
+  );
+  const usersTable = metadata.currentData;
+  return useMemo(
+    () =>
+      link !== undefined && usersTable !== undefined
+        ? { link, table: usersTable }
+        : undefined,
+    [link, usersTable],
+  );
 };
 
 /**
@@ -37,8 +64,12 @@ export const useAnalysis = <K extends AnalysisKind>({
     tableId !== undefined ? { id: tableId } : skipToken,
   );
   const table = tableMetadata.currentData;
+  const usersTable = useUsersTable(table, stored);
 
-  const context = useMemo<AnalysisContext>(() => ({ table }), [table]);
+  const context = useMemo<AnalysisContext>(
+    () => ({ table, usersTable }),
+    [table, usersTable],
+  );
   const computed = useMemo(
     () => computeSettings(config.settings, context, stored),
     [config, context, stored],
@@ -62,6 +93,8 @@ export const useAnalysis = <K extends AnalysisKind>({
     dateRange: computed.date_range,
     columns: getColumnRoles(computed),
     events: flags.events,
+    extraColumns: config.getExtraColumns?.(computed, context) ?? [],
+    usersTable: usersTable?.link,
   });
   const spec = specResult.status === "ready" ? specResult.spec : undefined;
   const missing = specResult.status === "incomplete" ? specResult.missing : [];

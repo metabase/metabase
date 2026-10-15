@@ -41,6 +41,8 @@ export type SettingDefinition<
   group?: SettingGroup;
   /** Renders the title and widget on one line. */
   inline?: boolean;
+  /** Renders below a divider, after the section's other settings. */
+  secondary?: boolean;
   getSection: () => SettingSection;
   /** A widget registry name (see `registerSettingWidgets`) or a component. */
   widget?: string | ComponentType<SettingWidgetProps<S[K]> & P>;
@@ -73,6 +75,7 @@ export type SettingWidget = {
   section: SettingSection;
   group?: SettingGroup;
   inline?: boolean;
+  secondary?: boolean;
   title?: string;
   hint?: string;
   hidden: boolean;
