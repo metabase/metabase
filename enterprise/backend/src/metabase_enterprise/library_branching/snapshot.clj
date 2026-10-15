@@ -3,8 +3,7 @@
 
   A snapshot maps the identity of each item to the item's content. Two items are equal iff their values are equal."
   (:require
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase-enterprise.library-branching.registry :as registry]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,39 +18,41 @@
    :published-table #{}
    :snippet         #{}})
 
-(mr/def ::kind
+(registry/def ::kind
   (into [:enum] (sort kinds)))
 
-(mr/def ::entity-id
-  ms/NanoIdString)
+(registry/def ::entity-id
+  ;; The schema of `metabase.util.malli.schema/NanoIdString`, which babashka cannot load; a test checks that the two
+  ;; agree.
+  [:re #"^[A-Za-z0-9_\-]{21}$"])
 
-(mr/def ::natural-key
+(registry/def ::natural-key
   "The natural key of an environment object: the database name, then the schema, table and field names, as far as the
   object needs. A schema name can be nil."
   [:and
    [:vector {:min 1} [:maybe :string]]
    [:fn {:error/message "the database name is a string"} (comp string? first)]])
 
-(mr/def ::table-key
+(registry/def ::table-key
   "The natural key of a table: `[database schema table]`."
   [:and
    ::natural-key
    [:fn {:error/message "a table key has three parts"} #(= 3 (count %))]
    [:fn {:error/message "the table name is a string"} (comp string? peek)]])
 
-(mr/def ::identity
+(registry/def ::identity
   "The identity of an item: the natural key of its table for a published table, else an entity id."
   [:or ::entity-id ::table-key])
 
-(mr/def ::target
+(registry/def ::target
   "The target of a reference: an item, or an environment object by its natural key."
   [:or ::identity [:tuple [:= :env] ::natural-key]])
 
-(mr/def ::ref
+(registry/def ::ref
   "A reference: `[role target]`."
   [:tuple :keyword ::target])
 
-(mr/def ::item
+(registry/def ::item
   "The content of an item. `:place` is the identity of its container, or nil at the root level. `:attrs` holds every
   other content attribute, in portable form, with no attribute at its default value."
   [:map {:closed true}
@@ -64,10 +65,10 @@
 (defn- identity-fits-kind?
   [[id {:keys [kind]}]]
   (if (= :published-table kind)
-    (mr/validate ::table-key id)
-    (mr/validate ::entity-id id)))
+    (registry/validate ::table-key id)
+    (registry/validate ::entity-id id)))
 
-(mr/def ::snapshot
+(registry/def ::snapshot
   "`{identity item}`. A snapshot need not be well formed: a place or a reference can name an identity that is not in
   it."
   [:and

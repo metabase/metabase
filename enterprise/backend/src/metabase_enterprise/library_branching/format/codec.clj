@@ -1,21 +1,14 @@
 (ns metabase-enterprise.library-branching.format.codec
-  "The `Codec` protocol, and the canonical YAML form of a document.
+  "The `Codec` protocol, and the reader of the YAML form of a document.
 
   A document is plain data: maps with keyword keys, vectors, strings, integers, finite doubles, booleans and nil. A
-  codec turns an item into a document and back; [[write-yaml]] and [[read-yaml]] turn a document into the bytes of a
-  file and back, so every kind gets its canonical bytes from one writer."
+  codec turns an item into a document and back; `writer/write-yaml` and [[read-yaml]] turn a document into the bytes
+  of a file and back, so every kind gets its canonical bytes from one writer."
   (:require
-   [clj-yaml.core :as yaml]
-   [clojure.string :as str])
+   [clj-yaml.core :as yaml])
   (:import
-   (java.io StringWriter)
    (java.nio ByteBuffer)
-   (java.nio.charset CharacterCodingException CodingErrorAction StandardCharsets)
-   (org.yaml.snakeyaml DumperOptions DumperOptions$FlowStyle DumperOptions$LineBreak DumperOptions$ScalarStyle)
-   (org.yaml.snakeyaml.emitter Emitter)
-   (org.yaml.snakeyaml.nodes MappingNode Node NodeTuple ScalarNode SequenceNode Tag)
-   (org.yaml.snakeyaml.resolver Resolver)
-   (org.yaml.snakeyaml.serializer Serializer)))
+   (java.nio.charset CharacterCodingException CodingErrorAction StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
@@ -48,129 +41,6 @@
               (assoc m k c)))
           {}
           codecs))
-
-;;; ---------------------------------------------------- The writer ---------------------------------------------------
-
-(defn- outside-model!
-  [x]
-  (throw (ex-info (str "A value is not in the document model: " (pr-str x) " (" (some-> x class .getName) ")")
-                  {:value x})))
-
-(defn- key-name
-  [k]
-  (if (keyword? k) (subs (str k) 1) (outside-model! k)))
-
-(defn- key-order
-  "The written order of the keys of a map: kind, then id, then the others in the order of their text."
-  [k]
-  (case k
-    "kind" [0 ""]
-    "id"   [1 ""]
-    [2 k]))
-
-(declare yaml-text)
-
-(defn canonical
-  "The canonical form of document `x`, one value for each class of equal documents: a map is a vector of
-  `[key-text value]` pairs in [[key-order]] with the metadata `::map`; a set is a vector in the order of the YAML text
-  of its elements; an integer is a long or a bigint; a double is never -0.0. Throws for a value outside the document
-  model."
-  [x]
-  (cond
-    (map? x)     (with-meta (mapv (fn [[k v]] [k (canonical v)]) (sort-by (comp key-order key) (update-keys x key-name)))
-                            {::map true})
-    (set? x)     (vec (sort-by yaml-text (map canonical x)))
-    (vector? x)  (mapv canonical x)
-    (string? x)  x
-    (boolean? x) x
-    (nil? x)     x
-    (int? x)     (long x)
-    (or (instance? clojure.lang.BigInt x)
-        (instance? java.math.BigInteger x)) (bigint x)
-    (and (double? x)
-         (Double/isFinite x)) (if (zero? x) 0.0 x)
-    :else        (outside-model! x)))
-
-(def ^:private ^DumperOptions dumper-options
-  (doto (DumperOptions.)
-    (.setDefaultFlowStyle DumperOptions$FlowStyle/AUTO)
-    (.setDefaultScalarStyle DumperOptions$ScalarStyle/PLAIN)
-    (.setAllowUnicode true)
-    (.setLineBreak DumperOptions$LineBreak/UNIX)
-    (.setIndent 2)
-    (.setIndicatorIndent 0)
-    (.setWidth 80)
-    (.setSplitLines true)
-    (.setExplicitStart false)
-    (.setExplicitEnd false)))
-
-(def ^:private unicode-line-break
-  ;; SnakeYAML writes these characters raw in a single-quoted scalar, and a reader folds them to a space.
-  #"[\u0085\u2028\u2029]")
-
-(defn scalar-style
-  "The style that the writer asks for string `s`: double-quoted for text with a Unicode line break, a literal block for
-  text with a line break, else plain. The emitter quotes a string that the asked style cannot hold."
-  [^String s]
-  (cond
-    (re-find unicode-line-break s) DumperOptions$ScalarStyle/DOUBLE_QUOTED
-    (str/includes? s "\n")        DumperOptions$ScalarStyle/LITERAL
-    :else                          DumperOptions$ScalarStyle/PLAIN))
-
-(defn- key-style
-  [^String k]
-  (if (re-find unicode-line-break k) DumperOptions$ScalarStyle/DOUBLE_QUOTED DumperOptions$ScalarStyle/PLAIN))
-
-(defn- scalar-node
-  ^Node [^Tag tag ^String text style]
-  (ScalarNode. tag text nil nil style))
-
-(defn- flow-style
-  "Flow style (`[a, b]`, `{a: 1}`) for a collection of scalars only; block style for every other collection."
-  ^DumperOptions$FlowStyle [nodes]
-  (if (every? #(instance? ScalarNode %) nodes) DumperOptions$FlowStyle/FLOW DumperOptions$FlowStyle/BLOCK))
-
-(defn- ->node
-  "The YAML node of canonical form `x`."
-  ^Node [x]
-  (cond
-    (::map (meta x)) (let [tuples (mapv (fn [[k v]]
-                                          (NodeTuple. (scalar-node Tag/STR k (key-style k)) (->node v)))
-                                        x)]
-                       (MappingNode. Tag/MAP
-                                     ^java.util.List tuples
-                                     (flow-style (mapcat (fn [^NodeTuple t] [(.getKeyNode t) (.getValueNode t)])
-                                                         tuples))))
-    (vector? x)      (let [nodes (mapv ->node x)]
-                       (SequenceNode. Tag/SEQ ^java.util.List nodes (flow-style nodes)))
-    (string? x)      (scalar-node Tag/STR x (scalar-style x))
-    (boolean? x)     (scalar-node Tag/BOOL (str x) DumperOptions$ScalarStyle/PLAIN)
-    (nil? x)         (scalar-node Tag/NULL "null" DumperOptions$ScalarStyle/PLAIN)
-    (integer? x)     (scalar-node Tag/INT (str x) DumperOptions$ScalarStyle/PLAIN)
-    :else            (scalar-node Tag/FLOAT (str x) DumperOptions$ScalarStyle/PLAIN)))
-
-(defn- block-root
-  "`node` in block style when it is a collection: a file is never one line of flow style."
-  ^Node [^Node node]
-  (when-not (instance? ScalarNode node)
-    (.setFlowStyle ^org.yaml.snakeyaml.nodes.CollectionNode node DumperOptions$FlowStyle/BLOCK))
-  node)
-
-(defn- yaml-text
-  "The YAML text of canonical form `x`."
-  ^String [x]
-  (let [w (StringWriter.)
-        s (Serializer. (Emitter. w dumper-options) (Resolver.) dumper-options nil)]
-    (.open s)
-    (.serialize s (block-root (->node x)))
-    (.close s)
-    (str w)))
-
-(defn write-yaml
-  "The canonical YAML bytes of document `doc`, UTF-8 with a final newline. Equal documents give equal bytes. A set
-  stands for a vector of its elements. Throws for a value outside the document model."
-  ^bytes [doc]
-  (.getBytes (yaml-text (canonical doc)) StandardCharsets/UTF_8))
 
 ;;; ---------------------------------------------------- The reader ---------------------------------------------------
 

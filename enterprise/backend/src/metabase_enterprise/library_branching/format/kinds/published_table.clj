@@ -6,8 +6,8 @@
   under its parent's `:fields`."
   (:require
    [metabase-enterprise.library-branching.format.kinds.common :as common]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase.util.malli.registry :as mr]))
+   [metabase-enterprise.library-branching.registry :as registry]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +28,7 @@
    :custom_position    :int
    :fk_target          ::snapshot/natural-key})
 
-(mr/def ::fields
+(registry/def ::fields
   [:schema
    {:registry {::field  [:and
                          (into [:map {:closed true}
@@ -92,7 +92,7 @@
    :refs       #'refs
    :refs-id    #'table-of})
 
-(mr/def ::item (common/item-schema spec))
+(registry/def ::item (common/item-schema spec))
 
 (def codec
   "The codec of the kind :published-table."
