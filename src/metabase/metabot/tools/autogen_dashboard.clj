@@ -31,7 +31,7 @@
   {:message  (str (str/capitalize (name kind)) " " id
                   (if (= :table kind)
                     " is no longer in its database."
-                    " is in the trash. The user can restore it."))
+                    " is in the trash."))
    :recovery [{:uses #{"search"}
                :text "Call `search` to find another source and use an id from the results."}]})
 

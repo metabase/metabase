@@ -185,7 +185,7 @@
       (testing "an archived source the user can read is in the trash"
         (is (= {:class :recoverable
                 :code  ::autogen-dashboard/unavailable-source
-                :text  (str "Model " model-id " is in the trash. The user can restore it.\n"
+                :text  (str "Model " model-id " is in the trash.\n"
                             "Call `search` to find another source and use an id from the results.")}
                (failure {:model_id model-id}))))
       (testing "an inactive table is gone from its database"
