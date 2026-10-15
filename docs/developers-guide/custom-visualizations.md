@@ -345,10 +345,8 @@ Render numbers, dates, and currencies the way the rest of Metabase does with `fo
 import { formatValue } from "@metabase/custom-viz";
 
 formatValue(row[1], { column: cols[1] });
-formatValue(0.084, { column: cols[1], number_style: "percent", decimals: 1 }); // "8.4%"
+formatValue(0.084, { number_style: "percent", decimals: 1 }); // "8.4%"
 ```
-
-Number options like `number_style` and `decimals` only take effect together with a numeric `column`. Without one, `formatValue` returns the number as is (`"0.084"`), so format numbers that don't come from a column, like a computed share, yourself with `Intl.NumberFormat`.
 
 To honor the formatting people pick in the column formatting popover (the one `showColumnSetting: true` enables on `"field"` and `"fields"` widgets - see [built-in widgets](#built-in-widgets)), format with `settings.column(col)`. It resolves a column's effective settings (instance-wide defaults, the column's metadata settings, and the card-level popover settings, merged in that order) into ready-to-use `formatValue` options:
 
@@ -360,9 +358,9 @@ formatValue(row[1], settings.column?.(cols[1]));
 
 For layout math (like fitting labels or sizing axes), use the `renderingContext` prop: `renderingContext.measureText(text, style)` returns `{ width, height }` in pixels, where `style` is `{ size, weight, family }`. The optional `style.family` defaults to the font your Metabase is rendering with, so measurements match what people see; pass it explicitly only when you render text in a different font. That font is also available as `renderingContext.fontFamily` for styling your own markup.
 
-To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
+To match Metabase's look (and follow [dark mode](../people-and-groups/account-settings.md#theme)), you have two paths. For anything you render as DOM or SVG, you can style with Metabase's CSS variables: `var(--mb-color-core-brand)` and the other `--mb-color-*` variables, and the theme follows automatically.
 
-Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
+Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS variables, so in those cases you need explicit color values. Resolve a Metabase color name to its current theme value with `renderingContext.getColor("core-brand")`, or branch on `renderingContext.colorScheme` (`"light"` or `"dark"`) to pick your own colors per theme. See the [calendar-heatmap example](#example-plugins) for one built with ECharts.
 
 ## Bundling assets
 
@@ -397,7 +395,7 @@ The icon shows up in the chart type picker and elsewhere in the Metabase UI.
 </svg>
 ```
 
-- For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-brand)"`.
+- For more control, you can use Metabase's CSS variables inside an inline SVG, like `fill="var(--mb-color-core-brand)"`.
 - Keep the icon simple and monochromatic. Skip gradients and multiple colors.
 
 ## Build and package the plugin
