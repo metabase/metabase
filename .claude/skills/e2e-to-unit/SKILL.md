@@ -62,6 +62,8 @@ Do this for **every** test that you put in C. A round trip alone does not make a
 3. If that case exists, the backend half is covered. Put the test in **S**. Migrate the UI half: a unit test that mocks the same status and body, and asserts what the user sees.
 4. If the backend test does not exist, keep the test in C. Report the missing backend test.
 
+Focus on Jest. Add a backend test only when it fills a real gap: the e2e test is the only thing that proves a backend behavior, and a short e2e test cannot keep that proof instead. Backend changes need reviewers from outside the team that does this work. When in doubt, keep a short e2e test for the round trip and move the rest to Jest.
+
 ### Partial intercepts
 
 `cy.intercept(url, (req) => req.continue((res) => { res.body.x = ... }))` changes only part of a real response. It is difficult to know the full state that the page gets from reading the test. Do not try to work it out from the source for a long time. Find the inputs from the backend, then render that state in a unit test.
