@@ -3,30 +3,64 @@ import { t } from "ttag";
 
 import { useLazyGetTableQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { useNavigate } from "metabase/router";
-import { Alert, Box, Icon, SimpleGrid, Stack, Title } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { useLocation, useNavigate, useSearchParams } from "metabase/router";
+import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId } from "metabase-types/api";
 
-import { ANALYSIS_KINDS, getAnalysisConfig } from "../analyses/config";
-import { AnalysisTypeCard } from "../components/AnalysisTypeCard";
-import { EventTablePicker } from "../components/EventTablePicker";
+import { isAnalysisKind } from "../analyses/config";
+import { AnalysisWorkspace } from "../components/AnalysisWorkspace";
+import { getLastTableId } from "../last-table";
+import type { AnalysisKind } from "../spec/types";
 import { usePrototypeTable } from "../use-prototype-table";
 
+const DEFAULT_KIND: AnalysisKind = "funnel";
+
+const parseTableId = (value: string | null): ConcreteTableId | undefined => {
+  if (value === null || !/^\d+$/.test(value)) {
+    return undefined;
+  }
+  const id = Number(value);
+  return isConcreteTableId(id) ? id : undefined;
+};
+
+/**
+ * A new analysis: the kind and table live in the query string, the settings
+ * in the hash. The table defaults to the one last analyzed, then to the
+ * prototype's.
+ */
 export const NewAnalysisPage = () => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [sendToast] = useToast();
   const prototype = usePrototypeTable();
   const [fetchTable] = useLazyGetTableQuery();
-  const [selectedTableId, setSelectedTableId] = useState<ConcreteTableId>();
-  const tableId = selectedTableId ?? prototype.tableId;
+  const [lastTableId] = useState(getLastTableId);
+
+  const kindParam = searchParams.get("kind");
+  const kind = isAnalysisKind(kindParam) ? kindParam : DEFAULT_KIND;
+  const tableId =
+    parseTableId(searchParams.get("table")) ?? lastTableId ?? prototype.tableId;
+
+  const setParams = (changes: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(changes).forEach(([key, value]) => next.set(key, value));
+    navigate(
+      {
+        pathname: location.pathname,
+        search: `?${next.toString()}`,
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+  };
 
   // Prototype: the generated SQL is ClickHouse-only. Lift this once SQL
   // generation moves to MBQL.
   const handleTableChange = async (id: ConcreteTableId) => {
     const { data: table } = await fetchTable({ id }, true);
     if (table && prototype.clickHouseDatabaseIds.includes(table.db_id)) {
-      setSelectedTableId(id);
+      setParams({ table: String(id) });
     } else {
       sendToast({
         icon: "warning",
@@ -36,40 +70,13 @@ export const NewAnalysisPage = () => {
   };
 
   return (
-    <Box flex={1} mih="100%" bg="background-secondary" px="xl" py="3rem">
-      <Stack h="100%" maw={824} mx="auto" gap="3rem">
-        <Stack gap="lg" align="flex-start">
-          <Title order={2}>{t`Pick the event data to analyze`}</Title>
-          <EventTablePicker
-            tableId={tableId}
-            isLoading={prototype.isLoading}
-            onChange={handleTableChange}
-          />
-          {prototype.error && (
-            <Alert color="error" icon={<Icon name="warning" />}>
-              {prototype.error}
-            </Alert>
-          )}
-        </Stack>
-
-        <Stack gap="lg">
-          <Title order={2}>{t`Choose the type of analysis to do`}</Title>
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-            {ANALYSIS_KINDS.map((kind) => (
-              <AnalysisTypeCard
-                key={kind}
-                config={getAnalysisConfig(kind)}
-                disabled={tableId === undefined}
-                onSelect={() => {
-                  if (tableId !== undefined) {
-                    navigate(Urls.eventAnalysis(kind, tableId));
-                  }
-                }}
-              />
-            ))}
-          </SimpleGrid>
-        </Stack>
-      </Stack>
-    </Box>
+    <AnalysisWorkspace
+      kind={kind}
+      tableId={tableId}
+      onKindChange={(nextKind) => setParams({ kind: nextKind })}
+      onTableChange={handleTableChange}
+      isTableLoading={prototype.isLoading}
+      tableError={prototype.error}
+    />
   );
 };

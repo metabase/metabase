@@ -5,11 +5,6 @@ const newAnalysisPage = () =>
     Component: NewAnalysisPage,
   }));
 
-const analysisPage = () =>
-  import("./pages/AnalysisPage").then(({ AnalysisPage }) => ({
-    Component: AnalysisPage,
-  }));
-
 const savedAnalysisPage = () =>
   import("./pages/SavedAnalysisPage").then(({ SavedAnalysisPage }) => ({
     Component: SavedAnalysisPage,
@@ -18,7 +13,6 @@ const savedAnalysisPage = () =>
 export const getRoutes = () => (
   <Route path="event-analysis">
     <Route path="new" lazy={newAnalysisPage} />
-    <Route path="new/:kind" lazy={analysisPage} />
     <Route path=":cardId" lazy={savedAnalysisPage} />
   </Route>
 );

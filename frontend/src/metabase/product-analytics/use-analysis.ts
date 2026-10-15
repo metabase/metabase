@@ -103,6 +103,7 @@ export const useAnalysis = <K extends AnalysisKind>({
   return {
     config,
     table,
+    usersTable,
     computed,
     widgets,
     spec,

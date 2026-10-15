@@ -1,0 +1,17 @@
+.filterDrop {
+  display: inline-flex;
+  border-radius: var(--mantine-radius-sm);
+  transition: box-shadow 120ms ease;
+}
+
+.filterDrop[data-drop-active="true"] {
+  box-shadow: 0 0 0 2px var(--mb-color-border-brand);
+}
+
+.filterDrop[data-drop-over="true"] button {
+  background-color: var(--mb-color-background-brand);
+}
+
+.filterDrop[data-drop-active="true"] * {
+  pointer-events: none;
+}

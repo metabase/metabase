@@ -1,7 +1,26 @@
 .root {
-  transition: background-color 120ms ease;
+  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background-primary);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 
 .root:has(.editButton:hover:not(:disabled)) {
   background-color: var(--mb-color-background-secondary);
+}
+
+.root[data-drop-active="true"] {
+  border-style: dashed;
+  border-color: var(--mb-color-border-brand);
+}
+
+.root[data-drop-over="true"] {
+  border-style: solid;
+  background-color: var(--mb-color-background-brand);
+}
+
+/* The drag enters and leaves children too; let the root alone see it. */
+.root[data-drop-active="true"] * {
+  pointer-events: none;
 }

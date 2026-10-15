@@ -8,15 +8,22 @@ import {
   Sortable,
   SortableList,
 } from "metabase/common/components/Sortable";
-import { useDndSensors } from "metabase/common/hooks";
+import { useDndSensors, useToast } from "metabase/common/hooks";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import { moveElement } from "metabase/utils/arrays";
 import type { Table } from "metabase-types/api";
 
 import type { EventDefinition } from "../../events/types";
+import {
+  isEventSegment,
+  segmentToEventDefinition,
+} from "../../segments/to-event-definition";
+import type { PaletteSegment } from "../../segments/types";
 import type { SettingWidgetProps } from "../../settings/types";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { EventDefinitionSummary } from "../events/EventDefinitionSummary";
+import { SegmentDropZone } from "../events/SegmentDropZone";
 import { useTableQuery } from "../events/use-table-query";
 
 import S from "./EventDefinitionListWidget.module.css";
@@ -31,6 +38,7 @@ const getItemId = (item: ListItem) => item.id;
 type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
   table: Table | undefined;
   addLabel?: string;
+  dropLabel?: string;
 };
 
 /**
@@ -38,6 +46,9 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
  * dragging. Starting another edit, adding or removing submits the current
  * edit first, or discards it when it can't be submitted. Nothing can be
  * dragged during an edit.
+ *
+ * A palette segment dropped on an item replaces it; dropped on the zone
+ * below the list, it's added.
  */
 export const EventDefinitionListWidget = ({
   id,
@@ -45,8 +56,11 @@ export const EventDefinitionListWidget = ({
   onChange,
   table,
   addLabel = t`Add an event`,
+  dropLabel = t`Drop a segment here to add it`,
 }: EventDefinitionListWidgetProps) => {
   const tableQuery = useTableQuery(table);
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+  const [sendToast] = useToast();
   const sensors = useDndSensors({ distance: DRAG_DISTANCE });
   // `value.length` while adding a new event.
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -77,6 +91,26 @@ export const EventDefinitionListWidget = ({
     if (oldIndex !== newIndex) {
       onChange(moveElement(value, oldIndex, newIndex));
     }
+  };
+
+  const handleDropSegment = (segment: PaletteSegment, atIndex: number) => {
+    const event =
+      tableQuery !== undefined
+        ? segmentToEventDefinition(tableQuery, metadataProvider, segment)
+        : undefined;
+    if (event === undefined) {
+      sendToast({
+        icon: "warning",
+        message: t`${segment.name} can't be used here yet.`,
+      });
+      return;
+    }
+    onChange(
+      atIndex >= value.length
+        ? [...value, event]
+        : value.map((other, index) => (index === atIndex ? event : other)),
+    );
+    setEditingIndex(null);
   };
 
   const editor = tableQuery !== undefined && editingIndex !== null && (
@@ -120,6 +154,10 @@ export const EventDefinitionListWidget = ({
                     <EventDefinitionSummary
                       name={item.event.name}
                       disabled={tableQuery === undefined}
+                      dropTarget={{
+                        accepts: isEventSegment,
+                        onDrop: (segment) => handleDropSegment(segment, index),
+                      }}
                       onEdit={() => setEditingIndex(index)}
                       onRemove={() => handleRemove(index)}
                     />
@@ -131,6 +169,13 @@ export const EventDefinitionListWidget = ({
         />
       </Stack>
       {isAdding && <ListRow>{editor}</ListRow>}
+      <ListRow>
+        <SegmentDropZone
+          label={dropLabel}
+          accepts={isEventSegment}
+          onDrop={(segment) => handleDropSegment(segment, value.length)}
+        />
+      </ListRow>
       <Box>
         <Button
           variant="light"

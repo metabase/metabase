@@ -1,0 +1,7 @@
+.root {
+  flex-shrink: 0;
+  height: 100%;
+  background-color: var(--mb-color-background-secondary);
+  border-right: 1px solid var(--mb-color-border);
+  box-shadow: inset -8px 0 10px -10px var(--mb-color-shadow);
+}
