@@ -192,12 +192,32 @@
                   #{[:database [:env ["Sample Database"]]]
                     [:source-table [:env ["Sample Database" "PUBLIC" "ORDERS"]]]})}
            (snapshot-of [(card-yaml "MetricCardXXXXXXXXXXX" "Orders" "LibraryCollectionXXXX" "metric")]))))
-  (testing "a question and a model are kinds with no codec yet: the file is an item that does not decode"
-    (is (= [{:type :unknown-kind :kind :question :file 0}
-            {:type :unknown-kind :kind :model :file 1}]
-           (map #(select-keys % [:type :kind :file])
-                (:findings (decode [(card-yaml "QuestionCardXXXXXXXXX" "Q" "LibraryCollectionXXXX" "question")
-                                    (card-yaml "ModelCardXXXXXXXXXXXX" "M" "LibraryCollectionXXXX" "model")]))))))
+  (testing "a card of type question is a question, with its dashboard; its result metadata is derived"
+    (is (= {"QuestionCardXXXXXXXXX"
+            (item :question "Q" "LibraryCollectionXXXX"
+                  {:display      "scalar"
+                   :dashboard_id "DashboardXXXXXXXXXXXX"
+                   :query        {:lib/type "mbql/query"
+                                  :database "Sample Database"
+                                  :stages   [{:lib/type     "mbql.stage/mbql"
+                                              :source-table ["Sample Database" "PUBLIC" "ORDERS"]
+                                              :aggregation  [["count" {}]]}]}}
+                  #{[:database [:env ["Sample Database"]]]
+                    [:source-table [:env ["Sample Database" "PUBLIC" "ORDERS"]]]
+                    [:dashboard "DashboardXXXXXXXXXXXX"]})}
+           (snapshot-of [(card-yaml "QuestionCardXXXXXXXXX" "Q" "LibraryCollectionXXXX" "question"
+                                    :extra (str "dashboard_id: DashboardXXXXXXXXXXXX\n"
+                                                "result_metadata:\n- name: count\n  base_type: type/BigInteger\n"))]))))
+  (testing "a card of type model is a model, with the result metadata that a person edits"
+    (is (= [{:name "count" :display_name "Orders"}]
+           (get-in (snapshot-of [(card-yaml "ModelCardXXXXXXXXXXXX" "M" "LibraryCollectionXXXX" "model"
+                                            :extra "result_metadata:\n- name: count\n  display_name: Orders\n")])
+                   ["ModelCardXXXXXXXXXXXX" :attrs :result_metadata])))
+    (is (= {:display "scalar"}
+           (dissoc (get-in (snapshot-of [(card-yaml "ModelCardXXXXXXXXXXXX" "M" "LibraryCollectionXXXX" "model"
+                                                    :extra "result_metadata: null\n")])
+                           ["ModelCardXXXXXXXXXXXX" :attrs])
+                   :query))))
   (testing "an archived card is not in the snapshot"
     (is (= {}
            (snapshot-of [(str/replace (card-yaml "MetricCardXXXXXXXXXXX" "Orders" "LibraryCollectionXXXX" "metric")
@@ -529,7 +549,7 @@
   [s]
   (update-vals s (fn [{:keys [kind] :as it}]
                    (case kind
-                     :metric
+                     (:metric :question :model)
                      (let [vs (into {} (remove (comp nil? val)) (get-in it [:attrs :visualization_settings]))]
                        (if (seq vs)
                          (assoc-in it [:attrs :visualization_settings] vs)

@@ -11,7 +11,9 @@
    [metabase-enterprise.library-branching.instance.kinds.glossary :as kinds.glossary]
    [metabase-enterprise.library-branching.instance.kinds.measure :as kinds.measure]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
+   [metabase-enterprise.library-branching.instance.kinds.model :as kinds.model]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
+   [metabase-enterprise.library-branching.instance.kinds.question :as kinds.question]
    [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.scope :as scope]
@@ -25,7 +27,9 @@
    :glossary-term   kinds.glossary/kind-store
    :measure         kinds.measure/kind-store
    :metric          kinds.metric/kind-store
+   :model           kinds.model/kind-store
    :published-table kinds.published-table/kind-store
+   :question        kinds.question/kind-store
    :segment         kinds.segment/kind-store
    :snippet         kinds.snippet/kind-store})
 
